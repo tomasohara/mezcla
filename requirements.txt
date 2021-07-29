@@ -1,0 +1,16 @@
+# Basic requirements for main scripts
+# optional: keras, tensorflow
+bs4
+cherrypy
+gensim
+mako
+matplotlib
+nltk
+numpy
+ordereddict
+requests
+scipy
+sklearn
+six
+stopwords
+xgboost
