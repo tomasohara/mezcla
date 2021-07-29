@@ -37,7 +37,6 @@ from tomas_misc import glue_helpers as gh
 VERBOSE = "verbose"
 RUN_NER = "run-ner"
 ANALYZE_SENTIMENT = "analyze-sentiment"
-## OLD: SPLIT_SENTENCES = "split-sentences"
 ## TODO: RUN_POS_TAGGER = "pos-tagging"
 ## TODO: RUN_TEXT_CATEGORIZER = "text-categorization"
 LANG_MODEL = "lang-model"
@@ -60,7 +59,7 @@ USE_NLTK = system.getenv_bool("USE_NLTK", (SENT_TOKENIZER.lower() == "nltk"),
 
 #...............................................................................
 
-# HACK: placeholder for optional sentiment module
+# placeholder for optional sentiment module
 SentimentIntensityAnalyzer = None
 
 class SentimentAnalyzer(object):
@@ -76,7 +75,7 @@ class SentimentAnalyzer(object):
         # Make sure vader is initialized
         global SentimentIntensityAnalyzer
         if not SentimentIntensityAnalyzer:
-            debug.trace(2, "Warning: shameless hack for dynamic loading of vader")
+            debug.trace(2, "dynamic loading of vader")
             # pylint: disable=import-outside-toplevel, import-error
             from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer as sia
             SentimentIntensityAnalyzer = sia
@@ -96,7 +95,7 @@ class SentimentAnalyzer(object):
 pysbd = None
 ## TODO: PySBDFactory = None
 
-APPLY_SPAN_FIX = system.getenv_bool("APPLY_SPAN_FIX", False,
+APPLY_SPAN_FIX = system.getenv_bool("APPLY_SPAN_FIX", True,
                                     "Apply pySBD contract-mode fix for char_span")
 
 if USE_PYSBD or USE_NLTK:
@@ -110,7 +109,6 @@ def get_char_span(doc, start, end):
     # Note: with APPLY_SPAN_FIX, the following fix is used:
     #     https://github.com/nipunsadvilkar/pySBD/pull/97
     debug.trace(6, f"get_char_span(_doc, {start}, {end})")
-    ## OLD: span = doc.char_span(start, end)
     if APPLY_SPAN_FIX:
         # Note: With alignment mode "contract", the span of all tokens is completely
         # within the character span.
@@ -223,7 +221,6 @@ class Script(Main):
     doc = None
     sentiment_analyzer = None
     use_sci_spacy = False
-    ## OLD: split_sentences = False
     download_model = False
     show_reprsentation = False
     ## TODO_arg1 = False
@@ -234,14 +231,12 @@ class Script(Main):
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
         self.spacy_model = self.get_parsed_option(LANG_MODEL, self.spacy_model)
         self.analyze_sentiment = self.get_parsed_option(ANALYZE_SENTIMENT, self.analyze_sentiment)
-        ## OLD: self.split_sentences = self.get_parsed_option(SPLIT_SENTENCES, self.split_sentences)
         self.run_ner = self.get_parsed_option(RUN_NER, self.run_ner)
         self.verbose = self.get_parsed_option(VERBOSE, self.verbose)
         default_use_sci_spacy = re.search(r"\bsci\b", self.spacy_model)
         self.use_sci_spacy = self.get_parsed_option(USE_SCI_SPACY, default_use_sci_spacy)
         self.download_model = self.get_parsed_option(DOWNLOAD_MODEL, self.download_model)
         ## self.TODO_arg1 = self.get_parsed_option(TODO_ARG1, self.TODO_arg1)
-        ## OLD: do_specific_task = (self.run_ner or self.analyze_sentiment or self.split_sentences)
         do_specific_task = (self.run_ner or self.analyze_sentiment)
         ## TODO: self.show_representation = self.verbose or (not do_specific_task)
         ## TEST: self.show_representation = (not (do_specific_task or TRACK_PAGES))
@@ -254,7 +249,7 @@ class Script(Main):
             print(f"Downloading spaCy model: {self.spacy_model}")
             gh.run(f"python -m spacy download {self.spacy_model}")
         
-        # HACK: Load in external module for sentiment analysis (gotta hate spaCy!)
+        # Load in external module for sentiment analysis (gotta hate spaCy!)
         if self.analyze_sentiment:
             self.sentiment_analyzer = SentimentAnalyzer()
 
@@ -351,7 +346,6 @@ class Script(Main):
 
         # Analyze the text in the line
         # TODO: allow for embedded sentences
-        ## OLD: self.doc = self.nlp(line)
         ## self.doc = self.nlp(re.sub(r"\S", " ", line))
         line = (re.sub(r"\s", " ", line))
         self.doc = self.nlp(line)
@@ -360,7 +354,6 @@ class Script(Main):
             line_text = re.sub(r"\r?\n", " <newline> ", line)
             print(f"input: {line_text}")
         if TRACK_PAGES:
-            ## OLD: print("location info (page/paragraph/sentence):")
             print("location info (page/sentence):")
         self.sent_num = 0
         for s in self.doc.sents:
@@ -370,11 +363,6 @@ class Script(Main):
             else:
                 debug.trace_fmtd(5, "Ignoring empty sentence (L{n}:O{o})",
                                  n=self.line_num, o=self.char_offset)
-        ## OLD
-        ## # Optionally, output sentences (one per line)
-        ## if self.split_sentences:
-        ##     for sentence in self.doc.sents:
-        ##         print(sentence)
 
     def process_sentence(self, sentence):
         """Process SENTENCE"""
@@ -388,7 +376,6 @@ class Script(Main):
             # Notes: Paragraph numbers are relative to each page; and, likewise
             # sentence numbers are relative to each paragraph.
             # See process_line and Main.read_input.
-            ## OLD: print(f"Pg#{self.page_num}/Par#{self.para_num}/Sent#{self.sent_num}: {sentence_text}")
             print(f"Pg#{self.page_num}/Sent#{self.sent_num}: {sentence_text}")
             debug.trace(4, f"Offset: {self.char_offset}")
 
@@ -400,7 +387,6 @@ class Script(Main):
             word_attributes = ["text", "is_oov", "is_stop", "sentiment"]
             token_attributes = ["is_sent_start"]
             all_info = []
-            ## OLD: for word in self.doc:
             for word in sent_info:
                 lexeme = self.doc.vocab[word.text]
                 info = [getattr(lexeme, a, "") for a in word_attributes]
@@ -415,7 +401,6 @@ class Script(Main):
 
         # Optionally, invoke NER
         if self.run_ner:
-            ## OLD: prefix = "entities: " if self.verbose else ""
             prefix = ""
             if self.verbose:
                 if COUNT_ENTITIES:
@@ -440,7 +425,6 @@ if __name__ == '__main__':
         manual_input=False,
         # Paragraph mode is required for proper sentence tokenization
         paragraph_mode=True,
-        ## OLD: boolean_options=[RUN_NER, ANALYZE_SENTIMENT, SPLIT_SENTENCES, VERBOSE,
         boolean_options=[RUN_NER, ANALYZE_SENTIMENT, VERBOSE,
                          (DOWNLOAD_MODEL, "Download spaCy model"),
                          (SHOW_REPRESENTATION, "Show final representation (e.g., word & token attributes"),
