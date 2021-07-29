@@ -1,0 +1,537 @@
+#! /usr/bin/env python
+#
+# Provides class Main to encompass common script processing. By default, the
+# command line arguments are analyzed to determine optional filename, which is
+# opened. Then, the input stream is feed line-by-line into the process_line
+# method.
+#
+# Usage exmple:
+#    from main import Main
+#
+#    class MyMain(Main):
+#       def process_line(self, line):
+#           if "funny" in line:
+#               print("Funny looking line: %s" % line)
+#
+#    if __name__ == '__main__':
+#        MyMain().run()
+#    
+# Notes:
+# - See simple_main_example.py for a non-trivial example.
+# - To add command-line arguments, pass corresponding arguments to Main's
+#   initialization. For example,
+#      Main(boolean_options=["fubar"], 
+#           int_options=[("count", "Number of times", 10)]).run()
+# - As the class likely will just be instantiated once, initialization
+#   can be simplfied by using class-level variables for options, as follows:
+#      Script(Main):
+#          count = 5
+#          verbose = False
+#          def setup(self):
+#              verbose = self.get_parsed_option("verbose")
+# - With non-trivial command processing (e.g., positional arguments), it 
+#   might be better to do this in the constructor, as follows:
+#       def __init__(*args, **kwargs):
+#           super(MyMain, self).__init__(*args, positional_options=["targets"], 
+#                                        **kwargs)
+# - Changes to temporary directory/file support should be synchronized with the
+#   unit testing base class (see tests/unittest_wrapper.py.
+# - Overriding the temporary directory can be handy during debugging (via
+#   TEMP_BASE or TEMP_FILE). If you invoke sub-scripts, you might need to
+#   specify different ones, as in adhoc/optimize_company_extraction.py.
+# - During page-tracking mode, the page numbers are set based on occurrence of
+#   form feed characters: \f (n.b., same as ^L and 0x0c).
+# - A form feed is treated as an implicit paragraph break: see read_input.
+#
+# TODO:
+# - Specify argument via input dicts, such as in 
+#      options=[{"name"="verbose", "type"=bool}, 
+#               {"name"="count", type=int, default=10}]
+# - Add support for perl-style paragraph mode in input processing.
+# - Add support for multple input files (e.g., via fileinput module).
+# - Add support for csv.csv_reader (see usage in cut.py).
+# - Add support for argument aliases (e.g., --input-delim for --delim).
+# - Have option for processing text by page by page, instead of
+#   just tracking page number with 
+#
+
+"""Module for encapsulating main() processing"""
+
+# Standard packages
+import argparse
+import os
+import sys
+import tempfile
+
+# Local packages
+import tomas_misc.debug as debug
+import tomas_misc.tpo_common as tpo
+import tomas_misc.glue_helpers as gh
+import tomas_misc.system as system
+
+# Constants
+HELP_ARG = "--help"
+USE_PARAGRAPH_MODE = system.getenv_bool("PARAGRAPH_MODE", False,
+                                        "Process input in Perl-style paragraph mode")
+TRACK_PAGES = system.getenv_bool("TRACK_PAGES", False,
+                                 "Track page numbers and split lines by form feed (i.e., \f)")
+
+#-------------------------------------------------------------------------------
+
+class Main(object):
+    """Class encompassing common script processing"""
+    argument_parser = None
+    force_unicode = False
+
+    def __init__(self, runtime_args=None, description=None, 
+                 # TODO: Either rename xyz_optiom to match python type name 
+                 # or rename them without abbreviations.
+                 # TODO: explain difference between positional_options and positional_arguments
+                 multiple_files=False,
+                 use_temp_base_dir=None,
+                 usage_notes=None,
+                 paragraph_mode=None, track_pages=None,
+                 boolean_options=None, text_options=None, int_options=None,
+                 float_options=None, positional_options=None, positional_arguments=None, 
+                 skip_input=None, manual_input=None, auto_help=None):
+        """Class constructor: parses RUNTIME_ARGS (or command line), with specifications
+        for BOOLEAN_OPTIONS, TEXT_OPTIONS, INT_OPTIONS, FLOAT_OPTIONS, and POSITIONAL_OPTIONS
+        (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args)."""
+        tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts}, "
+                         + "i={ints}, f={floats}, p={posns}, s={skip}, m={mi}, a={auto})", 5,
+                         args=runtime_args, desc=description, bools=boolean_options,
+                         texts=text_options, ints=int_options, floats=float_options,
+                         posns=positional_options, skip=skip_input, mi=manual_input, auto=auto_help,
+                         ha=HELP_ARG)
+        self.description = "TODO: what the script does" # defaults to TODO note for client
+        # TODO: boolean_options = [(VERBOSE, "Verbose output mode")]
+        self.boolean_options = []
+        self.text_options = []
+        self.int_options = []
+        self.float_options = []
+        self.positional_options = []
+        self.process_line_warning = False
+        self.input_stream = None
+        self.end_of_page = False
+        # TODO: line_num => total_lines_seen AND rel_line_num => line_num
+        # TODO: para_num => total_paras_seen AND rel_para_num => para_num
+        self.rel_line_num = -1
+        self.rel_para_num = -1
+        self.page_num = -1
+        self.para_num = -1
+        self.line_num = 0
+        self.char_offset = -1
+        # Note: manual_input was introduced after skip_input to allow for input processing
+        # in bulk (e.g., via read_input generator). By default, neither is specified
+        # (see new_template.py), and both should be assumed false.
+        # TODO: *** Add better sanity checking (such as a filename on command line).
+        if manual_input is None:
+            # NOTE: skip_input=>manual_input: T=>T  F=>F  None=>F
+            manual_input = False if (skip_input is None) else skip_input
+            debug.trace_fmt(7, "inferred manual_input: {mi}", mi=manual_input)
+        self.manual_input = manual_input
+        if skip_input is None:
+            skip_input = self.manual_input
+            debug.trace_fmt(7, "inferred skip_input: {si}", si=skip_input)
+        self.skip_input = skip_input
+        #
+        self.parser = None
+        if auto_help is None:
+            auto_help = self.skip_input
+        self.auto_help = auto_help
+        if usage_notes is None:
+            usage_notes = ""
+        self.notes = usage_notes
+        if paragraph_mode is None:
+            paragraph_mode = USE_PARAGRAPH_MODE
+        self.paragraph_mode = paragraph_mode
+        if track_pages is None:
+            track_pages = TRACK_PAGES
+        self.track_pages = track_pages
+
+        # Setup temporary file and/or base directory
+        # TODO: allow temp_base handling to be overridable by constructor options
+        self.temp_base = tpo.getenv_text("TEMP_BASE",
+                                         tempfile.NamedTemporaryFile().name)
+        # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
+        # -or-: temp_base_dir = tpo.getenv_text("TEMP_BASE_DIR", ""); self.use_temp_base_dir = bool(temp_base_dir.strip); ...
+        if use_temp_base_dir is None:
+            use_temp_base_dir = tpo.getenv_bool("USE_TEMP_BASE_DIR", False)
+        self.use_temp_base_dir = use_temp_base_dir
+        if self.use_temp_base_dir:
+            gh.run("mkdir -p {dir}", dir=self.temp_base)
+            default_temp_file = gh.form_path(self.temp_base, "temp.txt")
+        else:
+            default_temp_file = self.temp_base
+        self.temp_file = tpo.getenv_text("TEMP_FILE", default_temp_file)
+
+        # Get arguments from specified parameter or via command line
+        # Note: --help assumed for input-less scripts with command line options
+        # to avoid inadvertant script processing.
+        if runtime_args is None:
+            runtime_args = sys.argv[1:]
+            tpo.debug_print("Using sys.argv[1:] for runtime args: %s" % runtime_args, 4)
+            if self.auto_help and not runtime_args:
+                debug.trace_fmt(4, "Adding {ha} to command line (as per auto_help)", ha=HELP_ARG)
+                runtime_args = [HELP_ARG]
+        # Get other options
+        if description:
+            self.description = description
+        if boolean_options:
+            self.boolean_options = boolean_options
+        if text_options:
+            self.text_options = text_options
+        if int_options:
+            self.int_options = int_options
+        if float_options:
+            self.float_options = float_options
+        if positional_options or positional_arguments:
+            # TODO: mark positional_options as decprecated
+            debug.assertion(not (positional_options and positional_arguments))
+            self.positional_options = positional_options or positional_arguments
+        self.multiple_files = multiple_files
+        # Set defaults
+        self.parsed_args = None
+        self.filename = None
+        self.other_filenames = []
+        # Do command-line parsing
+        self.check_arguments(runtime_args)
+        debug.trace_current_context(level=debug.QUITE_DETAILED)
+        debug.trace_object(6, self, label="Main instance")
+        debug.trace_fmt(tpo.QUITE_DETAILED, "end of Main.__init__(); self={s}",
+                        s=self)
+        return
+
+    def convert_option(self, option_spec, default_value=None, positional=False):
+        """Convert OPTION_SPEC to (label, description, default) tuple. 
+        Notes: The description and default of the specification are optional,
+        and the parentheses can be omitted if just the label is given. Also,
+        if POSITIONAL the option prefix (--) is omitted."""
+        opt_label = None
+        opt_desc = None
+        opt_default = default_value
+        opt_prefix = "--" if not positional else ""
+        if isinstance(option_spec, tuple):
+            option_components = list(option_spec)
+            opt_label = opt_prefix + option_components[0]
+            if len(option_components) > 1:
+                opt_desc = option_components[1]
+            if len(option_components) > 2:
+                opt_default = option_components[2]
+        else:
+            opt_label = opt_prefix + tpo.to_string(option_spec)
+        debug.assertion(not " " in opt_label)
+        result = (opt_label, opt_desc, opt_default)
+        tpo.debug_format("convert_option({o}, {d}, {p}): self={s} => {r}", 5,
+                         o=option_spec, d=default_value, p=positional,
+                         s=self, r=result)
+        return result
+
+    def get_option_name(self, label):
+        """Return internal name for parser options (e.g. dashes converted to underscores)"""
+        name = label.replace("-", "_")
+        tpo.debug_format("get_option_name({l}) => {n}; self={s}", 6,
+                         l=label, n=name, s=self)
+        return name
+
+    def has_parsed_option(self, label):
+        """Whether option for LABEL specified (i.e., non-null value)"""
+        name = self.get_option_name(label)
+        has_option = (name in self.parsed_args and self.parsed_args[name])
+        tpo.debug_format("has_parsed_option({l}) => {r}", 6,
+                         l=label, r=has_option)
+        return has_option
+
+    def get_parsed_option(self, label, default=None, positional=False):
+        """Get value for option LABEL, with dashes converted to underscores. 
+        If POSITIONAL specified, DEFAULT value is used if omitted"""
+        opt_label = self.get_option_name(label) if not positional else label
+        value = self.parsed_args.get(opt_label)
+        # Override null value with default
+        if value is None:
+            value = default
+            # Do sanity check for positional argument being checked by mistake
+            # TODO: do automatic correction?
+            if opt_label != label:
+                if positional:
+                    debug.assertion(opt_label not in self.parsed_args)
+                else:
+                    debug.assertion(label not in self.parsed_args)
+        # Return result, after tracing invocation
+        tpo.debug_format("get_parsed_option({l}, [{d}], [{p}]) => {v}", 5,
+                         l=label, d=default, p=positional, v=value)
+        return value
+
+    def get_parsed_argument(self, label, default=None):
+        """Get value for positional argument LABEL using DEFAULT value"""
+        tpo.debug_format("get_parsed_agument({l}, [{d}])", 6,
+                         l=label, d=default)
+        return self.get_parsed_option(label, default, positional=True)
+
+    def check_arguments(self, runtime_args):
+        """Check command-line arguments"""
+        # Note: Shows env. options when debugging as these are backdoor settings.
+        tpo.debug_format("Main.check_arguments({args})", 5, args=runtime_args)
+        # TODO: add in detailed usage notes w/ environment option descriptions (see google_word2vec.py)
+        if not self.argument_parser:
+            self.argument_parser = argparse.ArgumentParser
+        usage_notes = self.notes
+        if (not usage_notes and debug.debugging()):
+            env_opts = system.formatted_environment_option_descriptions(sort=True)
+            usage_notes = ("Notes: "
+                           + ("- Use - for stdin" if (not self.skip_input) else "")
+                           + ("- Available env. options:\n\t{opts}".format(
+                               opts=env_opts)))
+        parser = self.argument_parser(description=self.description,
+                                      epilog=usage_notes,
+                                      formatter_class=argparse.RawDescriptionHelpFormatter)
+        # TODO: use capitalized script description but lowercase argument help
+
+        # Check for options of specific types
+        # TODO: consolidate processing for the groups; add option for environment-based default
+        for opt_spec in self.boolean_options:
+            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)
+            parser.add_argument(opt_label, default=opt_default, action='store_true',
+                                help=opt_desc)
+        for opt_spec in self.int_options:
+            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)
+            parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
+        for opt_spec in self.float_options:
+            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)
+            parser.add_argument(opt_label, type=float, default=opt_default,
+                                help=opt_desc)
+        for opt_spec in self.text_options:
+            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)
+            parser.add_argument(opt_label, default=opt_default, help=opt_desc)
+
+        # Add dummy arguments
+        if tpo.detailed_debugging():
+            if not self.boolean_options:
+                parser.add_argument("--TODO-bool-arg", default=False, action='store_true',
+                                    help="Add via boolean_options keyword")
+            if not self.text_options:
+                parser.add_argument("--TODO-text-arg", default="",
+                                    help="Add via text_options keyword")
+            if not self.int_options:
+                parser.add_argument("--TODO-int-arg", type=int, default=0,
+                                    help="Add via int_options keyword")
+            if not self.float_options:
+                parser.add_argument("--TODO-float-arg", default=0.0,
+                                    help="Add via float_options keyword")
+
+        # Add positional arguments
+        for i, opt_spec in enumerate(self.positional_options):
+            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, "",
+                                                                     positional=True)
+            # note: a numeric nargs produces a list even if 1, so None used
+            nargs = None
+            tpo.debug_format("positional arg {i}, nargs={nargs}", 6, 
+                             i=i, nargs=nargs)
+            parser.add_argument(opt_label, default=opt_default, nargs=nargs, 
+                                help=opt_desc)
+
+        # Add filename last and make optional with '-' default (stdin)
+        # Note: with nargs=+, the reult is a list of filename (even if one file [WTH?]!)
+        if not self.skip_input:
+            filename_nargs = ('?' if (not self.multiple_files) else "+")
+            tpo.debug_format("filename_nargs={nargs}", 6, nargs=filename_nargs)
+            parser.add_argument("filename", nargs=filename_nargs, default='-',
+                                help="Input filename")
+
+        # Parse the commandline and get result
+        tpo.debug_format("parser={p}", 6, p=parser)
+        self.parser = parser
+        self.parsed_args = vars(parser.parse_args(runtime_args))
+        tpo.debug_print("parsed_args = %s" % self.parsed_args, 5)
+
+        # Get filename unless input ignored and fixup if returned as list
+        if not self.skip_input:
+            self.filename = self.parsed_args['filename']
+            if (isinstance(self.filename, list)):
+                debug.trace(5, "Making (list) filename a string & other_files remainder")
+                file_list = self.filename
+                self.other_files = file_list[1:]
+                self.filename =  file_list[0] if len(file_list) else "-"
+        debug.trace(6, "end Main.check_arguments()")
+        return
+
+    def setup(self):
+        """Perform script setup prior to input processing"""
+        # Note: Use for post-argument proceessing setup
+        tpo.debug_format("Main.setup() stub: self={s}", 5, s=self)
+        return
+
+    def process_line(self, line):
+        """Stub for input processing that just prints the input.
+        Note: issues error message about required specialization"""
+        tpo.debug_format("Main.process_line({l})", 5, l=line)
+        if not self.process_line_warning:
+            tpo.print_stderr("Internal error: specialize process_line")
+            self.process_line_warning = True
+        print(line)
+        return
+
+    def run_main_step(self):
+        """Stub for main processing, along with error message"""
+        # TODO: use decorator (e.g., @abstract)
+        tpo.debug_format("Main.run_main_step(): self={s}", 5, s=self)
+        tpo.print_stderr("Internal error: specialize run_main_step")
+        return
+
+    def run(self):
+        """Entry point for script"""
+        tpo.debug_print("Main.run()", 5)
+        # TODO: decompose (e.g., isolate input proecessing)
+
+        # Have client do pre-input initialization
+        self.setup()
+
+        # Resolve input stream from either explicit filename or via standard input
+        self.input_stream = sys.stdin
+        if (self.filename and (self.filename != "-")):
+            debug.assertion(isinstance(self.filename, str))
+            debug.assertion(self.filename != ["-"])
+            debug.assertion(os.path.exists(self.filename))
+            self.input_stream = system.open_file(self.filename)
+            debug.assertion(self.input_stream)
+    
+        # Invoke the script
+        try:
+            # If not automatic input, process the main step of script
+            if self.manual_input:
+                self.run_main_step()
+            # Otherwise have client process input line by line
+            else:
+                # TODO: Trace status only if script blocks waiting for user
+                debug.trace(2, "Processing input")
+                self.process_input()
+        except BrokenPipeError:
+            ## TODO: exit gracefully (e.g., after wrap_up)
+            ## debug.trace_fmt(6, "Silly exception processing input: {exc}", 
+            ##                 exc=system.get_exception)
+            ##
+            ## exit("Note: you can Ignore any silly BrokenPipeError's thrown by Python!")
+            ##
+            ## pass
+            ##
+            ## take 3+:
+            ## Based on https://stackoverflow.com/questions/26692284/how-to-prevent-brokenpipeerror-when-doing-a-flush-in-python
+            ## sys.stderr.close()                       [doesn't work for Python 3]
+            ##
+            ## take 4 [gotta hate Python!]:
+            # Python flushes standard streams on exit; redirect remaining output
+            # to devnull to avoid another BrokenPipeError at shutdown
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, sys.stdout.fileno())
+            sys.exit(1)  # Python exits with error code 1 on EPIPE
+
+        # Invoke client end processing
+        self.wrap_up()
+
+        # Remove any temporary files
+        self.clean_up()
+        return
+
+    def read_input(self):
+        """Generator for producing lines of text from the input (without newlines)
+        Notes:
+        1. This is called automatically via process_input.
+        2. When page mode is in effect, 
+           a. lines don't include form feeds
+           b. pages are not buffered: the page number is just tracked.
+        3. Paragraph end at empty lines or form feeds (i.e., implicit).
+        """
+        # Note: para_num reset here and updated by process_input
+        tpo.debug_format("Main.read_input(): {input}", 5,
+                         input=self.input_stream)
+        if self.track_pages:
+            self.page_num = 1
+        self.rel_line_num = 0
+        self.char_offset = 0
+        for line in self.input_stream:
+            self.rel_line_num += 1
+            self.line_num += 1
+            original_line = line
+            line = line.strip("\n")
+            tpo.debug_print("L%d: %s" % (self.line_num, line), 6)
+            if self.force_unicode:
+                line = tpo.ensure_unicode(line)
+            tpo.debug_print("\ttype(line): %s" % (type(line)), 7)
+            if self.track_pages:
+                self.end_of_page = False
+                for i, line_segment in enumerate(line.split("\f")):
+                    if i == 0:
+                        self.end_of_page = (line != line_segment)
+                    else:
+                        self.end_of_page = True
+                        self.line_num += 1
+                    self.rel_line_num += 1
+                    debug.trace_fmt(6, "yielding line segment [Pg{pg}/Par{par}/L{ln}]: {ls}",
+                                    pg=self.page_num, par=self.rel_para_num, ln=self.rel_line_num, ls=line_segment)
+                    yield line_segment
+                    if self.end_of_page:
+                        self.page_num += 1
+                        self.rel_para_num = 1
+                        self.rel_line_num = 1
+                    self.char_offset += len(line_segment)
+                if (line != original_line):
+                    self.char_offset += 1
+            else:
+                debug.trace_fmt(6, "yielding line [Par{par}/L{lnum}: {l}",
+                                par=self.rel_para_num, lnum=self.rel_line_num, l=line)
+                yield line
+                self.char_offset += len(original_line)
+        return
+    
+    def process_input(self):
+        """Process each line in current input stream (or stdin):
+        Note: if paragraph mode enabled the input is processed in groups of lines separated by an entirely blank line (i.e., length is 0)"""
+        tpo.debug_format("Main.process_input(): {input}", 5,
+                         input=self.input_stream)
+        self.rel_line_num = 0
+        if self.paragraph_mode:
+            self.para_num = 0
+        paragraph = ""
+        # Read next line (or line segment if in page mode and form feed in line)
+        for line in self.read_input():
+            if (not self.paragraph_mode):
+                debug.assertion("\n" not in line)
+                self.process_line(line)
+            else:
+                paragraph += line + "\n"
+                if ((len(line) == 0) or self.end_of_page):
+                    self.rel_para_num += 1
+                    self.para_num += 1
+                    self.process_line(paragraph)
+                    paragraph = ""
+            debug.assertion(not (self.track_pages and ("\f" in line)))
+
+        # Process the last set of lines
+        if (self.paragraph_mode and paragraph):
+            self.rel_para_num += 1
+            self.para_num += 1
+            debug.trace(5, "processing last paragraph")
+            self.process_line(paragraph)
+
+        return
+
+    def wrap_up(self):
+        """Default end processing"""
+        tpo.debug_format("Main.wrap_up() stub: self={s}", 5, s=self)
+        return
+
+    def clean_up(self):
+        """Removes temporary files, etc."""
+        # note: not intended to be overridden
+        tpo.debug_format("Main.clean_up(): self={s}", 5, s=self)
+        if not tpo.detailed_debugging():
+            if self.use_temp_base_dir:
+                gh.run("rm -rvf {dir}", dir=self.temp_base)
+            else:
+                gh.run("rm -vf {file}*", file=self.temp_file)
+        return
+
+#------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    tpo.print_stderr("Warning: %s is not intended to be run standalone" % __file__)
