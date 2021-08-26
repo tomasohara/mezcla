@@ -56,7 +56,6 @@ USE_PYSBD = system.getenv_bool("USE_PYSBD", (SENT_TOKENIZER.lower() == "pysbd"),
 USE_NLTK = system.getenv_bool("USE_NLTK", (SENT_TOKENIZER.lower() == "nltk"),
                               "Use NLTK--NL Toolkit")
 
-
 #...............................................................................
 
 # placeholder for optional sentiment module

@@ -73,6 +73,7 @@ class TestWrapper(unittest.TestCase):
         super(TestWrapper, cls).setUpClass()
         ## OLD: tpo.trace_object(cls, 5, "TestWrapper class")
         debug.trace_object(5, cls, "TestWrapper class")
+        debug.assertion("TODO " not in cls.script_module)
         if cls.script_module:
             help_usage = gh.run("python -m '{mod}' --help", mod=cls.script_module)
             gh.assertion("No module named" not in help_usage)

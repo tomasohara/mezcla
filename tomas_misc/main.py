@@ -45,14 +45,15 @@
 #
 # TODO:
 # - Specify argument via input dicts, such as in 
-#      options=[{"name"="verbose", "type"=bool}, 
-#               {"name"="count", type=int, default=10}]
+#      options=[{"name": "verbose", "type": bool}, 
+#               {"name": "count", type: int, default: 10}]
 # - Add support for perl-style paragraph mode in input processing.
 # - Add support for multple input files (e.g., via fileinput module).
 # - Add support for csv.csv_reader (see usage in cut.py).
 # - Add support for argument aliases (e.g., --input-delim for --delim).
 # - Have option for processing text by page by page, instead of
-#   just tracking page number with 
+#   just tracking page number with
+# - Clarify the input processing in various modes: line, paragraph and file-input.
 #
 
 """Module for encapsulating main() processing"""
@@ -64,17 +65,22 @@ import sys
 import tempfile
 
 # Local packages
-import tomas_misc.debug as debug
-import tomas_misc.tpo_common as tpo
-import tomas_misc.glue_helpers as gh
-import tomas_misc.system as system
+from tomas_misc import debug
+from tomas_misc import tpo_common as tpo
+from tomas_misc import glue_helpers as gh
+from tomas_misc import system
+from tomas_misc.system import getenv_bool
 
 # Constants
 HELP_ARG = "--help"
-USE_PARAGRAPH_MODE = system.getenv_bool("PARAGRAPH_MODE", False,
-                                        "Process input in Perl-style paragraph mode")
-TRACK_PAGES = system.getenv_bool("TRACK_PAGES", False,
-                                 "Track page numbers and split lines by form feed (i.e., \f)")
+USE_PARAGRAPH_MODE_DEFAULT = getenv_bool("USE_PARAGRAPH_MODE", False)
+USE_PARAGRAPH_MODE = getenv_bool("PARAGRAPH_MODE", USE_PARAGRAPH_MODE_DEFAULT,
+                                 "Process input in Perl-style paragraph mode")
+FILE_INPUT_MODE = getenv_bool("FILE_INPUT_MODE", False,
+                              "Read stdin using Perl-style file input mode--aka file slurping")
+
+TRACK_PAGES = getenv_bool("TRACK_PAGES", False,
+                          "Track page boundaries by form feed--\\f or ^L")
 
 #-------------------------------------------------------------------------------
 
@@ -90,7 +96,7 @@ class Main(object):
                  multiple_files=False,
                  use_temp_base_dir=None,
                  usage_notes=None,
-                 paragraph_mode=None, track_pages=None,
+                 paragraph_mode=None, track_pages=None, file_input_mode=None,
                  boolean_options=None, text_options=None, int_options=None,
                  float_options=None, positional_options=None, positional_arguments=None, 
                  skip_input=None, manual_input=None, auto_help=None):
@@ -121,9 +127,10 @@ class Main(object):
         self.para_num = -1
         self.line_num = 0
         self.char_offset = -1
+        self.raw_line = None
         # Note: manual_input was introduced after skip_input to allow for input processing
         # in bulk (e.g., via read_input generator). By default, neither is specified
-        # (see new_template.py), and both should be assumed false.
+        # (see template.py), and both should be assumed false.
         # TODO: *** Add better sanity checking (such as a filename on command line).
         if manual_input is None:
             # NOTE: skip_input=>manual_input: T=>T  F=>F  None=>F
@@ -137,7 +144,8 @@ class Main(object):
         #
         self.parser = None
         if auto_help is None:
-            auto_help = self.skip_input
+            ## OLD: auto_help = self.skip_input
+            auto_help = self.skip_input or not self.manual_input
         self.auto_help = auto_help
         if usage_notes is None:
             usage_notes = ""
@@ -145,6 +153,9 @@ class Main(object):
         if paragraph_mode is None:
             paragraph_mode = USE_PARAGRAPH_MODE
         self.paragraph_mode = paragraph_mode
+        if file_input_mode is None:
+            file_input_mode = FILE_INPUT_MODE
+        self.file_input_mode = file_input_mode
         if track_pages is None:
             track_pages = TRACK_PAGES
         self.track_pages = track_pages
@@ -167,7 +178,7 @@ class Main(object):
 
         # Get arguments from specified parameter or via command line
         # Note: --help assumed for input-less scripts with command line options
-        # to avoid inadvertant script processing.
+        # to avoid inadvertent script processing.
         if runtime_args is None:
             runtime_args = sys.argv[1:]
             tpo.debug_print("Using sys.argv[1:] for runtime args: %s" % runtime_args, 4)
@@ -278,8 +289,8 @@ class Main(object):
         usage_notes = self.notes
         if (not usage_notes and debug.debugging()):
             env_opts = system.formatted_environment_option_descriptions(sort=True)
-            usage_notes = ("Notes: "
-                           + ("- Use - for stdin" if (not self.skip_input) else "")
+            usage_notes = ("Notes: \n"
+                           + ("- Use - for stdin to skip usage\n" if (not self.skip_input) else "")
                            + ("- Available env. options:\n\t{opts}".format(
                                opts=env_opts)))
         parser = self.argument_parser(description=self.description,
@@ -364,9 +375,11 @@ class Main(object):
     def process_line(self, line):
         """Stub for input processing that just prints the input.
         Note: issues error message about required specialization"""
+        # NOTE: the trailing newline is omitted
+        # TODO: clarify stripped newline vs. no newline at end of file
         tpo.debug_format("Main.process_line({l})", 5, l=line)
         if not self.process_line_warning:
-            tpo.print_stderr("Internal error: specialize process_line")
+            tpo.print_stderr("Warning: specialize process_line")
             self.process_line_warning = True
         print(line)
         return
@@ -444,6 +457,19 @@ class Main(object):
         # Note: para_num reset here and updated by process_input
         tpo.debug_format("Main.read_input(): {input}", 5,
                          input=self.input_stream)
+
+        # Optionally return input all at once
+        # Note: Final newline is removed, as this feeds into process_line.
+        if FILE_INPUT_MODE:
+            contents = self.input_stream.read()
+            if contents.endswith("\n"):
+                contents = contents[:-1]
+            debug.trace_fmt(6, "yielding entire file [Par1/L1]: {c}",
+                            c=contents)
+            yield contents
+            return
+
+        # Start line-based input
         if self.track_pages:
             self.page_num = 1
         self.rel_line_num = 0
@@ -451,7 +477,7 @@ class Main(object):
         for line in self.input_stream:
             self.rel_line_num += 1
             self.line_num += 1
-            original_line = line
+            self.raw_line = line
             line = line.strip("\n")
             tpo.debug_print("L%d: %s" % (self.line_num, line), 6)
             if self.force_unicode:
@@ -474,43 +500,74 @@ class Main(object):
                         self.rel_para_num = 1
                         self.rel_line_num = 1
                     self.char_offset += len(line_segment)
-                if (line != original_line):
+                if (line != self.raw_line):
                     self.char_offset += 1
             else:
-                debug.trace_fmt(6, "yielding line [Par{par}/L{lnum}: {l}",
+                debug.trace_fmt(6, "yielding line [Par{par}/L{lnum}]: {l}",
                                 par=self.rel_para_num, lnum=self.rel_line_num, l=line)
                 yield line
-                self.char_offset += len(original_line)
+                self.char_offset += len(self.raw_line)
         return
-    
+
     def process_input(self):
         """Process each line in current input stream (or stdin):
         Note: if paragraph mode enabled the input is processed in groups of lines separated by an entirely blank line (i.e., length is 0)"""
+        # Note: self.raw_line can be used to check for missing newline at end of file
         tpo.debug_format("Main.process_input(): {input}", 5,
                          input=self.input_stream)
         self.rel_line_num = 0
         if self.paragraph_mode:
             self.para_num = 0
         paragraph = ""
+        last_line = None
+        line_mode = (not (self.paragraph_mode or self.file_input_mode))
+        debug.assertion(debug.xor3(line_mode, self.paragraph_mode, self.file_input_mode))
+
         # Read next line (or line segment if in page mode and form feed in line)
         for line in self.read_input():
-            if (not self.paragraph_mode):
-                debug.assertion("\n" not in line)
+            # Process as is if in regular line mode
+            if (line_mode or self.file_input_mode):
                 self.process_line(line)
+                if line_mode:
+                    debug.assertion("\n" not in line)
+
+            # Process non-empty lines grouped together if in paragraph mode.
+            # Notes:
+            # - Paragraphs can include multiple, trailing newlines, so that the
+            #   client programs see the entire input text.
+            # - Final newline is removed, as fed into process_line.
+            # TODO: Have option to model perl-style paragraph mode more closely
+            # with respect to handling more than 2 newlines between paragraphs; see
+            #     https://perldoc.perl.org/variables/$/.
             else:
-                paragraph += line + "\n"
-                if ((len(line) == 0) or self.end_of_page):
+                new_paragraph = None
+                if self.end_of_page:
+                    new_paragraph = (line + "\n")
+                    paragraph = ""
+                elif ((last_line == "") and line):
+                    new_paragraph = paragraph
+                    paragraph = (line + "\n")
+                else:
+                    paragraph += (line + "\n")
+                if new_paragraph:
                     self.rel_para_num += 1
                     self.para_num += 1
-                    self.process_line(paragraph)
-                    paragraph = ""
+                    debug.assertion(new_paragraph.endswith("\n\n") or (new_paragraph == "\n"))
+                    if new_paragraph.endswith("\n"):
+                        new_paragraph = new_paragraph[:-1]
+                    self.process_line(new_paragraph)
             debug.assertion(not (self.track_pages and ("\f" in line)))
+            last_line = line
 
-        # Process the last set of lines
+        # Process the last set of lines if in paragraph mode
+        # Note: Final newline is removed (as per process_line).
         if (self.paragraph_mode and paragraph):
             self.rel_para_num += 1
             self.para_num += 1
             debug.trace(5, "processing last paragraph")
+            debug.assertion(paragraph.endswith("\n") or (paragraph == ""))
+            if paragraph.endswith("\n"):
+                paragraph = paragraph[:-1]
             self.process_line(paragraph)
 
         return
@@ -534,4 +591,6 @@ class Main(object):
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    tpo.print_stderr("Warning: %s is not intended to be run standalone" % __file__)
+    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone")
+    main = Main()
+    main.run()

@@ -169,7 +169,7 @@ def getenv_value(var, default=None, description=None):
     """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION"""
     register_env_option(var, description, default)
     value = os.getenv(var, default)
-    ## TODO: debug.trace(5, f"getenv_value({var!r}, [def={default!r}], [desc={description!r}]) => {value!r}")
+    # note: uses !r for repr()
     debug.trace_fmtd(5, "getenv_value({v!r}, [def={dft!r}], [desc={dsc!r}]]) => {val!r}",
                      v=var, dft=default, dsc=description, val=value)
     return (value)
@@ -182,7 +182,7 @@ def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None):
     # Note: "0" or "False" is interpreted as False, and any other value as True.
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
-    value_text = getenv_text(var, helper=True, description=description, default=default)
+    value_text = getenv_value(var, description=description, default=default)
     if to_text(value_text).strip():
         bool_value = to_bool(value_text)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
@@ -196,9 +196,9 @@ def getenv_number(var, default=-1.0, description=None, helper=False):
     """Returns number based on environment VAR (or DEFAULT value), with optional description"""
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
-    value_text = getenv_text(var, description=description, default=default, helper=True)
-    if to_text(value_text).strip():
-         num_value = to_float(value_text)
+    value = getenv_value(var, description=description, default=default)
+    if ((value is not None) and to_text(value).strip()):
+         num_value = to_float(value)
     trace_level = 6 if helper else 5
     debug.trace_fmtd(trace_level, "getenv_number({v}, {d}) => {r}",
                      v=var, d=default, r=num_value)
@@ -251,8 +251,11 @@ def print_stderr(text, **kwargs):
 def print_exception_info(task):
     """Output exception information to stderr regarding TASK (e.g., function)"""
     # Note: used to simplify exception reporting of border conditions
+    # ex: print_exception_info("read_csv")
     print_stderr("Error during {t}: {exc}".
                  format(t=task, exc=get_exception()))
+    if debug.verbose_debugging():
+        print_full_stack()
     return
 
 
@@ -537,6 +540,7 @@ def get_directory_filenames(directory, just_regular_files=False):
 def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False):
     """Reads FILENAME and returns as hash lookup, optionally SKIP[ing]_HEADER and using DELIM (tab by default).
     Note: Input is made lowercase unless RETAIN_CASE."""
+    # Note: the hash lookup uses defaultdict
     debug.trace_fmt(4, "read_lookup_table({f}, [skip_header={sh}, delim={d}, retain_case={rc}])", 
                     f=filename, sh=skip_header, d=delim, rc=retain_case)
     if delim is None:
@@ -629,7 +633,7 @@ def write_file(filename, text):
 
 def write_lines(filename, text_lines, append=False):
     """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND"""
-    debug.trace_fmt(5, "write_lines(%s, {f})", f=filename)
+    debug.trace_fmt(5, "write_lines({f}, _, {a})", f=filename, a=append)
     debug.trace_fmt(6, "    text_lines={tl}", tl=text_lines)
     f = None
     try:
@@ -1001,6 +1005,7 @@ def to_float(text, default_value=0.0):
         result = float(text)
     except (TypeError, ValueError):
         debug.trace_fmtd(6, "Exception in to_float: {exc}", exc=get_exception())
+    debug.trace_fmtd(8, "to_float({v}) => {r}", v=text, r=result)
     return result
 #
 safe_float = to_float
@@ -1017,6 +1022,7 @@ def to_int(text, default_value=0, base=None):
         result = int(text, base) if (base and isinstance(text, str)) else int(text)
     except (TypeError, ValueError):
         debug.trace_fmtd(6, "Exception in to_int: {exc}", exc=get_exception())
+    debug.trace_fmtd(8, "to_int({v}) => {r}", v=text, r=result)
     return result
 #
 safe_int = to_int

@@ -4,6 +4,11 @@
 # (i.e., 3-way merge). If the baseline version is not supplied it is determined
 # as the most recent backup older than both versions.
 #
+# Notes:
+# - The merge process can easily get confused is there are parallel changes to
+#   the same sections.
+# - Use a visual merge script to help with manual reconciliation (e.g., via kdiff3).
+#
 # TODO:
 # - Make stdout the default.
 # - Integrate merge heuristics for common issues.

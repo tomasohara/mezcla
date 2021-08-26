@@ -1240,7 +1240,7 @@ if __debug__:
     
         # Show trace level in effect
         debug_format("starting tpo_common.py at {ts}: "
-                     + "debug_level={lvl}; args={args}", level=USUAL,
+                     + "debug_level={lvl}; args={args}", level=DETAILED,
                      ts=debug_timestamp(), lvl=debug_level, args=sys.argv)
 
         # Register DEBUG_LEVEL for sake of new users
@@ -1253,10 +1253,11 @@ if __debug__:
             """Display ending time information"""
             tpo_common_end = time.time()
             debug_format("ending tpo_common.py at {time}; elapsed={diff}s", 
-                         level=USUAL, time=debug_timestamp(), 
+                         level=DETAILED, time=debug_timestamp(), 
                          diff=round_num(tpo_common_end - tpo_common_start))
         #
-        atexit.register(_display_ending_info)
+        if not getenv_boolean("SKIP_ATEXIT", False):
+            atexit.register(_display_ending_info)
     
         # Override globals from environment
         # Note: done after start-up tracing initialization for getenv tracing

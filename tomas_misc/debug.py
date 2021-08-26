@@ -13,12 +13,14 @@
 #   code just for the sake of simplicity, a la manera moronista (i.e., only one moronic way to do things)!
 # - A few functions from system are re-implemented here without tracing to
 #   avoid circular dependencies (e.g., _to_utf8).
+# - For f-string syntax, see following:
+#   https://docs.python.org/3/tutorial/inputoutput.html
+#   https://www.python.org/dev/peps/pep-0498
 #
 # TODO:
 # - * Add sanity checks for unused environment variables specified on command line (e.g., FUBAR=1 python script.py ...)!
 # - Rename as debug_utils so clear that non-standard package.
 # - Add exception handling throughout (e.g., more in trace_object).
-#
 #
 
 """Debugging functions (e.g., tracing)"""
@@ -343,7 +345,8 @@ if __debug__:
             expressions = []
         for expression, value in zip_longest(expressions, values):
             assertion(not (value and expression is None), "Warning: Likely problem resolving expression text (try reworking trace_expr call)")
-            trace_fmt(level, "{expr}={val}", expr=expression, val=value)
+            # note: uses !r for repr()
+            trace_fmt(level, "{expr}={val!r}", expr=expression, val=value)
         return
 
     
@@ -381,8 +384,19 @@ if __debug__:
     ## TODO
     ## def trace_stack(level=VERBOSE):
     ##     """Output stack trace to stderr (if at trace LEVEL or higher)"""
-    ##     system.print_full_stack()
+    ##     system-ish.print_full_stack()
     ##     return
+
+
+    def trace_exception(level, task):
+        """Trace exception information regarding TASK (e.g., function) at LEVEL"""
+        # Note: Conditional output version of system's print_exception_info.
+        # ex: trace_exception(4, "tally_counts")
+        trace_fmt(level, "Exception during {t}: {exc}".
+                  format(t=task, exc=sys.exc_info()))
+        # TODO: include full stack trace (e.g., at LEVEL + 2)
+        ## system.trace_stack(level + 2)
+        return
 
     
     def raise_exception(level=1):
@@ -394,11 +408,11 @@ if __debug__:
         return
 
 
-    ## OLD: def assertion(expression):
     def assertion(expression, message=None):
         """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE"""
-        ## TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
         # EX: assertion((2 + 2) != 5)
+        # TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
+        # TODO: trace out local and globals to aid in diagnosing assertion failures
         if (not expression):
             try:
                 # Get source information for failed assertion
@@ -413,6 +427,7 @@ if __debug__:
                 expression = re.sub(r"\);?\s*$", "", statement)
                 qualification_spec = (": " + message) if message else ""
                 # Output information
+                # TODO: omit subsequent warnings
                 trace_fmtd(0, "Assertion failed: {expr} (at {file}:{line}){qual}",
                            expr=expression, file=filename, line=line_number, qual=qualification_spec)
             except:
@@ -451,7 +466,9 @@ else:
     trace_expr = non_debug_stub
     
     trace_current_context = non_debug_stub
-   
+
+    trace_exception = non_debug_stub
+    
     raise_exception = non_debug_stub
     
     assertion = non_debug_stub
@@ -544,7 +561,7 @@ def init_logging():
 
 def _print_exception_info(task):
     """Output exception information to stderr regarding TASK (e.g., function)"""
-    # Note: version of system.print_exception_info
+    # Note: non-tracing version of system's print_exception_info
     sys.stderr.write("Error during {t}: {exc}\n".
                      format(t=task, exc=sys.exc_info()))
     return
@@ -667,7 +684,7 @@ if __debug__:
     
         # Show startup time and tracing info
         module_file = __file__
-        trace_fmtd(3, "[{f}] loaded at {t}", f=module_file, t=timestamp())
+        trace_fmtd(4, "[{f}] loaded at {t}", f=module_file, t=timestamp())
         trace_fmtd(4, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
         trace_fmtd(5, "debug_filename={fn} debug_file={f}",
                    fn=debug_filename, f=debug_file)
@@ -698,7 +715,8 @@ if __debug__:
             if debug_file:
                 debug_file.close()
                 debug_file = None
-        atexit.register(display_ending_time_etc)
+        if not _getenv_bool("SKIP_ATEXIT", False):
+            atexit.register(display_ending_time_etc)
         
         return
 

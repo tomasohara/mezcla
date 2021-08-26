@@ -11,6 +11,7 @@
 """Helpers gluing scripts together"""
 
 # Standard packages
+from collections import defaultdict
 import glob
 import inspect
 import os
@@ -81,7 +82,7 @@ def basename(filename, extension=None):
 
 
 def remove_extension(filename, extension):
-    """Returns FILENAME without EXTENSION. Note: similar to basename() but retainting directory portion."""
+    """Returns FILENAME without EXTENSION. Note: similar to basename() but retaining directory portion."""
     # EX: remove_extension("/tmp/solr-4888.log", ".log") => "/tmp/solr-4888"
     # EX: remove_extension("/tmp/fubar.py", ".py") => "/tmp/fubar"
     # EX: remove_extension("/tmp/fubar.py", "py") => "/tmp/fubar."
@@ -289,41 +290,84 @@ def get_hex_dump(text, break_newlines=False):
     return result
 
 
-def extract_matches(pattern, lines, fields=1):
-    """Checks for PATTERN matches in LINES of text returning list of tuples with replacement groups"""
+def extract_matches(pattern, lines, fields=1, multiple=False):
+    """Checks for PATTERN matches in LINES of text returning list of tuples with replacement groups.
+    Notes: The number of FIELDS can be greater than 1.
+    Optionally allows for MULTIPLE matches within a line."""
     # ex: extract_matches(r"^(\S+) \S+", ["John D.", "Jane D.", "Plato"]) => ["John", "Jane"]
+    # Note: modelled after extract_matches.perl
+    # TODO: make multiple the default
+    debug_print("extract_matches(%s, _, [f=%s], [m=%s])" % (pattern, fields, multiple), 6)
+    debug.trace_values(6, lines, "lines")
     ## assert type(lines) == list
     assert isinstance(lines, list)
     if pattern.find("(") == -1:
         pattern = "(" + pattern + ")"
     matches = []
-    for line in lines:
-        try:
-            match = re.search(pattern, line)
-            if match:
+    for i, line in enumerate(lines):
+        while line:
+            debug.trace(6, f"L{i}: {line}")
+            try:
+                # Extract match field(s)
+                match = re.search(pattern, line)
+                if not match:
+                    break
                 result = match.group(1) if (fields == 1) else [match.group(i + 1) for i in range(fields)]
                 matches.append(result)
-        except (re.error, IndexError):
-            debug_print("Warning: Exception in pattern matching: %s" % str(sys.exc_info()), 2)
-    debug_print("extract_matches(%s, _, [%s]) => %s" % (pattern, fields, matches), 7)
+                if not multiple:
+                    break
+
+                # Revise line
+                debug.assertion(match.end() > 0)
+                new_line = line[match.end():]
+                if (new_line == line):
+                    break
+                line = new_line
+            except (re.error, IndexError):
+                debug_print("Warning: Exception in pattern matching: %s" % str(sys.exc_info()), 2)
+    debug_print("extract_matches() => %s" % (matches), 7)
     double_indent = INDENT + INDENT
     debug_format("{ind}input lines: {{\n{res}\n{ind}}}", 8,
                  ind=INDENT, res=indent_lines("\n".join(lines), double_indent))
     return matches
 
 
-def extract_match(pattern, lines, fields=1):
+def extract_match(pattern, lines, fields=1, multiple=False):
     """Extracts first match of PATTERN in LINES for FIELDS"""
-    matches = extract_matches(pattern, lines, fields)
+    matches = extract_matches(pattern, lines, fields, multiple)
     result = (matches[0] if matches else None)
     debug_print("match: %s" % result, 5)
     return result
 
 
-def extract_match_from_text(pattern, text, fields=1):
-    """Wrapper around extract_match for single match"""
+def extract_match_from_text(pattern, text, fields=1, multiple=False):
+    """Wrapper around extract_match for text input"""
     ## TODO: rework to allow for multiple-line matching
-    return extract_match(pattern, text.split("\n"), fields)
+    return extract_match(pattern, text.split("\n"), fields, multiple)
+
+
+def extract_matches_from_text(pattern, text, fields=1, multiple=None):
+    """Wrapper around extract_matches for text input
+    Note: By default MULTIPLE matches are returned"""
+    # EX: extract_matches_from_text(".", "abc") => ["a", "b", "c"]
+    # EX: extract_matches_from_text(".", "abc", multiple=False) => ["a"]
+    if multiple is None:
+        multiple = True
+    # TODO: make multiple True by default
+    return extract_matches(pattern, text.split("\n"), fields, multiple)
+
+
+def count_it(pattern, text, field=1, multiple=None):
+    """Counts how often PATTERN's FIELD occurs in TEXT, returning hash.
+    Note: By default MULTIPLE matches are tabulated"""
+    # EX: dict(count_it("[a-z]", "Panama")) => {"a": 3, "n": 1, "m": 1"}
+    # EX: count_it("\w+", "My d@wg's fleas have fleas")["fleas"] => 2
+    debug.trace(7, f"count_it({pattern}, _, {field}, {multiple}")
+    value_counts = defaultdict(int)
+    for value in extract_matches_from_text(pattern, text, field, multiple):
+        value_counts[value] += 1
+    debug.trace_values(6, value_counts, "count_it()")
+    return value_counts
 
 
 def read_lines(filename=None, make_unicode=False):
