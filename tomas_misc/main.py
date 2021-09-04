@@ -79,8 +79,11 @@ USE_PARAGRAPH_MODE = getenv_bool("PARAGRAPH_MODE", USE_PARAGRAPH_MODE_DEFAULT,
 FILE_INPUT_MODE = getenv_bool("FILE_INPUT_MODE", False,
                               "Read stdin using Perl-style file input mode--aka file slurping")
 
+FORM_FEED = "\f"
 TRACK_PAGES = getenv_bool("TRACK_PAGES", False,
                           "Track page boundaries by form feed--\\f or ^L")
+RETAIN_FORM_FEED = getenv_bool("RETAIN_FORM_FEED", False,
+                              "Include formfeed (\\f) at start of each segment")
 
 #-------------------------------------------------------------------------------
 
@@ -460,7 +463,7 @@ class Main(object):
 
         # Optionally return input all at once
         # Note: Final newline is removed, as this feeds into process_line.
-        if FILE_INPUT_MODE:
+        if self.file_input_mode:
             contents = self.input_stream.read()
             if contents.endswith("\n"):
                 contents = contents[:-1]
@@ -485,16 +488,19 @@ class Main(object):
             tpo.debug_print("\ttype(line): %s" % (type(line)), 7)
             if self.track_pages:
                 self.end_of_page = False
-                for i, line_segment in enumerate(line.split("\f")):
+                for i, line_segment in enumerate(line.split(FORM_FEED)):
                     if i == 0:
                         self.end_of_page = (line != line_segment)
                     else:
                         self.end_of_page = True
                         self.line_num += 1
-                    self.rel_line_num += 1
-                    debug.trace_fmt(6, "yielding line segment [Pg{pg}/Par{par}/L{ln}]: {ls}",
-                                    pg=self.page_num, par=self.rel_para_num, ln=self.rel_line_num, ls=line_segment)
-                    yield line_segment
+                        if RETAIN_FORM_FEED:
+                            line_segment = FORM_FEED + line_segment
+                    if line_segment:
+                        self.rel_line_num += 1
+                        debug.trace_fmt(6, "yielding line segment [Pg{pg}/Par{par}/L{ln}]: {ls}",
+                                        pg=self.page_num, par=self.rel_para_num, ln=self.rel_line_num, ls=line_segment)
+                        yield line_segment
                     if self.end_of_page:
                         self.page_num += 1
                         self.rel_para_num = 1
@@ -556,7 +562,7 @@ class Main(object):
                     if new_paragraph.endswith("\n"):
                         new_paragraph = new_paragraph[:-1]
                     self.process_line(new_paragraph)
-            debug.assertion(not (self.track_pages and ("\f" in line)))
+            debug.assertion(not (self.track_pages and (not RETAIN_FORM_FEED) and (FORM_FEED in line)))
             last_line = line
 
         # Process the last set of lines if in paragraph mode

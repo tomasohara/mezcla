@@ -139,8 +139,8 @@ if __debug__:
         return result
 
     
-    def trace(level, text):
-        """Print TEXT if at trace LEVEL or higher, including newline"""
+    def trace(level, text, no_eol=False):
+        """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE"""
         # Note: trace should not be used with text that gets formatted to avoid
         # subtle errors
         ## DEBUG: sys.stderr.write("trace({l}, {t})\n".format(l=level, t=text))
@@ -156,11 +156,13 @@ if __debug__:
             # Print trace, converted to UTF8 if necessary (Python2 only)
             # TODO: add version of assertion that doesn't use trace or trace_fmtd
             ## TODO: assertion(not(re.search(r"{\S*}", text)))
-            print(_to_utf8(text), file=sys.stderr)
+            end = "\n" if (not no_eol) else ""
+            print(_to_utf8(text), file=sys.stderr, end=end)
             if use_logging:
+                # TODO: see if way to specify logging terminator
                 logging.debug(_to_utf8(text))
             if debug_file:
-                print(_to_utf8(text), file=debug_file)
+                print(_to_utf8(text), file=debug_file, end=end)
         return
 
 
@@ -199,16 +201,18 @@ if __debug__:
     #
     MAX_OBJECT_VALUE_LEN = 128
     #
-    def trace_object(level, obj, label=None, show_all=False, indentation=None, pretty_print=None):
-        """Trace out OBJ's members to stderr if at trace LEVEL or higher"""
+    def trace_object(level, obj, label=None, show_all=False, indentation=None, pretty_print=None, max_depth=0):
+        """Trace out OBJ's members to stderr if at trace LEVEL or higher.
+        Note: Optionally uses output LABEL, with INDENTATION, SHOWing_ALL members, and PRETTY_PRINTing.
+        If max_depth > 0, this uses recursion to show values for instance members."""
         # HACK: Members for STANDARD_TYPES omitted unless show_all.
         # Note: This is intended for arbitrary objects, use trace_values for objects known to be lists or hashes.
         # See https://stackoverflow.com/questions/383944/what-is-a-python-equivalent-of-phps-var-dump.
         # TODO: support recursive trace; specialize show_all into show_private and show_methods
         ## OLD: print("{stmt} < {current}: {r}".format(stmt=level, current=trace_level,
         ##                                       r=(trace_level < level)))
-        trace_fmt(10, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp})",
-                  dl=level, obj=object, lbl=label, sa=show_all, ind=indentation, pp=pretty_print)
+        trace_fmt(10, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
+                  dl=level, obj=object, lbl=label, sa=show_all, ind=indentation, pp=pretty_print, md=max_depth)
         if (pretty_print is None):
             pretty_print = (trace_level >= 6)
         if (trace_level < level):
@@ -238,10 +242,10 @@ if __debug__:
             trace_fmtd(7, "{ind}Special casing standard type as member {m}",
                        ind=indentation, m=member_info[0][0])
         for (member, value) in member_info:
+            # If high trace level, output the value as is
             # TODO: value = clip_text(value)
             trace_fmtd(8, "{i}{m}={v}; type={t}", i=indentation, m=member, v=value, t=type(value))
             if (trace_level >= 9):
-                ## print(indentation + member + ":", value, file=sys.stderr)
                 sys.stderr.write(indentation + member + ":")
                 if pretty_print:
                     pprint(value, stream=sys.stderr)
@@ -251,6 +255,13 @@ if __debug__:
                 if use_logging:
                     logging.debug(_to_utf8((indentation + member + ":" + str(value))))
                 continue
+            # Optionally, process recursively (TODO: make "   " an env. option)
+            if (max_depth > 0):
+                trace_object(level, value, label=member, show_all=show_all,
+                             indentation=(indentation + "   "), pretty_print=None,
+                             max_depth=(max_depth - 1))
+                continue
+            # Otherwise, derive value spec. (trapping for various exceptions)
             ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
             try:
                 try:
@@ -266,6 +277,7 @@ if __debug__:
                 trace_fmtd(7, "Error: unexpected problem in trace_object: {exc}",
                            exc=sys.exc_info())
                 value_spec = "__n/a__"
+            # Output unless special member (or if no filtering)
             if (show_all or (not (member.startswith("__") or 
                                   re.search(r"^<.*(method|module|function).*>$", value_spec)))):
                 ## trace(0, indentation + member + ": " + value_spec)
@@ -317,7 +329,8 @@ if __debug__:
 
 
     def trace_expr(level, *values, sep=None):
-        """Trace each of the arguments, using introspection to derive label for expression;
+        """Trace each of the arguments (if at trace LEVEL or higher), using introspection
+        to derive label for each expression;
         Notes:
         - For simplicity, the values are separated by ', ' (or SEP).
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
@@ -436,6 +449,21 @@ if __debug__:
                 trace_object(0, inspect.currentframe(), "caller frame", pretty_print=True)
         return
 
+    def code(level, no_arg_function):
+        """Execute NO_ARG_FUNCTION if at trace LEVEL or higher
+        Note: Thanks to the wonders of Python syntax, a two-step process is required:
+           debug.code(4, { line1; line2; ...; lineN })
+        =>
+           if __debug__:
+               def my_stupid_block_workaround(): 
+                   line1; line2; ...; lineN
+           debug.code(4, my_stupid_block_workaround)"""
+        trace_object(5, f"code({level}, {no_arg_function})")
+        if level:
+            trace_object(6, f"Executing {no_arg_function}")
+            no_arg_function()
+        return
+
 else:
 
     def non_debug_stub(*_args, **_kwargs):
@@ -473,6 +501,7 @@ else:
     
     assertion = non_debug_stub
 
+    code = non_debug_stub
     
 # note: adding alias for trace_fmtd to account for common typo
 # TODO: alias trace to trace_fmt as well (add something like trace_out if format not desired)

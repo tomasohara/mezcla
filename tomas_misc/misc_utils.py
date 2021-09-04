@@ -9,15 +9,23 @@
 """Misc. utility functions"""
 
 # Standard packages
+from difflib import ndiff
 import inspect
 import math
 import re
 import sys
 
+# Installed packages
+import more_itertools
+
 # Local packages
 import tomas_misc.debug as debug
 import tomas_misc.system as system
 import tomas_misc.text_utils as text_utils
+
+# Constants
+ELLIPSIS = "\u2026"                 # Horizontal Ellipsis
+
 
 def transitive_closure(edge_list):
     """Computes transitive close for graph given by EDGE_LIST (i.e., makes indirect links explicit)"""
@@ -169,7 +177,8 @@ def eval_expression(expr_text, frame=None):
 
 
 def trace_named_object(level, object_name, caller_frame=None):
-    """Trace OBJECT_given_by_NAME"""
+    """Trace OBJECT_given_by_NAME
+    Note: ***use debug.trace_expr instead ***"""
     # EX: trace_named_object(4, "sys.argv")
     if caller_frame is None:
         caller_frame = get_current_frame().f_back
@@ -180,7 +189,8 @@ def trace_named_object(level, object_name, caller_frame=None):
 
 
 def trace_named_objects(level, list_text):
-    """Trace objects in LIST_text"""
+    """Trace objects in LIST_text
+    Note: *** use debug.trace_expr instead ***"""
     # EX: trace_named_object(4, "[len(sys.argv), sys.argv]")
     debug.assertion(re.search(r"^\[.*\]$", list_text))
     frame = get_current_frame().f_back
@@ -188,6 +198,34 @@ def trace_named_objects(level, list_text):
         trace_named_object(level, name, caller_frame=frame)
     return
 
+
+def exactly1(items):
+    """Whether one and only one if ITEMS is true"""
+    ok = more_itertools.exactly_n(items, 1)
+    debug.trace(4, f"exactly1({items}) => {ok}")
+    return ok 
+
+
+def string_diff(text1, text2):
+    """Return diff-style comparison of TEXT1 and TEXT2 with an empty string used for equality"""
+    debug.trace(6, f"string_diff({text1}, {text2})")
+    # EX: string_diff("one\ntwo\nthree\nfour", "one\ntoo\ntree\nfour") => "  one\n- two\n…  ^\n+ too\n…  ^\n- three\n…  -\n+ tree  four\n"
+    
+    # Perform comparison
+    lines1 = (text1 + "\n").splitlines(keepends=True)
+    lines2 = (text2 + "\n").splitlines(keepends=True)
+    diff_result = "".join(ndiff(lines1, lines2))
+    
+    # Convert to diff-style output, using < and > instead of - and +
+    ## TODO:
+    ## diff_result = re.sub(r"^- ", "< ", diff_result, re.MULTILINE)
+    ## diff_result = re.sub(r"^\+ ", "> ", diff_result, re.MULTILINE)
+    ## diff_result = re.sub(r"^\? ", f"{ELLIPSIS} ", diff_result, re.MULTILINE)
+    diff_result = diff_result.replace("- ", "< ", 1).replace("\n- ", "\n< ").   \
+                  replace("+ ", "> ", 1).replace("\n+ ", "\n> ").               \
+                  replace("\n? ", f"\n{ELLIPSIS} ")
+    debug.trace(6, f"string_diff() => {diff_result}")
+    return diff_result
 
 #-------------------------------------------------------------------------------
 

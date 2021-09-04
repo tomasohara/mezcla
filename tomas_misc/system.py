@@ -67,6 +67,8 @@ env_defaults = {}
 #
 def register_env_option(var, description, default):
     """Register environment VAR as option with DESCRIPTION and DEFAULT"""
+    # Note: The default value is typically the default value passes into the
+    # getenv_xyz call, not the current value from the environment.
     ## OLD: debug.trace_fmt(7, "register_env_option({v}, {d})", v=var, d=description)
     debug.trace_fmt(7, "register_env_option({v}, {dsc}, {dft})",
                     v=var, dsc=description, dft=default)
@@ -228,9 +230,14 @@ def get_exception():
     # Note: Convenience wrapper to avoid need to import sys in simple scripts.
     return sys.exc_info()
 
+def print_error(text):
+    """Output TEXT to standard error"""
+    print(text, file=sys.stderr)
+    return
 
 def print_stderr(text, **kwargs):
-    """Output TEXT to standard error"""
+    """Output TEXT to standard error, using KWARGS for formatting"""
+    # TODO: rename as print_stderr_fmt???
     # TODO: weed out calls that use (text.format(...)) rather than (text, ...)
     formatted_text = text
     try:
@@ -970,6 +977,7 @@ def append_new(in_list, item):
 
 def just_one_true(in_list, strict=False):
     """True iff only one element of IN_LIST is considered True (or all None unless STRICT)"""
+    # Note: Consider using misc_utils.just1 (based on more_itertools.exactly_n)
     # TODO: Trap exceptions (e.g., string input)
     min_count = 1 if strict else 0
     ## OLD: is_true = (1 == sum([int(bool(b)) for b in in_list]))         # pylint: disable=misplaced-comparison-constant
