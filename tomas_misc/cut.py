@@ -25,20 +25,21 @@ import re
 import sys
 
 # Installed modules
-## TODO: import pandas as pd
+## OLD: import more_itertools
+import functools
+import operator
 
 # Local modules
-import data_utils as du
-import debug
-from main import Main
-from glue_helpers import elide
-## OLD: from regex import my_re
-from my_regex import my_re
-import system
+from tomas_misc import data_utils as du
+from tomas_misc import debug
+from tomas_misc import glue_helpers as gh
+from tomas_misc.main import Main
+from tomas_misc.my_regex import my_re
+from tomas_misc import system
 
 # Fill out constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
-FIELDS = "fields"
-## TODO: F = "f"                        # alias for --fields
+FIELDS = "fields"                       # field indices (1-based)
+F_OPT = "f"                             # alias for fields
 FIX = "fix"                             # convert runs of spaces into a tab
 CSV = "csv"                             # comma-separated value format
 TSV = "tsv"                             # tab-separated value format
@@ -53,6 +54,7 @@ DELIM = "delim"                         # input delimiter
 OUT_DELIM = "output-delim"              # output delimiter if not same for input
 ALL_FIELDS = "all-fields"               # use all fields in output (e.g., for delimiter conversion)
 TAB = "\t"
+SPACE = " "
 COMMA = ","
 ## TODO: make -style suffix optional (e.g., --tab[-style])
 EXCEL_STYLE = "excel-style"             # use Excel dialect for CSV (redundant with default)
@@ -68,6 +70,8 @@ TAB_DIALECT = "tab"                     # dialect option for TSV
 SINGLE_LINE = "single-line"             # collapse multi-line fields into one
 MAX_FIELD_LEN = "max-field-len"         # value length before elided
 ## TODO: TODO_ARG = "TODO-arg"          # TODO: comment
+NEW_FIX = system.getenv_bool("NEW_FIX", False,
+                             "HACK: Fix for --fix bug")
 
 #...............................................................................
 
@@ -79,9 +83,16 @@ def elide_values(in_list, max_len=MAX_VALUE_LEN):
     # EX: elide_values(["1234567890", 1234567890, True, False], max_len=4) => ["1234...", "1245...", "True", "Fals..."]
     new_list = []
     for item in in_list:
-        new_list.append(elide(system.to_text(item), max_len))
+        new_list.append(gh.elide(system.to_text(item), max_len))
     debug.trace_fmt(7, "elide_values({l}, [{m}]) => {r}", l=in_list, m=max_len, r=new_list)
     return new_list
+
+def flatten_list_of_strings(list_of_str):
+    """Flatten out LIST_OF_STR"""
+    # EX: flatten_list_of_strings([["l1i1", "l1i2"], ["l2i1"]]) => ["l1i1", "l1i2", "l2i1"]
+    result = functools.reduce(operator.concat, list_of_str)
+    debug.trace(5, f"flatten_list_of_strings({list_of_str}) => {result}")
+    return result
 
 #...............................................................................
 # TODO: Put following in separate module (e.g., data_utils.py)
@@ -130,7 +141,7 @@ csv.register_dialect("hive", pyspark_dialect)
 
 class tab_dialect(csv.Dialect):
     """TSV module dialect for tab-separated values (non-Excel)."""
-    delimiter = '\t'
+    delimiter = TAB
     quotechar = ''               # default of '"' leads to multiline rows
     doublequote = False          # uses escaped double quote when embedded
     ## BAD: escapechar = None            # don't do any special character escaping
@@ -167,7 +178,9 @@ class Script(Main):
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
 
         # Check main options
-        fields = self.get_parsed_option(FIELDS, self.fields)
+        ## OLD: fields = self.get_parsed_option(FIELDS, self.fields)
+        fields = self.get_parsed_option(F_OPT, ",".join(self.fields))
+        fields = self.get_parsed_option(FIELDS, fields)
         if fields:
             self.fields = self.parse_field_spec(fields)
         self.all_fields = self.get_parsed_option(ALL_FIELDS, (not fields))
@@ -223,7 +236,7 @@ class Script(Main):
 
         # Normalize the field specification
         debug.assertion(not re.search(r"[0-9] [0-9]", field_spec))
-        field_spec = field_spec.replace(" ", "")
+        field_spec = field_spec.replace(SPACE, "")
         debug.assertion(",," not in field_spec)
         field_spec = re.sub(r",,+", ",", field_spec)
         debug.assertion(not (field_spec.startswith(",") or field_spec.endswith(",")))
@@ -275,22 +288,39 @@ class Script(Main):
             self.input_stream.seek(0)
 
         # Optionally, fixup input if TSV changins multiple spaces into single tab.
-        # Note: makes pass through data and then resets input stream to start.
+        # Note: makes pass through data, writes to temp file, and then resets input stream to
+        # read from the temp file.
+        # TODO: have option to distinguish old-style loose fix (3+ spaces) from strict fix (all whitespace)
         if self.fix:
             debug.assertion(self.delimiter == TAB)
+            temp_file_stream = system.open_file(self.temp_file, mode="w")
+            num_fixed = 0
             for line in self.input_stream.readlines():
-                line = re.sub(r"   *", TAB, line)
-            self.input_stream.seek(0)
+                ## OLD: line = re.sub(r"   *", TAB, line)
+                new_line = re.sub(r" +", TAB, line)
+                if (new_line != line):
+                    num_fixed += 1
+                    line = new_line
+                debug.assertion(SPACE not in line)
+                temp_file_stream.write(line)
+            debug.trace(3, f"Fixed {num_fixed} lines")
+            ## OLD: self.input_stream.seek(0)
+            temp_file_stream.close()
+            self.input_stream = system.open_file(self.temp_file, mode="r")
+            ## HACK: pretend reading from stdin
+            sys.stdin = self.input_stream
 
         # Create reader and writer
         ## BAD: self.csv_reader = csv.reader(iter(system.stdin_reader()), delimiter=self.delimiter, quotechar='"')
         if (self.input_stream != sys.stdin):
-            # note: silly csv.reader requirement for newline option to open
+            # note: silly csv.reader requirement for newline option to open (TODO, open what?)
             # TODO: add support for multiple filenames
             self.input_stream = system.open_file(self.filename, newline="")
             debug.assertion(not self.other_filenames)
         self.csv_reader = csv.reader(self.input_stream, delimiter=self.delimiter, 
                                      dialect=self.dialect)
+        debug.trace_object(5, self.csv_reader, "csv_reader")
+        debug.trace_object(5, self.csv_reader.dialect, "csv_reader.dialect")
         csv_writer = csv.writer(sys.stdout, delimiter=self.output_delimiter, 
                                 ## TODO: dialect=self.output_dialect)
                                 )
@@ -300,6 +330,16 @@ class Script(Main):
         num_rows = 0
         num_cols = None
         for i, row in enumerate(self.csv_reader):
+            if NEW_FIX and (self.delimiter == TAB):
+                # Strip leading spaces and replace other multiple spaces by a tab
+                debug.trace_fmt(7, "old R{n}: {r}", n=(i + 1), r=row)
+                ## OLD: row = list(more_itertools.flatten([re.sub(" +", TAB, f) for f in row]))
+                ## OLD: row = flatten_list_of_strings([re.split(r" +", f) for f in row])
+                line = TAB.join(row)
+                line = re.sub("^ +", "", line)
+                line = re.sub(" +", TAB, line)
+                row = line.split(TAB)
+                debug.assertion(not any(SPACE in field for field in row))
             debug.trace_fmt(6, "R{n}: {r}", n=(i + 1), r=row)
             debug.trace_fmt(5, "R{n}: len(row)={l} [{rspec}]", n=(i + 1), l=len(row), rspec=elide_values(row))
             debug.assertion((len(row) == last_row_length) or (not last_row_length))
@@ -340,9 +380,9 @@ class Script(Main):
                 ## OLD: output_row.append(row[f - 1] if valid_field_number else "")
                 column = row[f - 1] if valid_field_number else ""
                 if self.single_line:
-                    column = re.sub(r"\s", " ", column)
+                    column = re.sub(r"\s", SPACE, column)
                 if self.max_field_len:
-                    column = elide(column, max_len=self.max_field_len)
+                    column = gh.elide(column, max_len=self.max_field_len)
                 output_row.append(column)
             csv_writer.writerow(output_row)
 
@@ -350,6 +390,7 @@ class Script(Main):
         # Note: this compares row extraction against Pandas dataframe
         ## OLD: if (self.input_stream != sys.stdin):
         if (debug.debugging() and (self.input_stream != sys.stdin)):
+            debug.trace(4, "note: csv vs. pandas row count sanity check")
             ## BAD: debug.assertion(num_rows == len(du.read_csv(self.filename, delimiter=self.delimiter))
             dataframe = du.read_csv(self.filename, delimiter=self.delimiter, dialect=self.dialect)
             df_num_rows = 1 + len(dataframe)
@@ -363,6 +404,8 @@ class Script(Main):
 
 if __name__ == '__main__':
     debug.trace_current_context()
+    debug.trace_fmt(4, "Environment options: {eo}",
+                    eo=system.formatted_environment_option_descriptions())
     app = Script(
         description=__doc__,
         skip_input=False,
@@ -385,5 +428,6 @@ if __name__ == '__main__':
         text_options=[(DELIM, "Input field separator"),
                       (DIALECT, "CSV module dialect: standard (i.e., excel, excel-tab, or unix) or adhoc (e.g., pyspark, hive)"),
                       (FIELDS, "Field specification (1-based): single column, range of columns, or comma-separated columns"),
+                      (F_OPT, "Alias for --fields"),
                       (OUT_DELIM, "Output field separator")])
     app.run()
