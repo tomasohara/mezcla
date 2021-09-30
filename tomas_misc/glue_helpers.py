@@ -24,8 +24,8 @@ import tempfile
 import textwrap
 
 # Local packages
-import tomas_misc.debug as debug
-import tomas_misc.tpo_common as tpo
+from tomas_misc import debug
+from tomas_misc import tpo_common as tpo
 from tomas_misc.tpo_common import debug_format, debug_print, print_stderr, setenv
 
 if sys.version_info[0] < 3:

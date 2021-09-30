@@ -1251,12 +1251,17 @@ if __debug__:
         # Register function to display ending timestamp
         def _display_ending_info():
             """Display ending time information"""
+            # note: does nothing if stderr closed (e.g., during profiling)
+            # TODO: track down problem with pytests
+            if sys.stderr.closed:
+                return
+            trace_object(sys.stderr, level=7)
             tpo_common_end = time.time()
             debug_format("ending tpo_common.py at {time}; elapsed={diff}s", 
                          level=DETAILED, time=debug_timestamp(), 
                          diff=round_num(tpo_common_end - tpo_common_start))
         #
-        if not getenv_boolean("SKIP_ATEXIT", False):
+        if not getenv_boolean("OMIT_ATEXIT", False):
             atexit.register(_display_ending_info)
     
         # Override globals from environment

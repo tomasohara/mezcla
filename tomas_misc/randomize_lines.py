@@ -29,7 +29,8 @@
 #       sys.stdout.write( line )
 #
 #------------------------------------------------------------------------
-# TODO;
+# TODO:
+# - Rework using main.py
 # - Add sanity check for disk space issues.
 # - Have streamlined version just using output from sort.
 #
@@ -40,9 +41,7 @@
 import argparse
 import os
 import random
-## OLD: import re
 import sys
-## OLD: import tempfile
 
 # Local modules
 ## OLD:
@@ -52,11 +51,26 @@ import sys
 ## import system
 from tomas_misc import debug
 from tomas_misc import glue_helpers as gh
+from tomas_misc.main import Main
 from tomas_misc import tpo_common as tpo
 from tomas_misc import system
 
 RANDOM_SEED = tpo.getenv_integer("RANDOM_SEED", 15485863,
                                  "Integral seed for random number generation (n.b., use ' ' for default [time of day based])")
+
+
+class Dummy_Main(Main):
+    """Class for reading input using """
+    
+    def __init__(self, input_stream):
+        super().__init__(runtime_args=[])
+        self.input_stream = input_stream
+        self.all_lines = []
+
+    def process_line(self, line):
+        self.all_lines.append(line)
+        return
+        
 
 def main():
     """Entry point for script"""
@@ -105,10 +119,18 @@ def main():
     #
     header = None
     line_num = 0
-    for line in input_stream:
+    # Note: uses main class to allow for reading pages and paragraphs
+    ## OLD: for line in input_stream:
+    main_app = Dummy_Main(input_stream)
+    main_app.process_input()
+    multi_line_mode = not main_app.is_line_mode()
+    #
+    for line in main_app.all_lines:
         line_num += 1
         line = line.strip("\n")
-        tpo.debug_print("IL%d: %s" % (line_num, line), 6)
+        if multi_line_mode:
+            # Encode internal newlines so the sort is not thrown off
+            line = line.replace("\n", "\\n")
         if (line_num == 1) and include_header:
             header = line
         else:
@@ -147,6 +169,8 @@ def main():
     for line in temp_output_handle:
         line_num += 1
         line = line.strip("\n")
+        if multi_line_mode:
+            line = line.replace("\\n", "\n")
         tpo.debug_print("RL%d: %s" % (line_num, line), 6)
         if (include_header and (line == header)):
             tpo.debug_print("Ignoring header at line %d" % (line_num), 5)

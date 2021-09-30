@@ -139,7 +139,7 @@ if __debug__:
         return result
 
     
-    def trace(level, text, no_eol=False):
+    def trace(level, text, empty_arg=None, no_eol=False):
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE"""
         # Note: trace should not be used with text that gets formatted to avoid
         # subtle errors
@@ -163,6 +163,8 @@ if __debug__:
                 logging.debug(_to_utf8(text))
             if debug_file:
                 print(_to_utf8(text), file=debug_file, end=end)
+        if empty_arg is not None:
+            sys.stderr.write("Error: trace only accepts two positional arguments (was trace_expr intended?)\n")
         return
 
 
@@ -214,7 +216,7 @@ if __debug__:
         trace_fmt(10, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
                   dl=level, obj=object, lbl=label, sa=show_all, ind=indentation, pp=pretty_print, md=max_depth)
         if (pretty_print is None):
-            pretty_print = (trace_level >= 6)
+            pretty_print = (trace_level > level)
         if (trace_level < level):
             return
         type_id_label = str(type(obj)) + " " + hex(id(obj))
@@ -295,16 +297,17 @@ if __debug__:
         return
 
 
-    def trace_values(level, collection, label=None, indentation=None):
+    def trace_values(level, collection, label=None, indentation=None, use_repr=None):
         """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
         trace_fmt(10, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
                   dl=level, lbl=label, coll=collection, ind=indentation)
-        ## OLD: assert(isinstance(collection, (list, dict)))
         if (trace_level < level):
             return
-        ## TODO: assertion(isinstance(collection, (list, dict), "Should be a list or dict", skip_trace=True)
-        if (not isinstance(collection, (list, dict))):
-            trace(level, "Warning: [trace_values] coercing collection into a list")
+        if hasattr(collection, '__iter__'):
+             trace(level + 1, "Warning: [trace_values] consuming iterator")
+             collection = list(collection)             
+        if not isinstance(collection, (list, dict)):
+            trace(level + 1, "Warning: [trace_values] coercing input into list")
             collection = list(collection)
         if indentation is None:
             indentation = "   "
@@ -312,15 +315,17 @@ if __debug__:
             ## BAD: label = str(type(collection)) + " " + hex(hash(collection))
             label = str(type(collection)) + " " + hex(id(collection))
             indentation = "   "
+        if use_repr is None:
+            use_repr = False
         trace(0, label + ": {")
-        ## OLD: keys_iter = collection.iterkeys() if isinstance(collection, dict) else xrange(len(collection))
-        ## OLD2: keys_iter = collection.iterkeys() if isinstance(collection, dict) else range(len(collection))
         keys_iter = list(collection.keys()) if isinstance(collection, dict) else range(len(collection))
-        ## NOTE: Gotta hate python3 for dropping xrange [la manera moronista!]
         for k in keys_iter:
             try:
+                value = _to_utf8(collection[k])
+                if use_repr:
+                    value = repr(value)
                 trace_fmtd(0, "{ind}{k}: {v}", ind=indentation, k=k,
-                           v=_to_utf8(collection[k]))
+                           v=value)
             except:
                 trace_fmtd(7, "Warning: Problem tracing item {k}",
                            k=_to_utf8(k), exc=sys.exc_info())
@@ -328,28 +333,46 @@ if __debug__:
         return
 
 
-    def trace_expr(level, *values, sep=None):
+    def trace_expr(level, *values, **kwargs):
         """Trace each of the arguments (if at trace LEVEL or higher), using introspection
         to derive label for each expression;
         Notes:
-        - For simplicity, the values are separated by ', ' (or SEP).
+        - For simplicity, the values are assumed to separated by ', ' (or expression _SEP)--barebones parsing applied.
+        - Use DELIM to specify delimiter; otherwise \n used;
+          if so, NO_EOL applies to intermediate values (EOL always used at end).
+        - Use USE_REPR=False to use tracing via str instead of repr.
+        - Use _KW_ARG for KW_ARG in case of conflict, as in following:
+          trace_expr(4, term, _term="; ")
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
-        trace_fmt(10, "trace_expr({l}, args={args}, sep={s})",
-                  l=level, args=values, s=sep)
-        # Get symbolic expressions for the values
-        # TODO: handle cases split across lines
+        trace_fmt(10, "trace_expr({l}, a={args}, kw={kw})",
+                  l=level, args=values, kw=kwargs)
+        sep = kwargs.get('sep') or kwargs.get('_sep')
+        delim = kwargs.get('delim') or kwargs.get('_delim')
+        no_eol = kwargs.get('no_eol') or kwargs.get('_no_eol')
+        use_repr = kwargs.get('use_repr') or kwargs.get('_use_repr')
         if sep is None:
             sep = ", "
+        if no_eol is None:
+            no_eol = False
+        if delim is None:
+            delim = "; "
+            no_eol = True
+        if use_repr is None:
+            use_repr = True
+        # Get symbolic expressions for the values
+        # TODO: handle cases split across lines
         try:
             # TODO: rework introspection following icecream (e.g., using abstract syntax tree)
             caller = inspect.stack()[1]
             (_frame, filename, line_number, _function, _context, _index) = caller
             statement = read_line(filename, line_number).strip()
-            # Extract list of argument expressions
+            # Extract list of argument expressions (removing optional comment)
             statement = re.sub(r"#.*$", "", statement)
             statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
-            ## OLD: statement = re.sub(r"^\s*\d+,\s*", "", statement)
-            statement = re.sub(r"\);?\s*$", "", statement)
+            # Remove trailing paren with optional semicolon
+            statement = re.sub(r"\)\s*;?\s*$", "", statement)
+            # Remove trailing comma (e.g., if split across lines)
+            statement = re.sub(r",?\s*$", "", statement)
             # Skip first argument (level)
             expressions = statement.split(sep)[1:]
         except:
@@ -357,9 +380,15 @@ if __debug__:
                        exc=sys.exc_info())
             expressions = []
         for expression, value in zip_longest(expressions, values):
+            # Exclude kwarg params
+            match = re.search(r"^(\w+)=", expression)
+            if (match and match.group(1) in kwargs):
+                continue
             assertion(not (value and expression is None), "Warning: Likely problem resolving expression text (try reworking trace_expr call)")
-            # note: uses !r for repr()
-            trace_fmt(level, "{expr}={val!r}", expr=expression, val=value)
+            value_spec = repr(value) if use_repr else value
+            trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
+        if no_eol:
+            trace(level, "", no_eol=False)
         return
 
     
@@ -637,7 +666,12 @@ def profile_function(frame, event, arg):
         trace_fmt(5, "profile {mod}:{func} {e}: arg={a}",
                   mod=module, func=name, e=event, a=arg)
     return
-    
+
+def reference_vars(*args):
+    """Dummy function used for referencing variables"""
+    trace(9, f"reference_vars{tuple(args)}")
+    return
+
 #-------------------------------------------------------------------------------
 # Utility functions useful for debugging (e.g., for trace output)
 
@@ -735,6 +769,10 @@ if __debug__:
         # TODO: rename to reflect generic-exit nature
         def display_ending_time_etc():
             """Display ending time information"""
+            # note: does nothing if stderr closed (e.g., other monitor)
+            trace_object(7, sys.stderr)
+            if sys.stderr.closed:
+                return
             elapsed = round(time.time() - time_start, 3)
             trace_fmtd(4, "[{f}] unloaded at {t}; elapsed={e}s",
                        f=module_file, t=timestamp(), e=elapsed)

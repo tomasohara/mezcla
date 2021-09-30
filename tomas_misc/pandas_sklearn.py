@@ -1,7 +1,9 @@
 #! /usr/bin/env python
 #
-# Illustrates how to use pandas and sklearn to do machine learning. This
-# was initially for the Iris dataset, based on following:
+# Runs training data through a variety of supervised classifiers, as an
+# illustration on how to use pandas and sklearn to do machine learning.
+#
+# This was initially for the Iris dataset, based on following:
 #    https://medium.com/codebagng/basic-analysis-of-the-iris-data-set-using-python-2995618a6342.
 #
 # Notes:
@@ -17,6 +19,7 @@
 # - Add exception handling throughout.
 # - Replace iris.csv with non-trivial ML data (e.g., to serve in benchmarking).
 # - Make sure validation used in same tense as standard practice.
+# - Rename (e.g., pandas_sklearn.py => evaluate_classifiers.py).
 # 
 
 """Illustrates sklearn classification over data with panda csv-based import"""
@@ -34,6 +37,7 @@ from pandas.plotting import scatter_matrix
 from sklearn import model_selection
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import precision_recall_curve
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 
@@ -63,6 +67,8 @@ SKIP_DATAFRAME = getenv_bool("SKIP_DATAFRAME", False)
 USE_DATAFRAME = getenv_bool("USE_DATAFRAME", not SKIP_DATAFRAME)
 IGNORE_FIELDS = text_utils.extract_string_list(getenv_text("IGNORE_FIELDS", ""))
 INCLUDE_PLOTS = getenv_bool("INCLUDE_PLOTS", False)
+DATASET_PLOTS = getenv_bool("DATASET_PLOTS", INCLUDE_PLOTS,
+                            "Include plots summarizing dataset")
 SKIP_PLOTS = getenv_bool("SKIP_PLOTS", not INCLUDE_PLOTS)
 OUTPUT_CSV = getenv_bool("OUTPUT_CSV", False)
 SKIP_VALIDATION = getenv_bool("SKIP_VALIDATION", False)
@@ -120,6 +126,10 @@ BATCH_SIZE = getenv_int("BATCH_SIZE", None)
 
 GPU_DEVICE = system.getenv_text("GPU_DEVICE", "",
                                 "Device number for GPU (e.g., shown under nvidia-smi)")
+SHOW_ABLATION = getenv_bool("SHOW_ABLATION", False,
+                            "Show ablation plot for accuracy")
+PRECISION_RECALL = getenv_bool("PRECISION_RECALL", False,
+                               "Plot precision/recall curve")
 
 #...............................................................................
 # Optional packahes
@@ -246,7 +256,8 @@ def main():
         debug.raise_exception(6)
     
     # Optionally show some plot
-    if (not SKIP_PLOTS):
+    ## OLD: if (not SKIP_PLOTS):
+    if DATASET_PLOTS:
             
         # box and whisker plots
         dataset.plot(kind="box", subplots=True, layout=(2, 2), sharex=False, sharey=False)
@@ -444,12 +455,73 @@ def main():
                 debug.trace_fmtd(4, "Use VERBOSE=1 for validation score breakdown")
             print("classification report:")
             print(classification_report(y_validation, predictions))
+            if PRECISION_RECALL:
+                show_precision_recall(name, model, X_train, y_train, X_validation, y_validation)
+            if SHOW_ABLATION:
+                show_ablation(name, model, X_train, y_train, X_validation, y_validation)
         except:
-            debug.trace_fmtd(2, "Error: Problem during validation evaluation: {exc}",
-                             exc=sys.exc_info())
+            ## OLD:
+            ## debug.trace_fmtd(2, "Error: Problem during validation evaluation: {exc}",
+            ##                  exc=sys.exc_info())
+            debug.trace_exception(2, "validation evaluation")
             debug.raise_exception(6)
     if ((num_run == 0) and VALIDATION_CLASSIFIER):
         system.print_stderr("Error: Validation classifier '{clf}' not supported", clf=VALIDATION_CLASSIFIER)
+
+#------------------------------------------------------------------------
+
+def show_ablation(name, model, X_train, y_train, X_validation, y_validation):
+    """Show ablation result for X_TRAIN, Y_TRAIN, X_VALIDATION, Y_VALIDATION"""
+    # Note: plots the data unless SKIP_PLOTS
+    debug.trace(4, f"show_ablation{tuple([name, model, X_train, y_train, X_validation, y_validation])}")
+    num_training = len(X_train)
+    accuracies = []
+    for size in range(num_training):
+        try:
+            model.fit(X_train[:size], y_train[:size])
+            predictions = model.predict(X_validation)
+            accuracy = accuracy_score(y_validation, predictions)
+            accuracies.append(accuracy)
+            debug.trace_expr(5, size, accuracy)
+        except:
+            system.print_exception_info("show_ablation")
+    if (not SKIP_PLOTS):
+        plt.plot(accuracies)
+        plt.show()
+    else:
+        print("ablation accuracy:")
+        print(accuracies)  
+    debug.trace(5, "end show_ablation")
+    return
+
+def show_precision_recall(name, model, X_train, y_train, X_validation, y_validation):
+    """Show precision/recall results for X_TRAIN, Y_TRAIN, X_VALIDATION, Y_VALIDATION"""
+    # based on https://www.statology.org/precision-recall-curve-python/
+    precision = recall = thresholds = []
+    debug.trace(4, f"show_precision_recall{tuple([name, model, X_train, y_train, X_validation, y_validation])}")
+    try:
+        model.fit(X_train, y_train)
+        y_scores = model.predict_proba(X_validation)[:, 1]
+        precision, recall, thresholds = precision_recall_curve(y_validation, y_scores)
+    except:
+        system.print_exception_info("show_precision_recall")
+    if (not SKIP_PLOTS):
+        plt.plot(recall, precision)
+        ## TODO: plt.yticks(thresholds)
+        plt.xlabel("recall")
+        plt.ylabel("precision")
+        plt.title("precision recall curve")
+        plt.show()
+    else:
+        ## TODO:
+        ## print("precision, recall:")
+        ## print(list(zip(precision, recall)))
+        ## print(thresholds)
+        print("precision:\n\t{vals!r}".format(vals=precision))
+        print("recall:\n\t{vals!r}".format(vals=recall))
+        print("thresholds:\n\t{vals!r}".format(vals=thresholds))
+    debug.trace(5, "end show_precision_recall")        
+    return
     
 #------------------------------------------------------------------------
 

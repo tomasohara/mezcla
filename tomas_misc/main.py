@@ -42,6 +42,10 @@
 # - During page-tracking mode, the page numbers are set based on occurrence of
 #   form feed characters: \f (n.b., same as ^L and 0x0c).
 # - A form feed is treated as an implicit paragraph break: see read_input.
+# - The input processing can be used in non-Main scripts by creating a
+#   dummy instance and then calling read_input (see randomize_lines.py):
+#      dummy = Main([]);   dummy.input_stream = str
+#      for line in dummy.process_input(): ...
 #
 # TODO:
 # - Specify argument via input dicts, such as in 
@@ -83,7 +87,7 @@ FORM_FEED = "\f"
 TRACK_PAGES = getenv_bool("TRACK_PAGES", False,
                           "Track page boundaries by form feed--\\f or ^L")
 RETAIN_FORM_FEED = getenv_bool("RETAIN_FORM_FEED", False,
-                              "Include formfeed (\\f) at start of each segment")
+                               "Include formfeed (\\f) at start of each segment")
 
 #-------------------------------------------------------------------------------
 
@@ -101,16 +105,18 @@ class Main(object):
                  usage_notes=None,
                  paragraph_mode=None, track_pages=None, file_input_mode=None,
                  boolean_options=None, text_options=None, int_options=None,
-                 float_options=None, positional_options=None, positional_arguments=None, 
+                 float_options=None, positional_options=None, positional_arguments=None,
                  skip_input=None, manual_input=None, auto_help=None):
         """Class constructor: parses RUNTIME_ARGS (or command line), with specifications
         for BOOLEAN_OPTIONS, TEXT_OPTIONS, INT_OPTIONS, FLOAT_OPTIONS, and POSITIONAL_OPTIONS
         (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args)."""
         tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts}, "
-                         + "i={ints}, f={floats}, p={posns}, s={skip}, m={mi}, a={auto})", 5,
+                         + "i={ints}, f={floats}, p={posns}, s={skip}, m={mi}, a={auto},"
+                         + "pm={para}, tp={page}, fim={file}", 5,
                          args=runtime_args, desc=description, bools=boolean_options,
                          texts=text_options, ints=int_options, floats=float_options,
                          posns=positional_options, skip=skip_input, mi=manual_input, auto=auto_help,
+                         para=paragraph_mode, page=track_pages, file=file_input_mode,
                          ha=HELP_ARG)
         self.description = "TODO: what the script does" # defaults to TODO note for client
         # TODO: boolean_options = [(VERBOSE, "Verbose output mode")]
@@ -128,7 +134,7 @@ class Main(object):
         self.rel_para_num = -1
         self.page_num = -1
         self.para_num = -1
-        self.line_num = 0
+        self.line_num = -1
         self.char_offset = -1
         self.raw_line = None
         # Note: manual_input was introduced after skip_input to allow for input processing
@@ -380,7 +386,7 @@ class Main(object):
         Note: issues error message about required specialization"""
         # NOTE: the trailing newline is omitted
         # TODO: clarify stripped newline vs. no newline at end of file
-        tpo.debug_format("Main.process_line({l})", 5, l=line)
+        debug.trace_fmt(5, "Main.process_line({l})", l=line)
         if not self.process_line_warning:
             tpo.print_stderr("Warning: specialize process_line")
             self.process_line_warning = True
@@ -457,12 +463,14 @@ class Main(object):
            b. pages are not buffered: the page number is just tracked.
         3. Paragraph end at empty lines or form feeds (i.e., implicit).
         """
+        # TODO: add special page-input mode
         # Note: para_num reset here and updated by process_input
         tpo.debug_format("Main.read_input(): {input}", 5,
                          input=self.input_stream)
 
         # Optionally return input all at once
-        # Note: Final newline is removed, as this feeds into process_line.
+        # Note: Final newline is removed, as this feeds into process_line,
+        # which there was one
         if self.file_input_mode:
             contents = self.input_stream.read()
             if contents.endswith("\n"):
@@ -473,39 +481,49 @@ class Main(object):
             return
 
         # Start line-based input
-        if self.track_pages:
-            self.page_num = 1
+        self.page_num = 1
+        self.para_num = 1
+        self.rel_para_num = 1
+        self.line_num = 0
         self.rel_line_num = 0
         self.char_offset = 0
         for line in self.input_stream:
             self.rel_line_num += 1
             self.line_num += 1
             self.raw_line = line
-            line = line.strip("\n")
+            if line.endswith("\n"):
+                line = line[:-1]
             tpo.debug_print("L%d: %s" % (self.line_num, line), 6)
             if self.force_unicode:
                 line = tpo.ensure_unicode(line)
             tpo.debug_print("\ttype(line): %s" % (type(line)), 7)
             if self.track_pages:
-                self.end_of_page = False
                 for i, line_segment in enumerate(line.split(FORM_FEED)):
+                    debug.trace(7, f"LS{i}: {line_segment}")
+                    self.end_of_page = False
                     if i == 0:
                         self.end_of_page = (line != line_segment)
                     else:
                         self.end_of_page = True
-                        self.line_num += 1
                         if RETAIN_FORM_FEED:
                             line_segment = FORM_FEED + line_segment
-                    if line_segment:
+                    ## OLD: if line_segment and (i > 0):
+                    ## NEW:
+                    if (i > 0):
+                        self.line_num += 1
                         self.rel_line_num += 1
+                        if self.end_of_page:
+                            self.page_num += 1
+                            self.rel_para_num = 1
+                            self.rel_line_num = 1
+                    ## OLD: if line_segment:
+                    ## NEW:
+                    if True:            # pylint: disable=using-constant-test
                         debug.trace_fmt(6, "yielding line segment [Pg{pg}/Par{par}/L{ln}]: {ls}",
                                         pg=self.page_num, par=self.rel_para_num, ln=self.rel_line_num, ls=line_segment)
                         yield line_segment
-                    if self.end_of_page:
-                        self.page_num += 1
-                        self.rel_para_num = 1
-                        self.rel_line_num = 1
                     self.char_offset += len(line_segment)
+                    debug.trace_expr(7, self.page_num)
                 if (line != self.raw_line):
                     self.char_offset += 1
             else:
@@ -514,6 +532,10 @@ class Main(object):
                 yield line
                 self.char_offset += len(self.raw_line)
         return
+
+    def is_line_mode(self):
+        """Whether processing normal lines (not paragraphs or entire files)"""
+        return  (not (self.paragraph_mode or self.file_input_mode))
 
     def process_input(self):
         """Process each line in current input stream (or stdin):
@@ -526,7 +548,7 @@ class Main(object):
             self.para_num = 0
         paragraph = ""
         last_line = None
-        line_mode = (not (self.paragraph_mode or self.file_input_mode))
+        line_mode = self.is_line_mode()
         debug.assertion(debug.xor3(line_mode, self.paragraph_mode, self.file_input_mode))
 
         # Read next line (or line segment if in page mode and form feed in line)
@@ -555,6 +577,7 @@ class Main(object):
                     paragraph = (line + "\n")
                 else:
                     paragraph += (line + "\n")
+                debug.trace_expr(7, new_paragraph, paragraph)
                 if new_paragraph:
                     self.rel_para_num += 1
                     self.para_num += 1
