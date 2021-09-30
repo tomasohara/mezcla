@@ -24,7 +24,7 @@ from distutils.core import setup
 setup(name='mezcla',
       packages=['mezcla'],
       module="mezcla",
-      version='1.1',
+      version='1.1.1',
       description-file = "README.txt",
       dist-name="mezcla",
       ## OLD: py_modules=PYTHON_MODULE_NAMES,
@@ -41,6 +41,7 @@ setup(name='mezcla',
       ]
       description="""
 Package with core modules from https://github.com/tomasohara/misc-utility
+note: mezcla is Spanish for mixture.
 """)
 
 [tool.flit.scripts]

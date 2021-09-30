@@ -8,5 +8,5 @@ This repository is licensed under the GNU Lesser General Public Version 3 (LGPLv
 Tom O'Hara
 May 2021
 """
-__VERSION__ = '1.1.0'
-__version__ = '1.1.0'
+__VERSION__ = '1.1.1'
+__version__ = '1.1.1'
