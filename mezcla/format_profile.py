@@ -54,9 +54,9 @@ import sys
 import pstats
 
 # Local packages
-from tomas_misc import debug
+from mezcla import debug
 ## OLD: from tpo_common import *
-from tomas_misc.system import getenv_text, print_stderr
+from mezcla.system import getenv_text, print_stderr
 
 ## OLD: PROFILE_KEY = getenv_text("PROFILE_KEY", "cumulative")
 PROFILE_KEY = getenv_text("PROFILE_KEY", "cumulative",

@@ -33,10 +33,10 @@ import tempfile
 from gensim import corpora, models, similarities
 
 # Local packages
-import tomas_misc.system as system
-import tomas_misc.tpo_common as tpo
-import tomas_misc.debug as debug
-import tomas_misc.glue_helpers as gh
+import mezcla.system as system
+import mezcla.tpo_common as tpo
+import mezcla.debug as debug
+import mezcla.glue_helpers as gh
 
 # Environment options
 # Note: These are for internal options not intended for end users (e.g., for default values).

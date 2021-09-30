@@ -15,12 +15,12 @@ import re
 
 # Local packages
 # TODO: def tomas_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
-from tomas_misc import debug
-from tomas_misc.main import Main
-from tomas_misc import system
+from mezcla import debug
+from mezcla.main import Main
+from mezcla import system
 ## TODO:
-## from tomas_misc.my_regex import my_re
-## from tomas_misc import glue_helpers as gh
+## from mezcla.my_regex import my_re
+## from mezcla import glue_helpers as gh
 
 ## TODO: Constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
 ## Note: Run following in Emacs to interactively replace TODO_ARG with option label

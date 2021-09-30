@@ -59,9 +59,9 @@ import sys
 from collections import defaultdict
 
 # Local packages
-from tomas_misc import debug
-from tomas_misc.my_regex import my_re
-from tomas_misc import system
+from mezcla import debug
+from mezcla.my_regex import my_re
+from mezcla import system
 
 #...............................................................................
 

@@ -39,12 +39,12 @@ import sys
 import argparse
 
 # Local packages
-## TODO: from tomas_misc import debug
+## TODO: from mezcla import debug
 ## OLD: from tpo_common import debug_print, trace_array, print_stderr
-from tomas_misc.tpo_common import debug_print, trace_array
-from tomas_misc.system import print_stderr
+from mezcla.tpo_common import debug_print, trace_array
+from mezcla.system import print_stderr
 ## OLD: from glue_helpers import read_lines
-from tomas_misc.glue_helpers import read_lines
+from mezcla.glue_helpers import read_lines
 
 def main():
     """Entry point for script"""

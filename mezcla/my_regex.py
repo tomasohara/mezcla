@@ -28,9 +28,9 @@ import re
 import six
 
 # Local packages
-from tomas_misc import debug
-from tomas_misc import system
-from tomas_misc import tpo_common as tpo
+from mezcla import debug
+from mezcla import system
+from mezcla import tpo_common as tpo
 
 # Expose public symbols from re package, plus the wrapper class and global instance
 ## OLD:

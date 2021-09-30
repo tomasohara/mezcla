@@ -69,11 +69,11 @@ import sys
 import tempfile
 
 # Local packages
-from tomas_misc import debug
-from tomas_misc import tpo_common as tpo
-from tomas_misc import glue_helpers as gh
-from tomas_misc import system
-from tomas_misc.system import getenv_bool
+from mezcla import debug
+from mezcla import tpo_common as tpo
+from mezcla import glue_helpers as gh
+from mezcla import system
+from mezcla.system import getenv_bool
 
 # Constants
 HELP_ARG = "--help"

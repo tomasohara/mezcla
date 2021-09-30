@@ -45,7 +45,7 @@ import time
 # Local packages
 # note: The following redefines sys.version_info to be python3 compatible;
 # this is used in _to_utf8, which should be reworked via six-based wrappers.
-import tomas_misc.sys_version_info_hack      # pylint: disable=unused-import
+import mezcla.sys_version_info_hack      # pylint: disable=unused-import
 
 
 # Constants for pre-defined tracing levels

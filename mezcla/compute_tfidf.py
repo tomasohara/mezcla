@@ -37,10 +37,10 @@ from tfidf.preprocess import Preprocessor as tfidf_preprocessor
 ## OLD:
 ## import debug
 ## import system
-from tomas_misc import debug
-from tomas_misc import system
-from tomas_misc.system import PRECISION
-from tomas_misc.text_utils import make_fixed_length
+from mezcla import debug
+from mezcla import system
+from mezcla.system import PRECISION
+from mezcla.text_utils import make_fixed_length
 
 # Determine environment-based options
 DEFAULT_NUM_TOP_TERMS = system.getenv_int("NUM_TOP_TERMS", 10)

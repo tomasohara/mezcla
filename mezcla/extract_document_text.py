@@ -23,8 +23,8 @@ import datetime
 import textract
 
 # Local packages
-from tomas_misc import system
-from tomas_misc import debug
+from mezcla import system
+from mezcla import debug
 
 
 # Determine environment-based options

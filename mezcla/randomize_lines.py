@@ -49,11 +49,11 @@ import sys
 ## import glue_helpers as gh
 ## import tpo_common as tpo
 ## import system
-from tomas_misc import debug
-from tomas_misc import glue_helpers as gh
-from tomas_misc.main import Main
-from tomas_misc import tpo_common as tpo
-from tomas_misc import system
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla.main import Main
+from mezcla import tpo_common as tpo
+from mezcla import system
 
 RANDOM_SEED = tpo.getenv_integer("RANDOM_SEED", 15485863,
                                  "Integral seed for random number generation (n.b., use ' ' for default [time of day based])")

@@ -3,7 +3,7 @@
 # mostly superceded by debug.py, system.py, and misc_util.py """
 #
 # sample usage:
-#    from tomas_misc import tpo_common as tpo
+#    from mezcla import tpo_common as tpo
 #    tpo.debug_print("start: " + tpo.debug_timestamp(), 3)
 #
 #------------------------------------------------------------------------

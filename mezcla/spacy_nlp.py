@@ -27,10 +27,10 @@ import re
 import spacy
 
 # Local packages
-from tomas_misc import debug
-from tomas_misc.main import Main, TRACK_PAGES
-from tomas_misc import system
-from tomas_misc import glue_helpers as gh
+from mezcla import debug
+from mezcla.main import Main, TRACK_PAGES
+from mezcla import system
+from mezcla import glue_helpers as gh
 
 # Constants (e.g., for arguments)
 #

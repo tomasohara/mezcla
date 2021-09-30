@@ -54,9 +54,9 @@ import urllib
 import requests
 
 # Local packages
-from tomas_misc import debug
-from tomas_misc import glue_helpers as gh
-from tomas_misc import system
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla import system
 
 # Constants
 MAX_DOWNLOAD_TIME = system.getenv_integer("MAX_DOWNLOAD_TIME", 60)

@@ -24,9 +24,9 @@ import tempfile
 import textwrap
 
 # Local packages
-from tomas_misc import debug
-from tomas_misc import tpo_common as tpo
-from tomas_misc.tpo_common import debug_format, debug_print, print_stderr, setenv
+from mezcla import debug
+from mezcla import tpo_common as tpo
+from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
 
 if sys.version_info[0] < 3:
     from commands import getoutput       # pylint: disable=import-error

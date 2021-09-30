@@ -29,9 +29,9 @@ import sys
 import xml.etree.ElementTree as ET
 
 # Local packages
-from tomas_misc import debug
-from tomas_misc import glue_helpers as gh
-from tomas_misc import system
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla import system
 
 
 def parse_xml(xml_text):

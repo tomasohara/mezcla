@@ -19,9 +19,9 @@ import sys
 import more_itertools
 
 # Local packages
-import tomas_misc.debug as debug
-import tomas_misc.system as system
-import tomas_misc.text_utils as text_utils
+import mezcla.debug as debug
+import mezcla.system as system
+import mezcla.text_utils as text_utils
 
 # Constants
 ELLIPSIS = "\u2026"                 # Horizontal Ellipsis

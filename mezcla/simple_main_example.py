@@ -10,8 +10,8 @@
 import re
 
 # Local packages
-from tomas_misc import debug
-from tomas_misc.main import Main
+from mezcla import debug
+from mezcla.main import Main
 
 class Script(Main):
     """Input processing class"""

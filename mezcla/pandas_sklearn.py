@@ -25,7 +25,7 @@
 """Illustrates sklearn classification over data with panda csv-based import"""
 
 ## TEST: allow for global logging.basicConfig initialization
-from tomas_misc import debug            # pylint: disable=ungrouped-imports
+from mezcla import debug            # pylint: disable=ungrouped-imports
 
 # Standard packages
 import sys
@@ -48,13 +48,13 @@ from sklearn.svm import SVC
 
 # Local packages
 ## OLD (put above for proper logging initialization):
-## from tomas_misc import debug
-from tomas_misc import data_utils as du
-from tomas_misc import glue_helpers as gh
-from tomas_misc import system
-from tomas_misc import text_utils
-from tomas_misc.system import round_num, getenv_bool, getenv_int, getenv_number, getenv_text, getenv_value
-from tomas_misc.text_utils import getenv_ints
+## from mezcla import debug
+from mezcla import data_utils as du
+from mezcla import glue_helpers as gh
+from mezcla import system
+from mezcla import text_utils
+from mezcla.system import round_num, getenv_bool, getenv_int, getenv_number, getenv_text, getenv_value
+from mezcla.text_utils import getenv_ints
 
 #................................................................................
 # Constants (e.g., environment-based options)
@@ -148,7 +148,7 @@ if INCLUDE_XGB:
     
 if INCLUDE_KERAS:
     # pylint: disable=import-outside-toplevel, ungrouped-imports, import-error
-    from tomas_misc.keras_param_search import MyKerasClassifier, create_keras_model
+    from mezcla.keras_param_search import MyKerasClassifier, create_keras_model
 ## DEBUG: print("after keras_param_search import")
 
 if (INCLUDE_ALL and (not (INCLUDE_XGB or INCLUDE_KERAS))):

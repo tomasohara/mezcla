@@ -19,9 +19,9 @@
 import sys
 
 # Local packages
-from tomas_misc import debug
-from tomas_misc import system
-from tomas_misc.text_categorizer import TextCategorizer
+from mezcla import debug
+from mezcla import system
+from mezcla.text_categorizer import TextCategorizer
 
 # Constants
 SHOW_REPORT = system.getenv_bool("SHOW_REPORT", False)

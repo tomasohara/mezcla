@@ -30,12 +30,12 @@ import functools
 import operator
 
 # Local modules
-from tomas_misc import data_utils as du
-from tomas_misc import debug
-from tomas_misc import glue_helpers as gh
-from tomas_misc.main import Main
-from tomas_misc.my_regex import my_re
-from tomas_misc import system
+from mezcla import data_utils as du
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla.main import Main
+from mezcla.my_regex import my_re
+from mezcla import system
 
 # Fill out constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
 FIELDS = "fields"                       # field indices (1-based)

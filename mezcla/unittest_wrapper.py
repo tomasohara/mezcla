@@ -17,7 +17,7 @@
 #
 #   import unittest 
 #   from unittest_wrapper import TestWrapper
-#   import tomas_misc.glue_helpers as gh
+#   import mezcla.glue_helpers as gh
 #   ## TODO: import sample_test as THE_MODULE
 #
 #   class TestIt(TestWrapper):
@@ -44,18 +44,18 @@ import re
 import tempfile
 import unittest
 
-import tomas_misc
-import tomas_misc.glue_helpers as gh
-import tomas_misc.tpo_common as tpo
-import tomas_misc.debug as debug
+import mezcla
+import mezcla.glue_helpers as gh
+import mezcla.tpo_common as tpo
+import mezcla.debug as debug
 
 # Note: the following is for transparent resolution of dotted module names
 # for invocation of scripts via 'python -m package.module'. This is in support
 # of transitioning from the old way of importing packages via 'import module'
 # instead of 'import package.module'. (The former required that package be
 # explicitly specified in the python path, such as via 'PYTHONPATH=package-dir:...'.)
-THIS_PACKAGE = getattr(tomas_misc.debug, "__package__", None)
-debug.assertion(THIS_PACKAGE == "tomas_misc")
+THIS_PACKAGE = getattr(mezcla.debug, "__package__", None)
+debug.assertion(THIS_PACKAGE == "mezcla")
 
 
 class TestWrapper(unittest.TestCase):

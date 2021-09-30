@@ -41,11 +41,11 @@ from sklearn.utils.multiclass import unique_labels
 ## import xgboost as xgb
 
 # Local packages
-from tomas_misc import debug
-import tomas_misc.glue_helpers as gh
-import tomas_misc.misc_utils as misc
-from tomas_misc import system
-from tomas_misc.system import getenv_bool, getenv_float, getenv_int, getenv_text
+from mezcla import debug
+import mezcla.glue_helpers as gh
+import mezcla.misc_utils as misc
+from mezcla import system
+from mezcla.system import getenv_bool, getenv_float, getenv_int, getenv_text
 
 #................................................................................
 # Constants (e.g., environment-based options)

@@ -22,8 +22,8 @@ import pandas as pd
 ## OLD:
 ## import system
 ## import debug
-from tomas_misc import debug
-from tomas_misc import system
+from mezcla import debug
+from mezcla import system
 
 # Constants
 # Note: Delim defaults to None so that dialect inference can be used.

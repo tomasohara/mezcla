@@ -60,11 +60,11 @@ from sklearn.preprocessing import LabelEncoder
 tf = None
 
 # Local packages
-from tomas_misc import debug
-from tomas_misc import glue_helpers as gh
-from tomas_misc import system
-from tomas_misc import text_utils
-from tomas_misc.text_utils import getenv_ints
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla import system
+from mezcla import text_utils
+from mezcla.text_utils import getenv_ints
 
 # Note: python 3.6+ format strings are used
 assert((sys.version_info.major >= 3) and (sys.version_info.minor >= 6))

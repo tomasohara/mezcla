@@ -32,9 +32,9 @@ import os
 import kenlm
 import sys
 
-from tomas_misc.system import getenv_boolean, getenv_text
-from tomas_misc import glue_helpers as gh
-from tomas_misc import tpo_common as tpo
+from mezcla.system import getenv_boolean, getenv_text
+from mezcla import glue_helpers as gh
+from mezcla import tpo_common as tpo
 
 # Initialize globals, including adhoc options via environment variables
 DEFAULT_LM_FILE = os.path.join(os.path.dirname(__file__), '..', 'lm', 'test.arpa')

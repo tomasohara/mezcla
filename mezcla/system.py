@@ -40,9 +40,9 @@ import time
 ## OLD: import requests
 
 # Local packages
-from tomas_misc import debug
-import tomas_misc.glue_helpers as gh
-from tomas_misc.debug import UTF8
+from mezcla import debug
+import mezcla.glue_helpers as gh
+from mezcla.debug import UTF8
 
 # Constants
 STRING_TYPES = six.string_types
