@@ -21,12 +21,27 @@ from distutils.core import setup
 ##     text_utils
 ## """.split()
 
-setup(name='tomas_misc',
-      packages=['tomas_misc'],
-      version='1.0',
+setup(name='mezcla',
+      packages=['mezcla'],
+      module="mezcla",
+      version='1.1',
+      description-file = "README.txt",
+      dist-name="mezcla",
       ## OLD: py_modules=PYTHON_MODULE_NAMES,
       author="Tom O'Hara",
-      # TODO: email="t0mas0hara@gmail.com",
+      # TODO: find out which email key is preferred
+      email="tomasohara@gmail.com",
+      author-email = "office@realpython.com"
+      requires-python = ">=3.6",
+      home-page = "https://github.com/tomasohara/mezcla",
+      classifiers = [
+          "License :: OSI Approved :: LGPLv3",
+          "Programming Language :: Python :: 3",
+          "Programming Language :: Python :: 3.7",
+      ]
       description="""
 Package with core modules from https://github.com/tomasohara/misc-utility
 """)
+
+[tool.flit.scripts]
+realpython = "mezcla.__main__:main"
