@@ -21,19 +21,19 @@ from distutils.core import setup
 ##     text_utils
 ## """.split()
 
-setup(name='mezcla',
+setup(name='Mezcla',
       packages=['mezcla'],
       module="mezcla",
       version='1.1.1',
       description-file = "README.txt",
-      dist-name="mezcla",
+      dist-name="Mezcla",
       ## OLD: py_modules=PYTHON_MODULE_NAMES,
       author="Tom O'Hara",
       # TODO: find out which email key is preferred
       email="tomasohara@gmail.com",
       author-email = "office@realpython.com"
       requires-python = ">=3.6",
-      home-page = "https://github.com/tomasohara/mezcla",
+      home-page = "https://github.com/tomasohara/Mezcla",
       classifiers = [
           "License :: OSI Approved :: LGPLv3",
           "Programming Language :: Python :: 3",

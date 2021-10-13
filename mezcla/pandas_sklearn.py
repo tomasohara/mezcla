@@ -58,6 +58,9 @@ from mezcla.text_utils import getenv_ints
 
 #................................................................................
 # Constants (e.g., environment-based options)
+#
+# Note: Some classifiers are not part of sklearn and thus require additional support
+# to enable. These include XBG, Keras, and Auto-Sklearn.
 
 VERBOSE = getenv_bool("VERBOSE", False)
 DATA_FILE = getenv_text("DATA_FILE", "tests/iris.csv")
@@ -75,7 +78,9 @@ SKIP_VALIDATION = getenv_bool("SKIP_VALIDATION", False)
 KERAS_CLASSIFIER = "Keras"
 KNN_CLASSIFIER = "KNN"
 XGB_CLASSIFIER = "XGB"
-DEFAULT_CLASSIFIER = getenv_text("CLASSIFIER", "LR")
+LR_CLASSIFIER = "LR"
+DEFAULT_CLASSIFIER = getenv_text("CLASSIFIER", LR_CLASSIFIER,
+                                 "Label for default classifier")
 DEFAULT_DEVEL_CLASSIFIER = DEFAULT_CLASSIFIER if (not SKIP_VALIDATION) else None
 DEVEL_CLASSIFIER = getenv_text("DEVEL_CLASSIFIER", DEFAULT_DEVEL_CLASSIFIER)
 INCLUDE_ALL = getenv_bool("INCLUDE_ALL", False,
@@ -118,21 +123,29 @@ NUMERIC_CLASSES = getenv_bool("NUMERIC_CLASSES", False,
                               "Encode classes as number")
 #
 DEFAULT_INCLUDE_KERAS_CLASSIFIER = KERAS_CLASSIFIER in [DEFAULT_DEVEL_CLASSIFIER, DEFAULT_VALIDATION_CLASSIFIER]
-INCLUDE_KERAS = getenv_bool("INCLUDE_KERAS", DEFAULT_INCLUDE_KERAS_CLASSIFIER or INCLUDE_ALL)
+INCLUDE_KERAS = getenv_bool("INCLUDE_KERAS", DEFAULT_INCLUDE_KERAS_CLASSIFIER or INCLUDE_ALL,
+                            "Include Keras deep learning classifier")
 SKIP_KERAS = getenv_bool("SKIP_KERAS", not INCLUDE_KERAS)
 HIDDEN_UNIT_VALUES = getenv_ints("HIDDEN_UNIT_VALUES", "50, 100, 50")
 NUM_EPOCHS = getenv_int("NUM_EPOCHS", 100)
 BATCH_SIZE = getenv_int("BATCH_SIZE", None)
-
+#
+AUTOSKLEARN_CLASSIFIER = "Auto-Sklearn"
+DEFAULT_INCLUDE_AUTOSKLEARN_CLASSIFIER = AUTOSKLEARN_CLASSIFIER in [DEFAULT_DEVEL_CLASSIFIER, DEFAULT_VALIDATION_CLASSIFIER]
+INCLUDE_AUTOSKLEARN = getenv_bool("INCLUDE_AUTOSKLEARN", DEFAULT_INCLUDE_AUTOSKLEARN_CLASSIFIER,
+                                  "Include Auto-Sklearn classifier for AutoML")
+#
 GPU_DEVICE = system.getenv_text("GPU_DEVICE", "",
                                 "Device number for GPU (e.g., shown under nvidia-smi)")
 SHOW_ABLATION = getenv_bool("SHOW_ABLATION", False,
                             "Show ablation plot for accuracy")
 PRECISION_RECALL = getenv_bool("PRECISION_RECALL", False,
                                "Plot precision/recall curve")
+devel_classifiers = [DEVEL_CLASSIFIER]
+validation_classifiers = [VALIDATION_CLASSIFIER]
 
 #...............................................................................
-# Optional packahes
+# Optional packages
 
 if INCLUDE_PLOTS:
     # pylint: disable=import-outside-toplevel, import-error
@@ -141,18 +154,28 @@ if INCLUDE_PLOTS:
 if INCLUDE_XGB:
     # pylint: disable=import-outside-toplevel, import-error
     import xgboost as xgb
-    if getenv_text("USE_XGB"):
-        system.print_stderr("Warning: deprecated option USE_XGB")
+    devel_classifiers.append(XGB_CLASSIFIER)
+    validation_classifiers.append(XGB_CLASSIFIER)
+if getenv_text("USE_XGB"):
+    system.print_stderr("Warning: deprecated option USE_XGB")
 ## Mote: Following added for tracking down segmentation fault
 ## DEBUG: print("after xgboost import")
     
 if INCLUDE_KERAS:
     # pylint: disable=import-outside-toplevel, ungrouped-imports, import-error
     from mezcla.keras_param_search import MyKerasClassifier, create_keras_model
+    devel_classifiers.append(KERAS_CLASSIFIER)
+    validation_classifiers.append(KERAS_CLASSIFIER)
 ## DEBUG: print("after keras_param_search import")
 
-if (INCLUDE_ALL and (not (INCLUDE_XGB or INCLUDE_KERAS))):
-    debug.trace(4, "Warning: Need to specify INCLUDE_(XGB/KERAS) separately")
+if INCLUDE_AUTOSKLEARN:
+    # pylint: disable=import-outside-toplevel, import-error
+    import autosklearn.classification
+    devel_classifiers.append(AUTOSKLEARN_CLASSIFIER)
+    validation_classifiers.append(AUTOSKLEARN_CLASSIFIER)
+
+if (INCLUDE_ALL and (not (INCLUDE_XGB or INCLUDE_KERAS or INCLUDE_AUTOSKLEARN))):
+    debug.trace(4, "Warning: Need to specify INCLUDE_(XGB/KERAS/AUTOSKLEARN) separately")
 
 #...............................................................................
 # Utility functions
@@ -338,7 +361,8 @@ def main():
         models.append((KERAS_CLASSIFIER,
                        MyKerasClassifier(hidden_units=HIDDEN_UNIT_VALUES, epochs=NUM_EPOCHS,
                                          batch_size=BATCH_SIZE, build_fn=create_model_fn)))
-    models.append(("LR", LogisticRegression()))
+    if (INCLUDE_ALL or (LR_CLASSIFIER in [DEFAULT_DEVEL_CLASSIFIER, DEFAULT_VALIDATION_CLASSIFIER])):
+        models.append((LR_CLASSIFIER, LogisticRegression()))
     if INCLUDE_MISC_CLASSIFIERS:
         models.append(("LDA", LinearDiscriminantAnalysis()))
         models.append((KNN_CLASSIFIER, KNeighborsClassifier()))
@@ -346,6 +370,11 @@ def main():
         models.append(("GNB", GaussianNB()))
         models.append(("MNB", MultinomialNB()))
         models.append(("SVM", SVC()))
+    if INCLUDE_AUTOSKLEARN:
+        models.append((AUTOSKLEARN_CLASSIFIER, autosklearn.classification.AutoSklearnClassifier()))
+    debug.trace_expr(5, models)
+    if not models:
+        system.exit("Error: no models defined")
 
     # Evaluate each model in turn.
     # TODO: show precision, recall, F1, as well as accuracy
@@ -363,12 +392,12 @@ def main():
         print("Sample development test set results using scoring method '{sm}'".format(sm=SCORING_METRIC))
         ## TODO: average = "micro" if (not is_binary) else None
         for name, model in models:
-            if ((name != DEVEL_CLASSIFIER) and (not INCLUDE_ALL_DEVEL)):
-                debug.trace_fmt(5, "Skipping classifier {n} (not devel and not include all)", n=name)
+            if ((name not in devel_classifiers) and (not INCLUDE_ALL_DEVEL)):
+                debug.trace_fmt(5, "Skipping classifier {n} (not for devel and not include all)", n=name)
                 continue
             kfold = model_selection.KFold(n_splits=10, shuffle=True, random_state=SEED)
             ## TODO: cv_results = model_selection.cross_val_score(model, X_train, y_train, cv=kfold, scoring=SCORING_METRIC, average=average)
-            ## TODO: get this to work when SCORING_METRIC is not accuracy (which leads to not supported error for multicalss data)
+            ## TODO: get this to work when SCORING_METRIC is not accuracy (which leads to not supported error for multiclass data)
             ## (e.g., add environment variable so that sklearn uses micro or macro average
             try:
                 cv_results = model_selection.cross_val_score(model, X_train, y_train, cv=kfold, scoring=SCORING_METRIC)
@@ -421,8 +450,8 @@ def main():
     average = "micro" if (not is_binary) else "binary"
     num_run = 0
     for name, model in models:
-        if ((name != VALIDATION_CLASSIFIER) and (not VALIDATE_ALL)):
-            debug.trace_fmt(5, "Skipping classifier {n} (not validation and not include all)", n=name)
+        if ((name not in validation_classifiers) and (not VALIDATE_ALL)):
+            debug.trace_fmt(5, "Skipping classifier {n} (not for validation and not include all)", n=name)
             continue
         try:
             ## DEBUG: debug.trace(5, f"X/Y_train types: {[type(v) for v in [X_train, y_train]]}")
@@ -441,7 +470,7 @@ def main():
             predictions = model.predict(X_validation)
             print("validation confusion matrix:")
             print(confusion_matrix(y_validation, predictions))
-            ## TODO: drop accurracy ... F1 (provide in report)
+            ## TODO: drop accuracy ... F1 (provide in report)
             if VERBOSE:
                 print("accuracy:", end=" ")
                 print(round_num(accuracy_score(y_validation, predictions)))

@@ -65,6 +65,7 @@
 # Standard packages
 import argparse
 import os
+import re
 import sys
 import tempfile
 
@@ -88,6 +89,10 @@ TRACK_PAGES = getenv_bool("TRACK_PAGES", False,
                           "Track page boundaries by form feed--\\f or ^L")
 RETAIN_FORM_FEED = getenv_bool("RETAIN_FORM_FEED", False,
                                "Include formfeed (\\f) at start of each segment")
+DEFAULT_FILE_BASE = re.sub(r".py\w*$", "", gh.basename(__file__))
+FILE_BASE = system.getenv_text("FILE_BASE", DEFAULT_FILE_BASE,
+                               "Basename for output files including dir")
+
 
 #-------------------------------------------------------------------------------
 
@@ -96,7 +101,7 @@ class Main(object):
     argument_parser = None
     force_unicode = False
 
-    def __init__(self, runtime_args=None, description=None, 
+    def __init__(self, runtime_args=None, description=None, skip_args=False,
                  # TODO: Either rename xyz_optiom to match python type name 
                  # or rename them without abbreviations.
                  # TODO: explain difference between positional_options and positional_arguments
@@ -112,12 +117,12 @@ class Main(object):
         (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args)."""
         tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts}, "
                          + "i={ints}, f={floats}, p={posns}, s={skip}, m={mi}, a={auto},"
-                         + "pm={para}, tp={page}, fim={file}", 5,
+                         + "pm={para}, tp={page}, fim={file}, noargs={skip_args})", 5,
                          args=runtime_args, desc=description, bools=boolean_options,
                          texts=text_options, ints=int_options, floats=float_options,
                          posns=positional_options, skip=skip_input, mi=manual_input, auto=auto_help,
                          para=paragraph_mode, page=track_pages, file=file_input_mode,
-                         ha=HELP_ARG)
+                         ha=HELP_ARG, skip_args=skip_args)
         self.description = "TODO: what the script does" # defaults to TODO note for client
         # TODO: boolean_options = [(VERBOSE, "Verbose output mode")]
         self.boolean_options = []
@@ -171,8 +176,12 @@ class Main(object):
 
         # Setup temporary file and/or base directory
         # TODO: allow temp_base handling to be overridable by constructor options
+        prefix = (FILE_BASE + "-")
+        ntf_args = {'prefix': (FILE_BASE + "-"),
+                    ## TODO: 'suffix': "-"
+                    }
         self.temp_base = tpo.getenv_text("TEMP_BASE",
-                                         tempfile.NamedTemporaryFile().name)
+                                         tempfile.NamedTemporaryFile(**ntf_args).name)
         # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
         # -or-: temp_base_dir = tpo.getenv_text("TEMP_BASE_DIR", ""); self.use_temp_base_dir = bool(temp_base_dir.strip); ...
         if use_temp_base_dir is None:
@@ -215,7 +224,8 @@ class Main(object):
         self.filename = None
         self.other_filenames = []
         # Do command-line parsing
-        self.check_arguments(runtime_args)
+        if not skip_args:
+            self.check_arguments(runtime_args)
         debug.trace_current_context(level=debug.QUITE_DETAILED)
         debug.trace_object(6, self, label="Main instance")
         debug.trace_fmt(tpo.QUITE_DETAILED, "end of Main.__init__(); self={s}",

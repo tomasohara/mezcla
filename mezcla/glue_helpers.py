@@ -249,7 +249,7 @@ def issue(command, trace_level=4, subtrace_level=None, **namespace):
     - Nothing is returned.
     - Traces stdout when debugging at quite-detailed level (6).
     - Captures stderr unless redirected and traces at error level (1)."""
-    # EX: issue("ls /") => ""
+    # EX: issue("ls /") => None
     # EX: issue("xeyes &")
     debug_print("issue(%s, [trace_level=%s], [subtrace_level=%s], [ns=%s])"
                 % (command, trace_level, subtrace_level, namespace), (trace_level + 1))
@@ -258,8 +258,7 @@ def issue(command, trace_level=4, subtrace_level=None, **namespace):
     if tpo.debugging() and (not "2>" in command) and (not "2|&1" in command):
         ## TODO: use a different suffix each time to aid in debugging
         log_file = TEMP_LOG_FILE
-        ## BAD: command += " 2>| " + log_file
-        delete_file(log_file)
+        delete_existing_file(log_file)
         command += " 2> " + log_file
     # Run the command and trace output
     command_line = command

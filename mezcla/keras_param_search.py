@@ -29,6 +29,7 @@
 import re
 import sys
 from collections import OrderedDict
+
 # Installed packages
 # TODO: install kera dynamically???
 ## TEST: sys.stderr.write("here\n")
@@ -55,9 +56,10 @@ import pandas
 from pandas.core.frame import DataFrame
 from sklearn.model_selection import cross_val_score, GridSearchCV, KFold, RandomizedSearchCV
 from sklearn.preprocessing import LabelEncoder
+
 ## NOTE: This takes too long to load so postponed, in case usage just shown.
 ## OLD: import tensorflow as tf
-tf = None
+## TEST: tf = None
 
 # Local packages
 from mezcla import debug
@@ -215,9 +217,9 @@ def main():
     args = system.get_args()
     if ((len(args) > 1) and (args[1] == "--help")):
         script = gh.basename(args[0])
-        system.print_stderr("Usage: {scr} [--help] data-file", scr=script)
+        system.print_stderr("Usage: {scr} [--help] [data-file | -]", scr=script)
         system.print_stderr("")
-        system.print_stderr("where data-file is in CSV format")
+        system.print_stderr("where data-file is in CSV format and - is for default")
         system.print_stderr("")
         ## TODO: show_details = VERBOSE or debug.debugging()
         if debug.debugging(2):
@@ -356,8 +358,9 @@ def main():
         debug.trace_fmtd(2, "Error: Problem during summarization: {exc}", exc=sys.exc_info())
         debug.raise_exception(6)
 
-# Load tensorflow
-import tensorflow as tf                 # pylint: disable=import-outside-toplevel, import-error
+## TEST
+## # Load tensorflow
+## import tensorflow as tf                 # pylint: disable=import-outside-toplevel, import-error
 
 ## OLD:
 ## if debug.verbose_debugging():
@@ -366,6 +369,7 @@ import tensorflow as tf                 # pylint: disable=import-outside-topleve
 ##     tf.compat.v1.logging.set_verbosity(logging_level)
 ##     tf.compat.v1.logging.debug('tf...logging.debug test')
 
+## TEST
 # OLD: Initialize random seed for reproducibility
 ## numpy.random.seed(SEED)
 ## tf.set_random_seed(SEED)

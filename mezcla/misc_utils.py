@@ -227,6 +227,22 @@ def string_diff(text1, text2):
     debug.trace(6, f"string_diff() => {diff_result}")
     return diff_result
 
+
+def elide_string_values(obj, depth=0, max_len=None):
+    """Elide the values of all strings in OBJ, which can either be a scalar, a list or a hash"""
+    if max_len is None:
+        max_len = 32
+    MAX_DEPTH = 10
+    if isinstance(obj, list) and (depth < MAX_DEPTH):
+        obj = [elide_string_values(v, depth=(1 + depth), max_len=max_len) for v in obj]
+    elif isinstance(obj, dict) and (depth < MAX_DEPTH):
+        obj = {k: elide_string_values(obj[k], depth=(1 + depth), max_len=max_len) for k in obj.keys()}
+    elif isinstance(obj, str):
+        obj = gh.elide(obj, max_len=max_len)
+    else:
+        pass
+    return obj
+
 #-------------------------------------------------------------------------------
 
 def main(args):

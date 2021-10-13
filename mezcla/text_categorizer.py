@@ -7,6 +7,11 @@
 # more classifiers, panda_sklearn.py should be used, espcially as it includes
 # Tensorflow and Keras.
 #
+# NOTES:
+# - Calculates accuracy as number of agreements over number of cases:
+#   ex:    (tp + tn) / (tp + tn + fp + fn)    for binary classifications
+# - See https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers#Single_metrics.
+#
 # TODO:
 # - Maintain cache of categorization results.
 # - Review categorization code and add examples for clarification of parameters.
@@ -432,15 +437,21 @@ class TextCategorizer(object):
         # Output classification report
         if report:
             if VERBOSE:
+                stream.write("Missed classifications")
                 stream.write("\n")
                 stream.write("Actual\tPredict\n")
                 ## OLD: for i in range(len(actual_indices)):
                 ## TODO: complete conversion to using actual_index (here and below)
+                num_missed = 0
                 for (i, actual_index) in enumerate(actual_indices):
                     debug.assertion(actual_index == actual_indices[i])
-                    stream.write("{act}\t{pred}\n".
-                                 format(act=self.keys[actual_indices[i]],
-                                        pred=self.keys[predicted_indices[i]]))
+                    if (actual_indices[i] != predicted_indices[i]):
+                        stream.write("{act}\t{pred}\n".
+                                     format(act=self.keys[actual_indices[i]],
+                                            pred=self.keys[predicted_indices[i]]))
+                        num_missed += 1
+                if (num_missed == 0):
+                    stream.write("n/a")
                 stream.write("\n")
             ## BAD: sklearn_report(actual_indices, predicted_indices, self.keys, stream)
             ## OLD: keys = sorted(numpy.unique(labels))

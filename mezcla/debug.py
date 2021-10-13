@@ -380,13 +380,18 @@ if __debug__:
                        exc=sys.exc_info())
             expressions = []
         for expression, value in zip_longest(expressions, values):
-            # Exclude kwarg params
-            match = re.search(r"^(\w+)=", expression)
-            if (match and match.group(1) in kwargs):
-                continue
-            assertion(not (value and expression is None), "Warning: Likely problem resolving expression text (try reworking trace_expr call)")
-            value_spec = repr(value) if use_repr else value
-            trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
+            try:
+                # Exclude kwarg params
+                match = re.search(r"^(\w+)=", str(expression))
+                if (match and match.group(1) in kwargs):
+                    continue
+                assertion((not ((value is not None) and (expression is None))),
+                          "Warning: Likely problem resolving expression text (try reworking trace_expr call)")
+                value_spec = repr(value) if use_repr else value
+                trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
+            except:
+                trace_fmtd(0, "Exception tracing values in trace_vals: {exc}",
+                       exc=sys.exc_info())            
         if no_eol:
             trace(level, "", no_eol=False)
         return
@@ -702,7 +707,7 @@ def read_line(filename, line_number):
 def main(args):
     """Supporting code for command-line processing"""
     trace_expr(4, len(args))
-    trace(1, "Warning: Not intended for direct invocation. A simple tracing example follows.")
+    trace(1, "Warning: Not intended for direct invocation. Some tracing examples follow.")
     #
     trace(0, "date record for now at trace level 1")
     trace_object(1, datetime.now(), label="now")
@@ -770,8 +775,9 @@ if __debug__:
         def display_ending_time_etc():
             """Display ending time information"""
             # note: does nothing if stderr closed (e.g., other monitor)
+            # TODO: resolve pylint issue with sys.stderr.closed
             trace_object(7, sys.stderr)
-            if sys.stderr.closed:
+            if sys.stderr.closed:       # pylint: disable=using-constant-test
                 return
             elapsed = round(time.time() - time_start, 3)
             trace_fmtd(4, "[{f}] unloaded at {t}; elapsed={e}s",

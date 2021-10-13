@@ -14,7 +14,7 @@ import re
 ## TODO: import numpy
 
 # Local packages
-# TODO: def tomas_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
+# TODO: def mezcla_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
 from mezcla import debug
 from mezcla.main import Main
 from mezcla import system

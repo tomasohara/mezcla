@@ -68,23 +68,25 @@
 # - Create random split of single input file into train.tsv, dev.tsv and optionally test.tsv (or .csv's).
 #
 
-"""Invokes BERT or ALBERT for multiple-label classification"""
+"""Invokes BERT or ALBERT for multiple-label text classification"""
 
-## TODO: import os
+# Standard packages
+import csv
 import re
 import sys
 
+# Installed packages
 import pandas as pd
 from sklearn.model_selection import train_test_split
- 
-import tensorflow
+import tensorflow as tf
 # TODO: make the following optional (so that tensorflow_cpu can be used)
 ## OLD import tensorflow_gpu
 
-import debug
-from my_regex import my_re
-import glue_helpers as gh
-import system
+# Local packages
+from mezcla import debug
+from mezcla import system
+from mezcla import glue_helpers as gh
+from mezcla.text_utils import version_to_number as version_as_float
 
 # Note: the defaults are unintuitive, but they match the blog article.
 MODEL_DIR = system.getenv_text("MODEL_DIR", "./model")
@@ -93,7 +95,7 @@ DATA_DIR = system.getenv_text("DATA_DIR", "./dataset")
 OUTPUT_DIR = system.getenv_text("OUTPUT_DIR", "./bert_output")
 TASK_NAME = system.getenv_text("TASK_NAME", "cola")
 USE_TSV_INPUT = system.getenv_bool("USE_TSV_INPUT", False)
-CLASSIFIER_INVOCATION = system.getenv_text("CLASSIFIER_INVOCATION", "run_classifier.py")
+CLASSIFIER_INVOCATION = system.getenv_text("CLASSIFIER_INVOCATION", "run_bert_classifier.py")
 # Note: USE_TSV_INPUT implies you use a tab-separated format properly formatted for BERT,
 # so set BERT_FORMATTED False (e.g., USE_TSV_INPUT=1 BERT_FORMATTED=0 bert_multi_classification.py ...)
 BERT_FORMATTED = system.getenv_bool("BERT_FORMATTED", USE_TSV_INPUT)
@@ -103,7 +105,8 @@ USE_ALBERT = system.getenv_bool("USE_ALBERT", USE_ALBERT_DEFAULT)
 BERT_NAME = "bert" if (not USE_ALBERT) else "albert"
 CONFIG_FILE_DEFAULT = system.form_path(MODEL_DIR, "{b}_config.json".format(b=BERT_NAME))
 BERT_CONFIG_FILE = system.getenv_text("BERT_CONFIG_FILE", CONFIG_FILE_DEFAULT)
-                                     
+SAVE_CHECKPOINTS_STEPS = system.getenv_it("SAVE_CHECKPOINTS_STEPS", 10000,
+                                          "Number of tensorflow steps before checkpoints are written")
 
 # Get label list and split into columns
 INPUT_LABELS = system.getenv_text("INPUT_LABELS", "id, label, text")
@@ -116,77 +119,14 @@ LABEL_COL = INPUT_LABEL_LIST[1]
 TEXT_COL = INPUT_LABEL_LIST[2]
 
 #-------------------------------------------------------------------------------
-# General purpose helper functions
-# TODO: put into text_utils, etc.
-
-def version_to_number(version, max_padding=3):
-    """Converts VERSION to number that can be used in comparisons
-    Note: The Result will be of the form M.mmmrrrooo..., where M is the
-    major number m is the minor, r is the revision and o is other.
-    Each version component will be prepended with up MAX_PADDING [3] 0's
-    Notes:
-    - strings in the version are ignored
-    - 0 is returned if version string is non-standard"""
-    # EX: version_to_number("1.11.1") => 1.00010001
-    # EX: version_to_number("1") => 1
-    # EX: version_to_number("") => 0
-    # TODO: support string (e.g., 1.11.2a).
-    version_number = 0
-    version_text = version
-    new_version_text = ""
-    max_component_length = (1 + max_padding)
-    debug.trace_fmt(5, "version_to_number({v})", v=version)
-
-    # Remove all alphabetic components
-    version_text = re.sub(r"[a-z]", "", version_text, re.IGNORECASE)
-    if (version_text != version):
-        debug.trace_fmt(2, "Warning: stripped alphabetic components from version: {v} => {nv}", v=version, nv=version_text)
-
-    # Remove all spaces (TODO: handle tabs and other whitespace)
-    version_text = version_text.replace(" ", "")
-
-    # Convert component numbers iteratively and zero-pad if necessary
-    # NOTE: Components greater than max-padding + 1 treated as all 9's.
-    debug.trace_fmt(4, "version_text: {vt}", vt=version_text)
-    first = False
-    num_components = 0
-    regex = r"^(\d+)(\.((\d*).*))?$"
-    while (my_re.search(regex, version_text)):
-        component = my_re.group(1)
-        # TODO: fix my_re.group to handle None as ""
-        version_text = my_re.group(2) if my_re.group(2) else ""
-        num_components += 1
-        debug.trace_fmt(4, "new version_text: {vt}", vt=version_text)
-
-        component = system.to_string(system.to_int(component))
-        if first:
-            new_version_text = component + "."
-            regex = r"^(\d+)\.?((\d*).*)$"
-        else:
-            if (len(component) > max_component_length):
-                old_component = component
-                component = "9" * max_component_length
-                debug.trace_fmt(2, "Warning: replaced overly long component #{n} {oc} with {c}",
-                                n=num_components, oc=old_component, nc=component)
-            new_version_text += component
-            debug.trace_fmt(4, "Component {n}: {c}", n=num_components, c=component)
-    version_number = system.to_float(new_version_text, version_number)
-    ## TODO:
-    ## if (my_re.search(p"[a-z]", version_text, re.IGNORECASE)) {
-    ##     version_text = my_re.... 
-    ## }
-    debug.trace_fmt(4, "version_to_number({v}) => {n}", v=version, n=version_number)
-    return version_number
-
-#-------------------------------------------------------------------------------
-# Helper functions specific to BERT
+# Helper function(s) specific to BERT
 
 def ensure_bert_data_frame(data_frame, is_test=False):
     """Ensures data frame is in BERT format from input DATA_FRAME, using dummy values for alpha
     column.
     Notes:
-    - See comments in blog mentioned in header.
-    - Uses global costant BERT_FORMATTED."""
+    - See comments in blog mentioned in header above.
+    - Uses global constant BERT_FORMATTED."""
     # TODO: add parameter mapping input column names to ones assumed here (i.e., id, label, & text)
     debug.trace_fmt(5, "ensure_bert_data_frame({df})", df=data_frame)
     df_bert = None
@@ -219,10 +159,8 @@ def ensure_bert_data_frame(data_frame, is_test=False):
 
 #--------------------------------------------------------------------------------
 
-V1_11_0 = version_to_number("1.11.0")
-
-debug.assertion(V1_11_0 <= version_to_number(tensorflow.__version__))
-## OLD: debug.assertion(V1_11_0 <= version_to_number("tensorflow_gpu.__version__"))
+# Note: BERT works well with tensorflow version 1.15
+debug.assertion(version_as_float("1.11") <= version_as_float(tf.version.VERSION) < version_as_float("2.0"))
 
 #-------------------------------------------------------------------------------
 
@@ -243,21 +181,23 @@ def main():
     ## pip install pandas
     ## pip install sklearn
     ## id,text,labelsadcc,This is not what I want.,1cj1ne,He seriously have no idea what it is all about,0123nj,I don't think that we have any right to judge others,2
-    in_seperator = ","
+    in_separator = ","
     in_ext = ".csv"
+    in_quoting = csv.QUOTE_MINIMAL
     if USE_TSV_INPUT:
-        in_seperator = "\t"
+        in_separator = "\t"
         in_ext = ".tsv"
-    df_train = pd.read_csv(gh.form_path(DATA_DIR, "train" + in_ext), sep=in_seperator, names=INPUT_LABEL_LIST)
+        in_quoting = csv.QUOTE_NONE
+    debug.trace_expr(5, in_separator, in_ext, in_quoting)
+    df_train = pd.read_csv(gh.form_path(DATA_DIR, "train" + in_ext), sep=in_separator, names=INPUT_LABEL_LIST, quoting=in_quoting)
     df_bert_train = ensure_bert_data_frame(df_train)
 
     ## BAD: df_bert_train.to_csv(gh.form_path(DATA_DIR, 'train.tsv'), sep='\t', index=False, header=False)
     ## TODO: df_train.to_csv(gh.form_path(DATA_DIR, 'train.tsv'), sep='\t', index=False, header=False)
 
-    # read source data from csv file
-    ## OLD: df_train = pd.read_csv(gh.form_path(DATA_DIR, "train" + in_ext))
+    # Read source data from csv file
     test_columns = [INPUT_LABEL_LIST[0], INPUT_LABEL_LIST[2]]
-    df_test = pd.read_csv(gh.form_path(DATA_DIR, "test" + in_ext), sep=in_seperator, names=test_columns)
+    df_test = pd.read_csv(gh.form_path(DATA_DIR, "test" + in_ext), sep=in_separator, names=test_columns, quoting=in_quoting)
     df_bert_test = ensure_bert_data_frame(df_test, is_test=True)
 
     ## TODO: alternative version
@@ -267,12 +207,11 @@ def main():
     ##                         'alpha': ['a']*df_train.shape[0],
     ##                         'text': df_train['text']})
 
-    #split into test, dev
+    # Split into test, dev
     # TODO: only do if no det.tsv file
-    ## OLD" df_bert_train, df_bert_dev = train_test_split(df_bert, test_size=0.01)
     dev_file = gh.form_path(DATA_DIR, "dev" + in_ext)
     if system.file_exists(dev_file):
-        df_dev = pd.read_csv(dev_file, sep=in_seperator, names=INPUT_LABEL_LIST)
+        df_dev = pd.read_csv(dev_file, sep=in_separator, names=INPUT_LABEL_LIST, quoting=in_quoting)
         df_bert_dev = ensure_bert_data_frame(df_dev)
     else:
         df_bert_train, df_bert_dev = train_test_split(df_bert_train, test_size=0.01)  
@@ -282,7 +221,7 @@ def main():
     ## pd.DataFrame({'guid': df_test['id'],
     ##               'text': df_test['text']})
 
-    #output tsv file, no header for train and dev
+    # Output tsv file, no header for train and dev
     if not USE_TSV_INPUT:
         df_bert_train.to_csv(gh.form_path(OUTPUT_DIR, 'train.tsv'), sep='\t', index=False, header=False)
         df_bert_dev.to_csv(gh.form_path(OUTPUT_DIR, 'dev.tsv'), sep='\t', index=False, header=False)
@@ -293,21 +232,24 @@ def main():
     ## KeyError: '2'`
 
     ## TODO: Run NVIDIA CUDA utility and make sure capable of running TensorFlow w/ GPU's.
-    ## Also, warn is graphics memory is too low.
+    ## Also, warn if graphics memory is too low.
     ## nvidia-smi
     system.setenv("BERT_BASE_DIR", MODEL_DIR)
     ##CUDA_VISIBLE_DEVICES=0
     ## python script.py
     print("Make sure your GPU Processor has sufficient memory, besides adequate number of units")
-    ## BAD: gh.issue("nvidia-smi")
     print(gh.run("nvidia-smi"))
+    # Make sure tensorflow doesn't grab all the GPU memory
+    system.setenv("TF_FORCE_GPU_ALLOW_GROWTH", "true")
     # note: 0 is the order, not the total number
     system.setenv("CUDA_VISIBLE_DEVICES", "0")
+    system.setenv("NVIDIA_VISIBLE_DEVICES", "0")
     # TODO: use run and due sanity checks on output; u
     is_lower_case = system.to_string(LOWER_CASE).lower()
     bert_proper_args = ("--vocab_file={md}/vocab.txt".format(md=MODEL_DIR) if (not USE_ALBERT) else "--spm_model_file={md}/albert.model".format(md=MODEL_DIR))
-    ## OLD: gh.run("{ci} {bpa} --task_name={t} --do_train=true --do_eval=true --do_predict=true --data_dir={dd}  --{bn}_config_file={bcf} --init_checkpoint={md}/{bn}_model.ckpt --max_seq_length=64 --train_batch_size=2 --learning_rate=2e-5 --num_train_epochs=3.0 --output_dir={od} --do_lower_case={lc} --save_checkpoints_steps=10000", ci=CLASSIFIER_INVOCATION, bpa=bert_proper_args, t=TASK_NAME, dd=DATA_DIR, md=MODEL_DIR, od=OUTPUT_DIR, lc=is_lower_case, bn=BERT_NAME, bcf=BERT_CONFIG_FILE)
-    gh.issue("{ci} {bpa} --task_name={t} --do_train=true --do_eval=true --do_predict=true --data_dir={dd}  --{bn}_config_file={bcf} --init_checkpoint={md}/{bn}_model.ckpt --max_seq_length=64 --train_batch_size=2 --learning_rate=2e-5 --num_train_epochs=3.0 --output_dir={od} --do_lower_case={lc} --save_checkpoints_steps=10000", ci=CLASSIFIER_INVOCATION, bpa=bert_proper_args, t=TASK_NAME, dd=DATA_DIR, md=MODEL_DIR, od=OUTPUT_DIR, lc=is_lower_case, bn=BERT_NAME, bcf=BERT_CONFIG_FILE)
+    # TODO: add more env params: MAX_SEQ_LENGTH, TRAIN_BATCH_SIZE, LEARNING_RATE=, NUM_TRAIN_EPOCHS
+    # TODO: specify checkpoint separately: {md}/{bn}_model.ckpt => MODEL_CHECKPOINT
+    gh.issue("{ci} {bpa} --task_name={t} --do_train=true --do_eval=true --do_predict=true --data_dir={dd}  --{bn}_config_file={bcf} --init_checkpoint={md}/{bn}_model.ckpt --max_seq_length=64 --train_batch_size=2 --learning_rate=2e-5 --num_train_epochs=3.0 --output_dir={od} --do_lower_case={lc} --save_checkpoints_steps={scs}", ci=CLASSIFIER_INVOCATION, bpa=bert_proper_args, t=TASK_NAME, dd=DATA_DIR, md=MODEL_DIR, od=OUTPUT_DIR, lc=is_lower_case, bn=BERT_NAME, bcf=BERT_CONFIG_FILE. scs=SAVE_CHECKPOINTS_STEPS)
     ## sample output:
     ## eval_accuracy = 0.96741855 eval_loss = 0.17597112 global_step = 236962 loss = 0.17553209
     ## model_checkpoint_path: "model.ckpt-236962" all_model_checkpoint_paths: "model.ckpt-198000"all_model_checkpoint_paths: "model.ckpt-208000"all_model_checkpoint_paths: "model.ckpt-218000"all_model_checkpoint_paths: "model.ckpt-228000"all_model_checkpoint_paths: "model.ckpt-236962"

@@ -8,6 +8,7 @@
 #   to clarify how training is done.
 #
 # TODO:
+# - ** Rework via main.py.
 # - Rename to something like apply_text_categorizer.py, as now supports
 #   usage with a pre-trained model.
 #
@@ -16,16 +17,21 @@
 """Trains text categorization"""
 
 # Standard packages
+import math
 import sys
 
 # Local packages
 from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla.main import Main
 from mezcla import system
 from mezcla.text_categorizer import TextCategorizer
 
 # Constants
-SHOW_REPORT = system.getenv_bool("SHOW_REPORT", False)
-
+SHOW_REPORT = system.getenv_bool("SHOW_REPORT", False,
+                                 "Show categorization report from Sklearn")
+TEST_PERCENT = system.getenv_value("TEST_PERCENT", None,
+                                   "Percent of testing data to derive from training")
 
 def usage():
     """Show command-line usage"""
@@ -62,6 +68,29 @@ def main(args=None):
     if (len(args) > 3):
         testing_filename = args[3]
 
+    # Note: This gets some settings from main, but it is not used directly.
+    app = Main(skip_args=True)
+        
+    # Optionally infer testing data from training data
+    # TODO: support randomization
+    if TEST_PERCENT:
+        debug.assertion((testing_filename is None) or (testing_filename == "-"))
+        full_training_filename = training_filename
+        total_num_lines = system.to_int(gh.run(f"wc -l < {full_training_filename}"))
+        num_testing_lines = int(math.ceil((system.to_float(TEST_PERCENT) / 100.0) * (total_num_lines - 1)))
+        num_training_lines = (total_num_lines - num_testing_lines)
+        debug.trace_expr(5, total_num_lines, num_testing_lines, num_training_lines)
+        
+        # Split the training file into training proper and test
+        # note: the tail --lines=+2 option ignores the header line
+        training_filename = app.temp_base + "train.tsv"
+        gh.issue(f"head --lines=1 < {full_training_filename} > {training_filename}")
+        gh.issue(f"tail --lines=+2 < {full_training_filename} | head --lines={num_training_lines} >> {training_filename}")
+        testing_filename = app.temp_base + "test.tsv"
+        gh.issue(f"head --lines=1 < {full_training_filename} > {testing_filename}")
+        gh.issue(f"tail --lines=+2 < {full_training_filename} | tail --lines={num_testing_lines} >> {testing_filename}")
+        gh.run(f"wc -l {full_training_filename} {app.temp_base}*")
+        
     # Train text categorizer and save model to specified file
     text_cat = TextCategorizer()
     new_model = False
