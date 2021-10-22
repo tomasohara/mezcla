@@ -20,6 +20,7 @@
 # - Replace iris.csv with non-trivial ML data (e.g., to serve in benchmarking).
 # - Make sure validation used in same tense as standard practice.
 # - Rename (e.g., pandas_sklearn.py => evaluate_classifiers.py).
+# - Decompose main() into more helpers.
 # 
 
 """Illustrates sklearn classification over data with panda csv-based import"""
