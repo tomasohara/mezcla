@@ -8,6 +8,7 @@
 #   to clarify how training is done.
 #
 # TODO:
+# - *** Use sklearn for spliting training data.
 # - ** Rework via main.py.
 # - Rename to something like apply_text_categorizer.py, as now supports
 #   usage with a pre-trained model.
