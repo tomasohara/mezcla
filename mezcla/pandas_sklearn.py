@@ -28,7 +28,7 @@
 from mezcla import debug            # pylint: disable=ungrouped-imports
 
 # Standard packages
-import sys
+## OLD: import sys
 
 # Installed pckages
 import numpy as np
@@ -141,6 +141,8 @@ SHOW_ABLATION = getenv_bool("SHOW_ABLATION", False,
                             "Show ablation plot for accuracy")
 PRECISION_RECALL = getenv_bool("PRECISION_RECALL", False,
                                "Plot precision/recall curve")
+MICRO_AVERAGE = getenv_bool("MICRO_AVERAGE", False,
+                            "Use micro-averaging for mutliclass problems")
 devel_classifiers = [DEVEL_CLASSIFIER]
 validation_classifiers = [VALIDATION_CLASSIFIER]
 
@@ -274,9 +276,7 @@ def main():
         print("Null count:")
         print(dataset.isnull().sum())
     except:
-        debug.trace_fmtd(2, "Error: Problem during dataset illustration, etc.: {exc}",
-                         exc=sys.exc_info())
-        debug.raise_exception(6)
+        system.print_exception_info("dataset illustration")
     
     # Optionally show some plot
     ## OLD: if (not SKIP_PLOTS):
@@ -426,10 +426,7 @@ def main():
                                      reverse=True))
                                           
             except:
-                debug.trace_fmtd(2, "Error: Problem during training evaluation: {exc}",
-                                 exc=sys.exc_info())
-                summaries.append("Exception for " + name)
-                debug.raise_exception(6)
+                system.print_exception_info("training evaluation")
         print("Cross validation results over development test set")
         print("name\tacc\tstdev")
         print("\n".join(summaries))
@@ -485,15 +482,14 @@ def main():
             print("classification report:")
             print(classification_report(y_validation, predictions))
             if PRECISION_RECALL:
-                show_precision_recall(name, model, X_train, y_train, X_validation, y_validation)
+                if MICRO_AVERAGE:
+                    show_average_precision_recall(name, model, num_classes, X_train, y_train, X_validation, y_validation)
+                else:
+                    show_precision_recall(name, model, num_classes, X_train, y_train, X_validation, y_validation)
             if SHOW_ABLATION:
                 show_ablation(name, model, X_train, y_train, X_validation, y_validation)
         except:
-            ## OLD:
-            ## debug.trace_fmtd(2, "Error: Problem during validation evaluation: {exc}",
-            ##                  exc=sys.exc_info())
-            debug.trace_exception(2, "validation evaluation")
-            debug.raise_exception(6)
+            system.print_exception_info("validation evaluation")
     if ((num_run == 0) and VALIDATION_CLASSIFIER):
         system.print_stderr("Error: Validation classifier '{clf}' not supported", clf=VALIDATION_CLASSIFIER)
 
@@ -523,17 +519,26 @@ def show_ablation(name, model, X_train, y_train, X_validation, y_validation):
     debug.trace(5, "end show_ablation")
     return
 
-def show_precision_recall(name, model, X_train, y_train, X_validation, y_validation):
-    """Show precision/recall results for X_TRAIN, Y_TRAIN, X_VALIDATION, Y_VALIDATION"""
-    # based on https://www.statology.org/precision-recall-curve-python/
+def show_precision_recall(name, model, num_classes, X_train, y_train, X_validation, y_validation):
+    """Show precision/recall results for X_TRAIN, Y_TRAIN, X_VALIDATION, Y_VALIDATION
+    Note: This is only for binary classification
+    """
+    # based on https://www.statology.org/precision-recall-curve-python
+    num_cases = len(y_validation)
+    debug.assertion(num_classes == 2)
     precision = recall = thresholds = []
-    debug.trace(4, f"show_precision_recall{tuple([name, model, X_train, y_train, X_validation, y_validation])}")
+    debug.trace(4, f"show_precision_recall{tuple([name, model, num_classes, X_train, y_train, X_validation, y_validation])}")
     try:
         model.fit(X_train, y_train)
         y_scores = model.predict_proba(X_validation)[:, 1]
         precision, recall, thresholds = precision_recall_curve(y_validation, y_scores)
     except:
         system.print_exception_info("show_precision_recall")
+    num_points = len(precision)
+    debug.trace_expr(5, num_cases, num_points, len(precision), precision, recall, thresholds)
+    ## TODO: debug.assertion(num_points <= (num_cases / 2))
+
+    # Show the plots or print the data
     if (not SKIP_PLOTS):
         plt.plot(recall, precision)
         ## TODO: plt.yticks(thresholds)
@@ -552,6 +557,65 @@ def show_precision_recall(name, model, X_train, y_train, X_validation, y_validat
     debug.trace(5, "end show_precision_recall")        
     return
     
+
+def show_average_precision_recall(name, model, num_classes, X_train, y_train, X_validation, y_validation):
+    """Show precision/recall results for X_TRAIN, Y_TRAIN, X_VALIDATION, Y_VALIDATION
+    Note: this is an approximation based on micro-averaging"""
+    # based loosely on combination of https://www.statology.org/precision-recall-curve-python
+    # and https://scikit-learn.org/stable/auto_examples/model_selection/plot_precision_recall.html
+    debug.trace(4, f"show_average_precision_recall{tuple([name, model, num_classes, X_train, y_train, X_validation, y_validation])}")
+
+    # Compute the metrics for each class
+    num_cases = len(y_validation)
+    precision = [None] * num_classes
+    recall = [None] * num_classes
+    thresholds = [None] * num_classes
+    try:
+        model.fit(X_train, y_train)
+        for i in range(num_classes):
+            y_scores = model.predict_proba(X_validation)[:, i]
+            precision[i], recall[i], thresholds[i] = precision_recall_curve(y_validation, y_scores,
+                                                                            pos_label=i)
+    except:
+        system.print_exception_info("show_average_precision_recall compute")
+        
+    # Compute micro-average, quantifying score on all classes jointly
+    # TODO: do summation on previous loop
+    num_points = len(precision)
+    average_precision = [0] * num_points
+    average_recall = [0] * num_points
+    try:
+        for s in range(num_points):
+            for i in range(num_classes):
+                average_precision[s] += precision[i][s]
+                average_recall[s] += recall[i][s]
+            average_precision[s] /= num_classes
+            average_recall[s] /= num_classes
+    except:
+        system.print_exception_info("show_average_precision_recall micro")
+    debug.trace_expr(5, num_cases, num_points, len(precision), precision, recall, thresholds,
+                     average_precision, average_recall)
+    ## TODO: debug.assertion(num_points <= (num_cases / 2))
+
+    # Show the plots or print the data
+    if (not SKIP_PLOTS):
+        try:
+            plt.plot(average_recall, average_precision)
+            plt.xlabel("mean recall")
+            plt.ylabel("mean precision")
+            plt.title("precision recall curve [micro-averaged]")
+            plt.show()
+        except:
+            system.print_exception_info("show_average_precision_recall plot")
+    else:
+        print("precision:\n\t{vals!r}".format(vals=precision))
+        print("recall:\n\t{vals!r}".format(vals=recall))
+        print("thresholds:\n\t{vals!r}".format(vals=thresholds))
+        print("average precision:\n\t{vals!r}".format(vals=average_precision))
+        print("average recall:\n\t{vals!r}".format(vals=average_recall))
+    debug.trace(5, "end show_average_precision_recall")        
+    return
+
 #------------------------------------------------------------------------
 
 if __name__ == "__main__":

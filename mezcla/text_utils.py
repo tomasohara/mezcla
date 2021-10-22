@@ -9,11 +9,23 @@
 # - This is in the spirit of quick-n-dirty (e.g., for R&D: they are packages
 #   that are better suited for industrial strength code (e.g., for production).
 #
+# Usage examples:
+#
+#   from mezcla import debug
+#   from mezcla import text_utils
+#
+#   import tensorflow
+#   from mezcla.text_utils import version_to_number as version2num
+#   debug.assertion(version2num(tensorflow.__version__) <= version2num("1.15"))
+#
+#   devlin_text = document_to_text("devlin-bert-pretraining-arxiv-1810-04805-dec19.pdf")
+#   str(devlin_text).count("BERT")
+#   => 117
+#
 # TODO:
 # - Write up test suite, el tonto!.
 # - Add pointer to specific packages better for production use.
 # - Move HTML-specific functions into html_utils.py.
-#
 #
 
 """Miscellaneous text utility functions"""
@@ -142,6 +154,9 @@ def version_to_number(version, max_padding=3):
     major number m is the minor, r is the revision and o is other.
     Each version component will be prepended with up MAX_PADDING [3] 0's
     Notes:
+    - comparisons should be made against using functional constant, not number:
+      EX: version_to_number("1.1.1") > version_to_number("1.1")
+      EX: version_to_number("1.1.1") < 1.1
     - strings in the version are ignored
     - 0 is returned if version string is non-standard"""
     # EX: version_to_number("1.11.1") => 1.00010001
