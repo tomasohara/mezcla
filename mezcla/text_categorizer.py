@@ -387,6 +387,7 @@ class TextCategorizer(object):
         (labels, values) = read_categorization_data(filename)
         label_values = labels
         self.keys = sorted(numpy.unique(labels))
+        debug.trace_expr(5, self.keys)
         if ENCODE_CLASSES:
             label_indices = [self.keys.index(l) for l in labels]
             label_values = label_indices

@@ -212,18 +212,26 @@ def string_diff(text1, text2):
     # EX: string_diff("one\ntwo\nthree\nfour", "one\ntoo\ntree\nfour") => "  one\n- two\n…  ^\n+ too\n…  ^\n- three\n…  -\n+ tree  four\n"
     
     # Perform comparison
-    lines1 = (text1 + "\n").splitlines(keepends=True)
-    lines2 = (text2 + "\n").splitlines(keepends=True)
-    diff_result = "".join(ndiff(lines1, lines2))
+    diff_result = "n/a"
+    try:
+        lines1 = (text1 + "\n").splitlines(keepends=True)
+        lines2 = (text2 + "\n").splitlines(keepends=True)
+        diff_result = "".join(ndiff(lines1, lines2))
+    except:
+        system.print_exception_info("string_diff compare")
     
     # Convert to diff-style output, using < and > instead of - and +
-    ## TODO:
-    ## diff_result = re.sub(r"^- ", "< ", diff_result, re.MULTILINE)
-    ## diff_result = re.sub(r"^\+ ", "> ", diff_result, re.MULTILINE)
-    ## diff_result = re.sub(r"^\? ", f"{ELLIPSIS} ", diff_result, re.MULTILINE)
-    diff_result = diff_result.replace("- ", "< ", 1).replace("\n- ", "\n< ").   \
-                  replace("+ ", "> ", 1).replace("\n+ ", "\n> ").               \
-                  replace("\n? ", f"\n{ELLIPSIS} ")
+    try:
+        ## TODO:
+        ## diff_result = re.sub(r"^- ", "< ", diff_result, re.MULTILINE)
+        ## diff_result = re.sub(r"^\+ ", "> ", diff_result, re.MULTILINE)
+        ## diff_result = re.sub(r"^\? ", f"{ELLIPSIS} ", diff_result, re.MULTILINE)
+        diff_result = diff_result.replace("- ", "< ", 1).replace("\n- ", "\n< ").   \
+                          replace("+ ", "> ", 1).replace("\n+ ", "\n> ").           \
+                          replace("\n? ", f"\n{ELLIPSIS} ")
+    except:
+        system.print_exception_info("string_diff postprocess")
+
     debug.trace(6, f"string_diff() => {diff_result}")
     return diff_result
 

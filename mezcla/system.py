@@ -416,7 +416,8 @@ def quote_url_text(text, unquote=False):
     return result
 #
 def unquote_url_text(text):
-    """Wrapper around quote_url_text"""
+    """Unquotes URL TEXT:
+    Note: Wrapper around quote_url_text w/ UNQUOTE set"""
     return quote_url_text(text, unquote=True)
 
 def escape_html_text(text):
@@ -622,13 +623,13 @@ def lookup_entry(hash_table, entry, retain_case=False):
 
                 
 def write_file(filename, text):
-    """Create FILENAME with TEXT"""
+    """Create FILENAME with TEXT.
+    Note: A newline is added at the end if missing"""
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     try:
         if not isinstance(text, STRING_TYPES):
             text = to_string(text)
         with open(filename, "w") as f:
-            ## OLD: f.write(to_utf8(text) + "\n")
             f.write(to_utf8(text))
             if not text.endswith("\n"):
                 f.write("\n")

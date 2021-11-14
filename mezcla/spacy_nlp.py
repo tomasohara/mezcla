@@ -65,8 +65,8 @@ class SentimentAnalyzer(object):
     """Class for analyzing sentiment of sentences or words"""
     # Uses VADER: Valence Aware Dictionary and sEntiment Reasoner
     # Examples:
-    # bad:  {'neg': 1.0, 'neu': 0.0, 'pos': 0.0, 'compound': -0.5423}
-    # good: {'neg': 0.0, 'neu': 0.0, 'pos': 1.0, 'compound': 0.4404}
+    # "bad":  {'neg': 1.0, 'neu': 0.0, 'pos': 0.0, 'compound': -0.5423}
+    # "good": {'neg': 0.0, 'neu': 0.0, 'pos': 1.0, 'compound': 0.4404}
     analyzer = None
     
     def __init__(self):

@@ -133,13 +133,13 @@ class TestWrapper(unittest.TestCase):
         debug.trace_object(5, self, "TestWrapper instance")
         return
 
-    def run_script(self, options=None, data_file=None, log_file=None, 
+    def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
                    out_file=None, env_options=""):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
         not specifed, they  are derived from self.temp_file.
         Note: issues warning if script invocation leads to error"""
-        tpo.debug_format("TestWrapper.run_script({opts}, {df}, {lf}, {of}, {env})", 5,
+        tpo.debug_format("TestWrapper.run_script({opts}, {df}, {lf}, {of}, {env})", trace_level + 1,
                          opts=options, df=data_file, lf=log_file, 
                          of=out_file, env=env_options)
         if options is None:
@@ -162,7 +162,7 @@ class TestWrapper(unittest.TestCase):
         # note; trailing newline removed as with shell output
         if output.endswith("\n"):
             output = output[:-1]
-        tpo.debug_format("output: {{\n{out}\n}}", 4,
+        tpo.debug_format("output: {{\n{out}\n}}", trace_level,
                          out=gh.indent_lines(output))
 
         # Make sure no python or bash errors. For example,
@@ -171,7 +171,7 @@ class TestWrapper(unittest.TestCase):
         error_found = re.search(r"(\S+error:)|(no module)|(command not found)",
                                 log_contents.lower())
         gh.assertion(not error_found)
-        tpo.debug_format("log contents: {{\n{log}\n}}", 5,
+        tpo.debug_format("log contents: {{\n{log}\n}}", trace_level + 1,
                          log=gh.indent_lines(log_contents))
 
         # Do sanity check for python exceptions

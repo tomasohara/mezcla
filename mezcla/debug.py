@@ -500,6 +500,8 @@ if __debug__:
 
 else:
 
+    trace_level = 0
+    
     def non_debug_stub(*_args, **_kwargs):
         """Non-debug stub"""
         return
@@ -507,7 +509,7 @@ else:
 
     def get_level():
         """Returns tracing level (i.e., 0)"""
-        return 0
+        return trace_level
 
 
     def get_output_timestamps():

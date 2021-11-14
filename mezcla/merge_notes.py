@@ -202,7 +202,7 @@ def main():
             debug.trace_fmtd(5, "New date at line {n}: raw={raw}; resolved={new}\n", 
                              n=line_num, raw=new_date, new=new_resolved_date)
         else:
-            debug.trace_fmt(6, "Ignoring non-date at line {n}", n=line_num)
+            debug.trace_fmt(7, "Ignoring non-date in date check at line {n}", n=line_num)
                             
         # Add optional source indicator to current date
         if show_file_info and needs_source_info:

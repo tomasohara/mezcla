@@ -315,6 +315,8 @@ def main():
         # TODO: NUMERIC_CLASSES
     if ENCODE_CLASSES:
         y_encodings = create_feature_mapping(y)
+        y_enum = sorted(y_encodings.keys(), key=lambda k: y_encodings[k])
+        debug.trace_expr(4, y_encodings, y_enum)
         y = np.array([y_encodings[v] for v in y])
         # TODO: COERCE_FLOAT
     debug.trace_fmtd(7, "X={X}\ny={y}", X=X, y=y)

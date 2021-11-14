@@ -93,6 +93,16 @@ def remove_extension(filename, extension):
     return base
 
 
+def dir_path(filename):
+    """Wrapper around os.path.dirname"""
+    # EX: dirname("/tmp/solr-4888.log") => "/tmp"
+    path = os.path.dirname(filename)
+    debug.trace(5, f"dirname({filename}) => {path}")
+    # TODO: add realpath (i.e., canonical path)
+    debug.assertion(form_path(path, basename(filename)) == filename)
+    return path
+
+
 def file_exists(filename):
     """Returns indication that FILENAME exists"""
     ok = os.path.exists(filename)
@@ -289,26 +299,36 @@ def get_hex_dump(text, break_newlines=False):
     return result
 
 
-def extract_matches(pattern, lines, fields=1, multiple=False):
+def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0):
     """Checks for PATTERN matches in LINES of text returning list of tuples with replacement groups.
     Notes: The number of FIELDS can be greater than 1.
-    Optionally allows for MULTIPLE matches within a line."""
+    Optionally allows for MULTIPLE matches within a line.
+    The lines are concatenated if DOTA
+    """
+    ## TODO: If unspecified, the regex flags default to DOTALL.
     # ex: extract_matches(r"^(\S+) \S+", ["John D.", "Jane D.", "Plato"]) => ["John", "Jane"]
     # Note: modelled after extract_matches.perl
     # TODO: make multiple the default
-    debug_print("extract_matches(%s, _, [f=%s], [m=%s])" % (pattern, fields, multiple), 6)
+    debug_print("extract_matches(%s, _, [fld=%s], [m=%s], [flg=%s])" % (pattern, fields, multiple, re_flags), 6)
+    ## TODO
+    ## if re_flags is None:
+    ##     re_flags = re.DOTALL
     debug.trace_values(6, lines, "lines")
     ## assert type(lines) == list
     assert isinstance(lines, list)
     if pattern.find("(") == -1:
         pattern = "(" + pattern + ")"
+    if (re_flags and (re_flags & re.DOTALL)):
+        lines = [ "\n".join(lines) + "\n" ]
+        debug.trace_expr(6, lines)
     matches = []
     for i, line in enumerate(lines):
         while line:
             debug.trace(6, f"L{i}: {line}")
             try:
                 # Extract match field(s)
-                match = re.search(pattern, line)
+                debug.trace_expr(7, pattern, line, re_flags, fields)
+                match = re.search(pattern, line, flags=re_flags)
                 if not match:
                     break
                 result = match.group(1) if (fields == 1) else [match.group(i + 1) for i in range(fields)]
@@ -324,6 +344,7 @@ def extract_matches(pattern, lines, fields=1, multiple=False):
                 line = new_line
             except (re.error, IndexError):
                 debug_print("Warning: Exception in pattern matching: %s" % str(sys.exc_info()), 2)
+                line = None
     debug_print("extract_matches() => %s" % (matches), 7)
     double_indent = INDENT + INDENT
     debug_format("{ind}input lines: {{\n{res}\n{ind}}}", 8,
@@ -331,21 +352,21 @@ def extract_matches(pattern, lines, fields=1, multiple=False):
     return matches
 
 
-def extract_match(pattern, lines, fields=1, multiple=False):
+def extract_match(pattern, lines, fields=1, multiple=False, re_flags=0):
     """Extracts first match of PATTERN in LINES for FIELDS"""
-    matches = extract_matches(pattern, lines, fields, multiple)
+    matches = extract_matches(pattern, lines, fields, multiple, re_flags)
     result = (matches[0] if matches else None)
     debug_print("match: %s" % result, 5)
     return result
 
 
-def extract_match_from_text(pattern, text, fields=1, multiple=False):
+def extract_match_from_text(pattern, text, fields=1, multiple=False, re_flags=0):
     """Wrapper around extract_match for text input"""
     ## TODO: rework to allow for multiple-line matching
-    return extract_match(pattern, text.split("\n"), fields, multiple)
+    return extract_match(pattern, text.split("\n"), fields, multiple, re_flags)
 
 
-def extract_matches_from_text(pattern, text, fields=1, multiple=None):
+def extract_matches_from_text(pattern, text, fields=1, multiple=None, re_flags=0):
     """Wrapper around extract_matches for text input
     Note: By default MULTIPLE matches are returned"""
     # EX: extract_matches_from_text(".", "abc") => ["a", "b", "c"]
@@ -353,7 +374,7 @@ def extract_matches_from_text(pattern, text, fields=1, multiple=None):
     if multiple is None:
         multiple = True
     # TODO: make multiple True by default
-    return extract_matches(pattern, text.split("\n"), fields, multiple)
+    return extract_matches(pattern, text.split("\n"), fields, multiple, re_flags)
 
 
 def count_it(pattern, text, field=1, multiple=None):

@@ -12,13 +12,13 @@ import re
 
 # Installed packages
 ## TODO: import numpy
-
-# Local packages
-# TODO: def mezcla_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
+#
+# "local" packages (n.b., check for customized version)
 from mezcla import debug
 from mezcla.main import Main
 from mezcla import system
 ## TODO:
+## from mezcla import data_utils as du
 ## from mezcla.my_regex import my_re
 ## from mezcla import glue_helpers as gh
 
@@ -27,7 +27,7 @@ from mezcla import system
 ##    M-: (query-replace-regexp "todo\\([-_]\\)arg" "arg\\1name")
 ## where M-: is the emacs keystroke short-cut for eval-expression.
 TODO_ARG = "TODO-arg"
-## TODO_ARG2 = "TODO-arg2"
+## ALT_TODO_ARG = "alt-todo-arg"
 ## TODO_FILENAME = "TODO-filename"
 
 ## TODO:
@@ -45,8 +45,8 @@ class Script(Main):
     """Input processing class"""
     # TODO: -or-: """Adhoc script class (e.g., no I/O loop, just run calls)"""
     ## TODO: class-level member variables for arguments (avoids need for class constructor)
-    TODO_arg = False
-    ## TODO_arg2 = ""
+    todo_arg = False
+    ## alt_todo_arg = ""
 
     # TODO: add class constructor if needed for non-standard initialization
     ## def __init__(self, *args, **kwargs):
@@ -58,8 +58,8 @@ class Script(Main):
         """Check results of command line processing"""
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
         ## TODO: extract argument values
-        self.TODO_arg = self.get_parsed_option(TODO_ARG, self.TODO_arg)
-        ## self.TODO_arg2 = self.get_parsed_option(TODO_ARG2, self.TODO_arg2)
+        self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
+        ## self.alt_todo_arg = self.get_parsed_option(alt_todo_arg, self.alt_todo_arg)
         # TODO: self.TODO_filename = self.get_parsed_argument(TODO_FILENAME)
         debug.trace_object(5, self, label="Script instance")
 
@@ -67,10 +67,10 @@ class Script(Main):
         """Processes current line from input"""
         debug.trace_fmtd(6, "Script.process_line({l})", l=line)
         # TODO: flesh out
-        if self.TODO_arg and "TODO" in line:
+        if self.todo_arg and "TODO" in line:
             print("arg1 line: %s" % line)
         ## TODO: regex pattern matching
-        ## elif my_re.search(self.TODO_arg2, line):
+        ## elif my_re.search(self.alt_todo_arg, line):
         ##     print("arg2 line: %s" % line)
 
     ## TODO: if no input proocessed, customize run_main_step instead
@@ -104,7 +104,7 @@ if __name__ == '__main__':
         boolean_options=[(TODO_ARG, "TODO-desc")],
         # Note: FILENAME is default argument unless skip_input
         ## positional_arguments=[FILENAME1, FILENAME2], 
-        ## text_options=[(TODO_ARG2, "TODO-desc")],
+        ## text_options=[(alt_todo_arg, "TODO-desc")],
         # Note: Following added for indentation: float options are not common
         float_options=None)
     app.run()

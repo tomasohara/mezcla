@@ -31,7 +31,6 @@ class MyArgumentParser(ArgumentParser):
 
     def __init__(self, *args, **kwargs):
         """Constructor (relegating all to parent)"""
-        ## OLD: super(MyArgumentParser, self).__init__(*args, **kwargs)
         super().__init__(*args, **kwargs)
 
     def exit(self, status=0, message=None):
@@ -54,6 +53,7 @@ class TestIt(TestWrapper):
         class Test(Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
+            ## TODO: rename as TestMain
 
         # note: format is ("option", "description", "default"), or just "option"
         app = Test(text_options=[("name", "Full name", "John Doe")],

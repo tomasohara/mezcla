@@ -108,21 +108,22 @@ class Main(object):
                  multiple_files=False,
                  use_temp_base_dir=None,
                  usage_notes=None,
+                 program=None,
                  paragraph_mode=None, track_pages=None, file_input_mode=None,
                  boolean_options=None, text_options=None, int_options=None,
                  float_options=None, positional_options=None, positional_arguments=None,
-                 skip_input=None, manual_input=None, auto_help=None):
+                 skip_input=None, manual_input=None, auto_help=None, **kwargs):
         """Class constructor: parses RUNTIME_ARGS (or command line), with specifications
         for BOOLEAN_OPTIONS, TEXT_OPTIONS, INT_OPTIONS, FLOAT_OPTIONS, and POSITIONAL_OPTIONS
         (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args)."""
         tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts}, "
                          + "i={ints}, f={floats}, p={posns}, s={skip}, m={mi}, a={auto},"
-                         + "pm={para}, tp={page}, fim={file}, noargs={skip_args})", 5,
+                         + "pm={para}, tp={page}, fim={file}, prog={prog}, noargs={skip_args}, kw={kw})", 5,
                          args=runtime_args, desc=description, bools=boolean_options,
                          texts=text_options, ints=int_options, floats=float_options,
                          posns=positional_options, skip=skip_input, mi=manual_input, auto=auto_help,
                          para=paragraph_mode, page=track_pages, file=file_input_mode,
-                         ha=HELP_ARG, skip_args=skip_args)
+                         prog=program, ha=HELP_ARG, skip_args=skip_args, kw=kwargs)
         self.description = "TODO: what the script does" # defaults to TODO note for client
         # TODO: boolean_options = [(VERBOSE, "Verbose output mode")]
         self.boolean_options = []
@@ -177,7 +178,7 @@ class Main(object):
         # Setup temporary file and/or base directory
         # TODO: allow temp_base handling to be overridable by constructor options
         prefix = (FILE_BASE + "-")
-        ntf_args = {'prefix': (FILE_BASE + "-"),
+        ntf_args = {'prefix': prefix,
                     ## TODO: 'suffix': "-"
                     }
         self.temp_base = tpo.getenv_text("TEMP_BASE",
@@ -204,6 +205,7 @@ class Main(object):
                 debug.trace_fmt(4, "Adding {ha} to command line (as per auto_help)", ha=HELP_ARG)
                 runtime_args = [HELP_ARG]
         # Get other options
+        self.program = program
         if description:
             self.description = description
         if boolean_options:
@@ -276,6 +278,9 @@ class Main(object):
         """Get value for option LABEL, with dashes converted to underscores. 
         If POSITIONAL specified, DEFAULT value is used if omitted"""
         opt_label = self.get_option_name(label) if not positional else label
+        if not self.parsed_args:
+            debug.trace(5, "Error: Unexpected condition in get_parsed_option")
+            return default
         value = self.parsed_args.get(opt_label)
         # Override null value with default
         if value is None:
@@ -313,7 +318,7 @@ class Main(object):
                            + ("- Available env. options:\n\t{opts}".format(
                                opts=env_opts)))
         parser = self.argument_parser(description=self.description,
-                                      epilog=usage_notes,
+                                      epilog=usage_notes, prog=self.program,
                                       formatter_class=argparse.RawDescriptionHelpFormatter)
         # TODO: use capitalized script description but lowercase argument help
 
@@ -335,6 +340,7 @@ class Main(object):
             parser.add_argument(opt_label, default=opt_default, help=opt_desc)
 
         # Add dummy arguments
+        # Note: These are used as reminders on how to flesh out the initialization
         if tpo.detailed_debugging():
             if not self.boolean_options:
                 parser.add_argument("--TODO-bool-arg", default=False, action='store_true',
@@ -357,6 +363,7 @@ class Main(object):
             nargs = None
             tpo.debug_format("positional arg {i}, nargs={nargs}", 6, 
                              i=i, nargs=nargs)
+            # TODO: add default to opt_desc if not mentioned
             parser.add_argument(opt_label, default=opt_default, nargs=nargs, 
                                 help=opt_desc)
 
@@ -368,7 +375,7 @@ class Main(object):
             parser.add_argument("filename", nargs=filename_nargs, default='-',
                                 help="Input filename")
 
-        # Parse the commandline and get result
+        # Parse the command line and get result
         tpo.debug_format("parser={p}", 6, p=parser)
         self.parser = parser
         self.parsed_args = vars(parser.parse_args(runtime_args))
