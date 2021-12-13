@@ -39,8 +39,9 @@
 # Load required libraries
 #
 # - For Debugging timestamp purposes (e.g., OUTPUT_DEBUG_TIMESTAMPS support)
-from datetime import datetime
-import atexit
+## OLD:
+## from datetime import datetime
+## import atexit
 #
 # - The usuals:
 import sys
@@ -51,8 +52,8 @@ import inspect
 import logging
 import pickle
 from six import string_types
-import time
-import types
+## OLD: import time
+## OLD: import types
 
 # Load OrderedDict (added in Python 2.7)                                       
 try:
@@ -65,10 +66,15 @@ except ImportError:
             """Legacy stub"""
             assert False, "requires ordereddict package (or python 2.7+)"
 
+# Local packages
+from mezcla import debug
+from mezcla import system
+            
 # Defaults for globals
-debug_level = 0                          # level at which debug tracing occurs
-output_timestamps = False                # whether to prefix output with timestamp
-use_logging = False                      # traces via logging facility (and stderr)
+## OLD:
+## debug_level = 0                          # level at which debug tracing occurs
+## output_timestamps = False                # whether to prefix output with timestamp
+## use_logging = False                      # traces via logging facility (and stderr)
 skip_format_warning = False              # skip warning about format w/o namespace
 stderr = sys.stderr                      # file handle for error messages 
 
@@ -103,322 +109,454 @@ USE_SIMPLE_FORMAT = (sys.version_info[0] <= 2) and (sys.version_info[1] <= 5)
 # - Running python with the -O (optimized) option ensures that __debug__ is False.
 #
 
-if __debug__:
+## OLD:
+## if __debug__:
+## 
+##     def set_debug_level(level):
+##         """Set new debugging LEVEL"""
+##         global debug_level
+##         debug_level = level
+##         return
+## 
+## 
+##     def debugging_level():
+##         """Get current debugging level"""
+##         global debug_level
+##         return debug_level
+## 
+## 
+##     def debug_trace_without_newline(text, *args, **kwargs):
+##         """Print TEXT without trailing newline, provided at debug trace LEVEL or higher, using ARGS for %-placeholders
+##         Notes: ensures text encoded as UTF8 if under Python 2.x;
+##         also, exceptions are ignored (to encourage more tracing)."""
+##         # Warning: To avoid recursion don't call other user functions here unless
+##         # they don't uses tracing (e.g., _normalize_unicode).
+##         # TODO: work out shorter name (e.g., debug_trace_no_eol)
+##         #
+##         global debug_level
+##         level = kwargs.get('level', 1)
+##         if debug_level >= level:
+##             if debug_level >= 96:
+##                 stderr.write("debug_trace_without_newline(text=%s, level=%s, args=%s)" % 
+##                              (_normalize_unicode(text), level, [_normalize_unicode(v) for v in args]))
+##             if args:
+##                 try:
+##                     text = (text % args)
+##                 except (AttributeError, IndexError, NameError, TypeError, ValueError):
+##                     print_stderr("Exception in debug_print: " + str(sys.exc_info()))
+##                     
+##             # Output optional timestamp (e.g., for quick-n-dirty profiling)
+##             if output_timestamps:
+##                 # Get time-proper from timestamp (TODO: find standard way to do this)
+##                 # TODO: make date-stripping optional
+##                 timestamp = re.sub(r"^\d+-\d+-\d+\s*", "", debug_timestamp())
+##                 stderr.write("[%s] " % timestamp)
+##             # Output text, making sure text represented in UTF8 if needed (n.b., via inlined ensure_unicode)
+##             text = _normalize_unicode(text)
+##             stderr.write(text)
+##             if use_logging:
+##                 logging.debug(text)
+##             ##
+##             ## # Sanity check to ensure no instantiatable templates used in text
+##             ## # TODO: rework debug_print to safely handle templates by default
+##             ## while True:
+##             ##     #                   +-pre--++---variable----++--rest-----+
+##             ##     match = re.search(r"(^|[^{])({[A-Za-z0-9_]+})(([^}]|$|).*)", text)
+##             ##     if not match:
+##             ##         break
+##             ##     text = match.group(3)
+##             ##     var_format = match.group(2)
+##             ##     if format(var_format, True, True) != var_format:
+##             ##         print_stderr("Warning: template used with instantiated variable; try debug_format instead")
+##         return
+## 
+##     def debug_trace(text, *args, **kwargs):
+##         """Prints TEXT (formatted with ARG1, ...) if at LEVEL or higher.
+##         Note: To avoid needless evaluation arguments should be specified 
+##         as distinct paramaters rather than using string format operator (%)."""
+##         # Note: Implemented in terms of debug_trace_without_newline to keep timestamp support in one place.
+##         # TODO: add skip_newline option
+##         global debug_level
+##         debug_trace_without_newline(text, *args, **kwargs)
+##         level = kwargs.get('level', 1)
+##         # TODO: assertion(isinstance(level, int))
+##         if debug_level >= level:
+##             stderr.write("\n")
+##         return
+## 
+##     def debug_print_without_newline(text, level=1):
+##         """Wrapper around debug_trace_without_newline (q.v.)
+##         Note: Consider using debug_trace_without_newline directly."""
+##         return debug_trace_without_newline(text, level=level)
+## 
+##     def debug_print(text, level=1, skip_newline=False):
+##         """Print TEXT if at debug trace LEVEL or higher.
+##         Notes:
+##         - Implemented in terms of debug_print_without_newline to keep timestamp support in one place.
+##         - Consider using debug_trace instead (to avoid string interpolation overhead)."""
+##         # TODO: assertion(isinstance(level, int))
+##         global debug_level
+##         debug_trace_without_newline(text, level=level)
+##         if (debug_level >= level) and (not skip_newline):
+##             stderr.write("\n")
+##         return
+## 
+## 
+##     def debug_format(text, level=1, skip_newline=False, **namespace):
+##         """Version of debug_print that expands TEXT using format.
+##         Note: Exceptions are ignored (to encourage tracing, not discourage)."
+##         """
+##         # NOTE: String values from namespace need to be in UTF-8 format.
+##         # TODO: rename as debug_print_format as not just formatting the text
+##         global debug_level
+##         assert(isinstance(level, int))
+##         if debug_level >= level:
+##             ignore_exc = (debug_level < QUITE_DETAILED)
+##             debug_print(format(text, indirect_caller=True, 
+##                                ignore_exception=ignore_exc, **namespace),
+##                         skip_newline=skip_newline)
+##         return
+## 
+## 
+##     def debug_timestamp():
+##         """Return timestamp for use in debugging traces"""
+##         # EX: debug_timestamp() => "2015-01-18 16:39:45.224768"
+##         # TODO: use format compatible with logging (e.g., comma in place of period before micrososeconds)
+##         return to_string(datetime.now())
+## 
+## 
+##     def debug_raise(level=1):
+##         """Raise an exception if debugging at specified trace LEVEL or higher"""
+##         # Note: Intended for use in except clause to produce full stacktrace when debugging.
+##         # TODO: Have version that just prints complete stacktrace (i.e., without breaking).
+##         if debug_level >= level:
+##             raise                        # pylint: disable=misplaced-bare-raise
+##         return
+## 
+## 
+##     def trace_array(array, level=VERBOSE, label=None):
+##         """Output the (list) array to STDERR if debugging at specified trace LEVEL or higher, using LABEL as prefix"""
+##         global debug_level
+##         assert(isinstance(level, int))
+##         if debug_level >= level:
+##             trace_output = ("%s: " % label) if label else ""
+##             for i, item in enumerate(array):
+##                 trace_output += "  " if (i > 0) else ""
+##                 trace_output += "%d: %s" % (i, item)
+##             debug_print(trace_output)
+##         return
+## 
+## 
+##     def trace_object(obj, level=VERBOSE, label=None, show_private=None, show_methods_etc=None, indent="", max_value_len=1024):
+##         """Traces out OBJ instance to stderr if at debugging LEVEL or higher, 
+##         optionally preceded by LABEL, using INDENT, and limiting value lengths to MAX_VALUE_LEN"""
+##         # based on http://stackoverflow.com/questions/192109/is-there-a-function-in-python-to-print-all-the-current-properties-and-values-of
+##         debug_format("trace_object(_, lvl={lvl}, lab={lab}, prv={prv}, mth={mth}, ind={ind})", 7,
+##                      lvl=level, lab=label, prv=show_private, mth=show_methods_etc, ind=indent)
+##         global debug_level
+##         assert(isinstance(level, int))
+##         if debug_level >= level:
+##             debug_print("%s%s: {" % (indent, label if label else obj))
+##             if show_private is None:
+##                 show_private = (level >= 6)
+##             if show_methods_etc is None:
+##                 show_methods_etc = (level >= 7)
+##             for attr in dir(obj):
+##                 # Note: unable to filter properties directly (so try/except handling added)
+##                 # See Take1 and Take2 below.
+##                 try:
+##                     ## TAKE2:
+##                     ## if re.search("property|\?\?\?", str(getattr(type(obj), attr, "???"))):
+##                     ##     debug_print("%s: property" % attr, 7)
+##                     ##     continue
+##                     # note: omits internal variables unless at debug level 6+; also omits methods unless at debug level 7+
+##                     debug_print("%s\tattr: name: %s" % (indent, attr), 8)
+##                     if (attr[0] != '_') or show_private:
+##                         attr_value = getattr(obj, attr)
+##                         debug_trace("%s\tattr: type: %s",
+##                                     indent, type(attr_value), level=8)
+##                         method_types = (
+##                             types.MethodType, types.FunctionType, 
+##                             types.BuiltinFunctionType, types.BuiltinMethodType,
+##                             types.ModuleType)
+##                         if ((not isinstance(attr_value, method_types))
+##                                 or ("method-wrapper" not in str(type(attr_value)))
+##                                 or show_methods_etc):
+##                             if len(to_string(attr_value)) > max_value_len:
+##                                 attr_value = to_string(attr_value)[:max_value_len] + "..."
+##                             debug_print("%s\t%s = %r" % (indent, attr, attr_value))
+##                 except (KeyError, ValueError, AttributeError):
+##                     debug_print("%s\t%s = ???" % (indent, attr))
+##             debug_print("%s}" % indent)
+##         return
+## 
+## 
+##     def trace_value(value, level=5, label=None):
+##         """Traces out VALUE to stderr if at debugging LEVEL or higher with optional '<LABEL>: ' prefix.
+##         @Note: If value is an array or dict, each entry is output on a separate line."""
+##         global debug_level
+##         assert(isinstance(level, int))
+##         if debug_level >= level:
+##             prefix = ""
+##             value_spec = value
+##             if label:
+##                 prefix = ("%s: " % label)
+##             if isinstance(value, list):
+##                 value_spec = "{\n" + "\n".join(["\t%s: %s" % (i, v) for (i, v) in enumerate(value)]) + "}\n"
+##             elif isinstance(value, dict):
+##                 value_spec = "{\n"
+##                 for key in value.keys():
+##                     # Note: Exception handling used in case value access leads to error,
+##                     # such as with hash tables having Mako placeholders for undefined values.
+##                     try:
+##                         key_value = value[key]
+##                         debug_print("key=%s key_value=%s" % (key, key_value), 9)
+##                     except NameError:
+##                         print_stderr("Exception in trace_value getting value for key %s" % key)
+##                         key_value = "n/a"
+##                     value_spec += "\t%s: %s\n" % (key, key_value)
+##                 value_spec += "}\n"
+##             debug_print("%s%s" % (prefix, value_spec))
+##         return
+## 
+## 
+##     def trace_current_context(level=QUITE_DETAILED, label=None, 
+##                               show_methods_etc=False):
+##         """Traces out current context (local and global variables), with output
+##         prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
+##         Notes: By default the debugging level must be quite-detailed (6).
+##         If the debugging level is higher, the entire stack frame is traced.
+##         Also, methods are omitted by default."""
+##         frame = None
+##         if label is None:
+##             label = "current"
+##         try:
+##             frame = inspect.currentframe().f_back
+##         except (AttributeError, KeyError, ValueError):
+##             debug_print("Exception during trace_current_context: " + 
+##                         to_string(sys.exc_info()), 5)
+##         debug_format("{label} context: {{", level, label=label)
+##         prefix = "    "
+##         if (debugging_level() - level) > 1:
+##             trace_object(frame, (level + 2), "frame", indent=prefix,
+##                          show_methods_etc=show_methods_etc)
+##         else:
+##             debug_format("frame = {f}", level, f=frame)
+##             if frame:
+##                 trace_object(frame.f_globals, level, "globals", indent=prefix,
+##                              show_methods_etc=show_methods_etc)
+##                 trace_object(frame.f_locals, level, "locals", indent=prefix,
+##                              show_methods_etc=show_methods_etc)
+##         debug_trace("}", level=level)
+##         return
+## 
+## 
+##     def during_debugging(expression=True):
+##         """Returns True if debugging, optionally conditioned upon EXPRESSION
+##          Note: The expression is not considered in non-debug mode"""
+##         return (debugging_level() > 0) and expression
+## 
+## else:
+## 
+##     def set_debug_level(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def debugging_level(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         return 0
+## 
+## 
+##     def debug_trace_without_newline(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def debug_trace(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def debug_print_without_newline(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def debug_print(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def debug_format(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def debug_timestamp(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         return ""
+## 
+## 
+##     def debug_raise(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def trace_array(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def trace_object(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def trace_value(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def trace_current_context(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         pass
+## 
+## 
+##     def during_debugging(*_args, **_kwargs):
+##         """Non-debug stub"""
+##         return False
+## 
 
-    def set_debug_level(level):
-        """Set new debugging LEVEL"""
-        global debug_level
-        debug_level = level
-        return
+def set_debug_level(level):
+    """Set new debugging LEVEL"""
+    return debug.set_level(level)
 
 
-    def debugging_level():
-        """Get current debugging level"""
-        global debug_level
-        return debug_level
+def debugging_level():
+    """Get current debugging level"""
+    return debug.get_level()
 
 
-    def debug_trace_without_newline(text, *args, **kwargs):
-        """Print TEXT without trailing newline, provided at debug trace LEVEL or higher, using ARGS for %-placeholders
-        Notes: ensures text encoded as UTF8 if under Python 2.x;
-        also, exceptions are ignored (to encourage more tracing)."""
-        # Warning: To avoid recursion don't call other user functions here unless
-        # they don't uses tracing (e.g., _normalize_unicode).
-        # TODO: work out shorter name (e.g., debug_trace_no_eol)
-        #
-        global debug_level
-        level = kwargs.get('level', 1)
-        if debug_level >= level:
-            if debug_level >= 96:
-                stderr.write("debug_trace_without_newline(text=%s, level=%s, args=%s)" % 
-                             (_normalize_unicode(text), level, [_normalize_unicode(v) for v in args]))
-            if args:
-                try:
-                    text = (text % args)
-                except (AttributeError, IndexError, NameError, TypeError, ValueError):
-                    print_stderr("Exception in debug_print: " + str(sys.exc_info()))
-                    
-            # Output optional timestamp (e.g., for quick-n-dirty profiling)
-            if output_timestamps:
-                # Get time-proper from timestamp (TODO: find standard way to do this)
-                # TODO: make date-stripping optional
-                timestamp = re.sub(r"^\d+-\d+-\d+\s*", "", debug_timestamp())
-                stderr.write("[%s] " % timestamp)
-            # Output text, making sure text represented in UTF8 if needed (n.b., via inlined ensure_unicode)
-            text = _normalize_unicode(text)
-            stderr.write(text)
-            if use_logging:
-                logging.debug(text)
-            ##
-            ## # Sanity check to ensure no instantiatable templates used in text
-            ## # TODO: rework debug_print to safely handle templates by default
-            ## while True:
-            ##     #                   +-pre--++---variable----++--rest-----+
-            ##     match = re.search(r"(^|[^{])({[A-Za-z0-9_]+})(([^}]|$|).*)", text)
-            ##     if not match:
-            ##         break
-            ##     text = match.group(3)
-            ##     var_format = match.group(2)
-            ##     if format(var_format, True, True) != var_format:
-            ##         print_stderr("Warning: template used with instantiated variable; try debug_format instead")
-        return
-
-    def debug_trace(text, *args, **kwargs):
-        """Prints TEXT (formatted with ARG1, ...) if at LEVEL or higher.
-        Note: To avoid needless evaluation arguments should be specified 
-        as distinct paramaters rather than using string format operator (%)."""
-        # Note: Implemented in terms of debug_trace_without_newline to keep timestamp support in one place.
-        # TODO: add skip_newline option
-        global debug_level
-        debug_trace_without_newline(text, *args, **kwargs)
-        level = kwargs.get('level', 1)
-        # TODO: assertion(isinstance(level, int))
-        if debug_level >= level:
-            stderr.write("\n")
-        return
-
-    def debug_print_without_newline(text, level=1):
-        """Wrapper around debug_trace_without_newline (q.v.)
-        Note: Consider using debug_trace_without_newline directly."""
-        return debug_trace_without_newline(text, level=level)
-
-    def debug_print(text, level=1, skip_newline=False):
-        """Print TEXT if at debug trace LEVEL or higher.
-        Notes:
-        - Implemented in terms of debug_print_without_newline to keep timestamp support in one place.
-        - Consider using debug_trace instead (to avoid string interpolation overhead)."""
-        # TODO: assertion(isinstance(level, int))
-        global debug_level
-        debug_trace_without_newline(text, level=level)
-        if (debug_level >= level) and (not skip_newline):
-            stderr.write("\n")
-        return
-
-
-    def debug_format(text, level=1, skip_newline=False, **namespace):
-        """Version of debug_print that expands TEXT using format.
-        Note: Exceptions are ignored (to encourage tracing, not discourage)."
-        """
-        # NOTE: String values from namespace need to be in UTF-8 format.
-        # TODO: rename as debug_print_format as not just formatting the text
-        global debug_level
-        assert(isinstance(level, int))
-        if debug_level >= level:
-            ignore_exc = (debug_level < QUITE_DETAILED)
-            debug_print(format(text, indirect_caller=True, 
-                               ignore_exception=ignore_exc, **namespace),
-                        skip_newline=skip_newline)
-        return
-
-
-    def debug_timestamp():
-        """Return timestamp for use in debugging traces"""
-        # EX: debug_timestamp() => "2015-01-18 16:39:45.224768"
-        # TODO: use format compatible with logging (e.g., comma in place of period before micrososeconds)
-        return to_string(datetime.now())
-
-
-    def debug_raise(level=1):
-        """Raise an exception if debugging at specified trace LEVEL or higher"""
-        # Note: Intended for use in except clause to produce full stacktrace when debugging.
-        # TODO: Have version that just prints complete stacktrace (i.e., without breaking).
-        if debug_level >= level:
-            raise                        # pylint: disable=misplaced-bare-raise
-        return
-
-
-    def trace_array(array, level=VERBOSE, label=None):
-        """Output the (list) array to STDERR if debugging at specified trace LEVEL or higher, using LABEL as prefix"""
-        global debug_level
-        assert(isinstance(level, int))
-        if debug_level >= level:
-            trace_output = ("%s: " % label) if label else ""
-            for i, item in enumerate(array):
-                trace_output += "  " if (i > 0) else ""
-                trace_output += "%d: %s" % (i, item)
-            debug_print(trace_output)
-        return
-
-
-    def trace_object(obj, level=VERBOSE, label=None, show_private=None, show_methods_etc=None, indent="", max_value_len=1024):
-        """Traces out OBJ instance to stderr if at debugging LEVEL or higher, 
-        optionally preceded by LABEL, using INDENT, and limiting value lengths to MAX_VALUE_LEN"""
-        # based on http://stackoverflow.com/questions/192109/is-there-a-function-in-python-to-print-all-the-current-properties-and-values-of
-        debug_format("trace_object(_, lvl={lvl}, lab={lab}, prv={prv}, mth={mth}, ind={ind})", 7,
-                     lvl=level, lab=label, prv=show_private, mth=show_methods_etc, ind=indent)
-        global debug_level
-        assert(isinstance(level, int))
-        if debug_level >= level:
-            debug_print("%s%s: {" % (indent, label if label else obj))
-            if show_private is None:
-                show_private = (level >= 6)
-            if show_methods_etc is None:
-                show_methods_etc = (level >= 7)
-            for attr in dir(obj):
-                # Note: unable to filter properties directly (so try/except handling added)
-                # See Take1 and Take2 below.
-                try:
-                    ## TAKE2:
-                    ## if re.search("property|\?\?\?", str(getattr(type(obj), attr, "???"))):
-                    ##     debug_print("%s: property" % attr, 7)
-                    ##     continue
-                    # note: omits internal variables unless at debug level 6+; also omits methods unless at debug level 7+
-                    debug_print("%s\tattr: name: %s" % (indent, attr), 8)
-                    if (attr[0] != '_') or show_private:
-                        attr_value = getattr(obj, attr)
-                        debug_trace("%s\tattr: type: %s",
-                                    indent, type(attr_value), level=8)
-                        method_types = (
-                            types.MethodType, types.FunctionType, 
-                            types.BuiltinFunctionType, types.BuiltinMethodType,
-                            types.ModuleType)
-                        if ((not isinstance(attr_value, method_types))
-                                or ("method-wrapper" not in str(type(attr_value)))
-                                or show_methods_etc):
-                            if len(to_string(attr_value)) > max_value_len:
-                                attr_value = to_string(attr_value)[:max_value_len] + "..."
-                            debug_print("%s\t%s = %r" % (indent, attr, attr_value))
-                except (KeyError, ValueError, AttributeError):
-                    debug_print("%s\t%s = ???" % (indent, attr))
-            debug_print("%s}" % indent)
-        return
-
-
-    def trace_value(value, level=5, label=None):
-        """Traces out VALUE to stderr if at debugging LEVEL or higher with optional '<LABEL>: ' prefix.
-        @Note: If value is an array or dict, each entry is output on a separate line."""
-        global debug_level
-        assert(isinstance(level, int))
-        if debug_level >= level:
-            prefix = ""
-            value_spec = value
-            if label:
-                prefix = ("%s: " % label)
-            if isinstance(value, list):
-                value_spec = "{\n" + "\n".join(["\t%s: %s" % (i, v) for (i, v) in enumerate(value)]) + "}\n"
-            elif isinstance(value, dict):
-                value_spec = "{\n"
-                for key in value.keys():
-                    # Note: Exception handling used in case value access leads to error,
-                    # such as with hash tables having Mako placeholders for undefined values.
-                    try:
-                        key_value = value[key]
-                        debug_print("key=%s key_value=%s" % (key, key_value), 9)
-                    except NameError:
-                        print_stderr("Exception in trace_value getting value for key %s" % key)
-                        key_value = "n/a"
-                    value_spec += "\t%s: %s\n" % (key, key_value)
-                value_spec += "}\n"
-            debug_print("%s%s" % (prefix, value_spec))
-        return
-
-
-    def trace_current_context(level=QUITE_DETAILED, label=None, 
-                              show_methods_etc=False):
-        """Traces out current context (local and global variables), with output
-        prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
-        Notes: By default the debugging level must be quite-detailed (6).
-        If the debugging level is higher, the entire stack frame is traced.
-        Also, methods are omitted by default."""
-        frame = None
-        if label is None:
-            label = "current"
+def debug_trace_without_newline(text, *args, **kwargs):
+    """Print TEXT without trailing newline, provided at debug trace LEVEL or higher, using ARGS for %-placeholders
+    Notes: ensures text encoded as UTF8 if under Python 2.x;
+    also, exceptions are ignored (to encourage more tracing)."""
+    level = kwargs.get('level', 1)
+    if args:
         try:
-            frame = inspect.currentframe().f_back
-        except (AttributeError, KeyError, ValueError):
-            debug_print("Exception during trace_current_context: " + 
-                        to_string(sys.exc_info()), 5)
-        debug_format("{label} context: {{", level, label=label)
-        prefix = "    "
-        if (debugging_level() - level) > 1:
-            trace_object(frame, (level + 2), "frame", indent=prefix,
-                         show_methods_etc=show_methods_etc)
-        else:
-            debug_format("frame = {f}", level, f=frame)
-            if frame:
-                trace_object(frame.f_globals, level, "globals", indent=prefix,
-                             show_methods_etc=show_methods_etc)
-                trace_object(frame.f_locals, level, "locals", indent=prefix,
-                             show_methods_etc=show_methods_etc)
-        debug_trace("}", level=level)
-        return
+            text = (text % args)
+        except (AttributeError, IndexError, NameError, TypeError, ValueError):
+            system.print_exception_info("debug_trace_without_newline")
+    return debug.trace(level, text, no_eol=True)
 
 
-    def during_debugging(expression=True):
-        """Returns True if debugging, optionally conditioned upon EXPRESSION
-         Note: The expression is not considered in non-debug mode"""
-        return (debugging_level() > 0) and expression
-
-else:
-
-    def set_debug_level(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
+def debug_trace(text, *args, **kwargs):
+    """Prints TEXT (formatted with ARG1, ...) if at LEVEL or higher.
+    Note: To avoid needless evaluation arguments should be specified 
+    as distinct paramaters rather than using string format operator (%)."""
+    return debug_trace_without_newline(text + "\n", *args, **kwargs)
 
 
-    def debugging_level(*_args, **_kwargs):
-        """Non-debug stub"""
-        return 0
+def debug_print_without_newline(text, level=1):
+    """Wrapper around debug_trace_without_newline (q.v.)
+    Note: Consider using debug_trace_without_newline directly."""
+    return debug_trace_without_newline(text, level=level)
 
 
-    def debug_trace_without_newline(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
+def debug_print(text, level=1, skip_newline=False):
+    """Print TEXT if at debug trace LEVEL or higher.
+    Notes:
+    - Implemented in terms of debug_print_without_newline to keep timestamp support in one place.
+    - Consider using debug_trace instead (to avoid string interpolation overhead)."""
+    # TODO: assertion(isinstance(level, int))
+    out_text = (text if skip_newline else (text + "\n"))
+    return debug_trace_without_newline(out_text, level=level)
 
 
-    def debug_trace(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
+def debug_format(text, level=1, skip_newline=False, **namespace):
+    """Version of debug_print that expands TEXT using format.
+    Note: Exceptions are ignored (to encourage tracing, not discourage)."
+    """
+    ## TODO: return debug.trace(no_eol=skip_newline, level, text, **namespace)
+    # NOTE: String values from namespace need to be in UTF-8 format.
+    # TODO: rename as debug_print_format as not just formatting the text
+    assert(isinstance(level, int))
+    if (debugging_level() >= level):
+        ignore_exc = (debugging_level() < QUITE_DETAILED)
+        debug_print(format(text, indirect_caller=True, 
+                           ignore_exception=ignore_exc, **namespace),
+                    skip_newline=skip_newline)
+    return
 
 
-    def debug_print_without_newline(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
+def debug_timestamp():
+    """Return timestamp for use in debugging traces"""
+    # EX: debug_timestamp() => "2015-01-18 16:39:45.224768"
+    # TODO: use format compatible with logging (e.g., comma in place of period before micrososeconds)
+    return debug.timestamp()
 
 
-    def debug_print(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
+def debug_raise(level=1):
+    """Raise an exception if debugging at specified trace LEVEL or higher"""
+    # Note: Intended for use in except clause to produce full stacktrace when debugging.
+    # TODO: Have version that just prints complete stacktrace (i.e., without breaking).
+    return debug.raise_exception(level)
 
 
-    def debug_format(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
+def trace_array(array, level=VERBOSE, label=None):
+    """Output the (list) array to STDERR if debugging at specified trace LEVEL or higher, using LABEL as prefix"""
+    return debug.trace_values(level, array, label)
 
 
-    def debug_timestamp(*_args, **_kwargs):
-        """Non-debug stub"""
-        return ""
+def trace_object(obj, level=VERBOSE, label=None, show_private=None, show_methods_etc=None, indent="", max_value_len=1024):
+    """Traces out OBJ instance to stderr if at debugging LEVEL or higher, 
+    optionally preceded by LABEL, using INDENT, and limiting value lengths to MAX_VALUE_LEN"""
+    return debug.trace_object(level, obj, label, show_private=show_private, show_methods_etc=show_methods_etc, indentation=indent, max_value_len=max_value_len)
 
 
-    def debug_raise(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
+def trace_value(value, level=5, label=None):
+    """Traces out VALUE to stderr if at debugging LEVEL or higher with optional '<LABEL>: ' prefix.
+    @Note: If value is an array or dict, each entry is output on a separate line."""
+    assert(isinstance(level, int))
+    if (debugging_level() >= level):
+        prefix = ""
+        value_spec = value
+        if label:
+            prefix = ("%s: " % label)
+        if isinstance(value, list):
+            value_spec = "{\n" + "\n".join(["\t%s: %s" % (i, v) for (i, v) in enumerate(value)]) + "}\n"
+        elif isinstance(value, dict):
+            value_spec = "{\n"
+            for key in value.keys():
+                # Note: Exception handling used in case value access leads to error,
+                # such as with hash tables having Mako placeholders for undefined values.
+                try:
+                    key_value = value[key]
+                    debug_print("key=%s key_value=%s" % (key, key_value), 9)
+                except NameError:
+                    print_stderr("Exception in trace_value getting value for key %s" % key)
+                    key_value = "n/a"
+                value_spec += "\t%s: %s\n" % (key, key_value)
+            value_spec += "}\n"
+        debug_print("%s%s" % (prefix, value_spec))
+    return
 
 
-    def trace_array(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
+def trace_current_context(level=QUITE_DETAILED, label=None, 
+                          show_methods_etc=False):
+    """Traces out current context (local and global variables), with output
+    prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
+    Notes: By default the debugging level must be quite-detailed (6).
+    If the debugging level is higher, the entire stack frame is traced.
+    Also, methods are omitted by default."""
+    return debug.trace_current_context(level=level, label=label, show_methods_etc=show_methods_etc)
 
 
-    def trace_object(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
-
-
-    def trace_value(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
-
-
-    def trace_current_context(*_args, **_kwargs):
-        """Non-debug stub"""
-        pass
-
-
-    def during_debugging(*_args, **_kwargs):
-        """Non-debug stub"""
-        return False
+def during_debugging(expression=True):
+    """Returns True if debugging, optionally conditioned upon EXPRESSION
+     Note: The expression is not considered in non-debug mode"""
+    return (debugging_level() > 0) and expression
 
 
 def debugging(level=(DEFAULT_DEBUG_LEVEL + 1)):
@@ -783,7 +921,7 @@ def format(text, indirect_caller=False, ignore_exception=False, **namespace):   
     #   into UTF-8.
     # Warning: don't call other user functions except debug_print or helper
     # functions that don't trace (e.g., _ensure_unicode).
-    if debug_level >= 99:
+    if (debugging_level() >= 99):
         debug_trace("format(%s, %s, %s, %s)",
                     text, indirect_caller, ignore_exception, namespace)
     # TODO: make unicode conversion optional
@@ -1002,6 +1140,7 @@ def union(list1, list2):
 
 def intersection(list1, list2):
     """Returns set intersection of LIST1 and LIST2. Note: useful for tracing"""
+    ## TODO; return system.intersection(list1, list2)
     assert(isinstance(list1, list) and isinstance(list2, list))
     result = list(set.intersection(set(list1), set(list2)))
     debug_format("intersection({l1}, {l2}) => {r}", 7, l1=list1, l2=list2, r=result)
@@ -1231,49 +1370,52 @@ if __debug__:
 
     def debug_init():
         """Debug-only initialization"""
-        tpo_common_start = time.time()
+        ## OLD: tpo_common_start = time.time()
 
         # Override debug level to DEBUG_LEVEL environment variable unless running in optimized mode (i.e., __debug__ is False)
-        env_debug_level = os.getenv("DEBUG_LEVEL")
-        global debug_level
-        debug_level = int(env_debug_level) if env_debug_level else ERROR
+        ## OLD:
+        ## env_debug_level = os.getenv("DEBUG_LEVEL")
+        ## global debug_level
+        ## debug_level = int(env_debug_level) if env_debug_level else ERROR
     
         # Show trace level in effect
         debug_format("starting tpo_common.py at {ts}: "
                      + "debug_level={lvl}; args={args}", level=DETAILED,
-                     ts=debug_timestamp(), lvl=debug_level, args=sys.argv)
+                     ts=debug_timestamp(), lvl=debugging_level(), args=sys.argv)
 
         # Register DEBUG_LEVEL for sake of new users
-        test_debug_level = getenv_integer("DEBUG_LEVEL", debug_level, 
+        test_debug_level = getenv_integer("DEBUG_LEVEL", debugging_level(), 
                                           "Debugging level for script tracing")
-        assert(debug_level == test_debug_level)
+        assert(debugging_level() == test_debug_level)
 
         # Register function to display ending timestamp
-        def _display_ending_info():
-            """Display ending time information"""
-            # note: does nothing if stderr closed (e.g., during profiling)
-            # TODO: track down problem with pytests
-            if sys.stderr.closed:
-                return
-            trace_object(sys.stderr, level=7)
-            tpo_common_end = time.time()
-            debug_format("ending tpo_common.py at {time}; elapsed={diff}s", 
-                         level=DETAILED, time=debug_timestamp(), 
-                         diff=round_num(tpo_common_end - tpo_common_start))
-        #
-        if not getenv_boolean("OMIT_ATEXIT", False):
-            atexit.register(_display_ending_info)
-    
+        ## OLD:
+        ## def _display_ending_info():
+        ##     """Display ending time information"""
+        ##     # note: does nothing if stderr closed (e.g., during profiling)
+        ##     # TODO: track down problem with pytest
+        ##     if sys.stderr.closed:       # pylint: disable=using-constant-test
+        ##         return
+        ##     trace_object(sys.stderr, level=7)
+        ##     tpo_common_end = time.time()
+        ##     debug_format("ending tpo_common.py at {time}; elapsed={diff}s", 
+        ##                  level=DETAILED, time=debug_timestamp(), 
+        ##                  diff=round_num(tpo_common_end - tpo_common_start))
+        ## #
+        ## if not getenv_boolean("OMIT_ATEXIT", False):
+        ##     atexit.register(_display_ending_info)
+
         # Override globals from environment
         # Note: done after start-up tracing initialization for getenv tracing
-        global output_timestamps
-        output_timestamps = getenv_boolean("OUTPUT_DEBUG_TIMESTAMPS", 
-                                           output_timestamps)
-        global use_logging
-        use_logging = getenv_boolean("USE_LOGGING", use_logging)
-        enable_logging = getenv_boolean("ENABLE_LOGGING", use_logging)
-        if enable_logging:
-            init_logging()
+        ## OLD:
+        ## global output_timestamps
+        ## output_timestamps = getenv_boolean("OUTPUT_DEBUG_TIMESTAMPS", 
+        ##                                    output_timestamps)
+        ## global use_logging
+        ## use_logging = getenv_boolean("USE_LOGGING", use_logging)
+        ## enable_logging = getenv_boolean("ENABLE_LOGGING", use_logging)
+        ## if enable_logging:
+        ##     init_logging()
         global skip_format_warning
         skip_format_warning = getenv_boolean("SKIP_FORMAT_WARNING", False)
     

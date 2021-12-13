@@ -58,6 +58,9 @@
 # - Have option for processing text by page by page, instead of
 #   just tracking page number with
 # - Clarify the input processing in various modes: line, paragraph and file-input.
+# - Add function for getting temp_base as dir:
+#       dummy_app = Main(use_temp_base_dir=True)
+#       temp_wav_path = gh.form_path(dummy_app.temp_base, WAV_FILE)
 #
 
 """Module for encapsulating main() processing"""
@@ -83,6 +86,7 @@ USE_PARAGRAPH_MODE = getenv_bool("PARAGRAPH_MODE", USE_PARAGRAPH_MODE_DEFAULT,
                                  "Process input in Perl-style paragraph mode")
 FILE_INPUT_MODE = getenv_bool("FILE_INPUT_MODE", False,
                               "Read stdin using Perl-style file input mode--aka file slurping")
+debug.assertion(not (USE_PARAGRAPH_MODE and FILE_INPUT_MODE))
 
 FORM_FEED = "\f"
 TRACK_PAGES = getenv_bool("TRACK_PAGES", False,
@@ -116,9 +120,9 @@ class Main(object):
         """Class constructor: parses RUNTIME_ARGS (or command line), with specifications
         for BOOLEAN_OPTIONS, TEXT_OPTIONS, INT_OPTIONS, FLOAT_OPTIONS, and POSITIONAL_OPTIONS
         (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args)."""
-        tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts}, "
-                         + "i={ints}, f={floats}, p={posns}, s={skip}, m={mi}, a={auto},"
-                         + "pm={para}, tp={page}, fim={file}, prog={prog}, noargs={skip_args}, kw={kw})", 5,
+        tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts},"
+                         + " i={ints}, f={floats}, p={posns}, s={skip}, m={mi}, a={auto},"
+                         + " pm={para}, tp={page}, fim={file}, prog={prog}, noargs={skip_args}, kw={kw})", 5,
                          args=runtime_args, desc=description, bools=boolean_options,
                          texts=text_options, ints=int_options, floats=float_options,
                          posns=positional_options, skip=skip_input, mi=manual_input, auto=auto_help,
@@ -198,7 +202,7 @@ class Main(object):
         # Get arguments from specified parameter or via command line
         # Note: --help assumed for input-less scripts with command line options
         # to avoid inadvertent script processing.
-        if runtime_args is None:
+        if ((runtime_args is None) and (not skip_args)):
             runtime_args = sys.argv[1:]
             tpo.debug_print("Using sys.argv[1:] for runtime args: %s" % runtime_args, 4)
             if self.auto_help and not runtime_args:
@@ -226,6 +230,7 @@ class Main(object):
         self.filename = None
         self.other_filenames = []
         # Do command-line parsing
+        # TODO: consolidate with runtime_args check above
         if not skip_args:
             self.check_arguments(runtime_args)
         debug.trace_current_context(level=debug.QUITE_DETAILED)
@@ -429,6 +434,7 @@ class Main(object):
         self.input_stream = sys.stdin
         if (self.filename and (self.filename != "-")):
             debug.assertion(isinstance(self.filename, str))
+            # note: not list of filenames (TODO, reorder tests to make clearer)
             debug.assertion(self.filename != ["-"])
             debug.assertion(os.path.exists(self.filename))
             self.input_stream = system.open_file(self.filename)

@@ -36,6 +36,7 @@ from mezcla import system
 
 def parse_xml(xml_text):
     """Parse XML_text, returning root node"""
+    root = None
     try:
         tree = ET.ElementTree(ET.fromstring(xml_text))
         root = tree.getroot()

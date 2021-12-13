@@ -17,7 +17,6 @@ import unittest
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
 import mezcla.glue_helpers as gh
-import mezcla.tpo_common as tpo
 
 
 class TestIt(TestWrapper):

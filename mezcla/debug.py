@@ -21,6 +21,7 @@
 # - * Add sanity checks for unused environment variables specified on command line (e.g., FUBAR=1 python script.py ...)!
 # - Rename as debug_utils so clear that non-standard package.
 # - Add exception handling throughout (e.g., more in trace_object).
+# - Apply format_value consistently.
 #
 
 """Debugging functions (e.g., tracing)"""
@@ -64,6 +65,9 @@ MOST_VERBOSE = 9
 UTF8 = "UTF-8"
 STRING_TYPES = six.string_types
 
+# Globals
+max_trace_value_len = 512
+
 if __debug__:    
 
     # Initialize debug tracing level
@@ -72,6 +76,7 @@ if __debug__:
     output_timestamps = False           # prefix output with timestamp
     use_logging = False                 # traces via logging (and stderr)
     debug_file = None                   # file for log output
+    para_mode_tracing = False           # multiline tracing adds blank line (e.g., for para-mode grep)
     #
     try:
         trace_level = int(os.environ.get(DEBUG_LEVEL_LABEL, trace_level))
@@ -201,24 +206,24 @@ if __debug__:
 
     STANDARD_TYPES = (int, float, dict, list)
     #
-    MAX_OBJECT_VALUE_LEN = 128
-    #
-    def trace_object(level, obj, label=None, show_all=False, indentation=None, pretty_print=None, max_depth=0):
+    def trace_object(level, obj, label=None, show_all=None, show_private=None, show_methods_etc=None, indentation=None, pretty_print=None, max_value_len=max_trace_value_len, max_depth=0):
         """Trace out OBJ's members to stderr if at trace LEVEL or higher.
         Note: Optionally uses output LABEL, with INDENTATION, SHOWing_ALL members, and PRETTY_PRINTing.
         If max_depth > 0, this uses recursion to show values for instance members."""
         # HACK: Members for STANDARD_TYPES omitted unless show_all.
-        # Note: This is intended for arbitrary objects, use trace_values for objects known to be lists or hashes.
-        # See https://stackoverflow.com/questions/383944/what-is-a-python-equivalent-of-phps-var-dump.
+        # Notes:
+        # - This is intended for arbitrary objects, use trace_values for objects known to be lists or hashes.
+        # - Support for show_private and show_methods_etc is not yet implemented (added for sake of tpo_common.py).
+        # - See https://stackoverflow.com/questions/383944/what-is-a-python-equivalent-of-phps-var-dump.
         # TODO: support recursive trace; specialize show_all into show_private and show_methods
         ## OLD: print("{stmt} < {current}: {r}".format(stmt=level, current=trace_level,
         ##                                       r=(trace_level < level)))
         trace_fmt(10, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
                   dl=level, obj=object, lbl=label, sa=show_all, ind=indentation, pp=pretty_print, md=max_depth)
-        if (pretty_print is None):
-            pretty_print = (trace_level > level)
         if (trace_level < level):
             return
+        if (pretty_print is None):
+            pretty_print = (trace_level > level)
         type_id_label = str(type(obj)) + " " + hex(id(obj))
         if label is None:
             ## BAD: label = str(type(obj)) + " " + hex(hash(obj))
@@ -230,6 +235,10 @@ if __debug__:
             pass
         if indentation is None:
             indentation = "   "
+        if show_all is None:
+            show_all = (show_private or show_methods_etc)
+        if para_mode_tracing:
+            trace(0, "")
         trace(0, label + ": {")
         ## OLD: for (member, value) in inspect.getmembers(obj):
         member_info = []
@@ -247,15 +256,16 @@ if __debug__:
             # If high trace level, output the value as is
             # TODO: value = clip_text(value)
             trace_fmtd(8, "{i}{m}={v}; type={t}", i=indentation, m=member, v=value, t=type(value))
+            value_spec = format_value(value, max_len=max_value_len)
             if (trace_level >= 9):
-                sys.stderr.write(indentation + member + ":")
+                sys.stderr.write(indentation + member + ": ")
                 if pretty_print:
-                    pprint(value, stream=sys.stderr)
+                    pprint(value_spec, stream=sys.stderr)
                 else:
-                    sys.stderr.write(value, file=sys.stderr)
+                    sys.stderr.write(value_spec)
                 sys.stderr.write("\n")
                 if use_logging:
-                    logging.debug(_to_utf8((indentation + member + ":" + str(value))))
+                    logging.debug(_to_utf8((indentation + member + ": " + value_spec)))
                 continue
             # Optionally, process recursively (TODO: make "   " an env. option)
             if (max_depth > 0):
@@ -267,9 +277,7 @@ if __debug__:
             ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
             try:
                 try:
-                    value_spec = "%s" % ((value),)
-                    if (len(value_spec) > MAX_OBJECT_VALUE_LEN):
-                        value_spec = value_spec[:MAX_OBJECT_VALUE_LEN] + "..."
+                    value_spec = format_value("%s" % ((value),), max_len=max_value_len)
                 except(TypeError, ValueError):
                     trace_fmtd(7, "Warning: Problem in tracing member {m}: {exc}",
                                m=member, exc=sys.exc_info())
@@ -294,6 +302,8 @@ if __debug__:
                 if use_logging:
                     logging.debug(_to_utf8((indentation + member + ":" + value_spec)))
         trace(0, indentation + "}")
+        if para_mode_tracing:
+            trace(0, "")
         return
 
 
@@ -303,6 +313,8 @@ if __debug__:
                   dl=level, lbl=label, coll=collection, ind=indentation)
         if (trace_level < level):
             return
+        if para_mode_tracing:
+            trace(0, "")
         if hasattr(collection, '__iter__'):
              trace(level + 1, "Warning: [trace_values] consuming iterator")
              collection = list(collection)             
@@ -321,7 +333,7 @@ if __debug__:
         keys_iter = list(collection.keys()) if isinstance(collection, dict) else range(len(collection))
         for k in keys_iter:
             try:
-                value = _to_utf8(collection[k])
+                value = format_value(_to_utf8(collection[k]))
                 if use_repr:
                     value = repr(value)
                 trace_fmtd(0, "{ind}{k}: {v}", ind=indentation, k=k,
@@ -330,6 +342,8 @@ if __debug__:
                 trace_fmtd(7, "Warning: Problem tracing item {k}",
                            k=_to_utf8(k), exc=sys.exc_info())
         trace(0, indentation + "}")
+        if para_mode_tracing:
+            trace(0, "")
         return
 
 
@@ -387,7 +401,7 @@ if __debug__:
                     continue
                 assertion((not ((value is not None) and (expression is None))),
                           "Warning: Likely problem resolving expression text (try reworking trace_expr call)")
-                value_spec = repr(value) if use_repr else value
+                value_spec = format_value(repr(value) if use_repr else value)
                 trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
             except:
                 trace_fmtd(0, "Exception tracing values in trace_vals: {exc}",
@@ -412,6 +426,8 @@ if __debug__:
         except (AttributeError, KeyError, ValueError):
             trace_fmt(5, "Exception during trace_current_context: {exc}",
                       exc=sys.exc_info())
+        if para_mode_tracing:
+            trace(level, "")
         trace_fmt(level, "{label} context: {{", label=label)
         prefix = "    "
         if (get_level() - level) > 1:
@@ -425,6 +441,8 @@ if __debug__:
                 trace_object(level, frame.f_locals, "locals", indentation=prefix,
                              show_all=show_methods_etc)
         trace(level, "}")
+        if para_mode_tracing:
+            trace(level, "")
         return
 
 
@@ -459,7 +477,7 @@ if __debug__:
         """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE"""
         # EX: assertion((2 + 2) != 5)
         # TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
-        # TODO: trace out local and globals to aid in diagnosing assertion failures
+        # TODO: trace out local and globals to aid in diagnosing assertion failures; ex: add automatic tarcing of variables used in the assertion expression)
         if (not expression):
             try:
                 # Get source information for failed assertion
@@ -493,7 +511,7 @@ if __debug__:
                    line1; line2; ...; lineN
            debug.code(4, my_stupid_block_workaround)"""
         trace_object(5, f"code({level}, {no_arg_function})")
-        if level:
+        if (trace_level >= level):
             trace_object(6, f"Executing {no_arg_function}")
             no_arg_function()
         return
@@ -576,10 +594,34 @@ def verbose_debugging():
 
 
 def _getenv_bool(name, default_value):
-    """Version of debug.getenv_bool w/o tracing"""
+    """Version of system.getenv_bool w/o tracing"""
     result = default_value
     if (str(os.environ.get(name) or default_value).upper() in ["1", "TRUE"]):
         result = True
+    return result
+
+
+def _getenv_int(name, default_value):
+    """Version of system.getenv_int w/o tracing"""
+    result = default_value
+    try:
+        env_value = os.environ.get(name)
+        if env_value is not None:
+            result = int(env_value)
+    except:
+        _print_exception_info("_getenv_int")
+    return result
+
+
+def format_value(value, max_len=None):
+    """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines"""
+    trace(9, f"format_value({value}, max_len={max_len})")
+    if max_len is None:
+        max_len = max_trace_value_len
+    result = value if isinstance(value, str) else str(value)
+    if len(result) > max_len:
+        result = result[:max_len] + "..."
+    result = re.sub(r"\n", "\\n", result)
     return result
 
 
@@ -759,10 +801,11 @@ if __debug__:
         trace_fmtd(5, "debug_filename={fn} debug_file={f}",
                    fn=debug_filename, f=debug_file)
 
-        # Show additional information when detailed debugging
-        # TODO: sort keys to facilate comparisons of log files
-        trace_values(5, dict(os.environ), "environment")
-
+        # Determine other debug-only environment options
+        global para_mode_tracing
+        para_mode_tracing = _getenv_bool("PARA_MODE_TRACING", para_mode_tracing)
+        global max_trace_value_len
+        max_trace_value_len = _getenv_int("MAX_TRACE_VALUE_LEN", max_trace_value_len)
         global use_logging
         use_logging = _getenv_bool("USE_LOGGING", use_logging)
         enable_logging = _getenv_bool("ENABLE_LOGGING", use_logging)
@@ -771,6 +814,17 @@ if __debug__:
         monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
         if monitor_functions:
             sys.setprofile(profile_function)
+        trace_expr(5, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
+
+        # Show additional information when detailed debugging
+        # TODO: sort keys to facilate comparisons of log files
+        ## OLD: trace_values(5, dict(os.environ), "environment")
+        pre = post = ""
+        if para_mode_tracing:
+            pre = post = "\n"
+        trace_fmt(5, "{pre}environment: {{\n\t{env}\n}}{post}",
+                  env="\n\t".join([(k + ': ' + os.environ[k]) for k in sorted(dict(os.environ))]),
+                  pre=pre, post=post)
 
         # Register to show shuttdown time and elapsed seconds
         # TODO: rename to reflect generic-exit nature

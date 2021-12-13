@@ -93,8 +93,13 @@ def remove_extension(filename, extension):
     return base
 
 
+## TODO: def replace_extension(filename, old_extension, old_extension):
+##           ...
+
+
 def dir_path(filename):
     """Wrapper around os.path.dirname"""
+    # TODO: return . for filename without directory (not "")
     # EX: dirname("/tmp/solr-4888.log") => "/tmp"
     path = os.path.dirname(filename)
     debug.trace(5, f"dirname({filename}) => {path}")
@@ -119,7 +124,8 @@ def non_empty_file(filename):
 
 
 def resolve_path(filename, base_dir=None):
-    """Resolves path for FILENAME related to BASE_DIR if not in current directory. Note: this uses the script directory for the calling module if BASE_DIR not specified (i.e., as if os.path.dirname(__file__) passed)."""
+    """Resolves path for FILENAME relative to BASE_DIR if not in current directory. Note: this uses the script directory for the calling module if BASE_DIR not specified (i.e., as if os.path.dirname(__file__) passed)."""
+    # TODO: give preference to script directory over current directory
     path = filename
     if not os.path.exists(path):
         if not base_dir:
@@ -216,6 +222,7 @@ def disable_subcommand_tracing():
 
 def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespace):
     """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests. Notes: This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed."""
+    # TODO: add automatic log file support as in run_script from unittest_wrapper.py
     # TODO: make sure no template markers left in command text (e.g., "tar cvfz {tar_file}")
     # EX: "root" in run("ls /")
     # Note: Script tracing controlled DEBUG_LEVEL environment variable.
@@ -299,17 +306,18 @@ def get_hex_dump(text, break_newlines=False):
     return result
 
 
-def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0):
+def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0, para_mode=False):
     """Checks for PATTERN matches in LINES of text returning list of tuples with replacement groups.
     Notes: The number of FIELDS can be greater than 1.
     Optionally allows for MULTIPLE matches within a line.
-    The lines are concatenated if DOTA
+    The lines are concatenated if DOTALL
+    Matching optionally uses perl-style PARA_MODE
     """
     ## TODO: If unspecified, the regex flags default to DOTALL.
     # ex: extract_matches(r"^(\S+) \S+", ["John D.", "Jane D.", "Plato"]) => ["John", "Jane"]
     # Note: modelled after extract_matches.perl
     # TODO: make multiple the default
-    debug_print("extract_matches(%s, _, [fld=%s], [m=%s], [flg=%s])" % (pattern, fields, multiple, re_flags), 6)
+    debug_print("extract_matches(%s, _, [fld=%s], [m=%s], [flg=%s], [para=%s])" % (pattern, fields, multiple, re_flags, para_mode), 6)
     ## TODO
     ## if re_flags is None:
     ##     re_flags = re.DOTALL
@@ -321,6 +329,8 @@ def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0):
     if (re_flags and (re_flags & re.DOTALL)):
         lines = [ "\n".join(lines) + "\n" ]
         debug.trace_expr(6, lines)
+    if para_mode:
+        lines = re.split("\n\s*\n", ("\n".join(lines)))
     matches = []
     for i, line in enumerate(lines):
         while line:
@@ -352,21 +362,21 @@ def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0):
     return matches
 
 
-def extract_match(pattern, lines, fields=1, multiple=False, re_flags=0):
+def extract_match(pattern, lines, fields=1, multiple=False, re_flags=0, para_mode=None):
     """Extracts first match of PATTERN in LINES for FIELDS"""
-    matches = extract_matches(pattern, lines, fields, multiple, re_flags)
+    matches = extract_matches(pattern, lines, fields, multiple, re_flags, para_mode)
     result = (matches[0] if matches else None)
     debug_print("match: %s" % result, 5)
     return result
 
 
-def extract_match_from_text(pattern, text, fields=1, multiple=False, re_flags=0):
+def extract_match_from_text(pattern, text, fields=1, multiple=False, re_flags=0, para_mode=None):
     """Wrapper around extract_match for text input"""
     ## TODO: rework to allow for multiple-line matching
-    return extract_match(pattern, text.split("\n"), fields, multiple, re_flags)
+    return extract_match(pattern, text.split("\n"), fields, multiple, re_flags, para_mode)
 
 
-def extract_matches_from_text(pattern, text, fields=1, multiple=None, re_flags=0):
+def extract_matches_from_text(pattern, text, fields=1, multiple=None, re_flags=0, para_mode=None):
     """Wrapper around extract_matches for text input
     Note: By default MULTIPLE matches are returned"""
     # EX: extract_matches_from_text(".", "abc") => ["a", "b", "c"]
@@ -374,7 +384,7 @@ def extract_matches_from_text(pattern, text, fields=1, multiple=None, re_flags=0
     if multiple is None:
         multiple = True
     # TODO: make multiple True by default
-    return extract_matches(pattern, text.split("\n"), fields, multiple, re_flags)
+    return extract_matches(pattern, text.split("\n"), fields, multiple, re_flags, para_mode)
 
 
 def count_it(pattern, text, field=1, multiple=None):

@@ -35,6 +35,7 @@
 #-------------------------------------------------------------------------------
 # TODO:
 # - Add method to invoke unittest.main(), so clients don't need to import unittest.
+# - Clarify how ALLOW_SUBCOMMAND_TRACING affects tests that invoke external scripts.
 #
 
 """Unit test support class"""
@@ -134,7 +135,7 @@ class TestWrapper(unittest.TestCase):
         return
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
-                   out_file=None, env_options=""):
+                   out_file=None, env_options=None):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
         not specifed, they  are derived from self.temp_file.
@@ -144,6 +145,8 @@ class TestWrapper(unittest.TestCase):
                          of=out_file, env=env_options)
         if options is None:
             options = ""
+        if env_options is None:
+            env_options = ""
 
         # Derive the full paths for data file and log, and then invoke script.
         # TODO: derive from temp base and data file name?

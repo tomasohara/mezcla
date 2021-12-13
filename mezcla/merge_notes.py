@@ -217,7 +217,7 @@ def main():
         notes_hash[new_date] += original_line + "\n"
         has_new_date = False
 
-    # Sort the note entries by resolved date
+    # Print the note entries sorted by resolved date.
     # Note:
     # - The sorting is based on the datetime.datetime type. If an error
     #   occurs, the problem might be due to the resolve_date function
@@ -232,6 +232,8 @@ def main():
     debug.trace_fmtd(7, "notes_hash keys: {{\n{k}\n}}", 
                      k="\t\n".join([str(v) for v in notes_hash.keys()]))
     #
+    # TODO: make byte order mark optional (used so special characters resolved automatically in Emacs)
+    print("\uFEFF")
     for pos, date in enumerate(sorted(notes_hash.keys(), 
                                       key=get_resolved_date)):
         debug.trace_fmtd(6, "outputting notes for date {d} [resolved: {r}]", 

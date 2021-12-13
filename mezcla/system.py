@@ -41,7 +41,7 @@ import time
 
 # Local packages
 from mezcla import debug
-import mezcla.glue_helpers as gh
+## OLD: import mezcla.glue_helpers as gh
 from mezcla.debug import UTF8
 
 # Constants
@@ -255,13 +255,16 @@ def print_stderr(text, **kwargs):
     return
 
 
-def print_exception_info(task):
-    """Output exception information to stderr regarding TASK (e.g., function)"""
+def print_exception_info(task, show_stack=None):
+    """Output exception information to stderr regarding TASK (e.g., function);
+    Note: Optionally includes stack trace (default when detailed debugging)"""
     # Note: used to simplify exception reporting of border conditions
     # ex: print_exception_info("read_csv")
-    print_stderr("Error during {t}: {exc}".
+    if show_stack is None:
+        show_stack = debug.verbose_debugging()
+    print_error("Error during {t}: {exc}".
                  format(t=task, exc=get_exception()))
-    if debug.verbose_debugging():
+    if show_stack:
         print_full_stack()
     return
 
@@ -539,7 +542,8 @@ def get_directory_filenames(directory, just_regular_files=False):
     return_all_files = (not just_regular_files)
     files = []
     for dir_filename in sorted(read_directory(directory)):
-        full_path = gh.form_path(directory, dir_filename)
+        ## OLD: full_path = gh.form_path(directory, dir_filename)
+        full_path = os.path.join(directory, dir_filename)
         if (return_all_files or is_regular_file(full_path)):
             files.append(full_path)
     debug.trace_fmtd(5, "get_directory_filenames({d}) => {r}", d=directory, r=files)

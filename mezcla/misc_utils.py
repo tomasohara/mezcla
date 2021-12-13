@@ -19,9 +19,10 @@ import sys
 import more_itertools
 
 # Local packages
-import mezcla.debug as debug
-import mezcla.system as system
-import mezcla.text_utils as text_utils
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla import system
+from mezcla import text_utils
 
 # Constants
 ELLIPSIS = "\u2026"                 # Horizontal Ellipsis

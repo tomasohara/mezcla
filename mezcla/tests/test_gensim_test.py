@@ -19,14 +19,13 @@
 
 # Installed packages
 import re
-import tempfile
 import unittest
 
 # Local packages
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper
-import mezcla.glue_helpers as gh
-import mezcla.tpo_common as tpo
-
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
@@ -41,6 +40,7 @@ class TestIt(TestWrapper):
         output = self.run_script("--save", temp_data_file)
         ## TODO: self.assertTrue(re.search("storing corpus in Matrix Market format", output))
         self.assertTrue(gh.non_empty_file(temp_data_file.replace(".txt", ".bow.mm")))
+        debug.trace_expr(5, output)
         return
         
     def test_vector_printing(self):
@@ -50,6 +50,7 @@ class TestIt(TestWrapper):
         gh.write_file(temp_file, "My dog has fleas.\n")
         output = self.run_script("--print --verbose", temp_file)
         self.assertTrue(re.search(r"\(u?'dog', 1\),.*\(u?'has', 1\)", output))
+        debug.trace_expr(5, output)
         return
 
 #------------------------------------------------------------------------
