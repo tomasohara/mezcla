@@ -50,6 +50,7 @@ class Filter(Main):
         self.status(f"Print header: {self.include_header}")
         self.status(f"Ratio: {self.ratio}")
         self.status(f"Random seed: {seed}")
+        debug.trace_object(5, self, label="Filter instance")
         return
 
     def status(self, message):
@@ -77,6 +78,6 @@ if __name__ == '__main__':
                  boolean_options=[(INCLUDE_HEADER, "Include header line"),
                                   (QUIET_MODE, "Don't print status messages")],
                  ## TODO: text_options=[(alt_todo_arg, "TODO-desc")],
-                 float_options=[(RATIO, "Random threshoold", DEFAULT_RATIO), 
+                 float_options=[(RATIO, "Random threshold in range [0, 1] for lines to be incorporated", DEFAULT_RATIO), 
                                 (SEED, "Random seed", RANDOM_SEED)])
     app.run()

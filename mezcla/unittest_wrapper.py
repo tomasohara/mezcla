@@ -5,7 +5,7 @@
 # Notes:
 # - Based on template.py used in older test scripts
 # - Creates per-test temp file, based on same class-wide temp-base file.
-# - To treat temp-base as a subdirectory. set use_temp_base_dir to True in 
+# - To treat temp-base as a subdirectory, set use_temp_base_dir to True in 
 #   class member initialiation section.
 # - Changes to temporary directory/file should be synchronized with ../main.py.
 # - Overriding the temporary directory can be handy during debugging; however,
@@ -46,9 +46,10 @@ import tempfile
 import unittest
 
 import mezcla
-import mezcla.glue_helpers as gh
-import mezcla.tpo_common as tpo
-import mezcla.debug as debug
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla import system
+from mezcla import tpo_common as tpo
 
 # Note: the following is for transparent resolution of dotted module names
 # for invocation of scripts via 'python -m package.module'. This is in support
@@ -62,8 +63,11 @@ debug.assertion(THIS_PACKAGE == "mezcla")
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition"""
     script_module = "TODO MODULE"        # name for invocation via 'python -m'
-    temp_base = tpo.getenv_text("TEMP_BASE",
-                                tempfile.NamedTemporaryFile().name)
+    temp_base = system.getenv_text("TEMP_BASE",
+                                   tempfile.NamedTemporaryFile().name)
+    ## TODO: temp_file = None
+    ## TEMP: initialize to unique value independent of temp_base
+    temp_file = tempfile.NamedTemporaryFile().name
     use_temp_base_dir = None
     test_num = 1
 
@@ -81,8 +85,8 @@ class TestWrapper(unittest.TestCase):
 
         # Optionally, setup temp-base directory (normally just a file)
         if cls.use_temp_base_dir is None:
-            cls.use_temp_base_dir = tpo.getenv_bool("USE_TEMP_BASE_DIR", False)
-            # TODO: temp_base_dir = tpo.getenv_text("TEMP_BASE_DIR", ""); cls.use_temp_base_dir = bool(temp_base_dir.strip); ...
+            cls.use_temp_base_dir = system.getenv_bool("USE_TEMP_BASE_DIR", False)
+            # TODO: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); cls.use_temp_base_dir = bool(temp_base_dir.strip()); ...
         if cls.use_temp_base_dir:
             ## TODO: pure python
             gh.run("mkdir -p {dir}", dir=cls.temp_base)
@@ -127,7 +131,7 @@ class TestWrapper(unittest.TestCase):
         else:
             default_temp_file = self.temp_base + "-test-"
         default_temp_file += str(TestWrapper.test_num)
-        self.temp_file = tpo.getenv_text("TEMP_FILE", default_temp_file)
+        self.temp_file = system.getenv_text("TEMP_FILE", default_temp_file)
         TestWrapper.test_num += 1
 
         ## OLD: tpo.trace_object(self, 5, "TestWrapper instance")

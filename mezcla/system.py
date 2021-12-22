@@ -517,6 +517,7 @@ def read_entire_file(filename, **kwargs):
             data = from_utf8(f.read())
     ## OLD except IOError:
     except (AttributeError, IOError):
+        # TODO: use print_stderr so that shown in optimized version
         Level = 4 if (kwargs.get("errors") == "ignore") else 1
         debug.trace_fmtd(Level, "Error: Unable to read file '{f}': {exc}",
                          f=filename, exc=get_exception())
@@ -1052,7 +1053,8 @@ def to_bool(value):
     return bool_value
 
 
-PRECISION = getenv_int("PRECISION", 6)
+PRECISION = getenv_int("PRECISION", 6,
+                       "Precision for rounding (e.g., decimal places)")
 #
 def round_num(value, precision=PRECISION):
     """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
