@@ -22,18 +22,15 @@
 """Text categorization support"""
 
 # Standard packages
-## OLD: import json
 import os
 import re
 import sys
-from collections import defaultdict
 
 # Installed packages
 import cherrypy
 import numpy
 import pandas
 from sklearn.base import BaseEstimator, ClassifierMixin
-## OLD: from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import _document_frequency
 from sklearn.naive_bayes import MultinomialNB
@@ -43,19 +40,18 @@ from sklearn.svm import SVC
 from sklearn.pipeline import Pipeline
 from sklearn import metrics
 from sklearn.utils.multiclass import unique_labels
-## import xgboost as xgb
 
 # Local packages
 from mezcla import debug
-import mezcla.glue_helpers as gh
-import mezcla.misc_utils as misc
+from mezcla import glue_helpers as gh
+from mezcla import misc_utils as misc
 from mezcla import system
-from mezcla.system import getenv_bool, getenv_float, getenv_int, getenv_text
+from system import getenv_bool, getenv_float, getenv_int, getenv_text
 
 #................................................................................
 # Constants (e.g., environment-based options)
 
-SERVER_PORT = system.getenv_integer("SERVER_PORT", 9440)
+SERVER_PORT = system.getenv_integer("SERVER_PORT", 9010)
 OUTPUT_BAD = system.getenv_bool("OUTPUT_BAD", False)
 CONTEXT_LEN = system.getenv_int("CONTEXT_LEN", 512)
 VERBOSE = system.getenv_bool("VERBOSE", False)
@@ -93,7 +89,7 @@ SGD_PENALTY = system.getenv_text("SGD_PENALTY", "l2")
 SGD_ALPHA = system.getenv_float("SGD_ALPHA", 0.0001)
 SGD_SEED = system.getenv_float("SGD_SEED", None)
 SGD_MAX_ITER = system.getenv_int("SGD_MAX_ITER", 5)
-## OLD" SGD_TOLERANCE = system.getenv_float("SGD_TOLERANCE", None)
+## OLD: SGD_TOLERANCE = system.getenv_float("SGD_TOLERANCE", None)
 SGD_VERBOSE = system.getenv_bool("SGD_VERBOSE", False)
 
 # Options for Extreme Gradient Boost (XGBoost)
@@ -116,7 +112,7 @@ GPU_DEVICE = system.getenv_text("GPU_DEVICE", "",
 # TODO: add others from sklearn/feature_extraction/text.py
 # ex: min/max_df
 TFIDF_MAX_TERMS = getenv_int("MAX_TERMS", None,
-                                    "Maximum number of terms in TF/IDF matrix")
+                             "Maximum number of terms in TF/IDF matrix")
 TFIDF_MIN_NGRAM = getenv_int("MIN_NGRAM_SIZE", None)
 TFIDF_MAX_NGRAM = getenv_int("MAX_NGRAM_SIZE", None)
 TFIDF_MIN_DF = getenv_float("MIN_DF", None)
@@ -139,17 +135,12 @@ tfidf_vectorizer = None
 def sklearn_report(actual, predicted, actual_labels, predicted_labels, stream=sys.stdout):
     """Print classification analysis report for ACTUAL vs. PREDICTED indices with original LABELS and using STREAM"""
     stream.write("Performance metrics:\n")
-    ## BAD: stream.write(metrics.classification_report(actual, predicted, target_names=labels))
     indices = unique_labels(actual, predicted)
     labels = unique_labels(actual_labels, predicted_labels)
     stream.write(metrics.classification_report(actual, predicted,
                                                labels=indices, target_names=labels))
     stream.write("Confusion matrix:\n")
     # TODO: make showing all cases optional
-    ## BAD: possible_indices = range(len(labels))
-    ## BAD
-    ## possible_indices = list(range(len(labels)))
-    ## confusion = metrics.confusion_matrix(actual, predicted, possible_indices)
     confusion = metrics.confusion_matrix(actual, predicted,
                                          labels=indices)
     # TODO: make sure not clipped
@@ -174,6 +165,7 @@ def read_categorization_data(filename):
     debug.trace_fmtd(4, "read_categorization_data({f})", f=filename)
     labels = []
     values = []
+    # TODO: rework via system.open_file
     with open(filename) as f:
         for (i, line) in enumerate(f):
             line = system.from_utf8(line)
@@ -182,10 +174,8 @@ def read_categorization_data(filename):
                 labels.append(items[0].lower())
                 values.append(items[1])
             else:
-                ## OLD: debug.trace_fmtd(4, "Warning: Ignoring item w/ unexpected format at line {num}",
                 debug.trace_fmtd(4, "Warning: Ignoring item w/ unexpected format at line {num}: items: len={l} first={f} second={s}",  l=len(items), f=gh.elide(items[0]), s=gh.elide(items[0]),
                                  num=(i + 1))
-    ## OLD: debug.trace_fmtd(7, "table={t}", t=table)
     debug.trace_values(7, zip(labels, values), "table")
     return (labels, values)
 
@@ -311,8 +301,6 @@ class TextCategorizer(object):
                                        alpha=SGD_ALPHA,
                                        random_state=SGD_SEED,
                                        ## TODO: max_iter=SGD_MAX_ITER,
-                                       ## OLD: n_iter=SGD_MAX_ITER,
-                                       ## OLD: tol=SGD_TOLERANCE
                                        verbose=SGD_VERBOSE)
             ## HACK: support old version and new (thanks sklearn!)
             ## TODO: make sure this won't break (e.g., due to visibility)
@@ -331,10 +319,6 @@ class TextCategorizer(object):
                 misc_xgb_params.update({'predictor': 'gpu_predictor'})
             if GPU_DEVICE:
                 misc_xgb_params.update({'gpu_id': GPU_DEVICE})
-            ## OLD:
-            ## if not XGB_USE_GPUS:
-            ##    misc_xgb_params['n_gpus'] = 0
-            ## debug.trace_fmt(6, 'misc_xgb_params={m}', m=misc_xgb_params)
             debug.trace_fmt(4, 'misc_xgb_params={m}', m=misc_xgb_params)
             classifier = xgb.XGBClassifier(**misc_xgb_params)
         elif USE_LR:
@@ -357,21 +341,15 @@ class TextCategorizer(object):
             debug.assertion(1 <= min_ngram <= max_ngram)
             tfidf_parameters['ngram_range'] = (min_ngram, max_ngram)
         if self.tfidf_min_df:
-            ## old: tfidf_parameters['min_df'] = tfidf_min_df
             tfidf_parameters['min_df'] = int_if_whole(self.tfidf_min_df)
         if self.tfidf_max_df:
-            ## old: tfidf_parameters['max_df'] = tfidf_max_df
             tfidf_parameters['max_df'] = int_if_whole(self.tfidf_max_df)
         if not self.tfidf_stopwords:
             tfidf_parameters['stop_words'] = 'english'
         if self.tfidf_char_ngrams:
             tfidf_parameters['analyzer'] = 'char'
         self.cat_pipeline = Pipeline(
-            [## OLD:
-             ## ('vect', CountVectorizer()),
-             ## ('tfidf', TfidfTransformer()),
-             ## NOTE: TfidfVectorizer same as CountVectorizer plus TfidfTransformer.
-             ('tfidf', TfidfVectorizer(**tfidf_parameters)),
+            [('tfidf', TfidfVectorizer(**tfidf_parameters)),
              ('clf', classifier)])
         if OUTPUT_CSV:
             pipeline_steps = list(self.cat_pipeline._iter())
@@ -391,22 +369,18 @@ class TextCategorizer(object):
         if ENCODE_CLASSES:
             label_indices = [self.keys.index(l) for l in labels]
             label_values = label_indices
-        ## OLD: self.classifier = self.cat_pipeline.fit(values, label_indices)
         self.classifier = self.cat_pipeline.fit(values, label_values)
-        ## OLD: debug.trace_object(7, self.classifier, "classifier")
         debug.trace_object(7, self, "TextCategorizer")
         return
 
     def test(self, filename, report=False, stream=sys.stdout):
         """Test classifier over tabular data from FILENAME with label and text, returning accuracy. Optionally, a detailed performance REPORT is output to STREAM."""
         debug.trace_fmtd(4, "tc.test({f})", f=filename)
-        ## OLD: (labels, values) = read_categorization_data(filename)
         (all_labels, all_values) = read_categorization_data(filename)
         debug.trace_values(6, all_labels, "all_labels")
         debug.trace_values(6, [gh.elide(v) for v in all_values], "all_values")
 
         # Prune cases with classes not in training data
-        ## BAD: actual_indices = [self.keys.index(l) for l in labels]
         # TODO: use hash of positions
         actual_indices = []
         values = []
@@ -421,14 +395,12 @@ class TextCategorizer(object):
                                  l=label, n=(i + 1))
 
         # Perform classification and determine accuracy
-        ## OLD: predicted_indices = self.classifier.predict(values)
         predicted_values = self.classifier.predict(values)
         if ENCODE_CLASSES:
             predicted_indices = predicted_values
         else:
             predicted_indices = [self.keys.index(label) for label in predicted_values]
         debug.assertion(len(actual_indices) == len(predicted_indices))
-        ## BAD: debug.trace_fmt(5, "actual: {act}\npredct: {pred}\n", act=actual_indices, pred=predicted_indices)
         debug.trace_values(6, actual_indices, "actual")
         debug.trace_values(6, predicted_indices, "predicted")
         ## TODO: predicted_labels = [self.keys[i] for i in predicted_indices]
@@ -441,7 +413,6 @@ class TextCategorizer(object):
                 stream.write("Missed classifications")
                 stream.write("\n")
                 stream.write("Actual\tPredict\n")
-                ## OLD: for i in range(len(actual_indices)):
                 ## TODO: complete conversion to using actual_index (here and below)
                 num_missed = 0
                 for (i, actual_index) in enumerate(actual_indices):
@@ -454,20 +425,14 @@ class TextCategorizer(object):
                 if (num_missed == 0):
                     stream.write("n/a")
                 stream.write("\n")
-            ## BAD: sklearn_report(actual_indices, predicted_indices, self.keys, stream)
-            ## OLD: keys = sorted(numpy.unique(labels))
-            ## BAD: keys = self.keys
-            ## BAD: sklearn_report(actual_indices, predicted_indices, keys, stream)
             actual_labels = [self.keys[i] for i in actual_indices]
             predicted_labels = [self.keys[i] for i in predicted_indices]
-            
             sklearn_report(actual_indices, predicted_indices, actual_labels, predicted_labels, stream)
 
         # Show cases not classified OK
         if OUTPUT_BAD:
             bad_instances = "Actual\tBad\tText\n"
             # TODO: for (i, actual_index) in enumerate(actual_indices)
-            ## OLD: for i in range(len(actual_indices)):
             for (i, actual_index) in enumerate(actual_indices):
                 debug.assertion(actual_index == actual_indices[i])
                 if (actual_indices[i] != predicted_indices[i]):
@@ -478,7 +443,6 @@ class TextCategorizer(object):
                         g=self.keys[actual_indices[i]],
                         b=self.keys[predicted_indices[i]],
                         t=context)
-            ## OLD: system.write_file(filename + ".bad", bad_instances)
             bad_filename = filename + ".bad"
             system.write_file(bad_filename, bad_instances)
             debug.trace_fmt(4, "Result ({f}):\n{r}", f=bad_filename, r=system.read_file(bad_filename))
@@ -486,7 +450,6 @@ class TextCategorizer(object):
 
     def categorize(self, text):
         """Return category for TEXT"""
-        # TODO: Add support for category distribution
         debug.trace(4, "tc.categorize(_)")
         debug.trace_fmtd(6, "\ttext={t}", t=text)
         index = self.classifier.predict([text])[0]
@@ -498,12 +461,10 @@ class TextCategorizer(object):
         """Return probability distribution for TEXT"""
         debug.trace(4, "tc.class_probabilities(_)")
         debug.trace_fmtd(6, "\ttext={t}", t=text)
-        ## BAD: class_names = self.classifier.classes_
         class_names = self.keys
         class_probs = self.classifier.predict_proba([text])[0]
         debug.trace_object(7, self.classifier)
         debug.trace_fmtd(6, "class_names: {cn}\nclass_probs: {cp}", cn=class_names, cp=class_probs)
-        ## BAD: dist = str(zip(class_names, class_probs))
         sorted_scores = misc.sort_weighted_hash(dict(zip(class_names, class_probs)))
         dist=" ".join([(k + ": " + system.round_as_str(s)) for (k, s) in sorted_scores])
         debug.trace_fmtd(5, "class_probabilities() => {r}", r=dist)
@@ -529,62 +490,18 @@ class TextCategorizer(object):
 # CherryPy Web server based on following tutorial
 #     https://simpletutorials.com/c/2165/How%20to%20Create%20a%20Simple%20JSON%20Service%20with%20CherryPy
 #
-# TODO: move to ~/visual-diff (e.g., text_categorizer_server.py)
-#
 
 # Constants
-TRUMP_TEXT = "Donald Trump is President."
+TRUMP_TEXT = "Donald Trump was President."
 DOG_TEXT = "My dog has fleas."
-
-## OLD:
-## CATEGORY_IMAGE_HASH = {
-##     # TODO: just use <category>.png to eliminate the hash
-##     # NOTES:
-##     # - drugs conflates with health
-##     # - government conflated with politics
-##     # - pets conflated with animal
-##     "animal": "/static/animals.png",
-##     "art": "/static/art.png",
-##     "biology": "/static/science.png",
-##     "business": "/static/business.jpg",
-##     "computers": "/static/computers.jpg",
-##     "drugs": "/static/health.jpg",
-##     "economics": "/static/economics.jpg",
-##     "education": "/static/education.png",
-##     "engineering": "/static/engineering.jpg",
-##     "food": "/static/food.jpg",
-##     "geography": "/static/geography.png",
-##     "geometry": "/static/geometry.jpg",
-##     "government": "/static/politics.png",
-##     "health": "/static/health.jpg",
-##     "history": "/static/history.jpg",
-##     "internet": "/static/internet.jpg",
-##     "law": "/static/law.jpg",
-##     "mathematics": "/static/mathematics.jpg",
-##     "military": "/static/military.png",
-##     "movie": "/static/movie.jpg",
-##     "music": "/static/music.jpg",
-##     "news": "/static/news.png",
-##     "pets": "/static/animals.png",
-##     "philosophy": "/static/philosophy.jpg",
-##     "politics": "/static/politics.png",
-##     "psychology": "/static/psychology.png",
-##     "religion": "/static/religion.jpg",
-##     "science": "/static/science.png",
-##     "software": "/static/software.jpg",
-##     "sports": "/static/sports.jpg",
-##     "technology": "/static/technology.jpg",
-##     "television": "/static/television.jpg",
-##     "tools": "/static/tools.jpg",
-##     "weather": "/static/weather.png",
-## }
 
 #--------------------------------------------------------------------------------
 # Utility function(s)
 
 def format_index_html(base_url=None):
-    """Formats a simple HTML page illustrating the categorize and get_category_image API calls,
-    Note: BASE_URL provides the server URL (e.g., http://www.scrappycito.com:9440)"""
+    """Formats a simple HTML page illustrating the categorize and class_probabilities API calls,
+    Note: BASE_URL provides the server URL (e.g., http://www.my-categorizer.com:9999)"""
+    # TODO: parameterize template generation (e.g., to facilitate usage in derived classes of web_controller
     if (base_url is None):
         base_url = "http://127.0.0.1"
     if (base_url.endswith("/")):
@@ -598,7 +515,7 @@ def format_index_html(base_url=None):
             <title>Text categorizer</title>
         </head>
         <body>
-            Try <a href="categorize">categorize</a> and <a href="get_category_image">get_category_image</a>.<br>
+            Try <a href="categorize">categorize</a> and <a href="class_probabilities">class_probabilities</a>.<br>
             note: You need to supply the <i><b>text</b></i> parameter.<br>
             <br>
             For example,
@@ -607,15 +524,12 @@ def format_index_html(base_url=None):
                     {indent}<code>{base_url}/categorize?text={quoted_trump_text}</code>
                 </li>
     
-                <li>Image for <a href="get_category_image?text={quoted_dog_text}">"{dog_text}"</a>:<br>
-                    {indent}<code>{base_url}/get_category_image?text={quoted_dog_text}</code>
+                <li>Probability distribution for <a href="class_probabilities?text={quoted_dog_text}">"{dog_text}"</a>:<br>
+                    {indent}<code>{base_url}/class_probabilities?text={quoted_dog_text}</code>
                 </li>
             </ul>
     """
-## TODO: drop get_category_image above
-##
-    html_template = html_template.replace("get_category_image", "class_probabilities").replace("Image", "Probabilities")
-    #
+
     if debug.detailed_debugging():
         html_template += """
             <p>
@@ -634,8 +548,9 @@ def format_index_html(base_url=None):
     html_template += """
 	    <!-- Form for entering text for categorization -->
             <hr>
-	    <form action="http://localhost:9440/categorize" method="get">
+	    <form action="http://localhost:{port}/categorize" method="get">
 	        <label for="textarea1">Categorize</label>
+                <br>
 	        <textarea id="textarea1" multiline="True" rows="10" cols="132" name="text"></textarea>
 	        <br>
 	        <input type="submit">
@@ -643,7 +558,7 @@ def format_index_html(base_url=None):
 	    
         </body>
     </html>
-    """
+    """.format(port=SERVER_PORT)
 
     # Resolve template into final HTML
     index_html = html_template.format(base_url=base_url, indent="&nbsp;&nbsp;&nbsp;&nbsp;",
@@ -658,7 +573,6 @@ def format_index_html(base_url=None):
 
 class web_controller(object):
     """Controller for CherryPy web server with embedded text categorizer"""
-    # TODO: put visual-diff support in ~/visual-diff directory (e.g., category image mapping)
     
     def __init__(self, model_filename, *args, **kwargs):
         """Class constructor: initializes search engine server"""
@@ -666,23 +580,12 @@ class web_controller(object):
                          s=self, a=args, k=kwargs)
         self.text_cat = TextCategorizer()
         self.text_cat.load(model_filename)
-        self.category_image = defaultdict(lambda: "/static/unknown-with-question-marks.png")
-        ## OLD:
-        ## # HACK: wikipedia categorization specific
-        ## self.category_image.update(CATEGORY_IMAGE_HASH)
-        # Note: To avoid cross-origin type errrors, Access-Control-Allow-Origin
-        # is made open. See following:
-        # - http://cleanbugs.com/item/how-to-get-cross-origin-sharing-cors-post-request-working-a-resource-413656.html
-        # - https://stackoverflow.com/questions/6054473/python-cherrypy-how-to-add-header
-        # TODO: put cherrypy config in start_web_controller (or put it's configuration here)
-        ## BAD: cherrypy.response.headers["Access-Control-Allow-Origin"] = "*"
         return
 
     @cherrypy.expose
     def index(self, **kwargs):
         """Website root page (e.g., web site overview and link to search)"""
         debug.trace_fmtd(5, "wc.index(s:{s}, kw:{kw})", s=self, kw=kwargs)
-        ## OLD: return "not much here excepting categorize and get_category_image"
         base_url = cherrypy.url('/')
         debug.trace_fmt(4, "base_url={b}", b=base_url)
         index_html = format_index_html(base_url)
@@ -703,45 +606,17 @@ class web_controller(object):
     #
     probs = class_probabilities
 
-    ## OLD
-    ## @cherrypy.expose
-    ## ## @cherrypy.tools.json_out()
-    ## def get_category_image(self, text, **kwargs):
-    ##     """Infer category for TEXT and return image"""
-    ##     debug.trace_fmtd(5, "wc.get_category_image(_, {kw}); self={s}", t=text, s=self, kw=kwargs)
-    ##     ## TEST: debug.trace_fmtd(6, "\ttext={t}", t=text)
-    ##     cat = self.categorize(text, **kwargs)
-    ##     image = self.category_image[cat]
-    ##     # for JSONP, need to add callback call and format the call
-    ##     # TODO: see if cherrypy handles this
-    ##     # see https://stackoverflow.com/questions/19456146/ajax-call-and-clean-json-but-syntax-error-missing-before-statement
-    ##     ## return image
-    ##     ## return json.dumps({"image": image})
-    ##     ## return {"image": image}
-    ##     image_id = kwargs.get("id", "id0")
-    ##     result = json.dumps({"image": image, "id": image_id})
-    ##     if 'callback' in kwargs:
-    ##         callback_function = kwargs['callback']
-    ##         debug.trace_fmtd(5, "Invoking callback {cb}", cb=callback_function)
-    ##         data = kwargs.get("data", "")
-    ##         result = (callback_function + "(" + result + ", " + data + ");")
-    ##     ## OLD: debug.trace_fmtd(6, "wc.get_category_image() => {r}", r=result)
-    ##     debug.trace_fmtd(6, "wc.get_category_image({t}) => {r}; cat={c}", t=text, r=result, c=cat)
-    ##     return result
-
     @cherrypy.expose
     def stop(self, **kwargs):
         """Stops the web search server and saves cached data to disk.
         Note: The command is ignored if not debugging."""
         debug.trace_fmtd(5, "wc.stop(s:{s}, kw:{kw})", s=self, kw=kwargs)
-        # TODO: get whitelisted server hosts from environment
-        ## OLD: if ((not debug.detailed_debugging()) and (os.environ.get("HOST_NICKNAME") in ["hostwinds", "hw2", "ec2-micro"])):
-        # TODO: replace stooges with real server nicknames
+        # TODO: replace stooges with your real server nicknames
         if ((not debug.detailed_debugging()) and (os.environ.get("HOST_NICKNAME") in ["curly", "larry", "moe"])):
             return "Call security!"
         # TODO: Straighten out shutdown quirk (seems like two invocations required).
         # NOTE: Putting exit before stop seems to do the trick. However, it might be
-        # the case that the servr shutdown 
+        # the case that the server shutdown.
         cherrypy.engine.exit()
         cherrypy.engine.stop()
         # TODO: Use HTML so shutdown shown in title.
@@ -763,10 +638,9 @@ def start_web_controller(model_filename):
         '/': {
             'tools.sessions.on': True,
             'tools.staticdir.root': os.path.abspath(os.getcwd()),
-            ## take 2: on avoiding cross-origin type errrors
+            ## notes: avoids cross-origin type errrors
             'tools.response_headers.on': True,
             'tools.response_headers.headers': [
-                ## OLD: ('Content-Type', 'text/javascript'),
                 ('Access-Control-Allow-Origin', '*'),
             ]
         },

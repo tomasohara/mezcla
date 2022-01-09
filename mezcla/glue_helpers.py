@@ -202,15 +202,27 @@ def indent_lines(text, indentation=INDENT, max_width=512):
 
 MAX_ELIDED_TEXT_LEN = tpo.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 #
-def elide(text, max_len=MAX_ELIDED_TEXT_LEN):
+def elide(text: str, max_len=None):
     """Returns TEXT elided to at most MAX_LEN characters (with '...' used to indicate remainder). Note: intended for tracing long string."""
+    # EX: elide("=" * 80, max_len=8) => "=====..."
     # TODO: add support for eliding at word-boundaries
+    tpo.debug_print("elide(_, _)", 7)
     debug.assertion(isinstance(text, str))
+    if max_len is None:
+        max_len = MAX_ELIDED_TEXT_LEN
     result = text
     if len(result) > max_len:
         result = result[:max_len] + "..."
     tpo.debug_print("elide({%s}, [{%s}]) => {%s}" % (text, max_len, result), 8)
     return result
+
+
+def elide_values(values: list, **kwargs):
+    """List version of elide [q.v.]"""
+    # EX: elide_values(["1", "22", "333"], max_len=2) => ["1", "22", "33..."]
+    tpo.debug_print("elide_values(_, _)", 7)
+    return list(map(lambda v: elide(str(v), **kwargs),
+                    values))
 
 
 def disable_subcommand_tracing():

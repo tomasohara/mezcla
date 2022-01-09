@@ -152,7 +152,7 @@ def getenv_text(var, default=None, description=None, helper=False):
     # Note: default is empty string to ensure result is string (not NoneType)
     register_env_option(var, description, default)
     if default is None:
-        debug.trace(4, "Warning: getenv_text treats default None as ''; use getenv_value for 'var' instead")
+        debug.trace(4, f"Warning: getenv_text treats default None as ''; use getenv_value for '{var}' instead")
         default = ""
     text_value = os.getenv(var)
     ## OLD: if not text_value:
@@ -333,8 +333,9 @@ def get_current_function_name():
 
 
 def open_file(filename, encoding=None, errors=None, **kwargs):
-    """Wrapper around around open() with FILENAME using UTF-8 encoding and ignoring ERRORS (both by default)"""
-    # Note: mode is left at default (i.e., 'r')
+    """Wrapper around around open() with FILENAME using UTF-8 encoding and ignoring ERRORS (both by default)
+    Note: mode is left at default (i.e., 'r')"""
+    # TODO: implement as with-style context
     if encoding is None:
         encoding = "UTF-8"
     if errors is None:
@@ -510,6 +511,7 @@ class stdin_reader(object):
 def read_entire_file(filename, **kwargs):
     """Read all of FILENAME and return as a string
     Note: optional arguments to open() passed along (e.g., encoding amd error handling)"""
+    ## EX: (write_file("/tmp/fu", "1\n2\n3\n"), read_entire_file("/tmp/fu"))[1] => "1\n2\n3\n"
     data = ""
     try:
         ## OLD: with open(filename) as f:
@@ -517,6 +519,7 @@ def read_entire_file(filename, **kwargs):
             data = from_utf8(f.read())
     ## OLD except IOError:
     except (AttributeError, IOError):
+        # TODO: use print_stderr so that shown in optimized version
         Level = 4 if (kwargs.get("errors") == "ignore") else 1
         debug.trace_fmtd(Level, "Error: Unable to read file '{f}': {exc}",
                          f=filename, exc=get_exception())
@@ -1052,7 +1055,8 @@ def to_bool(value):
     return bool_value
 
 
-PRECISION = getenv_int("PRECISION", 6)
+PRECISION = getenv_int("PRECISION", 6,
+                       "Precision for rounding (e.g., decimal places)")
 #
 def round_num(value, precision=PRECISION):
     """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
