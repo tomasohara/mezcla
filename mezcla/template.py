@@ -1,112 +1,95 @@
 #! /usr/bin/env python
-# 
-# TODO what the script does (detailed)
 #
-# The software is Open Source, licensed under the GNU Lesser General Public Version 3 (LGPLv3). See LICENSE.txt in repository.
+# TODO: Test(s) for ../MODULE.py
+#
+# Notes:
+# - Fill out TODO's below. Use numbered tests to order (e.g., test_1_usage).
+# - TODO: If any of the setup/cleanup methods defined, make sure to invoke base
+#   (see examples below for setUp and tearDown).
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python tests/test_MODULE.py
 #
 
-"""TODO: what module does (brief)"""
+"""TODO: Tests for TODO:module module"""
 
 # Standard packages
 import re
+import unittest
 
 # Installed packages
-## TODO: import numpy
-#
-# "local" packages (n.b., check for customized version)
+## TODO: import pytest
+
+# Local packages
+from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
-from mezcla.main import Main
-from mezcla import system
-## TODO:
-## from mezcla import data_utils as du
-## from mezcla.my_regex import my_re
-## from mezcla import glue_helpers as gh
+from mezcla import glue_helpers as gh
 
-## TODO: Constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
-## Note: Run following in Emacs to interactively replace TODO_ARG with option label
-##    M-: (query-replace-regexp "todo\\([-_]\\)arg" "arg\\1name")
-## where M-: is the emacs keystroke short-cut for eval-expression.
-TODO_ARG = "TODO-arg"
-## ALT_TODO_ARG = "alt-todo-arg"
-## TODO_FILENAME = "TODO-filename"
-
-## TODO:
-## # Environment options
-## # Note: These are just intended for internal options, not for end users.
-## # It also allows for enabling options in one place rather than four
-## # (e.g., [Main member] initialization, run-time value, and argument spec., along
-## # with string constant definition).
-## #
-## FUBAR = system.getenv_bool("FUBAR", False,
-##                            description="Fouled Up Beyond All Recognition processing")
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:	    global module object
+#    TestIt.script_module   string name
+## TODO: template => new name
+import mezcla.template as THE_MODULE
 
 
-class Script(Main):
-    """Input processing class"""
-    # TODO: -or-: """Adhoc script class (e.g., no I/O loop, just run calls)"""
-    ## TODO: class-level member variables for arguments (avoids need for class constructor)
-    todo_arg = False
-    ## alt_todo_arg = ""
+class TestIt(TestWrapper):
+    """Class for testcase definition"""
+    script_module = TestWrapper.derive_tested_module_name(__file__)
+    # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
+    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
-    # TODO: add class constructor if needed for non-standard initialization
-    ## def __init__(self, *args, **kwargs):
-    ##     debug.trace_fmtd(5, "Script.__init__({a}): keywords={kw}; self={s}",
-    ##                      a=",".join(args), kw=kwargs, s=self)
-    ##     super(Script, self).__init__(*args, **kwargs)
-    
-    def setup(self):
-        """Check results of command line processing"""
-        debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
-        ## TODO: extract argument values
-        self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
-        ## self.alt_todo_arg = self.get_parsed_option(alt_todo_arg, self.alt_todo_arg)
-        # TODO: self.TODO_filename = self.get_parsed_argument(TODO_FILENAME)
-        debug.trace_object(5, self, label="Script instance")
-
-    def process_line(self, line):
-        """Processes current line from input"""
-        debug.trace_fmtd(6, "Script.process_line({l})", l=line)
-        # TODO: flesh out
-        if self.todo_arg and "TODO" in line:
-            print("arg1 line: %s" % line)
-        ## TODO: regex pattern matching
-        ## elif my_re.search(self.alt_todo_arg, line):
-        ##     print("arg2 line: %s" % line)
-
-    ## TODO: if no input proocessed, customize run_main_step instead
-    ## and specify skip_input below
+    ## TODO: optional setup methods
     ##
-    ## def run_main_step(self):
-    ##     """Main processing step"""
-    ##     debug.trace_fmtd(5, "Script.run_main_step(): self={s}", s=self)
+    ## @classmethod
+    ## def setUpClass(cls):
+    ##     """One-time initialization (i.e., for entire class)"""
+    ##     debug.trace(6, f"TestIt.setUpClass(); cls={cls}")
+    ##     # note: should do parent processing first
+    ##     super().setUpClass()
+    ##     ...
+    ##     return
     ##
+    ## def setUp(self):
+    ##     """Per-test setup"""
+    ##     debug.trace(6, f"TestIt.setUp(); self={self}")
+    ##     # note: must do parent processing first (e.g., for temp file support)
+    ##     super().setUp()
+    ##     ...
+    ##     return
 
-    ## TODO: def wrap_up(self):
-    ##           """Do final processing"""
-    ##           debug.trace(6, f"Script.wrap_up(); self={self}")
-    ##           # ...
+    def test_data_file(self):
+        """Makes sure TODO works as expected"""
+        debug.trace(4, "TestIt.test_data_file()")
+        data = ["TODO1", "TODO2"]
+        gh.write_lines(self.temp_file, data)
+        output = self.run_script("", self.temp_file)
+        self.assertTrue(re.search(r"TODO-pattern", 
+                                  output.strip()))
+        return
 
-#-------------------------------------------------------------------------------
-    
+    def test_something_else(self):
+        """TODO: flesh out test for something else"""
+        debug.trace(4, "test_something_else()")
+        self.fail("TODO: code test")
+        ## ex: self.assertEqual(THE_MODULE.TODO_function() == TODO_value)
+        return
+
+    ## TODO: optional cleanup methods
+    ##
+    ## def tearDown(self):
+    ##     debug.trace(6, f"TestIt.tearDown(); self={self}")
+    ##     super(TestIt, cls).tearDownClass()
+    ##     ...
+    ##     return
+    ##
+    ## @classmethod
+    ## def tearDownClass(cls):
+    ##     debug.trace(6, f"TestIt.tearDownClass(); cls={cls}")
+    ##     super(TestIt, self).tearDown()
+    ##     ...
+    ##     return
+
+#------------------------------------------------------------------------
+
 if __name__ == '__main__':
-    debug.trace_current_context(level=debug.QUITE_DETAILED)
-    debug.trace_fmt(4, "Environment options: {eo}",
-                    eo=system.formatted_environment_option_descriptions())
-    app = Script(
-        description=__doc__,
-        # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
-        # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
-        skip_input=False,
-        manual_input=False,
-        # TODO: Disable inference of --help argument
-        ## auto_help=False,
-        ## TODO: specify options and (required) arguments
-        boolean_options=[(TODO_ARG, "TODO-desc")],
-        # Note: FILENAME is default argument unless skip_input
-        ## positional_arguments=[FILENAME1, FILENAME2], 
-        ## text_options=[(alt_todo_arg, "TODO-desc")],
-        # Note: Following added for indentation: float options are not common
-        float_options=None)
-    app.run()
-    debug.assertion(not any(re.search(r"^TODO_", m, re.IGNORECASE)
-                            for m in dir(app)))
+    debug.trace_current_context()
+    unittest.main()

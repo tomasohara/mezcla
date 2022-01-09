@@ -96,7 +96,11 @@ RETAIN_FORM_FEED = getenv_bool("RETAIN_FORM_FEED", False,
 DEFAULT_FILE_BASE = re.sub(r".py\w*$", "", gh.basename(__file__))
 FILE_BASE = system.getenv_text("FILE_BASE", DEFAULT_FILE_BASE,
                                "Basename for output files including dir")
-
+SHOW_ENV_OPTIONS = system.getenv_bool("ENV_USAGE", debug.detailed_debugging(),
+                                      "Include environment options in usage")
+# TODO: Put following in common module
+INDENT = system.getenv_text("INDENT", "    ",
+                            "Indentation for system output")
 
 #-------------------------------------------------------------------------------
 
@@ -188,7 +192,7 @@ class Main(object):
         self.temp_base = tpo.getenv_text("TEMP_BASE",
                                          tempfile.NamedTemporaryFile(**ntf_args).name)
         # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
-        # -or-: temp_base_dir = tpo.getenv_text("TEMP_BASE_DIR", ""); self.use_temp_base_dir = bool(temp_base_dir.strip); ...
+        # -or-: temp_base_dir = tpo.getenv_text("TEMP_BASE_DIR", ""); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
         if use_temp_base_dir is None:
             use_temp_base_dir = tpo.getenv_bool("USE_TEMP_BASE_DIR", False)
         self.use_temp_base_dir = use_temp_base_dir
@@ -316,12 +320,12 @@ class Main(object):
         if not self.argument_parser:
             self.argument_parser = argparse.ArgumentParser
         usage_notes = self.notes
-        if (not usage_notes and debug.debugging()):
-            env_opts = system.formatted_environment_option_descriptions(sort=True)
+        if (not usage_notes and SHOW_ENV_OPTIONS):
+            env_opts = system.formatted_environment_option_descriptions(sort=True, indent=INDENT)
             usage_notes = ("Notes: \n"
                            + ("- Use - for stdin to skip usage\n" if (not self.skip_input) else "")
-                           + ("- Available env. options:\n\t{opts}".format(
-                               opts=env_opts)))
+                           + ("- Available env. options:\n{indent}{opts}".format(
+                               opts=env_opts, indent=INDENT)))
         parser = self.argument_parser(description=self.description,
                                       epilog=usage_notes, prog=self.program,
                                       formatter_class=argparse.RawDescriptionHelpFormatter)
