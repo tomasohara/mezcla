@@ -20,9 +20,9 @@ import sys
 import pytest
 
 # Local packages
-import mezcla.tpo_common as tpo
 from mezcla import debug
 from mezcla.main import Main
+from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper
 
 class MyArgumentParser(ArgumentParser):

@@ -12,7 +12,7 @@
 
 """TODO: Tests for TODO:module module"""
 
-# Installed packages
+# Standard packages
 import re
 import unittest
 
@@ -21,8 +21,8 @@ import unittest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
-import mezcla.glue_helpers as gh
-import mezcla.debug as debug
+from mezcla import debug
+from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -43,14 +43,16 @@ class TestIt(TestWrapper):
     ## def setUpClass(cls):
     ##     """One-time initialization (i.e., for entire class)"""
     ##     debug.trace(6, f"TestIt.setUpClass(); cls={cls}")
-    ##     super(TestIt, cls).setUpClass()
+    ##     # note: should do parent processing first
+    ##     super().setUpClass()
     ##     ...
     ##     return
     ##
     ## def setUp(self):
     ##     """Per-test setup"""
-    ##     debug.trace(6, f"TestIt.setUp(); self={self}", 6)
-    ##     super(TestIt, self).setUp()
+    ##     debug.trace(6, f"TestIt.setUp(); self={self}")
+    ##     # note: must do parent processing first (e.g., for temp file support)
+    ##     super().setUp()
     ##     ...
     ##     return
 

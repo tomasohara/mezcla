@@ -13,10 +13,12 @@
 
 """Tests for tpo_common module"""
 
+# Standard packages
 import os
 import unittest
 
-import mezcla.tpo_common as tpo
+# Local packages
+from mezcla import tpo_common as tpo
 
 FUBAR = 101	# sample global for test_format
 FOOBAR = 12     # likewise
