@@ -342,7 +342,7 @@ def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0, para_m
         lines = [ "\n".join(lines) + "\n" ]
         debug.trace_expr(6, lines)
     if para_mode:
-        lines = re.split("\n\s*\n", ("\n".join(lines)))
+        lines = re.split(r"\n\s*\n", ("\n".join(lines)))
     matches = []
     for i, line in enumerate(lines):
         while line:
