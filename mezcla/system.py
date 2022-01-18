@@ -1009,7 +1009,7 @@ def unique_items(in_list, prune_empty=False):
     for item in in_list:
         if item or (not prune_empty):
             ordered_hash[item] = True
-    result = ordered_hash.keys()
+    result = list(ordered_hash.keys())
     debug.trace_fmt(8, "unique_items({l}) => {r}", l=in_list, r=result)
     return result
 
