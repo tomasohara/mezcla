@@ -64,6 +64,7 @@ MOST_VERBOSE = 9
 # Other constants
 UTF8 = "UTF-8"
 STRING_TYPES = six.string_types
+INDENT = "    "
 
 # Globals
 max_trace_value_len = 512
@@ -74,6 +75,7 @@ if __debug__:
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
     trace_level = 1
     output_timestamps = False           # prefix output with timestamp
+    last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
     debug_file = None                   # file for log output
     para_mode_tracing = False           # multiline tracing adds blank line (e.g., for para-mode grep)
@@ -154,7 +156,11 @@ if __debug__:
             if output_timestamps:
                 # Get time-proper from timestamp (TODO: find standard way to do this)
                 timestamp_time = re.sub(r"^\d+-\d+-\d+\s*", "", timestamp())
-
+                if detailed_debugging():
+                    global last_trace_time
+                    diff = round(1000.0 * (time.time() - last_trace_time), 3)
+                    timestamp_time += f" diff={diff}ms"
+                    last_trace_time = time.time()
                 print("[" + timestamp_time + "]", end=": ", file=sys.stderr)
                 if debug_file:
                     print("[" + timestamp_time + "]", end=": ", file=debug_file)
@@ -205,10 +211,12 @@ if __debug__:
 
 
     STANDARD_TYPES = (int, float, dict, list)
+    SIMPLE_TYPES = (bool, int, float, type(None), str)
     #
     def trace_object(level, obj, label=None, show_all=None, show_private=None, show_methods_etc=None, indentation=None, pretty_print=None, max_value_len=max_trace_value_len, max_depth=0):
         """Trace out OBJ's members to stderr if at trace LEVEL or higher.
         Note: Optionally uses output LABEL, with INDENTATION, SHOWing_ALL members, and PRETTY_PRINTing.
+        TODO: Use SHOW_PRIVATE to display private members and SHOW_METHODS_ETC for methods.
         If max_depth > 0, this uses recursion to show values for instance members."""
         # HACK: Members for STANDARD_TYPES omitted unless show_all.
         # Notes:
@@ -217,6 +225,7 @@ if __debug__:
         # - See https://stackoverflow.com/questions/383944/what-is-a-python-equivalent-of-phps-var-dump.
         # TODO: support recursive trace; specialize show_all into show_private and show_methods
         ## OLD: print("{stmt} < {current}: {r}".format(stmt=level, current=trace_level,
+        # TODO: handle tuples
         ##                                       r=(trace_level < level)))
         trace_fmt(10, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
                   dl=level, obj=object, lbl=label, sa=show_all, ind=indentation, pp=pretty_print, md=max_depth)
@@ -233,13 +242,17 @@ if __debug__:
             label += " [" + type_id_label + "]"
         else:
             pass
+        outer_indentation = ""
         if indentation is None:
-            indentation = "   "
+            indentation = INDENT
+        else:
+            # TODO: rework via indent_level arg
+            outer_indentation = indentation[:len(indentation)-len(INDENT)]
         if show_all is None:
             show_all = (show_private or show_methods_etc)
         if para_mode_tracing:
             trace(0, "")
-        trace(0, label + ": {")
+        trace(0, outer_indentation + label + ": {")
         ## OLD: for (member, value) in inspect.getmembers(obj):
         member_info = []
         try:
@@ -267,10 +280,16 @@ if __debug__:
                 if use_logging:
                     logging.debug(_to_utf8((indentation + member + ": " + value_spec)))
                 continue
-            # Optionally, process recursively (TODO: make "   " an env. option)
-            if (max_depth > 0):
-                trace_object(level, value, label=member, show_all=show_all,
-                             indentation=(indentation + "   "), pretty_print=None,
+            # Include unless special member (or if no filtering)
+            ## DEBUG: trace_expr(7, member.startswith("__"), re.search(r"^<.*(method|module|function).*>$", value_spec))
+            include_member = (show_all or (not (member.startswith("__") or 
+                                                re.search(r"^<.*(method|module|function).*>$", value_spec))))
+            # Optionally, process recursively (TODO: make INDENT an env. option)
+            if ((max_depth > 0) and include_member and (not isinstance(value, SIMPLE_TYPES))):
+                # TODO: add helper for formatting type & address (for use here and above)
+                member_type_id_label = (member + " [" + str(type(value)) + " " + hex(id(value)) + "]")
+                trace_object(level, value, label=member_type_id_label, show_all=show_all,
+                             indentation=(indentation + INDENT), pretty_print=None,
                              max_depth=(max_depth - 1))
                 continue
             # Otherwise, derive value spec. (trapping for various exceptions)
@@ -287,16 +306,12 @@ if __debug__:
                 trace_fmtd(7, "Error: unexpected problem in trace_object: {exc}",
                            exc=sys.exc_info())
                 value_spec = "__n/a__"
-            # Output unless special member (or if no filtering)
-            if (show_all or (not (member.startswith("__") or 
-                                  re.search(r"^<.*(method|module|function).*>$", value_spec)))):
-                ## trace(0, indentation + member + ": " + value_spec)
+            if include_member:
                 sys.stderr.write(indentation + member + ": ")
                 if pretty_print:
                     # TODO: remove quotes from numbers and booleans
                     pprint(value_spec, stream=sys.stderr, indent=len(indentation))
                 else:
-                    ## sys.stderr.write(value_spec)
                     sys.stderr.write(_to_utf8(value_spec))
                     sys.stderr.write("\n")
                 if use_logging:
@@ -322,11 +337,11 @@ if __debug__:
             trace(level + 1, "Warning: [trace_values] coercing input into list")
             collection = list(collection)
         if indentation is None:
-            indentation = "   "
+            indentation = INDENT
         if label is None:
             ## BAD: label = str(type(collection)) + " " + hex(hash(collection))
             label = str(type(collection)) + " " + hex(id(collection))
-            indentation = "   "
+            indentation = INDENT
         if use_repr is None:
             use_repr = False
         trace(0, label + ": {")
@@ -429,7 +444,7 @@ if __debug__:
         if para_mode_tracing:
             trace(level, "")
         trace_fmt(level, "{label} context: {{", label=label)
-        prefix = "    "
+        prefix = INDENT
         if (get_level() - level) > 1:
             trace_object((level + 2), frame, "frame", indentation=prefix,
                          show_all=show_methods_etc)
@@ -755,6 +770,8 @@ def main(args):
     #
     trace(0, "date record for now at trace level 1")
     trace_object(1, datetime.now(), label="now")
+    trace(4, "stack record with max depth 1")
+    trace_object(4, inspect.stack(), label="stack", max_depth=1)
     #
     # Make sure trace_expr traces at proper tracing level
     trace(0, "level=N         for N from 0..trace_level ({l})".
