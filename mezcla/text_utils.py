@@ -101,6 +101,7 @@ def extract_html_images(document_data, url):
     debug.trace_fmtd(8, "extract_html_images(_):\n\tdata={d}", d=document_data)
     # TODO: add example; return dimensions
     # TODO: have URL default to current directory
+    # TODO: put in html_utils
 
     # Parse HTML, extract base URL if given and get website from URL.
     init_BeautifulSoup()
@@ -127,6 +128,7 @@ def extract_html_images(document_data, url):
 
     # Get images and resolve to full URL (TODO: see if utility for this)
     # TODO: include CSS background images
+    # TODO: use DATA-SRC if SRC not valid URL (e.g., src="data:image/gif;base64,R0lGODl...")
     images = []
     all_images = soup.find_all('img')
     for image in all_images:
@@ -143,7 +145,8 @@ def extract_html_images(document_data, url):
             image_src = web_site_url + image_src
         elif not image_src.startswith("http"):
             image_src = base_url + "/" + image_src
-        images.append(image_src)
+        if image_src not in images:
+            images.append(image_src)
     debug.trace_fmtd(6, "extract_html_images() => {i}", i=images)
     return images
 
