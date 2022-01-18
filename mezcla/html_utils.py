@@ -47,6 +47,7 @@ import re
 import sys
 import time
 import urllib
+from urllib.error import HTTPError, URLError
 
 # Installed packages
 # Note: selenium import now optional; BeautifulSoup also optional
@@ -64,6 +65,7 @@ MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("MID_DOWNLOAD_SLEEP_SECONDS",
 POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("POST_DOWNLOAD_SLEEP_SECONDS", 0)
 SKIP_BROWSER_CACHE = system.getenv_boolean("SKIP_BROWSER_CACHE", False)
 USE_BROWSER_CACHE = (not SKIP_BROWSER_CACHE)
+DEFAULT_STATUS_CODE = "000"
 
 # Globals
 # note: for convenience in Mako template code
@@ -89,7 +91,9 @@ def write_temp_file(filename, text):
 browser_cache = {}
 ##
 def get_browser(url):
-    """Get existing browser for URL or create new one"""
+    """Get existing browser for URL or create new one
+    Note: This is for use in web automation (e.g., via selenium).
+    """
     browser = None
     global browser_cache
     # Check for cached version of browser. If none, create one and access page.
@@ -131,7 +135,7 @@ def get_inner_text(url):
     wait_until_ready(url)
     # Extract fully-rendered text
     inner_text = browser.execute_script("return document.body.innerText")
-    debug.trace_fmt(7, "get_inner_text({u}) => {t}", u=url, h=inner_text)
+    debug.trace_fmt(7, "get_inner_text({u}) => {it}", u=url, it=inner_text)
     return inner_text
 
 
@@ -147,7 +151,7 @@ def document_ready(url):
 
 
 def wait_until_ready(url):
-    """Wait for document ready and pause to allow loading to finish"""
+    """Wait for document_ready (q.v.) and pause to allow loading to finish"""
     # TODO: make sure the sleep is proper way to pause
     debug.trace_fmt(5, "in wait_until_ready({u})", u=url)
     start_time = time.time()
@@ -164,6 +168,7 @@ def wait_until_ready(url):
 def escape_html_value(value):
     """Escape VALUE for HTML embedding"""
     return system.escape_html_text(value)
+
 
 def unescape_html_value(value):
     """Undo escaped VALUE for HTML embedding"""
@@ -184,10 +189,12 @@ def get_param_dict(param_dict=None):
        Note: """
     return (param_dict if param_dict else user_parameters)
 
+
 def set_param_dict(param_dict):
     """Sets global user_parameters to value of PARAM_DICT"""
     global user_parameters
     user_parameters = param_dict
+
 
 def get_url_param(name, default_value="", param_dict=None):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
@@ -200,6 +207,7 @@ def get_url_param(name, default_value="", param_dict=None):
     return value
 #
 get_url_parameter = get_url_param
+
 
 def get_url_param_checkbox_spec(name, default_value="", param_dict=None):
     """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT"""
@@ -216,6 +224,7 @@ def get_url_param_checkbox_spec(name, default_value="", param_dict=None):
 #
 get_url_parameter_checkbox_spec = get_url_param_checkbox_spec
 
+
 def get_url_parameter_value(param, default_value=False, param_dict=None):
     """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)"""
     param_dict = get_param_dict(param_dict)
@@ -223,6 +232,7 @@ def get_url_parameter_value(param, default_value=False, param_dict=None):
     if isinstance(result, list):
         result = result[-1]
     return result
+
 
 def get_url_parameter_bool(param, default_value=False, param_dict=None):
     """Get boolean value for PARAM from PARAM_DICT, with "on" treated as True. @note the hash defaults to user_parameters, and the default value is False"""
@@ -239,6 +249,7 @@ def get_url_parameter_bool(param, default_value=False, param_dict=None):
 #
 get_url_param_bool = get_url_parameter_bool
 
+
 def get_url_parameter_int(param, default_value=0, param_dict=None):
     """Get integer value for PARAM from PARAM_DICT.
     Note: the hash defaults to user_parameters, and the default value is 0"""
@@ -249,6 +260,7 @@ def get_url_parameter_int(param, default_value=0, param_dict=None):
 #
 get_url_param_int = get_url_parameter_int
 
+
 def fix_url_parameters(url_parameters):
     """Use the last values for any user parameter with multiple values"""
     # EX: fix_url_parameters({'w':[7, 8], 'h':10}) => {'w':8, 'h':10}
@@ -257,15 +269,20 @@ def fix_url_parameters(url_parameters):
                     up=url_parameters, new=new_url_parameters)
     return new_url_parameters
 
+
+## TODO: def download_web_document(url, /, filename=None, download_dir=None, meta_hash=None, use_cached=False):
 def download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False):
     """Download document contents at URL, returning as unicode text. An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED."""
-    debug.trace_fmtd(4, "download_web_document({u}, {f}, {mh})", u=url, f=filename, mh=meta_hash)
     # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
-    # TODO: move to html_utils.py
+    # EX: download_web_document("www. bogus. url.html") => None
+    debug.trace_fmtd(4, "download_web_document({u}, d={d}, f={f}, h={mh})",
+                     u=url, d=download_dir, f=filename, mh=meta_hash)
 
     # Download the document and optional headers (metadata).
     # Note: urlretrieve chokes on URLS like www.cssny.org without the protocol.
     # TODO: report as bug if not fixed in Python 3
+    if url.endswith("/"):
+        url = url[:-1]
     if filename is None:
         ## OLD: filename = system.quote_url_text(url)
         filename = system.quote_url_text(gh.basename(url))
@@ -277,48 +294,57 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
     ## OLD: local_filename = filename
     local_filename = gh.form_path(download_dir, filename)
     headers = ""
+    status_code = DEFAULT_STATUS_CODE
     ## OLD: if system.non_empty_file(local_filename):
     if use_cached and system.non_empty_file(local_filename):
         debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
     else:
         try:
-            if sys.version_info.major > 2:
-                local_filename, headers = urllib.request.urlretrieve(url, local_filename)      # pylint: disable=no-member
-            else:
-                local_filename, headers = urllib.urlretrieve(url, local_filename)      # pylint: disable=no-member
-            debug.trace_fmtd(5, "=> local file: {f}; headers={{h}}",
+            ## TEMP: issue separate call to get status code (TODO: figure out how to do after urlretrieve call)
+            with urllib.request.urlopen(url) as fp:
+                status_code = fp.getcode()
+            local_filename, headers = urllib.request.urlretrieve(url, local_filename)      # pylint: disable=no-member
+            debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
                              f=local_filename, h=headers)
-        ## OLD: except IOError:
-        ## TODO: except(IOError, UnicodeError, URLError):
-        except:
-            ## OLD: debug.raise_exception(6)
-            debug.trace_fmtd(1, "Error: Unable to download {u}: {exc}",
-                             u=url, exc=system.get_exception())
-            ## gotta hate pylint; pylint: disable=multiple-statements
-            if debug.verbose_debugging(): system.print_full_stack()
+        except(IOError, UnicodeError, URLError, HTTPError) as exc:
+            ## TEST: debug.assertion(exc == system.get_exception())
+            ## debug.trace_expr(5, exc, system.get_exception())
+            ## DEBUG: debug.trace_object(5, exc, max_depth=2)
+            local_filename = None
+            stack = (type(exc) not in [HTTPError])
+            system.print_exception_info("download_web_document", show_stack=stack)
+            try:
+                status_code = exc.code
+            except:
+                pass
     if meta_hash is not None:
         meta_hash["filename"] = local_filename
         meta_hash["headers"] = headers
+    debug.trace(5, f"status_code={status_code}")
 
     # Read all of the data and return as text
-    data = system.read_entire_file(local_filename)
-    debug.trace_fmtd(7, "download_document() => {d}", d=data)
+    data = system.read_entire_file(local_filename) if local_filename else None
+    debug.trace_fmtd(7, "download_web_document() => {d}", d=data)
     return data
+
 
 def retrieve_web_document(url):
     """Simpler version of download_web_document"""
     # Also works around Error-403 (see https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve)
     debug.trace_fmtd(5, "retrieve_web_document({u})", u=url)
     result = None
+    status_code = DEFAULT_STATUS_CODE
     if "//" not in url:
         url = "http://" + url
     try:
         r = requests.get(url)
+        status_code = r.status_code
         ## OLD: result = r.content
         result = r.content.decode(errors='ignore')
     ## TODO: except(AttributeError, ConnectionError):
     except:
         debug.trace_fmtd(4, "Error during: {exc}", exc=system.get_exception())
+    debug.trace(5, f"status_code={status_code}")
     debug.trace_fmtd(7, "retrieve_web_document() => {r}", r=result)
     return result
 
@@ -385,18 +411,27 @@ def main(args):
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
     user = system.getenv_text("USER")
-    system.print_stderr("Warning, {u}: Not really intended for direct invocation".format(u=user))
+    system.print_stderr("Warning, {u}: this is not really intended for direct invocation".format(u=user))
 
     # HACK: Do simple test of inner-HTML support
+    # TODO: Do simpler test of download_web_document
     if (len(args) > 1):
+        # Get web page text
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
         url = args[1]
+        debug.trace_expr(6, retrieve_web_document(url))
         html_data = download_web_document(url)
         filename = system.quote_url_text(url)
         if debug.debugging():
             write_temp_file("pre-" + filename, html_data)
+
+        # Show inner/outer HTML
+        # Note: The browser is hidden unless MOZ_HEADLESS true
+        # TODO: Support Chrome
         ## OLD: wait_until_ready(url)
         ## BAD: rendered_html = render(html_data)
+        system.setenv("MOZ_HEADLESS",
+                      str(int(system.getenv_bool("MOZ_HEADLESS", True))))
         rendered_html = get_inner_html(url)
         if debug.debugging():
             write_temp_file("post-" + filename, rendered_html)
