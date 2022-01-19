@@ -60,12 +60,14 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 
 # Constants
+DEFAULT_STATUS_CODE = "000"
 MAX_DOWNLOAD_TIME = system.getenv_integer("MAX_DOWNLOAD_TIME", 60)
 MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("MID_DOWNLOAD_SLEEP_SECONDS", 60)
 POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("POST_DOWNLOAD_SLEEP_SECONDS", 0)
 SKIP_BROWSER_CACHE = system.getenv_boolean("SKIP_BROWSER_CACHE", False)
 USE_BROWSER_CACHE = (not SKIP_BROWSER_CACHE)
-DEFAULT_STATUS_CODE = "000"
+DOWNLOAD_VIA_URLLIB = system.getenv_bool("DOWNLOAD_VIA_URLLIB", False)
+DOWNLOAD_VIA_REQUESTS = (not DOWNLOAD_VIA_URLLIB)
 
 # Globals
 # note: for convenience in Mako template code
@@ -269,12 +271,11 @@ def fix_url_parameters(url_parameters):
                     up=url_parameters, new=new_url_parameters)
     return new_url_parameters
 
-
-## TODO: def download_web_document(url, /, filename=None, download_dir=None, meta_hash=None, use_cached=False):
 def download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False):
     """Download document contents at URL, returning as unicode text. An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED."""
     # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
     # EX: download_web_document("www. bogus. url.html") => None
+    ## TODO: def download_web_document(url, /, filename=None, download_dir=None, meta_hash=None, use_cached=False):
     debug.trace_fmtd(4, "download_web_document({u}, d={d}, f={f}, h={mh})",
                      u=url, d=download_dir, f=filename, mh=meta_hash)
 
@@ -284,28 +285,36 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
     if url.endswith("/"):
         url = url[:-1]
     if filename is None:
-        ## OLD: filename = system.quote_url_text(url)
+        ## TODO: support local filenames with subdirectories
         filename = system.quote_url_text(gh.basename(url))
         debug.trace_fmtd(5, "\tquoted filename: {f}", f=filename)
     if "//" not in url:
         url = "http://" + url
     if download_dir is None:
-        download_dir = "."
-    ## OLD: local_filename = filename
+        download_dir = "downloads"
+    if not gh.is_directory(download_dir):
+        gh.full_mkdir(download_dir)
     local_filename = gh.form_path(download_dir, filename)
+    if meta_hash is not None:
+        meta_hash["filename"] = local_filename
     headers = ""
     status_code = DEFAULT_STATUS_CODE
-    ## OLD: if system.non_empty_file(local_filename):
     if use_cached and system.non_empty_file(local_filename):
         debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
+    elif DOWNLOAD_VIA_REQUESTS:
+        doc_data = retrieve_web_document(url, meta_hash=meta_hash)
+        if doc_data:
+            system.write_file(local_filename, doc_data)
     else:
+        # TODO: put urllib-based support in separate function (e.g., old_retrieve_web_document)
         try:
             ## TEMP: issue separate call to get status code (TODO: figure out how to do after urlretrieve call)
             with urllib.request.urlopen(url) as fp:
                 status_code = fp.getcode()
             local_filename, headers = urllib.request.urlretrieve(url, local_filename)      # pylint: disable=no-member
-            debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
-                             f=local_filename, h=headers)
+
+            # Read all of the data and return as text
+            doc_data = system.read_entire_file(local_filename) if local_filename else None
         except(IOError, UnicodeError, URLError, HTTPError) as exc:
             ## TEST: debug.assertion(exc == system.get_exception())
             ## debug.trace_expr(5, exc, system.get_exception())
@@ -313,24 +322,21 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
             local_filename = None
             stack = (type(exc) not in [HTTPError])
             system.print_exception_info("download_web_document", show_stack=stack)
-            try:
-                status_code = exc.code
-            except:
-                pass
+            status_code = getattr(exc, "code", status_code)
+        debug.trace(5, f"status_code={status_code}")
     if meta_hash is not None:
-        meta_hash["filename"] = local_filename
         meta_hash["headers"] = headers
-    debug.trace(5, f"status_code={status_code}")
+    debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
+                     f=local_filename, h=headers)
 
-    # Read all of the data and return as text
-    data = system.read_entire_file(local_filename) if local_filename else None
-    debug.trace_fmtd(7, "download_web_document() => {d}", d=data)
-    return data
+    debug.trace_fmtd(6, "download_web_document() => {d}", d=gh.elide(doc_data))
+    return doc_data
 
 
-def retrieve_web_document(url):
-    """Simpler version of download_web_document"""
-    # Also works around Error-403 (see https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve)
+def retrieve_web_document(url, meta_hash=None):
+    """Simpler version of download_web_document, using an optional META_HASH for recording headers
+    Note: works works around Error-403 presumably due to urllib's user agent"""
+    # See https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve.
     debug.trace_fmtd(5, "retrieve_web_document({u})", u=url)
     result = None
     status_code = DEFAULT_STATUS_CODE
@@ -339,11 +345,12 @@ def retrieve_web_document(url):
     try:
         r = requests.get(url)
         status_code = r.status_code
-        ## OLD: result = r.content
         result = r.content.decode(errors='ignore')
+        if meta_hash is not None:
+            meta_hash["headers"] = r.headers
     ## TODO: except(AttributeError, ConnectionError):
     except:
-        debug.trace_fmtd(4, "Error during: {exc}", exc=system.get_exception())
+        system.print_exception_info("retrieve_web_document")
     debug.trace(5, f"status_code={status_code}")
     debug.trace_fmtd(7, "retrieve_web_document() => {r}", r=result)
     return result
