@@ -68,6 +68,7 @@ except ImportError:
 
 # Local packages
 from mezcla import debug
+from mezcla.debug import trace_level as debug_level
 from mezcla import system
             
 # Defaults for globals
@@ -1428,7 +1429,7 @@ if __debug__:
     
     # Do the initialization
     debug_init()
-
+    debug.assertion(debug_level == debug.get_level())
 
 # Warn if invoked standalone
 #

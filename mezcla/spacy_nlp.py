@@ -135,6 +135,7 @@ def get_char_span(doc, start, end):
     debug.assertion(span)
     return span
 
+# Note: requires Spacy 3+
 @spacy.Language.component('pysbd_sentence_boundaries')
 def pysbd_sentence_boundaries(doc):
     """Pragmatic sentence tokenizer component"""

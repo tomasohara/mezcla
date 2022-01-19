@@ -3,6 +3,10 @@
 # Utility functions for writing glue scripts, such as implementing functionality
 # available in Unix scripting (e.g., basename command).
 #
+# NOTE:
+# - Some of the utilities are specific to Unix (e.g., full_mkdir and real_path). In
+#   contrast, system.py attempts to be more cross platform.
+#
 # TODO:
 # - Add more functions to facilitate command-line scripting (check bash scripts for commonly used features).
 # - Add functions to facilitate functional programming (e.g., to simply debugging traces).
@@ -175,6 +179,14 @@ def full_mkdir(path):
     issue('mkdir --parents "{p}"', p=path)
     debug.assertion(is_directory(path))
     return
+
+
+def real_path(path):
+    """Return resolved absolute pathname for PATH, as with Linux realpath command"""
+    # EX: re.search("vmlinuz.*\d.\d", real_path("/vmlinuz"))
+    result = run(f'realpath "{path}"')
+    debug.trace(7, f"real_path({path}) => {result}")
+    return result
 
 
 def indent(text, indentation=INDENT, max_width=512):
