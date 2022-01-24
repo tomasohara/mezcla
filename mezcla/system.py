@@ -646,6 +646,18 @@ def write_file(filename, text):
     return
 
 
+def write_binary_file(filename, data):
+    """Create FILENAME with binary DATA"""
+    debug.trace_fmt(7, "write_binary_file({f}, _)", f=filename)
+    try:
+        with open(filename, "wb") as f:
+            f.write(data)
+    except (IOError, ValueError):
+        debug.trace_fmtd(1, "Error: Problem writing file '{f}': {exc}",
+                         f=filename, exc=get_exception())
+    return
+
+
 def write_lines(filename, text_lines, append=False):
     """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND"""
     debug.trace_fmt(5, "write_lines({f}, _, {a})", f=filename, a=append)
@@ -756,67 +768,8 @@ def set_current_directory(PATH):
     return result
 
 
-## OLD:
-## def download_web_document(url, filename=None, meta_hash=None):
-##     """Download document contents at URL, returning as unicode text. An optional FILENAME can be given for the download, and an optional META_HASH can be specified for recording filename and headers"""
-##     debug.trace_fmtd(4, "download_web_document({u}, {f}, {mh})", u=url, f=filename, mh=meta_hash)
-##     # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
-##     # TODO: move to html_utils.py
-## 
-##     # Download the document and optional headers (metadata).
-##     # Note: urlretrieve chokes on URLS like www.cssny.org without the protocol.
-##     # TODO: report as bug if not fixed in Python 3
-##     if filename is None:
-##         filename = quote_url_text(url)
-##         debug.trace_fmtd(5, "\tquoted filename: {f}", f=filename)
-##     if "//" not in url:
-##         url = "http://" + url
-##     local_filename = filename
-##     headers = ""
-##     if non_empty_file(local_filename):
-##         debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
-##     else:
-##         try:
-##             if sys.version_info.major > 2:
-##                 local_filename, headers = urllib.request.urlretrieve(url, filename)      # pylint: disable=no-member
-##             else:
-##                 local_filename, headers = urllib.urlretrieve(url, filename)      # pylint: disable=no-member
-##             debug.trace_fmtd(5, "=> local file: {f}; headers={{h}}",
-##                              f=local_filename, h=headers)
-##         ## OLD: except IOError:
-##         ## TODO: except(IOError, UnicodeError, URLError):
-##         except:
-##             ## OLD: debug.raise_exception(6)
-##             debug.trace_fmtd(1, "Error: Unable to download {u}: {exc}",
-##                              u=url, exc=get_exception())
-##             ## gotta hate pylint; pylint: disable=multiple-statements
-##             if debug.verbose_debugging(): print_full_stack()
-##     if meta_hash is not None:
-##         meta_hash["filename"] = local_filename
-##         meta_hash["headers"] = headers
-## 
-##     # Read all of the data and return as text
-##     data = read_entire_file(local_filename)
-##     debug.trace_fmtd(7, "download_document() => {d}", d=data)
-##     return data
-## 
-## def alt_download_web_document(url):
-##     """Simpler version of download_web_document, using a temporary file"""
-##     # Also works around Error-403 (see https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve)
-##     result = None
-##     if "//" not in url:
-##         url = "http://" + url
-##     try:
-##         r = requests.get(url)
-##         result = r.content
-##     ## TODO: except(AttributeError, ConnectionError):
-##     except:
-##         debug.trace_fmtd(4, "Error during: {exc}", exc=get_exception())
-##     debug.trace_fmtd(7, "alt_download_web_document() => {r}", r=result)
-##     return result
-
 def to_utf8(text):
-    """Convert TEXT to UTF-8 (e.g., for I/O)"""
+    """obsolete no-op: Convert TEXT to UTF-8 (e.g., for I/O)"""
     # EX: to_utf8(u"\ufeff") => "\xEF\xBB\xBF"
     result = text
     if ((sys.version_info.major < 3) and (isinstance(text, unicode))):   # pylint: disable=undefined-variable
