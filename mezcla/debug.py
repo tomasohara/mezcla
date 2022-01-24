@@ -489,7 +489,8 @@ if __debug__:
 
 
     def assertion(expression, message=None):
-        """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE"""
+        """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
+        Note: This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so)"""
         # EX: assertion((2 + 2) != 5)
         # TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
         # TODO: trace out local and globals to aid in diagnosing assertion failures; ex: add automatic tarcing of variables used in the assertion expression)
@@ -516,15 +517,25 @@ if __debug__:
                 trace_object(0, inspect.currentframe(), "caller frame", pretty_print=True)
         return
 
+    def val(level, value):
+        """Returns VALUE if at trace LEVEL or higher otherwise None
+        Note: inspired by Lisp's convenient IF form without an explicit else: (if test value-if-true)"""
+        # EX: (101 if ((get_level() == 1) and val(1, 101)) else None) => 101
+        # EX: ((not __debug__) and val(trace_level, 101))) => None
+        # TODO: rename as cond_value???
+        return (value if (trace_level >= level) else None)
+
     def code(level, no_arg_function):
         """Execute NO_ARG_FUNCTION if at trace LEVEL or higher
-        Note: Thanks to the wonders of Python syntax, a two-step process is required:
+        Notes:
+        - Given the quirks of Python syntax, a two-step process is required:
            debug.code(4, { line1; line2; ...; lineN })
-        =>
-           if __debug__:
-               def my_stupid_block_workaround(): 
+               =>
+           def my_stupid_block_workaround(): 
+               if __debug__:
                    line1; line2; ...; lineN
-           debug.code(4, my_stupid_block_workaround)"""
+           debug.code(4, my_stupid_block_workaround)
+        - Lambda functions can be used for simple expression-based functions"""
         trace_object(5, f"code({level}, {no_arg_function})")
         if (trace_level >= level):
             trace_object(6, f"Executing {no_arg_function}")
@@ -536,7 +547,8 @@ else:
     trace_level = 0
     
     def non_debug_stub(*_args, **_kwargs):
-        """Non-debug stub"""
+        """Non-debug stub (i.e., no-op function)"""
+        # Note: no return value assumed by debug.expr
         return
 
 
@@ -571,7 +583,17 @@ else:
     assertion = non_debug_stub
 
     code = non_debug_stub
-    
+
+    ## TODO?:
+    ## val = non_debug_stub
+    ##
+    def val(_expression):
+        """Non-debug stub for value()--a no-op function"""
+        # Note: implemented separately from non_debug_stub to ensure no return value
+        return
+    ##
+    assert val(1) is None, "non-debug val() should not return a non-Null value"
+
 # note: adding alias for trace_fmtd to account for common typo
 # TODO: alias trace to trace_fmt as well (add something like trace_out if format not desired)
 trace_fmt = trace_fmtd
@@ -731,9 +753,9 @@ def profile_function(frame, event, arg):
                   mod=module, func=name, e=event, a=arg)
     return
 
-def reference_vars(*args):
+def reference_var(*args):
     """Dummy function used for referencing variables"""
-    trace(9, f"reference_vars{tuple(args)}")
+    trace(9, f"reference_var{tuple(args)}")
     return
 
 #-------------------------------------------------------------------------------
