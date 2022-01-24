@@ -68,6 +68,8 @@ SKIP_BROWSER_CACHE = system.getenv_boolean("SKIP_BROWSER_CACHE", False)
 USE_BROWSER_CACHE = (not SKIP_BROWSER_CACHE)
 DOWNLOAD_VIA_URLLIB = system.getenv_bool("DOWNLOAD_VIA_URLLIB", False)
 DOWNLOAD_VIA_REQUESTS = (not DOWNLOAD_VIA_URLLIB)
+DOWNLOAD_TIMEOUT = system.getenv_float("DOWNLOAD_TIMEOUT", 5,
+                                       "Timeout in seconds for download")
 
 # Globals
 # note: for convenience in Mako template code
@@ -189,7 +191,9 @@ def escape_hash_value(hash_table, key):
 def get_param_dict(param_dict=None):
     """Returns parameter dict using PARAM_DICT if non-Null else USER_PARAMETERS
        Note: """
-    return (param_dict if param_dict else user_parameters)
+    result = (param_dict if (param_dict is not None) else user_parameters)
+    debug.trace(7, f"get_param_dict([{param_dict}]) => {result}")
+    return result
 
 
 def set_param_dict(param_dict):
@@ -201,7 +205,7 @@ def set_param_dict(param_dict):
 def get_url_param(name, default_value="", param_dict=None):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
     Note: It will be escaped for use in HTML."""
-    param_dict = get_param_dict(param_dict)
+    param_dict = (get_param_dict(param_dict) or {})
     value = escape_html_value(param_dict.get(name, default_value))
     value = system.to_unicode(value)
     debug.trace_fmtd(4, "get_url_param({n}, [{d}]) => {v})",
@@ -215,7 +219,7 @@ def get_url_param_checkbox_spec(name, default_value="", param_dict=None):
     """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT"""
     # NOTE: 1 also treated as True
     # TODO: implement in terms of get_url_param
-    param_dict = get_param_dict(param_dict)
+    param_dict = (get_param_dict(param_dict) or {})
     param_value = param_dict.get(name, default_value)
     param_value = system.to_unicode(param_value)
     ## OLD: value = "checked" if (param_value in [True, "on"]) else ""
@@ -229,10 +233,12 @@ get_url_parameter_checkbox_spec = get_url_param_checkbox_spec
 
 def get_url_parameter_value(param, default_value=False, param_dict=None):
     """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)"""
-    param_dict = get_param_dict(param_dict)
+    param_dict = (get_param_dict(param_dict) or {})
     result = param_dict.get(param, default_value)
     if isinstance(result, list):
         result = result[-1]
+    debug.trace_fmtd(6, "get_url_parameter_value({p}, {dft}, _) => {r}",
+                     p=param, dft=default_value, r=result)
     return result
 
 
@@ -271,6 +277,63 @@ def fix_url_parameters(url_parameters):
                     up=url_parameters, new=new_url_parameters)
     return new_url_parameters
 
+
+def old_download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False):
+    """Download document contents at URL, returning as unicode text. An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED."""
+    # EX: ((url := "https://simple.wikipedia.org/wiki/Dollar"), (old_download_web_document(url) == download_web_document(url)))[-1]
+    debug.trace_fmtd(4, "old_download_web_document({u}, d={d}, f={f}, h={mh})",
+                     u=url, d=download_dir, f=filename, mh=meta_hash)
+
+    # Download the document and optional headers (metadata).
+    # Note: urlretrieve chokes on URLS like www.cssny.org without the protocol.
+    # TODO: report as bug if not fixed in Python 3
+    if url.endswith("/"):
+        url = url[:-1]
+    if filename is None:
+        filename = system.quote_url_text(gh.basename(url))
+        debug.trace_fmtd(5, "\tquoted filename: {f}", f=filename)
+    if "//" not in url:
+        url = "http://" + url
+    if download_dir is None:
+        download_dir = "downloads"
+    local_filename = gh.form_path(download_dir, filename)
+    headers = ""
+    status_code = DEFAULT_STATUS_CODE
+    ok = False
+    if DOWNLOAD_TIMEOUT:
+        # HACK: set global socket timeout
+        import socket                   # pylint: disable=import-error, import-outside-toplevel
+        socket.setdefaulttimeout(DOWNLOAD_TIMEOUT)
+    if use_cached and system.non_empty_file(local_filename):
+        debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
+    else:
+        try:
+            ## TEMP: issue separate call to get status code (TODO: figure out how to do after urlretrieve call)
+            with urllib.request.urlopen(url) as fp:
+                status_code = fp.getcode()
+            local_filename, headers = urllib.request.urlretrieve(url, local_filename)      # pylint: disable=no-member
+            debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
+                             f=local_filename, h=headers)
+            ok = True
+        except(HTTPError) as exc:
+            status_code = exc.code
+        except:
+            ## TODO: except(IOError, UnicodeError, URLError, socket.timeout):
+            debug.reference_var(URLError)
+            system.print_exception_info("download_web_document")
+    if not ok:
+        local_filename = None
+    if meta_hash is not None:
+        meta_hash["filename"] = local_filename
+        meta_hash["headers"] = headers
+    debug.trace(5, f"status_code={status_code}")
+
+    # Read all of the data and return as text
+    data = system.read_entire_file(local_filename) if local_filename else None
+    debug.trace_fmtd(7, "download_web_document() => {d}", d=data)
+    return data
+
+
 def download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False):
     """Download document contents at URL, returning as unicode text. An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED."""
     # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
@@ -279,6 +342,9 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
     debug.trace_fmtd(4, "download_web_document({u}, d={d}, f={f}, h={mh})",
                      u=url, d=download_dir, f=filename, mh=meta_hash)
 
+    if not DOWNLOAD_VIA_REQUESTS:
+        return old_download_web_document(url, filename, download_dir, meta_hash, use_cached)
+    
     # Download the document and optional headers (metadata).
     # Note: urlretrieve chokes on URLS like www.cssny.org without the protocol.
     # TODO: report as bug if not fixed in Python 3
@@ -298,38 +364,19 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
     if meta_hash is not None:
         meta_hash["filename"] = local_filename
     headers = ""
-    status_code = DEFAULT_STATUS_CODE
     if use_cached and system.non_empty_file(local_filename):
         debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
-    elif DOWNLOAD_VIA_REQUESTS:
+    else:
         doc_data = retrieve_web_document(url, meta_hash=meta_hash)
         if doc_data:
-            system.write_file(local_filename, doc_data)
-    else:
-        # TODO: put urllib-based support in separate function (e.g., old_retrieve_web_document)
-        try:
-            ## TEMP: issue separate call to get status code (TODO: figure out how to do after urlretrieve call)
-            with urllib.request.urlopen(url) as fp:
-                status_code = fp.getcode()
-            local_filename, headers = urllib.request.urlretrieve(url, local_filename)      # pylint: disable=no-member
-
-            # Read all of the data and return as text
-            doc_data = system.read_entire_file(local_filename) if local_filename else None
-        except(IOError, UnicodeError, URLError, HTTPError) as exc:
-            ## TEST: debug.assertion(exc == system.get_exception())
-            ## debug.trace_expr(5, exc, system.get_exception())
-            ## DEBUG: debug.trace_object(5, exc, max_depth=2)
-            local_filename = None
-            stack = (type(exc) not in [HTTPError])
-            system.print_exception_info("download_web_document", show_stack=stack)
-            status_code = getattr(exc, "code", status_code)
-        debug.trace(5, f"status_code={status_code}")
-    if meta_hash is not None:
-        meta_hash["headers"] = headers
+            system.write_binary_file(local_filename, doc_data)
     debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
                      f=local_filename, h=headers)
 
-    debug.trace_fmtd(6, "download_web_document() => {d}", d=gh.elide(doc_data))
+    ## OLD: debug.trace_fmtd(6, "download_web_document() => {d}", d=gh.elide(doc_data))
+    ## TODO: show hex dump of initial data
+    debug.trace_fmtd(6, "download_web_document() => _; len(_)={l}",
+                     l=(len(doc_data) if doc_data else -1))
     return doc_data
 
 
@@ -343,9 +390,10 @@ def retrieve_web_document(url, meta_hash=None):
     if "//" not in url:
         url = "http://" + url
     try:
-        r = requests.get(url)
+        r = requests.get(url, timeout=DOWNLOAD_TIMEOUT)
         status_code = r.status_code
-        result = r.content.decode(errors='ignore')
+        ## BAD: result = r.content.decode(errors='ignore')
+        result = r.content
         if meta_hash is not None:
             meta_hash["headers"] = r.headers
     ## TODO: except(AttributeError, ConnectionError):
@@ -358,7 +406,7 @@ def retrieve_web_document(url, meta_hash=None):
 
 def init_BeautifulSoup():
     """Make sure bs4.BeautifulSoup is loaded"""
-    import bs4                           # pylint: disable=import-outside-toplevel, import-error
+    import bs4                           # pylint: disable=import-error, import-outside-toplevel
     global BeautifulSoup
     BeautifulSoup = bs4.BeautifulSoup
     return
