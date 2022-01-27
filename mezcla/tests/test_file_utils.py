@@ -11,10 +11,6 @@
 import unittest
 
 
-# Installed packages
-## TODO: import pytest
-
-
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
@@ -32,6 +28,7 @@ class TestIt(TestWrapper):
     script_module = TestWrapper.derive_tested_module_name(__file__)
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
+
 
     ## TODO: optional setup methods
     ##
@@ -52,22 +49,42 @@ class TestIt(TestWrapper):
     ##     ...
     ##     return
 
-    def test_data_file(self):
-        """Makes sure TODO works as expected"""
-        debug.trace(4, "TestIt.test_data_file()")
-        data = ["TODO1", "TODO2"]
-        gh.write_lines(self.temp_file, data)
-        output = self.run_script("", self.temp_file)
-        self.assertTrue(re.search(r"TODO-pattern", 
-                                  output.strip()))
-        return
 
-    def test_something_else(self):
-        """TODO: flesh out test for something else"""
-        debug.trace(4, "test_something_else()")
-        self.fail("TODO: code test")
-        ## ex: self.assertEqual(THE_MODULE.TODO_function() == TODO_value)
-        return
+    def test_get_directory_listing(self):
+        """
+        Tests for get_directory_listing(path          = '.',
+                                        recursive     = False,
+                                        long          = False,
+                                        readable_size = False,
+                                        return_string = True,
+                                        make_unicode  = False)
+        """
+        # WORK-IN-PROGRESS
+
+
+    def test_get_information(self):
+        """Tests for def get_information(path,
+                                         readable_size = False,
+                                         return_string = False)
+        """
+        ## WORK-IN-PROGRESS
+
+
+    def test_get_permissions(self):
+        """Tests for get_permissions(path)"""
+        test_file = '/tmp/gp_test.cpp'
+        gh.run(f'touch {test_file}')
+        ls_permissions = gh.run(f'ls -l {test_file}')[:10]
+        self.assertEqual(file_utils.get_permissions(test_file), ls_permissions)
+
+
+    def test_get_modification_date(self):
+        """Tests for get_modification_date(path)"""
+        test_file = '/tmp/gp_test.cpp'
+        gh.run(f'touch {test_file}')
+        ls_date = gh.run(f'ls -l {test_file}')[39:51]
+        self.assertEqual(file_utils.get_modification_date(test_file, strftime='%b %-d %-H:%-M'), ls_date)
+
 
     ## TODO: optional cleanup methods
     ##
