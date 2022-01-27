@@ -1,0 +1,91 @@
+#! /usr/bin/env python
+#
+# Test(s) for ../file_utils.py
+#
+
+
+"""Tests for file_utils module"""
+
+
+# Standard packages
+import unittest
+
+
+# Installed packages
+## TODO: import pytest
+
+
+# Local packages
+from mezcla.unittest_wrapper import TestWrapper
+from mezcla import debug
+from mezcla import glue_helpers as gh
+
+
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:	    global module object
+#    TestIt.script_module   string name
+import mezcla.file_utils as file_utils
+
+
+class TestIt(TestWrapper):
+    """Class for testcase definition"""
+    script_module = TestWrapper.derive_tested_module_name(__file__)
+    # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
+    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
+
+    ## TODO: optional setup methods
+    ##
+    ## @classmethod
+    ## def setUpClass(cls):
+    ##     """One-time initialization (i.e., for entire class)"""
+    ##     debug.trace(6, f"TestIt.setUpClass(); cls={cls}")
+    ##     # note: should do parent processing first
+    ##     super().setUpClass()
+    ##     ...
+    ##     return
+    ##
+    ## def setUp(self):
+    ##     """Per-test setup"""
+    ##     debug.trace(6, f"TestIt.setUp(); self={self}")
+    ##     # note: must do parent processing first (e.g., for temp file support)
+    ##     super().setUp()
+    ##     ...
+    ##     return
+
+    def test_data_file(self):
+        """Makes sure TODO works as expected"""
+        debug.trace(4, "TestIt.test_data_file()")
+        data = ["TODO1", "TODO2"]
+        gh.write_lines(self.temp_file, data)
+        output = self.run_script("", self.temp_file)
+        self.assertTrue(re.search(r"TODO-pattern", 
+                                  output.strip()))
+        return
+
+    def test_something_else(self):
+        """TODO: flesh out test for something else"""
+        debug.trace(4, "test_something_else()")
+        self.fail("TODO: code test")
+        ## ex: self.assertEqual(THE_MODULE.TODO_function() == TODO_value)
+        return
+
+    ## TODO: optional cleanup methods
+    ##
+    ## def tearDown(self):
+    ##     debug.trace(6, f"TestIt.tearDown(); self={self}")
+    ##     super(TestIt, cls).tearDownClass()
+    ##     ...
+    ##     return
+    ##
+    ## @classmethod
+    ## def tearDownClass(cls):
+    ##     debug.trace(6, f"TestIt.tearDownClass(); cls={cls}")
+    ##     super(TestIt, self).tearDown()
+    ##     ...
+    ##     return
+
+#------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    debug.trace_current_context()
+    unittest.main()
