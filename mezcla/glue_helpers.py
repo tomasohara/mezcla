@@ -4,6 +4,7 @@
 # available in Unix scripting (e.g., basename command).
 #
 # NOTE:
+# - *** This module is being phased out with important functionality being moved elsewhere.
 # - Some of the utilities are specific to Unix (e.g., full_mkdir and real_path). In
 #   contrast, system.py attempts to be more cross platform.
 #
@@ -21,6 +22,7 @@ import inspect
 import os
 import re
 import shutil
+from subprocess import getoutput
 import sys
 import tempfile
 
@@ -31,11 +33,6 @@ import textwrap
 from mezcla import debug
 from mezcla import tpo_common as tpo
 from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
-
-if sys.version_info[0] < 3:
-    from commands import getoutput       # pylint: disable=import-error
-else:
-    from subprocess import getoutput     # pylint: disable=no-name-in-module
 
 # note: ALLOW_SUBCOMMAND_TRACING should be interepreted in terms of detailed
 # tracing. Now, basic tracing is still done unless disable_subcommand_tracing()
