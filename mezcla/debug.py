@@ -330,12 +330,13 @@ if __debug__:
             return
         if para_mode_tracing:
             trace(0, "")
-        if hasattr(collection, '__iter__'):
-             trace(level + 1, "Warning: [trace_values] consuming iterator")
-             collection = list(collection)             
         if not isinstance(collection, (list, dict)):
-            trace(level + 1, "Warning: [trace_values] coercing input into list")
-            collection = list(collection)
+            if hasattr(collection, '__iter__'):
+                trace(level + 1, "Warning: [trace_values] consuming iterator")
+                collection = list(collection)
+            else:
+                trace(level + 1, "Warning: [trace_values] coercing input into list")
+                collection = list(collection)
         if indentation is None:
             indentation = INDENT
         if label is None:
@@ -652,13 +653,14 @@ def _getenv_int(name, default_value):
 
 def format_value(value, max_len=None):
     """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines"""
+    # EX: format_value("    \n\n\n\n", 6) => "    \\n\\n..."
     trace(9, f"format_value({value}, max_len={max_len})")
     if max_len is None:
         max_len = max_trace_value_len
     result = value if isinstance(value, str) else str(value)
     if len(result) > max_len:
         result = result[:max_len] + "..."
-    result = re.sub(r"\n", "\\n", result)
+    result = re.sub("\n", r"\\n", result)
     return result
 
 
