@@ -529,6 +529,19 @@ def read_entire_file(filename, **kwargs):
 read_file = read_entire_file
 
 
+def read_binary_file(filename):
+    """Read FILENAME as byte stream"""
+    debug.trace_fmt(7, "read_binary_file({f}, _)", f=filename)
+    data = []
+    try:
+        with open(filename, "rb") as f:
+            data = f.read()
+    except (IOError, ValueError):
+        debug.trace_fmtd(1, "Error: Problem reading file '{f}': {exc}",
+                         f=filename, exc=get_exception())
+    return data
+
+
 def read_directory(directory):
     """Returns list of files in DIRECTORY"""
     # Note simple wrapper around os.listdir with tracing
