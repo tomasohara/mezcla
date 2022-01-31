@@ -1102,7 +1102,7 @@ def sort_frequencies(dictionary):
 
 def sort_weighted_hash(weights, max_num=None, reverse=None):
     """sorts the enties in WEIGHTS hash, returns list of (key, freq) tuples.
-    Note; sorted in REVERSE order by default"""
+    Note: sorted in REVERSE order by default"""
     if max_num is None:
         max_num = len(weights)
     if reverse is None:
