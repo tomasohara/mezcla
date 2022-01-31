@@ -192,7 +192,7 @@ def get_param_dict(param_dict=None):
     """Returns parameter dict using PARAM_DICT if non-Null else USER_PARAMETERS
        Note: """
     result = (param_dict if (param_dict is not None) else user_parameters)
-    debug.trace(7, f"get_param_dict([{param_dict}]) => {result}")
+    debug.trace(7, f"get_param_dict([pd={param_dict}]) => {result}")
     return result
 
 
@@ -202,9 +202,11 @@ def set_param_dict(param_dict):
     user_parameters = param_dict
 
 
-def get_url_param(name, default_value="", param_dict=None):
+def get_url_param(name, default_value=None, param_dict=None):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
     Note: It will be escaped for use in HTML."""
+    if default_value is None:
+        default_value = ""
     param_dict = (get_param_dict(param_dict) or {})
     value = escape_html_value(param_dict.get(name, default_value))
     value = system.to_unicode(value)
@@ -231,7 +233,7 @@ def get_url_param_checkbox_spec(name, default_value="", param_dict=None):
 get_url_parameter_checkbox_spec = get_url_param_checkbox_spec
 
 
-def get_url_parameter_value(param, default_value=False, param_dict=None):
+def get_url_parameter_value(param, default_value=None, param_dict=None):
     """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)"""
     param_dict = (get_param_dict(param_dict) or {})
     result = param_dict.get(param, default_value)
