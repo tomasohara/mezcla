@@ -595,6 +595,12 @@ else:
     ##
     assert val(1) is None, "non-debug val() should not return a non-Null value"
 
+# Aliases for terse functions
+    
+cond_code = code
+
+cond_val = val
+    
 # note: adding alias for trace_fmtd to account for common typo
 # TODO: alias trace to trace_fmt as well (add something like trace_out if format not desired)
 trace_fmt = trace_fmtd
@@ -866,6 +872,12 @@ if __debug__:
         trace_fmt(5, "{pre}environment: {{\n\t{env}\n}}{post}",
                   env="\n\t".join([(k + ': ' + os.environ[k]) for k in sorted(dict(os.environ))]),
                   pre=pre, post=post)
+
+        # Likewise show additional information during verbose debug tracing
+        def trace_globals():
+            """Trace out global variables"""
+            trace_expr(1, globals())
+        cond_code(6, trace_globals)
 
         # Register to show shuttdown time and elapsed seconds
         # TODO: rename to reflect generic-exit nature
