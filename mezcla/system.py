@@ -152,7 +152,7 @@ def getenv_text(var, default=None, description=None, helper=False):
     # Note: default is empty string to ensure result is string (not NoneType)
     register_env_option(var, description, default)
     if default is None:
-        debug.trace(4, f"Warning: getenv_text treats default None as ''; use getenv_value for '{var}' instead")
+        debug.trace(4, f"Warning: getenv_text treats default None as ''; consider using getenv_value for '{var}' instead")
         default = ""
     text_value = os.getenv(var)
     ## OLD: if not text_value:
