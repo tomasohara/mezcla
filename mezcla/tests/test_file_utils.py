@@ -9,6 +9,7 @@
 
 # Standard packages
 import unittest
+import re
 
 
 # Local packages
@@ -64,10 +65,15 @@ class TestIt(TestWrapper):
 
     def test_get_information(self):
         """Tests for def get_information(path,
-                                         readable_size = False,
+                                         readable = False,
                                          return_string = False)
         """
-        ## WORK-IN-PROGRESS
+        test_file = '/tmp/gi_test.cpp'
+        gh.run(f'touch {test_file}')
+
+        ls_result = gh.run(f'ls -l {test_file}')
+
+        self.assertEqual(file_utils.get_information(test_file, return_string=True), ls_result)
 
 
     def test_get_permissions(self):
@@ -80,10 +86,13 @@ class TestIt(TestWrapper):
 
     def test_get_modification_date(self):
         """Tests for get_modification_date(path)"""
-        test_file = '/tmp/gp_test.cpp'
+        test_file = '/tmp/gm_test.cpp'
         gh.run(f'touch {test_file}')
+
         ls_date = gh.run(f'ls -l {test_file}')[39:51]
-        self.assertEqual(file_utils.get_modification_date(test_file, strftime='%b %-d %-H:%-M'), ls_date)
+        ls_date = re.sub(r'\s+', ' ', ls_date)
+
+        self.assertEqual(file_utils.get_modification_date(test_file, strftime='%b %-d %H:%M'), ls_date)
 
 
     ## TODO: optional cleanup methods
