@@ -16,6 +16,7 @@ import sys
 # Local packages
 from mezcla import debug
 from mezcla import system
+from mezcla import glue_helpers as gh
 
 
 def path_exist(path):
@@ -88,18 +89,22 @@ def get_information(path, readable=False, return_string=False):
     if not path_exist(path):
         return f'cannot access "{path}" No such file or directory'
 
-    # TODO: complete empty values
+    ls_result = gh.run(f'ls -l {path}').split(' ') # TODO: use pure python.
+
+    if len(ls_result) < 3:
+        return ''
+
     permissions       = get_permissions(path)
-    links             = 0
-    owner             = ''
-    group             = ''
-    size              = '0' if readable else 0
+    links             = ls_result[1]
+    owner             = ls_result[2]
+    group             = ls_result[3]
+    size              = ls_result[4] # TODO: format size when readable=True
 
     # Get modification date
     modification_date = get_modification_date(path)
 
     if return_string:
-        return f'{permissions}\t{links}\t{owner}\t{group}\t{size}\t{modification_date}\t{path}'
+        return f'{permissions} {links} {owner} {group} {size} {modification_date} {path}'
 
     return permissions, links, owner, group, size, modification_date, path
 
@@ -134,6 +139,6 @@ def get_permissions(path):
 
 
 # strftime format code list can be found here: https://www.programiz.com/python-programming/datetime/strftime
-def get_modification_date(path, strftime='%b %-d %-H:%-M'):
+def get_modification_date(path, strftime='%b %d %H:%M'):
     """Get last modification date of file"""
-    return datetime.fromtimestamp(os.path.getmtime(path)).strftime(strftime) if path_exist(path) else 'error'
+    return datetime.fromtimestamp(os.path.getmtime(path)).strftime(strftime).replace(' 0', '  ').lower() if path_exist(path) else 'error'
