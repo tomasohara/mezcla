@@ -47,7 +47,15 @@ def get_directory_listing(path          = '.',
                           return_string = True,
                           make_unicode  = False):
     """Returns files and dirs in PATH"""
-    dir_list = []
+
+    debug.trace(debug.USUAL, (f'get_directory_listing(path="{path}",\n'
+                              f'                      recursive={recursive},\n'
+                              f'                      long={long},\n'
+                              f'                      readable={readable},\n'
+                              f'                      return_string={return_string},\n'
+                              f'                      make_unicode={make_unicode})'))
+
+    result_list = []
 
     # list all files and directories on a folder
     try:
@@ -56,25 +64,50 @@ def get_directory_listing(path          = '.',
             if recursive:
                 # Avoid duplicated filenames adding the relative path
                 for item in items:
-                    dir_list.append(root + '/' + item)
+                    result_list.append(root + '/' + item)
             else:
                 # Only dirs and files in the root dir
-                dir_list = items
+                result_list = items
                 break
+        debug.trace(debug.DETAILED, f'get_directory_listing() - files and dirs founded: {result_list}')
     except OSError:
-        debug.trace(debug.DETAILED, f'Exception during get_directory_listing: {sys.exc_info()}')
+        debug.trace(debug.DETAILED, f'get_directory_listing() - exception: {sys.exc_info()}')
 
     # Long listing
     if long:
-        for index, item in enumerate(dir_list):
-            dir_list[index] = get_information(item, readable=readable, return_string=return_string)
+        for index, item in enumerate(result_list):
+            result_list[index] = get_information(item, readable=readable)
+        debug.trace(debug.DETAILED, f'get_directory_listing() - long listing: {result_list}')
+
+    # Convert to a uniform string
+    # NOTE: This could be a new function.
+    if return_string and result_list:
+
+        new_list     = [''] * len(result_list)
+        fields_count = len(result_list[0])
+
+        for field_index in range(fields_count):
+
+            # Get max lenght of field
+            max_field_len = 0
+            for item in result_list:
+                field         = str(item[field_index])
+                field_len     = len(field)
+                max_field_len = max(max_field_len, field_len)
+
+            # Append field to new list
+            for item_index, item in enumerate(result_list):
+                field = str(item[field_index])
+                new_list[item_index] += field.ljust(max_field_len) + ' '
+
+        result_list = new_list
 
     # Make unicode
     if make_unicode:
-        dir_list = [system.to_unicode(f) for f in dir_list]
+        result_list = [system.to_unicode(f) for f in result_list]
 
-    debug.trace(debug.VERBOSE, f'get_directory_listing({path}) => {dir_list}')
-    return dir_list
+    debug.trace(debug.USUAL, (f'get_directory_listing() => {result_list}'))
+    return result_list
 
 
 def get_information(path, readable=False, return_string=False):
@@ -89,7 +122,9 @@ def get_information(path, readable=False, return_string=False):
     if not path_exist(path):
         return f'cannot access "{path}" No such file or directory'
 
-    ls_result = gh.run(f'ls -l {path}').split(' ') # TODO: use pure python.
+    # TODO: use pure python.
+    ls_flags = '-ld' if is_directory(path) else '-l'
+    ls_result = gh.run(f'ls {ls_flags} {path}').split(' ')
 
     if len(ls_result) < 3:
         return ''
