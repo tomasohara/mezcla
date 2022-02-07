@@ -12,3 +12,11 @@ May 2021
 """
 __VERSION__ = '1.1.0'
 __version__ = '1.1.0'
+
+## TODO: import debugging constants into global namespace
+## from debug import TraceLevel
+## TL_ALWAYS = TraceLevel.ALWAYS
+## ...
+## TL_MOST_VERBOSE = TraceLevel.MOST_VERBOSE
+##
+## __all__ = ["TL_ALWAYS", ..., "TL_MOST_VERBOSE"]
