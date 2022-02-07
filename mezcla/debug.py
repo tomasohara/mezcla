@@ -50,6 +50,11 @@ import mezcla.sys_version_info_hack      # pylint: disable=unused-import
 
 
 # Constants for pre-defined tracing levels
+# TODO: convert to enumeration
+#    from enum import IntEnum
+#    class TraceLevel(intNum):
+#        ALWAYS = 0
+#        ...
 ALWAYS = 0
 ERROR = 1
 WARNING = 2
@@ -73,7 +78,7 @@ if __debug__:
 
     # Initialize debug tracing level
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
-    trace_level = 1
+    trace_level = ERROR
     output_timestamps = False           # prefix output with timestamp
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
@@ -227,7 +232,7 @@ if __debug__:
         ## OLD: print("{stmt} < {current}: {r}".format(stmt=level, current=trace_level,
         # TODO: handle tuples
         ##                                       r=(trace_level < level)))
-        trace_fmt(10, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
+        trace_fmt(MOST_VERBOSE, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
                   dl=level, obj=object, lbl=label, sa=show_all, ind=indentation, pp=pretty_print, md=max_depth)
         if (trace_level < level):
             return
@@ -251,26 +256,26 @@ if __debug__:
         if show_all is None:
             show_all = (show_private or show_methods_etc)
         if para_mode_tracing:
-            trace(0, "")
-        trace(0, outer_indentation + label + ": {")
+            trace(ALWAYS, "")
+        trace(ALWAYS, outer_indentation + label + ": {")
         ## OLD: for (member, value) in inspect.getmembers(obj):
         member_info = []
         try:
             member_info = inspect.getmembers(obj)
         except:
-            trace_fmtd(7, "Warning: Problem getting member list in trace_object: {exc}",
+            trace_fmtd(QUITE_VERBOSE, "Warning: Problem getting member list in trace_object: {exc}",
                        exc=sys.exc_info())
         ## HACK: show standard type value as special member
         if isinstance(obj, STANDARD_TYPES):
             member_info = [("(value)", obj)] + [(("__(" + m + ")__"), v) for (m, v) in member_info]
-            trace_fmtd(7, "{ind}Special casing standard type as member {m}",
+            trace_fmtd(QUITE_VERBOSE, "{ind}Special casing standard type as member {m}",
                        ind=indentation, m=member_info[0][0])
         for (member, value) in member_info:
             # If high trace level, output the value as is
             # TODO: value = clip_text(value)
-            trace_fmtd(8, "{i}{m}={v}; type={t}", i=indentation, m=member, v=value, t=type(value))
+            trace_fmtd(MOST_DETAILED, "{i}{m}={v}; type={t}", i=indentation, m=member, v=value, t=type(value))
             value_spec = format_value(value, max_len=max_value_len)
-            if (trace_level >= 9):
+            if (trace_level >= MOST_VERBOSE):
                 sys.stderr.write(indentation + member + ": ")
                 if pretty_print:
                     pprint(value_spec, stream=sys.stderr)
@@ -281,7 +286,7 @@ if __debug__:
                     logging.debug(_to_utf8((indentation + member + ": " + value_spec)))
                 continue
             # Include unless special member (or if no filtering)
-            ## DEBUG: trace_expr(7, member.startswith("__"), re.search(r"^<.*(method|module|function).*>$", value_spec))
+            ## DEBUG: trace_expr(QUITE_VERBOSE, member.startswith("__"), re.search(r"^<.*(method|module|function).*>$", value_spec))
             include_member = (show_all or (not (member.startswith("__") or 
                                                 re.search(r"^<.*(method|module|function).*>$", value_spec))))
             # Optionally, process recursively (TODO: make INDENT an env. option)
@@ -298,12 +303,12 @@ if __debug__:
                 try:
                     value_spec = format_value("%s" % ((value),), max_len=max_value_len)
                 except(TypeError, ValueError):
-                    trace_fmtd(7, "Warning: Problem in tracing member {m}: {exc}",
+                    trace_fmtd(QUITE_VERBOSE, "Warning: Problem in tracing member {m}: {exc}",
                                m=member, exc=sys.exc_info())
                     value_spec = "__n/a__"
             except(AttributeError):
                 # Note: This can occur when profile_function set
-                trace_fmtd(7, "Error: unexpected problem in trace_object: {exc}",
+                trace_fmtd(QUITE_VERBOSE, "Error: unexpected problem in trace_object: {exc}",
                            exc=sys.exc_info())
                 value_spec = "__n/a__"
             if include_member:
@@ -316,20 +321,20 @@ if __debug__:
                     sys.stderr.write("\n")
                 if use_logging:
                     logging.debug(_to_utf8((indentation + member + ":" + value_spec)))
-        trace(0, indentation + "}")
+        trace(ALWAYS, indentation + "}")
         if para_mode_tracing:
-            trace(0, "")
+            trace(ALWAYS, "")
         return
 
 
     def trace_values(level, collection, label=None, indentation=None, use_repr=None):
         """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
-        trace_fmt(10, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
+        trace_fmt(MOST_VERBOSE, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
                   dl=level, lbl=label, coll=collection, ind=indentation)
         if (trace_level < level):
             return
         if para_mode_tracing:
-            trace(0, "")
+            trace(ALWAYS, "")
         if not isinstance(collection, (list, dict)):
             if hasattr(collection, '__iter__'):
                 trace(level + 1, "Warning: [trace_values] consuming iterator")
@@ -345,21 +350,21 @@ if __debug__:
             indentation = INDENT
         if use_repr is None:
             use_repr = False
-        trace(0, label + ": {")
+        trace(ALWAYS, label + ": {")
         keys_iter = list(collection.keys()) if isinstance(collection, dict) else range(len(collection))
         for k in keys_iter:
             try:
                 value = format_value(_to_utf8(collection[k]))
                 if use_repr:
                     value = repr(value)
-                trace_fmtd(0, "{ind}{k}: {v}", ind=indentation, k=k,
+                trace_fmtd(ALWAYS, "{ind}{k}: {v}", ind=indentation, k=k,
                            v=value)
             except:
-                trace_fmtd(7, "Warning: Problem tracing item {k}",
+                trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}",
                            k=_to_utf8(k), exc=sys.exc_info())
-        trace(0, indentation + "}")
+        trace(ALWAYS, indentation + "}")
         if para_mode_tracing:
-            trace(0, "")
+            trace(ALWAYS, "")
         return
 
 
@@ -372,9 +377,9 @@ if __debug__:
           if so, NO_EOL applies to intermediate values (EOL always used at end).
         - Use USE_REPR=False to use tracing via str instead of repr.
         - Use _KW_ARG for KW_ARG in case of conflict, as in following:
-          trace_expr(4, term, _term="; ")
+          trace_expr(DETAILED, term, _term="; ")
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
-        trace_fmt(10, "trace_expr({l}, a={args}, kw={kw})",
+        trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw})",
                   l=level, args=values, kw=kwargs)
         sep = kwargs.get('sep') or kwargs.get('_sep')
         delim = kwargs.get('delim') or kwargs.get('_delim')
@@ -406,7 +411,7 @@ if __debug__:
             # Skip first argument (level)
             expressions = statement.split(sep)[1:]
         except:
-            trace_fmtd(0, "Exception isolating expression in trace_vals: {exc}",
+            trace_fmtd(ALWAYS, "Exception isolating expression in trace_vals: {exc}",
                        exc=sys.exc_info())
             expressions = []
         for expression, value in zip_longest(expressions, values):
@@ -420,7 +425,7 @@ if __debug__:
                 value_spec = format_value(repr(value) if use_repr else value)
                 trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
             except:
-                trace_fmtd(0, "Exception tracing values in trace_vals: {exc}",
+                trace_fmtd(ALWAYS, "Exception tracing values in trace_vals: {exc}",
                        exc=sys.exc_info())            
         if no_eol:
             trace(level, "", no_eol=False)
@@ -440,7 +445,7 @@ if __debug__:
         try:
             frame = inspect.currentframe().f_back
         except (AttributeError, KeyError, ValueError):
-            trace_fmt(5, "Exception during trace_current_context: {exc}",
+            trace_fmt(VERBOSE, "Exception during trace_current_context: {exc}",
                       exc=sys.exc_info())
         if para_mode_tracing:
             trace(level, "")
@@ -472,7 +477,7 @@ if __debug__:
     def trace_exception(level, task):
         """Trace exception information regarding TASK (e.g., function) at LEVEL"""
         # Note: Conditional output version of system's print_exception_info.
-        # ex: trace_exception(4, "tally_counts")
+        # ex: trace_exception(DETAILED, "tally_counts")
         trace_fmt(level, "Exception during {t}: {exc}".
                   format(t=task, exc=sys.exc_info()))
         # TODO: include full stack trace (e.g., at LEVEL + 2)
@@ -498,7 +503,7 @@ if __debug__:
         if (not expression):
             try:
                 # Get source information for failed assertion
-                trace_fmtd(9, "Call stack: {st}", st=inspect.stack())
+                trace_fmtd(MOST_VERBOSE, "Call stack: {st}", st=inspect.stack())
                 caller = inspect.stack()[1]
                 (_frame, filename, line_number, _function, _context, _index) = caller
                 # Read statement in file and extract assertion expression
@@ -510,12 +515,12 @@ if __debug__:
                 qualification_spec = (": " + message) if message else ""
                 # Output information
                 # TODO: omit subsequent warnings
-                trace_fmtd(0, "Assertion failed: {expr} (at {file}:{line}){qual}",
+                trace_fmtd(ALWAYS, "Assertion failed: {expr} (at {file}:{line}){qual}",
                            expr=expression, file=filename, line=line_number, qual=qualification_spec)
             except:
-                trace_fmtd(0, "Exception formatting assertion: {exc}",
+                trace_fmtd(ALWAYS, "Exception formatting assertion: {exc}",
                            exc=sys.exc_info())
-                trace_object(0, inspect.currentframe(), "caller frame", pretty_print=True)
+                trace_object(ALWAYS, inspect.currentframe(), "caller frame", pretty_print=True)
         return
 
     def val(level, value):
@@ -537,9 +542,9 @@ if __debug__:
                    line1; line2; ...; lineN
            debug.code(4, my_stupid_block_workaround)
         - Lambda functions can be used for simple expression-based functions"""
-        trace_object(5, f"code({level}, {no_arg_function})")
+        trace_object(VERBOSE, f"code({level}, {no_arg_function})")
         if (trace_level >= level):
-            trace_object(6, f"Executing {no_arg_function}")
+            trace_object(QUITE_DETAILED, f"Executing {no_arg_function}")
             no_arg_function()
         return
 
@@ -660,7 +665,7 @@ def _getenv_int(name, default_value):
 def format_value(value, max_len=None):
     """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines"""
     # EX: format_value("    \n\n\n\n", 6) => "    \\n\\n..."
-    trace(9, f"format_value({value}, max_len={max_len})")
+    trace(MOST_VERBOSE, f"format_value({value}, max_len={max_len})")
     if max_len is None:
         max_len = max_trace_value_len
     result = value if isinstance(value, str) else str(value)
@@ -676,7 +681,7 @@ def xor(value1, value2):
     # See https://stackoverflow.com/questions/432842/how-do-you-get-the-logical-xor-of-two-variables-in-python
     # EX: not(xor(0, 0.0))
     result = (bool(value1) ^ bool(value2))
-    trace_fmt(7, "xor({v1}, {v2}) => {r}", v1=value1, v2=value2, r=result)
+    trace_fmt(QUITE_VERBOSE, "xor({v1}, {v2}) => {r}", v1=value1, v2=value2, r=result)
     return result
 
 
@@ -686,27 +691,27 @@ def xor3(value1, value2, value3):
     ##           and not (bool(value1) and bool(value2) and bool(value3)))
     num_true = sum([int(bool(v)) for v in [value1, value2, value3]])
     result = (num_true == 1)
-    trace_fmt(7, "xor3({v1}, {v2}, {v3}) => {r}",
+    trace_fmt(QUITE_VERBOSE, "xor3({v1}, {v2}, {v3}) => {r}",
               v1=value1, v2=value2, v3=value3, r=result)
     return result
 
 
 def init_logging():
     """Enable logging with INFO level by default or with DEBUG if detailed debugging"""
-    trace(4, "init_logging()")
-    trace_object(6, logging.root, "logging.root")
+    trace(DETAILED, "init_logging()")
+    trace_object(QUITE_DETAILED, logging.root, "logging.root")
 
     # Set the level for the current module
     # TODO: use mapping from symbolic LEVEL user option (e.g., via getenv)
     level = logging.DEBUG if detailed_debugging() else logging.INFO
-    trace_fmt(5, "Setting logger level to {ll}", ll=level)
+    trace_fmt(VERBOSE, "Setting logger level to {ll}", ll=level)
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=level)
     logging.debug("init_logging()")
 
     # Optionally make sure logging level applied globally
     if _getenv_bool("GLOBAL_LOGGING", False):
         old_level = logging.root.level
-        trace_fmt(5, "Setting root logger level from {ol} to {nl}", ol=old_level, nl=level)
+        trace_fmt(VERBOSE, "Setting root logger level from {ol} to {nl}", ol=old_level, nl=level)
         logging.root.setLevel(level)
     return
 
@@ -731,8 +736,8 @@ def profile_function(frame, event, arg):
     #    of the object in the local namespace corresponding to "self".
     # TODO:
     # - Make tracing level an option (e.g., environment).
-    trace_fmt(6, "profile_function(_, {e}, {a})", e=event, a=arg)
-    trace_object(7, frame, "frame")
+    trace_fmt(QUITE_DETAILED, "profile_function(_, {e}, {a})", e=event, a=arg)
+    trace_object(QUITE_VERBOSE, frame, "frame")
 
     # Resolve the names for the function (callable) and module
     name = "???"
@@ -747,23 +752,23 @@ def profile_function(frame, event, arg):
             method = getattr(frame.f_locals["self"], name, None)
             module = method.__module__ if method else None
         else:
-            trace(7, "Unable to resolve module")
+            trace(QUITE_VERBOSE, "Unable to resolve module")
     except:
         _print_exception_info("profile_function")
 
     # Trace out the call (with other information at higher tracing levels)
     if event.endswith("call"):
-        trace_fmt(4, "in: {mod}:{func}({a})", mod=module, func=name, a=arg)
+        trace_fmt(DETAILED, "in: {mod}:{func}({a})", mod=module, func=name, a=arg)
     elif event.endswith("return"):
-        trace_fmt(4, "out: {mod}:{func} => {a}", mod=module, func=name, a=arg)
+        trace_fmt(DETAILED, "out: {mod}:{func} => {a}", mod=module, func=name, a=arg)
     else:
-        trace_fmt(5, "profile {mod}:{func} {e}: arg={a}",
+        trace_fmt(VERBOSE, "profile {mod}:{func} {e}: arg={a}",
                   mod=module, func=name, e=event, a=arg)
     return
 
 def reference_var(*args):
     """Dummy function used for referencing variables"""
-    trace(9, f"reference_var{tuple(args)}")
+    trace(MOST_VERBOSE, f"reference_var{tuple(args)}")
     return
 
 #-------------------------------------------------------------------------------
@@ -794,28 +799,28 @@ def read_line(filename, line_number):
 #-------------------------------------------------------------------------------
 
 def main(args):
-    """Supporting code for command-line processing"""
-    trace_expr(4, len(args))
-    trace(1, "Warning: Not intended for direct invocation. Some tracing examples follow.")
+    """Supporting/ code for command-line processing"""
+    trace_expr(DETAILED, len(args))
+    trace(ERROR, "FYI: Not intended for direct invocation. Some tracing examples follow.")
     #
-    trace(0, "date record for now at trace level 1")
-    trace_object(1, datetime.now(), label="now")
-    trace(4, "stack record with max depth 1")
-    trace_object(4, inspect.stack(), label="stack", max_depth=1)
+    trace(ALWAYS, "date record for now at trace level 1")
+    trace_object(ERROR, datetime.now(), label="now")
+    trace(DETAILED, "stack record with max depth 1")
+    trace_object(DETAILED, inspect.stack(), label="stack", max_depth=1)
     #
     # Make sure trace_expr traces at proper tracing level
-    trace(0, "level=N         for N from 0..trace_level ({l})".
+    trace(ALWAYS, "level=N         for N from 0..trace_level ({l})".
           format(l=trace_level))
     for level in range(trace_level):
         level_value = level
         trace_expr(level, level_value)
     #
     # Maker sure trace_expr gets all arguments
-    trace(0, "n-i=N-i         for N=trace_level ({l}) and i from 1..-1".format(l=trace_level))
+    trace(ALWAYS, "n-i=N-i         for N=trace_level ({l}) and i from 1..-1".format(l=trace_level))
     n = trace_level
     i = 1
     ## TODO: for i in range(3, 0, -1):
-    trace_expr(1, n+i, n, n+i)
+    trace_expr(ERROR, n+i, n, n+i)
     return
 
 # Do debug-only processing (n.b., for when PYTHONOPTIMIZE not set)
@@ -826,7 +831,7 @@ if __debug__:
     def debug_init():
         """Debug-only initialization"""
         time_start = time.time()
-        trace(4, "in debug_init()")
+        trace(DETAILED, "in debug_init()")
 
         # Open external file for copy of trace output
         global debug_file
@@ -843,9 +848,9 @@ if __debug__:
     
         # Show startup time and tracing info
         module_file = __file__
-        trace_fmtd(4, "[{f}] loaded at {t}", f=module_file, t=timestamp())
-        trace_fmtd(4, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
-        trace_fmtd(5, "debug_filename={fn} debug_file={f}",
+        trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
+        trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
+        trace_fmtd(VERBOSE, "debug_filename={fn} debug_file={f}",
                    fn=debug_filename, f=debug_file)
 
         # Determine other debug-only environment options
@@ -861,23 +866,20 @@ if __debug__:
         monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
         if monitor_functions:
             sys.setprofile(profile_function)
-        trace_expr(5, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
+        trace_expr(DETAILED, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
 
         # Show additional information when detailed debugging
         # TODO: sort keys to facilate comparisons of log files
-        ## OLD: trace_values(5, dict(os.environ), "environment")
         pre = post = ""
         if para_mode_tracing:
             pre = post = "\n"
-        trace_fmt(5, "{pre}environment: {{\n\t{env}\n}}{post}",
+        trace_fmt(DETAILED, "{pre}environment: {{\n\t{env}\n}}{post}",
                   env="\n\t".join([(k + ': ' + os.environ[k]) for k in sorted(dict(os.environ))]),
                   pre=pre, post=post)
 
         # Likewise show additional information during verbose debug tracing
-        def trace_globals():
-            """Trace out global variables"""
-            trace_expr(1, globals())
-        cond_code(6, trace_globals)
+        # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
+        trace_expr(VERBOSE, globals())
 
         # Register to show shuttdown time and elapsed seconds
         # TODO: rename to reflect generic-exit nature
@@ -885,11 +887,11 @@ if __debug__:
             """Display ending time information"""
             # note: does nothing if stderr closed (e.g., other monitor)
             # TODO: resolve pylint issue with sys.stderr.closed
-            trace_object(7, sys.stderr)
+            trace_object(QUITE_VERBOSE, sys.stderr)
             if sys.stderr.closed:       # pylint: disable=using-constant-test
                 return
             elapsed = round(time.time() - time_start, 3)
-            trace_fmtd(4, "[{f}] unloaded at {t}; elapsed={e}s",
+            trace_fmtd(DETAILED, "[{f}] unloaded at {t}; elapsed={e}s",
                        f=module_file, t=timestamp(), e=elapsed)
             if monitor_functions:
                 sys.setprofile(None)
@@ -911,4 +913,4 @@ if __debug__:
 if __name__ == '__main__':
     main(sys.argv)
 else:
-    trace_expr(9, 999)
+    trace_expr(MOST_VERBOSE, 999)
