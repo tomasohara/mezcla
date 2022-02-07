@@ -54,6 +54,7 @@ class TestIt(TestWrapper):
     ##     # note: must do parent processing first (e.g., for temp file support)
     ##     super().setUp()
     ##     ...
+    ##     # TODO: debug.trace_current_context(level=debug.QUITE_DETAILED)
     ##     return
 
     def test_data_file(self):
