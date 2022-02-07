@@ -79,28 +79,28 @@ def get_directory_listing(path          = '.',
             result_list[index] = get_information(item, readable=readable)
         debug.trace(debug.DETAILED, f'get_directory_listing() - long listing: {result_list}')
 
-    # Convert to a uniform string
-    # NOTE: This could be a new function.
-    if return_string and result_list:
+        # Convert to a uniform string
+        # NOTE: This could be a new function.
+        if return_string and result_list:
 
-        new_list     = [''] * len(result_list)
-        fields_count = len(result_list[0])
+            new_list     = [''] * len(result_list)
+            fields_count = len(result_list[0])
 
-        for field_index in range(fields_count):
+            for field_index in range(fields_count):
 
-            # Get max lenght of field
-            max_field_len = 0
-            for item in result_list:
-                field         = str(item[field_index])
-                field_len     = len(field)
-                max_field_len = max(max_field_len, field_len)
+                # Get max lenght of field
+                max_field_len = 0
+                for item in result_list:
+                    field         = str(item[field_index])
+                    field_len     = len(field)
+                    max_field_len = max(max_field_len, field_len)
 
-            # Append field to new list
-            for item_index, item in enumerate(result_list):
-                field = str(item[field_index])
-                new_list[item_index] += field.ljust(max_field_len) + ' '
+                # Append field to new list
+                for item_index, item in enumerate(result_list):
+                    field = str(item[field_index])
+                    new_list[item_index] += field.ljust(max_field_len) + ' '
 
-        result_list = new_list
+            result_list = new_list
 
     # Make unicode
     if make_unicode:
