@@ -15,10 +15,9 @@
 #-------------------------------------------------------------------------------
 # Sample test (streamlined version of test_simple_main_example.py):
 #
-#   import unittest 
-#   from unittest_wrapper import TestWrapper
-#   import mezcla.glue_helpers as gh
-#   ## TODO: import sample_test as THE_MODULE
+#   import unittest
+#   from mezcla import system
+#   from mezcla.unittest_wrapper import TestWrapper
 #
 #   class TestIt(TestWrapper):
 #       """Class for testcase definition"""
@@ -26,8 +25,8 @@
 #  
 #       def test_simple_data(self):
 #           """Make sure simple data sample processed OK"""
-#           gh.write_lines(self.temp, "really fubar")
-#           output = self.run_script("--fubar")
+#           system.write_file(self.temp_file, "really fubar")
+#           output = self.run_script("--check-fubar", self.temp_file)
 #           self.assertTrue("really" in output)
 #
 #   if __name__ == '__main__':
@@ -51,6 +50,8 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla import tpo_common as tpo
 
+TODO_MODULE = "TODO MODULE"
+
 # Note: the following is for transparent resolution of dotted module names
 # for invocation of scripts via 'python -m package.module'. This is in support
 # of transitioning from the old way of importing packages via 'import module'
@@ -62,7 +63,7 @@ debug.assertion(THIS_PACKAGE == "mezcla")
 
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition"""
-    script_module = "TODO MODULE"        # name for invocation via 'python -m'
+    script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usuually set via derive_tested_module_name)
     temp_base = system.getenv_text("TEMP_BASE",
                                    tempfile.NamedTemporaryFile().name)
     ## TODO: temp_file = None
@@ -76,9 +77,8 @@ class TestWrapper(unittest.TestCase):
         """Per-class initialization: make sure script_module set properly"""
         tpo.debug_format("TestWrapper.setupClass(): cls={c}", 5, c=cls)
         super(TestWrapper, cls).setUpClass()
-        ## OLD: tpo.trace_object(cls, 5, "TestWrapper class")
         debug.trace_object(5, cls, "TestWrapper class")
-        debug.assertion("TODO " not in cls.script_module)
+        debug.assertion(cls.script_module != TODO_MODULE)
         if cls.script_module:
             help_usage = gh.run("python -m '{mod}' --help", mod=cls.script_module)
             gh.assertion("No module named" not in help_usage)
@@ -95,8 +95,10 @@ class TestWrapper(unittest.TestCase):
 
     @staticmethod
     def derive_tested_module_name(test_filename):
-        """Derive the name of the module being tested from TEST_FILENAME"""
-        # Note: Deprecated method
+        """Derive the name of the module being tested from TEST_FILENAME. Used as follows:
+              script_module = TestWrapper.derive_tested_module_name(__file__)
+        """
+        # Note: Deprecated method (see get_testing_module_name)
         module = os.path.split(test_filename)[-1]
         module = re.sub(r".py[oc]?$", "", module)
         module = re.sub(r"^test_", "", module)
@@ -105,8 +107,10 @@ class TestWrapper(unittest.TestCase):
         return (module)
 
     @staticmethod
-    def get_testing_module_name(test_filename, module_object):
+    def get_testing_module_name(test_filename, module_object=None):
         """Derive the name of the module being tested from TEST_FILENAME and MODULE_OBJECT"""
+        # TODO: used as follows (see test_fubar.py):
+        #    script_module = get_testing_module_name(__file__, THE_MODULE)
         module_name = os.path.split(test_filename)[-1]
         module_name = re.sub(r".py[oc]?$", "", module_name)
         module_name = re.sub(r"^test_", "", module_name)
@@ -139,11 +143,13 @@ class TestWrapper(unittest.TestCase):
         return
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
-                   out_file=None, env_options=None):
+                   out_file=None, env_options=None, uses_stdin=False):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
         not specifed, they  are derived from self.temp_file.
-        Note: issues warning if script invocation leads to error"""
+        Notes:
+        - issues warning if script invocation leads to error
+        - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)"""
         tpo.debug_format("TestWrapper.run_script({opts}, {df}, {lf}, {of}, {env})", trace_level + 1,
                          opts=options, df=data_file, lf=log_file, 
                          of=out_file, env=env_options)
@@ -153,10 +159,10 @@ class TestWrapper(unittest.TestCase):
             env_options = ""
 
         # Derive the full paths for data file and log, and then invoke script.
-        # TODO: derive from temp base and data file name?
-        data_path = ""
-        if data_file:
-            data_path = gh.resolve_path(data_file)
+        # TODO: derive from temp base and data file name?;
+        data_path = ("" if uses_stdin else "-")
+        if data_file is not None:
+            data_path = (gh.resolve_path(data_file) if len(data_file) else data_file)
         if not log_file:
             log_file = self.temp_file + ".log"
         if not out_file:
