@@ -53,14 +53,29 @@ class TestIt(TestWrapper):
 
     def test_get_directory_listing(self):
         """
-        Tests for get_directory_listing(path          = '.',
+        Tests for get_directory_listing(path          = 'PATH',
                                         recursive     = False,
                                         long          = False,
                                         readable_size = False,
                                         return_string = True,
                                         make_unicode  = False)
         """
-        # WORK-IN-PROGRESS
+
+        # Setup files and folders
+        test_folder = gh.run('echo test-dir-listing-"$$"')
+        folders     = [test_folder, f'{test_folder}/other_folder']
+        filenames   = ['analize.py', 'debug.cpp', 'main.txt', 'misc_utils.perl']
+
+        for foldername in folders:
+            gh.run(f'mkdir /tmp/{foldername}')
+            for filename in filenames:
+                gh.run(f'touch /tmp/{foldername}/{filename}')
+
+        # Run Test
+        list_result = file_utils.get_directory_listing(f'/tmp/{test_folder}', recursive=True, long=True, return_string=True)
+
+        for line in list_result:
+            self.assertTrue(bool(re.search(r"[\w-]+\s+\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+\d\d:\d\d\s+[\w/]+", line)))
 
 
     def test_get_information(self):
@@ -78,10 +93,16 @@ class TestIt(TestWrapper):
 
     def test_get_permissions(self):
         """Tests for get_permissions(path)"""
-        test_file = '/tmp/gp_test.cpp'
-        gh.run(f'touch {test_file}')
-        ls_permissions = gh.run(f'ls -l {test_file}')[:10]
-        self.assertEqual(file_utils.get_permissions(test_file), ls_permissions)
+
+        # Setup
+        test_dir  = gh.run('echo /tmp/test-permissions-$$')
+        test_file = test_dir + '/' + 'some-file.cpp'
+
+        gh.run(f'mkdir {test_dir} && touch {test_file}')
+
+        # Run
+        self.assertEqual(file_utils.get_permissions(test_file), gh.run(f'ls -l {test_file}')[:10])
+        self.assertEqual(file_utils.get_permissions(test_dir), gh.run(f'ls -ld {test_dir}')[:10])
 
 
     def test_get_modification_date(self):
