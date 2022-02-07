@@ -83,7 +83,7 @@ class TestIt(TestWrapper):
                                          readable = False,
                                          return_string = False)
         """
-        test_file = '/tmp/gi_test.cpp'
+        test_file = gh.run('echo /tmp/get_information_"$$".cpp')
         gh.run(f'touch {test_file}')
 
         ls_result = gh.run(f'ls -l {test_file}')
@@ -107,7 +107,7 @@ class TestIt(TestWrapper):
 
     def test_get_modification_date(self):
         """Tests for get_modification_date(path)"""
-        test_file = '/tmp/gm_test.cpp'
+        test_file = gh.run('echo /tmp/get_modification_date_"$$".cpp')
         gh.run(f'touch {test_file}')
 
         ls_date = gh.run(f'ls -l {test_file}')[39:51]
