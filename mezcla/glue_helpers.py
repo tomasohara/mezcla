@@ -242,7 +242,13 @@ def disable_subcommand_tracing():
 
 
 def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespace):
-    """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests. Notes: This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed."""
+    """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
+   Notes:
+   - The result includes stderr, so direct if not desired:
+         gh.run("ls /tmp/fubar 2> /dev/null")
+   - This is only intended for running simple commands. It would be better to create a subprocess for any complex interactions.
+   - This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed.
+   """
     # TODO: add automatic log file support as in run_script from unittest_wrapper.py
     # TODO: make sure no template markers left in command text (e.g., "tar cvfz {tar_file}")
     # EX: "root" in run("ls /")
@@ -456,6 +462,7 @@ def write_lines(filename, text_lines, append=False):
     """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND"""
     debug_print("write_lines(%s, _)" % (filename), 5)
     debug_print("    text_lines=%s" % text_lines, 6)
+    debug.assertion(isinstance(text_lines, list) and all(isinstance(x, str) for x in text_lines))
     f = None
     try:
         mode = 'a' if append else 'w'
