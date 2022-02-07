@@ -75,7 +75,7 @@ class TestIt(TestWrapper):
         list_result = file_utils.get_directory_listing(f'/tmp/{test_folder}', recursive=True, long=True, return_string=True)
 
         for line in list_result:
-            self.assertTrue(bool(re.search(r"[\w-]+\s+\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+\d\d:\d\d\s+[\w/]+", line)))
+            self.assertTrue(bool(re.search(r"[drwx-]+\s+\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+\d\d:\d\d\s+[\w/]+", line)))
 
 
     def test_get_information(self):
