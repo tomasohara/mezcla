@@ -87,6 +87,7 @@ class TestIt(TestWrapper):
         gh.run(f'touch {test_file}')
 
         ls_result = gh.run(f'ls -l {test_file}')
+        ls_result = re.sub(r'\s+', ' ', ls_result)
 
         self.assertEqual(file_utils.get_information(test_file, return_string=True), ls_result)
 
