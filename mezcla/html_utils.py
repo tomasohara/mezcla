@@ -202,14 +202,16 @@ def set_param_dict(param_dict):
     user_parameters = param_dict
 
 
-def get_url_param(name, default_value=None, param_dict=None):
+def get_url_param(name, default_value=None, param_dict=None, escaped=False):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
-    Note: It will be escaped for use in HTML."""
+    Note: It can be ESCAPED for use in HTML."""
     if default_value is None:
         default_value = ""
     param_dict = (get_param_dict(param_dict) or {})
-    value = escape_html_value(param_dict.get(name, default_value))
+    value = param_dict.get(name, default_value)
     value = system.to_unicode(value)
+    if escaped:
+        value = escape_html_value(value)
     debug.trace_fmtd(4, "get_url_param({n}, [{d}]) => {v})",
                      n=name, d=default_value, v=value)
     return value
