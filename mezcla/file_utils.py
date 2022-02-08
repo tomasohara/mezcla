@@ -61,22 +61,27 @@ def get_directory_listing(path          = '.',
     try:
         for root, dirs, files in os.walk(path):
             items = dirs + files
-            if recursive:
-                # Avoid duplicated filenames adding the relative path
+
+            # Avoid duplicated filenames adding the relative path
+            if recursive or long:
                 for item in items:
                     result_list.append(root + '/' + item)
             else:
-                # Only dirs and files in the root dir
                 result_list = items
+
+            if not recursive:
                 break
-        debug.trace(debug.DETAILED, f'get_directory_listing() - files and dirs founded: {result_list}')
+
     except OSError:
         debug.trace(debug.DETAILED, f'get_directory_listing() - exception: {sys.exc_info()}')
+
+    debug.trace(debug.DETAILED, f'get_directory_listing() - files and dirs founded: {result_list}')
 
     # Long listing
     if long:
         for index, item in enumerate(result_list):
             result_list[index] = get_information(item, readable=readable)
+
         debug.trace(debug.DETAILED, f'get_directory_listing() - long listing: {result_list}')
 
         # Convert to a uniform string
@@ -174,6 +179,6 @@ def get_permissions(path):
 
 
 # strftime format code list can be found here: https://www.programiz.com/python-programming/datetime/strftime
-def get_modification_date(path, strftime='%b %d %H:%M'):
+def get_modification_date(path, strftime='%b %-d %H:%M'):
     """Get last modification date of file"""
-    return datetime.fromtimestamp(os.path.getmtime(path)).strftime(strftime).replace(' 0', '  ').lower() if path_exist(path) else 'error'
+    return datetime.fromtimestamp(os.path.getmtime(path)).strftime(strftime).lower() if path_exist(path) else 'error'
