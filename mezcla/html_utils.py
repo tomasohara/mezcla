@@ -58,6 +58,7 @@ import requests
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
+from mezcla.system import write_temp_file
 
 # Constants
 DEFAULT_STATUS_CODE = "000"
@@ -77,17 +78,6 @@ user_parameters = {}
 
 # Placeholders for dynamically loaded modules
 BeautifulSoup = None
-
-#-------------------------------------------------------------------------------
-# Helper functions (TODO, put in system.py)
-
-TEMP_DIR = system.getenv_text("TMPDIR", "/tmp")
-#
-def write_temp_file(filename, text):
-    """Create FILENAME in temp. directory using TEXT"""
-    temp_path = system.form_path(TEMP_DIR, filename)
-    system.write_file(temp_path, text)
-    return
 
 #-------------------------------------------------------------------------------
 # HTML utility functions

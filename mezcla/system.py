@@ -48,6 +48,7 @@ from mezcla.debug import UTF8
 STRING_TYPES = six.string_types
 MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
+TEMP_DIR = system.getenv_text("TMPDIR", "/tmp")
 
 #-------------------------------------------------------------------------------
 # Support for needless python changes
@@ -689,6 +690,13 @@ def write_lines(filename, text_lines, append=False):
     finally:
         if f:
             f.close()
+    return
+
+
+def write_temp_file(filename, text):
+    """Create FILENAME in temp. directory using TEXT"""
+    temp_path = system.form_path(TEMP_DIR, filename)
+    system.write_file(temp_path, text)
     return
 
 
