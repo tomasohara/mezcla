@@ -48,7 +48,7 @@ from mezcla.debug import UTF8
 STRING_TYPES = six.string_types
 MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
-TEMP_DIR = system.getenv_text("TMPDIR", "/tmp")
+TEMP_DIR = None
 
 #-------------------------------------------------------------------------------
 # Support for needless python changes
@@ -546,7 +546,7 @@ def read_binary_file(filename):
 def read_directory(directory):
     """Returns list of files in DIRECTORY"""
     # Note simple wrapper around os.listdir with tracing
-    # EX: (system.intersection(["init.d", "passwd"], read_directory("/etc")))
+    # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
     files = os.listdir(directory)
     debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files)
     return files
@@ -695,8 +695,8 @@ def write_lines(filename, text_lines, append=False):
 
 def write_temp_file(filename, text):
     """Create FILENAME in temp. directory using TEXT"""
-    temp_path = system.form_path(TEMP_DIR, filename)
-    system.write_file(temp_path, text)
+    temp_path = form_path(TEMP_DIR, filename)
+    write_file(temp_path, text)
     return
 
 
@@ -1060,7 +1060,7 @@ def sleep(num_seconds, trace_level=5):
 
 def python_maj_min_version():
     """Return Python version as a float of form Major.Minor"""
-    # EX: debug.assertion(system.python_maj_min_version() >= 3.6, "F-Strings are used")
+    # EX: debug.assertion(python_maj_min_version() >= 3.6, "F-Strings are used")
     version = sys.version_info
     py_maj_min = to_float("{M}.{m}".format(M=version.major, m=version.minor))
     debug.trace_fmt(5, "Python version (maj.min): {v}", v=py_maj_min)
@@ -1072,6 +1072,15 @@ def get_args():
     result = sys.argv
     debug.trace_fmtd(7, "get_args() => {r}", r=result)
     return result
+
+def init():
+    """Performs module initilization"""
+    # TODO: rework global initialization to avoid the need for this
+    global TEMP_DIR
+    TEMP_DIR = getenv_text("TMPDIR", "/tmp")
+    return
+#
+init()
 
 #-------------------------------------------------------------------------------
 # Command line usage
@@ -1086,3 +1095,5 @@ def main(args):
 
 if __name__ == '__main__':
     main(get_args())
+else:
+    debug.assertion(TEMP_DIR is not None)
