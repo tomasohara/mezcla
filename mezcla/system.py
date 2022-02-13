@@ -1032,9 +1032,11 @@ def to_bool(value):
 PRECISION = getenv_int("PRECISION", 6,
                        "Precision for rounding (e.g., decimal places)")
 #
-def round_num(value, precision=PRECISION):
+def round_num(value, precision=None):
     """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
     # EX: round_num(3.15914, 3) => 3.159
+    if precision is None:
+        precision = PRECISION
     rounded_value = round(value, precision)
     debug.trace_fmtd(8, "round_num({v}, [prec={p}]) => {r}",
                      v=value, p=precision, r=rounded_value)
