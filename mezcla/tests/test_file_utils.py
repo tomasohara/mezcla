@@ -27,8 +27,7 @@ import mezcla.file_utils as file_utils
 class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.derive_tested_module_name(__file__)
-    # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
-    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
+    use_temp_base_dir = True
 
 
     ## TODO: optional setup methods
@@ -62,17 +61,16 @@ class TestIt(TestWrapper):
         """
 
         # Setup files and folders
-        test_folder = gh.run('echo test-dir-listing-"$$"')
-        folders     = [test_folder, f'{test_folder}/other_folder']
+        folders     = [self.temp_base, f'{self.temp_base}/other_folder']
         filenames   = ['analize.py', 'debug.cpp', 'main.txt', 'misc_utils.perl']
 
         for foldername in folders:
-            gh.run(f'mkdir /tmp/{foldername}')
+            gh.run(f'mkdir {foldername}')
             for filename in filenames:
-                gh.run(f'touch /tmp/{foldername}/{filename}')
+                gh.run(f'touch {foldername}/{filename}')
 
         # Run Test
-        list_result = file_utils.get_directory_listing(f'/tmp/{test_folder}', recursive=True, long=True, return_string=True)
+        list_result = file_utils.get_directory_listing(f'{self.temp_base}', recursive=True, long=True, return_string=True)
 
         for line in list_result:
             self.assertTrue(bool(re.search(r"[drwx-]+\s+\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+\d\d:\d\d\s+[\w/]+", line)))
@@ -83,38 +81,34 @@ class TestIt(TestWrapper):
                                          readable = False,
                                          return_string = False)
         """
-        test_file = gh.run('echo /tmp/get_information_"$$".cpp')
-        gh.run(f'touch {test_file}')
+        gh.run(f'touch {self.temp_file}')
 
-        ls_result = gh.run(f'ls -l {test_file}')
+        ls_result = gh.run(f'ls -l {self.temp_file}')
         ls_result = re.sub(r'\s+', ' ', ls_result)
 
-        self.assertEqual(file_utils.get_information(test_file, return_string=True), ls_result)
+        self.assertEqual(file_utils.get_information(self.temp_file, return_string=True), ls_result)
 
 
     def test_get_permissions(self):
         """Tests for get_permissions(path)"""
 
         # Setup
-        test_dir  = gh.run('echo /tmp/test-permissions-$$')
-        test_file = test_dir + '/' + 'some-file.cpp'
-
-        gh.run(f'mkdir {test_dir} && touch {test_file}')
+        test_file = self.temp_base + '/' + 'some-file.cpp'
+        gh.run(f'touch {test_file}')
 
         # Run
         self.assertEqual(file_utils.get_permissions(test_file), gh.run(f'ls -l {test_file}')[:10])
-        self.assertEqual(file_utils.get_permissions(test_dir), gh.run(f'ls -ld {test_dir}')[:10])
+        self.assertEqual(file_utils.get_permissions(self.temp_base), gh.run(f'ls -ld {self.temp_base}')[:10])
 
 
     def test_get_modification_date(self):
         """Tests for get_modification_date(path)"""
-        test_file = gh.run('echo /tmp/get_modification_date_"$$".cpp')
-        gh.run(f'touch {test_file}')
+        gh.run(f'touch {self.temp_file}')
 
-        ls_date = gh.run(f'ls -l {test_file}')[39:51]
+        ls_date = gh.run(f'ls -l {self.temp_file}')[39:51]
         ls_date = re.sub(r'\s+', ' ', ls_date)
 
-        self.assertEqual(file_utils.get_modification_date(test_file, strftime='%b %-d %H:%M'), ls_date)
+        self.assertEqual(file_utils.get_modification_date(self.temp_file, strftime='%b %-d %H:%M'), ls_date)
 
 
     ## TODO: optional cleanup methods
