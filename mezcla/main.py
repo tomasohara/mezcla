@@ -251,7 +251,9 @@ class Main(object):
         opt_label = None
         opt_desc = None
         opt_default = default_value
+        opt_nargs = None
         opt_prefix = "--" if not positional else ""
+        # TODO: use keyword arguments (or namedtuple)
         if isinstance(option_spec, tuple):
             option_components = list(option_spec)
             opt_label = opt_prefix + option_components[0]
@@ -259,14 +261,26 @@ class Main(object):
                 opt_desc = option_components[1]
             if len(option_components) > 2:
                 opt_default = option_components[2]
+            if len(option_components) > 3:
+                opt_nargs = option_components[3]
+                debug.assertion(positional)
         else:
             opt_label = opt_prefix + tpo.to_string(option_spec)
         debug.assertion(not " " in opt_label)
-        result = (opt_label, opt_desc, opt_default)
+        result_list = [opt_label, opt_desc, opt_default]
+        if positional:
+            result_list.append(opt_nargs)
+        result = tuple(result_list)
         tpo.debug_format("convert_option({o}, {d}, {p}): self={s} => {r}", 5,
                          o=option_spec, d=default_value, p=positional,
                          s=self, r=result)
         return result
+
+    def convert_argument(self, argument_spec, default_value=None):
+        """Convert ARGUMENT_SPEC to (label, description, default) tuple. 
+        Note: This is a wrapper around convert_option for positional arguments."""
+        debug.trace(6, f"convert_option({argument_spec}, {default_value}")
+        return self.convert_option(argument_spec, default_value, positional=True)
 
     def get_option_name(self, label):
         """Return internal name for parser options (e.g. dashes converted to underscores)"""
@@ -366,10 +380,9 @@ class Main(object):
 
         # Add positional arguments
         for i, opt_spec in enumerate(self.positional_options):
-            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, "",
-                                                                     positional=True)
-            # note: a numeric nargs produces a list even if 1, so None used
-            nargs = None
+            (opt_label, opt_desc, opt_default, opt_nargs) = self.convert_argument(opt_spec, "")
+            # note: a numeric nargs produces a list even if 1, so None used by default
+            nargs = opt_nargs
             tpo.debug_format("positional arg {i}, nargs={nargs}", 6, 
                              i=i, nargs=nargs)
             # TODO: add default to opt_desc if not mentioned
@@ -377,7 +390,7 @@ class Main(object):
                                 help=opt_desc)
 
         # Add filename last and make optional with '-' default (stdin)
-        # Note: with nargs=+, the reult is a list of filename (even if one file [WTH?]!)
+        # Note: with nargs=+, the result is a list of filenames (even if one file [WTH?]!)
         if not self.skip_input:
             filename_nargs = ('?' if (not self.multiple_files) else "+")
             tpo.debug_format("filename_nargs={nargs}", 6, nargs=filename_nargs)
