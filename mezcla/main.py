@@ -81,6 +81,7 @@ from mezcla.system import getenv_bool
 
 # Constants
 HELP_ARG = "--help"
+USAGE_ARG = "--usage"
 USE_PARAGRAPH_MODE_DEFAULT = getenv_bool("USE_PARAGRAPH_MODE", False)
 USE_PARAGRAPH_MODE = getenv_bool("PARAGRAPH_MODE", USE_PARAGRAPH_MODE_DEFAULT,
                                  "Process input in Perl-style paragraph mode")
@@ -101,6 +102,8 @@ SHOW_ENV_OPTIONS = system.getenv_bool("ENV_USAGE", debug.detailed_debugging(),
 # TODO: Put following in common module
 INDENT = system.getenv_text("INDENT", "    ",
                             "Indentation for system output")
+BRIEF_USAGE = system.getenv_bool("BRIEF_USAGE", False,
+                                 "Show brief usage with autohelp")
 
 #-------------------------------------------------------------------------------
 
@@ -120,16 +123,17 @@ class Main(object):
                  paragraph_mode=None, track_pages=None, file_input_mode=None,
                  boolean_options=None, text_options=None, int_options=None,
                  float_options=None, positional_options=None, positional_arguments=None,
-                 skip_input=None, manual_input=None, auto_help=None, **kwargs):
+                 skip_input=None, manual_input=None, auto_help=None, brief_usage=None, **kwargs):
         """Class constructor: parses RUNTIME_ARGS (or command line), with specifications
         for BOOLEAN_OPTIONS, TEXT_OPTIONS, INT_OPTIONS, FLOAT_OPTIONS, and POSITIONAL_OPTIONS
         (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args)."""
         tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts},"
-                         + " i={ints}, f={floats}, p={posns}, s={skip}, m={mi}, a={auto},"
+                         + " i={ints}, f={floats}, p={posns}, s={skip}, m={mi}, ah={auto}, bu={usage}"
                          + " pm={para}, tp={page}, fim={file}, prog={prog}, noargs={skip_args}, kw={kw})", 5,
                          args=runtime_args, desc=description, bools=boolean_options,
                          texts=text_options, ints=int_options, floats=float_options,
-                         posns=positional_options, skip=skip_input, mi=manual_input, auto=auto_help,
+                         posns=positional_options, skip=skip_input, mi=manual_input,
+                         auto=auto_help, usage=brief_usage,
                          para=paragraph_mode, page=track_pages, file=file_input_mode,
                          prog=program, ha=HELP_ARG, skip_args=skip_args, kw=kwargs)
         self.description = "TODO: what the script does" # defaults to TODO note for client
@@ -166,10 +170,13 @@ class Main(object):
         self.skip_input = skip_input
         #
         self.parser = None
+        if brief_usage is None:
+            brief_usage = BRIEF_USAGE
+        self.brief_usage = brief_usage  # show brief usage instead of full --help
         if auto_help is None:
             ## OLD: auto_help = self.skip_input
             auto_help = self.skip_input or not self.manual_input
-        self.auto_help = auto_help
+        self.auto_help = auto_help      # adds --help to command line if no arguments
         if usage_notes is None:
             usage_notes = ""
         self.notes = usage_notes
@@ -210,8 +217,9 @@ class Main(object):
             runtime_args = sys.argv[1:]
             tpo.debug_print("Using sys.argv[1:] for runtime args: %s" % runtime_args, 4)
             if self.auto_help and not runtime_args:
-                debug.trace_fmt(4, "Adding {ha} to command line (as per auto_help)", ha=HELP_ARG)
-                runtime_args = [HELP_ARG]
+                help_arg = (USAGE_ARG if self.brief_usage else HELP_ARG)
+                debug.trace(4, f"Adding {help_arg} to command line (as per auto_help)")
+                runtime_args = [help_arg]
         # Get other options
         self.program = program
         if description:
@@ -228,7 +236,7 @@ class Main(object):
             # TODO: mark positional_options as decprecated
             debug.assertion(not (positional_options and positional_arguments))
             self.positional_options = positional_options or positional_arguments
-        self.multiple_files = multiple_files
+        self.multiple_files = multiple_files      # sets other_filenames if multiple w/ nargs=+ 
         # Set defaults
         self.parsed_args = None
         self.filename = None
@@ -248,6 +256,7 @@ class Main(object):
         Notes: The description and default of the specification are optional,
         and the parentheses can be omitted if just the label is given. Also,
         if POSITIONAL the option prefix (--) is omitted."""
+        ## TEST: result = ["", "", ""]
         opt_label = None
         opt_desc = None
         opt_default = default_value
@@ -327,7 +336,9 @@ class Main(object):
         return self.get_parsed_option(label, default, positional=True)
 
     def check_arguments(self, runtime_args):
-        """Check command-line arguments"""
+        """Check command-line arguments
+        Note: This uses argparse, which might exit the process
+        """
         # Note: Shows env. options when debugging as these are backdoor settings.
         tpo.debug_format("Main.check_arguments({args})", 5, args=runtime_args)
         # TODO: add in detailed usage notes w/ environment option descriptions (see google_word2vec.py)
@@ -346,20 +357,20 @@ class Main(object):
         # TODO: use capitalized script description but lowercase argument help
 
         # Check for options of specific types
-        # TODO: consolidate processing for the groups; add option for environment-based default
+        # TODO: consolidate processing for the groups; add option for environment-based default; resolve stupid pylint false positive about unbalanced-tuple-unpacking
         for opt_spec in self.boolean_options:
-            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)
+            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
             parser.add_argument(opt_label, default=opt_default, action='store_true',
                                 help=opt_desc)
         for opt_spec in self.int_options:
-            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)
+            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
             parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
         for opt_spec in self.float_options:
-            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)
+            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
             parser.add_argument(opt_label, type=float, default=opt_default,
                                 help=opt_desc)
         for opt_spec in self.text_options:
-            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)
+            (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
             parser.add_argument(opt_label, default=opt_default, help=opt_desc)
 
         # Add dummy arguments
@@ -380,7 +391,7 @@ class Main(object):
 
         # Add positional arguments
         for i, opt_spec in enumerate(self.positional_options):
-            (opt_label, opt_desc, opt_default, opt_nargs) = self.convert_argument(opt_spec, "")
+            (opt_label, opt_desc, opt_default, opt_nargs) = self.convert_argument(opt_spec, "")   # pylint: disable=unbalanced-tuple-unpacking
             # note: a numeric nargs produces a list even if 1, so None used by default
             nargs = opt_nargs
             tpo.debug_format("positional arg {i}, nargs={nargs}", 6, 
@@ -397,6 +408,13 @@ class Main(object):
             parser.add_argument("filename", nargs=filename_nargs, default='-',
                                 help="Input filename")
 
+        # Optionally, show brief usage and exit
+        # note: print_usage just print command line synopsis (not individual descriptions)
+        if (self.brief_usage and (runtime_args == [USAGE_ARG])):
+            debug.trace(4, "Just showing (brief) usage and then exiting")
+            parser.print_usage()
+            sys.exit()
+
         # Parse the command line and get result
         tpo.debug_format("parser={p}", 6, p=parser)
         self.parser = parser
@@ -404,12 +422,14 @@ class Main(object):
         tpo.debug_print("parsed_args = %s" % self.parsed_args, 5)
 
         # Get filename unless input ignored and fixup if returned as list
+        # TODO: add an option to retain self.filename as is
         if not self.skip_input:
             self.filename = self.parsed_args['filename']
             if (isinstance(self.filename, list)):
-                debug.trace(5, "Making (list) filename a string & other_files remainder")
+                if not self.multiple_files:
+                    debug.trace(3, "Warning: Making (list) self.filename a string & setting self.other_filenames to remainder")
                 file_list = self.filename
-                self.other_files = file_list[1:]
+                self.other_filenames = file_list[1:]
                 self.filename =  file_list[0] if len(file_list) else "-"
         debug.trace(6, "end Main.check_arguments()")
         return
@@ -440,24 +460,29 @@ class Main(object):
         return
 
     def run(self):
-        """Entry point for script"""
+        """Runner for script processing"""
         tpo.debug_print("Main.run()", 5)
         # TODO: decompose (e.g., isolate input proecessing)
 
-        # Have client do pre-input initialization
+        # Have client do pre-input initialization (e.g., argument extraction)
         self.setup()
 
         # Resolve input stream from either explicit filename or via standard input
         self.input_stream = sys.stdin
         if (self.filename and (self.filename != "-")):
-            debug.assertion(isinstance(self.filename, str))
-            # note: not list of filenames (TODO, reorder tests to make clearer)
-            debug.assertion(self.filename != ["-"])
-            debug.assertion(os.path.exists(self.filename))
-            self.input_stream = system.open_file(self.filename)
-            debug.assertion(self.input_stream)
+            if (isinstance(self.filename, list) or (len(self.other_filenames) > 0)):
+                debug.assertion(self.filename != ["-"])
+                if not self.multiple_files:
+                    # note: check_arguments sets self.other_filenames
+                    debug.trace(3, "Warning: Not opening multiple-valued filename arg")
+                    debug.trace_expr(3, self.filename, self.other_filenames)
+            else:
+                debug.assertion(isinstance(self.filename, str))
+                debug.assertion(os.path.exists(self.filename))
+                self.input_stream = system.open_file(self.filename)
+                debug.assertion(self.input_stream)
     
-        # Invoke the script
+        # Initiate the main input processing
         try:
             # If not automatic input, process the main step of script
             if self.manual_input:
