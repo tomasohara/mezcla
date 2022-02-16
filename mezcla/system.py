@@ -1027,7 +1027,7 @@ PRECISION = getenv_int("PRECISION", 6,
 def round_num(value, precision=PRECISION):
     """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
     # EX: round_num(3.15914, 3) => 3.159
-    rounded_value = round(value, precision)
+    rounded_value = f"%.{precision}f" % round(value, precision)
     debug.trace_fmtd(8, "round_num({v}, [prec={p}]) => {r}",
                      v=value, p=precision, r=rounded_value)
     return rounded_value
