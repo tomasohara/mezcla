@@ -501,6 +501,7 @@ DOG_TEXT = "My dog has fleas."
 def format_index_html(base_url=None):
     """Formats a simple HTML page illustrating the categorize and class_probabilities API calls,
     Note: BASE_URL provides the server URL (e.g., http://www.my-categorizer.com:9999)"""
+    debug.trace(5, f"format_index_html(base_url={base_url})")
     # TODO: parameterize template generation (e.g., to facilitate usage in derived classes of web_controller
     if (base_url is None):
         base_url = "http://127.0.0.1"
@@ -510,15 +511,16 @@ def format_index_html(base_url=None):
     # Create index page template with optional examples for debugging
     html_template = """
     <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-    <html>
+    <html lang="en">
         <head>
+            <meta content="text/html; charset=UTF-8" http-equiv="content-type">
             <title>Text categorizer</title>
         </head>
         <body>
             Try <a href="categorize">categorize</a> and <a href="class_probabilities">class_probabilities</a>.<br>
             note: You need to supply the <i><b>text</b></i> parameter.<br>
             <br>
-            For example,
+            Examples:
             <ul>
                 <li>Category for <a href="categorize?text={quoted_trump_text}">"{trump_text}"</a>:<br>
                     {indent}<code>{base_url}/categorize?text={quoted_trump_text}</code>
@@ -532,8 +534,8 @@ def format_index_html(base_url=None):
 
     if debug.detailed_debugging():
         html_template += """
-            <p>
-            Other examples:
+            <!-- <p> -->
+            Other examples (n.b., debug only):
             <ul>
                 <li><a href="shutdown">Shutdown</a> the server:<br>
                     {indent}<code>{base_url}/shutdown</code>
@@ -545,23 +547,25 @@ def format_index_html(base_url=None):
             </ul>
         """
     #
+    # TODO: define text area dimensions based on browser window size
     html_template += """
 	    <!-- Form for entering text for categorization -->
             <hr>
-	    <form action="http://localhost:{port}/categorize" method="get">
+	    <form action="{base_url}/categorize" method="get">
 	        <label for="textarea1">Categorize</label>
                 <br>
-	        <textarea id="textarea1" multiline="True" rows="10" cols="132" name="text"></textarea>
+	        <textarea id="textarea1" rows="5" cols="100" name="text"></textarea>
 	        <br>
 	        <input type="submit">
 	    </form>
 	    
         </body>
     </html>
-    """.format(port=SERVER_PORT)
+    """
 
     # Resolve template into final HTML
-    index_html = html_template.format(base_url=base_url, indent="&nbsp;&nbsp;&nbsp;&nbsp;",
+    index_html = html_template.format(base_url=base_url,
+                                      indent="&nbsp;&nbsp;&nbsp;&nbsp;",
                                       trump_text=TRUMP_TEXT,
                                       quoted_trump_text=system.quote_url_text(TRUMP_TEXT),
                                       dog_text=DOG_TEXT,
