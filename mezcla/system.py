@@ -1036,7 +1036,7 @@ def round_num(value, precision=PRECISION):
 def round_as_str(value, precision=PRECISION):
     """Returns round_num(VALUE, PRECISION) as string"""
     # EX: round_as_str(3.15914, 3) => "3.159"
-    result = str(round_num(value, precision))
+    result = f"{round_num(value, precision):.{precision}f}"
     debug.trace_fmtd(8, "round_as_str({v}, [prec={p}]) => {r}",
                      v=value, p=precision, r=result)
     return result
