@@ -136,7 +136,7 @@ class Main(object):
                          auto=auto_help, usage=brief_usage,
                          para=paragraph_mode, page=track_pages, file=file_input_mode,
                          prog=program, ha=HELP_ARG, skip_args=skip_args, kw=kwargs)
-        self.description = "TODO: what the script does" # defaults to TODO note for client
+        self.description = "TODO: what the script does"   # *** DONT'T MODIFY: defaults TODO note for client
         # TODO: boolean_options = [(VERBOSE, "Verbose output mode")]
         self.boolean_options = []
         self.text_options = []
@@ -682,9 +682,21 @@ class Main(object):
                 gh.run("rm -vf {file}*", file=self.temp_file)
         return
 
+#-------------------------------------------------------------------------------
+# Global instance for convenient adhoc usage
+# 
+# note: useful fo temporary file support (e.g., dummy_app.temp_file)
+#
+
+dummy_app = Main([])
+
+debug.trace_current_context(8, "main.py context")
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone")
     main = Main()
+    ## TODO??: main.description = "Script class support"
     main.run()
+
