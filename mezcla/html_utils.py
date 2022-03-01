@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# -*- coding: utf-8 -*-
 #
 # Micellaneous HTML utility functions, in particular with support for resolving
 # HTML rendered via JavaScript. This was motivated by the desire to extract
@@ -57,6 +58,7 @@ import requests
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.system import write_temp_file
 
@@ -330,7 +332,7 @@ def old_download_web_document(url, filename=None, download_dir=None, meta_hash=N
 
 def download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False):
     """Download document contents at URL, returning as unicode text. An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED."""
-    # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
+    # EX: "currency" in str(download_web_document("https://simple.wikipedia.org/wiki/Dollar"))
     # EX: download_web_document("www. bogus. url.html") => None
     ## TODO: def download_web_document(url, /, filename=None, download_dir=None, meta_hash=None, use_cached=False):
     debug.trace_fmtd(4, "download_web_document({u}, d={d}, f={f}, h={mh})",
@@ -372,6 +374,27 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
     debug.trace_fmtd(6, "download_web_document() => _; len(_)={l}",
                      l=(len(doc_data) if doc_data else -1))
     return doc_data
+
+
+def download_html_document(url, encoding=None, lookahead=256, **kwargs):
+    """Wrapper around download_web_document for HTML or text (i.e., non-binary), using ENCODING.
+    Note: If ENCODING unspecified, checks result LOOKAHEAD bytes for meta encoding spec and uses UTF-8 as a fallback"""
+    # EX: "Google" in download_html_document("www.google.com")
+    # EX: "Tomás" not in download_html_document("http://www.tomasohara.trade", encoding="big5"¨)
+    result = (download_web_document(url, **kwargs) or "")
+    if (len(result) and (not encoding)):
+        encoding = "UTF-8"
+        if my_re.search(r"<meta.*charset=[\"\']?([^\"\']+)[\"\']?", str(result[:lookahead])):
+            encoding = my_re.group(1)
+            debug.trace(5, f"Using {encoding} for encoding based on meta charset")
+    try:
+        result = result.decode(encoding=encoding, errors='ignore')
+    except:
+        result = str(result)
+        system.print_exception_info("download_html_document")
+    debug.trace_fmtd(7, "download_html_document({u}, [enc={e}, lkahd={la}]) => {r}; len(_)={l}",
+                     u=url, e=encoding, la=lookahead, r=gh.elide(result), l=len(result))
+    return (result)
 
 
 def retrieve_web_document(url, meta_hash=None):
