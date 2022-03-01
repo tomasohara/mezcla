@@ -4,15 +4,18 @@
 #
 # The software is Open Source, licensed under the GNU Lesser General Public Version 3 (LGPLv3). See LICENSE.txt in repository.
 #
+## TODO: see example/template.py for simpler version suitable for cut-n-paste from online examples
+#
 
 """TODO: what module does (brief)"""
 
-# Standard packages
+# Standard modules
 import re
 
-# Installed packages
+# Installed modules
 ## TODO: import numpy
-# Personal package
+
+# Local modules
 # TODO: def mezcla_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
 from mezcla import debug
 from mezcla.main import Main
