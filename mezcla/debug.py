@@ -17,6 +17,26 @@
 #   https://docs.python.org/3/tutorial/inputoutput.html
 #   https://www.python.org/dev/peps/pep-0498
 #
+# Usage examples:
+#
+#   - causal usage (quick-n-dirty debugging)
+#
+#     from mezcla import debug
+#     debug.trace_expr(4, dir())
+#
+#   - long-term usuage (e.g., symbolic constants for consistency across scripts)
+#
+#     from mezcla import debug
+#     TL = debug.TL
+#     debug.trace(TL.DEFAULT, "Shown by default")
+#     ...
+#     debug.trace(TL.USUAL, f"Look ma: TL.VERBOSE={int(TL.VERBOSE)}")
+#
+#   - use DEBUG_LEVEL env. var. to set level
+#
+#     python -c 'from mezcla import debug; debug.trace(debug.DEFAULT + 1, "Not visible")'
+#     DEBUG_LEVEL=3 python -c 'from mezcla import debug; debug.trace(3, "Visible")'
+#
 # TODO:
 # - * Add sanity checks for unused environment variables specified on command line (e.g., FUBAR=1 python script.py ...)!
 # - Rename as debug_utils so clear that non-standard package.
@@ -26,13 +46,10 @@
 
 """Debugging functions (e.g., tracing)"""
 
-## OLD: if sys.version_info.major == 2:
-## OLD:    from __future__ import print_function
-from __future__ import print_function
-
 # Standard packages
 import atexit
 from datetime import datetime
+import enum
 import inspect
 from itertools import zip_longest
 import logging
@@ -50,21 +67,33 @@ import mezcla.sys_version_info_hack      # pylint: disable=unused-import
 
 
 # Constants for pre-defined tracing levels
-# TODO: convert to enumeration
-#    from enum import IntEnum
-#    class TraceLevel(intNum):
-#        ALWAYS = 0
-#        ...
-ALWAYS = 0
-ERROR = 1
-WARNING = 2
-USUAL = 3
-DETAILED = 4
-VERBOSE = 5
-QUITE_DETAILED = 6
-QUITE_VERBOSE = 7
-MOST_DETAILED = 8
-MOST_VERBOSE = 9
+#
+class TraceLevel(enum.IntEnum):
+    """Constants for use in tracing"""
+    ALWAYS = 0
+    ERROR = 1
+    WARNING = 2                         # typically always shown
+    DEFAULT = WARNING
+    USUAL = 3                           # usual is sense of debugging purposes
+    DETAILED = 4
+    VERBOSE = 5
+    QUITE_DETAILED = 6
+    QUITE_VERBOSE = 7
+    MOST_DETAILED = 8
+    MOST_VERBOSE = 9
+#
+TL = TraceLevel
+ALWAYS = TL.ALWAYS
+ERROR = TL.ERROR
+WARNING = TL.WARNING
+DEFAULT = TL.DEFAULT
+USUAL = TL.USUAL
+DETAILED = TL.DETAILED
+VERBOSE = TL.VERBOSE
+QUITE_DETAILED = TL.QUITE_DETAILED
+QUITE_VERBOSE = TL.QUITE_VERBOSE
+MOST_DETAILED = TL.MOST_DETAILED
+MOST_VERBOSE = TL.MOST_VERBOSE
 
 # Other constants
 UTF8 = "UTF-8"
@@ -78,7 +107,7 @@ if __debug__:
 
     # Initialize debug tracing level
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
-    trace_level = ERROR
+    trace_level = TL.DEFAULT            # typically same as TL.WARNING (2)
     output_timestamps = False           # prefix output with timestamp
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
@@ -370,10 +399,11 @@ if __debug__:
 
     def trace_expr(level, *values, **kwargs):
         """Trace each of the arguments (if at trace LEVEL or higher), using introspection
-        to derive label for each expression;
+        to derive label for each expression. By default, the following format is used:
+           expr1=value1; ... exprN=valueN
         Notes:
         - For simplicity, the values are assumed to separated by ', ' (or expression _SEP)--barebones parsing applied.
-        - Use DELIM to specify delimiter; otherwise \n used;
+        - Use DELIM to specify delimiter; otherwise '; ' used;
           if so, NO_EOL applies to intermediate values (EOL always used at end).
         - Use USE_REPR=False to use tracing via str instead of repr.
         - Use _KW_ARG for KW_ARG in case of conflict, as in following:
@@ -767,7 +797,7 @@ def profile_function(frame, event, arg):
     return
 
 def reference_var(*args):
-    """Dummy function used for referencing variables"""
+    """No-op function used for referencing variables in ARGS"""
     trace(MOST_VERBOSE, f"reference_var{tuple(args)}")
     return
 
