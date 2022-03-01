@@ -31,12 +31,13 @@ import textwrap
 
 # Local packages
 from mezcla import debug
+from mezcla import system
 from mezcla import tpo_common as tpo
 from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
 
 # note: ALLOW_SUBCOMMAND_TRACING should be interepreted in terms of detailed
 # tracing. Now, basic tracing is still done unless disable_subcommand_tracing()
-# invoked. (This way, subscript start/end time shown by default)
+# invoked. (This way, the subscript start/end time shown by default)
 ALLOW_SUBCOMMAND_TRACING = tpo.getenv_boolean("ALLOW_SUBCOMMAND_TRACING", False)
 default_subtrace_level = min(tpo.USUAL, tpo.debugging_level())
 if ALLOW_SUBCOMMAND_TRACING:
@@ -179,9 +180,12 @@ def full_mkdir(path):
 
 
 def real_path(path):
-    """Return resolved absolute pathname for PATH, as with Linux realpath command"""
+    """Return resolved absolute pathname for PATH, as with Linux realpath command
+    Note: Use version in system instead"""
     # EX: re.search("vmlinuz.*\d.\d", real_path("/vmlinuz"))
+    ## TODO: result = system.real_path(path)
     result = run(f'realpath "{path}"')
+    debug.trace(6, "Warning: obsolete: use system.real_path instead")
     debug.trace(7, f"real_path({path}) => {result}")
     return result
 
@@ -323,13 +327,18 @@ def issue(command, trace_level=4, subtrace_level=None, **namespace):
 def get_hex_dump(text, break_newlines=False):
     """Get hex dump for TEXT, optionally BREAKing lines on NEWLINES"""
     # TODO: implement entirely within Pyton (e.g., via binascii.hexlify)
-    # EX: get_hex_dump
-    debug.trace_fmt(6, "get_hex_dump{{t}, {bn})", t=text, bn=break_newlines)
+    # EX: get_hex_dump("Tomás") => \
+    #   "00000000  54 6F 6D C3 A1 73       -                          Tom..s"
+    debug.trace_fmt(6, "get_hex_dump({t}, {bn})", t=text, bn=break_newlines)
     in_file = get_temp_file() + ".in.list"
     out_file = get_temp_file() + ".out.list"
-    write_file(in_file, text)
-    run("perl -Ss hexview.perl -newlines {i} > {o}", i=in_file, o=out_file)
-    result = read_file(out_file)    
+    ## BAD:
+    ## write_file(in_file, text)
+    ## run("perl -Ss hexview.perl -newlines {i} > {o}", i=in_file, o=out_file)
+    system.write_file(in_file, text, skip_newline=True)
+    run("perl -Ss hexview.perl {i} > {o}", i=in_file, o=out_file)
+    result = read_file(out_file).rstrip("\n")
+    debug.trace(7, f"get_hex_dump() => {result}")
     return result
 
 
