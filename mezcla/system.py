@@ -20,10 +20,6 @@
 
 """System-related functions"""
 
-## OLD: if sys.version_info.major == 2:
-## OLD:     from __future__ import print_function
-from __future__ import print_function
-
 # Standard packages
 from collections import defaultdict, OrderedDict
 import datetime
@@ -232,12 +228,16 @@ def get_exception():
     return sys.exc_info()
 
 def print_error(text):
-    """Output TEXT to standard error"""
+    """Output TEXT to standard error
+    Note: Use print_stderr to include format argument"
+    """
+    # ex: print_error("Fubar!")
     print(text, file=sys.stderr)
     return
 
 def print_stderr(text, **kwargs):
     """Output TEXT to standard error, using KWARGS for formatting"""
+    # ex: print_stderr("Error: F{oo}bar!", oo=("oo" if (time_in_secs() % 2) else "u"))
     # TODO: rename as print_stderr_fmt???
     # TODO: weed out calls that use (text.format(...)) rather than (text, ...)
     formatted_text = text
@@ -540,6 +540,7 @@ def read_binary_file(filename):
     except (IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem reading file '{f}': {exc}",
                          f=filename, exc=get_exception())
+    ## TODO: output hexdump except
     return data
 
 
@@ -643,17 +644,20 @@ def lookup_entry(hash_table, entry, retain_case=False):
     return result
 
                 
-def write_file(filename, text):
+def write_file(filename, text, skip_newline=False):
     """Create FILENAME with TEXT.
-    Note: A newline is added at the end if missing"""
+    Note: A newline is added at the end if missing unless SKIP_NEWLINE"""
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
+    # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
+    # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
     try:
         if not isinstance(text, STRING_TYPES):
             text = to_string(text)
         with open(filename, "w") as f:
             f.write(to_utf8(text))
             if not text.endswith("\n"):
-                f.write("\n")
+                if not skip_newline:
+                    f.write("\n")
     except (IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem writing file '{f}': {exc}",
                          f=filename, exc=get_exception())
@@ -714,12 +718,22 @@ def get_file_modification_time(filename, as_float=False):
     return mod_time
 
 
-def remove_extension(filename):
-    """Return FILENAME without final extension"""
+def remove_extension(filename, extension=None):
+    """Return FILENAME without final EXTENSION
+    Note: Unless extension specified, only last dot is included"""
     # EX: remove_extension("/tmp/document.pdf") => "/tmp/document")
-    new_filename = re.sub(r"\.[^\.]*$", "", filename)
-    ## OLD: debug.trace_fmtd(4, "remove_extension({f}) => {r}", f=filename, r=new_filename)
-    debug.trace_fmtd(5, "remove_extension({f}) => {r}", f=filename, r=new_filename)
+    # EX: remove_extension("it.abc.def") => "it.abc")
+    # EX: remove_extension("it.abc.def", "abc.def") => "it")
+    in_extension = extension
+    if extension is None:
+        new_filename = re.sub(r"\.[^\.]*$", "", filename)
+    else:
+        if not extension.startswith("."):
+            extension = "." + extension
+        if filename.endswith(extension):
+            new_filename = filename[0: -len(extension)]
+    debug.trace_fmtd(5, "remove_extension({f}, [{ex}]) => {r}",
+                     f=filename, ex=in_extension, r=new_filename)
     return new_filename
 
 
@@ -882,6 +896,14 @@ def non_empty_file(filename):
     non_empty = (file_exists(filename) and (os.path.getsize(filename) > 0))
     debug.trace_fmtd(5, "non_empty_file({f}) => {r}", f=filename, r=non_empty)
     return non_empty
+
+
+def real_path(path):
+    """Return resolved absolute pathname for PATH, as with Linux realpath command"""
+    # EX: real_path("/etc/mtab").startswith("/proc")
+    result = os.path.realpath(path)
+    debug.trace(7, f"real_path({path}) => {result}")
+    return result
 
 
 def get_module_version(module_name):
@@ -1060,6 +1082,19 @@ def sleep(num_seconds, trace_level=5):
     time.sleep(num_seconds)
     return
 
+
+def current_time(integral=False):
+    """Return current time in seconds since 1970, optionally INTEGRAL"""
+    secs = time.time()
+    if integral:
+        secs = int(round_num(secs, precision=0))
+    debug.trace(5, f"current_time([integral={integral}]) => {secs}")
+    return secs
+
+def time_in_secs():
+    """Wrapper around current_time"""
+    return current_time(integral=True)
+
 def python_maj_min_version():
     """Return Python version as a float of form Major.Minor"""
     # EX: debug.assertion(python_maj_min_version() >= 3.6, "F-Strings are used")
@@ -1068,6 +1103,7 @@ def python_maj_min_version():
     debug.trace_fmt(5, "Python version (maj.min): {v}", v=py_maj_min)
     debug.assertion(py_maj_min > 0)
     return py_maj_min
+
 
 def get_args():
     """Return command-line arguments (as a list of strings)"""
