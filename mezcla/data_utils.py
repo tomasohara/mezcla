@@ -39,6 +39,7 @@ EXCEL = 'excel'
 
 def read_csv(filename, **in_kw):
     """Wrapper around pandas read_csv"""
+    ## TODO: clarify dtype usage
     ## BAD
     ## kw = {'comment': "#", 'delimiter': DELIM, 'dtype': str,
     ##       'error_bad_lines': False, 'escapechar': '\\', 'keep_default_na': False}
