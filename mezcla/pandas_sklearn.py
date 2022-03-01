@@ -14,6 +14,13 @@
 # - Also does k-fold cross validation over development data split using 1/k-th as test.
 # - That is, the training data is partitioned twice.
 # - As an expediency to disable validation, epsilon is used for validation percent (e.g., 1e-6), because sklearn doesn't allow the percent to be specified as zero.
+#................................................................................
+# Debugging usage:
+#
+# module=pandas_sklearn
+# let PSL++; dataset_path=examples/iris.csv; dataset_name=$(basename "$dataset_path" .csv); log="_$module.$dataset_name.$(TODAY).$PSL.log"; DEBUG_LEVEL=5 OUTPUT_CSV=1 XGB_SKIP_GPU=1 CLASSIFIER=XGB COERCE_FLOAT=1 ENCODE_CLASSES=1 VERBOSE=1 python -m mezcla.$module $dataset > "$log" 2>&1
+#
+#................................................................................
 #
 # TODO:
 # - Add exception handling throughout.
@@ -69,7 +76,8 @@ FIELD_SEP = getenv_text("FIELD_SEP", ",",
                         description="Field separator (delimiter)")
 SKIP_DATAFRAME = getenv_bool("SKIP_DATAFRAME", False)
 USE_DATAFRAME = getenv_bool("USE_DATAFRAME", not SKIP_DATAFRAME)
-IGNORE_FIELDS = text_utils.extract_string_list(getenv_text("IGNORE_FIELDS", ""))
+IGNORE_FIELDS = text_utils.extract_string_list(
+    getenv_value("IGNORE_FIELDS") or "")
 INCLUDE_PLOTS = getenv_bool("INCLUDE_PLOTS", False)
 DATASET_PLOTS = getenv_bool("DATASET_PLOTS", INCLUDE_PLOTS,
                             "Include plots summarizing dataset")
@@ -100,9 +108,9 @@ VALIDATION_CLASSIFIER = getenv_text("VALIDATION_CLASSIFIER", DEFAULT_VALIDATION_
 ## TEST: debug.assertion(False)
 SKIP_DEVEL = getenv_bool("SKIP_DEVEL", False)
 TEST_PCT = getenv_number("TEST_PCT", 0.10)
-SEED = getenv_bool("SEED", 7919)
+SEED = getenv_int("SEED", 7919)
 SCORING_METRIC = getenv_text("SCORING_METRIC", "accuracy")
-CLASS_VAR = getenv_text("CLASS_VAR", "")
+CLASS_VAR = getenv_value("CLASS_VAR", "")
 ## TEST: 
 ## SKIP_XGB = getenv_bool("SKIP_XGB", False)
 ## USE_XGB = getenv_bool("USE_XGB", not SKIP_XGB)
@@ -136,14 +144,18 @@ DEFAULT_INCLUDE_AUTOSKLEARN_CLASSIFIER = AUTOSKLEARN_CLASSIFIER in [DEFAULT_DEVE
 INCLUDE_AUTOSKLEARN = getenv_bool("INCLUDE_AUTOSKLEARN", DEFAULT_INCLUDE_AUTOSKLEARN_CLASSIFIER,
                                   "Include Auto-Sklearn classifier for AutoML")
 #
-GPU_DEVICE = system.getenv_text("GPU_DEVICE", "",
-                                "Device number for GPU (e.g., shown under nvidia-smi)")
+GPU_DEVICE = getenv_value("GPU_DEVICE", "",
+                          "Device number for GPU (e.g., shown under nvidia-smi)")
 SHOW_ABLATION = getenv_bool("SHOW_ABLATION", False,
                             "Show ablation plot for accuracy")
 PRECISION_RECALL = getenv_bool("PRECISION_RECALL", False,
                                "Plot precision/recall curve")
 MICRO_AVERAGE = getenv_bool("MICRO_AVERAGE", False,
                             "Use micro-averaging for mutliclass problems")
+DUMP_MODEL = getenv_bool("DUMP_MODEL", False,
+                         "Dump out model-specific representation")
+
+# Globals
 devel_classifiers = [DEVEL_CLASSIFIER]
 validation_classifiers = [VALIDATION_CLASSIFIER]
 
@@ -159,7 +171,7 @@ if INCLUDE_XGB:
     import xgboost as xgb
     devel_classifiers.append(XGB_CLASSIFIER)
     validation_classifiers.append(XGB_CLASSIFIER)
-if getenv_text("USE_XGB"):
+if getenv_value("USE_XGB"):
     system.print_stderr("Warning: deprecated option USE_XGB")
 ## Mote: Following added for tracking down segmentation fault
 ## DEBUG: print("after xgboost import")
@@ -209,16 +221,22 @@ def main():
     # TODO: convert into using main.py's Main class
     data_file = None
     args = system.get_args()
-    if ((len(args) > 1) and (args[1] == "--help")):
+    show_help = ((len(args) > 1) and (args[1] == "--help"))
+    show_usage = ((len(args) > 1) and (args[1] == "--usage"))
+    
+    if ((len(args) <= 1) or show_help or show_usage):
         script = gh.basename(args[0])
-        system.print_stderr("Usage: {scr} [--help] [data-file]", scr=script)
+        system.print_stderr("Usage: {scr} [--help | --usage] [data-file | -]", scr=script)
         system.print_stderr("")
-        system.print_stderr("where data-file is in CSV format")
-        system.print_stderr("")
+        system.print_stderr("Notes:")
+        system.print_stderr("- Use - for data-file to use default.")
+        system.print_stderr("- Where data-file is in CSV format (or TSV)")
         ## TODO: show_details = VERBOSE or debug.debugging()
-        if debug.debugging(2):
+        debugging = debug.detailed_debugging()
+        if (show_help or debugging):
             ## TODO: add legend
-            system.print_stderr("\t" + system.formatted_environment_option_descriptions(include_all=True))
+            system.print_stderr("- Environment options:")
+            system.print_stderr("\t" + system.formatted_environment_option_descriptions(include_all=debugging))
         system.exit("")
     if ((len(args) > 1) and (not args[1].startswith("-"))):
         data_file = args[1]
@@ -318,15 +336,28 @@ def main():
         y_enum = sorted(y_encodings.keys(), key=lambda k: y_encodings[k])
         debug.trace_expr(4, y_encodings, y_enum)
         y = np.array([y_encodings[v] for v in y])
+        if USE_DATAFRAME:
+            y = pd.DataFrame(y, columns=[class_var])
         # TODO: COERCE_FLOAT
     debug.trace_fmtd(7, "X={X}\ny={y}", X=X, y=y)
+    if USE_DATAFRAME:
+        if not isinstance(X, pd.DataFrame):
+            X = pd.DataFrame(y, columns=feature_names)
+        if not isinstance(y, pd.DataFrame):
+            y = pd.DataFrame(y, columns=[class_var])        
     if OUTPUT_CSV:
         # TODO: drop pandas index column (first one; no header)
         debug.assertion(USE_DATAFRAME)
-        debug.assertion(not (COERCE_FLOAT or NUMERIC_CLASSES or ENCODE_CLASSES))
+        # note: prevously X and Y aren't frames if coerced or otherwise converted
+        ## OLD:
+        ## debug.assertion(not (COERCE_FLOAT or NUMERIC_CLASSES or ENCODE_CLASSES))
+        debug.assertion((isinstance(X, pd.DataFrame) and isinstance(y, pd.DataFrame)))
         basename = system.remove_extension(data_file)
+        # TODO: combine into single dataframe and use to_csv over that; use .csv instead of .csv (and make sure not to overwrite)
         X.to_csv(basename + "-X.csv.list", sep=FIELD_SEP, index=False)
         y.to_csv(basename + "-y.csv.list", sep=FIELD_SEP, index=False)
+        gh.run("paste --delimiters='{d}' {b}-X.csv.list {b}-y.csv.list > {b}.csv.list",
+               d=FIELD_SEP, b=basename)
         debug.assertion(system.file_exists(basename + "-X.csv.list"))
     X_train, X_validation, y_train, y_validation = model_selection.train_test_split(X, y, test_size=VALIDATION_PCT, random_state=SEED)
     ## TODO:
@@ -424,7 +455,6 @@ def main():
                         print("Feature importance:")
                         ## print(model.get_score())
                         print(sorted(zip(feature_names, model.feature_importances_),
-                                     ## TODO: key=(lambda name, score: score),
                                      key=lambda name_score: name_score[1],
                                      reverse=True))
                                           
@@ -466,6 +496,13 @@ def main():
                 print("training confusion matrix:")
                 training_predictions = model.predict(X_train)
                 print(confusion_matrix(y_train, training_predictions))
+            if DUMP_MODEL:
+                if (name == XGB_CLASSIFIER):
+                    basename = system.remove_extension(data_file)
+                    model.get_booster().dump_model(f"{basename}.model-dump.list",
+                                                   with_stats=True)
+                else:
+                    system.print_error(f"Warning: no model dump support for {name}")
 
             predictions = model.predict(X_validation)
             print("validation confusion matrix:")
