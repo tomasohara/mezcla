@@ -22,6 +22,7 @@
 """Text categorization support"""
 
 # Standard packages
+from itertools import zip_longest
 import os
 import re
 import sys
@@ -65,6 +66,8 @@ RETAIN_LABELS = getenv_bool("RETAIN_LABELS", False,
                             "Don't encode class labels")
 ENCODE_CLASSES = getenv_bool("ENCODE_CLASSES", not RETAIN_LABELS,
                              "Encode classes using enumeration")
+TRACE_IMPORTANCES = getenv_bool("TRACE_IMPORTANCES", False,
+                                "Trace feature importances")
 
 # Options for Support Vector Machines (SVM)
 #
@@ -124,10 +127,6 @@ TFIDF_STOPWORDS = not OMIT_STOPWORDS
 all_use_settings = [USE_SVM, USE_SGD, USE_XGB, USE_LR]
 USE_NB = (not any(all_use_settings))
 debug.assertion(sum([int(use) for use in all_use_settings]) <= 1)
-
-# Globals
-# Note: just used for OUTPUT_CSV support.
-tfidf_vectorizer = None
 
 #................................................................................
 # Utility functions
@@ -213,6 +212,7 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         """Constructor: records CLASSIFIER"""
         debug.trace_fmt(6, "{cl}.__init__(clf={c})", c=classifier, cl=str(type(self)))
         self.classifier = classifier
+        self.tfidf_vectorizer = None
 
     def _get_param_names(self):
         """Get parameter names for the estimator"""
@@ -227,36 +227,18 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
     def fit(self, training_x=None, training_y=None):
         """Delegates fit() invocation to classifier, after outputing CSV if desired"""
         if OUTPUT_CSV:
-            ## NOTE: save in pickle format for debugging
-            if debug.verbose_debugging():
-                system.save_object(BASENAME + ".x.csv.pickle", training_x)
-                system.save_object(BASENAME + ".y.csv.pickle", training_y)
-            ##
-            df_x = pandas.DataFrame(training_x.toarray())
-            df_y = pandas.DataFrame(training_y)
-            
-            ## HACK: use global pipeline to get feature names
-            def normalize(feature):
-                """Normalize feature name"""
-                return feature.replace(" ", "_")
-            ##
-            features = [normalize(f) for f in tfidf_vectorizer.get_feature_names()]
-            df_x.to_csv(BASENAME + ".x.csv.list", header=features, index=False)
-            df_y.to_csv(BASENAME + ".y.csv.list", header=[CLASS_VAR], index=False)
-            # Trace out the IDF values; pylint: disable=protected-access
-            ## TODO: debug.trace_value(6, zip(features, tfidf_vectorizer._idf_diag), "ngram idf's")
-            if debug.debugging(6):
-                df = _document_frequency(training_x)
-                sorted_features = sorted(zip(features, tfidf_vectorizer.idf_, df),
-                                         key=lambda f_idf: f_idf[1], reverse=True)
-                debug.trace_values(6, sorted_features, "ngram idf's & df's")
-            ## DEBUG:
-            debug.trace_object(6, tfidf_vectorizer)
+            self.output_csv(training_x, training_y, BASENAME)
+        if TRACE_IMPORTANCES:
+            debug.trace_fmt(1, "Feature importances: {imp}",
+                            imp=self.extract_feature_importance())
+        ## DEBUG: debug.trace_object(6, self.tfidf_vectorizer)
             
         return self.classifier.fit(training_x, training_y)
 
     def predict(self, sample):
         """Return predicted class for each SAMPLE (returning vector)"""
+        if OUTPUT_CSV:
+            self.output_csv(sample, (["n/a"] * sample.shape[0]), BASENAME + ".test")
         return self.classifier.predict(sample)
 
     def score(self, X, y, sample_weight=None):
@@ -266,7 +248,56 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
     def predict_proba(self, sample):
         """Return probabilities of outcome classes predicted for each SAMPLE (returning matrix)"""
         return self.classifier.predict_proba(sample)
+
+    def output_csv(self, x, y, basename):
+        """Output featrues in X and Y to BASENAME.csv"""
+        # TODO: move into TextCategorizer; put pickle and IDF support in separate method
+        debug.trace(6, f"output_csv(_, _, {basename}); self={self}")
+        debug.reference_var(self)
+
+        ## NOTE: save in pickle format for debugging
+        if debug.verbose_debugging():
+            system.save_object(basename + ".x.csv.pickle", x)
+            system.save_object(basename + ".y.csv.pickle", y)
+        ##
+        df_x = pandas.DataFrame(x.toarray())
+        df_y = pandas.DataFrame(y)
+        
+        ## HACK: use global pipeline to get feature names
+        def normalize(feature_name):
+            """Normalize FEATURE_NAME"""
+            return feature_name.replace(" ", "_")
+        ##
+        features = [normalize(f) for f in self.tfidf_vectorizer.get_feature_names()]
+        df_x.to_csv(basename + ".x.csv.list", header=features, index=False)
+        df_y.to_csv(basename + ".y.csv.list", header=[CLASS_VAR], index=False)
+
+        # Trace out the IDF values
+        ## TODO: debug.trace_value(6, zip(features, tfidf_vectorizer._idf_diag), "ngram idf's")
+        if debug.debugging(6):
+            # pylint: disable=protected-access
+            df = _document_frequency(x)
+            sorted_features = sorted(zip(features, self.tfidf_vectorizer.idf_, df),
+                                     key=lambda f_idf: f_idf[1], reverse=True)
+            debug.trace_values(6, sorted_features, "ngram idf's & df's")
+        return
     
+    def extract_feature_importance(self):
+        """Returns list of (name, weight) for important features"""
+        # TODO: move into TextCategorizer
+        debug.trace(6, f"extract_feature_importance(); self={self}")
+        result = []
+        try:
+            feature_names = (self.tfidf_vectorizer.get_feature_names() or [])
+            sorted_scores = sorted(zip_longest(feature_names, self.classifier.feature_importances_,  fillvalue="F?"),
+                                   key=lambda name_score: name_score[1],
+                                   reverse=True)
+            result = [(f, s) for (f, s) in sorted_scores if s > 0]
+        except:
+            system.print_exception_info("extract_feature_importance")
+        debug.trace(5, f"extract_feature_importance() => {result}")
+        return result
+
 #...............................................................................
 
 class TextCategorizer(object):
@@ -326,9 +357,10 @@ class TextCategorizer(object):
         else:
             debug.assertion(USE_NB)
             classifier = MultinomialNB()
-        if OUTPUT_CSV:
+        use_classifier_wrapper = (OUTPUT_CSV or TRACE_IMPORTANCES)
+        if use_classifier_wrapper:
             classifier = ClassifierWrapper(classifier)
-            debug.trace_fmt(4, "Using wrapper ({cl}) for CSV hooks", cl=type(classifier))
+            debug.trace_fmt(4, "Using wrapper ({cl}) for feature tracing hooks", cl=type(classifier))
 
         # Add classifier to text categorization pipeline]
         tfidf_parameters = {}
@@ -351,11 +383,11 @@ class TextCategorizer(object):
         self.cat_pipeline = Pipeline(
             [('tfidf', TfidfVectorizer(**tfidf_parameters)),
              ('clf', classifier)])
-        if OUTPUT_CSV:
+        if use_classifier_wrapper:
             pipeline_steps = list(self.cat_pipeline._iter())
-            global tfidf_vectorizer
-            tfidf_vectorizer = pipeline_steps[0][2]
             debug.assertion(pipeline_steps[0][1] == 'tfidf')
+            ## TODO: classifier.tfidf_vectorizer = self.cat_pipeline['tfidf']
+            classifier.tfidf_vectorizer = pipeline_steps[0][2]
         debug.trace_object(5, self, "TextCategorizer")
         return
 
@@ -409,6 +441,7 @@ class TextCategorizer(object):
 
         # Output classification report
         if report:
+            debug.assertion(VERBOSE)
             if VERBOSE:
                 stream.write("Missed classifications")
                 stream.write("\n")
