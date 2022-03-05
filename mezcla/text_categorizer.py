@@ -11,6 +11,7 @@
 # - Calculates accuracy as number of agreements over number of cases:
 #   ex:    (tp + tn) / (tp + tn + fp + fn)    for binary classifications
 # - See https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers#Single_metrics.
+# - Keep changes in sync with text_categorizer.py (e.g., XGBoost and GPU options).
 #
 # TODO:
 # - Maintain cache of categorization results.
@@ -98,15 +99,18 @@ SGD_VERBOSE = system.getenv_bool("SGD_VERBOSE", False)
 # Options for Extreme Gradient Boost (XGBoost)
 USE_XGB = system.getenv_bool("USE_XGB", False)
 if USE_XGB:
+    # pylint: disable=import-outside-toplevel, import-error
     import xgboost as xgb
+XGB_BOOSTER = system.getenv_value("XGB_BOOSTER", None)
 XGB_USE_GPUS = system.getenv_bool("XGB_USE_GPUS", False)
+XGB_VERBOSITY = getenv_int("XGB_VERBOSITY", 0, "Degree of verbosity from 0 to 3")
 
 # Options for Logistic Regression (LR)
 # TODO: add regularization
 USE_LR = system.getenv_bool("USE_LR", False)
 
 # Options for GPU usage
-GPU_DEVICE = system.getenv_text("GPU_DEVICE", "",
+GPU_DEVICE = system.getenv_value("GPU_DEVICE", "",
                                 "Device number for GPU (e.g., shown under nvidia-smi)")
 
 # Options for TFIDF transformation
@@ -250,7 +254,7 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         return self.classifier.predict_proba(sample)
 
     def output_csv(self, x, y, basename):
-        """Output featrues in X and Y to BASENAME.csv"""
+        """Output features in X and Y to BASENAME.csv"""
         # TODO: move into TextCategorizer; put pickle and IDF support in separate method
         debug.trace(6, f"output_csv(_, _, {basename}); self={self}")
         debug.reference_var(self)
@@ -271,6 +275,10 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         features = [normalize(f) for f in self.tfidf_vectorizer.get_feature_names()]
         df_x.to_csv(basename + ".x.csv.list", header=features, index=False)
         df_y.to_csv(basename + ".y.csv.list", header=[CLASS_VAR], index=False)
+        gh.run("paste --delimiters=',' {b}.x.csv.list {b}.y.csv.list > {b}.csv.list",
+               b=basename)
+        # TODO: combine into single dataframe and use to_csv over that; use .csv instead of .csv.list (and make sure not to overwrite)
+        debug.assertion(system.file_exists(basename + ".csv.list"))
 
         # Trace out the IDF values
         ## TODO: debug.trace_value(6, zip(features, tfidf_vectorizer._idf_diag), "ngram idf's")
@@ -344,7 +352,7 @@ class TextCategorizer(object):
             # TODO: rework to just define classifier here and then pipeline at end.
             # in order to eliminate redundant pipeline-specification code.
             # TODO: n_jobs=-1
-            misc_xgb_params = {}
+            misc_xgb_params = {'booster': XGB_BOOSTER, 'verbosity': XGB_VERBOSITY}
             if XGB_USE_GPUS:
                 misc_xgb_params.update({'tree_method': 'gpu_hist'})
                 misc_xgb_params.update({'predictor': 'gpu_predictor'})
