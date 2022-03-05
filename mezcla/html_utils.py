@@ -73,6 +73,8 @@ DOWNLOAD_VIA_URLLIB = system.getenv_bool("DOWNLOAD_VIA_URLLIB", False)
 DOWNLOAD_VIA_REQUESTS = (not DOWNLOAD_VIA_URLLIB)
 DOWNLOAD_TIMEOUT = system.getenv_float("DOWNLOAD_TIMEOUT", 5,
                                        "Timeout in seconds for download")
+HEADERS = "headers"
+FILENAME = "filename"
 
 # Globals
 # note: for convenience in Mako template code
@@ -274,11 +276,28 @@ def fix_url_parameters(url_parameters):
     return new_url_parameters
 
 
-def old_download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False):
-    """Download document contents at URL, returning as unicode text. An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED."""
+def _read_file(filename, as_binary):
+    """Wrapper around read_entire_file or read_binary_file if AS_BINARY"""
+    debug.trace(8, f"_read_file({filename}, {as_binary})")
+    read_fn = system.read_binary_file if as_binary else system.read_entire_file
+    return read_fn(filename)
+
+
+def _write_file(filename, data, as_binary):
+    """Wrapper around write_file or write_binary_file if AS_BINARY"""
+    debug.trace(8, f"_write_file({filename}, _, {as_binary})")
+    write_fn = system.write_binary_file if as_binary else system.write_file
+    return write_fn(filename, data)
+
+
+def old_download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False, as_binary=False):
+    """Download document contents at URL, returning as unicode text (unless AS_BINARY)
+    Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED."""
+    # EX: ("Search" in old_download_web_document("https://www.google.com"))
     # EX: ((url := "https://simple.wikipedia.org/wiki/Dollar"), (old_download_web_document(url) == download_web_document(url)))[-1]
-    debug.trace_fmtd(4, "old_download_web_document({u}, d={d}, f={f}, h={mh})",
-                     u=url, d=download_dir, f=filename, mh=meta_hash)
+    debug.trace_fmtd(4, "old_download_web_document({u}, d={d}, f={f}, h={mh}, cached={uc}, binary={ab})",
+                     u=url, d=download_dir, f=filename, mh=meta_hash,
+                     uc=use_cached, ab=as_binary)
 
     # Download the document and optional headers (metadata).
     # Note: urlretrieve chokes on URLS like www.cssny.org without the protocol.
@@ -316,30 +335,32 @@ def old_download_web_document(url, filename=None, download_dir=None, meta_hash=N
         except:
             ## TODO: except(IOError, UnicodeError, URLError, socket.timeout):
             debug.reference_var(URLError)
-            system.print_exception_info("download_web_document")
+            system.print_exception_info("old_download_web_document")
     if not ok:
         local_filename = None
     if meta_hash is not None:
-        meta_hash["filename"] = local_filename
-        meta_hash["headers"] = headers
+        meta_hash[FILENAME] = local_filename
+        meta_hash[HEADERS] = headers
     debug.trace(5, f"status_code={status_code}")
 
     # Read all of the data and return as text
-    data = system.read_entire_file(local_filename) if local_filename else None
-    debug.trace_fmtd(7, "download_web_document() => {d}", d=data)
+    data = _read_file(local_filename, as_binary) if local_filename else None
+    debug.trace_fmtd(7, "old_download_web_document() => {d}", d=data)
     return data
 
 
-def download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False):
-    """Download document contents at URL, returning as unicode text. An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED."""
-    # EX: "currency" in str(download_web_document("https://simple.wikipedia.org/wiki/Dollar"))
+def download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False, as_binary=False):
+    """Download document contents at URL, returning as unicode text (unless AS_BINARY).
+    Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED."""
+    # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
     # EX: download_web_document("www. bogus. url.html") => None
     ## TODO: def download_web_document(url, /, filename=None, download_dir=None, meta_hash=None, use_cached=False):
-    debug.trace_fmtd(4, "download_web_document({u}, d={d}, f={f}, h={mh})",
-                     u=url, d=download_dir, f=filename, mh=meta_hash)
+    debug.trace_fmtd(4, "download_web_document({u}, d={d}, f={f}, h={mh}, cached={uc}, binary={ab})",
+                     u=url, d=download_dir, f=filename, mh=meta_hash,
+                     uc=use_cached, ab=as_binary)
 
     if not DOWNLOAD_VIA_REQUESTS:
-        return old_download_web_document(url, filename, download_dir, meta_hash, use_cached)
+        return old_download_web_document(url, filename, download_dir, meta_hash, use_cached, as_binary)
     
     # Download the document and optional headers (metadata).
     # Note: urlretrieve chokes on URLS like www.cssny.org without the protocol.
@@ -358,14 +379,18 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
         gh.full_mkdir(download_dir)
     local_filename = gh.form_path(download_dir, filename)
     if meta_hash is not None:
-        meta_hash["filename"] = local_filename
-    headers = ""
+        meta_hash[FILENAME] = local_filename
+    headers = "n/a"
+    doc_data = ""
     if use_cached and system.non_empty_file(local_filename):
         debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
+        doc_data = _read_file(local_filename, as_binary)
     else:
-        doc_data = retrieve_web_document(url, meta_hash=meta_hash)
+        doc_data = retrieve_web_document(url, meta_hash=meta_hash, as_binary=as_binary)
         if doc_data:
-            system.write_binary_file(local_filename, doc_data)
+            _write_file(local_filename, doc_data, as_binary)
+        if meta_hash:
+            headers = meta_hash.get(HEADERS, "")
     debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
                      f=local_filename, h=headers)
 
@@ -376,15 +401,15 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
     return doc_data
 
 
-def download_html_document(url, encoding=None, lookahead=256, **kwargs):
+def test_download_html_document(url, encoding=None, lookahead=256, **kwargs):
     """Wrapper around download_web_document for HTML or text (i.e., non-binary), using ENCODING.
     Note: If ENCODING unspecified, checks result LOOKAHEAD bytes for meta encoding spec and uses UTF-8 as a fallback"""
-    # EX: "Google" in download_html_document("www.google.com")
-    # EX: "Tomás" not in download_html_document("http://www.tomasohara.trade", encoding="big5"¨)
-    result = (download_web_document(url, **kwargs) or "")
+    # EX: "Google" in test_download_html_document("www.google.com")
+    # EX: "Tomás" not in test_download_html_document("http://www.tomasohara.trade", encoding="big5"¨)
+    result = (download_web_document(url, as_binary=True, **kwargs) or b"")
     if (len(result) and (not encoding)):
         encoding = "UTF-8"
-        if my_re.search(r"<meta.*charset=[\"\']?([^\"\']+)[\"\']?", str(result[:lookahead])):
+        if my_re.search(r"<meta.*charset=[\"\']?([^\"\' <>]+)[\"\']?", str(result[:lookahead])):
             encoding = my_re.group(1)
             debug.trace(5, f"Using {encoding} for encoding based on meta charset")
     try:
@@ -392,15 +417,34 @@ def download_html_document(url, encoding=None, lookahead=256, **kwargs):
     except:
         result = str(result)
         system.print_exception_info("download_html_document")
-    debug.trace_fmtd(7, "download_html_document({u}, [enc={e}, lkahd={la}]) => {r}; len(_)={l}",
+    debug.trace_fmtd(7, "test_download_html_document({u}, [enc={e}, lkahd={la}]) => {r}; len(_)={l}",
                      u=url, e=encoding, la=lookahead, r=gh.elide(result), l=len(result))
     return (result)
 
 
-def retrieve_web_document(url, meta_hash=None):
-    """Simpler version of download_web_document, using an optional META_HASH for recording headers
-    Note: works works around Error-403 presumably due to urllib's user agent"""
-    # See https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve.
+def download_html_document(url, **kwargs):
+    """Wrapper around download_web_document for HTML or text (i.e., non-binary)"""
+    result = (download_web_document(url, as_binary=False, **kwargs) or "")
+    debug.trace_fmtd(7, "download_html_document({u}) => {r}; len(_)={l}",
+                     u=url, r=gh.elide(result), l=len(result))
+    return (result)
+
+
+def download_binary_file(url, **kwargs):
+    """Wrapper around download_web_document for binary files (e.g., images)"""
+    result = (download_web_document(url, as_binary=True, **kwargs) or "")
+    debug.trace_fmtd(7, "download_binary_file({u}) => _; len(_)={l}",
+                     u=url, l=len(result))
+    return (result)
+    
+
+def retrieve_web_document(url, meta_hash=None, as_binary=False):
+    """Get document contents at URL, using unicode text (unless AS_BINARY)
+    Note:
+    - Simpler version of old_download_web_document, using an optional META_HASH for recording headers
+    - Works around Error 403's presumably due to urllib's user agent"""
+    # EX: re.search("Scrappy.*Cito", retrieve_web_document("www.tomasohara.trade"))
+    # Note: See https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve.
     debug.trace_fmtd(5, "retrieve_web_document({u})", u=url)
     result = None
     status_code = DEFAULT_STATUS_CODE
@@ -409,10 +453,11 @@ def retrieve_web_document(url, meta_hash=None):
     try:
         r = requests.get(url, timeout=DOWNLOAD_TIMEOUT)
         status_code = r.status_code
-        ## BAD: result = r.content.decode(errors='ignore')
         result = r.content
+        if not as_binary:
+            result = result.decode(errors='ignore')
         if meta_hash is not None:
-            meta_hash["headers"] = r.headers
+            meta_hash[HEADERS] = r.headers
     ## TODO: except(AttributeError, ConnectionError):
     except:
         system.print_exception_info("retrieve_web_document")
