@@ -353,12 +353,12 @@ def main():
         ## debug.assertion(not (COERCE_FLOAT or NUMERIC_CLASSES or ENCODE_CLASSES))
         debug.assertion((isinstance(X, pd.DataFrame) and isinstance(y, pd.DataFrame)))
         basename = system.remove_extension(data_file)
-        # TODO: combine into single dataframe and use to_csv over that; use .csv instead of .csv (and make sure not to overwrite)
+        # TODO: combine into single dataframe and use to_csv over that; use .csv instead of .csv.list (and make sure not to overwrite)
         X.to_csv(basename + "-X.csv.list", sep=FIELD_SEP, index=False)
         y.to_csv(basename + "-y.csv.list", sep=FIELD_SEP, index=False)
         gh.run("paste --delimiters='{d}' {b}-X.csv.list {b}-y.csv.list > {b}.csv.list",
                d=FIELD_SEP, b=basename)
-        debug.assertion(system.file_exists(basename + "-X.csv.list"))
+        debug.assertion(system.file_exists(basename + ".csv.list"))
     X_train, X_validation, y_train, y_validation = model_selection.train_test_split(X, y, test_size=VALIDATION_PCT, random_state=SEED)
     ## TODO:
     debug.trace_fmtd(6, "X_train={xt}\nX_valid={xv}\ny_train={yt}\ny_valid={yv}", xt=X_train, xv=X_validation, yt=y_train, yv=y_validation)
