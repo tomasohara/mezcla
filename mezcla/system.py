@@ -37,7 +37,6 @@ import time
 
 # Local packages
 from mezcla import debug
-## OLD: import mezcla.glue_helpers as gh
 from mezcla.debug import UTF8
 
 # Constants
@@ -540,7 +539,7 @@ def read_binary_file(filename):
     except (IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem reading file '{f}': {exc}",
                          f=filename, exc=get_exception())
-    ## TODO: output hexdump except
+    ## TODO: output hexdump excerpt (e.g., via https://pypi.org/project/hexdump)
     return data
 
 
@@ -560,8 +559,7 @@ def get_directory_filenames(directory, just_regular_files=False):
     return_all_files = (not just_regular_files)
     files = []
     for dir_filename in sorted(read_directory(directory)):
-        ## OLD: full_path = gh.form_path(directory, dir_filename)
-        full_path = os.path.join(directory, dir_filename)
+        full_path = form_path(directory, dir_filename)
         if (return_all_files or is_regular_file(full_path)):
             files.append(full_path)
     debug.trace_fmtd(5, "get_directory_filenames({d}) => {r}", d=directory, r=files)
@@ -700,8 +698,7 @@ def write_lines(filename, text_lines, append=False):
 def write_temp_file(filename, text):
     """Create FILENAME in temp. directory using TEXT"""
     temp_path = form_path(TEMP_DIR, filename)
-    write_file(temp_path, text)
-    return
+    return write_file(temp_path, text)
 
 
 def get_file_modification_time(filename, as_float=False):
