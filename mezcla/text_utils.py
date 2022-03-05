@@ -42,6 +42,7 @@ import sys
 
 # Local packages
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.system import to_int
@@ -73,7 +74,7 @@ def html_to_text(document_data):
         script.extract()
     # Get the text
     text = soup.get_text()
-    debug.trace_fmtd(6, "html_to_text() => {t}", t=text)
+    debug.trace_fmtd(6, "html_to_text() => {t}", t=gh.elide(text))
     return text
 
 
@@ -93,6 +94,8 @@ def document_to_text(doc_filename):
     except:
         debug.trace_fmtd(3, "Warning: problem converting document file {f}: {e}",
                          f=doc_filename, e=sys.exc_info())
+    debug.trace_fmt(5, "document_to_text({fn}) => {r}",
+                    fn=doc_filename, r=gh.elide(text))
     return text
 
 
