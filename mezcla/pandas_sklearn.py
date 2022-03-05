@@ -14,6 +14,7 @@
 # - Also does k-fold cross validation over development data split using 1/k-th as test.
 # - That is, the training data is partitioned twice.
 # - As an expediency to disable validation, epsilon is used for validation percent (e.g., 1e-6), because sklearn doesn't allow the percent to be specified as zero.
+# - Keep changes in sync with pandas_sklearn.py (e.g., XGBoost and GPU options).
 #................................................................................
 # Debugging usage:
 #
