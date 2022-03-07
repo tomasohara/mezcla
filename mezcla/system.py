@@ -508,6 +508,13 @@ class stdin_reader(object):
         return line
 
 
+def read_all_stdin():
+    """Read all STDIN and return as a string"""
+    data = ''.join(sys.stdin.readlines()) if not sys.stdin.isatty() else ''
+    debug.trace(debug.VERBOSE, f'read_all_stdin() => "{data}"')
+    return data
+
+
 def read_entire_file(filename, **kwargs):
     """Read all of FILENAME and return as a string
     Note: optional arguments to open() passed along (e.g., encoding amd error handling)"""
