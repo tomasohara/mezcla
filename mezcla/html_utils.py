@@ -235,7 +235,7 @@ def get_url_parameter_value(param, default_value=None, param_dict=None):
     result = param_dict.get(param, default_value)
     if isinstance(result, list):
         result = result[-1]
-    debug.trace_fmtd(6, "get_url_parameter_value({p}, {dft}, _) => {r}",
+    debug.trace_fmtd(5, "get_url_parameter_value({p}, {dft}, _) => {r}",
                      p=param, dft=default_value, r=result)
     return result
 
