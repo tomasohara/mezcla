@@ -165,6 +165,7 @@ def getenv_text(var, default=None, description=None, helper=False):
 
 def getenv_value(var, default=None, description=None):
     """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION"""
+    # EX: getenv_value("bad env var") => None
     register_env_option(var, description, default)
     value = os.getenv(var, default)
     # note: uses !r for repr()
@@ -176,12 +177,13 @@ def getenv_value(var, default=None, description=None):
 DEFAULT_GETENV_BOOL = False
 #
 def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None):
-    """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION"""
-    # Note: "0" or "False" is interpreted as False, and any other value as True.
+    """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION
+    Note: "0" or "False" is interpreted as False, and any other value as True."""
+    # EX: getenv_bool("bad env var", None) => False
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
     value_text = getenv_value(var, description=description, default=default)
-    if to_text(value_text).strip():
+    if (isinstance(value_text, str) and value_text.strip()):
         bool_value = to_bool(value_text)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
                      v=var, d=default, r=bool_value)
@@ -195,7 +197,7 @@ def getenv_number(var, default=-1.0, description=None, helper=False):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
     value = getenv_value(var, description=description, default=default)
-    if ((value is not None) and to_text(value).strip()):
+    if (isinstance(value, str) and value.strip()):
          num_value = to_float(value)
     trace_level = 6 if helper else 5
     debug.trace_fmtd(trace_level, "getenv_number({v}, {d}) => {r}",
@@ -209,7 +211,7 @@ getenv_float = getenv_number
 def getenv_int(var, default=-1, description=None):
     """Version of getenv_number for integers, with optional DESCRIPTION"""
     value = getenv_number(var, description=description, default=default, helper=True)
-    if (value is not None):
+    if (isinstance(value, str) and value.strip()):
         value = to_int(value)
     debug.trace_fmtd(5, "getenv_int({v}, {d}) => {r}",
                      v=var, d=default, r=value)
