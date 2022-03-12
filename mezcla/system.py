@@ -210,8 +210,9 @@ getenv_float = getenv_number
 
 def getenv_int(var, default=-1, description=None):
     """Version of getenv_number for integers, with optional DESCRIPTION"""
+    # EX: getenv_int("?", 1.5) => 1
     value = getenv_number(var, description=description, default=default, helper=True)
-    if (isinstance(value, str) and value.strip()):
+    if (not isinstance(value, int)):
         value = to_int(value)
     debug.trace_fmtd(5, "getenv_int({v}, {d}) => {r}",
                      v=var, d=default, r=value)
