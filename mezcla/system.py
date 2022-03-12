@@ -1042,13 +1042,14 @@ safe_int = to_int
 
 def to_bool(value):
     """Converts VALUE to boolean value, False iff in {0, False, and "False"}, ignoring case."""
-    # TODO: add "off" as well
-    value_text = str(value)
-    bool_value = True
-    if (value_text.lower() == "false") or (value_text == "0"):
-        bool_value = False
-    debug.trace_fmtd(7, "to_bool({v}) => {r}", v=value, r=bool_value)
-    return bool_value
+    # EX: to_bool("off") => False
+    result = value
+    if (isinstance(value, str) and (value.lower() in ["false", "none", "off", "0"])):
+        result = False
+    debug.trace_fmtd(7, "to_bool({v}) => {r}", v=value, r=result)
+    return result
+#
+# EX: to_bool(None) => False
 
 
 PRECISION = getenv_int("PRECISION", 6,
