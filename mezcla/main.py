@@ -300,8 +300,10 @@ class Main(object):
 
     def has_parsed_option(self, label):
         """Whether option for LABEL specified (i.e., non-null value)"""
+        # Note: not intended for subclass usage (TODO: drop as unused???)
         name = self.get_option_name(label)
-        has_option = (name in self.parsed_args and self.parsed_args[name])
+        ## OLD: has_option = (name in self.parsed_args and self.parsed_args[name])
+        has_option = (name in self.parsed_args and (self.parsed_args[name] is not None))
         tpo.debug_format("has_parsed_option({l}) => {r}", 6,
                          l=label, r=has_option)
         return has_option
