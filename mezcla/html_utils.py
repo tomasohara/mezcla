@@ -241,10 +241,15 @@ def get_url_parameter_value(param, default_value=None, param_dict=None):
 
 
 def get_url_parameter_bool(param, default_value=False, param_dict=None):
-    """Get boolean value for PARAM from PARAM_DICT, with "on" treated as True. @note the hash defaults to user_parameters, and the default value is False"""
-    # NOTE: "1" also treated on True
-    # TODO: implement in terms of get_url_param
+    """Get boolean value for PARAM from PARAM_DICT, with "on" treated as True. @note the hash defaults to user_parameters, and the default value is False
+    Note: Only treates {"1", "on", "True", True} as True.
+    Warning: defaults with non-None values might return unintuitive results unless
+    coerced to boolean beforehand.
+    """
+    # EX: get_url_parameter_bool("abc", False, { "abc": "on" }) => True
+    # TODO: implement in terms of get_url_param and also system.to_bool
     ## OLD: result = (param_dict.get(param, default_value) in ["on", True])
+    debug.assertion(isinstance(default_value, bool))
     result = (get_url_parameter_value(param, default_value, param_dict)
               ## OLD: in ["on", True])
               in ["1", "on", True])
