@@ -1041,7 +1041,7 @@ safe_int = to_int
 
 
 def to_bool(value):
-    """Converts VALUE to boolean value, False iff in {0, False, and "False"}, ignoring case."""
+    """Converts VALUE to boolean value, False iff in {0, False, "False", "None", "Off"}, ignoring case."""
     # EX: to_bool("off") => False
     result = value
     if (isinstance(value, str) and (value.lower() in ["false", "none", "off", "0"])):
