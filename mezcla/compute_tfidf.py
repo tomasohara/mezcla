@@ -114,8 +114,11 @@ def get_suffix1_prefix2(subterms1, subterms2):
     
 
 def terms_overlap(term1, term2):
-    """Whether TERM1 and TERM1 overlap (and the overlapping text if so)"""
+    """Whether TERM1 and TERM1 overlap (and the overlapping text if so)
+    Note: The overlap must occur at word boundaries
+    """
     # EX: terms_overlap("ACME Rocket Research", "Rocket Research Labs") => "Rocket Research"
+    # EX: not terms_overlap("Rocket Res", "Rocket Research")
     # TODO: put in text_utils
     subterms1 = term1.strip().split()
     subterms2 = term2.strip().split()
@@ -128,8 +131,12 @@ def terms_overlap(term1, term2):
 
 
 def is_subsumed(term, terms, include_overlap=PRUNE_OVERLAPPING_TERMS):
-    "Whether TERM is subsumed by another term in TERMS"""
+    """Whether TERM is subsumed by another term in TERMS, accounting for overlapping terms if INCLUDE_OVERLAP
+    Note: subsumption is based on string matching not token matching unlike the overlap check.
+    """
     # EX: is_subsumed("White House", ["The White House", "Congress", "Supreme Court"])
+    # EX: is_subsumed("White House", ["White Houses"])
+    # TODO: Enforce word boundaries as with terms_overlap
     subsumed_by = [subsuming_term for subsuming_term in terms
                    if (((term in subsuming_term) 
                         or (include_overlap and terms_overlap(term, subsuming_term)))
