@@ -1,10 +1,10 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Micellaneous HTML utility functions, in particular with support for resolving
-# HTML rendered via JavaScript. This was motivated by the desire to extract
-# images from pubchem.ncbi.nlm.nih.gov web pages for drugs (e.g., Ibuprofen,
-# as illustrated below).
+# Micellaneous HTML utility functions, in particular with support for resolving HTML
+# rendered via JavaScript (via selenium). This was motivated by the desire to extract
+# images from pubchem.ncbi.nlm.nih.gov web pages for drugs (e.g., Ibuprofen, as
+# illustrated below).
 #
 #-------------------------------------------------------------------------------
 # Example usage:
@@ -39,6 +39,7 @@
 #-------------------------------------------------------------------------------
 # TODO:
 # - Standardize naming convention for URL parameter accessors (e.g., get_url_param vs. get_url_parameter).
+# - Create class for selenium support (e.g., get_browser ... wait_until_ready).
 # 
 
 """HTML utility functions"""
@@ -112,8 +113,11 @@ def get_browser(url):
 
 
 def get_inner_html(url):
-    """Return the fully-rendered version of the URL HTML source (e.g., after JavaScript DOM manipulation"""
+    """Return the fully-rendered version of the URL HTML source (e.g., after JavaScript DOM manipulation)
+    Note: requires selenium webdriver (browser specific)
+    """
     # Based on https://stanford.edu/~mgorkove/cgi-bin/rpython_tutorials/Scraping_a_Webpage_Rendered_by_Javascript_Using_Python.php
+    debug.trace_fmt(5, "get_inner_html({u})", u=url)
     # Navigate to the page (or get browser instance with existing page)
     browser = get_browser(url)
     # Wait for Javascript to finish processing
@@ -125,7 +129,8 @@ def get_inner_html(url):
 
 
 def get_inner_text(url):
-    """Get text of URL after JavaScript processing"""
+    """Get text of URL (i.e., without HTML tags) after JavaScript processing (via selenium)"""
+    debug.trace_fmt(5, "get_inner_text({u})", u=url)
     # See https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText
     # Navigate to the page (or get browser instance with existing page)
     browser = get_browser(url)
@@ -138,7 +143,7 @@ def get_inner_text(url):
 
 
 def document_ready(url):
-    """Determine whether document for URL has completed loading"""
+    """Determine whether document for URL has completed loading (via selenium)"""
     # See https://developer.mozilla.org/en-US/docs/Web/API/Document/readyState
     browser = get_browser(url)
     ready_state = browser.execute_script("return document.readyState")
@@ -149,7 +154,7 @@ def document_ready(url):
 
 
 def wait_until_ready(url):
-    """Wait for document_ready (q.v.) and pause to allow loading to finish"""
+    """Wait for document_ready (q.v.) and pause to allow loading to finish (via selenium)"""
     # TODO: make sure the sleep is proper way to pause
     debug.trace_fmt(5, "in wait_until_ready({u})", u=url)
     start_time = time.time()
@@ -249,7 +254,7 @@ def get_url_parameter_bool(param, default_value=False, param_dict=None):
     # EX: get_url_parameter_bool("abc", False, { "abc": "on" }) => True
     # TODO: implement in terms of get_url_param and also system.to_bool
     ## OLD: result = (param_dict.get(param, default_value) in ["on", True])
-    debug.assertion(isinstance(default_value, bool))
+    debug.assertion((default_value is None) or isinstance(default_value, bool))
     result = (get_url_parameter_value(param, default_value, param_dict)
               ## OLD: in ["on", True])
               in ["1", "on", True])
@@ -533,7 +538,7 @@ def main(args):
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
     user = system.getenv_text("USER")
-    system.print_stderr("Warning, {u}: this is not really intended for direct invocation".format(u=user))
+    system.print_stderr("Warning, {u}: this is not intended for direct invocation".format(u=user))
 
     # HACK: Do simple test of inner-HTML support
     # TODO: Do simpler test of download_web_document
@@ -548,7 +553,7 @@ def main(args):
             write_temp_file("pre-" + filename, html_data)
 
         # Show inner/outer HTML
-        # Note: The browser is hidden unless MOZ_HEADLESS true
+        # Note: The browser is hidden unless MOZ_HEADLESS false
         # TODO: Support Chrome
         ## OLD: wait_until_ready(url)
         ## BAD: rendered_html = render(html_data)
