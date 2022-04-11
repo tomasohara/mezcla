@@ -239,7 +239,9 @@ def elide_values(values: list, **kwargs):
 
 
 def disable_subcommand_tracing():
-    """Disables tracing in scripts invoked via run().""" 
+    """Disables tracing in scripts invoked via run().
+    Note: Invoked in unittest_wrapper.py"""
+    tpo.debug_print("disable_subcommand_tracing()", 7)
     # Note this works by having run() temporarily setting DEBUG_LEVEL to 0."""
     global default_subtrace_level
     default_subtrace_level = 0
