@@ -20,15 +20,18 @@
 
 """Derive language model by tabulating n-grams"""
 
+# Standard modules
 import argparse
 import os
 import sys
 
-import tpo_common as tpo
-import glue_helpers as gh
+# Local modules
+from mezcla import debug
+from mezcla import tpo_common as tpo
+from mezcla import glue_helpers as gh
 
+# Environment options
 SKIP_TOKENIZATION = tpo.getenv_boolean("SKIP_TOKENIZATION", False)
-## OLD: RUN_TOKENIZATION = (not SKIP_TOKENIZATION)
 if SKIP_TOKENIZATION:
     tpo.print_stderr("SKIP_TOKENIZATION no longer supported")
 MAX_NGRAM = tpo.getenv_integer("MAX_NGRAM", 3, "maximum n-gram size to collect")
@@ -38,6 +41,7 @@ NGRAM_EXT = tpo.getenv_text("NGRAM_EXT", str(MAX_NGRAM) + "gram")
 
 def usage(program=sys.argv[0]):
     """Show program options and other usage notes"""
+    debug.trace(6, f"usage{program}")
     # TODO: add option for output directory
     print(tpo.format("""
 Usage: {program} source-file.txt
@@ -60,7 +64,7 @@ def main():
     """Entry point for script"""
     # Check command-line arguments
     parser = argparse.ArgumentParser(description="Create ngram-based language model from input")
-    parser.add_argument("--usage-notes", help="Show detailed usage notes")
+    parser.add_argument("--usage-notes", default=False, action='store_true', help="Show detailed usage notes")
     parser.add_argument("--output-basename", default="", help="Basename to use for output (by default input file without .txt extension)")
     parser.add_argument("--tokenize", default=False, action='store_true', help="Run tokenization (and lowercasing)")
     parser.add_argument("--verbose", default=False, action='store_true', help="Verbose output mode")
@@ -68,13 +72,14 @@ def main():
     parser.add_argument("--interpolate-unigrams", default=False, action='store_true', help="Interpolate the unigrams (unlike SRI's LM utility)")
     #
     # note: filename is positional argument
-    parser.add_argument("filename", default=None, help="Input data filename (or basename when loading previously saved model)")
+    parser.add_argument("filename", nargs='?', default="-", help="Input data filename (or basename when loading previously saved model)")
+    debug.trace_object(6, parser)
     args = vars(parser.parse_args())
     tpo.debug_print("args = %s" % args, 5)
-    filename = args['filename']
     if (args["usage_notes"]):
         usage()
         sys.exit()
+    filename = args['filename']
     verbose = args['verbose']
     tokenize = args['tokenize']
     output_mmap = args['mmap']
