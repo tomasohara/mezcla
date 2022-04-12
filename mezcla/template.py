@@ -70,7 +70,7 @@ class Script(Main):
         debug.trace_fmtd(6, "Script.process_line({l})", l=line)
         # TODO: flesh out
         if self.todo_arg and "TODO" in line:
-            print("arg1 line: %s" % line)
+            print("arg1 line ({n}): {l}".format(n=self.line_num, l=line))
         ## TODO: regex pattern matching
         ## elif my_re.search(self.alt_todo_arg, line):
         ##     print("arg2 line: %s" % line)
