@@ -80,8 +80,17 @@ class TestWrapper(unittest.TestCase):
         debug.trace_object(5, cls, "TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
         if cls.script_module:
+            # Try to pull up usage via python -m mezcla.xyz --help
             help_usage = gh.run("python -m '{mod}' --help", mod=cls.script_module)
-            gh.assertion("No module named" not in help_usage)
+            debug.assertion("No module named" not in help_usage,
+                            f"problem running via 'python -m {cls.script_module}'")
+            # Warn about lack of usage statement unless "not intended for command-line" type warning issued
+            # OLD: (re.search(r"not intended.*(command|standalone)", help_usage))
+            # TODO: standardize the not-intended wording
+            if (not ((re.search(r"warning:.*not intended", help_usage,
+                                re.IGNORECASE))
+                     or ("usage:" in help_usage.lower()))):
+                system.print_stderr("Warning: mezcla scripts should implement --help")
 
         # Optionally, setup temp-base directory (normally just a file)
         if cls.use_temp_base_dir is None:
@@ -97,20 +106,21 @@ class TestWrapper(unittest.TestCase):
     def derive_tested_module_name(test_filename):
         """Derive the name of the module being tested from TEST_FILENAME. Used as follows:
               script_module = TestWrapper.derive_tested_module_name(__file__)
+        Note: Deprecated method (see get_testing_module_name)
         """
-        # Note: Deprecated method (see get_testing_module_name)
+        tpo.debug_format("Warning: in deprecrated derive_tested_module_name", 5)
         module = os.path.split(test_filename)[-1]
         module = re.sub(r".py[oc]?$", "", module)
         module = re.sub(r"^test_", "", module)
-        tpo.debug_format("derive_tested_module_name({f}) = {m}", 5,
+        tpo.debug_format("derive_tested_module_name({f}) => {m}", 5,
                          f=test_filename, m=module)
         return (module)
 
     @staticmethod
     def get_testing_module_name(test_filename, module_object=None):
         """Derive the name of the module being tested from TEST_FILENAME and MODULE_OBJECT"""
-        # TODO: used as follows (see test_fubar.py):
-        #    script_module = get_testing_module_name(__file__, THE_MODULE)
+        # TODO: used as follows (see tests/test_template.py):
+        #    script_module = TestWrapper.get_testing_module_name(__file__)
         module_name = os.path.split(test_filename)[-1]
         module_name = re.sub(r".py[oc]?$", "", module_name)
         module_name = re.sub(r"^test_", "", module_name)
@@ -118,16 +128,19 @@ class TestWrapper(unittest.TestCase):
         if module_object is not None:
            package_name = getattr(module_object, "__package__", "")
         full_module_name = package_name + "." + module_name
-        tpo.debug_format("derive_tested_module_name({f}) = {m}", 5,
+        tpo.debug_format("get_testing_module_name({f}) => {m}", 5,
                          f=test_filename, m=full_module_name)
         return (full_module_name)
 
     def setUp(self):
-        """Per-test initializations: disables tracing scripts invoked via run();
-        initializes temp file name (With override from environment)."""
+        """Per-test initializations
+        Notes:
+        - Disables tracing scripts invoked via run() unless ALLOW_SUBCOMMAND_TRACING
+        - Initializes temp file name (With override from environment)."""
         # Note: By default, each test gets its own temp file.
         tpo.debug_print("TestWrapper.setUp()", 4)
-        gh.disable_subcommand_tracing()
+        if not gh.ALLOW_SUBCOMMAND_TRACING:
+            gh.disable_subcommand_tracing()
         # The temp file is an extension of temp-base file by default.
         # Opitonally, if can be a file in temp-base subdrectory.
         if self.use_temp_base_dir:
