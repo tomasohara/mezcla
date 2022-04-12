@@ -49,6 +49,8 @@ def parse_xml(xml_text):
 
 def etree_to_dict(node):
     """Convert XML parse at NODE to dict"""
+    debug.trace(5, f"etree_to_dict({node})")
+    debug.assertion(node is not None)
     d = {node.tag : list(map(etree_to_dict, list(node)))}
     d.update(('@' + k, v) for k, v in node.attrib.items())
     d['text'] = node.text
@@ -62,6 +64,7 @@ def get_xml_text(node, depth=0):
     # TODO: get_xml_text => get_xml_tree_text???
     indent = "    " * depth if __debug__ else ""
     debug.trace(5, f"{indent}get_xml_text({node}, {depth})")
+    debug.assertion(node is not None)
     debug.trace(4, f'[l] {node.tag + ": "}', no_eol=True)
     text = ("\t" * depth) + node.tag + ": "
     if node.text:
@@ -81,7 +84,17 @@ def main(args):
     """Entry point for script"""
     xml_text = "<a><b>1<c>2<d/>3</c></b>4</a>"
     if (len(args) > 1):
-        xml_text = system.read_file(args[1])
+        if (args[1] == "--help"):
+            usage = (
+                "\n"
+                "usage: {prog} [--help] [xml-file|-]\n"
+                "\n"
+                "example: echo '<xml>How now<italics>brown cow</italics>?</xml>' | {prog} -\n").format(prog=args[0])
+            system.exit(usage)
+        elif (args[1] == "-"):
+            xml_text = sys.stdin.read()
+        else:
+            xml_text = system.read_file(args[1])
 
     # Show input
     print("Input:")
@@ -96,6 +109,7 @@ def main(args):
     return
 
 if __name__ == '__main__':
-    system.print_error("Warning: Not intended for direct invocation.")
-    system.print_error("A simle test follows.")
+    ## OLD:
+    ## system.print_error("Warning: Not intended for direct invocation.")
+    ## system.print_error("A simple test follows.")
     main(sys.argv)
