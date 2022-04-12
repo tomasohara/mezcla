@@ -63,6 +63,7 @@ def html_to_text(document_data):
     # EX: html_to_text("<html><body><!-- a cautionary tale -->\nMy <b>fat</b> dog has fleas</body></html>") => "My fat dog has fleas"
     # Note: stripping javascript and style sections based on following:
     #   https://stackoverflow.com/questions/22799990/beatifulsoup4-get-text-still-has-javascript
+    # TODO: move into html_utils.py
     debug.trace_fmtd(7, "html_to_text(_):\n\tdata={d}", d=document_data)
     ## OLD: soup = BeautifulSoup(document_data)
     init_BeautifulSoup()
@@ -90,7 +91,10 @@ def document_to_text(doc_filename):
     text = ""
     try:
         init_textract()
-        text = system.from_utf8(textract.process(doc_filename))
+        ## OLD: text = system.from_utf8(textract.process(doc_filename))
+        text = textract.process(doc_filename)
+        if isinstance(text, bytes):
+            text = text.decode("UTF-8", errors="ignore")
     except:
         debug.trace_fmtd(3, "Warning: problem converting document file {f}: {e}",
                          f=doc_filename, e=sys.exc_info())
@@ -328,5 +332,5 @@ def make_fixed_length(text, length=16):
 #-------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    system.print_stderr("Error: not intended for command-line use")
+    system.print_stderr("Warning: not intended for command-line use")
     debug.assertion("html" not in html_to_text("<html><body></body></html>"))
