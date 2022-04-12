@@ -143,8 +143,12 @@ class ngram_tfidf_analysis(object):
             if (not ngram.strip()):
                 debug.trace_fmt(5, "Omitting invalid ngram '{ng}'", ng=ngram)
                 continue
-            if ((not allow_numeric_ngrams) and all([tpo.is_numeric(token) for token in ngram.split()])):
-                debug.trace_fmt(5, "Omitting numeric ngram '{ng}'", ng=ngram)
+            ## OLD:
+            ## if ((not allow_numeric_ngrams) and all([tpo.is_numeric(token) for token in ngram.split()])):
+            ##     debug.trace_fmt(5, "Omitting numeric ngram '{ng}'", ng=ngram)
+            ##     continue
+            if ((not allow_numeric_ngrams) and any([tpo.is_numeric(token) for token in ngram.split()])):
+                debug.trace_fmt(5, "Omitting ngram with numerics '{ng}'", ng=ngram)
                 continue
             
             # Check for subsumption (e.g., "new york" in "new york city") and overlap (e.g. "new york" and "york city")
@@ -203,7 +207,8 @@ class ngram_tfidf_analysis(object):
         if USE_CORPUS_COUNTER:
             return self.old_get_ngrams(text)
         if self.corpus:
-            debug.trace(2, "Warning: not using tfidf corpus object")
+            ## OLD: debug.trace(2, "Warning: not using tfidf corpus object")
+            debug.trace(6, "Note: not using tfidf corpus object")
         vectorizer = CountVectorizer(ngram_range=(self.min_ngram_size, self.max_ngram_size))
         analyzer = vectorizer.build_analyzer()
         ngram_list = analyzer(text)
