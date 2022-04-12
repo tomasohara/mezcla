@@ -1,5 +1,6 @@
 # Basic requirements for main scripts
 # optional: keras, tensorflow
+# TODO: supporting commands (e.g., lynx)
 bs4
 cherrypy
 gensim
