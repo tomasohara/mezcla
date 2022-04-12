@@ -231,7 +231,7 @@ def get_exception():
 
 def print_error(text):
     """Output TEXT to standard error
-    Note: Use print_stderr to include format argument"
+    Note: Use print_stderr to include format keyword arguments"
     """
     # ex: print_error("Fubar!")
     print(text, file=sys.stderr)
@@ -896,6 +896,14 @@ def non_empty_file(filename):
     non_empty = (file_exists(filename) and (os.path.getsize(filename) > 0))
     debug.trace_fmtd(5, "non_empty_file({f}) => {r}", f=filename, r=non_empty)
     return non_empty
+
+
+def absolute_path(path):
+    """Return resolved absolute pathname for PATH, as with Linux realpath command w/ --no-symlinks"""
+    # EX: absolute_path("/etc/mtab").startswith("/etc")
+    result = os.path.abspath(path)
+    debug.trace(7, f"real_path({path}) => {result}")
+    return result
 
 
 def real_path(path):
