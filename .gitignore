@@ -31,6 +31,7 @@
 # Output or log-file directories
 **/log-files
 **/output-files
+**/downloads
 
 # Idiosyncratic stuff for Tom
 #
