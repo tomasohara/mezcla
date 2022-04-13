@@ -65,15 +65,23 @@ from mezcla.system import write_temp_file
 
 # Constants
 DEFAULT_STATUS_CODE = "000"
-MAX_DOWNLOAD_TIME = system.getenv_integer("MAX_DOWNLOAD_TIME", 60)
-MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("MID_DOWNLOAD_SLEEP_SECONDS", 60)
-POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("POST_DOWNLOAD_SLEEP_SECONDS", 0)
-SKIP_BROWSER_CACHE = system.getenv_boolean("SKIP_BROWSER_CACHE", False)
+MAX_DOWNLOAD_TIME = system.getenv_integer("MAX_DOWNLOAD_TIME", 60,
+                                          "Time in seconds for rendered-HTML download as with get_inner_html")
+## OLD: MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("MID_DOWNLOAD_SLEEP_SECONDS", 60)
+MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("MID_DOWNLOAD_SLEEP_SECONDS", 15,
+                                                   "Mid-stream delay if document not ready")
+POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("POST_DOWNLOAD_SLEEP_SECONDS", 0,
+                                                    "Delay after document ready prior to download")
+SKIP_BROWSER_CACHE = system.getenv_boolean("SKIP_BROWSER_CACHE", False,
+                                           "Don't use cached webdriver browsers")
 USE_BROWSER_CACHE = (not SKIP_BROWSER_CACHE)
-DOWNLOAD_VIA_URLLIB = system.getenv_bool("DOWNLOAD_VIA_URLLIB", False)
+DOWNLOAD_VIA_URLLIB = system.getenv_bool("DOWNLOAD_VIA_URLLIB", False,
+                                         "Use old-style download via urllib instead of requests")
 DOWNLOAD_VIA_REQUESTS = (not DOWNLOAD_VIA_URLLIB)
 DOWNLOAD_TIMEOUT = system.getenv_float("DOWNLOAD_TIMEOUT", 5,
-                                       "Timeout in seconds for download")
+                                       "Timeout in seconds for request-based as with download_web_document")
+HEADLESS_WEBDRIVER = system.getenv_bool("HEADLESS_WEBDRIVER", True,
+                                        "Whether Selenium webdriver is hidden")
 HEADERS = "headers"
 FILENAME = "filename"
 
@@ -95,17 +103,29 @@ def get_browser(url):
     """
     browser = None
     global browser_cache
+
     # Check for cached version of browser. If none, create one and access page.
     browser = browser_cache.get(url) if USE_BROWSER_CACHE else None
     if not browser:
         # HACK: unclean import (i.e., buried in function)
         from selenium import webdriver       # pylint: disable=import-error, import-outside-toplevel
-        browser = webdriver.Firefox()
+
+        # Make the browser hidden by default (i.e., headless)
+        # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
+        # pylint: disable=import-outside-toplevel
+        from selenium.webdriver.firefox.options import Options
+        webdriver_options = Options()
+        webdriver_options.headless = HEADLESS_WEBDRIVER
+        browser = webdriver.Firefox(options=webdriver_options)
+        debug.trace_object(5, browser)
+
+        # Get the page, setting optional cache entry and sleeping afterwards
         if USE_BROWSER_CACHE:
             browser_cache[url] = browser
         browser.get(url)
         if POST_DOWNLOAD_SLEEP_SECONDS:
             time.sleep(POST_DOWNLOAD_SLEEP_SECONDS)
+            
     # Make sure the bare minimum is included (i.e., "<body></body>"
     debug.assertion(len(browser.execute_script("return document.body.outerHTML")) > 13)
     debug.trace_fmt(5, "get_browser({u}) => {b}", u=url, b=browser)
@@ -117,13 +137,19 @@ def get_inner_html(url):
     Note: requires selenium webdriver (browser specific)
     """
     # Based on https://stanford.edu/~mgorkove/cgi-bin/rpython_tutorials/Scraping_a_Webpage_Rendered_by_Javascript_Using_Python.php
+    # Also see https://stackoverflow.com/questions/8049520/web-scraping-javascript-page-with-python.
+    # Note: The retrieved HTML might not match the version rendered in a browser due to a variety of reasons such as timing of dynamic updates and server controls to minimize web crawling.
     debug.trace_fmt(5, "get_inner_html({u})", u=url)
-    # Navigate to the page (or get browser instance with existing page)
-    browser = get_browser(url)
-    # Wait for Javascript to finish processing
-    wait_until_ready(url)
-    # Extract fully-rendered HTML
-    inner_html = browser.execute_script("return document.body.innerHTML")
+    try:
+        # Navigate to the page (or get browser instance with existing page)
+        browser = get_browser(url)
+        # Wait for Javascript to finish processing
+        wait_until_ready(url)
+        # Extract fully-rendered HTML
+        ## OLD: inner_html = browser.execute_script("return document.body.innerHTML")
+        inner_html = browser.page_source
+    except:
+        system.print_exception_info("get_inner_html")
     debug.trace_fmt(7, "get_inner_html({u}) => {h}", u=url, h=inner_html)
     return inner_html
 
@@ -132,12 +158,15 @@ def get_inner_text(url):
     """Get text of URL (i.e., without HTML tags) after JavaScript processing (via selenium)"""
     debug.trace_fmt(5, "get_inner_text({u})", u=url)
     # See https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText
-    # Navigate to the page (or get browser instance with existing page)
-    browser = get_browser(url)
-    # Wait for Javascript to finish processing
-    wait_until_ready(url)
-    # Extract fully-rendered text
-    inner_text = browser.execute_script("return document.body.innerText")
+    try:
+        # Navigate to the page (or get browser instance with existing page)
+        browser = get_browser(url)
+        # Wait for Javascript to finish processing
+        wait_until_ready(url)
+        # Extract fully-rendered text
+        inner_text = browser.execute_script("return document.body.innerText")
+    except:
+        system.print_exception_info("get_inner_text")
     debug.trace_fmt(7, "get_inner_text({u}) => {it}", u=url, it=inner_text)
     return inner_text
 
@@ -155,14 +184,18 @@ def document_ready(url):
 
 def wait_until_ready(url):
     """Wait for document_ready (q.v.) and pause to allow loading to finish (via selenium)"""
+    ## TODO: wait_until_ready(... stable_size_diff=STABLE_SIZE_DIFF
+    ## If STABLE_SIZE_DIFF, then the wait
     # TODO: make sure the sleep is proper way to pause
     debug.trace_fmt(5, "in wait_until_ready({u})", u=url)
     start_time = time.time()
     end_time = start_time + MAX_DOWNLOAD_TIME
-    while ((start_time < end_time) and (not document_ready(url))):
+    while ((time.time() < end_time) and (not document_ready(url))):
+        debug.trace_fmt(6, "Mid-stream download sleep ({s} secs)", s=MID_DOWNLOAD_SLEEP_SECONDS)
         time.sleep(MID_DOWNLOAD_SLEEP_SECONDS)
-        if (not document_ready(url)):
-            debug.trace_fmt(5, "Warning: time out ({s} secs) in accessing URL '{u}')'", s=system.round_num(end_time - start_time, 1), u=url)        
+    if (not document_ready(url)):
+        debug.trace_fmt(5, "Warning: time out ({s} secs) in accessing URL '{u}')'",
+                        s=system.round_num(end_time - start_time, 1), u=url)        
     debug.trace_fmt(5, "out wait_until_ready(); elapsed={t}s",
                     t=(time.time() - start_time))
     return
