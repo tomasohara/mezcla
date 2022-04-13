@@ -74,7 +74,8 @@ def html_to_text(document_data):
         # -or- Note the in-place change (i.e., destructive).
         script.extract()
     # Get the text
-    text = soup.get_text()
+    ## OLD: text = soup.get_text()
+    text = soup.get_text(separator=" ")
     debug.trace_fmtd(6, "html_to_text() => {t}", t=gh.elide(text))
     return text
 
