@@ -77,6 +77,26 @@ class TestIt(TestWrapper):
         debug.trace_expr(5, rendered_text)
         self.assertTrue(re.search(r"Browser dimensions: \d+x\d+", rendered_text))
     
+    def test_get_inner_html(self):
+        """Verify that JavaScript fills in window dimensions
+        Note: requires selenium"""
+        debug.trace(4, "test_get_inner_html()")
+        if not TEST_SELENIUM:
+            debug.trace(4, "Ignoring test_get_inner_html as selenium required")
+            return
+        html_filename = "simple-window-dimensions.html"
+        html_path = gh.resolve_path(html_filename)
+        url = ("file:" + system.absolute_path(html_path))
+        # TODO: use direct API call to return unrendered text
+        unrendered_html = gh.run(f"lynx -source {url}")
+        debug.trace_expr(5, unrendered_html)
+        self.assertTrue(re.search(r"<li>Browser dimensions:\s*<span.*>\?\?\?</span></li>",
+                                  unrendered_html))
+        rendered_html = THE_MODULE.get_inner_html(url)
+        debug.trace_expr(5, rendered_html)
+        self.assertTrue(re.search(r"<li>Browser dimensions:\s*<span.*>\d+x\d+</span></li>",
+                                  rendered_html))
+    
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
