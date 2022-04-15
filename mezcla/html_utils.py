@@ -344,6 +344,28 @@ def fix_url_parameters(url_parameters):
     return new_url_parameters
 
 
+def expand_misc_param(misc_dict, param_name, param_dict=None):
+    """Expands MISC_DICT to include separate keys for those in PARAM_DICT under PARAM_NAME
+    Notes: The parameter specification is comma separated. 
+    PARAM_DICT defaults to the global user_parameters (or MISC_DICT if unset): see set_param_dict."""
+    # EX: expand_misc_param({'x': 1, 'y': 2, 'z': 'a=3, b=4'}, 'z') => {'x': 1, 'y':, 2, 'z': 'a=3 b=4', 'a': 3, 'b': 4}
+    debug.trace(6, f"expand_misc_param({misc_dict}, {param_name}, {param_dict=})")
+    if param_dict is None:
+        param_dict = (user_parameters or misc_dict)
+    new_misc_dict = misc_dict
+    misc_params = get_url_param(param_name, "", param_dict=param_dict)
+    if (misc_params and ("=" in misc_params)):
+        new_misc_dict = new_misc_dict.copy()
+        for param_spec in re.split(", *", misc_params):
+            try:
+                param_key, param_value = param_spec.split("=")
+                new_misc_dict[param_key] = param_value
+            except:
+                system.print_exception_info("expand_misc_param")
+    debug.trace(5, f"expand_misc_param() => {new_misc_dict}")
+    return new_misc_dict
+
+
 def _read_file(filename, as_binary):
     """Wrapper around read_entire_file or read_binary_file if AS_BINARY"""
     debug.trace(8, f"_read_file({filename}, {as_binary})")
