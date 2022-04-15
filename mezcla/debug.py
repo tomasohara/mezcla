@@ -415,6 +415,7 @@ if __debug__:
         delim = kwargs.get('delim') or kwargs.get('_delim')
         no_eol = kwargs.get('no_eol') or kwargs.get('_no_eol')
         use_repr = kwargs.get('use_repr') or kwargs.get('_use_repr')
+        max_len = kwargs.get('max_len') or kwargs.get('_max_len')
         if sep is None:
             sep = ", "
         if no_eol is None:
@@ -452,7 +453,8 @@ if __debug__:
                     continue
                 assertion((not ((value is not None) and (expression is None))),
                           "Warning: Likely problem resolving expression text (try reworking trace_expr call)")
-                value_spec = format_value(repr(value) if use_repr else value)
+                value_spec = format_value(repr(value) if use_repr else value,
+                                          max_len=max_len)
                 trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
             except:
                 trace_fmtd(ALWAYS, "Exception tracing values in trace_vals: {exc}",
