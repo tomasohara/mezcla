@@ -153,6 +153,8 @@ def extract_html_images(document_data, url):
             image_src = web_site_url + image_src
         elif not image_src.startswith("http"):
             image_src = base_url + "/" + image_src
+        ## TEMP: fixup for trailing newline (TODO: handle upstream)
+        image_src = image_src.strip()
         if image_src not in images:
             images.append(image_src)
     debug.trace_fmtd(6, "extract_html_images() => {i}", i=images)
