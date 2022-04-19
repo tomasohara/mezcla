@@ -277,7 +277,8 @@ get_url_parameter = get_url_param
 
 
 def get_url_param_checkbox_spec(name, default_value="", param_dict=None):
-    """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT"""
+    """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT
+    Note: the value is only specified/submitted if checked"""
     # NOTE: 1 also treated as True
     # TODO: implement in terms of get_url_param
     param_dict = (get_param_dict(param_dict) or {})
