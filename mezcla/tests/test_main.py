@@ -177,6 +177,15 @@ class TestIt2:
         assert((1 + len(contents)) == len(captured.out))
         ## TODO: assert(TestIt.process_line_count == 3)
         debug.trace_expr(5, main, num_lines)
+
+    def test_has_parsed_option_hack(self):
+        """Make sure (temporarily hacked) has_parsed_option differs from has_parsed_option_old"""
+        ok_arg = "ok"
+        missing_arg = "missing"
+        main = Main(skip_args=True, auto_help=False)
+        main.parsed_args = {ok_arg: True}
+        assert(main.has_parsed_option_old(ok_arg) == main.has_parsed_option(ok_arg))
+        assert(main.has_parsed_option_old(missing_arg) != main.has_parsed_option(missing_arg))
         
 #------------------------------------------------------------------------
 
