@@ -181,6 +181,7 @@ class TestWrapper(unittest.TestCase):
         if not out_file:
             out_file = self.temp_file + ".out"
         # note: output is redirected to a file to preserve tabs
+        debug.assertion(not self.script_module.endswith(".py"))
         gh.issue("{env} python  -m {module}  {opts}  {path} 1> {out} 2> {log}",
                  env=env_options, module=self.script_module, 
                  opts=options, path=data_path, out=out_file, log=log_file)
