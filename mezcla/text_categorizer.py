@@ -53,7 +53,8 @@ from system import getenv_bool, getenv_float, getenv_int, getenv_text
 #................................................................................
 # Constants (e.g., environment-based options)
 
-SERVER_PORT = system.getenv_integer("SERVER_PORT", 9010)
+SERVER_PORT = system.getenv_integer("SERVER_PORT", 9010,
+                                    "TCP port for web interface")
 OUTPUT_BAD = system.getenv_bool("OUTPUT_BAD", False)
 CONTEXT_LEN = system.getenv_int("CONTEXT_LEN", 512)
 VERBOSE = system.getenv_bool("VERBOSE", False)
@@ -673,8 +674,8 @@ class web_controller(object):
 
 
 def start_web_controller(model_filename):
-    """Start up the CherryPy controller for categorization via MODEL_FILENAME"""
-    # TODO: return status code
+    """Start up the CherryPy controller for categorization via MODEL_FILENAME
+    Note: The function blocks until server is shutdown"""
     debug.trace(5, "start_web_controller()")
 
     # Load in CherryPy configuration
@@ -699,8 +700,10 @@ def start_web_controller(model_filename):
     # Start the server
     # TODO: trace out all configuration settings
     debug.trace_values(4, cherrypy.response.headers, "default response headers")
-    cherrypy.quickstart(web_controller(model_filename), "", conf)
-    ## TODO: debug.trace_value(4, cherrypy.response.headers, "response headers")
+    textcat_controller = web_controller(model_filename)
+    debug.trace_expr(4, textcat_controller.text_cat.keys)
+    cherrypy.quickstart(textcat_controller, config=conf)
+    # Note: the following call blocks
     cherrypy.engine.start()
     return
 
@@ -711,7 +714,10 @@ def start_web_controller(model_filename):
 def main(args):
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
-    if (len(args) != 2):
+    # HACK: ignore --tag label (n.b., used for killing via process regex)
+    if ((len(args) > 0) and (args[1] == "--tag")):
+        args[1:] = args[3:]
+    if ((len(args) != 2) or (args[1] == "--help")):
         system.print_stderr("Usage: {p} model".format(p=args[0]))
         return
     model = args[1]
