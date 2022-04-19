@@ -298,15 +298,33 @@ class Main(object):
                          l=label, n=name, s=self)
         return name
 
-    def has_parsed_option(self, label):
-        """Whether option for LABEL specified (i.e., non-null value)"""
-        # Note: not intended for subclass usage (TODO: drop as unused???)
+    def has_parsed_option_old(self, label):
+        """Whether option for LABEL specified (i.e., non-null value)
+        Note: OLD version that checks for non-null value)
+        """
+        # EX: self.parsed_args = {'it': False}; self.has_parsed_option_old('nonit') => False
         name = self.get_option_name(label)
-        ## OLD: has_option = (name in self.parsed_args and self.parsed_args[name])
         has_option = (name in self.parsed_args and (self.parsed_args[name] is not None))
-        tpo.debug_format("has_parsed_option({l}) => {r}", 6,
+        tpo.debug_format("has_parsed_option_old({l}) => {r}", 6,
                          l=label, r=has_option)
         return has_option
+
+    def has_parsed_option(self, label):
+        """Value for LABEL specified or None if not applicable
+        Note: This is a deprecated method (use get_parsed_option instead)
+        """
+        # EX: self.parsed_args = {'it': False}; self.has_parsed_option('notit') => None
+        ## TEMP HACK: if called by a subclass, treate as alias to get_parsed_option
+        if (self.__class__ != "__main__.Script"):
+            debug.trace(4, "Warning: deprecated method: has_parsed_option => get_parsed_option")
+            return self.get_parsed_option(label)
+        # Return parsed-arg entry for the option
+        name = self.get_option_name(label)
+        ## TEMP HACK: has_parsed_option returns args.get(opt)
+        option_value = self.parsed_args.get(name)
+        tpo.debug_format("has_parsed_option({l}) => {r}", 6,
+                         l=label, r=option_value)
+        return option_value
 
     def get_parsed_option(self, label, default=None, positional=False):
         """Get value for option LABEL, with dashes converted to underscores. 
