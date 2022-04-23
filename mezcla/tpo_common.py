@@ -1384,10 +1384,11 @@ if __debug__:
                      + "debug_level={lvl}; args={args}", level=DETAILED,
                      ts=debug_timestamp(), lvl=debugging_level(), args=sys.argv)
 
-        # Register DEBUG_LEVEL for sake of new users
-        test_debug_level = getenv_integer("DEBUG_LEVEL", debugging_level(), 
-                                          "Debugging level for script tracing")
-        assert(debugging_level() == test_debug_level)
+        ## OLD
+        ## # Register DEBUG_LEVEL for sake of new users
+        ## test_debug_level = getenv_integer("DEBUG_LEVEL", debugging_level(), 
+        ##                                   "Debugging level for script tracing")
+        ## assert(debugging_level() == test_debug_level)
 
         # Register function to display ending timestamp
         ## OLD:
