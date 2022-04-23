@@ -115,10 +115,13 @@ if __debug__:
     para_mode_tracing = False           # multiline tracing adds blank line (e.g., for para-mode grep)
     #
     try:
-        trace_level = int(os.environ.get(DEBUG_LEVEL_LABEL, trace_level))
+        trace_level_text = os.environ.get(DEBUG_LEVEL_LABEL, "")
+        if trace_level_text.strip():
+            trace_level = int(trace_level_text)
     except:
-        sys.stderr.write("Warning: Unable to set tracing level from {v}: {exc}\n".
-                         format(v=DEBUG_LEVEL_LABEL, exc=sys.exc_info()))
+        ## sys.stderr.write("Warning: Unable to set tracing level from {v}: {exc}\n".
+        ##                  format(v=DEBUG_LEVEL_LABEL, exc=sys.exc_info()))
+        pass
 
 
     def set_level(level):
