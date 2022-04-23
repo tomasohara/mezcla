@@ -1129,6 +1129,12 @@ def init():
     # TODO: rework global initialization to avoid the need for this
     global TEMP_DIR
     TEMP_DIR = getenv_text("TMPDIR", "/tmp")
+
+    ## TODO: # Register DEBUG_LEVEL for sake of new users
+    ## test_debug_level = getenv_integer("DEBUG_LEVEL", debug.get_level(), 
+    ##                                   "Debugging level for script tracing")
+    ## debug.assertion(debug.get_level() == test_debug_level)
+
     return
 #
 init()
