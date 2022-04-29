@@ -591,16 +591,16 @@ def format_index_html(base_url=None):
     #
     # TODO: define text area dimensions based on browser window size
     html_template += """
-	    <!-- Form for entering text for categorization -->
+            <!-- Form for entering text for categorization -->
             <hr>
-	    <form action="{base_url}/categorize" method="get">
-	        <label for="textarea1">Categorize</label>
+            <form action="{base_url}/categorize" method="get">
+                <label for="textarea1">Categorize</label>
                 <br>
-	        <textarea id="textarea1" rows="5" cols="100" name="text"></textarea>
-	        <br>
-	        <input type="submit">
-	    </form>
-	    
+                <textarea id="textarea1" rows="5" cols="100" name="text"></textarea>
+                <br>
+                <input type="submit">
+            </form>
+            
         </body>
     </html>
     """
