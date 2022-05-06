@@ -31,16 +31,15 @@ class TestIt(TestWrapper):
     maxDiff           = None
 
 
-    # NOTE: this will take a while and this require a valid audio path in AUDIOFILE
     @unittest.skip("this will take a while and this require a valid audio path in AUDIOFILE")
     def test_sphinx_engine(self):
         """Test CMUSphinx speech recognition engine class"""
         debug.trace(debug.DETAILED, f"TestIt.test_sphinx_engine({self})")
 
         sample = Audio(AUDIOFILE)
-        sample_speech = sample.get_speech(engine='sphinx')
-        self.assertTrue(isinstance(sample_speech, str))
-        self.assertTrue(sample_speech)
+        result_speech = sample.speech_to_text(engine='sphinx')
+        self.assertTrue(isinstance(result_speech, str))
+        self.assertTrue(result_speech)
 
 
     def test_audio_path(self):
@@ -66,7 +65,7 @@ class TestIt(TestWrapper):
         gh.write_file(audio, 'some content')
 
         command  = f'python audio.py --verbose {audio}'
-        expected = f'Audio founded: {audio}'
+        expected = f'Audio: {audio}'
         self.assertEqual(gh.run(command), expected)
 
 
@@ -84,10 +83,10 @@ class TestIt(TestWrapper):
         gh.write_file(list_file, audio_list)
 
         command  = f'python audio.py --verbose {list_file}'
-        expected = ('Audio founded: audio1.wav\n'
-                    'Audio founded: audio2.wav\n'
-                    'Audio founded: audio23.wav\n'
-                    'Audio founded: audioN.wav')
+        expected = ('Audio: audio1.wav\n'
+                    'Audio: audio2.wav\n'
+                    'Audio: audio23.wav\n'
+                    'Audio: audioN.wav')
         self.assertEqual(gh.run(command), expected)
 
 
@@ -108,7 +107,6 @@ class TestIt(TestWrapper):
             self.assertTrue(filename in actual)
 
 
-    # NOTE: this will take a while and this require a valid audio path in AUDIOFILE
     @unittest.skip("this will take a while and this require a valid audio path in AUDIOFILE")
     def test_extract_speech(self):
         """End to end test extracting speech using CMUSphinx engine"""
