@@ -2,12 +2,28 @@
 #
 # Audio Module
 #
-# This is a wraper for audio processing tools.
-#
 # This provides an Audio wraper interface to extract
 # multiples properties that you can implement on your
-# proyects and also provides an argument processing class
-# to use it from terminal.
+# projects and also provides an argument processing class
+# to easily use from terminal to use different features.
+#
+#
+# Python code example using Audio wraper interface:
+# | some_audio = Audio(path="./path/to/audio.wav")
+# | print(some_audio.speech_to_text(engine="sphinx"))
+#
+# Example using the terminal:
+# $ python audio.py path/to/folder
+# $ python audio.py --speech sphinx path/to/audio.wav
+#
+#
+# The Audio wraper provides three engines to extract speech:
+# - CMUSphinx  (aka "sphinx")
+# - Houndify   (aka "houndify")
+# - IBM Watson (aka "watson")
+#
+# You can find the UML diagram related to this module on:
+# - ./docs/audio_uml.svg
 #
 
 
@@ -16,12 +32,21 @@ Audio Module
 
 This provides an Audio wraper interface to extract
 multiples properties that you can implement on your
-proyects and also provides an argument processing class
-to use it from terminal.
+projects and also provides an argument processing class
+to easily use from terminal to use different features.
 
-Usage example:
-$ python audio.py path/to/folder                    => find audio files on path.
-$ python audio.py --speech sphinx path/to/audio.wav => extract speech using CMUSphinx.
+Python code example using Audio wraper interface:
+| some_audio = Audio(path="./path/to/audio.wav")
+| print(some_audio.speech_to_text(engine="sphinx"))
+
+Example using the terminal:
+$ python audio.py path/to/folder
+$ python audio.py --speech sphinx path/to/audio.wav
+
+The Audio wraper provides for now three engines to extract speech:
+- CMUSphinx  (aka "sphinx")
+- Houndify   (aka "houndify")
+- IBM Watson (aka "watson")
 """
 
 
@@ -396,7 +421,7 @@ class Audio:
 
         ## TODO: WORK-IN-PROGRESS
 
-        debug.trace(7, f'SpeechEngine.isolated_vocals() => result saved on {output}')
+        debug.trace(7, f'SpeechEngine.get_vocals() => result saved on {output}')
 
 
     def speech_to_text(self, engine=''):
