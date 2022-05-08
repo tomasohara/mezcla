@@ -350,7 +350,9 @@ def expand_misc_param(misc_dict, param_name, param_dict=None):
     Notes: The parameter specification is comma separated. 
     PARAM_DICT defaults to the global user_parameters (or MISC_DICT if unset): see set_param_dict."""
     # EX: expand_misc_param({'x': 1, 'y': 2, 'z': 'a=3, b=4'}, 'z') => {'x': 1, 'y':, 2, 'z': 'a=3 b=4', 'a': 3, 'b': 4}
-    debug.trace(6, f"expand_misc_param({misc_dict}, {param_name}, {param_dict=})")
+    ## DUH: debug.trace(6, f"expand_misc_param({misc_dict}, {param_name}, {param_dict=})")
+    debug.trace(6, f"expand_misc_param({misc_dict}, {param_name}, {param_dict})")
+    ## TODO: debug.trace_expr(6, misc_dict, param_name, param_dict=None, prefix="expand_misc_param: ")
     if param_dict is None:
         param_dict = (user_parameters or misc_dict)
     new_misc_dict = misc_dict
