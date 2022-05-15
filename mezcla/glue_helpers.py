@@ -282,6 +282,7 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     # Note: Unix supports the '>|' pipe operator (i.e., output with overwrite); but,
     # it is not supported under Windows. To avoid unexpected porting issues, clients
     # should replace 'run("... >| f")' usages with 'delete_file(f); run(...)'.
+    # note: TestWrapper.setUp handles the deletion automatically
     assertion(">|" not in command_line)
     result = None
     ## TODO: if (just_issue or not wait): ... else: ...
