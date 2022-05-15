@@ -149,6 +149,7 @@ class TestWrapper(unittest.TestCase):
             default_temp_file = self.temp_base + "-test-"
         default_temp_file += str(TestWrapper.test_num)
         self.temp_file = system.getenv_text("TEMP_FILE", default_temp_file)
+        gh.delete_existing_file(self.temp_file)
         TestWrapper.test_num += 1
 
         ## OLD: tpo.trace_object(self, 5, "TestWrapper instance")
