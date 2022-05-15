@@ -687,6 +687,7 @@ def start_web_controller(model_filename):
             ## notes: avoids cross-origin type errrors
             'tools.response_headers.on': True,
             'tools.response_headers.headers': [
+                ## TODO: just allow the same host
                 ('Access-Control-Allow-Origin', '*'),
             ]
         },
