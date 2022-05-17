@@ -1049,12 +1049,12 @@ safe_int = to_int
 
 
 def to_bool(value):
-    """Converts VALUE to boolean value, False iff in {0, False, None, "False", "None", "Off"}, ignoring case.
-   Note: ensure the result is boolean.""" 
+    """Converts VALUE to boolean value, returning False iff in {0, False, None, "False", "None", "Off", and ""}, ignoring case.
+    Note: ensures the result is of type bool.""" 
     # EX: to_bool("off") => False
     result = value
     if isinstance(value, str):
-        result = (value.lower() not in ["false", "none", "off", "0"])
+        result = (value.lower() not in ["false", "none", "off", "0", ""])
     if not isinstance(result, bool):
         result = bool(result)
     debug.trace_fmtd(7, "to_bool({v}) => {r}", v=value, r=result)
@@ -1062,6 +1062,7 @@ def to_bool(value):
 #
 # EX: to_bool(None) => False
 # EX: to_bool(333) => True
+# EX: to_bool("") => False
 
 
 PRECISION = getenv_int("PRECISION", 6,
