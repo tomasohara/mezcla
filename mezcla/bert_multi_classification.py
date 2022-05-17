@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 #
-# Uses BERT or ALBERT for multiple-label classification, based on following blog:
+# Uses BERT or ALBERT for multiple-class text classification, based on following blog:
 #    https://towardsdatascience.com/beginners-guide-to-bert-for-multi-classification-task-92f5445c2d7c
 #
 # Notes:
@@ -68,7 +68,7 @@
 # - Create random split of single input file into train.tsv, dev.tsv and optionally test.tsv (or .csv's).
 #
 
-"""Invokes BERT or ALBERT for multiple-label text classification"""
+"""Invokes BERT or ALBERT for multiple-class text classification"""
 
 # Standard packages
 import csv
