@@ -411,6 +411,8 @@ if __debug__:
         - Use USE_REPR=False to use tracing via str instead of repr.
         - Use _KW_ARG for KW_ARG in case of conflict, as in following:
           trace_expr(DETAILED, term, _term="; ")
+        - Use MAX_LEN to specify maximum value length.
+        - Use PREFIX to specify initial trace output
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
         trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw})",
                   l=level, args=values, kw=kwargs)
@@ -419,6 +421,7 @@ if __debug__:
         no_eol = kwargs.get('no_eol') or kwargs.get('_no_eol')
         use_repr = kwargs.get('use_repr') or kwargs.get('_use_repr')
         max_len = kwargs.get('max_len') or kwargs.get('_max_len')
+        prefix = kwargs.get('prefix') or kwargs.get('_prefix')
         if sep is None:
             sep = ", "
         if no_eol is None:
@@ -428,6 +431,8 @@ if __debug__:
             no_eol = True
         if use_repr is None:
             use_repr = True
+        if prefix is None:
+            prefix = ""
         # Get symbolic expressions for the values
         # TODO: handle cases split across lines
         try:
@@ -448,6 +453,7 @@ if __debug__:
             trace_fmtd(ALWAYS, "Exception isolating expression in trace_vals: {exc}",
                        exc=sys.exc_info())
             expressions = []
+        trace(level, prefix, no_eol=no_eol)
         for expression, value in zip_longest(expressions, values):
             try:
                 # Exclude kwarg params
