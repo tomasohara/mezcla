@@ -5,6 +5,7 @@
 # and exclusion lists.
 #
 # TODO:
+# - drop from mezcla (likewise check for other older scripts)
 # - add save option
 # - show sample I/O
 # - have option to add relative frequency to output (for aid in tuning MIN_FREQ/MAX_FREQ)
