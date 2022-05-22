@@ -12,6 +12,8 @@
 #   ex:    (tp + tn) / (tp + tn + fp + fn)    for binary classifications
 # - See https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers#Single_metrics.
 # - Keep changes in sync with text_categorizer.py (e.g., XGBoost and GPU options).
+# - CherryPy Web server based on following tutorial
+#     https://simpletutorials.com/c/2165/How%20to%20Create%20a%20Simple%20JSON%20Service%20with%20CherryPy
 #
 # TODO:
 # - Maintain cache of categorization results.
@@ -631,6 +633,7 @@ class web_controller(object):
     @cherrypy.expose
     def index(self, **kwargs):
         """Website root page (e.g., web site overview and link to search)"""
+        # TODO: add way to override URL (e.g., to force use of known local hostname instead of "localhost")
         debug.trace_fmtd(5, "wc.index(s:{s}, kw:{kw})", s=self, kw=kwargs)
         base_url = cherrypy.url('/')
         debug.trace_fmt(4, "base_url={b}", b=base_url)
