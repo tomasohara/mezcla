@@ -102,7 +102,9 @@ browser_cache = {}
 ##
 def get_browser(url):
     """Get existing browser for URL or create new one
-    Note: This is for use in web automation (e.g., via selenium).
+    Notes: 
+    - This is for use in web automation (e.g., via selenium).
+    - A large log file might be produced (e.g., geckodriver.log).
     """
     browser = None
     global browser_cache
