@@ -11,6 +11,7 @@
 # - -and/or- Have ** max-output-term-length option and right pad w/ spaces.
 # - See if IDF calculation should for 0 if just one document occurrence.
 # - Reconcile with ngram_tfidf.py (e.g., overlap here with subsumption there).
+# - Add simple example(s) to help.
 #
 # Note:
 # - This script is just for running tfidf over text files.
