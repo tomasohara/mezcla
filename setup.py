@@ -14,7 +14,7 @@ from distutils.core import setup
 setup(name='Mezcla',
       packages=['mezcla'],
       module="mezcla",
-      version='1.2.0',
+      version='1.3.0',
       description-file = "README.txt",
       dist-name="Mezcla",
       ## OLD: py_modules=PYTHON_MODULE_NAMES,
