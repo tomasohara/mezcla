@@ -17,7 +17,6 @@
 # - Clean up script (e.g., regex => regex_wrapper).
 # - Add perl-inspired accessors (e.g., PREMATCH, POSTMATCH).
 #
-#
 
 """Wrapper class for regex match results"""
 
@@ -53,33 +52,38 @@ class regex_wrapper(object):
     note: Allows regex to be used directly in conditions"""
     # TODO: IGNORECASE = re.IGNORECASE, etc.
     # import from RE so other methods supported directly (and above constants)
-
+    TRACE_LEVEL = debug.QUITE_DETAILED
+    
     def __init__(self, ):
         tpo.debug_format("regex.__init__(): self={s}", 4, s=self)
         self.match_result = None
         # TODO: self.regex = ""
 
-    def search(self, regex, text, flags=0):
-        """Search for REGEX in TEXT with optional FLAGS"""
+    def search(self, regex, text, flags=0, base_trace_level=None):
+        """Search for REGEX in TEXT with optional FLAGS and BASE_TRACE_LEVEL (e.g., 6)"""
         ## TODO: rename as match_anywhere for clarity
-        tpo.debug_format("regex.search({r}, {t}, {f}): self={s}", 7,
+        if base_trace_level is None:
+            base_trace_level = self.TRACE_LEVEL
+        tpo.debug_format("regex.search({r}, {t}, {f}): self={s}", (1 + base_trace_level),
                          r=regex, t=text, f=flags, s=self)
         debug.assertion(isinstance(text, six.string_types))
         self.match_result = re.search(regex, text, flags)
         if self.match_result:
             ## OLD: tpo.debug_print("match: %s" % tpo.to_string(self.match_result.groups()), 6)
-            debug.trace_fmt(6, "match: {m}; regex: {r}", m=self.grouping(), r=regex)
+            debug.trace_fmt(base_trace_level, "match: {m}; regex: {r}", m=self.grouping(), r=regex)
         return self.match_result
 
-    def match(self, regex, text, flags=0):
-        """Match REGEX to TEXT with optional FLAGS"""
+    def match(self, regex, text, flags=0, base_trace_level=None):
+        """Match REGEX to TEXT with optional FLAGS and BASE_TRACE_LEVEL (e.g., 6)"""
         ## TODO: rename as match_start for clarity; add match_all method (wrapper around fullmatch)
-        tpo.debug_format("regex.match({r}, {t}, {f}): self={s}", 7,
+        if base_trace_level is None:
+            base_trace_level = 6
+        tpo.debug_format("regex.match({r}, {t}, {f}): self={s}", (1 + base_trace_level),
                          r=regex, t=text, f=flags, s=self)
         self.match_result = re.match(regex, text, flags)
         if self.match_result:
             ## OLD: tpo.debug_print("match: %s" % tpo.to_string(self.match_result.groups()), 6)
-            debug.trace_fmt(6, "match: {m}; regex: {r}", m=self.grouping(), r=regex)
+            debug.trace_fmt(base_trace_level, "match: {m}; regex: {r}", m=self.grouping(), r=regex)
         return self.match_result
 
     def get_match(self):
