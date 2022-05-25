@@ -91,6 +91,7 @@ FILENAME = "filename"
 # Globals
 # note: for convenience in Mako template code
 user_parameters = {}
+issued_param_dict_warning = False
 
 # Placeholders for dynamically loaded modules
 BeautifulSoup = None
@@ -258,7 +259,14 @@ def get_param_dict(param_dict=None):
 
 def set_param_dict(param_dict):
     """Sets global user_parameters to value of PARAM_DICT"""
+    debug.trace(7, "set_param_dict({param_dict})")
+    global issued_param_dict_warning
     global user_parameters
+
+    # Make update, issuing warning if first time
+    if not issued_param_dict_warning:
+        issued_param_dict_warning = True
+        debug.trace(5, "Warning: set_param_dict is not thread-safe")
     user_parameters = param_dict
 
 
