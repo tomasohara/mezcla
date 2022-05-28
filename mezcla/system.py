@@ -146,6 +146,7 @@ def getenv_text(var, default=None, description=None, helper=False):
     Notes: HELPER indicates that this call is in support of another getenv-type function (e.g., getenv_bool), so that tracing is only shown at higher verbosity level (e.g., 6 not 5).
     DESCRIPTION used for get_environment_option_descriptions."""
     # Note: default is empty string to ensure result is string (not NoneType)
+    ## TODO: add way to block registration
     register_env_option(var, description, default)
     if default is None:
         debug.trace(4, f"Warning: getenv_text treats default None as ''; consider using getenv_value for '{var}' instead")
