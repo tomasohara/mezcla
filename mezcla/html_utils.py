@@ -259,7 +259,7 @@ def get_param_dict(param_dict=None):
 
 def set_param_dict(param_dict):
     """Sets global user_parameters to value of PARAM_DICT"""
-    debug.trace(7, "set_param_dict({param_dict})")
+    debug.trace(7, f"set_param_dict({param_dict})")
     global issued_param_dict_warning
     global user_parameters
 
@@ -348,9 +348,11 @@ get_url_param_int = get_url_parameter_int
 
 
 def fix_url_parameters(url_parameters):
-    """Use the last values for any user parameter with multiple values"""
-    # EX: fix_url_parameters({'w':[7, 8], 'h':10}) => {'w':8, 'h':10}
-    new_url_parameters = {p:(v[-1] if isinstance(v, list) else v) for (p, v) in url_parameters.items()}
+    """Uses the last values for any user parameter with multiple values
+    and ensures dashes are used instead of underscores in the keys"""
+    # EX: fix_url_parameters({'w_v':[7, 8], 'h_v':10}) => {'w-v':8, 'h-v':10}
+    new_url_parameters = {p.replace("_", "-"):v for  (p, v) in url_parameters.items()}
+    new_url_parameters = {p:(v[-1] if isinstance(v, list) else v) for (p, v) in new_url_parameters.items()}
     debug.trace_fmt(6, "fix_url_parameters({up}) => {new}",
                     up=url_parameters, new=new_url_parameters)
     return new_url_parameters
