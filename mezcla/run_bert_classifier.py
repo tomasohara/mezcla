@@ -432,18 +432,21 @@ class MultiCatProcessor(DataProcessor):
     """Creates examples for the training and dev sets."""
     examples = []
     for (i, line) in enumerate(lines):
-      # Only the test set has a header
-      if set_type == "test" and i == 0:
-        continue
-      guid = "%s-%s" % (set_type, i)
-      if set_type == "test":
-        text_a = tokenization.convert_to_unicode(line[1])
-        label = "0"
-      else:
-        text_a = tokenization.convert_to_unicode(line[3])
-        label = tokenization.convert_to_unicode(line[1])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+      try:
+          # Only the test set has a header
+          if set_type == "test" and i == 0:
+            continue
+          guid = "%s-%s" % (set_type, i)
+          if set_type == "test":
+            text_a = tokenization.convert_to_unicode(line[1])
+            label = "0"
+          else:
+            text_a = tokenization.convert_to_unicode(line[3])
+            label = tokenization.convert_to_unicode(line[1])
+          examples.append(
+              InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+      except:
+          system.print_exception_info("_create_examples")
     return examples
 
 
