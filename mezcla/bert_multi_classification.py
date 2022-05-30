@@ -105,8 +105,8 @@ USE_ALBERT = system.getenv_bool("USE_ALBERT", USE_ALBERT_DEFAULT)
 BERT_NAME = "bert" if (not USE_ALBERT) else "albert"
 CONFIG_FILE_DEFAULT = system.form_path(MODEL_DIR, "{b}_config.json".format(b=BERT_NAME))
 BERT_CONFIG_FILE = system.getenv_text("BERT_CONFIG_FILE", CONFIG_FILE_DEFAULT)
-SAVE_CHECKPOINTS_STEPS = system.getenv_it("SAVE_CHECKPOINTS_STEPS", 10000,
-                                          "Number of tensorflow steps before checkpoints are written")
+SAVE_CHECKPOINTS_STEPS = system.getenv_int("SAVE_CHECKPOINTS_STEPS", 10000,
+                                           "Number of tensorflow steps before checkpoints are written")
 
 # Get label list and split into columns
 INPUT_LABELS = system.getenv_text("INPUT_LABELS", "id, label, text")
