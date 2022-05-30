@@ -326,14 +326,16 @@ def get_url_parameter_bool(param, default_value=False, param_dict=None):
     ## OLD: result = (param_dict.get(param, default_value) in ["on", True])
     debug.assertion((default_value is None) or isinstance(default_value, bool))
     result = (get_url_parameter_value(param, default_value, param_dict)
-              ## OLD: in ["on", True])
-              in ["1", "on", True])
+              ## OLD: in ["1", "on", True])
+              in ["1", "on", "True", True])
     ## HACK: result = ((system.to_unicode(param_dict.get(param, default_value))) in ["on", True])
     debug.trace_fmtd(4, "get_url_parameter_bool({p}, {dft}, _) => {r}",
                      p=param, dft=default_value, r=result)
     return result
 #
 get_url_param_bool = get_url_parameter_bool
+#
+# EX: get_url_param_bool("abc", False, { "abc": "True" }) => True
 
 
 def get_url_parameter_int(param, default_value=0, param_dict=None):
