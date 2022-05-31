@@ -37,7 +37,7 @@
 #          convert_to_bert $base.test "$prefix" > dev.tsv
 #        }
 #     - Add header to dummy testing data
-#       echo $'guid<T>text' > test.tsv
+#       echo $'guid\ttext' > test.tsv
 #       TODO: create test data by removing cases from other two files
 #     - Create category file
 #       cut -f2 train.tsv dev.tsv | sort --unique > cats.txt
@@ -76,9 +76,11 @@ import re
 import sys
 
 # Installed packages
+# Note: import tensorflow before others due to its stupid exceprtion quirks with numpy, sklearn, etc.
+import tensorflow as tf
 import pandas as pd
 from sklearn.model_selection import train_test_split
-import tensorflow as tf
+## OLD: import tensorflow as tf
 # TODO: make the following optional (so that tensorflow_cpu can be used)
 ## OLD import tensorflow_gpu
 
@@ -227,6 +229,9 @@ def main():
         df_bert_dev.to_csv(gh.form_path(OUTPUT_DIR, 'dev.tsv'), sep='\t', index=False, header=False)
         df_bert_test.to_csv(gh.form_path(OUTPUT_DIR, 'test.tsv'), sep='\t', index=False, header=True)
 
+    # Sanity checks
+    debug.assertion(system.file_exists("cats.txt"))
+        
     ## TODO: work example error from run_classifier.py cusstomization into assertion
     ## label_id = label_map[example.label]
     ## KeyError: '2'`
