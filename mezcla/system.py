@@ -232,7 +232,7 @@ def get_exception():
 
 def print_error(text):
     """Output TEXT to standard error
-    Note: Use print_stderr to include format keyword arguments"
+    Note: Use print_error_fmt to include format keyword arguments"
     """
     # ex: print_error("Fubar!")
     print(text, file=sys.stderr)
@@ -240,8 +240,9 @@ def print_error(text):
 
 def print_stderr(text, **kwargs):
     """Output TEXT to standard error, using KWARGS for formatting"""
+    # NOTE: Deprecated function: use print_error_fmt instead.
     # ex: print_stderr("Error: F{oo}bar!", oo=("oo" if (time_in_secs() % 2) else "u"))
-    # TODO: rename as print_stderr_fmt???
+    # TODO: rename as print_error_fmt
     # TODO: weed out calls that use (text.format(...)) rather than (text, ...)
     formatted_text = text
     try:
@@ -257,6 +258,8 @@ def print_stderr(text, **kwargs):
             print_full_stack()
     print(formatted_text, file=sys.stderr)
     return
+#
+print_error_fmt = print_stderr
 
 
 def print_exception_info(task, show_stack=None):
