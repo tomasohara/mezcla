@@ -35,13 +35,22 @@ from mezcla import system
 from mezcla import tpo_common as tpo
 from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
 
-# note: ALLOW_SUBCOMMAND_TRACING should be interepreted in terms of detailed
+# note:
+# - ALLOW_SUBCOMMAND_TRACING should be interepreted in terms of detailed
 # tracing. Now, basic tracing is still done unless disable_subcommand_tracing()
-# invoked. (This way, the subscript start/end time shown by default)
-ALLOW_SUBCOMMAND_TRACING = tpo.getenv_boolean("ALLOW_SUBCOMMAND_TRACING", False)
-default_subtrace_level = min(tpo.USUAL, tpo.debugging_level())
+# invoked. (This way, the subscript start/end time is still shown by default)
+# - SUB_DEBUG_LEVEL added to make sub-script trace level explicit
+DEFAULT_SUB_DEBUG_LEVEL = min(debug.TL.USUAL, debug.get_level())
+SUB_DEBUG_LEVEL = system.getenv_int("SUB_DEBUG_LEVEL", DEFAULT_SUB_DEBUG_LEVEL,
+                                    "Tracing level for sub-command scripts invoked")
+default_subtrace_level = SUB_DEBUG_LEVEL
+ALLOW_SUBCOMMAND_TRACING = tpo.getenv_boolean("ALLOW_SUBCOMMAND_TRACING",
+                                              (SUB_DEBUG_LEVEL > DEFAULT_SUB_DEBUG_LEVEL),
+                                              "Whether sub-commands have tracing above TL.USUAL")
+## OLD: default_subtrace_level = min(tpo.USUAL, debug.get_level())
 if ALLOW_SUBCOMMAND_TRACING:
-    default_subtrace_level = tpo.debugging_level()
+    # TODO: work out intuitive default if both SUB_DEBUG_LEVEL and ALLOW_SUBCOMMAND_TRACING specified
+    default_subtrace_level = max(debug.get_level(), SUB_DEBUG_LEVEL)
 
 INDENT = "    "                          # default indentation
 
