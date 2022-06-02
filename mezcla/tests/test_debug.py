@@ -7,6 +7,11 @@
 # - For tests that capture standard error, see
 #       https://docs.pytest.org/en/6.2.x/capture.html
 # - This uses capsys fixture mentioned in above link.
+#................................................................................
+# TODO:
+# - make sure trace_fmt traps all exceptiona
+#   debug.trace_fmt(1, "fu={fu}", fuu=1)
+#                           ^^    ^^^
 #
 
 """Tests for debug module"""
@@ -98,8 +103,9 @@ class TestDebug:
         debug.code(4, lambda: increment)
         debug.set_level(save_trace_level)
         assert(count == 0)
-
+        
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     pytest.main([__file__])
+
