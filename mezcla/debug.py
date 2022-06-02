@@ -133,9 +133,19 @@ if __debug__:
 
     def get_level():
         """Get current tracing level"""
-        ## global trace_level
-        return trace_level
-
+        # Note: ensures result is integer (not enum)
+        # EX: (get_level() >= 0)
+        # EX: type(get_level() == int)
+        ## OLD:
+        ## ## global trace_level
+        ## return trace_level
+        level = 0
+        try:
+            assertion(isinstance(level, int))
+            level = int(trace_level)
+        except:
+            _print_exception_info("get_level")
+        return level
 
     def get_output_timestamps():
         """Return whether outputting timestamps"""
