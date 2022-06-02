@@ -137,7 +137,7 @@ def getenv(var, default_value=None):
     """Simple wrapper around os.getenv, with tracing"""
     # Note: Use getenv_* for type-specific versions with env. option description
     result = os.getenv(var, default_value)
-    debug.trace_fmt(5, "getenv({v}, {dv}) => {r}", v=var, df=default_value, r=result)
+    debug.trace_fmt(5, "getenv({v}, {dv}) => {r}", v=var, dv=default_value, r=result)
     return result
 
 
