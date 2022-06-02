@@ -40,7 +40,7 @@ from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
 # tracing. Now, basic tracing is still done unless disable_subcommand_tracing()
 # invoked. (This way, the subscript start/end time is still shown by default)
 # - SUB_DEBUG_LEVEL added to make sub-script trace level explicit
-DEFAULT_SUB_DEBUG_LEVEL = min(debug.TL.USUAL, debug.get_level())
+DEFAULT_SUB_DEBUG_LEVEL = int(min(debug.TL.USUAL, debug.get_level()))
 SUB_DEBUG_LEVEL = system.getenv_int("SUB_DEBUG_LEVEL", DEFAULT_SUB_DEBUG_LEVEL,
                                     "Tracing level for sub-command scripts invoked")
 default_subtrace_level = SUB_DEBUG_LEVEL
