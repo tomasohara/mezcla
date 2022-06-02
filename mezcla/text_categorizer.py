@@ -113,7 +113,7 @@ XGB_VERBOSITY = getenv_int("XGB_VERBOSITY", 0, "Degree of verbosity from 0 to 3"
 USE_LR = system.getenv_bool("USE_LR", False)
 
 # Options for GPU usage
-GPU_DEVICE = system.getenv_value("GPU_DEVICE", "",
+GPU_DEVICE = system.getenv_value("GPU_DEVICE", None,     # TODO: clarify value to use
                                 "Device number for GPU (e.g., shown under nvidia-smi)")
 
 # Options for TFIDF transformation

@@ -43,7 +43,7 @@ import mezcla.glue_helpers as gh
 # This also allows for defining options in one place rather than say 3+ for argparse.
 # TODO: XYZ => DEFAULT_XYZ
 MAX_SIMILAR = tpo.getenv_integer("MAX_SIMILAR", 10)
-DOCID_FILENAME = tpo.getenv_text("DOCID_FILENAME", None)
+DOCID_FILENAME = tpo.getenv_value("DOCID_FILENAME", None)
 # TODO: default to number of CPU's
 PARALLEL_SHARDS = tpo.getenv_integer("PARALLEL_SHARDS", 1)
 IN_MEMORY = tpo.getenv_bool("IN_MEMORY", False)

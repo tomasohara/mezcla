@@ -48,6 +48,7 @@
 #      for line in dummy.process_input(): ...
 #
 # TODO:
+# - *** Convert tpo_common calls (i.e., tpo.xyz) to debug!'
 # - Specify argument via input dicts, such as in 
 #      options=[{"name": "verbose", "type": bool}, 
 #               {"name": "count", type: int, default: 10}]
@@ -196,19 +197,19 @@ class Main(object):
         ntf_args = {'prefix': prefix,
                     ## TODO: 'suffix': "-"
                     }
-        self.temp_base = tpo.getenv_text("TEMP_BASE",
-                                         tempfile.NamedTemporaryFile(**ntf_args).name)
+        self.temp_base = system.getenv_text("TEMP_BASE",
+                                            tempfile.NamedTemporaryFile(**ntf_args).name)
         # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
-        # -or-: temp_base_dir = tpo.getenv_text("TEMP_BASE_DIR", ""); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
+        # -or-: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
         if use_temp_base_dir is None:
-            use_temp_base_dir = tpo.getenv_bool("USE_TEMP_BASE_DIR", False)
+            use_temp_base_dir = system.getenv_bool("USE_TEMP_BASE_DIR", False)
         self.use_temp_base_dir = use_temp_base_dir
         if self.use_temp_base_dir:
             gh.run("mkdir -p {dir}", dir=self.temp_base)
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
             default_temp_file = self.temp_base
-        self.temp_file = tpo.getenv_text("TEMP_FILE", default_temp_file)
+        self.temp_file = system.getenv_text("TEMP_FILE", default_temp_file)
 
         # Get arguments from specified parameter or via command line
         # Note: --help assumed for input-less scripts with command line options

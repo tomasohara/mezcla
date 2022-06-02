@@ -50,7 +50,8 @@ MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", MAX_NGRAM_SIZE)
 IDF_WEIGHTING = system.getenv_text("IDF_WEIGHTING", "basic")
 TF_WEIGHTING = system.getenv_text("TF_WEIGHTING", "basic")
 DELIMITER = system.getenv_text("DELIMITER", ",")
-CORPUS_DUMP = system.getenv_text("CORPUS_DUMP", "")
+CORPUS_DUMP = system.getenv_value("CORPUS_DUMP", None,
+                                  "Filename for corpus dump")
 PRUNE_SUBSUMED_TERMS = system.getenv_bool("PRUNE_SUBSUMED_TERMS", False)
 PRUNE_OVERLAPPING_TERMS = system.getenv_bool("PRUNE_OVERLAPPING_TERMS", False)
 SKIP_STEMMING = system.getenv_bool("SKIP_STEMMING", False,

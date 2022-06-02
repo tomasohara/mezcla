@@ -111,13 +111,13 @@ SKIP_DEVEL = getenv_bool("SKIP_DEVEL", False)
 TEST_PCT = getenv_number("TEST_PCT", 0.10)
 SEED = getenv_int("SEED", 7919)
 SCORING_METRIC = getenv_text("SCORING_METRIC", "accuracy")
-CLASS_VAR = getenv_value("CLASS_VAR", "")
+CLASS_VAR = getenv_value("CLASS_VAR", None,
+                         "Classification variable name")
 ## TEST: 
 ## SKIP_XGB = getenv_bool("SKIP_XGB", False)
 ## USE_XGB = getenv_bool("USE_XGB", not SKIP_XGB)
 DEFAULT_INCLUDE_XGB = XGB_CLASSIFIER in [DEFAULT_DEVEL_CLASSIFIER, DEFAULT_VALIDATION_CLASSIFIER]
 INCLUDE_XGB = getenv_bool("INCLUDE_XGB", DEFAULT_INCLUDE_XGB or INCLUDE_ALL)
-## BAD: XGB_BOOSTER = getenv_text("XGB_BOOSTER", None)
 XGB_BOOSTER = getenv_value("XGB_BOOSTER", None)
 XGB_SKIP_GPU = getenv_bool("XGB_SKIP_GPU", False)
 XGB_USE_GPU = (not XGB_SKIP_GPU)
@@ -145,7 +145,7 @@ DEFAULT_INCLUDE_AUTOSKLEARN_CLASSIFIER = AUTOSKLEARN_CLASSIFIER in [DEFAULT_DEVE
 INCLUDE_AUTOSKLEARN = getenv_bool("INCLUDE_AUTOSKLEARN", DEFAULT_INCLUDE_AUTOSKLEARN_CLASSIFIER,
                                   "Include Auto-Sklearn classifier for AutoML")
 #
-GPU_DEVICE = getenv_value("GPU_DEVICE", "",
+GPU_DEVICE = getenv_value("GPU_DEVICE", None,     # TODO: clarify value to use
                           "Device number for GPU (e.g., shown under nvidia-smi)")
 SHOW_ABLATION = getenv_bool("SHOW_ABLATION", False,
                             "Show ablation plot for accuracy")
