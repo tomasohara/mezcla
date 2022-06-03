@@ -1,18 +1,15 @@
 #! /usr/bin/env python
 #
-# TODO: Test(s) for ../<module>.py
+# Test(s) for ../rgb_color_name.py
 #
 # Notes:
-# - Fill out TODO's below. Use numbered tests to order (e.g., test_1_usage).
-# - TODO: If any of the setup/cleanup methods defined, make sure to invoke base
-#   (see examples below for setUp and tearDown).
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by  unittest_wrapper.py.
 # - This can be run as follows:
-#   $ PYTHONPATH="$(realpath .)/..):$PYTHONPATH" python tests/test_<module>.py
+#   $ PYTHONPATH="$(realpath .)/..):$PYTHONPATH" python tests/test_rgb_color_name.py
 #
 
-"""TODO: Tests for <module> module"""
+"""Tests for rgb_color_name module"""
 
 # Standard packages
 import re
@@ -30,9 +27,7 @@ from mezcla import glue_helpers as gh
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 #    TestIt.script_module   string name
-## TODO: template => new name
-THE_MODULE = None                       ## TODO: remove
-## TODO: import mezcla.<module> as THE_MODULE
+import mezcla.rgb_color_name as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not re.search(__file__, r"\btemplate.py$"):
@@ -53,33 +48,17 @@ class TestIt(TestWrapper):
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
-    ## TODO: optional setup methods
-    ##
-    ## @classmethod
-    ## def setUpClass(cls):
-    ##     """One-time initialization (i.e., for entire class)"""
-    ##     debug.trace(6, f"TestIt.setUpClass(); cls={cls}")
-    ##     # note: should do parent processing first
-    ##     super().setUpClass()
-    ##     ...
-    ##     return
-    ##
-    ## def setUp(self):
-    ##     """Per-test setup"""
-    ##     debug.trace(6, f"TestIt.setUp(); self={self}")
-    ##     # note: must do parent processing first (e.g., for temp file support)
-    ##     super().setUp()
-    ##     ...
-    ##     # TODO: debug.trace_current_context(level=debug.QUITE_DETAILED)
-    ##     return
-
     def test_data_file(self):
         """Makes sure TODO works as expected"""
         debug.trace(4, "TestIt.test_data_file()")
-        data = ["TODO1", "TODO2"]
-        gh.write_lines(self.temp_file, data)
+
+        gh.run(f"perl -e 'print(\"\\xFF\\x00\\x00\\x00\\xFF\\x00\\x00\\x00\\xFF\");' | rawtoppm 3 1 | pnmtopng | extcolors > {self.temp_file}")
+        #   =>
+        #   <(255, 0, 0), red>    :  33.33% (1)
+        #   <(0, 255, 0), lime>    :  33.33% (1)
+        #   <(0, 0, 255), blue>    :  33.33% (1)        
         output = self.run_script("", self.temp_file)
-        self.assertTrue(re.search(r"TODO-pattern", 
+        self.assertTrue(re.search(r"<(0, 255, 0), lime> ", 
                                   output.strip()))
         return
 
@@ -89,21 +68,6 @@ class TestIt(TestWrapper):
         self.fail("TODO: code test")
         ## ex: self.assertEqual(THE_MODULE.TODO_function() == TODO_value)
         return
-
-    ## TODO: optional cleanup methods
-    ##
-    ## def tearDown(self):
-    ##     debug.trace(6, f"TestIt.tearDown(); self={self}")
-    ##     super(TestIt, cls).tearDownClass()
-    ##     ...
-    ##     return
-    ##
-    ## @classmethod
-    ## def tearDownClass(cls):
-    ##     debug.trace(6, f"TestIt.tearDownClass(); cls={cls}")
-    ##     super(TestIt, self).tearDown()
-    ##     ...
-    ##     return
 
 #------------------------------------------------------------------------
 

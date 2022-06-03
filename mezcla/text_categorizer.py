@@ -11,6 +11,9 @@
 # - Calculates accuracy as number of agreements over number of cases:
 #   ex:    (tp + tn) / (tp + tn + fp + fn)    for binary classifications
 # - See https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers#Single_metrics.
+# - Keep changes in sync with text_categorizer.py (e.g., XGBoost and GPU options).
+# - CherryPy Web server based on following tutorial
+#     https://simpletutorials.com/c/2165/How%20to%20Create%20a%20Simple%20JSON%20Service%20with%20CherryPy
 #
 # TODO:
 # - Maintain cache of categorization results.
@@ -22,6 +25,7 @@
 """Text categorization support"""
 
 # Standard packages
+from itertools import zip_longest
 import os
 import re
 import sys
@@ -51,7 +55,8 @@ from system import getenv_bool, getenv_float, getenv_int, getenv_text
 #................................................................................
 # Constants (e.g., environment-based options)
 
-SERVER_PORT = system.getenv_integer("SERVER_PORT", 9010)
+SERVER_PORT = system.getenv_integer("SERVER_PORT", 9010,
+                                    "TCP port for web interface")
 OUTPUT_BAD = system.getenv_bool("OUTPUT_BAD", False)
 CONTEXT_LEN = system.getenv_int("CONTEXT_LEN", 512)
 VERBOSE = system.getenv_bool("VERBOSE", False)
@@ -65,6 +70,8 @@ RETAIN_LABELS = getenv_bool("RETAIN_LABELS", False,
                             "Don't encode class labels")
 ENCODE_CLASSES = getenv_bool("ENCODE_CLASSES", not RETAIN_LABELS,
                              "Encode classes using enumeration")
+TRACE_IMPORTANCES = getenv_bool("TRACE_IMPORTANCES", False,
+                                "Trace feature importances")
 
 # Options for Support Vector Machines (SVM)
 #
@@ -95,15 +102,18 @@ SGD_VERBOSE = system.getenv_bool("SGD_VERBOSE", False)
 # Options for Extreme Gradient Boost (XGBoost)
 USE_XGB = system.getenv_bool("USE_XGB", False)
 if USE_XGB:
+    # pylint: disable=import-outside-toplevel, import-error
     import xgboost as xgb
+XGB_BOOSTER = system.getenv_value("XGB_BOOSTER", None)
 XGB_USE_GPUS = system.getenv_bool("XGB_USE_GPUS", False)
+XGB_VERBOSITY = getenv_int("XGB_VERBOSITY", 0, "Degree of verbosity from 0 to 3")
 
 # Options for Logistic Regression (LR)
 # TODO: add regularization
 USE_LR = system.getenv_bool("USE_LR", False)
 
 # Options for GPU usage
-GPU_DEVICE = system.getenv_text("GPU_DEVICE", "",
+GPU_DEVICE = system.getenv_value("GPU_DEVICE", None,     # TODO: clarify value to use
                                 "Device number for GPU (e.g., shown under nvidia-smi)")
 
 # Options for TFIDF transformation
@@ -124,10 +134,6 @@ TFIDF_STOPWORDS = not OMIT_STOPWORDS
 all_use_settings = [USE_SVM, USE_SGD, USE_XGB, USE_LR]
 USE_NB = (not any(all_use_settings))
 debug.assertion(sum([int(use) for use in all_use_settings]) <= 1)
-
-# Globals
-# Note: just used for OUTPUT_CSV support.
-tfidf_vectorizer = None
 
 #................................................................................
 # Utility functions
@@ -213,6 +219,7 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         """Constructor: records CLASSIFIER"""
         debug.trace_fmt(6, "{cl}.__init__(clf={c})", c=classifier, cl=str(type(self)))
         self.classifier = classifier
+        self.tfidf_vectorizer = None
 
     def _get_param_names(self):
         """Get parameter names for the estimator"""
@@ -227,36 +234,18 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
     def fit(self, training_x=None, training_y=None):
         """Delegates fit() invocation to classifier, after outputing CSV if desired"""
         if OUTPUT_CSV:
-            ## NOTE: save in pickle format for debugging
-            if debug.verbose_debugging():
-                system.save_object(BASENAME + ".x.csv.pickle", training_x)
-                system.save_object(BASENAME + ".y.csv.pickle", training_y)
-            ##
-            df_x = pandas.DataFrame(training_x.toarray())
-            df_y = pandas.DataFrame(training_y)
-            
-            ## HACK: use global pipeline to get feature names
-            def normalize(feature):
-                """Normalize feature name"""
-                return feature.replace(" ", "_")
-            ##
-            features = [normalize(f) for f in tfidf_vectorizer.get_feature_names()]
-            df_x.to_csv(BASENAME + ".x.csv.list", header=features, index=False)
-            df_y.to_csv(BASENAME + ".y.csv.list", header=[CLASS_VAR], index=False)
-            # Trace out the IDF values; pylint: disable=protected-access
-            ## TODO: debug.trace_value(6, zip(features, tfidf_vectorizer._idf_diag), "ngram idf's")
-            if debug.debugging(6):
-                df = _document_frequency(training_x)
-                sorted_features = sorted(zip(features, tfidf_vectorizer.idf_, df),
-                                         key=lambda f_idf: f_idf[1], reverse=True)
-                debug.trace_values(6, sorted_features, "ngram idf's & df's")
-            ## DEBUG:
-            debug.trace_object(6, tfidf_vectorizer)
+            self.output_csv(training_x, training_y, BASENAME)
+        if TRACE_IMPORTANCES:
+            debug.trace_fmt(1, "Feature importances: {imp}",
+                            imp=self.extract_feature_importance())
+        ## DEBUG: debug.trace_object(6, self.tfidf_vectorizer)
             
         return self.classifier.fit(training_x, training_y)
 
     def predict(self, sample):
         """Return predicted class for each SAMPLE (returning vector)"""
+        if OUTPUT_CSV:
+            self.output_csv(sample, (["n/a"] * sample.shape[0]), BASENAME + ".test")
         return self.classifier.predict(sample)
 
     def score(self, X, y, sample_weight=None):
@@ -266,7 +255,60 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
     def predict_proba(self, sample):
         """Return probabilities of outcome classes predicted for each SAMPLE (returning matrix)"""
         return self.classifier.predict_proba(sample)
+
+    def output_csv(self, x, y, basename):
+        """Output features in X and Y to BASENAME.csv"""
+        # TODO: move into TextCategorizer; put pickle and IDF support in separate method
+        debug.trace(6, f"output_csv(_, _, {basename}); self={self}")
+        debug.reference_var(self)
+
+        ## NOTE: save in pickle format for debugging
+        if debug.verbose_debugging():
+            system.save_object(basename + ".x.csv.pickle", x)
+            system.save_object(basename + ".y.csv.pickle", y)
+        ##
+        df_x = pandas.DataFrame(x.toarray())
+        df_y = pandas.DataFrame(y)
+        
+        ## HACK: use global pipeline to get feature names
+        def normalize(feature_name):
+            """Normalize FEATURE_NAME"""
+            return feature_name.replace(" ", "_")
+        ##
+        features = [normalize(f) for f in self.tfidf_vectorizer.get_feature_names()]
+        df_x.to_csv(basename + ".x.csv.list", header=features, index=False)
+        df_y.to_csv(basename + ".y.csv.list", header=[CLASS_VAR], index=False)
+        gh.run("paste --delimiters=',' {b}.x.csv.list {b}.y.csv.list > {b}.csv.list",
+               b=basename)
+        # TODO: combine into single dataframe and use to_csv over that; use .csv instead of .csv.list (and make sure not to overwrite)
+        debug.assertion(system.file_exists(basename + ".csv.list"))
+
+        # Trace out the IDF values
+        ## TODO: debug.trace_value(6, zip(features, tfidf_vectorizer._idf_diag), "ngram idf's")
+        if debug.debugging(6):
+            # pylint: disable=protected-access
+            df = _document_frequency(x)
+            sorted_features = sorted(zip(features, self.tfidf_vectorizer.idf_, df),
+                                     key=lambda f_idf: f_idf[1], reverse=True)
+            debug.trace_values(6, sorted_features, "ngram idf's & df's")
+        return
     
+    def extract_feature_importance(self):
+        """Returns list of (name, weight) for important features"""
+        # TODO: move into TextCategorizer
+        debug.trace(6, f"extract_feature_importance(); self={self}")
+        result = []
+        try:
+            feature_names = (self.tfidf_vectorizer.get_feature_names() or [])
+            sorted_scores = sorted(zip_longest(feature_names, self.classifier.feature_importances_,  fillvalue="F?"),
+                                   key=lambda name_score: name_score[1],
+                                   reverse=True)
+            result = [(f, s) for (f, s) in sorted_scores if s > 0]
+        except:
+            system.print_exception_info("extract_feature_importance")
+        debug.trace(5, f"extract_feature_importance() => {result}")
+        return result
+
 #...............................................................................
 
 class TextCategorizer(object):
@@ -313,7 +355,7 @@ class TextCategorizer(object):
             # TODO: rework to just define classifier here and then pipeline at end.
             # in order to eliminate redundant pipeline-specification code.
             # TODO: n_jobs=-1
-            misc_xgb_params = {}
+            misc_xgb_params = {'booster': XGB_BOOSTER, 'verbosity': XGB_VERBOSITY}
             if XGB_USE_GPUS:
                 misc_xgb_params.update({'tree_method': 'gpu_hist'})
                 misc_xgb_params.update({'predictor': 'gpu_predictor'})
@@ -326,9 +368,10 @@ class TextCategorizer(object):
         else:
             debug.assertion(USE_NB)
             classifier = MultinomialNB()
-        if OUTPUT_CSV:
+        use_classifier_wrapper = (OUTPUT_CSV or TRACE_IMPORTANCES)
+        if use_classifier_wrapper:
             classifier = ClassifierWrapper(classifier)
-            debug.trace_fmt(4, "Using wrapper ({cl}) for CSV hooks", cl=type(classifier))
+            debug.trace_fmt(4, "Using wrapper ({cl}) for feature tracing hooks", cl=type(classifier))
 
         # Add classifier to text categorization pipeline]
         tfidf_parameters = {}
@@ -351,11 +394,11 @@ class TextCategorizer(object):
         self.cat_pipeline = Pipeline(
             [('tfidf', TfidfVectorizer(**tfidf_parameters)),
              ('clf', classifier)])
-        if OUTPUT_CSV:
+        if use_classifier_wrapper:
             pipeline_steps = list(self.cat_pipeline._iter())
-            global tfidf_vectorizer
-            tfidf_vectorizer = pipeline_steps[0][2]
             debug.assertion(pipeline_steps[0][1] == 'tfidf')
+            ## TODO: classifier.tfidf_vectorizer = self.cat_pipeline['tfidf']
+            classifier.tfidf_vectorizer = pipeline_steps[0][2]
         debug.trace_object(5, self, "TextCategorizer")
         return
 
@@ -409,6 +452,7 @@ class TextCategorizer(object):
 
         # Output classification report
         if report:
+            debug.assertion(VERBOSE)
             if VERBOSE:
                 stream.write("Missed classifications")
                 stream.write("\n")
@@ -501,6 +545,7 @@ DOG_TEXT = "My dog has fleas."
 def format_index_html(base_url=None):
     """Formats a simple HTML page illustrating the categorize and class_probabilities API calls,
     Note: BASE_URL provides the server URL (e.g., http://www.my-categorizer.com:9999)"""
+    debug.trace(5, f"format_index_html(base_url={base_url})")
     # TODO: parameterize template generation (e.g., to facilitate usage in derived classes of web_controller
     if (base_url is None):
         base_url = "http://127.0.0.1"
@@ -510,15 +555,16 @@ def format_index_html(base_url=None):
     # Create index page template with optional examples for debugging
     html_template = """
     <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-    <html>
+    <html lang="en">
         <head>
+            <meta content="text/html; charset=UTF-8" http-equiv="content-type">
             <title>Text categorizer</title>
         </head>
         <body>
             Try <a href="categorize">categorize</a> and <a href="class_probabilities">class_probabilities</a>.<br>
             note: You need to supply the <i><b>text</b></i> parameter.<br>
             <br>
-            For example,
+            Examples:
             <ul>
                 <li>Category for <a href="categorize?text={quoted_trump_text}">"{trump_text}"</a>:<br>
                     {indent}<code>{base_url}/categorize?text={quoted_trump_text}</code>
@@ -532,8 +578,8 @@ def format_index_html(base_url=None):
 
     if debug.detailed_debugging():
         html_template += """
-            <p>
-            Other examples:
+            <!-- <p> -->
+            Other examples (n.b., debug only):
             <ul>
                 <li><a href="shutdown">Shutdown</a> the server:<br>
                     {indent}<code>{base_url}/shutdown</code>
@@ -545,23 +591,25 @@ def format_index_html(base_url=None):
             </ul>
         """
     #
+    # TODO: define text area dimensions based on browser window size
     html_template += """
-	    <!-- Form for entering text for categorization -->
+            <!-- Form for entering text for categorization -->
             <hr>
-	    <form action="http://localhost:{port}/categorize" method="get">
-	        <label for="textarea1">Categorize</label>
+            <form action="{base_url}/categorize" method="get">
+                <label for="textarea1">Categorize</label>
                 <br>
-	        <textarea id="textarea1" multiline="True" rows="10" cols="132" name="text"></textarea>
-	        <br>
-	        <input type="submit">
-	    </form>
-	    
+                <textarea id="textarea1" rows="5" cols="100" name="text"></textarea>
+                <br>
+                <input type="submit">
+            </form>
+            
         </body>
     </html>
-    """.format(port=SERVER_PORT)
+    """
 
     # Resolve template into final HTML
-    index_html = html_template.format(base_url=base_url, indent="&nbsp;&nbsp;&nbsp;&nbsp;",
+    index_html = html_template.format(base_url=base_url,
+                                      indent="&nbsp;&nbsp;&nbsp;&nbsp;",
                                       trump_text=TRUMP_TEXT,
                                       quoted_trump_text=system.quote_url_text(TRUMP_TEXT),
                                       dog_text=DOG_TEXT,
@@ -585,6 +633,7 @@ class web_controller(object):
     @cherrypy.expose
     def index(self, **kwargs):
         """Website root page (e.g., web site overview and link to search)"""
+        # TODO: add way to override URL (e.g., to force use of known local hostname instead of "localhost")
         debug.trace_fmtd(5, "wc.index(s:{s}, kw:{kw})", s=self, kw=kwargs)
         base_url = cherrypy.url('/')
         debug.trace_fmt(4, "base_url={b}", b=base_url)
@@ -628,8 +677,8 @@ class web_controller(object):
 
 
 def start_web_controller(model_filename):
-    """Start up the CherryPy controller for categorization via MODEL_FILENAME"""
-    # TODO: return status code
+    """Start up the CherryPy controller for categorization via MODEL_FILENAME
+    Note: The function blocks until server is shutdown"""
     debug.trace(5, "start_web_controller()")
 
     # Load in CherryPy configuration
@@ -641,6 +690,7 @@ def start_web_controller(model_filename):
             ## notes: avoids cross-origin type errrors
             'tools.response_headers.on': True,
             'tools.response_headers.headers': [
+                ## TODO: just allow the same host
                 ('Access-Control-Allow-Origin', '*'),
             ]
         },
@@ -654,8 +704,10 @@ def start_web_controller(model_filename):
     # Start the server
     # TODO: trace out all configuration settings
     debug.trace_values(4, cherrypy.response.headers, "default response headers")
-    cherrypy.quickstart(web_controller(model_filename), "", conf)
-    ## TODO: debug.trace_value(4, cherrypy.response.headers, "response headers")
+    textcat_controller = web_controller(model_filename)
+    debug.trace_expr(4, textcat_controller.text_cat.keys)
+    cherrypy.quickstart(textcat_controller, config=conf)
+    # Note: the following call blocks
     cherrypy.engine.start()
     return
 
@@ -666,7 +718,10 @@ def start_web_controller(model_filename):
 def main(args):
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
-    if (len(args) != 2):
+    # HACK: ignore --tag label (n.b., used for killing via process regex)
+    if ((len(args) > 0) and (args[1] == "--tag")):
+        args[1:] = args[3:]
+    if ((len(args) != 2) or (args[1] == "--help")):
         system.print_stderr("Usage: {p} model".format(p=args[0]))
         return
     model = args[1]

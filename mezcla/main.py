@@ -48,6 +48,7 @@
 #      for line in dummy.process_input(): ...
 #
 # TODO:
+# - *** Convert tpo_common calls (i.e., tpo.xyz) to debug!'
 # - Specify argument via input dicts, such as in 
 #      options=[{"name": "verbose", "type": bool}, 
 #               {"name": "count", type: int, default: 10}]
@@ -136,7 +137,7 @@ class Main(object):
                          auto=auto_help, usage=brief_usage,
                          para=paragraph_mode, page=track_pages, file=file_input_mode,
                          prog=program, ha=HELP_ARG, skip_args=skip_args, kw=kwargs)
-        self.description = "TODO: what the script does" # defaults to TODO note for client
+        self.description = "TODO: what the script does"   # *** DONT'T MODIFY: defaults TODO note for client
         # TODO: boolean_options = [(VERBOSE, "Verbose output mode")]
         self.boolean_options = []
         self.text_options = []
@@ -196,19 +197,19 @@ class Main(object):
         ntf_args = {'prefix': prefix,
                     ## TODO: 'suffix': "-"
                     }
-        self.temp_base = tpo.getenv_text("TEMP_BASE",
-                                         tempfile.NamedTemporaryFile(**ntf_args).name)
+        self.temp_base = system.getenv_text("TEMP_BASE",
+                                            tempfile.NamedTemporaryFile(**ntf_args).name)
         # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
-        # -or-: temp_base_dir = tpo.getenv_text("TEMP_BASE_DIR", ""); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
+        # -or-: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
         if use_temp_base_dir is None:
-            use_temp_base_dir = tpo.getenv_bool("USE_TEMP_BASE_DIR", False)
+            use_temp_base_dir = system.getenv_bool("USE_TEMP_BASE_DIR", False)
         self.use_temp_base_dir = use_temp_base_dir
         if self.use_temp_base_dir:
             gh.run("mkdir -p {dir}", dir=self.temp_base)
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
             default_temp_file = self.temp_base
-        self.temp_file = tpo.getenv_text("TEMP_FILE", default_temp_file)
+        self.temp_file = system.getenv_text("TEMP_FILE", default_temp_file)
 
         # Get arguments from specified parameter or via command line
         # Note: --help assumed for input-less scripts with command line options
@@ -298,13 +299,33 @@ class Main(object):
                          l=label, n=name, s=self)
         return name
 
-    def has_parsed_option(self, label):
-        """Whether option for LABEL specified (i.e., non-null value)"""
+    def has_parsed_option_old(self, label):
+        """Whether option for LABEL specified (i.e., non-null value)
+        Note: OLD version that checks for non-null value)
+        """
+        # EX: self.parsed_args = {'it': False}; self.has_parsed_option_old('nonit') => False
         name = self.get_option_name(label)
-        has_option = (name in self.parsed_args and self.parsed_args[name])
-        tpo.debug_format("has_parsed_option({l}) => {r}", 6,
+        has_option = (name in self.parsed_args and (self.parsed_args[name] is not None))
+        tpo.debug_format("has_parsed_option_old({l}) => {r}", 6,
                          l=label, r=has_option)
         return has_option
+
+    def has_parsed_option(self, label):
+        """Value for LABEL specified or None if not applicable
+        Note: This is a deprecated method (use get_parsed_option instead)
+        """
+        # EX: self.parsed_args = {'it': False}; self.has_parsed_option('notit') => None
+        ## TEMP HACK: if called by a subclass, treate as alias to get_parsed_option
+        if (self.__class__ != "__main__.Script"):
+            debug.trace(4, "Warning: deprecated method: has_parsed_option => get_parsed_option")
+            return self.get_parsed_option(label)
+        # Return parsed-arg entry for the option
+        name = self.get_option_name(label)
+        ## TEMP HACK: has_parsed_option returns args.get(opt)
+        option_value = self.parsed_args.get(name)
+        tpo.debug_format("has_parsed_option({l}) => {r}", 6,
+                         l=label, r=option_value)
+        return option_value
 
     def get_parsed_option(self, label, default=None, positional=False):
         """Get value for option LABEL, with dashes converted to underscores. 
@@ -682,9 +703,21 @@ class Main(object):
                 gh.run("rm -vf {file}*", file=self.temp_file)
         return
 
+#-------------------------------------------------------------------------------
+# Global instance for convenient adhoc usage
+# 
+# note: useful fo temporary file support (e.g., dummy_app.temp_file)
+#
+
+dummy_app = Main([])
+
+debug.trace_current_context(8, "main.py context")
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone")
     main = Main()
+    ## TODO??: main.description = "Script class support"
     main.run()
+

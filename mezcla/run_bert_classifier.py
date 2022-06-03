@@ -34,6 +34,12 @@ from __future__ import print_function
 import collections
 import csv
 import os
+
+# TEMP: Try workaround for TF segmentation fault
+## # https://github.com/tensorflow/tensorflow/issues/2034
+## import numpy
+## import matplotlib
+
 # TPO: for error handling when reading category labels
 import sys
 from bert import modeling
@@ -43,6 +49,13 @@ import tensorflow as tf
 
 # TPO: used just for start/end timestamps
 from mezcla import debug                # pylint: disable=unused-import
+# TPO: for error output (e.g., print_exception_info)
+from mezcla import system
+#
+
+## TEMP (TF-exception workaround related):
+## debug.trace_expr(5, numpy, matplotlib)
+
 
 flags = tf.flags
 
@@ -231,7 +244,6 @@ class XnliProcessor(DataProcessor):
     self.language = "zh"
 
   def get_train_examples(self, data_dir):
-    """See base class."""
     lines = self._read_tsv(
         os.path.join(data_dir, "multinli",
                      "multinli.train.%s.tsv" % self.language))
@@ -250,7 +262,6 @@ class XnliProcessor(DataProcessor):
     return examples
 
   def get_dev_examples(self, data_dir):
-    """See base class."""
     lines = self._read_tsv(os.path.join(data_dir, "xnli.dev.tsv"))
     examples = []
     for (i, line) in enumerate(lines):
@@ -267,8 +278,10 @@ class XnliProcessor(DataProcessor):
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
+  def get_test_examples(self, _data_dir):
+    raise NotImplementedError()
+
   def get_labels(self, _data_dir):
-    """See base class."""
     return ["contradiction", "entailment", "neutral"]
 
 
@@ -276,27 +289,24 @@ class MnliProcessor(DataProcessor):
   """Processor for the MultiNLI data set (GLUE version)."""
 
   def get_train_examples(self, data_dir):
-    """See base class."""
     return self._create_examples(
         self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
 
   def get_dev_examples(self, data_dir):
-    """See base class."""
     return self._create_examples(
         self._read_tsv(os.path.join(data_dir, "dev_matched.tsv")),
         "dev_matched")
 
   def get_test_examples(self, data_dir):
-    """See base class."""
     return self._create_examples(
         self._read_tsv(os.path.join(data_dir, "test_matched.tsv")), "test")
 
   def get_labels(self, _data_dir):
-    """See base class."""
     return ["contradiction", "entailment", "neutral"]
 
   def _create_examples(self, lines, set_type):
     """Creates examples for the training and dev sets."""
+    debug.reference_var(self)
     examples = []
     for (i, line) in enumerate(lines):
       if i == 0:
@@ -317,26 +327,23 @@ class MrpcProcessor(DataProcessor):
   """Processor for the MRPC data set (GLUE version)."""
 
   def get_train_examples(self, data_dir):
-    """See base class."""
     return self._create_examples(
         self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
 
   def get_dev_examples(self, data_dir):
-    """See base class."""
     return self._create_examples(
         self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
 
   def get_test_examples(self, data_dir):
-    """See base class."""
     return self._create_examples(
         self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
 
   def get_labels(self, _data_dir):
-    """See base class."""
     return ["0", "1"]
 
   def _create_examples(self, lines, set_type):
     """Creates examples for the training and dev sets."""
+    debug.reference_var(self)
     examples = []
     for (i, line) in enumerate(lines):
       if i == 0:
@@ -357,26 +364,23 @@ class ColaProcessor(DataProcessor):
   """Processor for the CoLA data set (GLUE version)."""
 
   def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
+   return self._create_examples(
         self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
 
   def get_dev_examples(self, data_dir):
-    """See base class."""
     return self._create_examples(
         self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
 
   def get_test_examples(self, data_dir):
-    """See base class."""
     return self._create_examples(
         self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
 
   def get_labels(self, _data_dir):
-    """See base class."""
     return ["0", "1"]
 
   def _create_examples(self, lines, set_type):
     """Creates examples for the training and dev sets."""
+    debug.reference_var(self)
     examples = []
     for (i, line) in enumerate(lines):
       # Only the test set has a header
@@ -422,34 +426,41 @@ class MultiCatProcessor(DataProcessor):
       with open(category_file, "r") as f:
         cats = f.read()
     except IOError:
-      sys.stderr.write("Problem reading category file {fn}: {exc}\n",
-                       fn=category_file, exc=sys.exc_info())
+      system.print_error_fmt("Problem reading category file {fn}: {exc}\n",
+                              fn=category_file, exc=sys.exc_info())
     # Return as list of tokens with outer whitespace removed
     cat_list = [c.strip() for c in cats.split("\n")]
     return cat_list
 
   def _create_examples(self, lines, set_type):
     """Creates examples for the training and dev sets."""
+    debug.reference_var(self)
     examples = []
     for (i, line) in enumerate(lines):
-      # Only the test set has a header
-      if set_type == "test" and i == 0:
-        continue
-      guid = "%s-%s" % (set_type, i)
-      if set_type == "test":
-        text_a = tokenization.convert_to_unicode(line[1])
-        label = "0"
-      else:
-        text_a = tokenization.convert_to_unicode(line[3])
-        label = tokenization.convert_to_unicode(line[1])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+      try:
+          # Only the test set has a header
+          if set_type == "test" and i == 0:
+            continue
+          guid = "%s-%s" % (set_type, i)
+          if set_type == "test":
+            text_a = tokenization.convert_to_unicode(line[1])
+            label = "0"
+          else:
+            text_a = tokenization.convert_to_unicode(line[3])
+            label = tokenization.convert_to_unicode(line[1])
+          examples.append(
+              InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+      except:
+          system.print_exception_info("_create_examples")
     return examples
 
 
 def convert_single_example(ex_index, example, label_list, max_seq_length,
                            tokenizer):
   """Converts a single `InputExample` into a single `InputFeatures`."""
+  debug.trace_fmt(6, "convert_single_example({arg_spec})",
+                  arg_spec=", ".join([str(v) for v in [ex_index, example, label_list, max_seq_length, tokenizer]]))
+  debug.trace_object(5, example, "example")
 
   if isinstance(example, PaddingInputExample):
     return InputFeatures(
@@ -854,17 +865,18 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
 
 
 def main(_):
+  """Entry point for script"""
   tf.logging.set_verbosity(tf.logging.INFO)
   # TPO: use DEBUG logging if environment DEBUG_LEVEL >= 5
   # TODO: system.getenv_int(...)
   try:
     debug_level = os.environ.get("DEBUG_LEVEL", 0)
     if (int(debug_level) >= 5):
-      sys.stderr.write("Setting logging to DEBUG\n")
+      system.print_error("Setting logging to DEBUG")
       tf.logging.set_verbosity(tf.logging.DEBUG)
   except:
-    sys.stderr.write("Unable to set debug logging (via DEBUG_LEVEL): {exc}\n",
-                     exc=sys.exc_info())
+    system.print_error_fmt("Unable to set debug logging (via DEBUG_LEVEL): {exc}\n",
+                            exc=sys.exc_info())
 
   processors = {
       "cola": ColaProcessor,
@@ -995,7 +1007,8 @@ def main(_):
       assert len(eval_examples) % FLAGS.eval_batch_size == 0
       eval_steps = int(len(eval_examples) // FLAGS.eval_batch_size)
 
-    eval_drop_remainder = True if FLAGS.use_tpu else False
+    ## OLD: eval_drop_remainder = True if FLAGS.use_tpu else False
+    eval_drop_remainder = bool(FLAGS.use_tpu)
     eval_input_fn = file_based_input_fn_builder(
         input_file=eval_file,
         seq_length=FLAGS.max_seq_length,
@@ -1033,7 +1046,8 @@ def main(_):
                     len(predict_examples) - num_actual_predict_examples)
     tf.logging.info("  Batch size = %d", FLAGS.predict_batch_size)
 
-    predict_drop_remainder = True if FLAGS.use_tpu else False
+    ## OLD: predict_drop_remainder = True if FLAGS.use_tpu else False
+    predict_drop_remainder = bool(FLAGS.use_tpu)
     predict_input_fn = file_based_input_fn_builder(
         input_file=predict_file,
         seq_length=FLAGS.max_seq_length,

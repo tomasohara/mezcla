@@ -20,10 +20,6 @@
 
 """System-related functions"""
 
-## OLD: if sys.version_info.major == 2:
-## OLD:     from __future__ import print_function
-from __future__ import print_function
-
 # Standard packages
 from collections import defaultdict, OrderedDict
 import datetime
@@ -41,13 +37,13 @@ import time
 
 # Local packages
 from mezcla import debug
-## OLD: import mezcla.glue_helpers as gh
 from mezcla.debug import UTF8
 
 # Constants
 STRING_TYPES = six.string_types
 MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
+TEMP_DIR = None
 
 #-------------------------------------------------------------------------------
 # Support for needless python changes
@@ -141,7 +137,7 @@ def getenv(var, default_value=None):
     """Simple wrapper around os.getenv, with tracing"""
     # Note: Use getenv_* for type-specific versions with env. option description
     result = os.getenv(var, default_value)
-    debug.trace_fmt(5, "getenv({v}, {dv}) => {r}", v=var, df=default_value, r=result)
+    debug.trace_fmt(5, "getenv({v}, {dv}) => {r}", v=var, dv=default_value, r=result)
     return result
 
 
@@ -150,6 +146,7 @@ def getenv_text(var, default=None, description=None, helper=False):
     Notes: HELPER indicates that this call is in support of another getenv-type function (e.g., getenv_bool), so that tracing is only shown at higher verbosity level (e.g., 6 not 5).
     DESCRIPTION used for get_environment_option_descriptions."""
     # Note: default is empty string to ensure result is string (not NoneType)
+    ## TODO: add way to block registration
     register_env_option(var, description, default)
     if default is None:
         debug.trace(4, f"Warning: getenv_text treats default None as ''; consider using getenv_value for '{var}' instead")
@@ -169,6 +166,7 @@ def getenv_text(var, default=None, description=None, helper=False):
 
 def getenv_value(var, default=None, description=None):
     """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION"""
+    # EX: getenv_value("bad env var") => None
     register_env_option(var, description, default)
     value = os.getenv(var, default)
     # note: uses !r for repr()
@@ -180,12 +178,13 @@ def getenv_value(var, default=None, description=None):
 DEFAULT_GETENV_BOOL = False
 #
 def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None):
-    """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION"""
-    # Note: "0" or "False" is interpreted as False, and any other value as True.
+    """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION
+    Note: "0" or "False" is interpreted as False, and any other value as True."""
+    # EX: getenv_bool("bad env var", None) => False
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
     value_text = getenv_value(var, description=description, default=default)
-    if to_text(value_text).strip():
+    if (isinstance(value_text, str) and value_text.strip()):
         bool_value = to_bool(value_text)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
                      v=var, d=default, r=bool_value)
@@ -199,7 +198,7 @@ def getenv_number(var, default=-1.0, description=None, helper=False):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
     value = getenv_value(var, description=description, default=default)
-    if ((value is not None) and to_text(value).strip()):
+    if (isinstance(value, str) and value.strip()):
          num_value = to_float(value)
     trace_level = 6 if helper else 5
     debug.trace_fmtd(trace_level, "getenv_number({v}, {d}) => {r}",
@@ -212,8 +211,9 @@ getenv_float = getenv_number
 
 def getenv_int(var, default=-1, description=None):
     """Version of getenv_number for integers, with optional DESCRIPTION"""
+    # EX: getenv_int("?", 1.5) => 1
     value = getenv_number(var, description=description, default=default, helper=True)
-    if (value is not None):
+    if (not isinstance(value, int)):
         value = to_int(value)
     debug.trace_fmtd(5, "getenv_int({v}, {d}) => {r}",
                      v=var, d=default, r=value)
@@ -231,13 +231,18 @@ def get_exception():
     return sys.exc_info()
 
 def print_error(text):
-    """Output TEXT to standard error"""
+    """Output TEXT to standard error
+    Note: Use print_error_fmt to include format keyword arguments"
+    """
+    # ex: print_error("Fubar!")
     print(text, file=sys.stderr)
     return
 
 def print_stderr(text, **kwargs):
     """Output TEXT to standard error, using KWARGS for formatting"""
-    # TODO: rename as print_stderr_fmt???
+    # NOTE: Deprecated function: use print_error_fmt instead.
+    # ex: print_stderr("Error: F{oo}bar!", oo=("oo" if (time_in_secs() % 2) else "u"))
+    # TODO: rename as print_error_fmt
     # TODO: weed out calls that use (text.format(...)) rather than (text, ...)
     formatted_text = text
     try:
@@ -253,6 +258,8 @@ def print_stderr(text, **kwargs):
             print_full_stack()
     print(formatted_text, file=sys.stderr)
     return
+#
+print_error_fmt = print_stderr
 
 
 def print_exception_info(task, show_stack=None):
@@ -546,13 +553,14 @@ def read_binary_file(filename):
     except (IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem reading file '{f}': {exc}",
                          f=filename, exc=get_exception())
+    ## TODO: output hexdump excerpt (e.g., via https://pypi.org/project/hexdump)
     return data
 
 
 def read_directory(directory):
     """Returns list of files in DIRECTORY"""
     # Note simple wrapper around os.listdir with tracing
-    # EX: (system.intersection(["init.d", "passwd"], read_directory("/etc")))
+    # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
     files = os.listdir(directory)
     debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files)
     return files
@@ -565,8 +573,7 @@ def get_directory_filenames(directory, just_regular_files=False):
     return_all_files = (not just_regular_files)
     files = []
     for dir_filename in sorted(read_directory(directory)):
-        ## OLD: full_path = gh.form_path(directory, dir_filename)
-        full_path = os.path.join(directory, dir_filename)
+        full_path = form_path(directory, dir_filename)
         if (return_all_files or is_regular_file(full_path)):
             files.append(full_path)
     debug.trace_fmtd(5, "get_directory_filenames({d}) => {r}", d=directory, r=files)
@@ -649,17 +656,20 @@ def lookup_entry(hash_table, entry, retain_case=False):
     return result
 
                 
-def write_file(filename, text):
+def write_file(filename, text, skip_newline=False):
     """Create FILENAME with TEXT.
-    Note: A newline is added at the end if missing"""
+    Note: A newline is added at the end if missing unless SKIP_NEWLINE"""
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
+    # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
+    # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
     try:
         if not isinstance(text, STRING_TYPES):
             text = to_string(text)
         with open(filename, "w") as f:
             f.write(to_utf8(text))
             if not text.endswith("\n"):
-                f.write("\n")
+                if not skip_newline:
+                    f.write("\n")
     except (IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem writing file '{f}': {exc}",
                          f=filename, exc=get_exception())
@@ -699,6 +709,12 @@ def write_lines(filename, text_lines, append=False):
     return
 
 
+def write_temp_file(filename, text):
+    """Create FILENAME in temp. directory using TEXT"""
+    temp_path = form_path(TEMP_DIR, filename)
+    return write_file(temp_path, text)
+
+
 def get_file_modification_time(filename, as_float=False):
     """Get the time the FILENAME was last modified, optional AS_FLOAT (instead of default string).
     Note: Returns None if file doesn't exist."""
@@ -713,12 +729,22 @@ def get_file_modification_time(filename, as_float=False):
     return mod_time
 
 
-def remove_extension(filename):
-    """Return FILENAME without final extension"""
+def remove_extension(filename, extension=None):
+    """Return FILENAME without final EXTENSION
+    Note: Unless extension specified, only last dot is included"""
     # EX: remove_extension("/tmp/document.pdf") => "/tmp/document")
-    new_filename = re.sub(r"\.[^\.]*$", "", filename)
-    ## OLD: debug.trace_fmtd(4, "remove_extension({f}) => {r}", f=filename, r=new_filename)
-    debug.trace_fmtd(5, "remove_extension({f}) => {r}", f=filename, r=new_filename)
+    # EX: remove_extension("it.abc.def") => "it.abc")
+    # EX: remove_extension("it.abc.def", "abc.def") => "it")
+    in_extension = extension
+    if extension is None:
+        new_filename = re.sub(r"\.[^\.]*$", "", filename)
+    else:
+        if not extension.startswith("."):
+            extension = "." + extension
+        if filename.endswith(extension):
+            new_filename = filename[0: -len(extension)]
+    debug.trace_fmtd(5, "remove_extension({f}, [{ex}]) => {r}",
+                     f=filename, ex=in_extension, r=new_filename)
     return new_filename
 
 
@@ -883,6 +909,22 @@ def non_empty_file(filename):
     return non_empty
 
 
+def absolute_path(path):
+    """Return resolved absolute pathname for PATH, as with Linux realpath command w/ --no-symlinks"""
+    # EX: absolute_path("/etc/mtab").startswith("/etc")
+    result = os.path.abspath(path)
+    debug.trace(7, f"real_path({path}) => {result}")
+    return result
+
+
+def real_path(path):
+    """Return resolved absolute pathname for PATH, as with Linux realpath command"""
+    # EX: real_path("/etc/mtab").startswith("/proc")
+    result = os.path.realpath(path)
+    debug.trace(7, f"real_path({path}) => {result}")
+    return result
+
+
 def get_module_version(module_name):
     """Get version number for MODULE_NAME (string)"""
     # note: used in bash function (alias):
@@ -1018,22 +1060,30 @@ safe_int = to_int
 
 
 def to_bool(value):
-    """Converts VALUE to boolean value, False iff in {0, False, and "False"}, ignoring case."""
-    # TODO: add "off" as well
-    value_text = str(value)
-    bool_value = True
-    if (value_text.lower() == "false") or (value_text == "0"):
-        bool_value = False
-    debug.trace_fmtd(7, "to_bool({v}) => {r}", v=value, r=bool_value)
-    return bool_value
+    """Converts VALUE to boolean value, returning False iff in {0, False, None, "False", "None", "Off", and ""}, ignoring case.
+    Note: ensures the result is of type bool.""" 
+    # EX: to_bool("off") => False
+    result = value
+    if isinstance(value, str):
+        result = (value.lower() not in ["false", "none", "off", "0", ""])
+    if not isinstance(result, bool):
+        result = bool(result)
+    debug.trace_fmtd(7, "to_bool({v}) => {r}", v=value, r=result)
+    return result
+#
+# EX: to_bool(None) => False
+# EX: to_bool(333) => True
+# EX: to_bool("") => False
 
 
 PRECISION = getenv_int("PRECISION", 6,
                        "Precision for rounding (e.g., decimal places)")
 #
-def round_num(value, precision=PRECISION):
+def round_num(value, precision=None):
     """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
     # EX: round_num(3.15914, 3) => 3.159
+    if precision is None:
+        precision = PRECISION
     rounded_value = round(value, precision)
     debug.trace_fmtd(8, "round_num({v}, [prec={p}]) => {r}",
                      v=value, p=precision, r=rounded_value)
@@ -1057,20 +1107,49 @@ def sleep(num_seconds, trace_level=5):
     time.sleep(num_seconds)
     return
 
+
+def current_time(integral=False):
+    """Return current time in seconds since 1970, optionally INTEGRAL"""
+    secs = time.time()
+    if integral:
+        secs = int(round_num(secs, precision=0))
+    debug.trace(5, f"current_time([integral={integral}]) => {secs}")
+    return secs
+
+def time_in_secs():
+    """Wrapper around current_time"""
+    return current_time(integral=True)
+
 def python_maj_min_version():
     """Return Python version as a float of form Major.Minor"""
-    # EX: debug.assertion(system.python_maj_min_version() >= 3.6, "F-Strings are used")
+    # EX: debug.assertion(python_maj_min_version() >= 3.6, "F-Strings are used")
     version = sys.version_info
     py_maj_min = to_float("{M}.{m}".format(M=version.major, m=version.minor))
     debug.trace_fmt(5, "Python version (maj.min): {v}", v=py_maj_min)
     debug.assertion(py_maj_min > 0)
     return py_maj_min
 
+
 def get_args():
     """Return command-line arguments (as a list of strings)"""
     result = sys.argv
     debug.trace_fmtd(7, "get_args() => {r}", r=result)
     return result
+
+def init():
+    """Performs module initilization"""
+    # TODO: rework global initialization to avoid the need for this
+    global TEMP_DIR
+    TEMP_DIR = getenv_text("TMPDIR", "/tmp")
+
+    ## TODO: # Register DEBUG_LEVEL for sake of new users
+    ## test_debug_level = getenv_integer("DEBUG_LEVEL", debug.get_level(), 
+    ##                                   "Debugging level for script tracing")
+    ## debug.assertion(debug.get_level() == test_debug_level)
+
+    return
+#
+init()
 
 #-------------------------------------------------------------------------------
 # Command line usage
@@ -1085,3 +1164,5 @@ def main(args):
 
 if __name__ == '__main__':
     main(get_args())
+else:
+    debug.assertion(TEMP_DIR is not None)

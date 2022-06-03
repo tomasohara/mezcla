@@ -4,9 +4,14 @@
 #     https://stackoverflow.com/questions/16039463/how-to-access-the-py-test-capsys-from-inside-a-test
 #
 # Notes:
-# - For tests capture standard error, see
+# - For tests that capture standard error, see
 #       https://docs.pytest.org/en/6.2.x/capture.html
 # - This uses capsys fixture mentioned in above link.
+#................................................................................
+# TODO:
+# - make sure trace_fmt traps all exceptiona
+#   debug.trace_fmt(1, "fu={fu}", fuu=1)
+#                           ^^    ^^^
 #
 
 """Tests for debug module"""
@@ -18,15 +23,10 @@
 import pytest
 
 # Local packages
-import mezcla.debug as debug
-## OLD: import mezcla.system as system
-## OLD: from mezcla.unittest_wrapper import TestWrapper
-
+from mezcla import debug
 
 class TestDebug:
-## OLD: class TestDebug(TestWrapper):
     """Class for test case definitions"""
-    ## OLD: script_module = TestWrapper.derive_tested_module_name(__file__)
     stdout_text = None
     stderr_text = None
     expected_stdout_trace = None
@@ -40,7 +40,6 @@ class TestDebug:
         self.expected_stdout_trace = self.stdout_text + "\n"
         self.expected_stderr_trace = self.stderr_text + "\n"
 
-    ## OLD: @pytest.fixture(autouse=True)
     def test_visible_simple_trace(self, capsys):
         """Make sure level-1 trace outputs to stderr"""
         debug.trace(4, f"test_visible_simple_trace({capsys})")
@@ -58,7 +57,6 @@ class TestDebug:
         assert(captured.err == self.expected_stderr_trace)
         debug.trace_expr(6, pre_captured, captured)
 
-    ## OLD: @pytest.fixture(autouse=True)
     def test_hidden_simple_trace(self, capsys):
         """Make sure level-N+1 trace doesn't output to stderr"""
         debug.trace(4, f"test_hidden_simple_trace({capsys})")
@@ -105,8 +103,9 @@ class TestDebug:
         debug.code(4, lambda: increment)
         debug.set_level(save_trace_level)
         assert(count == 0)
-
+        
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     pytest.main([__file__])
+

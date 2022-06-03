@@ -11,27 +11,17 @@
 
 from distutils.core import setup
 
-## OLD:
-## PYTHON_MODULE_NAMES = """
-##     debug
-##     glue_helpers
-##     html_utils
-##     my_regex
-##     system
-##     text_utils
-## """.split()
-
 setup(name='Mezcla',
       packages=['mezcla'],
       module="mezcla",
-      version='1.1.1',
+      version='1.3.0',
       description-file = "README.txt",
       dist-name="Mezcla",
       ## OLD: py_modules=PYTHON_MODULE_NAMES,
       author="Tom O'Hara",
       # TODO: find out which email key is preferred
       email="tomasohara@gmail.com",
-      author-email = "office@realpython.com"
+      author-email = "tomasohara@gmail.com"
       requires-python = ">=3.6",
       home-page = "https://github.com/tomasohara/Mezcla",
       classifiers = [

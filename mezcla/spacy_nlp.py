@@ -49,7 +49,7 @@ SHOW_REPRESENTATION = "show-representation"
 # Environment options
 COUNT_ENTITIES = system.getenv_bool("COUNT_ENTITIES", False,
                                     "Show counts of entities in verbose output")
-SENT_TOKENIZER = system.getenv_text("SENT_TOKENIZER", "",
+SENT_TOKENIZER = system.getenv_text("SENT_TOKENIZER", " ",
                                     "Name of (alternative) sentence tokenizer to use")
 USE_PYSBD = system.getenv_bool("USE_PYSBD", (SENT_TOKENIZER.lower() == "pysbd"),
                                "Use pySBD--pragmatic Sentence Boundary Disambiguation")

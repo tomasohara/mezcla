@@ -5,6 +5,7 @@
 # and exclusion lists.
 #
 # TODO:
+# - drop from mezcla (likewise check for other older scripts)
 # - add save option
 # - show sample I/O
 # - have option to add relative frequency to output (for aid in tuning MIN_FREQ/MAX_FREQ)
@@ -17,23 +18,24 @@ from collections import defaultdict
 import re
 import sys
 
-import glue_helpers as gh
-import tpo_common as tpo
-from tpo_common import debug_print, debug_format
-import system
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla import system
+from mezcla import tpo_common as tpo
+from mezcla.tpo_common import debug_print, debug_format
 
 MAX_TERMS = tpo.getenv_integer("MAX_TERMS", 10)
 MAX_NUM = tpo.getenv_integer("MAX_NUM", system.MAX_INT)
 TOP_TERMS = tpo.getenv_integer("TOP_TERMS", 25)
-INCLUSION_FILE = tpo.getenv_text("INCLUSION_FILE", "")
-EXCLUSION_FILE = tpo.getenv_text("EXCLUSION_FILE", "")
+INCLUSION_FILE = system.getenv_value("INCLUSION_FILE", None)
+EXCLUSION_FILE = system.getenv_value("EXCLUSION_FILE", None)
 INCLUDE_CONTEXT = tpo.getenv_boolean("INCLUDE_CONTEXT", False)
 INDEX_DIR = tpo.getenv_text("INDEX_DIR", "table-file-index")
 MIN_FREQ = tpo.getenv_number("MIN_FREQ", None)
 MAX_FREQ = tpo.getenv_number("MAX_FREQ", None)
-DOC_FREQ_FILE = tpo.getenv_text("DOC_FREQ_FILE", None)
+DOC_FREQ_FILE = tpo.getenv_value("DOC_FREQ_FILE", None)
 FILTER_BY_FREQ = MIN_FREQ or MAX_FREQ or DOC_FREQ_FILE
-DOCID_MAPPING_FILE = tpo.getenv_text("DOCID_MAPPING_FILE", None)
+DOCID_MAPPING_FILE = tpo.getenv_value("DOCID_MAPPING_FILE", None)
 OMIT_WEIGHT = tpo.getenv_boolean("OMIT_WEIGHT", False)
 USE_SHELVE = tpo.getenv_boolean("USE_SHELVE", False)
 if USE_SHELVE:

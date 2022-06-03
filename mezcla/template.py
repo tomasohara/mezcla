@@ -4,15 +4,18 @@
 #
 # The software is Open Source, licensed under the GNU Lesser General Public Version 3 (LGPLv3). See LICENSE.txt in repository.
 #
+## TODO: see example/template.py for simpler version suitable for cut-n-paste from online examples
+#
 
 """TODO: what module does (brief)"""
 
-# Standard packages
+# Standard modules
 import re
 
-# Installed packages
+# Installed modules
 ## TODO: import numpy
-# Personal package
+
+# Local modules
 # TODO: def mezcla_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
 from mezcla import debug
 from mezcla.main import Main
@@ -67,7 +70,7 @@ class Script(Main):
         debug.trace_fmtd(6, "Script.process_line({l})", l=line)
         # TODO: flesh out
         if self.todo_arg and "TODO" in line:
-            print("arg1 line: %s" % line)
+            print("arg1 line ({n}): {l}".format(n=self.line_num, l=line))
         ## TODO: regex pattern matching
         ## elif my_re.search(self.alt_todo_arg, line):
         ##     print("arg2 line: %s" % line)

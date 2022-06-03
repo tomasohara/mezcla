@@ -11,6 +11,7 @@
 # - -and/or- Have ** max-output-term-length option and right pad w/ spaces.
 # - See if IDF calculation should for 0 if just one document occurrence.
 # - Reconcile with ngram_tfidf.py (e.g., overlap here with subsumption there).
+# - Add simple example(s) to help.
 #
 # Note:
 # - This script is just for running tfidf over text files.
@@ -49,7 +50,8 @@ MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", MAX_NGRAM_SIZE)
 IDF_WEIGHTING = system.getenv_text("IDF_WEIGHTING", "basic")
 TF_WEIGHTING = system.getenv_text("TF_WEIGHTING", "basic")
 DELIMITER = system.getenv_text("DELIMITER", ",")
-CORPUS_DUMP = system.getenv_text("CORPUS_DUMP", "")
+CORPUS_DUMP = system.getenv_value("CORPUS_DUMP", None,
+                                  "Filename for corpus dump")
 PRUNE_SUBSUMED_TERMS = system.getenv_bool("PRUNE_SUBSUMED_TERMS", False)
 PRUNE_OVERLAPPING_TERMS = system.getenv_bool("PRUNE_OVERLAPPING_TERMS", False)
 SKIP_STEMMING = system.getenv_bool("SKIP_STEMMING", False,
@@ -114,8 +116,11 @@ def get_suffix1_prefix2(subterms1, subterms2):
     
 
 def terms_overlap(term1, term2):
-    """Whether TERM1 and TERM1 overlap (and the overlapping text if so)"""
+    """Whether TERM1 and TERM1 overlap (and the overlapping text if so)
+    Note: The overlap must occur at word boundaries
+    """
     # EX: terms_overlap("ACME Rocket Research", "Rocket Research Labs") => "Rocket Research"
+    # EX: not terms_overlap("Rocket Res", "Rocket Research")
     # TODO: put in text_utils
     subterms1 = term1.strip().split()
     subterms2 = term2.strip().split()
@@ -128,8 +133,12 @@ def terms_overlap(term1, term2):
 
 
 def is_subsumed(term, terms, include_overlap=PRUNE_OVERLAPPING_TERMS):
-    "Whether TERM is subsumed by another term in TERMS"""
+    """Whether TERM is subsumed by another term in TERMS, accounting for overlapping terms if INCLUDE_OVERLAP
+    Note: subsumption is based on string matching not token matching unlike the overlap check.
+    """
     # EX: is_subsumed("White House", ["The White House", "Congress", "Supreme Court"])
+    # EX: is_subsumed("White House", ["White Houses"])
+    # TODO: Enforce word boundaries as with terms_overlap
     subsumed_by = [subsuming_term for subsuming_term in terms
                    if (((term in subsuming_term) 
                         or (include_overlap and terms_overlap(term, subsuming_term)))

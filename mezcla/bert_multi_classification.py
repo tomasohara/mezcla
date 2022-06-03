@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 #
-# Uses BERT or ALBERT for multiple-label classification, based on following blog:
+# Uses BERT or ALBERT for multiple-class text classification, based on following blog:
 #    https://towardsdatascience.com/beginners-guide-to-bert-for-multi-classification-task-92f5445c2d7c
 #
 # Notes:
@@ -16,9 +16,10 @@
 #   use the extension .csv, and likewise .tsv for Tab-separated values (TSV).
 # - BERT itself requires following format in tab-separated value format (tsv):
 #     1. guid: Unique id for the example.
-#     2. text_a: String data. The untokenized text of the first sequence. For single sequence tasks, only this sequence must be specified.
+#     2. label: String data. The label of the example. This should be specified for train and evaluate examples, but not for test examples.
 #     3. text_b: (Optional) string data. The untokenized text of the second sequence. Only must be specified for sequence pair tasks.
-#     4. label: String data. The label of the example. This should be specified for train and evaluate examples, but not for test examples.
+#     4. text_a: String data. The untokenized text of the first sequence. For single sequence tasks, only this sequence must be specified.
+#
 # - Sample preprocessing
 #     - Add unique ID to training and dev-test examples, and make dummy third column.
 #       -- The first perl command adds the dummy - column, and the second replaces the
@@ -37,7 +38,7 @@
 #          convert_to_bert $base.test "$prefix" > dev.tsv
 #        }
 #     - Add header to dummy testing data
-#       echo $'guid<T>text' > test.tsv
+#       echo $'guid\ttext' > test.tsv
 #       TODO: create test data by removing cases from other two files
 #     - Create category file
 #       cut -f2 train.tsv dev.tsv | sort --unique > cats.txt
@@ -61,14 +62,15 @@
 # - * Summary evaluation over test set!
 # - Use Main class to add in support for argument parsing
 # - Generalize to handling other data files.
-# - Add options for BERT model and other parameters.
+# - Add options for BERT model and other parameters:
+#   ex: train_batch_size, learning_rate, max_seq_length, and num_train_epochs.
 # - Convert into calling module for run_classifier.py directly (i.e., without using shell).
 # - Rework sample invocation so that environment settings are temporary.
 # - Add option for using common defaults (e.g., data in current dir, lowercase, base model, output in ./output, multi-category, using run_albert_classifier.py).
 # - Create random split of single input file into train.tsv, dev.tsv and optionally test.tsv (or .csv's).
 #
 
-"""Invokes BERT or ALBERT for multiple-label text classification"""
+"""Invokes BERT or ALBERT for multiple-class text classification"""
 
 # Standard packages
 import csv
@@ -76,11 +78,11 @@ import re
 import sys
 
 # Installed packages
+# Note: imports tensorflow before others due to its stupid exception quirks with sklearn
+# See https://github.com/tensorflow/tensorflow/issues/2034 for a similar problem with numpy.
+import tensorflow as tf
 import pandas as pd
 from sklearn.model_selection import train_test_split
-import tensorflow as tf
-# TODO: make the following optional (so that tensorflow_cpu can be used)
-## OLD import tensorflow_gpu
 
 # Local packages
 from mezcla import debug
@@ -105,8 +107,8 @@ USE_ALBERT = system.getenv_bool("USE_ALBERT", USE_ALBERT_DEFAULT)
 BERT_NAME = "bert" if (not USE_ALBERT) else "albert"
 CONFIG_FILE_DEFAULT = system.form_path(MODEL_DIR, "{b}_config.json".format(b=BERT_NAME))
 BERT_CONFIG_FILE = system.getenv_text("BERT_CONFIG_FILE", CONFIG_FILE_DEFAULT)
-SAVE_CHECKPOINTS_STEPS = system.getenv_it("SAVE_CHECKPOINTS_STEPS", 10000,
-                                          "Number of tensorflow steps before checkpoints are written")
+SAVE_CHECKPOINTS_STEPS = system.getenv_int("SAVE_CHECKPOINTS_STEPS", 10000,
+                                           "Number of tensorflow steps before checkpoints are written")
 
 # Get label list and split into columns
 INPUT_LABELS = system.getenv_text("INPUT_LABELS", "id, label, text")
@@ -207,8 +209,8 @@ def main():
     ##                         'alpha': ['a']*df_train.shape[0],
     ##                         'text': df_train['text']})
 
-    # Split into test, dev
-    # TODO: only do if no det.tsv file
+    # Optionally split into test, dev
+    # NOTE: skipped if no dev.tsv file exists
     dev_file = gh.form_path(DATA_DIR, "dev" + in_ext)
     if system.file_exists(dev_file):
         df_dev = pd.read_csv(dev_file, sep=in_separator, names=INPUT_LABEL_LIST, quoting=in_quoting)
@@ -227,7 +229,10 @@ def main():
         df_bert_dev.to_csv(gh.form_path(OUTPUT_DIR, 'dev.tsv'), sep='\t', index=False, header=False)
         df_bert_test.to_csv(gh.form_path(OUTPUT_DIR, 'test.tsv'), sep='\t', index=False, header=True)
 
-    ## TODO: work example error from run_classifier.py cusstomization into assertion
+    # Sanity checks
+    debug.assertion(system.file_exists("cats.txt"))
+    #
+    ## TODO: work example error from run_classifier.py customization into assertion
     ## label_id = label_map[example.label]
     ## KeyError: '2'`
 
@@ -240,19 +245,26 @@ def main():
     print("Make sure your GPU Processor has sufficient memory, besides adequate number of units")
     print(gh.run("nvidia-smi"))
     # Make sure tensorflow doesn't grab all the GPU memory
-    system.setenv("TF_FORCE_GPU_ALLOW_GROWTH", "true")
+    if system.getenv("TF_FORCE_GPU_ALLOW_GROWTH"):
+        system.setenv("TF_FORCE_GPU_ALLOW_GROWTH", "true")
     # note: 0 is the order, not the total number
-    system.setenv("CUDA_VISIBLE_DEVICES", "0")
-    system.setenv("NVIDIA_VISIBLE_DEVICES", "0")
-    # TODO: use run and due sanity checks on output; u
+    if system.getenv("CUDA_VISIBLE_DEVICES") is None:
+        system.setenv("CUDA_VISIBLE_DEVICES", "0")
+    if system.getenv("NVIDIA_VISIBLE_DEVICES") is None:
+        system.setenv("NVIDIA_VISIBLE_DEVICES", "0")
+    # TODO: use run [?] and due sanity checks on output; u[???}
     is_lower_case = system.to_string(LOWER_CASE).lower()
     bert_proper_args = ("--vocab_file={md}/vocab.txt".format(md=MODEL_DIR) if (not USE_ALBERT) else "--spm_model_file={md}/albert.model".format(md=MODEL_DIR))
-    # TODO: add more env params: MAX_SEQ_LENGTH, TRAIN_BATCH_SIZE, LEARNING_RATE=, NUM_TRAIN_EPOCHS
+    # TODO: add more env params: MAX_SEQ_LENGTH, TRAIN_BATCH_SIZE, LEARNING_RATE, NUM_TRAIN_EPOCHS
     # TODO: specify checkpoint separately: {md}/{bn}_model.ckpt => MODEL_CHECKPOINT
-    gh.issue("{ci} {bpa} --task_name={t} --do_train=true --do_eval=true --do_predict=true --data_dir={dd}  --{bn}_config_file={bcf} --init_checkpoint={md}/{bn}_model.ckpt --max_seq_length=64 --train_batch_size=2 --learning_rate=2e-5 --num_train_epochs=3.0 --output_dir={od} --do_lower_case={lc} --save_checkpoints_steps={scs}", ci=CLASSIFIER_INVOCATION, bpa=bert_proper_args, t=TASK_NAME, dd=DATA_DIR, md=MODEL_DIR, od=OUTPUT_DIR, lc=is_lower_case, bn=BERT_NAME, bcf=BERT_CONFIG_FILE. scs=SAVE_CHECKPOINTS_STEPS)
+    ## OLD: gh.issue("{ci} {bpa} --task_name={t} --do_train=true --do_eval=true --do_predict=true --data_dir={dd}  --{bn}_config_file={bcf} --init_checkpoint={md}/{bn}_model.ckpt --max_seq_length=64 --train_batch_size=2 --learning_rate=2e-5 --num_train_epochs=3.0 --output_dir={od} --do_lower_case={lc} --save_checkpoints_steps={scs}", ci=CLASSIFIER_INVOCATION, bpa=bert_proper_args, t=TASK_NAME, dd=DATA_DIR, md=MODEL_DIR, od=OUTPUT_DIR, lc=is_lower_case, bn=BERT_NAME, bcf=BERT_CONFIG_FILE, scs=SAVE_CHECKPOINTS_STEPS)
+    ## Uses: defaults for following: train_batch_size (32); learning_rate (5e5); max_seq_length (128); num_train_epochs (3)
+    ## See run_bert_classifier.py for other options (e.g., --iterations_per_loop).
+    gh.issue("{ci} {bpa} --task_name={t} --do_train=true --do_eval=true --do_predict=true --data_dir={dd}  --{bn}_config_file={bcf} --init_checkpoint={md}/{bn}_model.ckpt --output_dir={od} --do_lower_case={lc} --save_checkpoints_steps={scs}", ci=CLASSIFIER_INVOCATION, bpa=bert_proper_args, t=TASK_NAME, dd=DATA_DIR, md=MODEL_DIR, od=OUTPUT_DIR, lc=is_lower_case, bn=BERT_NAME, bcf=BERT_CONFIG_FILE, scs=SAVE_CHECKPOINTS_STEPS)
     ## sample output:
     ## eval_accuracy = 0.96741855 eval_loss = 0.17597112 global_step = 236962 loss = 0.17553209
-    ## model_checkpoint_path: "model.ckpt-236962" all_model_checkpoint_paths: "model.ckpt-198000"all_model_checkpoint_paths: "model.ckpt-208000"all_model_checkpoint_paths: "model.ckpt-218000"all_model_checkpoint_paths: "model.ckpt-228000"all_model_checkpoint_paths: "model.ckpt-236962"
+    ## checkpoint file: model_checkpoint_path: "model.ckpt-236962" all_model_checkpoint_paths: "model.ckpt-198000" all_model_checkpoint_paths: "model.ckpt-208000"  all_model_checkpoint_paths: "model.ckpt-218000"  all_model_checkpoint_paths: "model.ckpt-228000"  all_model_checkpoint_paths: "model.ckpt-236962"
+    
     ## aternative run
     ## CUDA_VISIBLE_DEVICES=0 python run_classifier.py --task_name=cola --do_predict=true --data_dir=./dataset --vocab_file=./model/vocab.txt --bert_config_file=./model/bert_config.json --init_checkpoint=./bert_output/model.ckpt-236962 --max_seq_length=64 --output_dir=./bert_output/
     ## 1.4509245e-05 1.2467547e-05 0.999946361.4016414e-05 0.99992466 1.5453812e-051.1929651e-05 0.99995375 6.324972e-063.1922486e-05 0.9999423 5.038059e-061.9996814e-05 0.99989235 7.255715e-064.146e-05 0.9999349 5.270801e-06

@@ -43,7 +43,7 @@ import mezcla.glue_helpers as gh
 # This also allows for defining options in one place rather than say 3+ for argparse.
 # TODO: XYZ => DEFAULT_XYZ
 MAX_SIMILAR = tpo.getenv_integer("MAX_SIMILAR", 10)
-DOCID_FILENAME = tpo.getenv_text("DOCID_FILENAME", None)
+DOCID_FILENAME = tpo.getenv_value("DOCID_FILENAME", None)
 # TODO: default to number of CPU's
 PARALLEL_SHARDS = tpo.getenv_integer("PARALLEL_SHARDS", 1)
 IN_MEMORY = tpo.getenv_bool("IN_MEMORY", False)
@@ -67,14 +67,14 @@ class CorpusData(object):
         tpo.debug_print("CorpusData.__init__(%s)" % text, 6)
         # TODO: self.text => self.filename
         debug.assertion(not (text and directory))
-        self.text = text	# file representing entire corpus: one line per document
+        self.text = text        # file representing entire corpus: one line per document
         self.directory = directory      # directory with corpus files
-        self.mm = None		# matrix market format (see http://math.nist.gov/MatrixMarket/formats.html)
+        self.mm = None          # matrix market format (see http://math.nist.gov/MatrixMarket/formats.html)
         if in_memory is None:
             in_memory = IN_MEMORY
         self.in_memory = in_memory      # keep matrix in memory
         ## OLD:
-        ## if (self.text):		# mapping from words to token IDs
+        ## if (self.text):              # mapping from words to token IDs
         ##     self.dictionary = create_dictionary(self.text)
         self.dictionary = None
         if (self.text or self.directory):
@@ -223,7 +223,7 @@ class UserIdMapping(object):
         """Class constructor"""
         ## OLD: self.docid_mapping = tpo.create_lookup_table(docid_filename, use_linenum=True)
         self.docid_mapping = create_ordered_lookup_table(docid_filename)
-    	# TODO: just use array indexing (e.g., doc_positions = docid_mapping.values())
+        # TODO: just use array indexing (e.g., doc_positions = docid_mapping.values())
         ## OLD: self.reverse_docid_mapping = dict((docid, key) for (key, docid) in list(self.docid_mapping.items()))
         self.reverse_docid_mapping = dict((label, docid) for (docid, label) in list(self.docid_mapping.items()))
         return
