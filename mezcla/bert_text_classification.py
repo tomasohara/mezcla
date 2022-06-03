@@ -178,7 +178,7 @@ class Script(Main):
     def create_tokenizer_from_hub_module(self):
         """Get the vocab file and casing info from the Hub module."""
         debug.trace(5, "create_tokenizer_from_hub_module()")
-        debug.reference_vars(self)
+        debug.reference_var(self)
         with tf.Graph().as_default():
             bert_module = hub.Module(BERT_MODEL_HUB)
             ## TODO
@@ -208,7 +208,7 @@ class Script(Main):
                      labels, num_labels):
         """Load the BERT model for fine-tuning."""
         debug.trace(5, f"create_model({tuple([is_predicting, input_ids, input_mask, segment_ids, labels, num_labels])})")
-        debug.reference_vars(self)
+        debug.reference_var(self)
         bert_module = hub.Module(
             BERT_MODEL_HUB,
             trainable=True)
