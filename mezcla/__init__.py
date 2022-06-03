@@ -16,10 +16,10 @@ Adhoc usage:
     debug.trace(TL.DETAILED, "Joe")
 
 Tom O'Hara
-Feb 2022
+2022
 """
-__VERSION__ = '1.3.0'
-__version__ = '1.3.0'
+__VERSION__ = '1.4.0'
+__version__ = '1.4.0'
 
 # Standard module(s)
 import sys
@@ -46,7 +46,7 @@ assert PYTHON3_PLUS, "Python 3 or higher: ¡por favor!"
 ##     ## DEBUG: debug.trace_expr(TL.DEFAULT, debug, mezcla, system, TL)
 ## else:
 ##     TL = None
-import mezcla
+import mezcla                           # pylint: disable=import-self
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
