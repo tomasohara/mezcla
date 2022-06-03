@@ -515,6 +515,13 @@ class stdin_reader(object):
         return line
 
 
+def read_all_stdin():
+    """Read all STDIN and return as a string"""
+    data = ''.join(sys.stdin.readlines()) if not sys.stdin.isatty() else ''
+    debug.trace(debug.VERBOSE, f'read_all_stdin() => "{data}"')
+    return data
+
+
 def read_entire_file(filename, **kwargs):
     """Read all of FILENAME and return as a string
     Note: optional arguments to open() passed along (e.g., encoding amd error handling)"""
@@ -1086,7 +1093,7 @@ def round_num(value, precision=None):
 def round_as_str(value, precision=PRECISION):
     """Returns round_num(VALUE, PRECISION) as string"""
     # EX: round_as_str(3.15914, 3) => "3.159"
-    result = str(round_num(value, precision))
+    result = f"{round_num(value, precision):.{precision}f}"
     debug.trace_fmtd(8, "round_as_str({v}, [prec={p}]) => {r}",
                      v=value, p=precision, r=result)
     return result

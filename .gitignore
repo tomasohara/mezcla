@@ -17,6 +17,7 @@
 **/*.list
 
 # Any files with leading _, except specified cases
+## OLD: __pycache__/
 **/_*
 !**/*__init__.py
 
