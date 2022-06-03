@@ -1322,7 +1322,7 @@ def safe_float(numeric, default_value=0.0):
 
 def reference_variables(*args):
     """Dummy function used for referencing variables"""
-    debug_print("reference_vars%s" % str(args), 9)
+    debug_print("reference_variables%s" % str(args), 9)
     return
 
 #------------------------------------------------------------------------
