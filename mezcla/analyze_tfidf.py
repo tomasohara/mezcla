@@ -54,7 +54,7 @@ else:
 
 def main():
     """Entry point for script"""
-    debug_print("main(): sys.argv=%s" % sys.argv, 4)
+    debug.trace(4, f"main(): sys.argv={sys.argv}")
 
     # Check command-line arguments
     parser = argparse.ArgumentParser(description="Analyzes TF/IDF differentiation")
