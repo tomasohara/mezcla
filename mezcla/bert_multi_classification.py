@@ -245,7 +245,7 @@ def main():
     print("Make sure your GPU Processor has sufficient memory, besides adequate number of units")
     print(gh.run("nvidia-smi"))
     # Make sure tensorflow doesn't grab all the GPU memory
-    if system.getenv("TF_FORCE_GPU_ALLOW_GROWTH"):
+    if system.getenv("TF_FORCE_GPU_ALLOW_GROWTH") is None:
         system.setenv("TF_FORCE_GPU_ALLOW_GROWTH", "true")
     # note: 0 is the order, not the total number
     if system.getenv("CUDA_VISIBLE_DEVICES") is None:
