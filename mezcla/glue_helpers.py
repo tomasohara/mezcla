@@ -71,9 +71,12 @@ def get_temp_file(delete=None):
     debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
     return temp_file_name
 #
-TEMP_LOG_FILE = tpo.getenv_text(
-    # "Log file for stderr (e.g., for issue function)"
-    "TEMP_LOG_FILE", get_temp_file())
+## OLD:
+## TEMP_LOG_FILE = tpo.getenv_text(
+##     # "Log file for stderr (e.g., for issue function)"
+##     "TEMP_LOG_FILE", get_temp_file())
+TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file(),
+                                "Log file for stderr such as for issue function)")
 
 
 def basename(filename, extension=None):
