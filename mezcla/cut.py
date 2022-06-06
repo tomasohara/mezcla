@@ -376,6 +376,7 @@ class Script(Main):
             output_row = []
             for f in self.fields:
                 valid_field_number = (1 <= f <= len(row))
+                debug.trace_expr(5, f)
                 debug.assertion(valid_field_number)
                 ## OLD: output_row.append(row[f - 1] if valid_field_number else "")
                 column = row[f - 1] if valid_field_number else ""
