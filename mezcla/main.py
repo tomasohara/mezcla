@@ -430,9 +430,10 @@ class Main(object):
                                 help="Input filename")
 
         # Optionally, show brief usage and exit
-        # note: print_usage just print command line synopsis (not individual descriptions)
+        # note: print_usage just prints command line synopsis (not individual descriptions)
         if (self.brief_usage and (runtime_args == [USAGE_ARG])):
             debug.trace(4, "Just showing (brief) usage and then exiting")
+            debug.trace(5, "warning: self.setup won't be invoked")
             parser.print_usage()
             sys.exit()
 
@@ -456,7 +457,9 @@ class Main(object):
         return
 
     def setup(self):
-        """Perform script setup prior to input processing"""
+        """Perform script setup prior to input processing
+        Note: This is not invoked if the script exits during --help processing"
+        """
         # Note: Use for post-argument proceessing setup
         tpo.debug_format("Main.setup() stub: self={s}", 5, s=self)
         return
