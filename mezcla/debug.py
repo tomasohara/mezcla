@@ -883,6 +883,7 @@ if __debug__:
         """Debug-only initialization"""
         time_start = time.time()
         trace(DETAILED, "in debug_init()")
+        trace_expr(VERBOSE, sys.argv)
 
         # Open external file for copy of trace output
         global debug_file
