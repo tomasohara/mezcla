@@ -34,6 +34,9 @@
 **/output-files
 **/downloads
 
+# Top level distribution dir
+dist
+
 # Idiosyncratic stuff for Tom
 #
 # ex: reempl-notes.txt
