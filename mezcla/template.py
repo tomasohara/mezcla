@@ -30,7 +30,7 @@ from mezcla import system
 ## where M-: is the emacs keystroke short-cut for eval-expression.
 TODO_ARG = "TODO-arg"
 ## ALT_TODO_ARG = "alt-todo-arg"
-## TODO_FILENAME = "TODO-filename"
+## TODO_FILENAME = "TODO_filename"
 
 ## TODO:
 ## # Environment options
