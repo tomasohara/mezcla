@@ -565,6 +565,7 @@ def read_directory(directory):
     debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files)
     return files
 
+
 def get_directory_filenames(directory, just_regular_files=False):
     """Returns full pathname for files in DIRECTORY, optionally restrictded to JUST_REGULAR_FILES
     Note: The files are returned in lexicographical order"""
@@ -579,6 +580,7 @@ def get_directory_filenames(directory, just_regular_files=False):
     debug.trace_fmtd(5, "get_directory_filenames({d}) => {r}", d=directory, r=files)
     return files
     
+
 def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False):
     """Reads FILENAME and returns as hash lookup, optionally SKIP[ing]_HEADER and using DELIM (tab by default).
     Note: Input is made lowercase unless RETAIN_CASE."""
@@ -889,6 +891,7 @@ def to_string(text):
 #
 to_text = to_string
 
+
 def chomp(text, line_separator=os.linesep):
     """Removes trailing occurrence of LINE_SEPARATOR from TEXT"""
     # EX: chomp("abc\n") => "abc"
@@ -899,6 +902,14 @@ def chomp(text, line_separator=os.linesep):
         result = result[:new_len]
     debug.trace_fmt(8, "chomp({t}, {sep}) => {r}", 
                     t=text, sep=line_separator, r=result)
+    return result
+
+
+def normalize_dir(path):
+    """Normalize the directory PATH (e.g., removing ending path delim)"""
+    # EX: normalize_dir("/etc/") => "/etc")
+    result = chomp(path, os.path.sep)
+    debug.trace(6, f"normalize_dir({path}) => {result}")
     return result
 
 
