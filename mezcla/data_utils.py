@@ -10,7 +10,7 @@
 #   (e.g., comments more likely in CSV files).
 #
 # TODO:
-# - Add simple wrapper class for commonly used idioms, sich as len(df.columns) for number of columns.
+# - Add simple wrapper class for commonly used idioms, such as len(df.columns) for number of columns.
 #
 
 """Utility functions for work with data (e.g., pandas wrappers)"""
@@ -19,16 +19,12 @@
 import pandas as pd
 
 # Local modules
-## OLD:
-## import system
-## import debug
 from mezcla import debug
 from mezcla import system
 
 # Constants
 # Note: Delim defaults to None so that dialect inference can be used.
 # This is a quirk with Pandas compared to the cvs module.
-## OLD: DELIM = system.getenv_text("DELIM", ",",
 DELIM = system.getenv_value("DELIM", None,
                             "Delimiter for input and output tables")
 COMMENT = 'comment'
@@ -39,13 +35,8 @@ EXCEL = 'excel'
 
 def read_csv(filename, **in_kw):
     """Wrapper around pandas read_csv"""
+    # EX: tf = read_csv("examples/iris.csv"); tf.shape => (150, 5)
     ## TODO: clarify dtype usage
-    ## BAD
-    ## kw = {'comment': "#", 'delimiter': DELIM, 'dtype': str,
-    ##       'error_bad_lines': False, 'escapechar': '\\', 'keep_default_na': False}
-    ## OLD:
-    ## kw = {'comment': "#", 'delimiter': DELIM, 'dtype': str,
-    ##       'error_bad_lines': False, 'keep_default_na': False}
     kw = {'delimiter': DELIM, 'dtype': str,
           'error_bad_lines': False, 'keep_default_na': False}
     kw.update(**in_kw)
@@ -53,9 +44,6 @@ def read_csv(filename, **in_kw):
     if ((COMMENT not in kw) and (kw.get(DIALECT) != EXCEL)):
         debug.trace_fmt(4, "Enabling comments in read_csv")
         kw[COMMENT] = "#"
-    ## OLD:
-    ## debug.trace_fmt(5, "read_csv({f}, cmt={comment}, del={delimiter}, dty={dtype},"
-    ##                 "ebl={error_bad_lines}, kdn={keep_default_na}, in_kw={ikw})", f=filename, **kw, ikw=in_kw)
     debug.trace_fmt(5, "read_csv({f}, [in_kw={ikw}])", f=filename, ikw=in_kw)
     debug.trace_fmt(6, "\tkw={k}", k=kw)
     df = pd.read_csv(filename, **kw)
@@ -75,8 +63,10 @@ def to_csv(filename, data_frame):
 #
 write_csv = to_csv
 
+
 def lookup_df_value(data_frame, return_field, lookup_field, lookup_value):
     """Return value for DATA_FRAME's RETURN_FIELD given LOOKUP_FIELD value LOOKUP_VALUE"""
+    # EX: lookup_df_value(tf, "sepal_length", "petal_length", "3.8") => "5.5"
     ## TODO: rework in terms of Pandas primitives
     value = None
     try:
@@ -93,7 +83,6 @@ def lookup_df_value(data_frame, return_field, lookup_field, lookup_value):
 
 def main():
     """Entry point for script"""
-    ## OLD: debug.trace(2, "Warning: Not intended to being invoked directly")
     system.print_stderr("Error: Not intended to being invoked directly")
     return
 
