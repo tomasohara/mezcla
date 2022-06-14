@@ -695,6 +695,7 @@ def verbose_debugging():
 
 def _getenv_bool(name, default_value):
     """Version of system.getenv_bool w/o tracing"""
+    ## EX: os.setenv("FU", "1"); _getenv_bool("FU", False)) => True
     result = default_value
     if (str(os.environ.get(name) or default_value).upper() in ["1", "TRUE"]):
         result = True
@@ -889,7 +890,13 @@ if __debug__:
         global debug_file
         debug_filename = os.getenv("DEBUG_FILE")
         if debug_filename is not None:
-            debug_file = open(debug_filename, mode="w", encoding="UTF-8")
+            ## OLD: debug_file = open(debug_filename, mode="w", encoding="UTF-8")
+            ## TEST: open unbuffered which requires binary output mode
+            ## BAD: debug_file = open(debug_filename, mode="wb", buffering=0, encoding="UTF-8")
+            ## note: uses line buffering
+            mode = ("a" if _getenv_bool("DEBUG_FILE_APPEND", False) else "w")
+            trace_expr(5, mode)
+            debug_file = open(debug_filename, mode=mode, buffering=1, encoding="UTF-8")
         
         # Determine whether tracing include time and date
         global output_timestamps
