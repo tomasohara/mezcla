@@ -25,6 +25,7 @@
 #       -- The first perl command adds the dummy - column, and the second replaces the
 #       leading spaces prior with prefix for line number added by cat. The prefix is
 #       based on the size of the training file to ensure ID is unique for dev-test.
+#       TODO: drop prefix support as BERT uses file type (e.g., train/dev/test).
 #       $: {
 #          function convert_to_bert() {
 #             local file="$1"
@@ -91,10 +92,10 @@ from mezcla import glue_helpers as gh
 from mezcla.text_utils import version_to_number as version_as_float
 
 # Note: the defaults are unintuitive, but they match the blog article.
-MODEL_DIR = system.getenv_text("MODEL_DIR", "./model")
-## TODO: BERT_DIR = system.getenv_text("BERT_DIR", MODEL_DIR)
-DATA_DIR = system.getenv_text("DATA_DIR", "./dataset")
-OUTPUT_DIR = system.getenv_text("OUTPUT_DIR", "./bert_output")
+MODEL_DIR = system.normalize_dir(system.getenv_text("MODEL_DIR", "./model"))
+## TODO: BERT_DIR = system.normalize_dir(system.getenv_text("BERT_DIR", MODEL_DIR))
+DATA_DIR = system.normalize_dir(system.getenv_text("DATA_DIR", "./dataset"))
+OUTPUT_DIR = system.normalize_dir(system.getenv_text("OUTPUT_DIR", "./bert_output"))
 TASK_NAME = system.getenv_text("TASK_NAME", "cola")
 USE_TSV_INPUT = system.getenv_bool("USE_TSV_INPUT", False)
 CLASSIFIER_INVOCATION = system.getenv_text("CLASSIFIER_INVOCATION", "run_bert_classifier.py")
@@ -254,6 +255,7 @@ def main():
         system.setenv("NVIDIA_VISIBLE_DEVICES", "0")
     # TODO: use run [?] and due sanity checks on output; u[???}
     is_lower_case = system.to_string(LOWER_CASE).lower()
+    # TODO: use form_path here and below
     bert_proper_args = ("--vocab_file={md}/vocab.txt".format(md=MODEL_DIR) if (not USE_ALBERT) else "--spm_model_file={md}/albert.model".format(md=MODEL_DIR))
     # TODO: add more env params: MAX_SEQ_LENGTH, TRAIN_BATCH_SIZE, LEARNING_RATE, NUM_TRAIN_EPOCHS
     # TODO: specify checkpoint separately: {md}/{bn}_model.ckpt => MODEL_CHECKPOINT
@@ -265,7 +267,7 @@ def main():
     ## eval_accuracy = 0.96741855 eval_loss = 0.17597112 global_step = 236962 loss = 0.17553209
     ## checkpoint file: model_checkpoint_path: "model.ckpt-236962" all_model_checkpoint_paths: "model.ckpt-198000" all_model_checkpoint_paths: "model.ckpt-208000"  all_model_checkpoint_paths: "model.ckpt-218000"  all_model_checkpoint_paths: "model.ckpt-228000"  all_model_checkpoint_paths: "model.ckpt-236962"
     
-    ## aternative run
+    ## alternative run
     ## CUDA_VISIBLE_DEVICES=0 python run_classifier.py --task_name=cola --do_predict=true --data_dir=./dataset --vocab_file=./model/vocab.txt --bert_config_file=./model/bert_config.json --init_checkpoint=./bert_output/model.ckpt-236962 --max_seq_length=64 --output_dir=./bert_output/
     ## 1.4509245e-05 1.2467547e-05 0.999946361.4016414e-05 0.99992466 1.5453812e-051.1929651e-05 0.99995375 6.324972e-063.1922486e-05 0.9999423 5.038059e-061.9996814e-05 0.99989235 7.255715e-064.146e-05 0.9999349 5.270801e-06
     ## alternative input
