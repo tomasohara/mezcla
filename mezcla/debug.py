@@ -19,7 +19,7 @@
 #
 # Usage examples:
 #
-#   - causal usage (quick-n-dirty debugging)
+#   - casual usage (quick-n-dirty debugging)
 #
 #     from mezcla import debug
 #     debug.trace_expr(4, dir())
