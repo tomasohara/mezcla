@@ -15,6 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """BERT finetuning runner."""
 
 # TPO: This is a version of the standard run_classifer.py from the bert
@@ -48,7 +49,7 @@ from bert import tokenization
 import tensorflow as tf
 
 # TPO: used just for start/end timestamps
-from mezcla import debug                # pylint: disable=unused-import
+from mezcla import debug
 # TPO: for error output (e.g., print_exception_info)
 from mezcla import system
 #
@@ -154,6 +155,7 @@ flags.DEFINE_integer(
     "num_tpu_cores", 8,
     "Only used if `use_tpu` is True. Total number of TPU cores to use.")
 
+UNKNOWN_LABEL = " "
 
 class InputExample(object):
   """A single training/test example for simple sequence classification."""
@@ -352,7 +354,12 @@ class MrpcProcessor(DataProcessor):
       text_a = tokenization.convert_to_unicode(line[3])
       text_b = tokenization.convert_to_unicode(line[4])
       if set_type == "test":
-        label = "0"
+        ## BAD: this assigns the first label under assumption all natural integers,
+        ## which works for hard-coded classes but not MultiCatProcessor
+        ##   label = "0"
+        ## TODO: rework to pass in the list of categories
+        # Assign unkwown label (so that later mappable to first label)
+        label = UNKNOWN_LABEL
       else:
         label = tokenization.convert_to_unicode(line[0])
       examples.append(
@@ -429,7 +436,7 @@ class MultiCatProcessor(DataProcessor):
       system.print_error_fmt("Problem reading category file {fn}: {exc}\n",
                               fn=category_file, exc=sys.exc_info())
     # Return as list of tokens with outer whitespace removed
-    cat_list = [c.strip() for c in cats.split("\n")]
+    cat_list = [c.strip() for c in cats.split("\n") if len(c)]
     return cat_list
 
   def _create_examples(self, lines, set_type):
@@ -472,7 +479,11 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
 
   label_map = {}
   for (i, label) in enumerate(label_list):
+    debug.assertion(label != UNKNOWN_LABEL)
     label_map[label] = i
+  ##
+  ## HACK: Treat unknown label as first (see _create_examplese)
+  label_map[UNKNOWN_LABEL] = 0
 
   tokens_a = tokenizer.tokenize(example.text_a)
   tokens_b = None
