@@ -16,11 +16,12 @@ mako
 matplotlib
 nltk
 numpy
-ordereddict
+## OLD: ordereddict
 pandas
 requests
 scipy
 sklearn
+## TODO: put in setup.py
 six
 stopwords
 xgboost
