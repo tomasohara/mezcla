@@ -354,12 +354,7 @@ class MrpcProcessor(DataProcessor):
       text_a = tokenization.convert_to_unicode(line[3])
       text_b = tokenization.convert_to_unicode(line[4])
       if set_type == "test":
-        ## BAD: this assigns the first label under assumption all natural integers,
-        ## which works for hard-coded classes but not MultiCatProcessor
-        ##   label = "0"
-        ## TODO: rework to pass in the list of categories
-        # Assign unkwown label (so that later mappable to first label)
-        label = UNKNOWN_LABEL
+        label = "0"
       else:
         label = tokenization.convert_to_unicode(line[0])
       examples.append(
@@ -447,11 +442,17 @@ class MultiCatProcessor(DataProcessor):
       try:
           # Only the test set has a header
           if set_type == "test" and i == 0:
+            debug.trace(6, f"Ignoring test header: {line}")
             continue
           guid = "%s-%s" % (set_type, i)
           if set_type == "test":
             text_a = tokenization.convert_to_unicode(line[1])
-            label = "0"
+            ## BAD: this assigns the first label under assumption all natural integers,
+            ## which works for hard-coded classes but not MultiCatProcessor
+            ##   label = "0"
+            ## TODO: rework to pass in the list of categories
+            # Assign unkwown label (so that later mappable to first label)
+            label = UNKNOWN_LABEL
           else:
             text_a = tokenization.convert_to_unicode(line[3])
             label = tokenization.convert_to_unicode(line[1])
@@ -482,8 +483,11 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     debug.assertion(label != UNKNOWN_LABEL)
     label_map[label] = i
   ##
-  ## HACK: Treat unknown label as first (see _create_examplese)
+  ## HACK: Treat unknown label as first (see _create_examples)
   label_map[UNKNOWN_LABEL] = 0
+  ## TEMP: This is for non-MultiCatProcessor cases
+  if ("0" not in label_map):
+    label_map["0"] = 0
 
   tokens_a = tokenizer.tokenize(example.text_a)
   tokens_b = None
@@ -778,6 +782,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
       def metric_fn(per_example_loss, label_ids, logits, is_real_example):
         predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
+        debug.trace_expr(6, logits, label_ids, predictions, is_real_example)
         accuracy = tf.metrics.accuracy(
             labels=label_ids, predictions=predictions, weights=is_real_example)
         loss = tf.metrics.mean(values=per_example_loss, weights=is_real_example)
