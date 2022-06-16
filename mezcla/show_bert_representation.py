@@ -96,6 +96,9 @@
 # - To show cosine similarity for complex vector terms (e.g., king - man + woman),
 #   get the individual work vectors and manually combine vectors (e.g., ipython)
 #   before invoking show_cosine_distances.
+#................................................................................
+# TOOD:
+# - Add option to average the vectors rather than using last (i.e., index 3).
 #
 
 """Show the representation of a BERT model for a sentence or pair (see BERT README.md)"""
@@ -106,6 +109,7 @@ import os
 import re
 
 # Installed packages
+import numpy as np
 import scipy.spatial.distance
 import tensorflow as tf
 
@@ -115,11 +119,8 @@ from mezcla.main import Main
 from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla import text_utils
-from mezcla.system import form_path, getenv_bool, getenv_text, getenv_value, round_num
+from mezcla.system import form_path, getenv_bool, getenv_int, getenv_text, getenv_value, round_num
 from mezcla.text_utils import version_to_number as version_as_float
-## TODO:
-## from system import form_path, getenv_bool, getenv_text, getenv_value, round_num
-## from text_utils import version_to_number as version_as_float
 
 # Constants
 SENTINEL_TOKENS = ["[CLS]", "[SEP]"]
@@ -157,7 +158,10 @@ MAX_SEQ_LENGTH = getenv_value("MAX_SEQ_LENGTH", None,
                              "Maximum sentence token sequence length")
 BATCH_SIZE = getenv_value("BATCH_SIZE", None,
                          "Batch size for processing")
-
+NUM_LAYERS = getenv_int("NUM_LAYERS", 4,
+                        "Number of layers to extract")
+AVERAGE_LAYERS = getenv_bool("AVERAGE_LAYERS", False,
+                             "Take average of layers rather than last one")
 
 # Option names
 MODEL = "model"
@@ -227,17 +231,18 @@ class ExtractFeatures(object):
              input_text += f" {SENTENCE_DELIM} {sentence2}"
         system.write_file(input_filename, input_text)
         output_filename = basename + ".json"
-        
+
         # Invoke the feature extraction script
         # TODO: document the options; optionally, include all layers
         D = os.path.sep
+        layer_spec = ",".join(str(-i) for i in range(1, NUM_LAYERS + 1))
         command_line = f"""{PYTHON} {BERT_CODE_DIR}{D}extract_features.py  {other_options} \
                        --input_file={input_filename} \
                        --output_file={output_filename} \
                        --vocab_file={BERT_DATA_DIR}{D}vocab.txt \
                        --bert_config_file={BERT_DATA_DIR}{D}{BERT}_config.json \
                        --init_checkpoint={model_path} \
-                       --layers=-1,-2,-3,-4"""
+                       --layers={layer_spec}"""
         if MAX_SEQ_LENGTH:
             command_line += f"--max_seq_length={MAX_SEQ_LENGTH}"
         if BATCH_SIZE:
@@ -290,6 +295,16 @@ class Script(Main):
         """Main processing step"""
         debug.trace_fmtd(5, "Script.run_main_step(): self={s}", s=self)
 
+        # Make sure number of requested layers doesn't exceed model size
+        bert_config_file = gh.form_path(BERT_DATA_DIR, BERT + "_config.json")
+        bert_config = json.loads(system.read_file(bert_config_file))
+        global NUM_LAYERS
+        num_actual_layers = bert_config.get("num_hidden_layers", 1)
+        if num_actual_layers < NUM_LAYERS:
+            # TODO: only show warning id NUM_LAYERS not the default (4)
+            debug.trace(3, f"Warning: only {num_actual_layers} available so not getting {NUM_LAYERS}")
+            NUM_LAYERS = num_actual_layers
+
         # Invoke the helper class to do the actual invocation
         extractor = ExtractFeatures(model=self.model)
         ## OLD: json_repr = extractor.run(self.sentence1, self.sentence2, basename=self.temp_file)
@@ -313,6 +328,7 @@ class Script(Main):
 
     def extract_vectors(self, json_repr):
         """Extract vectors for each token (from self.layer)"""
+        # Filter features/tokens (normally to exclude special ones or to match user list)
         feature_info = json.loads(json_repr)
         all_features = feature_info["features"]
         all_tokens = [h["token"] for h in all_features]
@@ -321,7 +337,19 @@ class Script(Main):
             terms_to_filter = text_utils.extract_string_list(self.filter_terms)
             tokens = system.difference(tokens, terms_to_filter)
         features = [h for (i, h) in enumerate(all_features) if all_tokens[i] in tokens]
-        vectors = [h["layers"][self.layer]["values"] for h in features]
+        debug.assertion(all((len(h["layers"]) == NUM_LAYERS) for h in features))
+
+        # Either average vectors or take last
+        if AVERAGE_LAYERS:
+            vectors = []
+            for h in features:
+                vector = np.array(h["layers"][0]["values"])
+                for layer in range(1, NUM_LAYERS):
+                    vector += np.array(h["layers"][layer]["values"])
+                vector = vector / NUM_LAYERS
+                vectors.append(list(vector))
+        else:
+            vectors = [h["layers"][self.layer]["values"] for h in features]
         return (tokens, vectors)
 
 #-------------------------------------------------------------------------------
