@@ -11,6 +11,7 @@
 # - Calculates accuracy as number of agreements over number of cases:
 #   ex:    (tp + tn) / (tp + tn + fp + fn)    for binary classifications
 # - See https://en.wikipedia.org/wiki/Evaluation_of_binary_classifiers#Single_metrics.
+# - Also see https://en.wikipedia.org/wiki/Accuracy_and_precision.
 # - Keep changes in sync with text_categorizer.py (e.g., XGBoost and GPU options).
 # - CherryPy Web server based on following tutorial
 #     https://simpletutorials.com/c/2165/How%20to%20Create%20a%20Simple%20JSON%20Service%20with%20CherryPy
