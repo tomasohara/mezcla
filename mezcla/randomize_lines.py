@@ -60,7 +60,7 @@ RANDOM_SEED = tpo.getenv_integer("RANDOM_SEED", 15485863,
 
 
 class Dummy_Main(Main):
-    """Class for reading input using """
+    """Class for reading input using Main"""
     
     def __init__(self, input_stream):
         super().__init__(runtime_args=[])
