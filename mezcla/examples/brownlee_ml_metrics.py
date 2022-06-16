@@ -87,7 +87,7 @@ def main():
     # accuracy: (tp + tn) / (p + n)
     accuracy = accuracy_score(testy, yhat_classes)
     print('Accuracy: %f' % accuracy)
-    # precision tp / (tp + fp)
+    # precision: tp / (tp + fp)
     precision = precision_score(testy, yhat_classes)
     print('Precision: %f' % precision)
     # recall: tp / (tp + fn)
