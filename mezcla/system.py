@@ -525,7 +525,7 @@ def read_all_stdin():
 def read_entire_file(filename, **kwargs):
     """Read all of FILENAME and return as a string
     Note: optional arguments to open() passed along (e.g., encoding amd error handling)"""
-    ## EX: (write_file("/tmp/fu", "1\n2\n3\n"), read_entire_file("/tmp/fu"))[1] => "1\n2\n3\n"
+    # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
         ## OLD: with open(filename) as f:
@@ -541,6 +541,20 @@ def read_entire_file(filename, **kwargs):
     return data
 #
 read_file = read_entire_file
+
+
+def read_lines(filename):
+    """Return lines in FILENAME as list (each without newline)"""
+    # EX: read_lines("/tmp/fu123.list") => ["1", "2", "3"]
+    # note: The final newline is ignored, s
+    contents = read_entire_file(filename)
+    lines = contents.split("\n")
+    if ((lines[-1] == "") and contents.endswith("\n")):
+        lines = lines[:-1]
+    debug.trace(7, f"read_lines({filename}) => {lines}")
+    return lines
+#
+# EX: l = ["1", "2"]; f="/tmp/12.list"; write_lines(f, l); read_lines(f) => l
 
 
 def read_binary_file(filename):
@@ -1091,7 +1105,8 @@ PRECISION = getenv_int("PRECISION", 6,
                        "Precision for rounding (e.g., decimal places)")
 #
 def round_num(value, precision=None):
-    """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
+    """Round VALUE [to PRECISION places, 6 by default]"""
+    ## BAD: """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
     # EX: round_num(3.15914, 3) => 3.159
     if precision is None:
         precision = PRECISION
