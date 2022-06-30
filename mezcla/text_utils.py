@@ -192,7 +192,7 @@ def version_to_number(version, max_padding=3):
     # ex: "3.7.6 (default, Jan  8 2020, 19:59:22" => "3.7.6"
     ## DEBUG: debug.trace_fmt(6, "stripped sys.version: {v}", v=re.sub(r"[^0-9\.]", "", sys.version))
     ## BAD: version_text = re.sub(r"[^0-9\.]", "", version_text)
-    version_text = re.sub(r"^([0-9\.]+)[^0-9\.].*", r"\1", version_text, re.DOTALL)
+    version_text = re.sub(r"^([0-9\.]+)[^0-9\.].*", r"\1", version_text, flags=re.DOTALL)
     if (version_text != version):
         debug.trace_fmt(3, "Warning: stripped non-numeric suffix from version: '{v}' => '{nv}'", 
                         v=version, nv=version_text)
