@@ -172,12 +172,12 @@ def main():
         new_date = last_date
         new_resolved_date = last_resolved_date
         # Ensure days of the week are abbreviated (with no more than 3 letters)
-        line = re.sub(r"^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)\w+day", r"\1", line, re.IGNORECASE)
-        line = re.sub(r"^(Tue)s (\d)", r"\1 \2", line, re.IGNORECASE)
-        line = re.sub(r"^(Thu)rs? (\d)", r"\1 \2", line, re.IGNORECASE)
+        line = re.sub(r"^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)\w+day", r"\1", line, flags=re.IGNORECASE)
+        line = re.sub(r"^(Tue)s (\d)", r"\1 \2", line, flags=re.IGNORECASE)
+        line = re.sub(r"^(Thu)rs? (\d)", r"\1 \2", line, flags=re.IGNORECASE)
         # TODO: Ensure months are abbreviated
-        ## line = re.sub(r" (\d+) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w* (\d+)", r" \1 \2 \3", line, re.IGNORECASE)
-        ## OLD: if (re.search(r"^([a-z][a-z][a-z] )?\d+ [a-z][a-z][a-z] \d+$", line, re.IGNORECASE)):
+        ## line = re.sub(r" (\d+) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w* (\d+)", r" \1 \2 \3", line, flags=re.IGNORECASE)
+        ## OLD: if (re.search(r"^([a-z][a-z][a-z] )?\d+ [a-z][a-z][a-z] \d+$", line, flag=re.IGNORECASE)):
         if (my_re.search(r"^([a-z][a-z][a-z] )?\d+ [a-z][a-z][a-z] \d+$", line, re.IGNORECASE)):
             ## OLD: new_date = line.strip()
             new_date = my_re.group(0)
