@@ -112,6 +112,8 @@ class Main(object):
     """Class encompassing common script processing"""
     argument_parser = None
     force_unicode = False
+    # TODO: add more class-wide member
+    ## temp_base, temp_file
 
     def __init__(self, runtime_args=None, description=None, skip_args=False,
                  # TODO: Either rename xyz_optiom to match python type name 
@@ -192,6 +194,7 @@ class Main(object):
         self.track_pages = track_pages
 
         # Setup temporary file and/or base directory
+        # Note: Uses NamedTemporaryFile (hence ntf_args)
         # TODO: allow temp_base handling to be overridable by constructor options
         prefix = (FILE_BASE + "-")
         ntf_args = {'prefix': prefix,
