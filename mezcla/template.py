@@ -23,6 +23,10 @@ from mezcla import system
 ## TODO:
 ## from mezcla.my_regex import my_re
 ## from mezcla import glue_helpers as gh
+##
+## Optional:
+## # Increase trace level for regex searching, etc. (e.g., from 6 to 7)
+## my_re.TRACE_LEVEL = debug.QUITE_VERBOSE
 
 ## TODO: Constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
 ## Note: Run following in Emacs to interactively replace TODO_ARG with option label
