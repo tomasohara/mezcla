@@ -19,7 +19,7 @@
 #
 # Usage examples:
 #
-#   - causal usage (quick-n-dirty debugging)
+#   - casual usage (quick-n-dirty debugging)
 #
 #     from mezcla import debug
 #     debug.trace_expr(4, dir())
@@ -74,13 +74,13 @@ class TraceLevel(enum.IntEnum):
     ERROR = 1
     WARNING = 2                         # typically always shown
     DEFAULT = WARNING
-    USUAL = 3                           # usual is sense of debugging purposes
+    USUAL = 3                           # usual in sense of debugging purposes
     DETAILED = 4
     VERBOSE = 5
-    QUITE_DETAILED = 6
+    QUITE_DETAILED = 6                  # detailed I/O
     QUITE_VERBOSE = 7
     MOST_DETAILED = 8
-    MOST_VERBOSE = 9
+    MOST_VERBOSE = 9                    # for internal debugging
 #
 TL = TraceLevel
 ALWAYS = TL.ALWAYS
@@ -98,7 +98,10 @@ MOST_VERBOSE = TL.MOST_VERBOSE
 # Other constants
 UTF8 = "UTF-8"
 STRING_TYPES = six.string_types
-INDENT = "    "
+# note: INDENT0 is left margin and INDENT1 is normal indent
+INDENT0 = ""
+INDENT1 = "    "
+INDENT = INDENT1
 
 # Globals
 max_trace_value_len = 512
@@ -193,12 +196,14 @@ if __debug__:
         return result
 
     
-    def trace(level, text, empty_arg=None, no_eol=False):
+    def trace(level, text, empty_arg=None, no_eol=False, indentation=None):
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE"""
         # Note: trace should not be used with text that gets formatted to avoid
         # subtle errors
         ## DEBUG: sys.stderr.write("trace({l}, {t})\n".format(l=level, t=text))
         if (trace_level >= level):
+            if indentation is None:
+                indentation = INDENT0
             # Prefix trace with timestamp w/o date
             if output_timestamps:
                 # Get time-proper from timestamp (TODO: find standard way to do this)
@@ -208,19 +213,19 @@ if __debug__:
                     diff = round(1000.0 * (time.time() - last_trace_time), 3)
                     timestamp_time += f" diff={diff}ms"
                     last_trace_time = time.time()
-                print("[" + timestamp_time + "]", end=": ", file=sys.stderr)
+                print(indentation + "[" + timestamp_time + "]", end=": ", file=sys.stderr)
                 if debug_file:
-                    print("[" + timestamp_time + "]", end=": ", file=debug_file)
+                    print(indentation + "[" + timestamp_time + "]", end=": ", file=debug_file)
             # Print trace, converted to UTF8 if necessary (Python2 only)
             # TODO: add version of assertion that doesn't use trace or trace_fmtd
             ## TODO: assertion(not(re.search(r"{\S*}", text)))
             end = "\n" if (not no_eol) else ""
-            print(_to_utf8(text), file=sys.stderr, end=end)
+            print(indentation + _to_utf8(text), file=sys.stderr, end=end)
             if use_logging:
                 # TODO: see if way to specify logging terminator
-                logging.debug(_to_utf8(text))
+                logging.debug(indentation + _to_utf8(text))
             if debug_file:
-                print(_to_utf8(text), file=debug_file, end=end)
+                print(indentation + _to_utf8(text), file=debug_file, end=end)
         if empty_arg is not None:
             sys.stderr.write("Error: trace only accepts two positional arguments (was trace_expr intended?)\n")
         return
@@ -291,7 +296,7 @@ if __debug__:
             pass
         outer_indentation = ""
         if indentation is None:
-            indentation = INDENT
+            indentation = INDENT1
         else:
             # TODO: rework via indent_level arg
             outer_indentation = indentation[:len(indentation)-len(INDENT)]
@@ -385,11 +390,11 @@ if __debug__:
                 trace(level + 1, "Warning: [trace_values] coercing input into list")
                 collection = list(collection)
         if indentation is None:
-            indentation = INDENT
+            indentation = INDENT1
         if label is None:
             ## BAD: label = str(type(collection)) + " " + hex(hash(collection))
             label = str(type(collection)) + " " + hex(id(collection))
-            indentation = INDENT
+            ## OLD: indentation = INDENT1
         if use_repr is None:
             use_repr = False
         trace(ALWAYS, label + ": {")
@@ -695,6 +700,7 @@ def verbose_debugging():
 
 def _getenv_bool(name, default_value):
     """Version of system.getenv_bool w/o tracing"""
+    ## EX: os.setenv("FU", "1"); _getenv_bool("FU", False)) => True
     result = default_value
     if (str(os.environ.get(name) or default_value).upper() in ["1", "TRUE"]):
         result = True
@@ -883,12 +889,19 @@ if __debug__:
         """Debug-only initialization"""
         time_start = time.time()
         trace(DETAILED, "in debug_init()")
+        trace_expr(VERBOSE, sys.argv)
 
         # Open external file for copy of trace output
         global debug_file
         debug_filename = os.getenv("DEBUG_FILE")
         if debug_filename is not None:
-            debug_file = open(debug_filename, mode="w", encoding="UTF-8")
+            ## OLD: debug_file = open(debug_filename, mode="w", encoding="UTF-8")
+            ## TEST: open unbuffered which requires binary output mode
+            ## BAD: debug_file = open(debug_filename, mode="wb", buffering=0, encoding="UTF-8")
+            ## note: uses line buffering
+            mode = ("a" if _getenv_bool("DEBUG_FILE_APPEND", False) else "w")
+            trace_expr(5, mode)
+            debug_file = open(debug_filename, mode=mode, buffering=1, encoding="UTF-8")
         
         # Determine whether tracing include time and date
         global output_timestamps

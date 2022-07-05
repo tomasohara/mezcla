@@ -5,7 +5,7 @@
 #    pip install -r requirements.txt
 #
 #    optional:
-#       perl -00 -pe 's/#opt#//;' requirements.txt > _optional-requirements.txt
+#       perl -00 -pe 's/#opt#//g;' requirements.txt > _optional-requirements.txt
 #       pip install -r _optional-requirements.txt
 #
 # TODO: supporting commands (e.g., lynx)
@@ -16,11 +16,12 @@ mako
 matplotlib
 nltk
 numpy
-ordereddict
+## OLD: ordereddict
 pandas
 requests
 scipy
 sklearn
+## TODO: put in setup.py
 six
 stopwords
 xgboost
@@ -30,3 +31,7 @@ xgboost
 #
 #opt# bert-tensorflow
 #opt# tensorflow
+#opt# pyyaml
+# NOTE: these are for convenience in setting up environment
+#opt# ipython
+#opt# pylint

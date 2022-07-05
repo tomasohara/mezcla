@@ -525,7 +525,7 @@ def read_all_stdin():
 def read_entire_file(filename, **kwargs):
     """Read all of FILENAME and return as a string
     Note: optional arguments to open() passed along (e.g., encoding amd error handling)"""
-    ## EX: (write_file("/tmp/fu", "1\n2\n3\n"), read_entire_file("/tmp/fu"))[1] => "1\n2\n3\n"
+    # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
         ## OLD: with open(filename) as f:
@@ -541,6 +541,20 @@ def read_entire_file(filename, **kwargs):
     return data
 #
 read_file = read_entire_file
+
+
+def read_lines(filename):
+    """Return lines in FILENAME as list (each without newline)"""
+    # EX: read_lines("/tmp/fu123.list") => ["1", "2", "3"]
+    # note: The final newline is ignored, s
+    contents = read_entire_file(filename)
+    lines = contents.split("\n")
+    if ((lines[-1] == "") and contents.endswith("\n")):
+        lines = lines[:-1]
+    debug.trace(7, f"read_lines({filename}) => {lines}")
+    return lines
+#
+# EX: l = ["1", "2"]; f="/tmp/12.list"; write_lines(f, l); read_lines(f) => l
 
 
 def read_binary_file(filename):
@@ -565,6 +579,7 @@ def read_directory(directory):
     debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files)
     return files
 
+
 def get_directory_filenames(directory, just_regular_files=False):
     """Returns full pathname for files in DIRECTORY, optionally restrictded to JUST_REGULAR_FILES
     Note: The files are returned in lexicographical order"""
@@ -579,6 +594,7 @@ def get_directory_filenames(directory, just_regular_files=False):
     debug.trace_fmtd(5, "get_directory_filenames({d}) => {r}", d=directory, r=files)
     return files
     
+
 def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False):
     """Reads FILENAME and returns as hash lookup, optionally SKIP[ing]_HEADER and using DELIM (tab by default).
     Note: Input is made lowercase unless RETAIN_CASE."""
@@ -889,6 +905,7 @@ def to_string(text):
 #
 to_text = to_string
 
+
 def chomp(text, line_separator=os.linesep):
     """Removes trailing occurrence of LINE_SEPARATOR from TEXT"""
     # EX: chomp("abc\n") => "abc"
@@ -899,6 +916,14 @@ def chomp(text, line_separator=os.linesep):
         result = result[:new_len]
     debug.trace_fmt(8, "chomp({t}, {sep}) => {r}", 
                     t=text, sep=line_separator, r=result)
+    return result
+
+
+def normalize_dir(path):
+    """Normalize the directory PATH (e.g., removing ending path delim)"""
+    # EX: normalize_dir("/etc/") => "/etc")
+    result = chomp(path, os.path.sep)
+    debug.trace(6, f"normalize_dir({path}) => {result}")
     return result
 
 
@@ -1080,7 +1105,8 @@ PRECISION = getenv_int("PRECISION", 6,
                        "Precision for rounding (e.g., decimal places)")
 #
 def round_num(value, precision=None):
-    """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
+    """Round VALUE [to PRECISION places, 6 by default]"""
+    ## BAD: """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
     # EX: round_num(3.15914, 3) => 3.159
     if precision is None:
         precision = PRECISION

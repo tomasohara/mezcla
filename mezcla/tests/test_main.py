@@ -127,6 +127,28 @@ class TestIt(TestWrapper):
                              exc=tpo.to_string(sys.exc_info()))
         self.assertTrue(TestIt.main_step_invoked)
 
+    def test_perl_arg(self):
+        """Make sure perl-style arg can be parsed"""
+        # TODO: create generic app-creation helper
+        debug.trace(4, f"in test_perl_arg(); self={self}")
+        from mezcla.main import Main  # pylint: disable=import-outside-toplevel, redefined-outer-name, reimported
+        class Test(Main):
+            """"Dummy test class"""
+            argument_parser = MyArgumentParser
+
+        # Test with and without Perl support
+        app = Test(boolean_options=["verbose"],
+                   runtime_args=["-verbose"],
+                   perl_switch_parsing=True)
+        #
+        self.assertEqual(app.parsed_args.get("verbose"), True)
+        #
+        app = Test(boolean_options=["verbose"],
+                   runtime_args=["-verbose"],
+                   perl_switch_parsing=False)
+        self.assertEqual(app.parsed_args.get("verbose"), None)
+
+
 class TestIt2:
     """Another class for testcase definition
     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
@@ -180,13 +202,14 @@ class TestIt2:
 
     def test_has_parsed_option_hack(self):
         """Make sure (temporarily hacked) has_parsed_option differs from has_parsed_option_old"""
+        debug.trace(4, f"in test_has_parsed_option_hack(); self={self}")
         ok_arg = "ok"
         missing_arg = "missing"
         main = Main(skip_args=True, auto_help=False)
         main.parsed_args = {ok_arg: True}
         assert(main.has_parsed_option_old(ok_arg) == main.has_parsed_option(ok_arg))
         assert(main.has_parsed_option_old(missing_arg) != main.has_parsed_option(missing_arg))
-        
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':

@@ -78,6 +78,7 @@ from mezcla import debug
 from mezcla import tpo_common as tpo
 from mezcla import glue_helpers as gh
 from mezcla import system
+from mezcla.my_regex import my_re
 from mezcla.system import getenv_bool
 
 # Constants
@@ -95,7 +96,7 @@ TRACK_PAGES = getenv_bool("TRACK_PAGES", False,
                           "Track page boundaries by form feed--\\f or ^L")
 RETAIN_FORM_FEED = getenv_bool("RETAIN_FORM_FEED", False,
                                "Include formfeed (\\f) at start of each segment")
-DEFAULT_FILE_BASE = re.sub(r".py\w*$", "", gh.basename(__file__))
+DEFAULT_FILE_BASE = my_re.sub(r".py\w*$", "", gh.basename(__file__))
 FILE_BASE = system.getenv_text("FILE_BASE", DEFAULT_FILE_BASE,
                                "Basename for output files including dir")
 SHOW_ENV_OPTIONS = system.getenv_bool("ENV_USAGE", debug.detailed_debugging(),
@@ -105,6 +106,8 @@ INDENT = system.getenv_text("INDENT", "    ",
                             "Indentation for system output")
 BRIEF_USAGE = system.getenv_bool("BRIEF_USAGE", False,
                                  "Show brief usage with autohelp")
+PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
+                                         "Prepocesess args to expand Perl-style -var[=val[=1]] --var=val")
 
 #-------------------------------------------------------------------------------
 
@@ -112,6 +115,8 @@ class Main(object):
     """Class encompassing common script processing"""
     argument_parser = None
     force_unicode = False
+    # TODO: add more class-wide member
+    ## temp_base, temp_file
 
     def __init__(self, runtime_args=None, description=None, skip_args=False,
                  # TODO: Either rename xyz_optiom to match python type name 
@@ -192,6 +197,7 @@ class Main(object):
         self.track_pages = track_pages
 
         # Setup temporary file and/or base directory
+        # Note: Uses NamedTemporaryFile (hence ntf_args)
         # TODO: allow temp_base handling to be overridable by constructor options
         prefix = (FILE_BASE + "-")
         ntf_args = {'prefix': prefix,
@@ -214,6 +220,7 @@ class Main(object):
         # Get arguments from specified parameter or via command line
         # Note: --help assumed for input-less scripts with command line options
         # to avoid inadvertent script processing.
+        #
         if ((runtime_args is None) and (not skip_args)):
             runtime_args = sys.argv[1:]
             tpo.debug_print("Using sys.argv[1:] for runtime args: %s" % runtime_args, 4)
@@ -221,6 +228,22 @@ class Main(object):
                 help_arg = (USAGE_ARG if self.brief_usage else HELP_ARG)
                 debug.trace(4, f"Adding {help_arg} to command line (as per auto_help)")
                 runtime_args = [help_arg]
+        #
+        # Process special hook for converting Perl-style switches like -fu=123 to --fu=123
+        # See -s option under perlrun man page for enabling this rudimentary switch parsing.
+        # Note: mainly just intended for when porting Perl scripts.
+        perl_switch_parsing = kwargs.get("perl_switch_parsing", PERL_SWITCH_PARSING)
+        if perl_switch_parsing and runtime_args:
+            debug.trace(4, "FYI: Enabling Perl-style options")
+            for i, arg in enumerate(runtime_args):
+                if arg in ["-", "--"]:
+                    break
+                if my_re.search(r"^-([a-z0-9_]+\w*)=?(.*)$", arg, flags=re.IGNORECASE):
+                    new_arg = "-" + arg
+                    debug.trace(4, f"Converted Perl-style arg {i} from {arg!r} to {new_arg}")
+                    debug.assertion(not system.file_exists(arg))
+                    runtime_args[i] = new_arg
+                    
         # Get other options
         self.program = program
         if description:
@@ -430,9 +453,10 @@ class Main(object):
                                 help="Input filename")
 
         # Optionally, show brief usage and exit
-        # note: print_usage just print command line synopsis (not individual descriptions)
+        # note: print_usage just prints command line synopsis (not individual descriptions)
         if (self.brief_usage and (runtime_args == [USAGE_ARG])):
             debug.trace(4, "Just showing (brief) usage and then exiting")
+            debug.trace(5, "warning: self.setup won't be invoked")
             parser.print_usage()
             sys.exit()
 
@@ -456,7 +480,9 @@ class Main(object):
         return
 
     def setup(self):
-        """Perform script setup prior to input processing"""
+        """Perform script setup prior to input processing
+        Note: This is not invoked if the script exits during --help processing"
+        """
         # Note: Use for post-argument proceessing setup
         tpo.debug_format("Main.setup() stub: self={s}", 5, s=self)
         return

@@ -71,9 +71,12 @@ def get_temp_file(delete=None):
     debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
     return temp_file_name
 #
-TEMP_LOG_FILE = tpo.getenv_text(
-    # "Log file for stderr (e.g., for issue function)"
-    "TEMP_LOG_FILE", get_temp_file())
+## OLD:
+## TEMP_LOG_FILE = tpo.getenv_text(
+##     # "Log file for stderr (e.g., for issue function)"
+##     "TEMP_LOG_FILE", get_temp_file())
+TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file(),
+                                "Log file for stderr such as for issue function)")
 
 
 def basename(filename, extension=None):
@@ -228,16 +231,17 @@ def elide(text: str, max_len=None):
     """Returns TEXT elided to at most MAX_LEN characters (with '...' used to indicate remainder). Note: intended for tracing long string."""
     # EX: elide("=" * 80, max_len=8) => "=====..."
     # TODO: add support for eliding at word-boundaries
-    tpo.debug_print("elide(_, _)", 7)
+    tpo.debug_print("elide(_, _)", 8)
     debug.assertion(isinstance(text, str))
     if max_len is None:
         max_len = MAX_ELIDED_TEXT_LEN
     result = text
-    if len(result) > max_len:
+    if (result and (len(result) > max_len)):
         result = result[:max_len] + "..."
-    tpo.debug_print("elide({%s}, [{%s}]) => {%s}" % (text, max_len, result), 8)
+    tpo.debug_print("elide({%s}, [{%s}]) => {%s}" % (text, max_len, result), 9)
     return result
-
+#
+# EX: gh.elide(None, 10) => None
 
 def elide_values(values: list, **kwargs):
     """List version of elide [q.v.]"""

@@ -11,7 +11,6 @@
 #        (start_hours, start_mins, end_hours, end_mins) = my_re.groups()
 #
 #--------------------------------------------------------------------------------
-# TODO: weed out tpo_common usages (work out converter script for common cases like tpo.debug_print to debug.trace and tpo.debug_format to debug.trace_fmt)
 # TODO:
 # - Add examples for group(), groups(), etc.
 # - Clean up script (e.g., regex => regex_wrapper).
@@ -22,6 +21,7 @@
 
 # Standard packages
 import re
+## TODO: from re import *
 
 # Installed packages
 import six
@@ -29,7 +29,6 @@ import six
 # Local packages
 from mezcla import debug
 from mezcla import system
-from mezcla import tpo_common as tpo
 
 # Expose public symbols from re package, plus the wrapper class and global instance
 ## OLD:
@@ -38,8 +37,10 @@ from mezcla import tpo_common as tpo
 ## DEBUG: system.print_stderr("checking SKIP_RE_ALL")
 RE_ALL = (not system.getenv_bool("SKIP_RE_ALL", False,
                                  "Don't use re.__all__: for sake of pylint"))
+__all__ = ['regex_wrapper', 'my_re']
 if RE_ALL:
     ## TODO: __all__ = re.__all__ + ['regex_wrapper', 'my_re']
+    __all__ += re.__all__
     pass
 else:
     debug.trace(4, "Omitting use of re __all__")
@@ -55,41 +56,48 @@ class regex_wrapper(object):
     TRACE_LEVEL = debug.QUITE_DETAILED
     
     def __init__(self, ):
-        tpo.debug_format("regex.__init__(): self={s}", 4, s=self)
+        debug.trace_fmtd(4, "my_regex.__init__(): self={s}", s=self)
         self.match_result = None
         # TODO: self.regex = ""
+
+        # HACK: Import attributes from re class
+        # TODO: see if clean way to do this
+        try:
+            for var in re.__all__:
+                if var not in dir(self):
+                    setattr(self, var, getattr(re, var))
+        except:
+            system.print_exception_info("__init__ re.* importation")
 
     def search(self, regex, text, flags=0, base_trace_level=None):
         """Search for REGEX in TEXT with optional FLAGS and BASE_TRACE_LEVEL (e.g., 6)"""
         ## TODO: rename as match_anywhere for clarity
         if base_trace_level is None:
             base_trace_level = self.TRACE_LEVEL
-        tpo.debug_format("regex.search({r}, {t}, {f}): self={s}", (1 + base_trace_level),
+        debug.trace_fmtd((1 + base_trace_level), "my_regex.search({r!r}, {t!r}, {f}): self={s}",
                          r=regex, t=text, f=flags, s=self)
         debug.assertion(isinstance(text, six.string_types))
         self.match_result = re.search(regex, text, flags)
         if self.match_result:
-            ## OLD: tpo.debug_print("match: %s" % tpo.to_string(self.match_result.groups()), 6)
-            debug.trace_fmt(base_trace_level, "match: {m}; regex: {r}", m=self.grouping(), r=regex)
+            debug.trace_fmt(base_trace_level, "match: {m!r}; regex: {r}", m=self.grouping(), r=regex)
         return self.match_result
 
     def match(self, regex, text, flags=0, base_trace_level=None):
         """Match REGEX to TEXT with optional FLAGS and BASE_TRACE_LEVEL (e.g., 6)"""
         ## TODO: rename as match_start for clarity; add match_all method (wrapper around fullmatch)
         if base_trace_level is None:
-            base_trace_level = 6
-        tpo.debug_format("regex.match({r}, {t}, {f}): self={s}", (1 + base_trace_level),
+            base_trace_level = self.TRACE_LEVEL
+        debug.trace_fmtd((1 + base_trace_level), "my_regex.match({r!r}, {t!r}, {f}): self={s}",
                          r=regex, t=text, f=flags, s=self)
         self.match_result = re.match(regex, text, flags)
         if self.match_result:
-            ## OLD: tpo.debug_print("match: %s" % tpo.to_string(self.match_result.groups()), 6)
-            debug.trace_fmt(base_trace_level, "match: {m}; regex: {r}", m=self.grouping(), r=regex)
+            debug.trace_fmt(base_trace_level, "match: {m!r}; regex: {r!r}", m=self.grouping(), r=regex)
         return self.match_result
 
     def get_match(self):
         """Return match result object for last search or match"""
         result = self.match_result
-        tpo.debug_format("regex.get_match() => {r}: self={s}", 7,
+        debug.trace_fmtd(self.TRACE_LEVEL, "my_regex.get_match() => {r}: self={s}",
                          r=result, s=self)
         return result
 
@@ -97,7 +105,7 @@ class regex_wrapper(object):
         """Return group NUM from match result from last search"""
         debug.assertion(self.match_result)
         result = self.match_result and self.match_result.group(num)
-        tpo.debug_format("regex.group({n}) => {r}: self={s}", 7,
+        debug.trace_fmtd(self.TRACE_LEVEL, "my_regex.group({n}) => {r}: self={s}",
                          n=num, r=result, s=self)
         return result
 
@@ -105,7 +113,7 @@ class regex_wrapper(object):
         """Return all groups in match result from last search"""
         debug.assertion(self.match_result)
         result = self.match_result and self.match_result.groups()
-        debug.trace_fmt(7, "regex.groups() => {r}: self={s}",
+        debug.trace_fmt(self.TRACE_LEVEL, "my_regex.groups() => {r}: self={s}",
                         r=result, s=self)
         return result
 
@@ -113,21 +121,32 @@ class regex_wrapper(object):
         """Return groups for match result or entire matching string if no groups defined"""
         # Note: this is intended to facilitate debug tracing; see example in search method above
         result = self.match_result and (self.match_result.groups() or self.match_result.group(0))
-        debug.trace_fmt(7, "regex.grouping() => {r}: self={s}", r=result, s=self)
+        debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.grouping() => {r}: self={s}", r=result, s=self)
         return result
 
     def start(self, group=0):
         """Start index for GROUP"""
         result = self.match_result and self.match_result.start(group)
-        debug.trace_fmt(7, "regex.start({g}) => {r}: self={s}", r=result, s=self, g=group)
+        debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.start({g}) => {r}: self={s}", r=result, s=self, g=group)
         return result
 
     def end(self, group=0):
         """End index for GROUP"""
         result = self.match_result and self.match_result.end(group)
-        debug.trace_fmt(7, "regex.end({g}) => {r}: self={s}", r=result, s=self, g=group)
+        debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.end({g}) => {r}: self={s}", r=result, s=self, g=group)
         return result
 
+    def sub(self, pattern, replacement, string, *, count=0, flags=0):
+        """Version of re.sub requiring explicit keyword parameters"""
+        result = re.sub(pattern, replacement, string, count, flags)
+        debug.reference_var(self)
+        debug.trace(self.TRACE_LEVEL + 1, f"my_regex.sub({pattern!r}, {replacement!r}, {string!r}, [count=[count]], flags={flags}]) => {result!r}\n")
+        return result
+
+    def span(self, group=0):
+        """Tuple with GROUP start and end"""
+        return (self.match_result and self.match_result.span(group))
+    
 #...............................................................................
 # Initialization
 #
