@@ -30,9 +30,13 @@ import sys
 
 # Installed packages
 # TODO: require version 1.1 with TPO hacks
-import tfidf
-from tfidf.corpus import Corpus as tfidf_corpus
-from tfidf.preprocess import Preprocessor as tfidf_preprocessor
+## OLD:
+## import tfidf
+## from tfidf.corpus import Corpus as tfidf_corpus
+## from tfidf.preprocess import Preprocessor as tfidf_preprocessor
+from mezcla import tfidf
+from mezcla.tfidf.corpus import Corpus as tfidf_corpus
+from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
 
 # Local packages
 ## OLD:
@@ -57,9 +61,12 @@ PRUNE_OVERLAPPING_TERMS = system.getenv_bool("PRUNE_OVERLAPPING_TERMS", False)
 SKIP_STEMMING = system.getenv_bool("SKIP_STEMMING", False,
                                    "Skip word stemming (via Snowball)")
 INCLUDE_STEMMING = not SKIP_STEMMING
-## TODO: "LANGUAGE" => "STEMMER_LANGUAGE"
-LANGUAGE = system.getenv_text("LANGUAGE", "english",
-                              "Language for stemming and stop words (n.b., use '' for n/a)")
+## OLD
+## LANGUAGE = system.getenv_text("LANGUAGE", "english",
+##                               "Language for stemming and stop words (n.b., use '' for n/a)")
+STEMMER_LANGUAGE = system.getenv_value("STEMMER_LANGUAGE", None,
+                                       "Language for stemming and stop words--not recommended")
+LANGUAGE = (STEMMER_LANGUAGE or "")
 TERM_WIDTH = system.getenv_int("TERM_WIDTH", 32,
                                "Width of term column in output")
 SCORE_WIDTH = system.getenv_int("SCORE_WIDTH", PRECISION + 6,
@@ -235,7 +242,15 @@ def main():
                     except:
                         debug.trace_fmt(5, "Exception processing line {l}", l=line)
                         doc_text = ""
-                    corpus[doc_id] = doc_text
+                    ## OLD: corpus[doc_id] = doc_text
+                    ## TODO: use defaultdict-type hash
+                    if doc_id not in corpus:
+                        corpus[doc_id] = ""
+                    else:
+                        ## TODO: corpus[doc_id] += " "
+                        corpus[doc_id] = (corpus[doc_id].text + " ")
+                    ## TODO: corpus[doc_id] += doc_text
+                    corpus[doc_id] = (corpus[doc_id].text + doc_text)
                     doc_filenames[doc_id] = filename + ":" + str(i + 1)
                     line += 1
         # Otherwise, treat entire file as document and use command-line position as the document ID
