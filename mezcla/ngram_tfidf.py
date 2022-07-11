@@ -58,8 +58,9 @@ ALLOW_NGRAM_SUBSUMPTION = system.getenv_boolean("ALLOW_NGRAM_SUBSUMPTION", False
 ALLOW_NGRAM_OVERLAP = system.getenv_boolean("ALLOW_NGRAM_OVERLAP", False,
                                             "Allows ngrams to overlap--token boundariese")
 ALLOW_NUMERIC_NGRAMS = system.getenv_boolean("ALLOW_NUMERIC_NGRAMS", False)
-USE_CORPUS_COUNTER = system.getenv_boolean("USE_CORPUS_COUNTER", False,
-                                           "Use (slow) tfidf package ngram tabulation")
+DEFAULT_USE_CORPUS_COUNTER = (not tfidf_preprocessor.USE_SKLEARN_COUNTER)
+USE_CORPUS_COUNTER = system.getenv_boolean("USE_CORPUS_COUNTER", DEFAULT_USE_CORPUS_COUNTER,
+                                           "Use slow tfidf package ngram tabulation")
 
 try:
     # Note major and minor revision values are assumed to be integral
@@ -222,10 +223,11 @@ def main():
         usage = "Usage: {prog} [--help] [-]".format(prog=sys.argv[0])
         system.exit(usage)
     
-    # Tabulate mgram occurrences
+    # Tabulate ngram occurrences
     ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=2, max_ngram_size=3)
     all_text = system.read_entire_file(__file__)
-    all_ngrams = ngram_analyzer.old_get_ngrams(all_text)
+    ## OLD: all_ngrams = ngram_analyzer.old_get_ngrams(all_text)
+    all_ngrams = ngram_analyzer.get_ngrams(all_text)
     # pylint: disable=unnecessary-comprehension
     reversed_all_text = " ".join(list(reversed([token for token in all_text.split()])))
     ngram_analyzer.add_doc(all_text, doc_id="doc1")
@@ -256,7 +258,7 @@ def main():
     print(f"first 10 ngrams in {__file__}:\n\t{init_ngram_spec}")
     init_top_ngram_spec = "\n\t".join([f"{t}: {tpo.round_num(s, 3)}"
                                        for (t, s) in top_ngrams[:SAMPLE_SIZE]])
-    print(f"first 10 ngrams in {__file__}:\n\t{init_top_ngram_spec}")
+    print(f"top ngrams in {__file__}:\n\t{init_top_ngram_spec}")
 
     
 #-------------------------------------------------------------------------------
