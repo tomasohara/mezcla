@@ -2,8 +2,6 @@
 # 
 # TODO what the script does (detailed)
 #
-# The software is Open Source, licensed under the GNU Lesser General Public Version 3 (LGPLv3). See LICENSE.txt in repository.
-#
 ## TODO: see example/template.py for simpler version suitable for cut-n-paste from online examples
 #
 
