@@ -18,6 +18,7 @@ Example:
 """
 # HACK: Attempt at fixing up a very stale example!
 # TODO: Make sure the tf_raw calculation revision is correct.
+# TODO1: revise docstrings wrt preferred keywords (i.e., not deprecated)
 
 from __future__ import absolute_import, division
 
@@ -36,10 +37,10 @@ from mezcla import system
 from mezcla.tfidf.preprocess import clean_text, Preprocessor
 
 # TPO: environment option for weight singleton occurrences low
-## OLD: PENALIZE_SINGLETONS = str(os.environ.get("PENALIZE_SINGLETONS", "False")).upper() in ["TRUE", "1"]
-PENALIZE_SINGLETONS = system.getenv_boolean("PENALIZE_SINGLETONS", False)
+PENALIZE_SINGLETONS = system.getenv_boolean("PENALIZE_SINGLETONS", False,
+                                            "Ignore singleton ngrams")
 if PENALIZE_SINGLETONS:
-    system.print_stderr("Penalizing singleton ngrams")
+    system.print_stderr("FYI: Penalizing singleton ngrams")
 
 
 class Document(object):
@@ -69,7 +70,7 @@ class Document(object):
         return ngram in self.keywordset
 
     def __getitem__(self, ngram):
-        """Return the DocKeyword object with occurances via the stemmed ngram."""
+        """Return the DocKeyword object with occurrences via the stemmed ngram."""
         return self.keywordset[ngram]
 
     def __len__(self):
@@ -116,14 +117,13 @@ class Document(object):
     # Term Frequency weighting functions:
     def tf_raw(self, ngram):
         """The (relative) frequency of an ngram in a document."""
-        num_occurances = len(self[ngram]) if ngram in self else 0
+        num_occurrences = len(self[ngram]) if ngram in self else 0
         # HACK: give singletons a max DF to lower IDF score
-        if (num_occurances == 1) and PENALIZE_SINGLETONS:
-            num_occurances = 0
-        tf_raw = float(num_occurances) / len(self)
-        ## OLD: sys.stderr.write("tf_raw({ng}): num_occ={no} len(self)={l} result={r}\n".format(
+        if (num_occurrences == 1) and PENALIZE_SINGLETONS:
+            num_occurrences = 0
+        tf_raw = float(num_occurrences) / len(self)
         debug.trace_fmt(6, "tf_raw({ng}): num_occ={no} len(self)={l} result={r}",
-                        ng=ngram, no=num_occurances, l=len(self), r=tf_raw)
+                        ng=ngram, no=num_occurrences, l=len(self), r=tf_raw)
         return tf_raw
 
     def tf_log(self, ngram):
@@ -145,6 +145,8 @@ class Document(object):
     def tf_freq(self, ngram):
         """Returns frequency count for NGRAM"""
         num_occurrences = len(self[ngram]) if ngram in self else 0
+        debug.trace_fmt(6, "tf_freq({ng}): num_occ={no} len(self)={l} result={r}",
+                        ng=ngram, no=num_occurrences, l=len(self), r=num_occurrences)
         return num_occurrences
     
     def tf(self, ngram, tf_weight='basic', normalize=False):
