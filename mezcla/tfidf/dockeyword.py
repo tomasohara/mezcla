@@ -24,9 +24,10 @@ class DocKeyword(object):
     def __init__(self, text, document=None, start=None, end=None):
         self.locations = set()
         self.text = text
-        self.locations = set()
         if (start is not None) and (end is not None):
             self.locations.add(Location(document, start, end))
+        ## TODO: debug.trace_object(8, self, "DocKeyword instance", show_all=False)
+        debug.trace_object(7, self, "DocKeyword instance", show_all=False)
 
     def update_locations(self, locations):
         """Add LOCATIONS to other locations"""
@@ -42,9 +43,6 @@ class DocKeyword(object):
     def __ladd__(self, other):
         if other == 0:
             return self
-        ## OLD
-        ## else:
-        ##     return self.__add__(other)
         return self.__add__(other)
 
     def __len__(self):
@@ -74,4 +72,4 @@ class DocKeyword(object):
     
 if __name__ == '__main__':
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone")
-    debug.trace_object(4, DocKeyword("monkeys"))
+    debug.trace_object(3, DocKeyword("monkeys"))
