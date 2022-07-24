@@ -47,6 +47,14 @@
 #      dummy = Main([]);   dummy.input_stream = str
 #      for line in dummy.process_input(): ...
 #
+# Note:
+# - PERL_SWITCH_PARSING allows for Perl-style -var=val command switches. This 
+#   was added to facilitate porting Perl scripts, especially those used in aliases. See
+#      https://github.com/tomasohara/shell-scripts/blob/main/tomohara-aliases.bash
+#   For example, https://github.com/tomasohara/shell-scripts/blob/main/check_errors.py.
+# - This requires a workaround due to an argparse limitation:
+#      https://github.com/spotify/luigi/issues/193 [boolean as command-line arg]
+#
 # TODO:
 # - *** Convert tpo_common calls (i.e., tpo.xyz) to debug!'
 # - Specify argument via input dicts, such as in 
@@ -107,7 +115,7 @@ INDENT = system.getenv_text("INDENT", "    ",
 BRIEF_USAGE = system.getenv_bool("BRIEF_USAGE", False,
                                  "Show brief usage with autohelp")
 PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
-                                         "Prepocesess args to expand Perl-style -var[=val[=1]] --var=val")
+                                         "Prepocesess args to expand Perl-style -var[=[val=1]] to --var=val")
 
 #-------------------------------------------------------------------------------
 
@@ -232,14 +240,19 @@ class Main(object):
         # Process special hook for converting Perl-style switches like -fu=123 to --fu=123
         # See -s option under perlrun man page for enabling this rudimentary switch parsing.
         # Note: mainly just intended for when porting Perl scripts.
-        perl_switch_parsing = kwargs.get("perl_switch_parsing", PERL_SWITCH_PARSING)
-        if perl_switch_parsing and runtime_args:
+        self.perl_switch_parsing = kwargs.get("perl_switch_parsing", PERL_SWITCH_PARSING)
+        if self.perl_switch_parsing and runtime_args:
             debug.trace(4, "FYI: Enabling Perl-style options")
+            debug.assertion(not re.search(r"--\w+", " ".join(runtime_args)),
+                            "Shouldn't use Python arguments with PERL_SWITCH_PARSING")
             for i, arg in enumerate(runtime_args):
                 if arg in ["-", "--"]:
                     break
                 if my_re.search(r"^-([a-z0-9_]+\w*)=?(.*)$", arg, flags=re.IGNORECASE):
-                    new_arg = "-" + arg
+                    ## OLD: new_arg = "-" + arg
+                    option = my_re.group(1)
+                    value = (my_re.group(2) if len(my_re.group(2)) else "1")
+                    new_arg = f"--{option}={value}"
                     debug.trace(4, f"Converted Perl-style arg {i} from {arg!r} to {new_arg}")
                     debug.assertion(not system.file_exists(arg))
                     runtime_args[i] = new_arg
@@ -404,8 +417,12 @@ class Main(object):
         # TODO: consolidate processing for the groups; add option for environment-based default; resolve stupid pylint false positive about unbalanced-tuple-unpacking
         for opt_spec in self.boolean_options:
             (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            parser.add_argument(opt_label, default=opt_default, action='store_true',
-                                help=opt_desc)
+            if self.perl_switch_parsing:
+                # note: With Perl argument support, booleans treated as integers due to argparse quirk.
+                ## TEST: parser.add_argument(opt_label, type=int, nargs='?', default=opt_default, help=opt_desc)
+                parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
+            else:
+                parser.add_argument(opt_label, default=opt_default, action='store_true', help=opt_desc)
         for opt_spec in self.int_options:
             (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
             parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
