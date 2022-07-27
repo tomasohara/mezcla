@@ -48,3 +48,7 @@ dist
 
 # Emacs
 TAGS
+
+# Unit test / coverage reports
+**/tests/htmlcov
+.coverage
