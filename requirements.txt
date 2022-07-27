@@ -32,6 +32,9 @@ xgboost
 #opt# bert-tensorflow
 #opt# tensorflow
 #opt# pyyaml
+#opt# librosa
+#opt# SpeechRecognition
+#opt# ibm-watson
 # NOTE: these are for convenience in setting up environment
 #opt# ipython
 #opt# pylint
