@@ -29,7 +29,6 @@ class TestIt(TestWrapper):
     script_module = TestWrapper.derive_tested_module_name(__file__)
     use_temp_base_dir = True
 
-
     ## TODO: optional setup methods
     ##
     ## @classmethod
@@ -48,7 +47,6 @@ class TestIt(TestWrapper):
     ##     super().setUp()
     ##     ...
     ##     return
-
 
     def test_get_directory_listing(self):
         """
@@ -75,7 +73,6 @@ class TestIt(TestWrapper):
         for line in list_result:
             self.assertTrue(bool(re.search(r"[drwx-]+\s+\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+\d\d:\d\d\s+[\w/]+", line)))
 
-
     def test_get_information(self):
         """Tests for def get_information(path,
                                          readable = False,
@@ -86,8 +83,7 @@ class TestIt(TestWrapper):
         ls_result = gh.run(f'ls -l {self.temp_file}')
         ls_result = re.sub(r'\s+', ' ', ls_result)
 
-        self.assertEqual(file_utils.get_information(self.temp_file, return_string=True), ls_result)
-
+        self.assertEqual(file_utils.get_information(self.temp_file, return_string=True).lower(), ls_result.lower())
 
     def test_get_permissions(self):
         """Tests for get_permissions(path)"""
@@ -100,16 +96,14 @@ class TestIt(TestWrapper):
         self.assertEqual(file_utils.get_permissions(test_file), gh.run(f'ls -l {test_file}')[:10])
         self.assertEqual(file_utils.get_permissions(self.temp_base), gh.run(f'ls -ld {self.temp_base}')[:10])
 
-
     def test_get_modification_date(self):
         """Tests for get_modification_date(path)"""
         gh.run(f'touch {self.temp_file}')
 
-        ls_date = gh.run(f'ls -l {self.temp_file}')[39:51]
-        ls_date = re.sub(r'\s+', ' ', ls_date)
+        ls_date = gh.run(f'ls -l {self.temp_file}').lower()
+        ls_date = re.search(r'\w\w\w +\d\d +\d\d:\d\d', ls_date).group()
 
-        self.assertEqual(file_utils.get_modification_date(self.temp_file, strftime='%b %-d %H:%M'), ls_date)
-
+        self.assertEqual(file_utils.get_modification_date(self.temp_file, strftime='%b %-d %H:%M').lower(), ls_date)
 
     ## TODO: optional cleanup methods
     ##
