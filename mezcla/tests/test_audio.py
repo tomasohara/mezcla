@@ -4,6 +4,7 @@
 #
 # NOTE: some tests will take a while.
 #
+## TODO: solve test execution long times.
 
 
 """Tests for Audio.py module"""
@@ -30,7 +31,6 @@ class TestIt(TestWrapper):
     use_temp_base_dir = True
     maxDiff           = None
 
-
     @unittest.skip("this will take a while and this require a valid audio path in AUDIOFILE")
     def test_sphinx_engine(self):
         """Test CMUSphinx speech recognition engine class"""
@@ -40,7 +40,6 @@ class TestIt(TestWrapper):
         result_speech = sample.speech_to_text(engine='sphinx')
         self.assertTrue(isinstance(result_speech, str))
         self.assertTrue(result_speech)
-
 
     def test_audio_path(self):
         """Test for audio.path"""
@@ -56,7 +55,7 @@ class TestIt(TestWrapper):
         sample.set_path(path)
         self.assertEqual(sample.get_path(), path)
 
-
+    @unittest.skip('TODO: tests command-line using batspp style')
     def test_source_single_audio(self):
         """End to end test sourcing a single audio file"""
         debug.trace(debug.DETAILED, f"TestIt.test_source_single_audio({self})")
@@ -64,11 +63,11 @@ class TestIt(TestWrapper):
         audio = self.temp_file + '.wav'
         gh.write_file(audio, 'some content')
 
-        command  = f'python audio.py --verbose {audio}'
+        command  = f'python {self.script_module} --verbose {audio}'
         expected = f'Audio: {audio}'
         self.assertEqual(gh.run(command), expected)
 
-
+    @unittest.skip('TODO: tests command-line using batspp style')
     def test_source_list(self):
         """End to end test sourcing a list of audio files"""
         debug.trace(debug.DETAILED, f"TestIt.test_source_list({self})")
@@ -82,14 +81,14 @@ class TestIt(TestWrapper):
 
         gh.write_file(list_file, audio_list)
 
-        command  = f'python audio.py --verbose {list_file}'
+        command  = f'python {self.script_module} --verbose {list_file}'
         expected = ('Audio: audio1.wav\n'
                     'Audio: audio2.wav\n'
                     'Audio: audio23.wav\n'
                     'Audio: audioN.wav')
         self.assertEqual(gh.run(command), expected)
 
-
+    @unittest.skip('TODO: tests command-line using batspp style')
     def test_source_folder(self):
         """End to end test sourcing a folder and discover audiofiles"""
         debug.trace(debug.DETAILED, f"TestIt.test_source_folder({self})")
@@ -101,18 +100,17 @@ class TestIt(TestWrapper):
         for filename in filenames:
             gh.write_file(self.temp_base + filename, 'content')
 
-        actual = gh.run(f'python audio.py --verbose {self.temp_base}')
+        actual = gh.run(f'python {self.script_module} --verbose {self.temp_base}')
 
         for filename in filenames:
             self.assertTrue(filename in actual)
-
 
     @unittest.skip("this will take a while and this require a valid audio path in AUDIOFILE")
     def test_extract_speech(self):
         """End to end test extracting speech using CMUSphinx engine"""
         debug.trace(debug.DETAILED, f"TestIt.test_extract_speech({self})")
 
-        actual = gh.run(f'python audio.py --verbose --speech sphinx {AUDIOFILE}')
+        actual = gh.run(f'python {self.script_module} --verbose --speech sphinx {AUDIOFILE}')
         self.assertTrue('- speech recognized' in actual)
         self.assertTrue(isinstance(actual, str))
         self.assertTrue(actual)
