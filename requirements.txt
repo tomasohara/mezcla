@@ -10,6 +10,8 @@
 #
 # TODO: supporting commands (e.g., lynx)
 bs4
+lxml
+textract
 cherrypy
 gensim
 mako
