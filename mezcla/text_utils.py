@@ -172,7 +172,7 @@ def version_to_number(version, max_padding=3):
       EX: version_to_number("1.1.1") < 1.1
     - strings in the version are ignored
     - 0 is returned if version string is non-standard"""
-    # EX: version_to_number("1.11.1") => 1.00010001
+    # EX: version_to_number("1.11.1") => 1.00110001
     # EX: version_to_number("1") => 1
     # EX: version_to_number("") => 0
     # TODO: support string (e.g., 1.11.2a).
