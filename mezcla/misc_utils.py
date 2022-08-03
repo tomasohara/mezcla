@@ -92,11 +92,12 @@ def is_prime(num):
         is_prime_num = (num > 1)
         if not is_prime_num:
             debug.trace_fmt(4, "{n} not prime as less than 3 and not 2.", n=num)
+        return is_prime_num
 
     # Next, make sure not divisible by 2 or 3
     elif ((num % 2 == 0) or (num % 3 == 0)):
         debug.trace_fmt(4, "{n} not prime as divisible by 2 or 3.", n=num)
-        is_prime_num = False
+        return False
 
     # Otherwise, check (6k +/- 1) values to see if divisible by 2 or 3,
     # stopping when value exceeds sqrt(n).
