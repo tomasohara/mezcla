@@ -211,8 +211,8 @@ def exactly1(items):
 def string_diff(text1, text2):
     """Return diff-style comparison of TEXT1 and TEXT2 with an empty string used for equality"""
     debug.trace(6, f"string_diff({text1}, {text2})")
-    # EX: string_diff("one\ntwo\nthree\nfour", "one\ntoo\ntree\nfour") => "  one\n- two\n…  ^\n+ too\n…  ^\n- three\n…  -\n+ tree  four\n"
-    
+    # EX: string_diff("one\ntwo\nthree\nfour", "one\ntoo\ntree\nfour") => "  one\n< two\n…  ^\n> too\n…  ^\n< three\n…  -\n> tree\n  four\n"
+
     # Perform comparison
     diff_result = "n/a"
     try:
@@ -221,16 +221,14 @@ def string_diff(text1, text2):
         diff_result = "".join(ndiff(lines1, lines2))
     except:
         system.print_exception_info("string_diff compare")
-    
-    # Convert to diff-style output, using < and > instead of - and +
+
+    # Convert to diff-style output, using:
+    # < and > instead of - and +
+    # … instead of ?
     try:
-        ## TODO:
-        ## diff_result = re.sub(r"^- ", "< ", diff_result, re.MULTILINE)
-        ## diff_result = re.sub(r"^\+ ", "> ", diff_result, re.MULTILINE)
-        ## diff_result = re.sub(r"^\? ", f"{ELLIPSIS} ", diff_result, re.MULTILINE)
-        diff_result = diff_result.replace("- ", "< ", 1).replace("\n- ", "\n< ").   \
-                          replace("+ ", "> ", 1).replace("\n+ ", "\n> ").           \
-                          replace("\n? ", f"\n{ELLIPSIS} ")
+        diff_result = re.sub(r"^- ", "< ", diff_result, flags=re.MULTILINE)
+        diff_result = re.sub(r"^\+ ", "> ", diff_result, flags=re.MULTILINE)
+        diff_result = re.sub(r"^\? ", f"{ELLIPSIS} ", diff_result, flags=re.MULTILINE)
     except:
         system.print_exception_info("string_diff postprocess")
 
