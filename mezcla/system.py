@@ -85,8 +85,11 @@ def get_registered_env_options():
 
 
 def get_environment_option_descriptions(include_all=None, include_default=None, indent=" "):
-    """Returns list of environment options and their descriptions"""
-    # get_environment_option_descriptions() => [("TMP": "Old temp. dir. (/tmp)"), ("TMPDIR": "New temp. dir. (None)"), ("EMPTYDIR": "Empty. dir. ('')")]
+    """
+    Returns list of environment options and their descriptions,
+    also can be included their default values with INCLUDE_DEFAULT, separated by INDENT
+    """
+    # get_environment_option_descriptions() => [("TMP", "Old temp. dir. (/tmp)"), ("TMPDIR", "New temp. dir. (None)"), ("EMPTYDIR", "Empty. dir. ('')")]
     # Note: include_default is True when parameter is None
     debug.trace_fmt(5, "env_options={eo}", eo=env_options)
     debug.trace_fmt(5, "env_defaults={ed}", ed=env_defaults)
@@ -94,6 +97,8 @@ def get_environment_option_descriptions(include_all=None, include_default=None, 
         include_all = debug.verbose_debugging()
     if include_default is None:
         include_default = True
+    if not include_default:
+        indent = ''
     #
     def _format_env_option(opt):
         """Returns OPT description and optionally default value (if INCLUDE_DEFAULT)"""
