@@ -35,22 +35,78 @@ class TestSystem:
     def test_register_env_option(self):
         """Ensure register_env_option works as expected"""
         debug.trace(4, "test_register_env_option()")
-        ## TODO: WORK-IN=PROGRESS
+
+        THE_MODULE.env_options = {}
+        THE_MODULE.env_defaults = {}
+
+        THE_MODULE.register_env_option(
+            var='VAR_STRING',
+            description='this is a string variable',
+            default='empty'
+        )
+
+        assert THE_MODULE.env_options['VAR_STRING'], 'this is a string variable'
+        assert THE_MODULE.env_defaults['VAR_STRING'], 'empty'
+        assert len(THE_MODULE.env_options) == 1
+        assert len(THE_MODULE.env_defaults) == 1
 
     def test_get_registered_env_options(self):
         """Ensure get_registered_env_options works as expected"""
         debug.trace(4, "test_get_registered_env_options()")
-        ## TODO: WORK-IN=PROGRESS
+
+        set_test_env_var()
+
+        assert isinstance(THE_MODULE.get_registered_env_options(), list)
+        assert 'VAR_STRING' in THE_MODULE.get_registered_env_options()
+        assert len(THE_MODULE.get_registered_env_options()) == 2
 
     def test_get_environment_option_descriptions(self):
         """Ensure get_environment_option_descriptions works as expected"""
         debug.trace(4, "test_get_environment_option_descriptions()")
-        ## TODO: WORK-IN=PROGRESS
+
+        set_test_env_var()
+
+        ## TODO: Test include_all option
+        ## assert ('VAR_STRING', "this is a string variable") in THE_MODULE.get_environment_option_descriptions(include_all=False)
+
+        # Test include_default option
+        assert ('VAR_STRING', "this is a string variable") in THE_MODULE.get_environment_option_descriptions(include_default=False)
+        assert ('VAR_STRING', "this is a string variable ('empty')") in THE_MODULE.get_environment_option_descriptions(include_default=True)
+
+        # Test indent option
+        assert ('VAR_STRING', "this is a string variable, default=('empty')") in THE_MODULE.get_environment_option_descriptions(indent=', default=')
+        assert ('VAR_STRING', "this is a string variable => ('empty')") in THE_MODULE.get_environment_option_descriptions(indent=' => ')
+
+        # Test get N enviroments vars descriptions
+        assert len(THE_MODULE.get_environment_option_descriptions()) == 2
 
     def test_formatted_environment_option_descriptions(self):
         """Ensure formatted_environment_option_descriptions works as expected"""
         debug.trace(4, "test_formatted_environment_option_descriptions()")
-        ## TODO: WORK-IN=PROGRESS
+
+        set_test_env_var()
+
+        # Test sort
+        expected = (
+            'VAR_STRING\tthis is a string variable (\'empty\')\n'
+            '\tANOTHER_VAR\tthis is another env. var. (None)'
+        )
+        assert THE_MODULE.formatted_environment_option_descriptions(sort=False) == expected
+        expected = (
+            'ANOTHER_VAR\tthis is another env. var. (None)\n'
+            '\tVAR_STRING\tthis is a string variable (\'empty\')'
+        )
+        assert THE_MODULE.formatted_environment_option_descriptions(sort=True) == expected
+
+        # Test include_all
+        # NOTE: this is being tested on test_system.test_get_environment_option_descriptions()
+
+        # Test indent
+        expected = (
+            'VAR_STRING + this is a string variable (\'empty\')\n'
+            ' + ANOTHER_VAR + this is another env. var. (None)'
+        )
+        assert THE_MODULE.formatted_environment_option_descriptions(indent=' + ') == expected
 
     def test_getenv(self):
         """Ensure getenv works as expected"""
@@ -96,6 +152,7 @@ class TestSystem:
         """Ensure print_stderr works as expected"""
         debug.trace(4, "test_print_stderr()")
         ## TODO: WORK-IN=PROGRESS
+        ## NOTE: print_stderr is deprecated, has lowest priority to be tested.
 
     def test_print_exception_info(self):
         """Ensure print_exception_info works as expected"""
@@ -145,32 +202,55 @@ class TestSystem:
     def test_quote_url_text(self):
         """Ensure quote_url_text works as expected"""
         debug.trace(4, "test_quote_url_text()")
-        ## TODO: WORK-IN=PROGRESS
+
+        ## TODO: set fixed sys.version_info.major > 2.
+
+        # Test quoting
+        assert THE_MODULE.quote_url_text("<2/") == "%3C2%2F"
+        assert THE_MODULE.quote_url_text("Joe's hat") == "Joe%27s+hat"
+        assert THE_MODULE.quote_url_text("Joe%27s+hat") == "Joe%2527s%2Bhat"
+
+        # Test unquoting
+        assert THE_MODULE.quote_url_text("%3C2%2f", unquote=True) == "<2/"
+        assert THE_MODULE.quote_url_text("Joe%27s+hat", unquote=True) == "Joe's hat"
+        assert THE_MODULE.quote_url_text("Joe%2527s%2Bhat", unquote=True) == "Joe%27s+hat"
+
+        ## TODO: Test sys.version_info.major < 2
 
     def test_unquote_url_text(self):
         """Ensure unquote_url_text works as expected"""
         debug.trace(4, "test_unquote_url_text()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.unquote_url_text("%3C2%2f") == "<2/"
+        assert THE_MODULE.unquote_url_text("Joe%27s+hat") == "Joe's hat"
+        assert THE_MODULE.unquote_url_text("Joe%2527s%2Bhat") == "Joe%27s+hat"
 
     def test_escape_html_text(self):
         """Ensure escape_html_text works as expected"""
         debug.trace(4, "test_escape_html_text()")
-        ## TODO: WORK-IN=PROGRESS
+
+        ## TODO: set fixed sys.version_info.major > 2.
+
+        assert THE_MODULE.escape_html_text("<2/") == "&lt;2/"
+        assert THE_MODULE.escape_html_text("Joe's hat") == "Joe&#x27;s hat"
+
+        ## TODO: test with sys.version_info.major < 2
 
     def test_unescape_html_text(self):
         """Ensure unescape_html_text works as expected"""
         debug.trace(4, "test_unescape_html_text()")
-        ## TODO: WORK-IN=PROGRESS
+
+        ## TODO: set fixed sys.version_info.major > 2.
+
+        assert THE_MODULE.unescape_html_text("&lt;2/") == "<2/" 
+        assert THE_MODULE.unescape_html_text("Joe&#x27;s hat") == "Joe's hat" 
+
+        ## TODO: test with sys.version_info.major < 2
 
     def test_stdin_reader(self):
         """Ensure stdin_reader works as expected"""
         debug.trace(4, "test_stdin_reader()")
         ## TODO: WORK-IN=PROGRESS
 
-    def test_stdin_reader(self):
-        """Ensure stdin_reader class works as expected"""
-        debug.trace(4, "test_stdin_reader()")
-        ## TODO: WORK-IN=PROGRESS
 
     def test_read_all_stdin(self):
         """Ensure read_all_stdin works as expected"""
@@ -320,12 +400,14 @@ class TestSystem:
     def test_chomp(self):
         """Ensure chomp works as expected"""
         debug.trace(4, "test_chomp()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.chomp("some\n") == "some"
+        assert THE_MODULE.chomp("abc\n\n") == "abc\n"
+        assert THE_MODULE.chomp("http://localhost/", "/") == "http://localhost"
 
     def test_normalize_dir(self):
         """Ensure normalize_dir works as expected"""
         debug.trace(4, "test_normalize_dir()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.normalize_dir("/etc/") == "/etc"
 
     def test_non_empty_file(self):
         """Ensure non_empty_file works as expected"""
@@ -355,22 +437,24 @@ class TestSystem:
     def test_intersection(self):
         """Ensure intersection works as expected"""
         debug.trace(4, "test_intersection()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.intersection([1, 2], [5, 7, 8]) == set()
+        assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4]) == {2, 4}
 
     def test_union(self):
         """Ensure union works as expected"""
         debug.trace(4, "test_union()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.union([1, 2, 3], [2, 3, 4, 5]) == {1, 2, 3, 4, 5}
 
     def test_difference(self):
         """Ensure difference works as expected"""
         debug.trace(4, "test_difference()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.difference([5, 4, 3, 2, 1], [1, 2, 3]) == [5, 4]
 
     def test_append_new(self):
         """Ensure append_new works as expected"""
         debug.trace(4, "test_append_new()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.append_new([1, 2], 3) == [1, 2, 3]
+        assert THE_MODULE.append_new([1, 2, 3], 3) == [1, 2, 3]
 
     def test_just_one_true(self):
         """Ensure just_one_true works as expected"""
@@ -441,6 +525,18 @@ class TestSystem:
         """Ensure get_args works as expected"""
         debug.trace(4, "test_get_args()")
         ## TODO: WORK-IN=PROGRESS
+
+
+def set_test_env_var():
+    """Set enviroment vars to run tests"""
+    THE_MODULE.env_options = {
+        'VAR_STRING': 'this is a string variable',
+        'ANOTHER_VAR': 'this is another env. var.'
+    }
+    THE_MODULE.env_default = {
+        'VAR_STRING': 'empty',
+        'ANOTHER_VAR': '2022'
+    }
 
 
 if __name__ == '__main__':
