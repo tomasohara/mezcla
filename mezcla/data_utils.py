@@ -17,6 +17,7 @@
 
 # Standard module
 import pandas as pd
+import csv
 
 # Local modules
 from mezcla import debug
@@ -34,11 +35,18 @@ EXCEL = 'excel'
 #-------------------------------------------------------------------------------
 
 def read_csv(filename, **in_kw):
-    """Wrapper around pandas read_csv"""
+    """Wrapper around pandas read_csv
+    Note: delimiter defaults to DELIM environment, dtype to str, and both error_bad_lines & keep_default_na to False. (Override these via keyword paramsters.)
+    """
     # EX: tf = read_csv("examples/iris.csv"); tf.shape => (150, 5)
     ## TODO: clarify dtype usage
-    kw = {'delimiter': DELIM, 'dtype': str,
+    DELIMITER = 'delimiter'
+    kw = {DELIMITER: DELIM, 'dtype': str,
           'error_bad_lines': False, 'keep_default_na': False}
+    # Turn off quotoing if tab delimited
+    if kw[DELIMITER] == "\t":
+        kw['quoting'] = csv.QUOTE_NONE
+    # Overide settings based on explicit keyword arguments
     kw.update(**in_kw)
     # Add special processing (n.b., a bit idiosyncratic)
     if ((COMMENT not in kw) and (kw.get(DIALECT) != EXCEL)):
