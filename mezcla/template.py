@@ -1,4 +1,6 @@
 #! /usr/bin/env python
+## TODO: handle case when env installed elsehere (e.g., maldito mac)
+## #! env python
 # 
 # TODO what the script does (detailed)
 #
