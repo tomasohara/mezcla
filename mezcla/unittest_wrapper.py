@@ -134,7 +134,7 @@ class TestWrapper(unittest.TestCase):
             full_module_name = package_name + "." + module_name
         else:
             full_module_name = module_name
-        tpo.debug_format("get_testing_module_name({f}) => {m}", 5,
+        tpo.debug_format("get_testing_module_name({f}) => {m}", 4,
                          f=test_filename, m=full_module_name)
         return (full_module_name)
 
