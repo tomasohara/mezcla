@@ -57,6 +57,7 @@
 #
 # TODO:
 # - *** Convert tpo_common calls (i.e., tpo.xyz) to debug!'
+# - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 # - Specify argument via input dicts, such as in 
 #      options=[{"name": "verbose", "type": bool}, 
 #               {"name": "count", type: int, default: 10}]
