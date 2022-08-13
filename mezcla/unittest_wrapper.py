@@ -11,6 +11,8 @@
 # - Overriding the temporary directory can be handy during debugging; however,
 #   you might need to specify different ones if you invoke helper scripts. See
 #   tests/test_extract_company_info.py for an example.
+# TODO:
+# - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 #
 #-------------------------------------------------------------------------------
 # Sample test (streamlined version of test_simple_main_example.py):
@@ -127,7 +129,11 @@ class TestWrapper(unittest.TestCase):
         package_name = THIS_PACKAGE
         if module_object is not None:
            package_name = getattr(module_object, "__package__", "")
-        full_module_name = package_name + "." + module_name
+           debug.trace_expr(4, package_name)
+        if package_name:
+            full_module_name = package_name + "." + module_name
+        else:
+            full_module_name = module_name
         tpo.debug_format("get_testing_module_name({f}) => {m}", 5,
                          f=test_filename, m=full_module_name)
         return (full_module_name)
