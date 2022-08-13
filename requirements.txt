@@ -17,7 +17,7 @@ matplotlib
 nltk
 numpy
 ## OLD: ordereddict
-pandas
+pandas>=1.3.0
 requests
 scipy
 sklearn
