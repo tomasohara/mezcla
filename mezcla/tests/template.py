@@ -28,10 +28,10 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 #    TestIt.script_module   string name
-## TODO: template => new name
-THE_MODULE = None                       ## TODO: remove
+## TODO: change template to new name
+THE_MODULE = None           ## TODO: remove this line (n.b., used just to avoid syntax problems with <module> in following)
 ## TODO: import mezcla.<module> as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
@@ -50,6 +50,8 @@ if not re.search(__file__, r"\btemplate.py$"):
 class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
+    # -or- non-mezcla: script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    #
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
@@ -73,6 +75,9 @@ class TestIt(TestWrapper):
     ##     # TODO: debug.trace_current_context(level=debug.QUITE_DETAILED)
     ##     return
 
+    ## TODO: use assertEqual, etc.
+    ##   not assertEquals, etc. [maldito unittest!]
+    
     def test_data_file(self):
         """Makes sure TODO works as expected"""
         debug.trace(4, "TestIt.test_data_file()")
@@ -85,10 +90,11 @@ class TestIt(TestWrapper):
 
     def test_something_else(self):
         """TODO: flesh out test for something else"""
-        debug.trace(4, "test_something_else()")
+        debug.trace(4, "TestIt.test_something_else()")
         self.fail("TODO: code test")
         ## ex: self.assertEqual(THE_MODULE.TODO_function() == TODO_value)
         return
+
 
     ## TODO: optional cleanup methods
     ##
@@ -105,8 +111,18 @@ class TestIt(TestWrapper):
     ##     ...
     ##     return
 
+## TODO:
+## #...............................................................................
+##
+## class TestIt2:
+##     """Another class for testcase definition
+##     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
+##     pass
+##
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     debug.trace_current_context()
     unittest.main()
+    ## TODO: pytest.main([__file__])
