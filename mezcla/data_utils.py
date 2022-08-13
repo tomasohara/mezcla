@@ -31,6 +31,8 @@ DELIM = system.getenv_value("DELIM", None,
 COMMENT = 'comment'
 DIALECT = 'dialect'
 EXCEL = 'excel'
+DELIMITER = 'delimiter'
+SEP = 'sep'
 
 #-------------------------------------------------------------------------------
 
@@ -40,14 +42,14 @@ def read_csv(filename, **in_kw):
     """
     # EX: tf = read_csv("examples/iris.csv"); tf.shape => (150, 5)
     ## TODO: clarify dtype usage
-    DELIMITER = 'delimiter'
-    kw = {DELIMITER: DELIM, 'dtype': str,
-          'error_bad_lines': False, 'keep_default_na': False}
-    # Turn off quotoing if tab delimited
-    if kw[DELIMITER] == "\t":
-        kw['quoting'] = csv.QUOTE_NONE
+    kw = {SEP: DELIM, 'dtype': str,
+          ## BAD: 'error_bad_lines': False, 'keep_default_na': False}
+          'on_bad_lines': 'skip', 'keep_default_na': False}
     # Overide settings based on explicit keyword arguments
     kw.update(**in_kw)
+    # Turn off quotoing if tab delimited
+    if kw[SEP] == "\t":
+        kw['quoting'] = csv.QUOTE_NONE
     # Add special processing (n.b., a bit idiosyncratic)
     if ((COMMENT not in kw) and (kw.get(DIALECT) != EXCEL)):
         debug.trace_fmt(4, "Enabling comments in read_csv")
@@ -59,11 +61,14 @@ def read_csv(filename, **in_kw):
     return df
 
 
-def to_csv(filename, data_frame):
-    """Output to FILENAME the CSV for DATA_FRAME without index column"""
+def to_csv(filename, data_frame, **in_kw):
+    """Wrapper around pandas DATA_FRAME.to_csv with FILENAME
+    Note: by default, the index is omitted"""
     result = None
+    kw = {SEP: DELIM, 'index': False}
+    kw.update(**in_kw)
     try:
-        result = data_frame.to_csv(filename, index=False)
+        result = data_frame.to_csv(filename, **kw)
     except:
         debug.trace(4, f"Exception during write_csv: {system.get_exception()}")
     debug.trace(4, f"to_csv({filename}, {data_frame}) => {result}")
