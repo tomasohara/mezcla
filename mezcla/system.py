@@ -1030,7 +1030,7 @@ def append_new(in_list, item):
 
 
 def just_one_true(in_list, strict=False):
-    """True iff only one element of IN_LIST is considered True (or all None unless STRICT)"""
+    """True if only one element of IN_LIST is considered True (or all None unless STRICT)"""
     # Note: Consider using misc_utils.just1 (based on more_itertools.exactly_n)
     # TODO: Trap exceptions (e.g., string input)
     min_count = 1 if strict else 0
