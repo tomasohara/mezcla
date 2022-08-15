@@ -12,6 +12,7 @@
 """Tests for system module"""
 
 # Standard packages
+from math import pi
 
 # Installed packages
 import pytest
@@ -375,7 +376,7 @@ class TestSystem:
     def test_to_str(self):
         """Ensure to_str works as expected"""
         debug.trace(4, "test_to_str()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.to_str(pi).startswith('3.141592653589793')
 
     def test_from_utf8(self):
         """Ensure from_utf8 works as expected"""
@@ -459,32 +460,72 @@ class TestSystem:
     def test_just_one_true(self):
         """Ensure just_one_true works as expected"""
         debug.trace(4, "test_just_one_true()")
-        ## TODO: WORK-IN=PROGRESS
+
+        assert THE_MODULE.just_one_true(['yes', '', '', ''], strict=True)
+        assert not THE_MODULE.just_one_true(['', '', '', ''], strict=True)
+
+        # all nones should return always True unless strict
+        assert THE_MODULE.just_one_true(['', '', '', ''], strict=False)
+        assert not THE_MODULE.just_one_true(['', '', '', ''], strict=True)
 
     def test_just_one_non_null(self):
         """Ensure just_one_non_null works as expected"""
         debug.trace(4, "test_just_one_non_null()")
-        ## TODO: WORK-IN=PROGRESS
+
+        assert THE_MODULE.just_one_non_null(['yes', None, None, None], strict=True)
+        assert not THE_MODULE.just_one_non_null([None, None, None, None], strict=True)
+
+        # all nones should return always True unless strict
+        assert THE_MODULE.just_one_non_null([None, None, None, None], strict=False)
+        assert not THE_MODULE.just_one_non_null([None, None, None, None], strict=True)
 
     def test_unique_items(self):
         """Ensure unique_items works as expected"""
         debug.trace(4, "test_unique_items()")
-        ## TODO: WORK-IN=PROGRESS
+
+        # Test normal usage
+        assert THE_MODULE.unique_items([1, 2, 3, 2, 1], prune_empty=False) == [1, 2, 3]
+
+        # Test prune_empty
+        assert THE_MODULE.unique_items(['cars', 'cars', 'plane', 'train', ''], prune_empty=False) == ['cars', 'plane', 'train', '']
+        assert THE_MODULE.unique_items(['cars', 'cars', 'plane', 'train', ''], prune_empty=True) == ['cars', 'plane', 'train']
 
     def test_to_float(self):
         """Ensure to_float works as expected"""
         debug.trace(4, "test_to_float()")
-        ## TODO: WORK-IN=PROGRESS
+
+        # Test normal usage
+        assert THE_MODULE.to_float('9.81', default_value=10.0) == 9.81
+
+        # Test default_value
+        assert THE_MODULE.to_float('3,14', default_value=4.0) == 4.0 # comma raises the exception.
 
     def test_to_int(self):
         """Ensure to_int works as expected"""
         debug.trace(4, "test_to_int()")
-        ## TODO: WORK-IN=PROGRESS
+
+        # Test normal usage
+        assert THE_MODULE.to_int('45', default_value=5, base=10) == 45
+
+        # Test default_value
+        assert THE_MODULE.to_int('foo', default_value=5, base=10) == 5
+
+        # Test base
+        assert THE_MODULE.to_int('10011', default_value=5, base=2) == 19
 
     def test_to_bool(self):
         """Ensure to_bool works as expected"""
         debug.trace(4, "test_to_bool()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.to_bool(True)
+        assert THE_MODULE.to_bool("True")
+        assert THE_MODULE.to_bool("Foobar")
+        assert THE_MODULE.to_bool(333)
+        assert not THE_MODULE.to_bool(False)
+        assert not THE_MODULE.to_bool("false")
+        assert not THE_MODULE.to_bool("none")
+        assert not THE_MODULE.to_bool("off")
+        assert not THE_MODULE.to_bool("0")
+        assert not THE_MODULE.to_bool("")
 
     def test_round_num(self):
         """Ensure round_num works as expected"""
