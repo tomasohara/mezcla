@@ -31,6 +31,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
+        pip install pytest
         pip install coverage
         pip install -r requirements.txt
     - name: Test with pytest
