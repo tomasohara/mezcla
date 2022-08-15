@@ -13,4 +13,4 @@ pip uninstall mezcla &> /dev/null # Avoid conflicts with installed Mezcla
 export PYTHONPATH="$tests/../:$PYTHONPATH"
 
 coverage run -m pytest $tests
-coverage html --directory $tests/htmlcov
+coverage html --directory $tests/htmlcov --omit="*/tests/test_*"
