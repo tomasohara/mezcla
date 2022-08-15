@@ -18,6 +18,7 @@ mako
 matplotlib
 nltk
 numpy
+spacy
 ## OLD: ordereddict
 pandas
 requests
