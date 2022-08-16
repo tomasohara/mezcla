@@ -1,43 +1,11 @@
 # Basic requirements for main scripts
-# optional: keras, tensorflow
 #
 # usage:
 #    pip install -r requirements.txt
 #
-#    optional:
-#       perl -00 -pe 's/#opt#//g;' requirements.txt > _optional-requirements.txt
-#       pip install -r _optional-requirements.txt
+# Distributed requirements based on
+#    https://stackoverflow.com/a/20720019/15648632
 #
-# TODO: supporting commands (e.g., lynx)
-bs4
-lxml
-textract
-cherrypy
-gensim
-mako
-matplotlib
-nltk
-numpy
-spacy
-## OLD: ordereddict
-pandas
-requests
-scipy
-sklearn
-## TODO: put in setup.py
-six
-stopwords
-xgboost
 
-#...............................................................................
-# Optional requirements
-#
-#opt# bert-tensorflow
-#opt# tensorflow
-#opt# pyyaml
-#opt# librosa
-#opt# SpeechRecognition
-#opt# ibm-watson
-# NOTE: these are for convenience in setting up environment
-#opt# ipython
-#opt# pylint
+-r requirements/production.txt
+-r requirements/optional.txt
