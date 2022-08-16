@@ -80,7 +80,7 @@ MAX_VALUE_LEN = 128
 def elide_values(in_list, max_len=MAX_VALUE_LEN):
     """Elide each of the values in IN_LIST (up to MAX_LEN each).
     Note: Returns list of strings"""
-    # EX: elide_values(["1234567890", 1234567890, True, False], max_len=4) => ["1234...", "1245...", "True", "Fals..."]
+    # EX: elide_values(["1234567890", 1234567890, True, False], max_len=4) => ["1234...", "1234...", "True", "Fals..."]
     new_list = []
     for item in in_list:
         new_list.append(gh.elide(system.to_text(item), max_len))
