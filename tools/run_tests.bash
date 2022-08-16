@@ -4,13 +4,15 @@
 # and generate coverage report
 #
 
-tests=$(dirname $(realpath -s $0))
+tools=$(dirname $(realpath -s $0))
+mezcla=$tools/../mezcla
+tests=$mezcla/tests
 
 echo -e "Running tests on $tests\n"
 
 pip uninstall mezcla &> /dev/null # Avoid conflicts with installed Mezcla
 
-export PYTHONPATH="$tests/../:$PYTHONPATH"
+export PYTHONPATH="$mezcla/:$PYTHONPATH"
 
 coverage run -m pytest $tests
 coverage html --directory $tests/htmlcov --omit="*/tests/test_*"
