@@ -27,7 +27,15 @@ import mezcla.cut as THE_MODULE
 class TestIt:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    def test_elide_values(self):
+        """Ensure elide_values works as expected"""
+        debug.trace(4, "elide_values()")
+        assert THE_MODULE.elide_values(["1234567890", 1234567890, True, False], max_len=4) == ["1234...", "1245...", "True", "Fals..."]
+
+    def test_flatten_list_of_strings(self):
+        """Ensure flatten_list_of_strings works as expected"""
+        debug.trace(4, "test_flatten_list_of_strings()")
+        assert THE_MODULE.flatten_list_of_strings([["l1i1", "l1i2"], ["l2i1"]]) == ["l1i1", "l1i2", "l2i1"] 
 
 
 if __name__ == '__main__':
