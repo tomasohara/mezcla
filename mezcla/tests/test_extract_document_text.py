@@ -26,8 +26,11 @@ import mezcla.extract_document_text as THE_MODULE
 
 class TestIt:
     """Class for testcase definition"""
-
-    ## TODO: TESTS WORK-IN-PROGRESS
+    
+    def test_document_to_text(self):
+        """Ensure document_to_text() works as expected"""
+        debug.trace(4, "test_document_to_text()")
+        ## TODO: WORK-IN-PROGRESS
 
 
 if __name__ == '__main__':
