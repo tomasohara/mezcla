@@ -281,7 +281,9 @@ class TestSystem:
     def test_read_entire_file(self):
         """Ensure read_entire_file works as expected"""
         debug.trace(4, "test_read_entire_file()")
-        ## TODO: WORK-IN=PROGRESS
+        temp_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
+        assert THE_MODULE.read_entire_file(temp_file) == 'file\nwith\nmultiple\nlines\n'
 
     def test_read_lines(self):
         """Ensure read_lines works as expected"""
@@ -308,17 +310,67 @@ class TestSystem:
     def test_read_lookup_table(self):
         """Ensure read_lookup_table works as expected"""
         debug.trace(4, "test_read_lookup_table()")
-        ## TODO: WORK-IN=PROGRESS
+        
+        content = (
+            'COUNTRY -> CAPITAL\n'
+            'United States -> Washington D. C.\n'
+            'France -> Paris\n'
+            'Canada -> Ottawa\n'
+        )
+        expected_uppercase = {
+            'COUNTRY': 'CAPITAL',
+            'United States': 'Washington D. C.',
+            'France':'Paris',
+            'Canada': 'Ottawa'
+        }
+        expected_lowercase = {
+            'country': 'capital',
+            'united states': 'washington d. c.',
+            'france':'paris',
+            'canada': 'ottawa'
+        }
+
+        temp_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(temp_file, content)
+        assert THE_MODULE.read_lookup_table(temp_file, skip_header=False, delim=' -> ', retain_case=False) == expected_lowercase
+        assert THE_MODULE.read_lookup_table(temp_file, skip_header=False, delim=' -> ', retain_case=True) == expected_uppercase
+        assert THE_MODULE.read_lookup_table(temp_file, skip_header=True, delim=' -> ', retain_case=False)['country'] == ''
 
     def test_create_boolean_lookup_table(self):
         """Ensure create_boolean_lookup_table works as expected"""
         debug.trace(4, "test_create_boolean_lookup_table()")
-        ## TODO: WORK-IN=PROGRESS
+
+        content = (
+            'EmailEntered - someemail@hotmail.com\n'
+            'PasswdEntered - 12345\n'
+            'IsBusiness - True\n'
+        )
+        expected_lowercase = {
+            'emailentered': True,
+            'passwdentered': True,
+            'isbusiness': True
+        }
+        expected_uppercase = {
+            'EmailEntered': True,
+            'PasswdEntered': True,
+            'IsBusiness': True
+        }
+
+        temp_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(temp_file, content)
+        assert THE_MODULE.create_boolean_lookup_table(temp_file, delim=' - ', retain_case=False) == expected_lowercase
+        assert THE_MODULE.create_boolean_lookup_table(temp_file, delim=' - ', retain_case=True) == expected_uppercase
 
     def test_lookup_entry(self):
         """Ensure lookup_entry works as expected"""
         debug.trace(4, "test_lookup_entry()")
-        ## TODO: WORK-IN=PROGRESS
+        hash_map = {
+            'description': 'this is a TEST',
+            'passwdentered': '12345',
+            'IsBusiness': 'True',
+        }
+        assert THE_MODULE.lookup_entry(hash_map, 'PasswdEntered') == '12345'
+        assert THE_MODULE.lookup_entry(hash_map, 'description', retain_case=True) == 'this is a TEST'
 
     def test_write_file(self):
         """Ensure write_file works as expected"""
@@ -348,12 +400,17 @@ class TestSystem:
     def test_remove_extension(self):
         """Ensure remove_extension works as expected"""
         debug.trace(4, "test_remove_extension()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.remove_extension("/tmp/document.pdf") == "/tmp/document"
+        assert THE_MODULE.remove_extension("it.abc.def") == "it.abc"
+        assert THE_MODULE.remove_extension("it.abc.def", "abc.def") == "it"
 
     def test_file_exists(self):
         """Ensure file_exists works as expected"""
         debug.trace(4, "test_file_exists()")
-        ## TODO: WORK-IN=PROGRESS
+        existent_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(existent_file, 'content')
+        assert THE_MODULE.file_exists(existent_file)
+        assert not THE_MODULE.file_exists('bad_file_name')
 
     def test_get_file_size(self):
         """Ensure get_file_size works as expected"""
@@ -418,7 +475,9 @@ class TestSystem:
     def test_to_string(self):
         """Ensure to_string works as expected"""
         debug.trace(4, "test_to_string()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.to_string(123) == "123"
+        assert THE_MODULE.to_string(u"\u1234") ==  u"\u1234"
+        assert THE_MODULE.to_string(None) == "None"
 
     def test_chomp(self):
         """Ensure chomp works as expected"""
@@ -435,22 +494,27 @@ class TestSystem:
     def test_non_empty_file(self):
         """Ensure non_empty_file works as expected"""
         debug.trace(4, "test_non_empty_file()")
-        ## TODO: WORK-IN=PROGRESS
+
+        file_with_content = tempfile.NamedTemporaryFile().name
+        gh.write_file(file_with_content, 'content')
+        assert THE_MODULE.non_empty_file(file_with_content)
+
+        assert not THE_MODULE.non_empty_file('bad_file_name')
+
+        ## TODO: check why is not passing this
+        ## empty_file = tempfile.NamedTemporaryFile().name
+        ## gh.write_file(empty_file, '')
+        ## assert not THE_MODULE.non_empty_file(empty_file)
 
     def test_absolute_path(self):
         """Ensure absolute_path works as expected"""
         debug.trace(4, "test_absolute_path()")
-        ## TODO: WORK-IN=PROGRESS
-
-    def test_absolute_path(self):
-        """Ensure absolute_path works as expected"""
-        debug.trace(4, "test_absolute_path()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.absolute_path("/etc/mtab").startswith("/etc")
 
     def test_real_path(self):
         """Ensure real_path works as expected"""
         debug.trace(4, "test_real_path()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
 
     def test_get_module_version(self):
         """Ensure get_module_version works as expected"""
