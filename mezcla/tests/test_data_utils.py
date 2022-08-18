@@ -27,7 +27,25 @@ import mezcla.data_utils as THE_MODULE
 class TestIt:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    def test_read_csv(self):
+        """Ensure read_csv works as expected"""
+        debug.trace(4, "test_read_csv()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_to_csv(self):
+        """Ensure to_csv works as expected"""
+        debug.trace(4, "test_to_csv()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_lookup_df_value(self):
+        """Ensure lookup_df_value works as expected"""
+        debug.trace(4, "test_lookup_df_value()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_lookup_df_value(self):
+        """Ensure lookup_df_value works as expected"""
+        debug.trace(4, "test_lookup_df_value()")
+        ## TODO: WORK-IN=PROGRESS
 
 
 if __name__ == '__main__':
