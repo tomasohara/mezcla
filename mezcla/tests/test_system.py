@@ -12,6 +12,7 @@
 """Tests for system module"""
 
 # Standard packages
+import io
 from math import pi
 
 # Installed packages
@@ -252,11 +253,11 @@ class TestSystem:
         debug.trace(4, "test_stdin_reader()")
         ## TODO: WORK-IN=PROGRESS
 
-
-    def test_read_all_stdin(self):
+    def test_read_all_stdin(self, monkeypatch):
         """Ensure read_all_stdin works as expected"""
         debug.trace(4, "test_read_all_stdin()")
-        ## TODO: WORK-IN=PROGRESS
+        monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line'))
+        assert THE_MODULE.read_all_stdin() == 'my input\nsome line'
 
     def test_read_entire_file(self):
         """Ensure read_entire_file works as expected"""
