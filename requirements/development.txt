@@ -6,5 +6,6 @@
 # Distributed requirements based on
 #    https://stackoverflow.com/a/20720019/15648632
 #
+flit
 pytest
 coverage
