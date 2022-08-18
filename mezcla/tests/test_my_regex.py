@@ -32,6 +32,56 @@ class TestIt(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__)
     my_re = THE_MODULE.my_re
 
+    def test_search(self):
+        """Ensure search() works as expected"""
+        debug.trace(4, "test_search()")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_match(self):
+        """Ensure match() works as expected"""
+        debug.trace(4, "test_match()")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_get_match(self):
+        """Ensure get_match() works as expected"""
+        debug.trace(4, "test_get_match()")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_group(self):
+        """Ensure group() works as expected"""
+        debug.trace(4, "test_group()")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_groups(self):
+        """Ensure groups() works as expected"""
+        debug.trace(4, "test_groups()")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_grouping(self):
+        """Ensure grouping() works as expected"""
+        debug.trace(4, "test_grouping()")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_start(self):
+        """Ensure start() works as expected"""
+        debug.trace(4, "test_start()")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_end(self):
+        """Ensure end() works as expected"""
+        debug.trace(4, "test_end()")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_sub(self):
+        """Ensure sub() works as expected"""
+        debug.trace(4, "test_sub()")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_span(self):
+        """Ensure span() works as expected"""
+        debug.trace(4, "test_span()")
+        ## TODO: WORK-IN-PROGRESS
+
     def test_simple_regex(self):
         """"Test regex search with capturing"""
         debug.trace(4, "test_simple_regex()")
