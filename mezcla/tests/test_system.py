@@ -12,6 +12,7 @@
 """Tests for system module"""
 
 # Standard packages
+import tempfile
 import io
 from math import pi
 
@@ -19,6 +20,7 @@ from math import pi
 import pytest
 
 # Local packages
+from mezcla import glue_helpers as gh
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
@@ -110,35 +112,51 @@ class TestSystem:
         )
         assert THE_MODULE.formatted_environment_option_descriptions(indent=' + ') == expected
 
-    def test_getenv(self):
+    def test_getenv(self, monkeypatch):
         """Ensure getenv works as expected"""
         debug.trace(4, "test_getenv()")
-        ## TODO: WORK-IN=PROGRESS
+        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        assert THE_MODULE.getenv('TEST_ENV_VAR') == 'some value'
+        assert THE_MODULE.getenv('INT_ENV_VAR', default_value=5) == 5
 
     def test_getenv_text(self):
         """Ensure getenv_text works as expected"""
         debug.trace(4, "test_getenv_text()")
         ## TODO: WORK-IN=PROGRESS
 
-    def test_getenv_value(self):
+    def test_getenv_value(self, monkeypatch):
         """Ensure getenv_value works as expected"""
         debug.trace(4, "test_getenv_value()")
-        ## TODO: WORK-IN=PROGRESS
+        set_test_env_var()
+        monkeypatch.setenv('NEW_ENV_VAR', 'some value', prepend=False)
+        assert THE_MODULE.getenv_value('NEW_ENV_VAR', default='empty', description='another test env var') == 'some value'
+        assert THE_MODULE.env_defaults['NEW_ENV_VAR'] == 'empty'
+        assert THE_MODULE.env_options['NEW_ENV_VAR'] == 'another test env var'
 
-    def test_getenv_bool(self):
+    def test_getenv_bool(self, monkeypatch):
         """Ensure getenv_bool works as expected"""
         debug.trace(4, "test_getenv_bool()")
-        ## TODO: WORK-IN=PROGRESS
+        # note: whitespaces is not a typo, is to test strip condition
+        monkeypatch.setenv('TEST_BOOL', 'FALSE', prepend=False)
+        assert not THE_MODULE.getenv_bool('TEST_BOOL', None)
+        monkeypatch.setenv('TEST_BOOL', '  true   ', prepend=False)
+        assert THE_MODULE.getenv_bool('TEST_BOOL', None)
+        assert isinstance(THE_MODULE.getenv_bool('TEST_BOOL', None), bool)
 
-    def test_getenv_number(self):
+    def test_getenv_number(self, monkeypatch):
         """Ensure getenv_number works as expected"""
         debug.trace(4, "test_getenv_number()")
-        ## TODO: WORK-IN=PROGRESS
+        # note: whitespaces is not a typo, is to test strip condition
+        monkeypatch.setenv('TEST_NUMBER', ' 9.81    ', prepend=False)
+        assert THE_MODULE.getenv_number('TEST_NUMBER', default=10) == 9.81
+        assert THE_MODULE.getenv_number('BAD_TEST_NUMBER', default=10) == 10
+        ## TODO: test helper argument
 
-    def test_getenv_int(self):
+    def test_getenv_int(self, monkeypatch):
         """Ensure getenv_int works as expected"""
         debug.trace(4, "test_getenv_int()")
-        ## TODO: WORK-IN=PROGRESS
+        monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
+        assert THE_MODULE.getenv_int('TEST_NUMBER', default=20) == 9
 
     def test_get_exception(self):
         """Ensure get_exception works as expected"""
@@ -169,7 +187,8 @@ class TestSystem:
     def test_setenv(self):
         """Ensure setenv works as expected"""
         debug.trace(4, "test_setenv()")
-        ## TODO: WORK-IN=PROGRESS
+        THE_MODULE.setenv('NEW_TEST_ENV_VAR', 'the gravity is 10, pi is 3')
+        assert THE_MODULE.getenv('NEW_TEST_ENV_VAR') == 'the gravity is 10, pi is 3'
 
     def test_print_full_stack(self):
         """Ensure print_full_stack works as expected"""
@@ -267,7 +286,9 @@ class TestSystem:
     def test_read_lines(self):
         """Ensure read_lines works as expected"""
         debug.trace(4, "test_read_lines()")
-        ## TODO: WORK-IN=PROGRESS
+        temp_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
+        assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
 
     def test_read_binary_file(self):
         """Ensure read_binary_file works as expected"""
