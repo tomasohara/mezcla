@@ -616,12 +616,13 @@ class TestSystem:
     def test_round_num(self):
         """Ensure round_num works as expected"""
         debug.trace(4, "test_round_num()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.round_num(3.15914, 3) == 3.159
 
     def test_round_as_str(self):
         """Ensure round_as_str works as expected"""
         debug.trace(4, "test_round_as_str()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.round_as_str(3.15914, 3) == "3.159"
+        assert isinstance(THE_MODULE.round_as_str(3.15914, 3), str)
 
     def test_sleep(self):
         """Ensure sleep works as expected"""
