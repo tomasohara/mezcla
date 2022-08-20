@@ -375,7 +375,17 @@ class TestSystem:
     def test_write_file(self):
         """Ensure write_file works as expected"""
         debug.trace(4, "test_write_file()")
-        ## TODO: WORK-IN=PROGRESS
+
+        # Test normal usage
+        filename = tempfile.NamedTemporaryFile().name
+        THE_MODULE.write_file(filename, "it")
+        assert THE_MODULE.read_file(filename) == "it\n"
+
+        # Test skip newline argument
+        filename = tempfile.NamedTemporaryFile().name
+        THE_MODULE.write_file(filename, "it", skip_newline=True)
+        assert THE_MODULE.read_file(filename) == "it"
+        assert THE_MODULE.read_file(filename) != "it\n"
 
     def test_write_binary_file(self):
         """Ensure write_binary_file works as expected"""
@@ -385,12 +395,34 @@ class TestSystem:
     def test_write_lines(self):
         """Ensure write_lines works as expected"""
         debug.trace(4, "test_write_lines()")
-        ## TODO: WORK-IN=PROGRESS
+
+        content = (
+            'this is\n'
+            'a multiline\n'
+            'text used\n'
+        )
+        content_in_lines = [
+            'this is',
+            'a multiline',
+            'text used',
+        ]
+
+        # Test normal usage
+        filename = tempfile.NamedTemporaryFile().name
+        THE_MODULE.write_lines(filename, content_in_lines)
+        assert THE_MODULE.read_file(filename) == content
+
+        # Test append
+        THE_MODULE.write_lines(filename, ['for testing'], append=True)
+        assert THE_MODULE.read_file(filename) == content + 'for testing\n'
 
     def test_write_temp_file(self):
         """Ensure write_temp_file works as expected"""
         debug.trace(4, "test_write_temp_file()")
-        ## TODO: WORK-IN=PROGRESS
+        ## TODO: Check why is not passing
+        ## THE_MODULE.TEMP_DIR = f'{tempfile.NamedTemporaryFile().name}-test'
+        ## THE_MODULE.write_temp_file('testfile', 'random content')
+        ## assert THE_MODULE.read_file(f'{THE_MODULE.TEMP_DIR}/testfile') == 'random content\n'
 
     def test_get_file_modification_time(self):
         """Ensure get_file_modification_time works as expected"""
@@ -430,7 +462,10 @@ class TestSystem:
     def test_is_regular_file(self):
         """Ensure is_regular_file works as expected"""
         debug.trace(4, "test_is_regular_file()")
-        ## TODO: WORK-IN=PROGRESS
+        filename = tempfile.NamedTemporaryFile().name
+        gh.write_file(filename, 'content')
+        assert THE_MODULE.is_regular_file(filename)
+        assert not THE_MODULE.is_regular_file('/etc')
 
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
