@@ -277,6 +277,11 @@ class TestIt(TestWrapper):
         # Test extract all urls from html
         assert THE_MODULE.extract_html_link(html, url='https://www.example.com', base_url='http://') == all_urls
 
+        # Test base_url none
+        ## TODO: this assertion is returning, need to be solved: 
+        ##      https://www.example.com//www.subdomain.example.com/sitemap.xml
+        ## assert THE_MODULE.extract_html_link(html, url='https://www.example.com') == all_urls
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
