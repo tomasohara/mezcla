@@ -17,7 +17,8 @@ import re
 import unittest
 
 # Installed packages
-## TODO: import pytest
+import pytest
+import bs4
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
@@ -109,32 +110,61 @@ class TestIt(TestWrapper):
     def test_escape_html_value(self):
         """Ensure escape_html_value() works as expected"""
         debug.trace(4, "test_escape_html_value()")
-        ## TODO: WORK-IN-PROGRESS
+        # note: this test is the same as system.test_escape_html_text
+        assert THE_MODULE.escape_html_value("<2/") == "&lt;2/"
+        assert THE_MODULE.escape_html_value("Joe's hat") == "Joe&#x27;s hat"
 
     def test_unescape_html_value(self):
         """Ensure unescape_html_value() works as expected"""
         debug.trace(4, "test_unescape_html_value()")
-        ## TODO: WORK-IN-PROGRESS
+        # note: this test is the same as test_system.test_unescape_html_text
+        assert THE_MODULE.unescape_html_value("&lt;2/") == "<2/" 
+        assert THE_MODULE.unescape_html_value("Joe&#x27;s hat") == "Joe's hat" 
 
     def test_escape_hash_value(self):
         """Ensure escape_hash_value() works as expected"""
         debug.trace(4, "test_escape_hash_value()")
-        ## TODO: WORK-IN-PROGRESS
+        hash_table = {
+            'content-type': 'multipart/form-data;\n',
+            'name': 'description'
+        }
+        assert THE_MODULE.escape_hash_value(hash_table, 'content-type') == 'multipart/form-data;<br>'
 
     def test_get_param_dict(self):
         """Ensure get_param_dict() works as expected"""
         debug.trace(4, "test_get_param_dict()")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.user_parameters = {
+            'https-port': '443',
+            'not-found-status': '404',
+            'redirect-status': '302'
+        }
+        assert THE_MODULE.get_param_dict('not-found-status') == 'not-found-status'
+        assert THE_MODULE.get_param_dict() == THE_MODULE.user_parameters
 
     def test_set_param_dict(self):
         """Ensure set_param_dict() works as expected"""
         debug.trace(4, "test_set_param_dict()")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.user_parameters = {
+            'not-found-status': '404',
+            'redirect-status': '302'
+        }
+        new_user_parameters = {'https-port': '443'}
+        THE_MODULE.issued_param_dict_warning = False
+        THE_MODULE.set_param_dict(new_user_parameters)
+        assert THE_MODULE.user_parameters == new_user_parameters
+        assert THE_MODULE.issued_param_dict_warning
 
     def test_get_url_param(self):
         """Ensure get_url_param() works as expected"""
         debug.trace(4, "test_get_url_param()")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.user_parameters = {
+            'not-found-status': '404',
+            'redirect-status': '302',
+            'default-body': "Joe's hat"
+        }
+        assert THE_MODULE.get_url_param('redirect-status') == '302'
+        assert THE_MODULE.get_url_param('bad-request-status', default_value='400') == '400'
+        assert THE_MODULE.get_url_param('default-body', escaped=True) == 'Joe&#x27;s hat'
 
     def test_get_url_param_checkbox_spec(self):
         """Ensure get_url_param_checkbox_spec() works as expected"""
@@ -204,17 +234,48 @@ class TestIt(TestWrapper):
     def test_init_BeautifulSoup(self):
         """Ensure init_BeautifulSoup() works as expected"""
         debug.trace(4, "test_init_BeautifulSoup()")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.BeautifulSoup = None
+        THE_MODULE.init_BeautifulSoup()
+        assert THE_MODULE.BeautifulSoup
 
     def test_extract_html_link(self):
         """Ensure extract_html_link() works as expected"""
         debug.trace(4, "test_extract_html_link()")
-        ## TODO: WORK-IN-PROGRESS
 
-    def test_extract_html_link(self):
-        """Ensure extract_html_link() works as expected"""
-        debug.trace(4, "test_extract_html_link()")
-        ## TODO: WORK-IN-PROGRESS
+        html = (
+            '<!DOCTYPE html>\n'
+            '<html>\n'
+            '<body>\n'
+            '<h2>The target Attribute</h2>\n'
+            '<div class="some-class">this is a div</div>\n'
+            '<div class="some-class another-class">'
+            '<a href="https://www.anothersite.io/" target="_blank">another site</a>\n'
+            '<a href="https://www.example.com/" target="_blank">Visit Example!</a>\n'
+            '<a href="https://www.example.com/sopport" target="_blank">example sopport</a>\n'
+            '</div>'
+            '<a href="https://www.subdomain.example.com/" target="_blank">Visit subdomain of Example!</a>\n'
+            '<a href="https://www.example.com.br/" target="_blank">visit Example Brazil!</a>\n'
+            '<p>If target="_blank", this is a link.</p>\n'
+            '<a href="www.subdomain.example.com/sitemap.xml" target="_blank">see the sitemap</a>\n'
+            '<a href="/home.html" target="_blank">home page</a>\n'
+            '</body>\n'
+            '</html>\n'
+        )
+
+        # NOTE that the last two urls has a extra '/'.
+        ## TODO: check if the extra '/' in the last two urls are correct.
+        all_urls = [
+            'https://www.anothersite.io/',
+            'https://www.example.com/',
+            'https://www.example.com/sopport',
+            'https://www.subdomain.example.com/',
+            'https://www.example.com.br/',
+            'http:///www.subdomain.example.com/sitemap.xml',
+            'https://www.example.com//home.html'
+        ]
+
+        # Test extract all urls from html
+        assert THE_MODULE.extract_html_link(html, url='https://www.example.com', base_url='http://') == all_urls
 
 #------------------------------------------------------------------------
 
