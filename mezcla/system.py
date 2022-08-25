@@ -525,6 +525,7 @@ def read_all_stdin():
 def read_entire_file(filename, **kwargs):
     """Read all of FILENAME and return as a string
     Note: optional arguments to open() passed along (e.g., encoding amd error handling)"""
+    # TODO: allow for overriding handling of newlines (e.g., block \r being treated as line delim)
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
@@ -614,7 +615,8 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
                 if (skip_header and (line_num == 1)):
                     continue
                 ## OLD: line = from_utf8(line)
-                line = from_utf8(line.rstrip())
+                ## OLD: line = from_utf8(line.rstrip())
+                line = from_utf8(line.rstrip("\n"))
                 if not retain_case:
                     line = line.lower()
                 if delim in line:
@@ -1162,7 +1164,7 @@ def python_maj_min_version():
 def get_args():
     """Return command-line arguments (as a list of strings)"""
     result = sys.argv
-    debug.trace_fmtd(7, "get_args() => {r}", r=result)
+    debug.trace_fmtd(6, "get_args() => {r}", r=result)
     return result
 
 def init():
