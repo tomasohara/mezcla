@@ -36,7 +36,7 @@ import six
 import sys
 
 # Installed packages
-## hACK: temporarily make these conditional
+## HACK: temporarily make these conditional
 ## from bs4 import BeautifulSoup
 ## import textract
 
