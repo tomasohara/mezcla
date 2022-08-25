@@ -12,6 +12,7 @@
 bs4
 cherrypy
 gensim
+lxml
 mako
 matplotlib
 nltk
@@ -29,8 +30,8 @@ xgboost
 #...............................................................................
 # Optional requirements
 #
-#opt# bert-tensorflow
-#opt# tensorflow
+# TODO: #opt# bert-tensorflow
+# TODO: #opt# tensorflow
 #opt# pyyaml
 # NOTE: these are for convenience in setting up environment
 #opt# ipython
