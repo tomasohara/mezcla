@@ -20,7 +20,11 @@ import enchant			# spell checking
 from mezcla import debug
 ## TODO: from mezcla.main import Main
 ## TODO: from mezcla import system
-from mezcla.my_regex import my_re
+## OLD: from mezcla.my_regex import my_re
+from mezcla.text_processing import split_word_tokens
+
+## TEMP:
+# pylint: disable=consider-using-f-string
 
 # Process command line
 # TODO: upgrade to using Main script (see template.py)
@@ -60,9 +64,11 @@ for line in fileinput.input():
     line = line.strip()
     debug.trace_fmt(5, "L{line_num}: {line_text}", line_num=fileinput.filelineno(), line_text=line)
 
-    # Extract word tokens and print those not recognized 
-    word_tokens = [t.strip() for t in my_re.split(r"\W+", line.lower(), my_re.LOCALE|my_re.UNICODE)
-                   if (len(t.strip()) > 0)]
+    # Extract word tokens and print those not recognized
+    ## BAD:
+    ## word_tokens = [t.strip() for t in my_re.split(r"\W+", line.lower(), my_re.LOCALE|my_re.UNICODE)
+    ##                if (len(t.strip()) > 0)]
+    word_tokens = split_word_tokens(line.lower())
     debug.trace(4, f"tokens: {word_tokens}")
     for w in word_tokens:
         if not speller.check(w):
