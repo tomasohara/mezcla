@@ -12,11 +12,14 @@
 """Tests for data_utils module"""
 
 # Standard packages
+import os
+import tempfile
 
 # Installed packages
 import pytest
 
 # Local packages
+from mezcla import glue_helpers as gh
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
@@ -27,25 +30,41 @@ import mezcla.data_utils as THE_MODULE
 class TestIt:
     """Class for testcase definition"""
 
+    path = os.path.dirname(os.path.realpath(__file__))
+
     def test_read_csv(self):
         """Ensure read_csv works as expected"""
         debug.trace(4, "test_read_csv()")
-        ## TODO: WORK-IN=PROGRESS
+        tf = THE_MODULE.read_csv(f"{self.path}/../examples/iris.csv")
+        assert tf.shape == (150, 5)
 
     def test_to_csv(self):
         """Ensure to_csv works as expected"""
         debug.trace(4, "test_to_csv()")
-        ## TODO: WORK-IN=PROGRESS
+
+        # Setup
+        temp_file = tempfile.NamedTemporaryFile().name
+        tf = THE_MODULE.read_csv(f"{self.path}/../examples/iris.csv")
+        THE_MODULE.to_csv(temp_file, tf)
+
+        # Test to_csv
+        expected = (
+            'sepal_length,sepal_width,petal_length,petal_width,class'
+        )
+        assert expected in gh.read_file(temp_file)
 
     def test_lookup_df_value(self):
         """Ensure lookup_df_value works as expected"""
         debug.trace(4, "test_lookup_df_value()")
-        ## TODO: WORK-IN=PROGRESS
+        tf = THE_MODULE.read_csv(f"{self.path}/../examples/iris.csv")
+        assert THE_MODULE.lookup_df_value(tf, "sepal_length", "petal_length", "3.8") == "5.5" 
 
-    def test_lookup_df_value(self):
-        """Ensure lookup_df_value works as expected"""
-        debug.trace(4, "test_lookup_df_value()")
-        ## TODO: WORK-IN=PROGRESS
+    def test_main(self, capsys):
+        """Ensure main works as expected"""
+        debug.trace(4, "main()")
+        THE_MODULE.main()
+        captured = capsys.readouterr()
+        assert "Error" in captured.err
 
 
 if __name__ == '__main__':
