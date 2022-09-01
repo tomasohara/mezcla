@@ -8,6 +8,8 @@
 # - This can be run as follows:
 #   $ PYTHONPATH="$(realpath .)/..):$PYTHONPATH" python tests/test_show_bert_representation.py
 #
+# IMPORTANT:
+# - this is more like a bureaucratic test file, this module has priority NONE to be tested (for now)
 
 """Tests for show_bert_representation module"""
 
@@ -27,8 +29,20 @@ import mezcla.show_bert_representation as THE_MODULE
 class TestIt:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    def test_cosine_distance(self):
+        """Ensure cosine_distance works as expected"""
+        debug.trace(4, "test_cosine_distance()")
+        assert THE_MODULE.cosine_distance([1, 0, 0], [0, 0, 1]) == 1.0 
+        assert THE_MODULE.cosine_distance([1, 0, 0], [2, 0, 0]) == 0.0 
+        assert THE_MODULE.cosine_distance([1, 0, 0, 0], [1, 1, 1, 1]) == 0.5 
 
+    def test_show_cosine_distances(self):
+        """Ensure show_cosine_distances works as expected"""
+        debug.trace(4, "test_show_cosine_distances()")
+        ## TODO: WORK-IN=PROGRESS
+
+    ## TODO: test ExtractFeatures class
+    ## TODO: test Script class
 
 if __name__ == '__main__':
     debug.trace_current_context()
