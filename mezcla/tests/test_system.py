@@ -305,7 +305,8 @@ class TestSystem:
     def test_get_directory_filenames(self):
         """Ensure get_directory_filenames works as expected"""
         debug.trace(4, "test_get_directory_filenames()")
-        ## TODO: WORK-IN=PROGRESS
+        assert "/etc/passwd" in THE_MODULE.get_directory_filenames("/etc")
+        assert "/boot" not in THE_MODULE.get_directory_filenames("/", just_regular_files=True)
 
     def test_read_lookup_table(self):
         """Ensure read_lookup_table works as expected"""
@@ -457,7 +458,7 @@ class TestSystem:
     def test_is_directory(self):
         """Ensure is_directory works as expected"""
         debug.trace(4, "test_is_directory()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.is_directory("/etc")
 
     def test_is_regular_file(self):
         """Ensure is_regular_file works as expected"""
@@ -485,7 +486,7 @@ class TestSystem:
     def test_to_utf8(self):
         """Ensure to_utf8 works as expected"""
         debug.trace(4, "test_to_utf8()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.to_utf8(u"\ufeff") == "\xEF\xBB\xBF"
 
     def test_to_str(self):
         """Ensure to_str works as expected"""
@@ -500,7 +501,7 @@ class TestSystem:
     def test_to_unicode(self):
         """Ensure to_unicode works as expected"""
         debug.trace(4, "test_to_unicode()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == u"\ufeff"
 
     def test_from_unicode(self):
         """Ensure from_unicode works as expected"""
