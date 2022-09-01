@@ -12,6 +12,7 @@
 
 # Installed packages
 import os
+import re
 import pytest
 
 # Local packages
@@ -35,12 +36,14 @@ class TestIt(TestWrapper):
     def test_remove_extension(self):
         """Ensure remove_extension works as expected"""
         debug.trace(4, "test_remove_extension()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.remove_extension("/tmp/solr-4888.log", ".log") == "/tmp/solr-4888"
+        assert THE_MODULE.remove_extension("/tmp/fubar.py", ".py") == "/tmp/fubar"
+        assert THE_MODULE.remove_extension("/tmp/fubar.py", "py") == "/tmp/fubar."
 
     def test_dir_path(self):
         """Ensure dir_path works as expected"""
         debug.trace(4, "test_dir_path()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.dir_path("/tmp/solr-4888.log") == "/tmp" 
 
     def test_file_exists(self):
         """Ensure file_exists works as expected"""
@@ -65,7 +68,7 @@ class TestIt(TestWrapper):
     def test_real_path(self):
         """Ensure real_path works as expected"""
         debug.trace(4, "test_real_path()")
-        ## TODO: WORK-IN=PROGRESS
+        assert re.search("vmlinuz.*\d.\d", THE_MODULE.real_path("/vmlinuz"))
 
     def test_indent(self):
         """Ensure indent works as expected"""
@@ -80,12 +83,13 @@ class TestIt(TestWrapper):
     def test_elide(self):
         """Ensure elide works as expected"""
         debug.trace(4, "test_elide()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.elide("=" * 80, max_len=8) == "========..."
+        assert THE_MODULE.elide(None, 10) == None
 
     def test_elide_values(self):
         """Ensure elide_values works as expected"""
         debug.trace(4, "test_elide_values()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.elide_values(["1", "22", "333"], max_len=2) == ["1", "22", "33..."]
 
     def test_disable_subcommand_tracing(self):
         """Ensure disable_subcommand_tracing works as expected"""
@@ -95,17 +99,19 @@ class TestIt(TestWrapper):
     def test_run(self):
         """Ensure run works as expected"""
         debug.trace(4, "test_run()")
-        ## TODO: WORK-IN=PROGRESS
+        assert "root" in THE_MODULE.run("ls /")
 
     def test_issue(self):
         """Ensure issue works as expected"""
         debug.trace(4, "test_issue()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.issue("ls /") == None
+        assert THE_MODULE.issue("xeyes &")
 
     def test_get_hex_dump(self):
         """Ensure get_hex_dump works as expected"""
         debug.trace(4, "test_get_hex_dump()")
-        ## TODO: WORK-IN=PROGRESS
+        ## TODO: mock hexview.perl output
+        ## assert THE_MODULE.get_hex_dump("Tomás") == "00000000  54 6F 6D C3 A1 73       -                          Tom..s" 
 
     def test_extract_matches(self):
         """Tests for extract_matches(pattern, lines)"""
@@ -125,6 +131,7 @@ class TestIt(TestWrapper):
         """Tests for basename(path, extension)"""
         assert THE_MODULE.basename("fubar.py", ".py") == "fubar"
         assert not THE_MODULE.basename("fubar.py", "") == "fubar"
+        assert THE_MODULE.basename("/tmp/solr-4888.log", ".log") == "solr-4888"
         return
 
     def test_resolve_path(self):
@@ -144,12 +151,14 @@ class TestIt(TestWrapper):
     def test_extract_matches_from_text(self):
         """Ensure extract_matches_from_text works as expected"""
         debug.trace(4, "test_extract_matches_from_text()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.extract_matches_from_text(".", "abc") == ["a", "b", "c"]
+        assert THE_MODULE.extract_matches_from_text(".", "abc", multiple=False) == ["a"]
 
     def test_count_it(self):
         """Ensure count_it works as expected"""
         debug.trace(4, "test_count_it()")
-        ## TODO: WORK-IN=PROGRESS
+        assert dict(THE_MODULE.count_it("[a-z]", "Panama")) == {"a": 3, "n": 1, "m": 1}
+        assert THE_MODULE.count_it("\w+", "My d@wg's fleas have fleas")["fleas"] == 2
 
     def test_read_lines(self):
         """Ensure read_lines works as expected"""
