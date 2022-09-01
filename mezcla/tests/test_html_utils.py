@@ -207,17 +207,19 @@ class TestIt(TestWrapper):
     def test_old_download_web_document(self):
         """Ensure old_download_web_document() works as expected"""
         debug.trace(4, "test_old_download_web_document()")
-        ## TODO: WORK-IN-PROGRESS
+        assert "Search" in THE_MODULE.old_download_web_document("https://www.google.com")
 
     def test_download_web_document(self):
         """Ensure download_web_document() works as expected"""
         debug.trace(4, "test_download_web_document()")
-        ## TODO: WORK-IN-PROGRESS
+        assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
+        assert THE_MODULE.download_web_document("www. bogus. url.html") == None 
 
     def test_test_download_html_document(self):
         """Ensure test_download_html_document() works as expected"""
         debug.trace(4, "test_test_download_html_document()")
-        ## TODO: WORK-IN-PROGRESS
+        assert "Google" in THE_MODULE.test_download_html_document("www.google.com") 
+        assert "Tomás" not in THE_MODULE.test_download_html_document("http://www.tomasohara.trade", encoding="big5")
 
     def test_download_html_document(self):
         """Ensure download_html_document() works as expected"""
@@ -232,7 +234,7 @@ class TestIt(TestWrapper):
     def test_retrieve_web_document(self):
         """Ensure retrieve_web_document() works as expected"""
         debug.trace(4, "test_retrieve_web_document()")
-        ## TODO: WORK-IN-PROGRESS
+        assert re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document("www.tomasohara.trade")) 
 
     def test_init_BeautifulSoup(self):
         """Ensure init_BeautifulSoup() works as expected"""
