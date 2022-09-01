@@ -24,10 +24,59 @@ from mezcla import debug
 #    TestIt.script_module   string name
 import mezcla.spacy_nlp as THE_MODULE
 
+
+class TestSentimentAnalyzer:
+    """Class for testcase definition"""
+
+    def test_get_score(self):
+        """Ensure SentimentAnalyzer.get_score works as expected"""
+        debug.trace(4, "test_get_score()")
+        sentiment = THE_MODULE.SentimentAnalyzer()
+        assert sentiment.get_score('bad') == -0.5423
+        assert sentiment.get_score('good') == 0.4404
+
+
 class TestIt:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    def test_get_char_span(self):
+        """Ensure get_char_span works as expected"""
+        debug.trace(4, "test_get_char_span()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_pysbd_sentence_boundaries(self):
+        """Ensure pysbd_sentence_boundaries works as expected"""
+        debug.trace(4, "test_pysbd_sentence_boundaries()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_nltk_sentence_boundaries(self):
+        """Ensure nltk_sentence_boundaries works as expected"""
+        debug.trace(4, "test_nltk_sentence_boundaries()")
+        ## TODO: WORK-IN=PROGRESS
+
+
+class TestScript:
+    """Class for testcase definition"""
+
+    def test_get_entity_spec(self):
+        """Ensure script.get_entity_spec works as expected"""
+        debug.trace(4, "test_get_entity_spec()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_get_sentiment_score(self):
+        """Ensure script.get_sentiment_score works as expected"""
+        debug.trace(4, "test_get_sentiment_score()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_process_line(self):
+        """Ensure script.process_line works as expected"""
+        debug.trace(4, "test_process_line()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_process_sentence(self):
+        """Ensure script.process_sentence works as expected"""
+        debug.trace(4, "test_process_sentence()")
+        ## TODO: WORK-IN=PROGRESS
 
 
 if __name__ == '__main__':
