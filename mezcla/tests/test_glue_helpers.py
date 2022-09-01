@@ -24,6 +24,86 @@ class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.derive_tested_module_name(__file__)
 
+    def test_get_temp_file(self):
+        """Ensure get_temp_file works as expected"""
+        debug.trace(4, "test_get_temp_file()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_remove_extension(self):
+        """Ensure remove_extension works as expected"""
+        debug.trace(4, "test_remove_extension()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_dir_path(self):
+        """Ensure dir_path works as expected"""
+        debug.trace(4, "test_dir_path()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_file_exists(self):
+        """Ensure file_exists works as expected"""
+        debug.trace(4, "test_file_exists()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_form_path(self):
+        """Ensure form_path works as expected"""
+        debug.trace(4, "test_form_path()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_create_directory(self):
+        """Ensure create_directory works as expected"""
+        debug.trace(4, "test_create_directory()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_full_mkdir(self):
+        """Ensure full_mkdir works as expected"""
+        debug.trace(4, "test_full_mkdir()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_real_path(self):
+        """Ensure real_path works as expected"""
+        debug.trace(4, "test_real_path()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_indent(self):
+        """Ensure indent works as expected"""
+        debug.trace(4, "test_indent()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_indent_lines(self):
+        """Ensure indent_lines works as expected"""
+        debug.trace(4, "test_indent_lines()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_elide(self):
+        """Ensure elide works as expected"""
+        debug.trace(4, "test_elide()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_elide_values(self):
+        """Ensure elide_values works as expected"""
+        debug.trace(4, "test_elide_values()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_disable_subcommand_tracing(self):
+        """Ensure disable_subcommand_tracing works as expected"""
+        debug.trace(4, "test_disable_subcommand_tracing()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_run(self):
+        """Ensure run works as expected"""
+        debug.trace(4, "test_run()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_issue(self):
+        """Ensure issue works as expected"""
+        debug.trace(4, "test_issue()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_get_hex_dump(self):
+        """Ensure get_hex_dump works as expected"""
+        debug.trace(4, "test_get_hex_dump()")
+        ## TODO: WORK-IN=PROGRESS
+
     def test_extract_matches(self):
         """Tests for extract_matches(pattern, lines)"""
         ## OLD
@@ -32,6 +112,11 @@ class TestIt(TestWrapper):
         assert gh.extract_matches(r"Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]) == ["Smith", "Jones"]
         assert not gh.extract_matches(r"\t\S+", ["abc\tdef", "123\t456"]) == ["def", "456"]
         return
+
+    def test_extract_match(self):
+        """Ensure extract_match works as expected"""
+        debug.trace(4, "test_extract_match()")
+        ## TODO: WORK-IN=PROGRESS
 
     def test_basename(self):
         """Tests for basename(path, extension)"""
@@ -47,6 +132,81 @@ class TestIt(TestWrapper):
         assert not gh.resolve_path(script) == os.path.join(os.path.dirname(__file__), test_script)
         assert gh.resolve_path(test_script) == os.path.join(os.path.dirname(__file__), test_script)
         return
+
+    def test_extract_match_from_text(self):
+        """Ensure extract_match_from_text works as expected"""
+        debug.trace(4, "test_extract_match_from_text()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_extract_matches_from_text(self):
+        """Ensure extract_matches_from_text works as expected"""
+        debug.trace(4, "test_extract_matches_from_text()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_count_it(self):
+        """Ensure count_it works as expected"""
+        debug.trace(4, "test_count_it()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_read_lines(self):
+        """Ensure read_lines works as expected"""
+        debug.trace(4, "test_read_lines()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_write_lines(self):
+        """Ensure write_lines works as expected"""
+        debug.trace(4, "test_write_lines()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_read_file(self):
+        """Ensure read_file works as expected"""
+        debug.trace(4, "test_read_file()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_write_file(self):
+        """Ensure write_file works as expected"""
+        debug.trace(4, "test_write_file()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_copy_file(self):
+        """Ensure copy_file works as expected"""
+        debug.trace(4, "test_copy_file()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_rename_file(self):
+        """Ensure rename_file works as expected"""
+        debug.trace(4, "test_rename_file()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_delete_file(self):
+        """Ensure delete_file works as expected"""
+        debug.trace(4, "test_delete_file()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_file_size(self):
+        """Ensure file_size works as expected"""
+        debug.trace(4, "test_file_size()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_get_matching_files(self):
+        """Ensure get_matching_files works as expected"""
+        debug.trace(4, "test_get_matching_files()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_get_files_matching_specs(self):
+        """Ensure get_files_matching_specs works as expected"""
+        debug.trace(4, "test_get_files_matching_specs()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_get_directory_listing(self):
+        """Ensure get_directory_listing works as expected"""
+        debug.trace(4, "test_get_directory_listing()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_getenv_filename(self):
+        """Ensure getenv_filename works as expected"""
+        debug.trace(4, "test_getenv_filename()")
+        ## TODO: WORK-IN=PROGRESS
 
 
 if __name__ == '__main__':
