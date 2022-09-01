@@ -27,7 +27,28 @@ import mezcla.keras_param_search as THE_MODULE
 class TestIt:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    def test_round3(self):
+        """Ensure round3 works as expected"""
+        debug.trace(4, "test_round3()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_non_negative(self):
+        """Ensure non_negative works as expected"""
+        debug.trace(4, "test_non_negative()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_create_feature_mapping(self):
+        """Ensure create_feature_mapping works as expected"""
+        debug.trace(4, "test_create_feature_mapping()")
+        assert THE_MODULE.create_feature_mapping(['c', 'b', 'b', 'a']) == {'c':0, 'b':1, 'a':2}
+
+    def test_create_keras_model(self):
+        """Ensure create_keras_model works as expected"""
+        debug.trace(4, "test_create_keras_model()")
+        ## TODO: WORK-IN=PROGRESS
+
+    ## TODO: test MyKerasClassifier class
+    ## TODO: test main
 
 
 if __name__ == '__main__':
