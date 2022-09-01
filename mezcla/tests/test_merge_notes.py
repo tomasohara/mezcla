@@ -15,6 +15,7 @@
 
 # Installed packages
 import pytest
+import datetime
 
 # Local packages
 from mezcla import debug
@@ -27,7 +28,14 @@ import mezcla.merge_notes as THE_MODULE
 class TestIt:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    def test_resolve_date(self):
+        """Ensure resolve_date works as expected"""
+        debug.trace(4, "test_resolve_date()")
+        assert THE_MODULE.resolve_date("1 Jan 00") == datetime.datetime(2000, 1, 1, 0, 0)
+        assert THE_MODULE.resolve_date("0 Jan 00", datetime.datetime(2000, 1, 1, 0, 0)) == datetime.datetime(2000, 1, 1, 0, 0)
+        assert THE_MODULE.resolve_date("Sun 18 Jul 2021") == datetime.datetime(2021, 7, 18, 0, 0)
+
+    ## TODO: test main script
 
 
 if __name__ == '__main__':
