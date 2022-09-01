@@ -27,8 +27,19 @@ import mezcla.merge_files as THE_MODULE
 class TestIt:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    def test_get_timestamp(self):
+        """Ensure get_timestamp works as expected"""
+        debug.trace(4, "test_get_timestamp()")
+        ## TODO: solve flaky test
+        ## assert THE_MODULE.get_timestamp("/vmlinuz") == "2021-04-15 04:24:54"
 
+    def test_get_numeric_timestamp(self):
+        """Ensure get_numeric_timestamp works as expected"""
+        debug.trace(4, "test_get_numeric_timestamp()")
+        ## TODO: solve flaky test
+        ## assert THE_MODULE.get_numeric_timestamp("/vmlinuz") == 1618478694.0
+
+    ## TODO: test Script class
 
 if __name__ == '__main__':
     debug.trace_current_context()
