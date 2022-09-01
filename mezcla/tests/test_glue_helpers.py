@@ -17,8 +17,11 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla.unittest_wrapper import TestWrapper
-import mezcla.glue_helpers as gh
 
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:	    global module object
+#    TestIt.script_module   string name
+import mezcla.glue_helpers as THE_MODULE
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
@@ -109,8 +112,8 @@ class TestIt(TestWrapper):
         ## OLD
         ## assert gh.extract_matches("Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]) == ["Smith", "Jones"]
         ## assert not gh.extract_matches("\t\S+", ["abc\tdef", "123\t456"]) == ["def", "456"]
-        assert gh.extract_matches(r"Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]) == ["Smith", "Jones"]
-        assert not gh.extract_matches(r"\t\S+", ["abc\tdef", "123\t456"]) == ["def", "456"]
+        assert THE_MODULE.extract_matches(r"Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]) == ["Smith", "Jones"]
+        assert not THE_MODULE.extract_matches(r"\t\S+", ["abc\tdef", "123\t456"]) == ["def", "456"]
         return
 
     def test_extract_match(self):
@@ -120,8 +123,8 @@ class TestIt(TestWrapper):
 
     def test_basename(self):
         """Tests for basename(path, extension)"""
-        assert gh.basename("fubar.py", ".py") == "fubar"
-        assert not gh.basename("fubar.py", "") == "fubar"
+        assert THE_MODULE.basename("fubar.py", ".py") == "fubar"
+        assert not THE_MODULE.basename("fubar.py", "") == "fubar"
         return
 
     def test_resolve_path(self):
@@ -129,8 +132,8 @@ class TestIt(TestWrapper):
         script = "glue_helpers.py"
         test_script = "test_glue_helpers.py"
         # The main script should resolve to parent directory but this one to test dir
-        assert not gh.resolve_path(script) == os.path.join(os.path.dirname(__file__), test_script)
-        assert gh.resolve_path(test_script) == os.path.join(os.path.dirname(__file__), test_script)
+        assert not THE_MODULE.resolve_path(script) == os.path.join(os.path.dirname(__file__), test_script)
+        assert THE_MODULE.resolve_path(test_script) == os.path.join(os.path.dirname(__file__), test_script)
         return
 
     def test_extract_match_from_text(self):
