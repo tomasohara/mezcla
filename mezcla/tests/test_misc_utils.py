@@ -72,7 +72,7 @@ class TestMiscUtils:
             347, 349, 353, 359, 367, 373, 379, 383, 389,
             397, 401, 409, 419, 421, 431, 433, 439, 443,
             449, 457, 461, 463, 467, 479, 487, 491, 499,
-            503, 509, 521, 523, 541
+            503, 509, 521, 523, 541,
         ]
 
         assert all([THE_MODULE.is_prime(n) for n in FIRST_100_PRIMES])
@@ -128,12 +128,12 @@ class TestMiscUtils:
     def test_trace_named_object(self):
         """Ensure trace_named_object works as expected"""
         debug.trace(4, "test_trace_named_object()")
-        ## TODO: WORK-IN-PROGRESS
+        assert THE_MODULE.trace_named_object(4, "sys.argv")
 
     def test_trace_named_objects(self):
         """Ensure trace_named_objects works as expected"""
         debug.trace(4, "test_trace_named_objects()")
-        ## TODO: WORK-IN-PROGRESS
+        assert THE_MODULE.trace_named_object(4, "[len(sys.argv), sys.argv]")
 
     def test_exactly1(self):
         """Ensure exactly1 works as expected"""
