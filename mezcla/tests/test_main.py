@@ -60,8 +60,8 @@ class TestIt(TestWrapper):
                    boolean_options=["verbose"],
                    runtime_args=["--verbose"])
         #
-        self.assertEqual(app.parsed_args.get("name"), "John Doe")
-        self.assertEqual(app.parsed_args.get("verbose"), True)
+        assert app.parsed_args.get("name") == "John Doe"
+        assert app.parsed_args.get("verbose") == True
 
     def test_script_without_input(self):
         """Makes sure script class without input doesn't process input and that
@@ -105,7 +105,7 @@ class TestIt(TestWrapper):
         except:
             tpo.print_stderr("Exception during run method: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        self.assertTrue(TestIt.input_processed)
+        assert TestIt.input_processed
         #
         TestIt.input_processed = None
         app2 = Test(skip_input=True, runtime_args=[__file__])
@@ -114,7 +114,7 @@ class TestIt(TestWrapper):
         except:
             tpo.print_stderr("Exception during run method: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        self.assertFalse(TestIt.input_processed)
+        assert not TestIt.input_processed
 
         # Test scriptlet w/ input disabled and wihout arguments
         # note: auto_help disabled so that no arguments needed
@@ -125,7 +125,7 @@ class TestIt(TestWrapper):
         except:
             tpo.print_stderr("Exception during run method: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        self.assertTrue(TestIt.main_step_invoked)
+        assert TestIt.main_step_invoked
 
     def test_perl_arg(self):
         """Make sure perl-style arg can be parsed"""
@@ -141,12 +141,12 @@ class TestIt(TestWrapper):
                    runtime_args=["-verbose"],
                    perl_switch_parsing=True)
         #
-        self.assertEqual(app.parsed_args.get("verbose"), True)
+        assert app.parsed_args.get("verbose") == True
         #
         app = Test(boolean_options=["verbose"],
                    runtime_args=["-verbose"],
                    perl_switch_parsing=False)
-        self.assertEqual(app.parsed_args.get("verbose"), None)
+        assert app.parsed_args.get("verbose") == None
 
 
 class TestIt2:

@@ -26,10 +26,9 @@
 
 # Standard packages
 import re
-import unittest
 
 # Installed packages
-## TODO: import pytest
+import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
@@ -68,8 +67,8 @@ class TestIt(TestWrapper):
         data = "<xml><a>A</a><b>B</b></xml>"
         gh.write_file(self.temp_file, data)
         output = self.run_script("", self.temp_file)
-        self.assertTrue("a: A" in output)
-        self.assertTrue("b: B" in output)
+        assert "a: A" in output
+        assert "b: B" in output
         return
 
     def test_get_xml_text(self):
@@ -77,12 +76,11 @@ class TestIt(TestWrapper):
         debug.trace(4, "test_get_xml_text()")
         # Example from https://docs.python.org/3/library/xml.etree.elementtree.html.
         parsed_xml_text = THE_MODULE.get_xml_text(THE_MODULE.parse_xml(NESTED_XML))
-        self.assertEqual(parsed_xml_text,
-                         "xml: \n\ta: \n\t\tb: 1\n\t\t\tc: 2\n\t\t\t\td: \n\t\t\t\t3\n\t\t4")
+        assert parsed_xml_text == "xml: \n\ta: \n\t\tb: 1\n\t\t\tc: 2\n\t\t\t\td: \n\t\t\t\t3\n\t\t4"
         return
 
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    unittest.main()
+    pytest.main([__file__])

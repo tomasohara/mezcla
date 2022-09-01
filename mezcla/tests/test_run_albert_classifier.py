@@ -22,7 +22,7 @@ from mezcla import debug
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 #    TestIt.script_module   string name
-import mezcla.run_albert_classifier as THE_MODULE
+#import mezcla.run_albert_classifier as THE_MODULE
 
 class TestIt:
     """Class for testcase definition"""

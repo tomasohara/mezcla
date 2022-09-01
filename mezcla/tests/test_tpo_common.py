@@ -17,7 +17,11 @@
 import os
 import unittest
 
+# Installed packages
+import pytest
+
 # Local packages
+from mezcla import debug
 from mezcla import tpo_common as tpo
 
 FUBAR = 101	# sample global for test_format
@@ -30,52 +34,46 @@ class TestIt(unittest.TestCase):
     def test_format(self):
         """Ensure format resolves from local and global namespace, and that local takes precedence"""
         fubar = 202
-        self.assertEqual(tpo.format("{F} vs. {f}", F=FUBAR, f=fubar), 
-                         ("%s vs. %s" % (FUBAR, fubar)))
+        assert tpo.format("{F} vs. {f}", F=FUBAR, f=fubar) == ("%s vs. %s" % (FUBAR, fubar))
         # pylint: disable=redefined-outer-name
         FOOBAR = 21
-        self.assertEqual(tpo.format("{FOO}", FOO=FOOBAR), 
-                         str(FOOBAR))
-        # TODO: self.assertEqual("Hey Jos\xc3\xa9", tpo.format("Hey {j}", j=JOSE))
+        assert tpo.format("{FOO}", FOO=FOOBAR) == str(FOOBAR)
+        # TODO: assert "Hey Jos\xc3\xa9" == tpo.format("Hey {j}", j=JOSE)
         return
 
     def test_get_current_function_name(self):
         """Test(s) for get_current_function_name()"""
-        self.assertEqual(tpo.get_current_function_name(), "test_get_current_function_name")
+        assert tpo.get_current_function_name() == "test_get_current_function_name"
         return
 
     def test_getenv_functions(self):
         """Ensure that various getenv_xyz functions work as expected"""
-        self.assertEqual(tpo.getenv_integer("REALLY FUBAR", 123), 123)
-        self.assertEqual(tpo.getenv_number("REALLY FUBAR", 123), 123.0)
-        self.assertFalse(isinstance(tpo.getenv_boolean("REALLY FUBAR?", None), 
-                                    bool))
-        self.assertTrue(isinstance(tpo.getenv_boolean("REALLY FUBAR?", False), 
-                                   bool))
-        self.assertFalse(isinstance(tpo.getenv_text("REALLY FUBAR?", False), 
-                                    bool))
+        assert tpo.getenv_integer("REALLY FUBAR", 123) == 123
+        assert tpo.getenv_number("REALLY FUBAR", 123) == 123.0
+        assert not isinstance(tpo.getenv_boolean("REALLY FUBAR?", None), bool)
+        assert isinstance(tpo.getenv_boolean("REALLY FUBAR?", False), bool)
+        assert not isinstance(tpo.getenv_text("REALLY FUBAR?", False), bool)
         os.environ["FUBAR"] = "1"
-        self.assertEqual(tpo.getenv_text("FUBAR"), "1")
+        assert tpo.getenv_text("FUBAR") == "1"
         return
 
     def test_unicode_functions(self):
         """Esnure that normalize_unicode, encode_unicode, etc. work as expected"""
         UTF8_BOM = "\xEF\xBB\xBF"
-        self.assertEqual(tpo.ensure_unicode("ASCII"), u"ASCII")
-        self.assertEqual(tpo.normalize_unicode("ASCII"), "ASCII")
-        ## TODO: self.assertEqual(tpo.ensure_unicode(UTF8_BOM), u'\ufeff')
-        self.assertEqual(tpo.normalize_unicode(UTF8_BOM), UTF8_BOM)
-        self.assertEqual(u"Jos\xe9", tpo.ensure_unicode(JOSE))
-        ## TODO: self.assertEqual("Jos\xc3\xa9", tpo.normalize_unicode(JOSE))
+        assert tpo.ensure_unicode("ASCII") == u"ASCII"
+        assert tpo.normalize_unicode("ASCII") == "ASCII"
+        ## TODO: assert tpo.ensure_unicode(UTF8_BOM) == u'\ufeff'
+        assert tpo.normalize_unicode(UTF8_BOM) == UTF8_BOM
+        assert u"Jos\xe9" == tpo.ensure_unicode(JOSE)
+        ## TODO: assert "Jos\xc3\xa9", tpo.normalize_unicode(JOSE)
         return
-        
+
     def test_difference(self):
         """Ensures set difference works as expected"""
-        self.assertEqual(tpo.difference([1, 2, 3], [2]), 
-                         [1, 3])
-        self.assertEqual(tpo.difference([1, 1, 2, 2], [1]), 
-                         [2])
+        assert tpo.difference([1, 2, 3], [2]) == [1, 3]
+        assert tpo.difference([1, 1, 2, 2], [1]) == [2]
         return
 
 if __name__ == '__main__':
-    unittest.main()
+    debug.trace_current_context()
+    pytest.main([__file__])

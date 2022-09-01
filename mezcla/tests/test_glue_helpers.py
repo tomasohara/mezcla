@@ -12,9 +12,10 @@
 
 # Installed packages
 import os
-import unittest
+import pytest
 
 # Local packages
+from mezcla import debug
 from mezcla.unittest_wrapper import TestWrapper
 import mezcla.glue_helpers as gh
 
@@ -26,16 +27,16 @@ class TestIt(TestWrapper):
     def test_extract_matches(self):
         """Tests for extract_matches(pattern, lines)"""
         ## OLD
-        ## self.assertEqual(gh.extract_matches("Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]), ["Smith", "Jones"])
-        ## self.assertNotEqual(gh.extract_matches("\t\S+", ["abc\tdef", "123\t456"]), ["def", "456"])
-        self.assertEqual(gh.extract_matches(r"Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]), ["Smith", "Jones"])
-        self.assertNotEqual(gh.extract_matches(r"\t\S+", ["abc\tdef", "123\t456"]), ["def", "456"])
+        ## assert gh.extract_matches("Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]) == ["Smith", "Jones"]
+        ## assert not gh.extract_matches("\t\S+", ["abc\tdef", "123\t456"]) == ["def", "456"]
+        assert gh.extract_matches(r"Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]) == ["Smith", "Jones"]
+        assert not gh.extract_matches(r"\t\S+", ["abc\tdef", "123\t456"]) == ["def", "456"]
         return
 
     def test_basename(self):
         """Tests for basename(path, extension)"""
-        self.assertEqual(gh.basename("fubar.py", ".py"), "fubar")
-        self.assertNotEqual(gh.basename("fubar.py", ""), "fubar")
+        assert gh.basename("fubar.py", ".py") == "fubar"
+        assert not gh.basename("fubar.py", "") == "fubar"
         return
 
     def test_resolve_path(self):
@@ -43,12 +44,11 @@ class TestIt(TestWrapper):
         script = "glue_helpers.py"
         test_script = "test_glue_helpers.py"
         # The main script should resolve to parent directory but this one to test dir
-        self.assertNotEqual(gh.resolve_path(script), 
-                            os.path.join(os.path.dirname(__file__), test_script))
-        self.assertEqual(gh.resolve_path(test_script), 
-                         os.path.join(os.path.dirname(__file__), test_script))
+        assert not gh.resolve_path(script) == os.path.join(os.path.dirname(__file__), test_script)
+        assert gh.resolve_path(test_script) == os.path.join(os.path.dirname(__file__), test_script)
         return
 
 
 if __name__ == '__main__':
-    unittest.main()
+    debug.trace_current_context()
+    pytest.main([__file__])

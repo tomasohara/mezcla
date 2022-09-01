@@ -13,10 +13,9 @@
 
 # Standard packages
 import re
-import unittest
 
 # Installed packages
-## TODO: import pytest
+import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
@@ -88,13 +87,12 @@ class TestIt(TestWrapper):
         if not self.my_re.search(r"(\w+)\W+(\w+)", ">scrap ~!@\n#$ yard<",
                                  re.MULTILINE):
             self.fail("simple regex search failed")
-        self.assertEqual(self.my_re.group(1), "scrap")
-        self.assertEqual(self.my_re.group(2), "yard")
+        assert self.my_re.group(1) == "scrap"
+        assert self.my_re.group(2) == "yard"
         return
 
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    unittest.main()
-
+    pytest.main([__file__])

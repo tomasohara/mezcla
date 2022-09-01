@@ -13,8 +13,8 @@
 
 """Simple test suite for filter_random.py"""
 
-# Standard packages
-import unittest
+# Installed packages
+import pytest
 
 # Local packages
 from mezcla import debug
@@ -44,7 +44,7 @@ class TestIt(TestWrapper):
                                         data_file=data_file_path)
         actual_output = script_output.strip()
         expected_output = expected_output.strip()
-        self.assertEqual(expected_output, actual_output)
+        assert expected_output == actual_output
         return None
 
     def test_simple_data_file(self):
@@ -70,4 +70,4 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    unittest.main()
+    pytest.main([__file__])

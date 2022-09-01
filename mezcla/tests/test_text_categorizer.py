@@ -11,10 +11,9 @@
 
 # Standard packages
 import re
-import unittest
 
 # Installed packages
-## TODO: import pytest
+import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
@@ -52,19 +51,18 @@ class TestIt(TestWrapper):
         data = ["TODO1", "TODO2"]
         gh.write_lines(self.temp_file, data)
         output = self.run_script("", self.temp_file)
-        self.assertTrue(re.search(r"TODO-pattern", 
-                                  output.strip()))
+        assert re.search(r"TODO-pattern", output.strip())
         return
 
     def test_something_else(self):
         """TODO: flesh out test for something else"""
         debug.trace(4, "test_something_else()")
         self.fail("TODO: code test")
-        ## ex: self.assertEqual(THE_MODULE.TODO_function() == TODO_value)
+        ## ex: assert THE_MODULE.TODO_function() == TODO_value
         return
 
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    unittest.main()
+    pytest.main([__file__])

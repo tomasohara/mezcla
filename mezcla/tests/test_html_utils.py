@@ -14,7 +14,6 @@
 
 # Standard packages
 import re
-import unittest
 
 # Installed packages
 import pytest
@@ -56,11 +55,11 @@ class TestIt(TestWrapper):
         debug.trace(4, "test_get_url_parameter_value()")
         save_user_parameters = THE_MODULE.user_parameters
         THE_MODULE.user_parameters = {}
-        self.assertEqual(THE_MODULE.get_url_parameter_value("fubar", None), None)
-        self.assertEqual(THE_MODULE.get_url_parameter_value("fubar", None, {"fubar": "fu"}), "fu")
+        assert THE_MODULE.get_url_parameter_value("fubar", None) == None
+        assert THE_MODULE.get_url_parameter_value("fubar", None, {"fubar": "fu"}) == "fu"
         THE_MODULE.user_parameters = {"fubar": "bar"}
-        self.assertEqual(THE_MODULE.get_url_parameter_value("fubar", None), "bar")
-        self.assertEqual(THE_MODULE.get_url_parameter_value("fubar", None, {"fubar": "fu"}), "fu")
+        assert THE_MODULE.get_url_parameter_value("fubar", None) == "bar"
+        assert THE_MODULE.get_url_parameter_value("fubar", None, {"fubar": "fu"}) == "fu"
         THE_MODULE.user_parameters = save_user_parameters
         return
 
@@ -77,10 +76,10 @@ class TestIt(TestWrapper):
         # TODO: use direct API call to return unrendered text
         unrendered_text = gh.run(f"lynx -dump {url}")
         debug.trace_expr(5, unrendered_text)
-        self.assertTrue(re.search(r"Browser dimensions: \?", unrendered_text))
+        assert re.search(r"Browser dimensions: \?", unrendered_text)
         rendered_text = THE_MODULE.get_inner_text(url)
         debug.trace_expr(5, rendered_text)
-        self.assertTrue(re.search(r"Browser dimensions: \d+x\d+", rendered_text))
+        assert re.search(r"Browser dimensions: \d+x\d+", rendered_text)
     
     def test_get_inner_html(self):
         """Verify that JavaScript fills in window dimensions
@@ -95,12 +94,16 @@ class TestIt(TestWrapper):
         # TODO: use direct API call to return unrendered text
         unrendered_html = gh.run(f"lynx -source {url}")
         debug.trace_expr(5, unrendered_html)
-        self.assertTrue(re.search(r"<li>Browser dimensions:\s*<span.*>\?\?\?</span></li>",
-                                  unrendered_html))
+        assert re.search(
+            r"<li>Browser dimensions:\s*<span.*>\?\?\?</span></li>",
+            unrendered_html,
+            )
         rendered_html = THE_MODULE.get_inner_html(url)
         debug.trace_expr(5, rendered_html)
-        self.assertTrue(re.search(r"<li>Browser dimensions:\s*<span.*>\d+x\d+</span></li>",
-                                  rendered_html))
+        assert re.search(
+            r"<li>Browser dimensions:\s*<span.*>\d+x\d+</span></li>",
+            rendered_html,
+            )
 
     def test_document_ready(self):
         """Ensure document_ready() works as expected"""
@@ -271,7 +274,7 @@ class TestIt(TestWrapper):
             'https://www.subdomain.example.com/',
             'https://www.example.com.br/',
             'http:///www.subdomain.example.com/sitemap.xml',
-            'https://www.example.com//home.html'
+            'https://www.example.com//home.html',
         ]
 
         # Test extract all urls from html
@@ -286,4 +289,4 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    unittest.main()
+    pytest.main([__file__])

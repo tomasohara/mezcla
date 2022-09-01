@@ -8,7 +8,7 @@
 
 
 # Standard packages
-import unittest
+import pytest
 import re
 
 
@@ -71,7 +71,7 @@ class TestIt(TestWrapper):
         list_result = file_utils.get_directory_listing(f'{self.temp_base}', recursive=True, long=True, return_string=True)
 
         for line in list_result:
-            self.assertTrue(bool(re.search(r"[drwx-]+\s+\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+\d\d:\d\d\s+[\w/]+", line)))
+            assert bool(re.search(r"[drwx-]+\s+\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+\d\d:\d\d\s+[\w/]+", line))
 
     def test_get_information(self):
         """Tests for def get_information(path,
@@ -83,7 +83,7 @@ class TestIt(TestWrapper):
         ls_result = gh.run(f'ls -l {self.temp_file}')
         ls_result = re.sub(r'\s+', ' ', ls_result)
 
-        self.assertEqual(file_utils.get_information(self.temp_file, return_string=True).lower(), ls_result.lower())
+        assert file_utils.get_information(self.temp_file, return_string=True).lower() == ls_result.lower()
 
     def test_get_permissions(self):
         """Tests for get_permissions(path)"""
@@ -93,8 +93,8 @@ class TestIt(TestWrapper):
         gh.run(f'touch {test_file}')
 
         # Run
-        self.assertEqual(file_utils.get_permissions(test_file), gh.run(f'ls -l {test_file}')[:10])
-        self.assertEqual(file_utils.get_permissions(self.temp_base), gh.run(f'ls -ld {self.temp_base}')[:10])
+        assert file_utils.get_permissions(test_file) == gh.run(f'ls -l {test_file}')[:10]
+        assert file_utils.get_permissions(self.temp_base) == gh.run(f'ls -ld {self.temp_base}')[:10]
 
     def test_get_modification_date(self):
         """Tests for get_modification_date(path)"""
@@ -103,7 +103,7 @@ class TestIt(TestWrapper):
         ls_date = gh.run(f'ls -l {self.temp_file}').lower()
         ls_date = re.search(r'\w\w\w +\d\d +\d\d:\d\d', ls_date).group()
 
-        self.assertEqual(file_utils.get_modification_date(self.temp_file, strftime='%b %-d %H:%M').lower(), ls_date)
+        assert file_utils.get_modification_date(self.temp_file, strftime='%b %-d %H:%M').lower() == ls_date
 
     ## TODO: optional cleanup methods
     ##
@@ -124,4 +124,4 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    unittest.main()
+    pytest.main([__file__])

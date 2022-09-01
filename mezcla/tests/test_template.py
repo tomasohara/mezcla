@@ -12,10 +12,9 @@
 
 # Standard packages
 import re
-import unittest
 
 # Installed packages
-## TODO: import pytest
+import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
@@ -43,18 +42,17 @@ class TestIt(TestWrapper):
         data = ["TEMP", "TODO", "DONE"]
         gh.write_lines(self.temp_file, data)
         output = self.run_script("--TODO-arg", self.temp_file)
-        self.assertTrue(re.search(r"arg1 line \(2\): TODO", 
-                                  output.strip()))
+        assert re.search(r"arg1 line \(2\): TODO", output.strip())
         return
 
     def test_something_else(self):
         """Make sure arg value reflects to-do nature"""
         debug.trace(4, "test_something_else()")
-        self.assertTrue("todo" in THE_MODULE.TODO_ARG.lower())
+        assert "todo" in THE_MODULE.TODO_ARG.lower()
         return
 
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    unittest.main()
+    pytest.main([__file__])
