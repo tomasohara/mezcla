@@ -177,7 +177,8 @@ class TestIt(TestWrapper):
     def test_get_url_parameter_bool(self):
         """Ensure get_url_parameter_bool() works as expected"""
         debug.trace(4, "test_get_url_parameter_bool()")
-        ## TODO: WORK-IN-PROGRESS
+        assert THE_MODULE.get_url_parameter_bool("abc", False, { "abc": "on" })
+        assert THE_MODULE.get_url_param_bool("abc", False, { "abc": "True" })
 
     def test_get_url_parameter_int(self):
         """Ensure get_url_parameter_int() works as expected"""
@@ -187,12 +188,12 @@ class TestIt(TestWrapper):
     def test_fix_url_parameters(self):
         """Ensure fix_url_parameters() works as expected"""
         debug.trace(4, "test_fix_url_parameters()")
-        ## TODO: WORK-IN-PROGRESS
+        assert THE_MODULE.fix_url_parameters({'w_v':[7, 8], 'h_v':10}) == {'w-v':8, 'h-v':10}
 
     def test_expand_misc_param(self):
         """Ensure expand_misc_param() works as expected"""
         debug.trace(4, "test_expand_misc_param()")
-        ## TODO: WORK-IN-PROGRESS
+        assert THE_MODULE.expand_misc_param({'x': 1, 'y': 2, 'z': 'a=3, b=4'}, 'z') == {'x': 1, 'y': 2, 'z': 'a=3 b=4', 'a': 3, 'b': 4}
 
     def test__read_file(self):
         """Ensure _read_file() works as expected"""
