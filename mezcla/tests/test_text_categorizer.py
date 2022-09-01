@@ -45,6 +45,32 @@ class TestIt(TestWrapper):
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
+    def test_sklearn_report(self):
+        """Ensure sklearn_report works as expected"""
+        debug.trace(4, "test_sklearn_report()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_create_tabular_file(self):
+        """Ensure create_tabular_file works as expected"""
+        debug.trace(4, "test_create_tabular_file()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_read_categorization_data(self):
+        """Ensure read_categorization_data works as expected"""
+        debug.trace(4, "test_read_categorization_data()")
+        ## TODO: WORK-IN=PROGRESS
+
+    def test_int_if_whole(self):
+        """Ensure int_if_whole works as expected"""
+        debug.trace(4, "test_int_if_whole()")
+        assert THE_MODULE.int_if_whole(2.0) == 2
+        assert THE_MODULE.int_if_whole(2.999) == 2.999
+
+    def test_param_or_default(self):
+        """Ensure param_or_default works as expected"""
+        debug.trace(4, "test_param_or_default()")
+        ## TODO: WORK-IN=PROGRESS
+
     def test_data_file(self):
         """Makes sure TODO works as expected"""
         debug.trace(4, "TestIt.test_data_file()")
@@ -60,6 +86,23 @@ class TestIt(TestWrapper):
         self.fail("TODO: code test")
         ## ex: assert THE_MODULE.TODO_function() == TODO_value
         return
+
+    ## TODO: test ClassifierWrapper class
+    ## TODO: test TextCategorizer class
+
+    def test_format_index_html(self):
+        """Ensure format_index_html works as expected"""
+        debug.trace(4, "test_format_index_html()")
+        ## TODO: WORK-IN=PROGRESS
+
+    ## TODO: test web_controller class
+
+    def test_start_web_controller(self):
+        """Ensure start_web_controller works as expected"""
+        debug.trace(4, "test_start_web_controller()")
+        ## TODO: WORK-IN=PROGRESS
+
+    ## TODO: test main
 
 #------------------------------------------------------------------------
 
