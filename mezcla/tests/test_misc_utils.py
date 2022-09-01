@@ -12,11 +12,13 @@
 """Tests for misc_utils module"""
 
 # Standard packages
+import tempfile
 
 # Installed packages
 import pytest
 
 # Local packages
+from mezcla import glue_helpers as gh
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
@@ -38,15 +40,22 @@ class TestMiscUtils:
     def test_read_tabular_data(self):
         """Ensure read_tabular_data works as expected"""
         debug.trace(4, "test_read_tabular_data()")
-        ## TODO: WORK-IN-PROGRESS
+        string_table = (
+            'language\tPython\n' +
+            'framework\tPytest\n'
+        )
+        dict_table = {
+            'language': 'Python\n',
+            'framework': 'Pytest\n',
+        }
+        temp_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(temp_file, string_table)
+        assert THE_MODULE.read_tabular_data(temp_file) == dict_table
 
     def test_extract_string_list(self):
         """Ensure extract_string_list works as expected"""
         debug.trace(4, "test_extract_string_list()")
-        ## TODO:
-        ## - WORK-IN-PROGRESS
-        ## - Check switch method should be the main tested, if this or 
-        ##   text_utils.extract_string_list()
+        assert THE_MODULE.extract_string_list("1  2,3") == ['1', '2', '3']
 
     def test_is_prime(self):
         """Ensure is_prime works as expected"""
@@ -79,7 +88,24 @@ class TestMiscUtils:
     def test_sort_weighted_hash(self):
         """Ensure sort_weighted_hash works as expected"""
         debug.trace(4, "test_sort_weighted_hash()")
-        ## TODO: WORK-IN-PROGRESS
+        test_hash = {
+            'bananas': 3,
+            'apples': 1411,
+            'peach': 43,
+        }
+        sorted_hash = [
+            ('apples', 1411),
+            ('peach', 43),
+            ('bananas', 3),
+        ]
+        reversed_hash = [
+            ('bananas', 3),
+            ('peach', 43),
+            ('apples', 1411),
+        ]
+        assert THE_MODULE.sort_weighted_hash(test_hash) == sorted_hash
+        assert THE_MODULE.sort_weighted_hash(test_hash, reverse=True) == reversed_hash
+        assert len(THE_MODULE.sort_weighted_hash(test_hash, max_num=2)) == 2
 
     def test_unzip(self):
         """Ensure unzip works as expected"""
