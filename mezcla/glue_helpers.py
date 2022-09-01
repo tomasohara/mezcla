@@ -229,7 +229,7 @@ MAX_ELIDED_TEXT_LEN = tpo.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 #
 def elide(text: str, max_len=None):
     """Returns TEXT elided to at most MAX_LEN characters (with '...' used to indicate remainder). Note: intended for tracing long string."""
-    # EX: elide("=" * 80, max_len=8) => "=====..."
+    # EX: elide("=" * 80, max_len=8) => "========..."
     # TODO: add support for eliding at word-boundaries
     tpo.debug_print("elide(_, _)", 8)
     debug.assertion(isinstance(text, str))
@@ -442,7 +442,7 @@ def extract_matches_from_text(pattern, text, fields=1, multiple=None, re_flags=0
 def count_it(pattern, text, field=1, multiple=None):
     """Counts how often PATTERN's FIELD occurs in TEXT, returning hash.
     Note: By default MULTIPLE matches are tabulated"""
-    # EX: dict(count_it("[a-z]", "Panama")) => {"a": 3, "n": 1, "m": 1"}
+    # EX: dict(count_it("[a-z]", "Panama")) => {"a": 3, "n": 1, "m": 1}
     # EX: count_it("\w+", "My d@wg's fleas have fleas")["fleas"] => 2
     debug.trace(7, f"count_it({pattern}, _, {field}, {multiple}")
     value_counts = defaultdict(int)
