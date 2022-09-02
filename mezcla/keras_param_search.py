@@ -128,7 +128,7 @@ def non_negative(num):
 # TODO: put following in new ml_utils.py module
 def create_feature_mapping(label_values):
     """Return hash mapping elements from LABEL_VALUES into integers"""
-    # EX: create_feature_mapping(['c', 'b, 'b', 'a']) => {'c':0, 'b':1, 'a':2}
+    # EX: create_feature_mapping(['c', 'b', 'b', 'a']) => {'c':0, 'b':1, 'a':2}
     debug.assertion(isinstance(label_values, list))
     id_hash = {}
     for item in label_values:
