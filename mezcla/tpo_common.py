@@ -820,19 +820,16 @@ def getenv_number(var, default=-1, description=None, integral=False):
     return num_value
 
 
-def getenv_integer(var, default=-1, description=None):
+def getenv_int(var, default=-1, description=None):
     """Variant of getenv_number for integers. Note: returns integer unless None is default."""
     return getenv_number(var, default, description=description, integral=True)
+#
+getenv_integer = getenv_int
 
 
 def getenv_real(var, default=-1, description=None):
     """Variant of getenv_number for reals (i.e., floating point). Note: (returns float unless None is default)."""
     return getenv_number(var, default, description=description, integral=False)
-
-
-def getenv_int(var, default=-1, description=None):
-    """Alias for getenv_integer"""
-    return getenv_integer(var, default, description=description)
 
 
 def getenv_float(var, default=-1, description=None):
