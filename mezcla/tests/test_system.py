@@ -157,6 +157,7 @@ class TestSystem:
         debug.trace(4, "test_getenv_int()")
         monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
         assert THE_MODULE.getenv_int('TEST_NUMBER', default=20) == 9
+        assert THE_MODULE.getenv_int("REALLY FUBAR", 123) == 123
 
     def test_get_exception(self):
         """Ensure get_exception works as expected"""
