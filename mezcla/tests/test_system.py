@@ -571,7 +571,9 @@ class TestSystem:
     def test_difference(self):
         """Ensure difference works as expected"""
         debug.trace(4, "test_difference()")
-        assert THE_MODULE.difference([5, 4, 3, 2, 1], [1, 2, 3]) == [5, 4]
+        assert THE_MODULE.difference([5, 4, 3, 2, 1], [4, 2]) == [5, 3, 1]
+        assert THE_MODULE.difference([1, 2, 3], [2]) == [1, 3]
+        assert THE_MODULE.difference([1, 1, 2, 2], [1]) == [2, 2]
 
     def test_append_new(self):
         """Ensure append_new works as expected"""
