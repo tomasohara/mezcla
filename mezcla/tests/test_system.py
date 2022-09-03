@@ -203,7 +203,7 @@ class TestSystem:
     def test_get_current_function_name(self):
         """Ensure get_current_function_name works as expected"""
         debug.trace(4, "test_get_current_function_name()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.get_current_function_name() == "test_get_current_function_name"
 
     def test_open_file(self):
         """Ensure open_file works as expected"""
