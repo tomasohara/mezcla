@@ -784,7 +784,7 @@ def getenv_text(var, default="", description=None):
     return text_value
 
 
-def getenv_boolean(var, default=False, description=None):
+def getenv_bool(var, default=False, description=None):
     """Returns boolean flag based on environment VAR (or DEFAULT value which can be None). Note: "0" or "False" is interpreted as False, and any value as True."""
     bool_value = default
     value_text = getenv_text(var, default, description=description)
@@ -799,6 +799,8 @@ def getenv_boolean(var, default=False, description=None):
             bool_value = False
     debug_print("getenv_boolean(%s, %s) => %s" % (var, default, bool_value), 4)
     return bool_value
+#
+getenv_boolean = getenv_bool
 
 
 def getenv_number(var, default=-1, description=None, integral=False):
@@ -836,11 +838,6 @@ def getenv_int(var, default=-1, description=None):
 def getenv_float(var, default=-1, description=None):
     """Alias for getenv_real"""
     return getenv_number(var, default, description=description)
-
-
-def getenv_bool(var, default=False, description=None):
-    """Alias for getenv_boolean"""
-    return getenv_boolean(var, default, description=description)
 
 
 def get_current_function_name():
