@@ -7,23 +7,26 @@
 ## TODO: solve test execution long times.
 
 
-"""Tests for Audio.py module"""
-
+"""Tests for Audio module"""
 
 # Standard packages
-import pytest
+## NOTE: this is empty for now
 
+# Installed packages
+import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import glue_helpers as gh
 from mezcla import debug
-from audio import Audio
 
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:	    global module object
+#    TestIt.script_module   string name
+import mezcla.audio as THE_MODULE
 
-# Test constants
+# Constants
 AUDIOFILE = 'samples/test_audiofile.wav'
-
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
@@ -36,7 +39,7 @@ class TestIt(TestWrapper):
         """Test CMUSphinx speech recognition engine class"""
         debug.trace(debug.DETAILED, f"TestIt.test_sphinx_engine({self})")
 
-        sample = Audio(AUDIOFILE)
+        sample = THE_MODULE.Audio(AUDIOFILE)
         result_speech = sample.speech_to_text(engine='sphinx')
         assert isinstance(result_speech, str)
         assert result_speech
@@ -47,10 +50,10 @@ class TestIt(TestWrapper):
 
         path = 'some/path'
 
-        sample = Audio(path)
+        sample = THE_MODULE.Audio(path)
         assert sample.get_path() == path
 
-        sample = Audio()
+        sample = THE_MODULE.Audio()
         assert not sample.get_path()
         sample.set_path(path)
         assert sample.get_path(), path

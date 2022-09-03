@@ -12,6 +12,7 @@
 """Tests for extract_document_text module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest

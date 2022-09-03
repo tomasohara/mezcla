@@ -25,6 +25,11 @@ import pytest
 # Local packages
 from mezcla import debug
 
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:	    global module object
+#    TestIt.script_module   string name
+import mezcla.debug as THE_MODULE
+
 class TestDebug:
     """Class for test case definitions"""
     stdout_text = None
@@ -47,15 +52,15 @@ class TestDebug:
         if not __debug__:
             self.expected_stderr_trace = ""
         pre_captured = capsys.readouterr()
-        save_trace_level = debug.get_level()
-        debug.set_level(4)
+        save_trace_level = THE_MODULE.get_level()
+        THE_MODULE.set_level(4)
         print(self.stdout_text)
-        debug.trace(3, self.stderr_text)
-        debug.set_level(save_trace_level)
+        THE_MODULE.trace(3, self.stderr_text)
+        THE_MODULE.set_level(save_trace_level)
         captured = capsys.readouterr()
         assert(captured.out == self.expected_stdout_trace)
         assert(captured.err == self.expected_stderr_trace)
-        debug.trace_expr(6, pre_captured, captured)
+        THE_MODULE.trace_expr(6, pre_captured, captured)
 
     def test_hidden_simple_trace(self, capsys):
         """Make sure level-N+1 trace doesn't output to stderr"""
@@ -66,46 +71,46 @@ class TestDebug:
         ## capsys.start_capturing()
         pre_captured = capsys.readouterr()
         self.expected_stderr_trace = ""
-        save_trace_level = debug.get_level()
-        debug.set_level(0)
+        save_trace_level = THE_MODULE.get_level()
+        THE_MODULE.set_level(0)
         print(self.stdout_text)
-        debug.trace(1, self.stderr_text)
+        THE_MODULE.trace(1, self.stderr_text)
         captured = capsys.readouterr()
-        debug.set_level(save_trace_level)
-        assert(captured.out == self.expected_stdout_trace)
-        assert(captured.err == self.expected_stderr_trace)
-        debug.trace_expr(6, pre_captured, captured)
+        THE_MODULE.set_level(save_trace_level)
+        assert captured.out == self.expected_stdout_trace
+        assert captured.err == self.expected_stderr_trace
+        THE_MODULE.trace_expr(6, pre_captured, captured)
 
     def test_debug_val(self):
         """Make sure debug.val only returns value when at specified level"""
         debug.trace(4, f"test_debug_val(): self={self}")
-        save_trace_level = debug.get_level()
+        save_trace_level = THE_MODULE.get_level()
         test_value = 22
-        debug.set_level(5)
-        level5_value = debug.val(5, test_value)
-        debug.set_level(0)
-        level0_value = debug.val(1, test_value)
-        debug.set_level(save_trace_level)
-        assert(level5_value == test_value)
-        assert(level0_value is None)
-        
+        THE_MODULE.set_level(5)
+        level5_value = THE_MODULE.val(5, test_value)
+        THE_MODULE.set_level(0)
+        level0_value = THE_MODULE.val(1, test_value)
+        THE_MODULE.set_level(save_trace_level)
+        assert level5_value == test_value
+        assert level0_value is None
+
     def test_debug_code(self):
         """Make sure debug code not executed at all"""
         debug.trace(4, f"test_debug_value(): self={self}")
         ## TODO: debug.assertion(debug_level, debug.code(debug_level, lambda: (8 / 0 != 0.0)))
-        save_trace_level = debug.get_level()
+        save_trace_level = THE_MODULE.get_level()
         count = 0
         def increment():
             """Increase counter"""
             nonlocal count
             count += 1
-        debug.set_level(4)
-        debug.code(4, lambda: increment)
-        debug.set_level(save_trace_level)
+        THE_MODULE.set_level(4)
+        THE_MODULE.code(4, lambda: increment)
+        THE_MODULE.set_level(save_trace_level)
         assert(count == 0)
-        
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
+    debug.trace_current_context()
     pytest.main([__file__])
-

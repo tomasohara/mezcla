@@ -12,6 +12,7 @@
 """Tests for text_processing module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest

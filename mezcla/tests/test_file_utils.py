@@ -3,26 +3,23 @@
 # Test(s) for ../file_utils.py
 #
 
-
 """Tests for file_utils module"""
 
-
 # Standard packages
-import pytest
 import re
 
+# Installed packages
+import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
 from mezcla import glue_helpers as gh
 
-
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 #    TestIt.script_module   string name
-import mezcla.file_utils as file_utils
-
+import mezcla.file_utils as THE_MODULE
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
@@ -68,7 +65,7 @@ class TestIt(TestWrapper):
                 gh.run(f'touch {foldername}/{filename}')
 
         # Run Test
-        list_result = file_utils.get_directory_listing(f'{self.temp_base}', recursive=True, long=True, return_string=True)
+        list_result = THE_MODULE.get_directory_listing(f'{self.temp_base}', recursive=True, long=True, return_string=True)
 
         for line in list_result:
             assert bool(re.search(r"[drwx-]+\s+\d+\s+\w+\s+\w+\s+\d+\s+\w+\s+\d+\s+\d\d:\d\d\s+[\w/]+", line))
@@ -83,7 +80,7 @@ class TestIt(TestWrapper):
         ls_result = gh.run(f'ls -l {self.temp_file}')
         ls_result = re.sub(r'\s+', ' ', ls_result)
 
-        assert file_utils.get_information(self.temp_file, return_string=True).lower() == ls_result.lower()
+        assert THE_MODULE.get_information(self.temp_file, return_string=True).lower() == ls_result.lower()
 
     def test_get_permissions(self):
         """Tests for get_permissions(path)"""
@@ -93,8 +90,8 @@ class TestIt(TestWrapper):
         gh.run(f'touch {test_file}')
 
         # Run
-        assert file_utils.get_permissions(test_file) == gh.run(f'ls -l {test_file}')[:10]
-        assert file_utils.get_permissions(self.temp_base) == gh.run(f'ls -ld {self.temp_base}')[:10]
+        assert THE_MODULE.get_permissions(test_file) == gh.run(f'ls -l {test_file}')[:10]
+        assert THE_MODULE.get_permissions(self.temp_base) == gh.run(f'ls -ld {self.temp_base}')[:10]
 
     def test_get_modification_date(self):
         """Tests for get_modification_date(path)"""
@@ -103,7 +100,7 @@ class TestIt(TestWrapper):
         ls_date = gh.run(f'ls -l {self.temp_file}').lower()
         ls_date = re.search(r'\w\w\w +\d\d +\d\d:\d\d', ls_date).group()
 
-        assert file_utils.get_modification_date(self.temp_file, strftime='%b %-d %H:%M').lower() == ls_date
+        assert THE_MODULE.get_modification_date(self.temp_file, strftime='%b %-d %H:%M').lower() == ls_date
 
     ## TODO: optional cleanup methods
     ##

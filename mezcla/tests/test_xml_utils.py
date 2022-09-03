@@ -21,7 +21,8 @@
 #                                      d:
 #                                      3
 #                      4
-#  
+#
+
 """Tests for xml_utils module"""
 
 # Standard packages

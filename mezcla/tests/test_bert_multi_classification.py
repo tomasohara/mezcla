@@ -12,6 +12,7 @@
 """Tests for bert_multi_classification module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest

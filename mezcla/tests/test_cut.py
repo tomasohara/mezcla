@@ -12,6 +12,7 @@
 """Tests for cut module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest

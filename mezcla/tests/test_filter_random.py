@@ -11,7 +11,10 @@
 # - Add some more tests.
 #
 
-"""Simple test suite for filter_random.py"""
+"""Tests for filter_random module"""
+
+# Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest
@@ -21,6 +24,11 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import system
+
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:	    global module object
+#    TestIt.script_module   string name
+import mezcla.filter_random as THE_MODULE
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""

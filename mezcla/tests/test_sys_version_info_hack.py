@@ -12,6 +12,7 @@
 """Tests for sys_version_info_hack module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest

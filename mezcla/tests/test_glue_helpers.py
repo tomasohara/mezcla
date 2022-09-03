@@ -10,9 +10,11 @@
 
 """Tests for glue_helpers module"""
 
-# Installed packages
+# Standard packages
 import os
 import re
+
+# Installed packages
 import pytest
 
 # Local packages

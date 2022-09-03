@@ -14,6 +14,7 @@
 """Tests for show_bert_representation module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest

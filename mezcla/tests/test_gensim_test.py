@@ -17,8 +17,10 @@
 
 """Tests for gensim_test module"""
 
-# Installed packages
+# Standard packages
 import re
+
+# Installed packages
 import pytest
 
 # Local packages
@@ -26,6 +28,11 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper
+
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:	    global module object
+#    TestIt.script_module   string name
+import mezcla.gensim_test as THE_MODULE
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""

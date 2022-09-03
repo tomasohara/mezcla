@@ -12,6 +12,7 @@
 """Tests for os_utils module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest

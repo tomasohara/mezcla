@@ -21,9 +21,13 @@ import pytest
 
 # Local packages
 from mezcla import debug
-from mezcla.main import Main
 from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper
+
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:	    global module object
+#    TestIt.script_module   string name
+import mezcla.main as THE_MODULE
 
 class MyArgumentParser(ArgumentParser):
     """Version of ArgumentParser that doesn't exit upon failure"""
@@ -49,8 +53,7 @@ class TestIt(TestWrapper):
     def test_script_options(self):
         """Makes sure script option specifications are parsed OK"""
         debug.trace(4, f"in test_script_options(); self={self}")
-        from mezcla.main import Main  # pylint: disable=import-outside-toplevel, redefined-outer-name, reimported
-        class Test(Main):
+        class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
             ## TODO: rename as TestMain
@@ -70,8 +73,7 @@ class TestIt(TestWrapper):
 
         # Create scriptlet checking for input and processing main step
         # TODO: rework with external script as argparse exits upon failure
-        from mezcla.main import Main  # pylint: disable=import-outside-toplevel, redefined-outer-name, reimported
-        class Test(Main):
+        class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
 
@@ -89,7 +91,7 @@ class TestIt(TestWrapper):
                                  l=line, s=self)
                 TestIt.input_processed = True
                 TestIt.process_line_count += 1
-                
+
             #
             def run_main_step(self):
                 """Dummy main step"""
@@ -131,8 +133,7 @@ class TestIt(TestWrapper):
         """Make sure perl-style arg can be parsed"""
         # TODO: create generic app-creation helper
         debug.trace(4, f"in test_perl_arg(); self={self}")
-        from mezcla.main import Main  # pylint: disable=import-outside-toplevel, redefined-outer-name, reimported
-        class Test(Main):
+        class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
 
@@ -161,15 +162,15 @@ class TestIt2:
         pre_captured = capsys.readouterr()
         # line input
         monkeypatch.setattr('sys.stdin', io.StringIO(contents))
-        main = Main(skip_args=True, auto_help=False)
+        main = THE_MODULE.Main(skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
         ## TODO: assert(TestIt.process_line_count == num_lines)
-        assert(num_lines == len(captured.out.split("\n")))
+        assert num_lines == len(captured.out.split("\n"))
         debug.trace_expr(5, main, num_lines)
         # paragraph input
         monkeypatch.setattr('sys.stdin', io.StringIO(contents))
-        main = Main(paragraph_mode=True, skip_args=True, auto_help=False)
+        main = THE_MODULE.Main(paragraph_mode=True, skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
         ## TODO: assert(TestIt.process_line_count == 4)
@@ -177,7 +178,7 @@ class TestIt2:
         debug.trace_expr(5, main, num_lines)
         # file input
         monkeypatch.setattr('sys.stdin', io.StringIO(contents))
-        main = Main(file_input_mode=True, skip_args=True, auto_help=False)
+        main = THE_MODULE.Main(file_input_mode=True, skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
         ## TODO: assert(TestIt.process_line_count == 1)
@@ -191,13 +192,13 @@ class TestIt2:
         num_lines = len(contents.split("\n"))
         _pre_captured = capsys.readouterr()
         monkeypatch.setattr('sys.stdin', io.StringIO(contents))
-        main = Main(skip_args=True, auto_help=False)
+        main = THE_MODULE.Main(skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
         # note: 1 extra line ('') and 1 extra character (final newline)
-        assert((1 + num_lines) == len(captured.out.split("\n")))
-        assert((1 + len(contents)) == len(captured.out))
-        ## TODO: assert(TestIt.process_line_count == 3)
+        assert (1 + num_lines) == len(captured.out.split("\n"))
+        assert (1 + len(contents)) == len(captured.out)
+        ## TODO: assert TestIt.process_line_count == 3
         debug.trace_expr(5, main, num_lines)
 
     def test_has_parsed_option_hack(self):
@@ -205,10 +206,10 @@ class TestIt2:
         debug.trace(4, f"in test_has_parsed_option_hack(); self={self}")
         ok_arg = "ok"
         missing_arg = "missing"
-        main = Main(skip_args=True, auto_help=False)
+        main = THE_MODULE.Main(skip_args=True, auto_help=False)
         main.parsed_args = {ok_arg: True}
-        assert(main.has_parsed_option_old(ok_arg) == main.has_parsed_option(ok_arg))
-        assert(main.has_parsed_option_old(missing_arg) != main.has_parsed_option(missing_arg))
+        assert main.has_parsed_option_old(ok_arg) == main.has_parsed_option(ok_arg)
+        assert main.has_parsed_option_old(missing_arg) != main.has_parsed_option(missing_arg)
 
 #------------------------------------------------------------------------
 

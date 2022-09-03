@@ -12,6 +12,7 @@
 """Tests for compute_tfidf module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest

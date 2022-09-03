@@ -12,6 +12,7 @@
 """Tests for run_bert_classifier module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest
@@ -22,7 +23,8 @@ from mezcla import debug
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 #    TestIt.script_module   string name
-#import mezcla.run_bert_classifier as THE_MODULE
+## TODO: solve import issues with run_bert_classifier
+## import mezcla.run_bert_classifier as THE_MODULE
 
 class TestIt:
     """Class for testcase definition"""

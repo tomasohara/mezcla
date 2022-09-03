@@ -12,6 +12,7 @@
 """Tests for run_albert_classifier module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest

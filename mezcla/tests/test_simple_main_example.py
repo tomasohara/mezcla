@@ -12,6 +12,7 @@
 """Tests for simple_main_example module"""
 
 # Standard packages
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest
