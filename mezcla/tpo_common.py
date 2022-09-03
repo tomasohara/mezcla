@@ -1248,7 +1248,7 @@ def round_nums(numbers, precision=None, zero_fill=True):
 def round(number_or_list, precision=None):    # pylint: disable=redefined-builtin
     """Llke round_num(s) but returning float(s)"""
     # EX: round(15000) => 15000.0
-    # EX: round([0.333333, 0.666666, 0.99999]) => [0.333, 0.666, 1.0]
+    # EX: round([0.333333, 0.666666, 0.99999]) => [0.333, 0.667, 1.0]
     # Note: This is different from built-in round in that list is allowed and
     # for use of rounding-precision environment option (via round_num).
     rounded_result = 0
