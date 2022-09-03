@@ -119,10 +119,12 @@ class TestSystem:
         assert THE_MODULE.getenv('TEST_ENV_VAR') == 'some value'
         assert THE_MODULE.getenv('INT_ENV_VAR', default_value=5) == 5
 
-    def test_getenv_text(self):
+    def test_getenv_text(self, monkeypatch):
         """Ensure getenv_text works as expected"""
         debug.trace(4, "test_getenv_text()")
-        ## TODO: WORK-IN=PROGRESS
+        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        assert THE_MODULE.getenv_text('TEST_ENV_VAR') == 'some value'
+        assert not THE_MODULE.getenv_text("REALLY FUBAR?", False)
 
     def test_getenv_value(self, monkeypatch):
         """Ensure getenv_value works as expected"""
