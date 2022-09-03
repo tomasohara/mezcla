@@ -10,17 +10,21 @@
 # - Address commonly used debugging functions (e.g., debug_print) by redirecting output (via remapping sys.stderr to a file) and then checking file contents.
 # - add tests for normalize_unicode, ensure_unicode and other problematic functions
 #
+# Important:
+# - Most of the methods on tpo_common was moved to predecessors modules as system.py, debug.py etc.
+# - Using the predecessors module tests to these moved methods could be useful to avoid repeated tests but this could create conflicts with modified methods.
+#
 
 """Tests for tpo_common module"""
 
 # Standard packages
-import os
-import unittest
+import tempfile
 
 # Installed packages
 import pytest
 
 # Local packages
+from mezcla import glue_helpers as gh
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
@@ -31,8 +35,9 @@ import mezcla.tpo_common as THE_MODULE
 FUBAR = 101	# sample global for test_format
 FOOBAR = 12     # likewise
 JOSE = "José"   # UTF-8 encoded string
+UTF8_BOM = "\xEF\xBB\xBF"
 
-class TestIt(unittest.TestCase):
+class TestTpoCommon:
     """Class for testcase definition"""
 
     def test_set_debug_level(self):
@@ -118,12 +123,17 @@ class TestIt(unittest.TestCase):
     def test_to_string(self):
         """Ensure to_string works as expected"""
         debug.trace(4, "test_to_string()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.to_string(123) == "123"
+        assert THE_MODULE.to_string("\u1234") == "\u1234"
+        assert THE_MODULE.to_string(None) == "None"
 
     def test_normalize_unicode(self):
         """Ensure normalize_unicode works as expected"""
         debug.trace(4, "test_normalize_unicode()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.normalize_unicode('\u1234') == '\xe1\x88\xb4'
+        assert THE_MODULE.normalize_unicode("ASCII") == "ASCII"
+        assert THE_MODULE.normalize_unicode(UTF8_BOM) == UTF8_BOM
+        ## TODO: assert "Jos\xc3\xa9", THE_MODULE.normalize_unicode(JOSE)
 
     def test__normalize_unicode(self):
         """Ensure _normalize_unicode works as expected"""
@@ -133,7 +143,10 @@ class TestIt(unittest.TestCase):
     def test_ensure_unicode(self):
         """Ensure ensure_unicode works as expected"""
         debug.trace(4, "test_ensure_unicode()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.ensure_unicode('\xe1\x88\xb4') == '\u1234'
+        assert THE_MODULE.ensure_unicode("ASCII") == "ASCII"
+        assert "Jos\xe9" == THE_MODULE.ensure_unicode(JOSE)
+        ## TODO: assert THE_MODULE.ensure_unicode(UTF8_BOM) == '\ufeff'
 
     def test_print_stderr(self):
         """Ensure print_stderr works as expected"""
@@ -158,77 +171,124 @@ class TestIt(unittest.TestCase):
     def test_setenv(self):
         """Ensure setenv works as expected"""
         debug.trace(4, "test_setenv()")
-        ## TODO: WORK-IN=PROGRESS
+        THE_MODULE.setenv('NEW_TEST_ENV_VAR', 'the gravity is 10, pi is 3')
+        assert THE_MODULE.getenv('NEW_TEST_ENV_VAR') == 'the gravity is 10, pi is 3'
 
     def test_chomp(self):
         """Ensure chomp works as expected"""
         debug.trace(4, "test_chomp()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.chomp("abc\n") == "abc"
+        assert THE_MODULE.chomp("http://localhost/", "/") == "http://localhost"
 
-    def test_getenv(self):
+    def test_getenv(self, monkeypatch):
         """Ensure getenv works as expected"""
         debug.trace(4, "test_getenv()")
-        ## TODO: WORK-IN=PROGRESS
+        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        assert THE_MODULE.getenv('TEST_ENV_VAR') == 'some value'
 
     def test_register_env_option(self):
         """Ensure register_env_option works as expected"""
         debug.trace(4, "test_register_env_option()")
-        ## TODO: WORK-IN=PROGRESS
+
+        THE_MODULE.env_options = {}
+        THE_MODULE.env_defaults = {}
+
+        THE_MODULE.register_env_option(
+            var='VAR_STRING',
+            description='this is a string variable',
+            default='empty'
+        )
+
+        assert THE_MODULE.env_options['VAR_STRING'], 'this is a string variable'
+        assert THE_MODULE.env_defaults['VAR_STRING'], 'empty'
+        assert len(THE_MODULE.env_options) == 1
+        assert len(THE_MODULE.env_defaults) == 1
 
     def test_formatted_environment_option_descriptions(self):
         """Ensure formatted_environment_option_descriptions works as expected"""
         debug.trace(4, "test_formatted_environment_option_descriptions()")
-        ## TODO: WORK-IN=PROGRESS
+
+        set_test_env_var()
+
+        # Test sort
+        expected = (
+            'VAR_STRING\tthis is a string variable (empty)\n'
+            '\tANOTHER_VAR\tthis is another env. var. n/a'
+        )
+        assert THE_MODULE.formatted_environment_option_descriptions(sort=False) == expected
+        expected = (
+            'ANOTHER_VAR\tthis is another env. var. n/a\n'
+            '\tVAR_STRING\tthis is a string variable (empty)'
+        )
+        assert THE_MODULE.formatted_environment_option_descriptions(sort=True) == expected
+
+        # Test include_all
+        # NOTE: this is being tested on test_system.test_get_environment_option_descriptions()
+
+        # Test indent
+        expected = (
+            'VAR_STRING + this is a string variable (empty)\n'
+            ' + ANOTHER_VAR + this is another env. var. n/a'
+        )
+        assert THE_MODULE.formatted_environment_option_descriptions(indent=' + ') == expected
 
     def test_get_registered_env_options(self):
         """Ensure get_registered_env_options works as expected"""
         debug.trace(4, "test_get_registered_env_options()")
-        ## TODO: WORK-IN=PROGRESS
+        set_test_env_var()
+        assert isinstance(THE_MODULE.get_registered_env_options(), list)
+        assert 'VAR_STRING' in THE_MODULE.get_registered_env_options()
+        assert len(THE_MODULE.get_registered_env_options()) == 2
 
-    def test_getenv_value(self):
+    def test_getenv_value(self, monkeypatch):
         """Ensure getenv_value works as expected"""
         debug.trace(4, "test_getenv_value()")
-        ## TODO: WORK-IN=PROGRESS
+        set_test_env_var()
+        monkeypatch.setenv('NEW_ENV_VAR', 'some value', prepend=False)
+        assert THE_MODULE.getenv_value('NEW_ENV_VAR', default='empty', description='another test env var') == 'some value'
+        assert THE_MODULE.env_defaults['NEW_ENV_VAR'] == 'empty'
+        assert THE_MODULE.env_options['NEW_ENV_VAR'] == 'another test env var'
 
-    def test_getenv_text(self):
+    def test_getenv_text(self, monkeypatch):
         """Ensure getenv_text works as expected"""
         debug.trace(4, "test_getenv_text()")
-        ## TODO: WORK-IN=PROGRESS
+        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        assert THE_MODULE.getenv_text('TEST_ENV_VAR') == 'some value'
+        assert THE_MODULE.getenv_text("REALLY FUBAR?", False) == 'False'
 
-    def test_getenv_boolean(self):
-        """Ensure getenv_boolean works as expected"""
-        debug.trace(4, "test_getenv_boolean()")
-        ## TODO: WORK-IN=PROGRESS
-
-    def test_getenv_number(self):
+    def test_getenv_number(self, monkeypatch):
         """Ensure getenv_number works as expected"""
         debug.trace(4, "test_getenv_number()")
-        ## TODO: WORK-IN=PROGRESS
-
-    def test_getenv_integer(self):
-        """Ensure getenv_integer works as expected"""
-        debug.trace(4, "test_getenv_integer()")
-        ## TODO: WORK-IN=PROGRESS
+        monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
+        assert THE_MODULE.getenv_number('TEST_NUMBER', default=20) == 9.81
+        assert THE_MODULE.getenv_number("REALLY FUBAR", 123) == 123.0
 
     def test_getenv_real(self):
         """Ensure getenv_real works as expected"""
         debug.trace(4, "test_getenv_real()")
         ## TODO: WORK-IN=PROGRESS
 
-    def test_getenv_int(self):
+    def test_getenv_int(self, monkeypatch):
         """Ensure getenv_int works as expected"""
         debug.trace(4, "test_getenv_int()")
-        ## TODO: WORK-IN=PROGRESS
+        monkeypatch.setenv('TEST_NUMBER', '34', prepend=False)
+        assert THE_MODULE.getenv_int('TEST_NUMBER', default=20) == 34
+        assert THE_MODULE.getenv_int("REALLY FUBAR", 123) == 123
 
     def test_getenv_float(self):
         """Ensure getenv_float works as expected"""
         debug.trace(4, "test_getenv_float()")
         ## TODO: WORK-IN=PROGRESS
 
-    def test_getenv_bool(self):
+    def test_getenv_bool(self, monkeypatch):
         """Ensure getenv_bool works as expected"""
         debug.trace(4, "test_getenv_bool()")
-        ## TODO: WORK-IN=PROGRESS
+        monkeypatch.setenv('TEST_BOOL', 'FALSE', prepend=False)
+        assert not THE_MODULE.getenv_bool('TEST_BOOL', None)
+        monkeypatch.setenv('TEST_BOOL', '  true   ', prepend=False)
+        assert THE_MODULE.getenv_bool('TEST_BOOL', None)
+        assert not isinstance(THE_MODULE.getenv_boolean("REALLY FUBAR?", None), bool)
+        assert isinstance(THE_MODULE.getenv_boolean("REALLY FUBAR?", False), bool)
 
     def test_get_current_function_name(self):
         """Test(s) for get_current_function_name()"""
@@ -288,7 +348,21 @@ class TestIt(unittest.TestCase):
     def test_create_boolean_lookup_table(self):
         """Ensure create_boolean_lookup_table works as expected"""
         debug.trace(4, "test_create_boolean_lookup_table()")
-        ## TODO: WORK-IN=PROGRESS
+
+        content = (
+            'EmailEntered - someemail@hotmail.com\n'
+            'PasswdEntered - 12345\n'
+            'IsBusiness - True\n'
+        )
+        expected = {
+            'emailentered - someemail@hotmail.com': True,
+            'passwdentered - 12345': True,
+            'isbusiness - true': True,
+        }
+
+        temp_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(temp_file, content)
+        assert THE_MODULE.create_boolean_lookup_table(temp_file) == expected
 
     def test_normalize_frequencies(self):
         """Ensure normalize_frequencies works as expected"""
@@ -313,27 +387,28 @@ class TestIt(unittest.TestCase):
     def test_union(self):
         """Ensure union works as expected"""
         debug.trace(4, "test_union()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.union([1, 2, 3], [2, 3, 4, 5]) == [1, 2, 3, 4, 5]
 
     def test_intersection(self):
         """Ensure intersection works as expected"""
         debug.trace(4, "test_intersection()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4]) == [2, 4]
 
     def test_is_subset(self):
         """Ensure is_subset works as expected"""
         debug.trace(4, "test_is_subset()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.is_subset(['mouse', 'dog'], ['dog', 'cat', 'mouse'])
 
     def test_difference(self):
-        """Ensure difference works as expected"""
-        debug.trace(4, "test_difference()")
-        ## TODO: WORK-IN=PROGRESS
+        """Ensures set difference works as expected"""
+        assert THE_MODULE.difference([5, 4, 3, 2, 1], [4, 2]) == [1, 3, 5]
+        assert THE_MODULE.difference([1, 2, 3], [2]) == [1, 3]
+        assert THE_MODULE.difference([1, 1, 2, 2], [1]) == [2]
 
     def test_remove_all(self):
         """Ensure remove_all works as expected"""
         debug.trace(4, "test_remove_all()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.remove_all([5, 4, 3, 2, 1], [4, 2, 0]) == [5, 3, 1]
 
     def test_equivalent(self):
         """Ensure equivalent works as expected"""
@@ -343,7 +418,8 @@ class TestIt(unittest.TestCase):
     def test_append_new(self):
         """Ensure append_new works as expected"""
         debug.trace(4, "test_append_new()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.append_new([1, 2], 3) == [1, 2, 3]
+        assert THE_MODULE.append_new([1, 2, 3], 3) == [1, 2, 3]
 
     def test_extract_list(self):
         """Ensure extract_list works as expected"""
@@ -353,32 +429,36 @@ class TestIt(unittest.TestCase):
     def test_is_subsumed(self):
         """Ensure is_subsumed works as expected"""
         debug.trace(4, "test_is_subsumed()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.is_subsumed("dog", ["dog house", "catnip"])
+        assert not THE_MODULE.is_subsumed("cat", ["dog house", "catnip"])
 
     def test_round_num(self):
         """Ensure round_num works as expected"""
         debug.trace(4, "test_round_num()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.round_num(15000, 3) == "15000.000"
+        assert THE_MODULE.round_num(15000, 3, False) == "15000"
 
     def test_round_nums(self):
         """Ensure round_nums works as expected"""
         debug.trace(4, "test_round_nums()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.round_nums([0.333333, 0.666666, 0.99999]) == ['0.333', '0.667', '1.000']
 
     def test_round(self):
         """Ensure round works as expected"""
         debug.trace(4, "test_round()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.round(15000) == 15000.0
+        assert THE_MODULE.round([0.333333, 0.666666, 0.99999]) == [0.333, 0.667, 1.0]
 
     def test_normalize(self):
         """Ensure normalize works as expected"""
         debug.trace(4, "test_normalize()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.normalize([1, 2, 3]) == [0.0, 0.5, 1.0]
 
     def test_is_numeric(self):
         """Ensure is_numeric works as expected"""
         debug.trace(4, "test_is_numeric()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.is_numeric("123")
+        assert not THE_MODULE.is_numeric("one")
 
     def test_safe_int(self):
         """Ensure safe_int works as expected"""
@@ -407,33 +487,18 @@ class TestIt(unittest.TestCase):
 
     ## TODO: test main
 
-    def test_getenv_functions(self):
-        """Ensure that various getenv_xyz functions work as expected"""
-        assert THE_MODULE.getenv_integer("REALLY FUBAR", 123) == 123
-        assert THE_MODULE.getenv_number("REALLY FUBAR", 123) == 123.0
-        assert not isinstance(THE_MODULE.getenv_boolean("REALLY FUBAR?", None), bool)
-        assert isinstance(THE_MODULE.getenv_boolean("REALLY FUBAR?", False), bool)
-        assert not isinstance(THE_MODULE.getenv_text("REALLY FUBAR?", False), bool)
-        os.environ["FUBAR"] = "1"
-        assert THE_MODULE.getenv_text("FUBAR") == "1"
-        return
 
-    def test_unicode_functions(self):
-        """Esnure that normalize_unicode, encode_unicode, etc. work as expected"""
-        UTF8_BOM = "\xEF\xBB\xBF"
-        assert THE_MODULE.ensure_unicode("ASCII") == u"ASCII"
-        assert THE_MODULE.normalize_unicode("ASCII") == "ASCII"
-        ## TODO: assert THE_MODULE.ensure_unicode(UTF8_BOM) == u'\ufeff'
-        assert THE_MODULE.normalize_unicode(UTF8_BOM) == UTF8_BOM
-        assert u"Jos\xe9" == THE_MODULE.ensure_unicode(JOSE)
-        ## TODO: assert "Jos\xc3\xa9", THE_MODULE.normalize_unicode(JOSE)
-        return
+def set_test_env_var():
+    """Set enviroment vars to run tests"""
+    THE_MODULE.env_options = {
+        'VAR_STRING': 'this is a string variable',
+        'ANOTHER_VAR': 'this is another env. var.'
+    }
+    THE_MODULE.env_default = {
+        'VAR_STRING': 'empty',
+        'ANOTHER_VAR': '2022'
+    }
 
-    def test_difference(self):
-        """Ensures set difference works as expected"""
-        assert THE_MODULE.difference([1, 2, 3], [2]) == [1, 3]
-        assert THE_MODULE.difference([1, 1, 2, 2], [1]) == [2]
-        return
 
 if __name__ == '__main__':
     debug.trace_current_context()
