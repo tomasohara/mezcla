@@ -22,6 +22,7 @@ import csv
 # Local modules
 from mezcla import debug
 from mezcla import system
+from mezcla.text_utils import version_to_number as version_as_float
 
 # Constants
 # Note: Delim defaults to None so that dialect inference can be used.
@@ -33,6 +34,13 @@ DIALECT = 'dialect'
 EXCEL = 'excel'
 DELIMITER = 'delimiter'
 SEP = 'sep'
+
+#--------------------------------------------------------------------------------
+
+# Sanity check for version info
+MIN_PANDAS_VERSION = "1.3.0"
+if (version_as_float(pd.__version__) < version_as_float(MIN_PANDAS_VERSION)):
+    system.exit(f"Error: data_utils.py now needs pandas {MIN_PANDAS_VERSION} or higher")
 
 #-------------------------------------------------------------------------------
 
