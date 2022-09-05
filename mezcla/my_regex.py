@@ -48,13 +48,52 @@ else:
 ## TODO # HACK: make sure regex can be used as plug-in replacement 
 ## from from re import *
 
-class regex_wrapper(object):
+## TEST: Attempts to work around Python enum extension limitation
+##
+## OLD: class regex_wrapper(object):
+## HACK: inherit from RegexFlag, so pylint not confused by attrib copying
+## NOTE: Maldito python!
+##    class regex_wrapper(re.RegexFlag):
+##    => TypeError: Cannot extend enumerations
+## via https://stackoverflow.com/questions/33679930/how-to-extend-python-enum:
+##    Subclassing an enumeration is allowed only if the enumeration does not define any members.
+##
+##
+## HACK2: try via multiple inheritance
+##
+## class TraceLevel(object):
+##     """Simple class with trace level
+##     Note: this is just used to work around issue subclassing enums"""
+##     # TODO: rework trace level in debug module to be class based
+##     TRACE_LEVEL = debug.QUITE_DETAILED
+##
+## class regex_wrapper(TraceLevel, re.RegexFlag):
+##     ...
+##
+## 
+## class MalditoPython(re.RegexFlag):
+##     """Just what it says"""
+##     pass
+##
+
+class regex_wrapper():
     """Wrapper class over re to implement regex search that saves match results
     note: Allows regex to be used directly in conditions"""
     # TODO: IGNORECASE = re.IGNORECASE, etc.
     # import from RE so other methods supported directly (and above constants)
     TRACE_LEVEL = debug.QUITE_DETAILED
-    
+    ##
+    ## Malditos python & pylint!
+    ASCII = re.ASCII
+    IGNORECASE = re.IGNORECASE
+    LOCALE = re.LOCALE
+    MULTILINE = re.MULTILINE
+    DOTALL = re.DOTALL
+    VERBOSE = re.VERBOSE
+    UNICODE = re.UNICODE
+
+    # pylint: disable=super-init-not-called
+    #
     def __init__(self, ):
         debug.trace_fmtd(4, "my_regex.__init__(): self={s}", s=self)
         self.match_result = None
@@ -65,6 +104,7 @@ class regex_wrapper(object):
         try:
             for var in re.__all__:
                 if var not in dir(self):
+                    debug.trace(9, f"Copying {var} from re into {self}")
                     setattr(self, var, getattr(re, var))
         except:
             system.print_exception_info("__init__ re.* importation")
@@ -156,3 +196,5 @@ my_re = regex_wrapper()
 
 if __name__ == '__main__':
     system.print_stderr("Warning: not intended for command-line use")
+    ## Note: truth in advertising:
+    ## debug.trace(4, f"mp: {MalditoPython()}")

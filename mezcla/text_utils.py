@@ -36,7 +36,7 @@ import six
 import sys
 
 # Installed packages
-## hACK: temporarily make these conditional
+## HACK: temporarily make these conditional
 ## from bs4 import BeautifulSoup
 ## import textract
 
@@ -56,6 +56,41 @@ def init_BeautifulSoup():
     import bs4                           # pylint: disable=import-outside-toplevel, import-error
     global BeautifulSoup
     BeautifulSoup = bs4.BeautifulSoup
+
+
+def extract_soup_text_with_breaks(soup):
+    """Extract text from SOUP parse, accounting for implicit newlines"""
+    # TODO: def extract_soup_text(soup: bs4.Tag) -> str:
+    # Based on https://stackoverflow.com/questions/30337528/make-beautifulsoup-handle-line-breaks-as-a-browser-would
+    debug.trace_fmtd(6, f"extract_soup_text({soup})")
+    _inline_elements = {"a", "span", "em", "strong", "u", "i", "font", "mark", "label", "s",
+                        "sub", "sup", "tt", "bdo", "button", "cite", "del", "b"}
+    import bs4                           # pylint: disable=import-outside-toplevel, import-error
+
+    # Define helper function for generating text
+    def _get_text(tag):
+        """Helper generator"""
+        # TODO: def _get_text(tag: bs4.Tag) -> Generator:
+        for child in tag.children:
+            if isinstance(child, bs4.Tag):
+                # if the tag is a block type tag then yield new lines before after
+                is_block_element = (child.name not in _inline_elements)
+                if is_block_element:
+                    yield "\n"
+                # note: 'yield from' used due to recursive invocation
+                # TODO: see whether <br> produces extraneous newlines
+                yield from (["\n"] if (child.name == "br") else  _get_text(child))
+                if is_block_element:
+                    yield "\n"
+            elif isinstance(child, bs4.NavigableString):
+                yield child.string
+            else:
+                debug.assertion(not ("".join(_get_text(child))).strip())
+
+    # Extract all the text
+    result = "".join(_get_text(soup))    
+    debug.trace_fmtd(6, f"extract_soup_text() => {result}")
+    return result
 
 
 def html_to_text(document_data):
@@ -300,8 +335,8 @@ def getenv_ints(var, default_values_spec):
 
 
 def is_symbolic(token):
-    """Indicates whether (string) token is symbolic (e.g., non-numeric).
-    Note: for convenience, tokens can be numeric types, with False returned."""
+    """Indicates whether (string) token is symbolic (e.g., non-numeric like "ABC").
+    Note: for convenience, tokens can be numeric types (e.g., 17), with False returned."""
     # EX: is_symbolic("PI") => True
     # EX: is_symbolic("3.14159") => False
     # EX: is_symbolic("123") => False
@@ -315,7 +350,7 @@ def is_symbolic(token):
             token = token.strip()
         # Note: if an exception is not triggered, the token is numeric
         if (float(token) or int(token)):
-            debug.trace(6, "is_symbolic: '{t}' is numeric".format(t=token))
+            debug.trace_fmt(6, "is_symbolic: '{t}' is numeric", t=token)
         result = False
     except (TypeError, ValueError):
         pass

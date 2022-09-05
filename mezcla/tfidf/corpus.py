@@ -43,11 +43,14 @@ import math
 from collections import namedtuple
 ## TODO
 ## import os
-## import sys
+import sys
 
 # Installed modules
+## TEST: from cachetools import LRUCache, cached
+from functools import lru_cache
 from mezcla import debug
 from mezcla import system
+from mezcla import misc_utils
 
 ## TODO
 ## # HACK: For relative imports to work in Python 3.6
@@ -69,7 +72,7 @@ from mezcla import system
 ## OLD:
 ## from .document import Document
 ## from .preprocess import Preprocessor, clean_text
-from mezcla.tfidf.document import Document
+from mezcla.tfidf.document import Document, PENALIZE_SINGLETONS
 from mezcla.tfidf.preprocess import Preprocessor, clean_text
 
 CorpusKeyword = namedtuple('CorpusKeyword', ['term', 'ngram', 'score'])
@@ -101,17 +104,16 @@ class Corpus(object):
         0.405
     """
 
-    def __init__(self, gramsize=1, all_ngrams=True, min_ngram_size=None, language=None, preprocessor=None):
+    def __init__(self, min_ngram_size=None, max_ngram_size=None,
+                 language=None, preprocessor=None,
+                 gramsize=None, all_ngrams=None):
         """Initalize.
 
         Parameters:
-            gramsize (int): number of words in a keyword
-            all_ngrams (bool):
-                if True, return all possible ngrams of size "gramsize" and smaller.
-                else, only return keywords of exactly length "gramsize"
-                Note: deprecated (use min_ngram_size instead).
             min_ngram_size (int-or-None):
-                if integral, gives the lower bound unless all_ngrams specified.
+                if integral, gives the lower bound for ngram sie
+            max_ngram_size (int-or-None):
+                if integral, gives the upper bound for ngram size
             language (str):
                 Uses NLTK's stemmer and local stopwords files appropriately for the
                 language.
@@ -119,10 +121,19 @@ class Corpus(object):
             preprocessor (object):
                 pass in a preprocessor object if you want to manually configure stemmer
                 and stopwords
+            all_ngrams (bool):
+                if True, return all possible ngrams of size "gramsize" and smaller.
+                else, only return keywords of exactly length "gramsize"
+                Note: deprecated (use min_ngram_size instead).
+            gramsize (int): number of words in a keyword
+                deprecated: use max_ngram_size instead
         """
+        debug.assertion(not (gramsize and max_ngram_size))
+        debug.assertion(not (all_ngrams and min_ngram_size))
         self.__documents = {}
         self.__document_occurrences = {}
-        self.__gramsize = gramsize
+        ## OLD: self.__gramsize = gramsize
+        self.__gramsize = (max_ngram_size or gramsize)
         self.__max_raw_frequency = None
         self.__max_rel_doc_frequency = None
         self.__max_doc_frequency = None
@@ -130,7 +141,9 @@ class Corpus(object):
             self.preprocessor = preprocessor
         else:
             self.preprocessor = Preprocessor(
-                language=language, gramsize=gramsize, all_ngrams=all_ngrams, min_ngram_size=min_ngram_size)
+                language=language, min_ngram_size=min_ngram_size, max_ngram_size=max_ngram_size,
+                ## TODO: remove deprecated
+                gramsize=gramsize, all_ngrams=all_ngrams)
 
     def __contains__(self, document_id):
         """A Corpus contains Document ids."""
@@ -167,14 +180,17 @@ class Corpus(object):
             self.__max_raw_frequency = max([_.max_raw_frequency for _ in self.__documents.values()])
         return self.__max_raw_frequency
 
-    # TODO: use method memoization
-    def count_doc_occurances(self, ngram):
+    @lru_cache()
+    def count_doc_occurrences(self, ngram):
         """Count the number of documents the corpus has with the matching ngram."""
         # Note: caches the values as called multiple times for TFIDF calculation
         if ngram in self.__document_occurrences:
             count = self.__document_occurrences[ngram]
         else:
-            count = sum([1 if ngram in doc else 0 for doc in self.__documents.values()])
+            ## OLD: count = sum([1 if ngram in doc else 0 for doc in self.__documents.values()])
+            count = sum([(1 + NGRAM_EPSILON) if ngram in doc else 0 for doc in self.__documents.values()])
+        if ((count == 1) and PENALIZE_SINGLETONS):
+            count = 0
         if (count == 0):
             count = NGRAM_EPSILON
         return count
@@ -184,8 +200,8 @@ class Corpus(object):
     def max_rel_doc_frequency(self):
         """"Highest relative document frequency for all ngrams in the corpus"""
         if self.__max_rel_doc_frequency is None:
-            ## BAD: max_doc_frequency = max([self.count_doc_occurances(ngram) for ngram in self.__documents.values()])
-            max_doc_frequency = max([self.count_doc_occurances(ngram) for doc in self.__documents.values() for ngram in doc.keywordset])
+            ## BAD: max_doc_frequency = max([self.count_doc_occurrences(ngram) for ngram in self.__documents.values()])
+            max_doc_frequency = max([self.count_doc_occurrences(ngram) for doc in self.__documents.values() for ngram in doc.keywordset])
             self.__max_rel_doc_frequency = max_doc_frequency / float(len(self))
         return self.__max_rel_doc_frequency
     
@@ -194,13 +210,13 @@ class Corpus(object):
     def max_doc_frequency(self):
         """"Highest relative document frequency for all ngrams in the corpus"""
         if self.__max_doc_frequency is None:
-            max_doc_frequency = max([self.count_doc_occurances(ngram) for doc in self.__documents.values() for ngram in doc.keywordset])
+            max_doc_frequency = max([self.count_doc_occurrences(ngram) for doc in self.__documents.values() for ngram in doc.keywordset])
             self.__max_doc_frequency = max_doc_frequency
         return self.__max_doc_frequency
     
     def df_freq(self, ngram):
         """Return document frequency (DF) count for NGRAM"""
-        return self.count_doc_occurances(ngram)
+        return self.count_doc_occurrences(ngram)
 
     ## OLD: def df_norm(self, ngram, normalize_term=True):
     def df_norm(self, ngram, normalize_term=None):
@@ -219,46 +235,56 @@ class Corpus(object):
 
     def idf_basic(self, ngram):
         """Returns IDF based on log of relative document frequency"""
-        debug.assertion(self.count_doc_occurances(ngram) >= 1)
-        if self.count_doc_occurances(ngram) == 0:
+        debug.assertion(self.count_doc_occurrences(ngram) >= 1)
+        if self.count_doc_occurrences(ngram) == 0:
             raise Exception(ngram)
-        num_occurances = self.count_doc_occurances(ngram)
+        num_occurrences = self.count_doc_occurrences(ngram)
         ## TPO: TEST
         ## # HACK: give singletons a max DF to lower IDF score
-        ## if (num_occurances == 1) and PENALIZE_SINGLETONS:
-        ##     num_occurances = len(self.__documents)
-        idf = math.log(float(len(self)) / num_occurances)
-        ## DEBUG:
-        ## sys.stderr.write("idf_basic({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n".
-        ##                  format(ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurances, idf={idf}))
-        debug.trace_fmt(7, "idf_basic({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n", ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurances, idf={idf})
+        ## if (num_occurrences == 1) and PENALIZE_SINGLETONS:
+        ##     num_occurrences = len(self.__documents)
+        idf = math.log(float(len(self)) / num_occurrences)
+        debug.trace_fmt(7, "idf_basic({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
+                        ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf={idf})
         return idf
 
     def idf_freq(self, ngram):
         """Returns inverse proper of DF (not N/DF)"""
-        debug.assertion(self.count_doc_occurances(ngram) >= 1)
-        if self.count_doc_occurances(ngram) == 0:
+        debug.assertion(self.count_doc_occurrences(ngram) >= 1)
+        if self.count_doc_occurrences(ngram) == 0:
             raise Exception(ngram)
-        num_occurances = self.count_doc_occurances(ngram)
-        return 1 / num_occurances
+        num_occurrences = self.count_doc_occurrences(ngram)
+        idf = 1 / num_occurrences
+        debug.trace_fmt(7, "idf_freq({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
+                        ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf={idf})
+        return idf
 
     def idf_smooth(self, ngram):
         """Returns IDF using simple smoothing with add-1 relative frequency (prior to log)"""
-        debug.assertion(self.count_doc_occurances(ngram) >= 1)
-        return math.log(1 + (float(len(self)) / self.count_doc_occurances(ngram)))
+        debug.assertion(self.count_doc_occurrences(ngram) >= 1)
+        idf = math.log(1 + (float(len(self)) / self.count_doc_occurrences(ngram)))
+        debug.trace_fmt(7, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
+                        ng=ngram, l=len(self), do=self.count_doc_occurrences(ngram), idf={idf})
+        return idf
 
     def idf_max(self, ngram):
         ## TODO: make sure this interpretation makes sense; also, make sure float conversion not required
         """Use maximum ngram TF in place of N and also perform add-1 smoothing"""
-        debug.assertion(self.count_doc_occurances(ngram) >= 1)
-        return math.log(1 + self.max_raw_frequency / self.count_doc_occurances(ngram))
+        debug.assertion(self.count_doc_occurrences(ngram) >= 1)
+        idf = math.log(1 + self.max_raw_frequency / self.count_doc_occurrences(ngram))
+        debug.trace_fmt(7, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
+                        ng=ngram, l=len(self), do=self.count_doc_occurrences(ngram), idf={idf})
+        return idf
 
     def idf_probabilistic(self, ngram):
         """Returns IDF via probabilistic interpretation: log((N - d)/d), where d is the document occcurrence count for the NGRAM"""
-        debug.assertion(self.count_doc_occurances(ngram) >= 1)
-        num_doc_occurances = self.count_doc_occurances(ngram)
-        ## TODO: shouldn't this be (float(len(self) / num_doc_occurances))
-        return math.log(float(len(self) - num_doc_occurances) / num_doc_occurances)
+        debug.assertion(self.count_doc_occurrences(ngram) >= 1)
+        ## TODO: shouldn't this be (float(len(self) / num_doc_occurrences))
+        num_doc_occurrences = self.count_doc_occurrences(ngram)
+        idf = math.log(float(len(self) - num_doc_occurrences) / num_doc_occurrences)
+        debug.trace_fmt(7, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
+                        ng=ngram, l=len(self), do=num_doc_occurrences, idf={idf})
+        return idf
 
     def idf(self, ngram, idf_weight='basic'):
         """Inverse document frequency (IDF) indicates ngram common-ness across the Corpus."""
@@ -306,6 +332,7 @@ class Corpus(object):
         score = document.tf(ngram, tf_weight=tf_weight) * self.idf(ngram, idf_weight=idf_weight)
         return CorpusKeyword(document[ngram], ngram, score)
 
+    @lru_cache()
     def get_keywords(self, document_id=None, text=None, idf_weight='basic',
                      tf_weight='basic', limit=100):
         """Return a list of keywords with TF-IDF scores. Defaults to the top 100."""
@@ -324,23 +351,73 @@ class Corpus(object):
         out.sort(key=lambda x: x.score, reverse=True)
         return out[:limit]
 
+
+def new_main():
+    """New entry point for script: counts ngrams in input file (one line per document)"""
+    # TODO: reconcile with code in ngrm_tfidf.main; parameterize
+    if (sys.argv[1] == "--help"):
+        system.print_error("Usage: {prog} [--help] corpus-file".format(prog=sys.argv[0]))
+        return
+    input_file = sys.argv[1]
+
+    # Create corpus from line documents in file
+    corp = Corpus(min_ngram_size=2, max_ngram_size=4)
+    doc_IDs = []
+    for i, doc_text in enumerate(system.read_lines(input_file)):
+        doc_IDs.append(f"line-doc{i + 1}")
+        corp[doc_IDs[i]] = doc_text
+               
+    # Output top ngrams for each document
+    SAMPLE_SIZE = system.getenv_int("SAMPLE_SIZE", 10,
+                                    "Number of ngram samples to show")
+    print(f"top {SAMPLE_SIZE} ngrams in each document")
+    for i in range(len(doc_IDs)):
+        tuples = corp.get_keywords(document_id=doc_IDs[i], limit=SAMPLE_SIZE)
+        # note: ignores empty tokens
+        ngram_info = [(ng.ngram + ":" + system.round_as_str(ng.score, 3)) for ng in tuples if ng.ngram.strip()]
+        ngram_spec = "{" + ",".join(ngram_info) + "}"
+        print(f"{doc_IDs[i]}:\t{ngram_spec}")
+    return
+
+
 def main():
     """Entry point for script: just runs a simple test"""
-    c = Corpus(gramsize=2)
-    doc1_text = "abc def ghi jkl mno"
-    doc2_text = "abc def     jkl mno"
-    c["doc1"] = doc1_text
-    c["doc2"] = doc2_text
-    ## TODO: use sklearn
-    doc1_words = doc1_text.split()
-    doc2_words = doc2_text.split()
-    all_ngrams = sorted(set([(doc1_words[i] + " " + doc1_words[i + 1]) for i in range(len(doc1_words) - 1)]
-                            + [(doc2_words[i] + " " + doc2_words[i + 1]) for i in range(len(doc2_words) - 1)]))
-    debug.trace_expr(4, all_ngrams, [c.idf(ng) for ng in all_ngrams])
-    debug.assertion(c.idf("abc def") < c.idf("def ghi"))
+    # TODO: rename main as simple_test?
+    if (len(sys.argv) > 1):
+        new_main()
+        return
+
+    # Create simple corpus with two documents
+    c = Corpus(min_ngram_size=2, max_ngram_size=2)
+    doc_text = ["abc  def  ghi  jkl  mno         ",
+                "abc  def       jkl  mno         ",
+                "abc  def                pdq  rst"]
+    ngrams = set()
+    for i in range(len(doc_text)):
+        doc_id = ("doc" + str(i + 1))
+        c[doc_id] = doc_text[i]
+        debug.trace_fmt(1, "{id}:\t{doc_text}", id=doc_id, doc_text=doc_text[i])
+        words = doc_text[i].split()
+        debug.assertion(len(words) > 1)
+        ngrams.update({(words[i] + " " + words[i + 1]) for i in range(len(words) - 1)})
+    all_ngrams = sorted(ngrams)
+
+    # Show combined set of ngrams
+    debug.trace_fmt(1, "ngrams:\t{spec}", spec="\t".join(ng.replace(" ", "_") for ng in sorted(all_ngrams)))
+
+    # Show per-document TF for each ngram
+    for docid in sorted(c.keys()):
+        debug.trace_fmt(1, "{id}TF:\t{spec}", id=docid,
+                        spec="\t".join([str(c[docid].tf_freq(ng)) for ng in all_ngrams]))
+
+    # Show IDF, and TF-IDF for each ngram
+    debug.trace_fmt(1, "IDF:   \t{spec}", spec="\t".join([system.round_as_str(c.idf(ng), 3) for ng in all_ngrams]))
+    debug.assertion(misc_utils.is_close(c.idf("abc def"), 0))
+    debug.assertion(c.idf("jkl mno") < c.idf("pdq rst"))
+    debug.assertion(c.idf("def ghi") == c.idf("ghi jkl") == c.idf("pdq rst"))
         
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
-    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone. A simple test willl be run.")
+    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone. A simple test will be run.")
     main()

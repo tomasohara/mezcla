@@ -36,6 +36,12 @@
 # <     <script type="text/javascript" async src="https://www.ncbi.nlm.nih.gov/core/pinger/pinger.js"></script>
 # <   </body>
 #
+#................................................................................
+# Note:
+#  - via https://dirask.com/posts/JavaScript-difference-between-innerHTML-and-outerHTML-MDg8mp:
+#    The difference between innerHTML and outerHTML html:
+#      innerHTML = HTML inside of the selected element
+#      outerHTML = HTML inside of the selected element + HTML of the selected element
 #-------------------------------------------------------------------------------
 # TODO:
 # - Standardize naming convention for URL parameter accessors (e.g., get_url_param vs. get_url_parameter).
@@ -145,7 +151,9 @@ def get_browser(url):
 
 def get_inner_html(url):
     """Return the fully-rendered version of the URL HTML source (e.g., after JavaScript DOM manipulation)
-    Note: requires selenium webdriver (browser specific)"""
+    Note:
+    - requires selenium webdriver (browser specific)
+    - previously implemented via document.body.innerHTML (hence name)"""
     # Based on https://stanford.edu/~mgorkove/cgi-bin/rpython_tutorials/Scraping_a_Webpage_Rendered_by_Javascript_Using_Python.php
     # Also see https://stackoverflow.com/questions/8049520/web-scraping-javascript-page-with-python.
     # Note: The retrieved HTML might not match the version rendered in a browser due to a variety of reasons such as timing of dynamic updates and server controls to minimize web crawling.

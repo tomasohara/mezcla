@@ -47,8 +47,17 @@
 #      dummy = Main([]);   dummy.input_stream = str
 #      for line in dummy.process_input(): ...
 #
+# Note:
+# - PERL_SWITCH_PARSING allows for Perl-style -var=val command switches. This 
+#   was added to facilitate porting Perl scripts, especially those used in aliases. See
+#      https://github.com/tomasohara/shell-scripts/blob/main/tomohara-aliases.bash
+#   For example, https://github.com/tomasohara/shell-scripts/blob/main/check_errors.py.
+# - This requires a workaround due to an argparse limitation:
+#      https://github.com/spotify/luigi/issues/193 [boolean as command-line arg]
+#
 # TODO:
 # - *** Convert tpo_common calls (i.e., tpo.xyz) to debug!'
+# - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 # - Specify argument via input dicts, such as in 
 #      options=[{"name": "verbose", "type": bool}, 
 #               {"name": "count", type: int, default: 10}]
@@ -68,6 +77,7 @@
 
 # Standard packages
 import argparse
+import io
 import os
 import re
 import sys
@@ -107,7 +117,7 @@ INDENT = system.getenv_text("INDENT", "    ",
 BRIEF_USAGE = system.getenv_bool("BRIEF_USAGE", False,
                                  "Show brief usage with autohelp")
 PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
-                                         "Prepocesess args to expand Perl-style -var[=val[=1]] --var=val")
+                                         "Prepocesess args to expand Perl-style -var[=[val=1]] to --var=val")
 
 #-------------------------------------------------------------------------------
 
@@ -126,7 +136,7 @@ class Main(object):
                  use_temp_base_dir=None,
                  usage_notes=None,
                  program=None,
-                 paragraph_mode=None, track_pages=None, file_input_mode=None,
+                 paragraph_mode=None, track_pages=None, file_input_mode=None, newlines=None,
                  boolean_options=None, text_options=None, int_options=None,
                  float_options=None, positional_options=None, positional_arguments=None,
                  skip_input=None, manual_input=None, auto_help=None, brief_usage=None, **kwargs):
@@ -192,6 +202,7 @@ class Main(object):
         if file_input_mode is None:
             file_input_mode = FILE_INPUT_MODE
         self.file_input_mode = file_input_mode
+        self.newlines = newlines
         if track_pages is None:
             track_pages = TRACK_PAGES
         self.track_pages = track_pages
@@ -232,14 +243,19 @@ class Main(object):
         # Process special hook for converting Perl-style switches like -fu=123 to --fu=123
         # See -s option under perlrun man page for enabling this rudimentary switch parsing.
         # Note: mainly just intended for when porting Perl scripts.
-        perl_switch_parsing = kwargs.get("perl_switch_parsing", PERL_SWITCH_PARSING)
-        if perl_switch_parsing and runtime_args:
+        self.perl_switch_parsing = kwargs.get("perl_switch_parsing", PERL_SWITCH_PARSING)
+        if self.perl_switch_parsing and runtime_args:
             debug.trace(4, "FYI: Enabling Perl-style options")
+            debug.assertion(not re.search(r"--\w+", " ".join(runtime_args)),
+                            "Shouldn't use Python arguments with PERL_SWITCH_PARSING")
             for i, arg in enumerate(runtime_args):
                 if arg in ["-", "--"]:
                     break
                 if my_re.search(r"^-([a-z0-9_]+\w*)=?(.*)$", arg, flags=re.IGNORECASE):
-                    new_arg = "-" + arg
+                    ## OLD: new_arg = "-" + arg
+                    option = my_re.group(1)
+                    value = (my_re.group(2) if len(my_re.group(2)) else "1")
+                    new_arg = f"--{option}={value}"
                     debug.trace(4, f"Converted Perl-style arg {i} from {arg!r} to {new_arg}")
                     debug.assertion(not system.file_exists(arg))
                     runtime_args[i] = new_arg
@@ -404,8 +420,12 @@ class Main(object):
         # TODO: consolidate processing for the groups; add option for environment-based default; resolve stupid pylint false positive about unbalanced-tuple-unpacking
         for opt_spec in self.boolean_options:
             (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            parser.add_argument(opt_label, default=opt_default, action='store_true',
-                                help=opt_desc)
+            if self.perl_switch_parsing:
+                # note: With Perl argument support, booleans treated as integers due to argparse quirk.
+                ## TEST: parser.add_argument(opt_label, type=int, nargs='?', default=opt_default, help=opt_desc)
+                parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
+            else:
+                parser.add_argument(opt_label, default=opt_default, action='store_true', help=opt_desc)
         for opt_spec in self.int_options:
             (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
             parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
@@ -506,15 +526,10 @@ class Main(object):
         tpo.print_stderr("Internal error: specialize run_main_step")
         return
 
-    def run(self):
-        """Runner for script processing"""
-        tpo.debug_print("Main.run()", 5)
-        # TODO: decompose (e.g., isolate input proecessing)
-
-        # Have client do pre-input initialization (e.g., argument extraction)
-        self.setup()
-
-        # Resolve input stream from either explicit filename or via standard input
+    def init_input(self):
+        """Resolve input stream from either explicit filename or via standard input
+        Note: self.newlines is used to override stream (e.g., so \r not treated as line delim)"""
+        debug.trace(5, "Main.init_input()")
         self.input_stream = sys.stdin
         if (self.filename and (self.filename != "-")):
             if (isinstance(self.filename, list) or (len(self.other_filenames) > 0)):
@@ -528,8 +543,23 @@ class Main(object):
                 debug.assertion(os.path.exists(self.filename))
                 self.input_stream = system.open_file(self.filename)
                 debug.assertion(self.input_stream)
+        if self.newlines:
+            debug.trace(4, f"Changing input stream newlines from {self.input_stream.newlines!r} to {self.newlines!r}")
+            ## BAD: self.input_stream.newlines = self.newlines
+            ## BAD2: sys.stdin.reconfigure(newline=self.newlines)
+            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=self.input_stream.errors, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
+            debug.trace_object(4, self.input_stream)
     
+    def run(self):
+        """Runner for script processing"""
+        tpo.debug_print("Main.run()", 5)
+        # TODO: decompose (e.g., isolate input proecessing)
+
+        # Have client do pre-input initialization (e.g., argument extraction)
+        self.setup()
+
         # Initiate the main input processing
+        self.init_input()
         try:
             # If not automatic input, process the main step of script
             if self.manual_input:
@@ -566,9 +596,24 @@ class Main(object):
         self.clean_up()
         return
 
-    def read_input(self):
-        """Generator for producing lines of text from the input (without newlines)
+    def read_entire_input(self):
+        """Returns all input (either from specified filename or stdin)
         Notes:
+        - This is simple alternative to the read_input generator intended for use with dummy_app
+        - Another alternative is to invoke self.init_input and then use self.input_stream
+        """
+        debug.trace(5, "Main.read_entire_input()")
+        self.init_input()
+        debug.trace(2, "Processing entire input")
+        debug.trace_object(4, self.input_stream)
+        input_text = self.input_stream.read()
+        debug.trace_expr(6, input_text)
+        return input_text
+    
+    def read_input(self):
+        """Generator for producing lines of text from the input (without newlines).
+        Notes:
+        0. Use read_entire_input for method to return all text at once (i.e., non-generator).
         1. This is called automatically via process_input.
         2. When page mode is in effect, 
            a. lines don't include form feeds

@@ -107,5 +107,5 @@ class TestDebug:
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
+    debug.trace_current_context()
     pytest.main([__file__])
-

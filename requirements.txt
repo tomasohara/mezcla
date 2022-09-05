@@ -1,23 +1,26 @@
 # Basic requirements for main scripts
 # optional: keras, tensorflow
 #
-# usage:
+# By default only the cases used in multuiple scripts are installed.
+#
+# Usage examples:
+# 1. Usual
 #    pip install -r requirements.txt
 #
-#    optional:
-#       perl -00 -pe 's/#opt#//g;' requirements.txt > _optional-requirements.txt
-#       pip install -r _optional-requirements.txt
+# 2. Full (i.e., including optional):
+#    pip install $(perl -00 -pe 's/^#opt#\s*//gm;' ~/python/Mezcla/requirements.txt | grep -v '^#')
 #
 # TODO: supporting commands (e.g., lynx)
 bs4
 cherrypy
-gensim
+lxml
 mako
 matplotlib
 nltk
 numpy
 ## OLD: ordereddict
-pandas
+pandas>=1.3.0
+pyenchant
 requests
 scipy
 sklearn
@@ -29,9 +32,16 @@ xgboost
 #...............................................................................
 # Optional requirements
 #
-#opt# bert-tensorflow
-#opt# tensorflow
+# TODO:
+# - show comand for downloading Spacy en_core_web_lg model
+#
+#opt# gensim
+# TODO: #opt# bert-tensorflow
 #opt# pyyaml
-# NOTE: these are for convenience in setting up environment
+#opt# spacy>=3.0.0
+# TODO: python -m spacy download en
+# TODO: #opt# tensorflow
+#
+# NOTE: the following are for setting up typical development environment
 #opt# ipython
 #opt# pylint

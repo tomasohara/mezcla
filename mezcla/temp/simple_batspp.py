@@ -7,6 +7,10 @@
 # NOTE: It is only necessary to have installed bats-core
 #       no need for bats-assertions library.
 #
+# FYI: This version is a simplified version of the original BatsPP facility. It uses some shameless
+# hacks enabled via environment variables to work around quirks in the example parsing. For example,
+#   TEST_FILE=1 MATCH_SENTINELS=1 PARA_BLOCKS=1 python ./simple_batspp.py tests/adhoc-tests.test
+#
 ## TODO:
 ## - extend usage guide or docstring.
 ## - Add some directives in the test or script comments:
@@ -101,6 +105,8 @@ OMIT_TRACE = system.getenv_bool("OMIT_TRACE", False,
                                 "Omit actual/expected trace from bats file")
 OMIT_MISC = system.getenv_bool("OMIT_MISC", False,
                                "Omit miscellaenous/obsolete bats stuff")
+TEST_FILE = system.getenv_bool("TEST_FILE", False,
+                               "Treat input as example-base test file, not a bash script")
 #
 # Shameless hacks
 ## TEST: GLOBAL_SETUP = system.getenv_text("GLOBAL_SETUP", " ",
@@ -265,7 +271,8 @@ class Batspp(Main):
         self.testfile     = self.get_parsed_argument(TESTFILE, "")
         self.output       = self.get_parsed_argument(OUTPUT, "")
         self.source       = self.get_parsed_argument(SOURCE, "")
-        self.verbose      = self.has_parsed_option(VERBOSE)
+        ## OLD: self.verbose      = self.has_parsed_option(VERBOSE)
+        self.verbose      = (self.has_parsed_option(VERBOSE) or system.getenv("VERBOSE"))
 
         debug.trace(T7, (f'batspp - testfile: {self.testfile}, '
                          f'output: {self.output}, '
@@ -277,7 +284,7 @@ class Batspp(Main):
         """Process main script"""
 
         # Check if is test of shell script file
-        self.is_test_file = self.testfile.endswith(BATSPP_EXTENSION)
+        self.is_test_file = (TEST_FILE or self.testfile.endswith(BATSPP_EXTENSION))
         debug.trace(T7, f'batspp - {self.testfile} is a test file (not shell script): {self.is_test_file}')
 
 
@@ -307,6 +314,7 @@ class Batspp(Main):
             batsfile = self.output
             if batsfile.endswith('/'):
                 ## BAD: name = re.search(r"\/(\w+)\.", self.test_file).group(0)
+                ## TODO: fixme (e.g., filename '##.batspp')-- ex via glue_helpers.remove_extension
                 name = re.search(r"\/(\w+)\.", batsfile).group(0)
                 batsfile += f'{name}.bats'
         else:
@@ -493,6 +501,7 @@ class CustomTestsToBats:
 
     def _preprocess_output(self, field):
         """Preprocess output FIELD"""
+        in_field = field
         field = self._preprocess_field(field)
         
         # Strip whitespaces
@@ -501,7 +510,7 @@ class CustomTestsToBats:
 
         # Remove initial and trailing quotes
         field = my_re.sub(f'^(\"|\')(.*)(\"|\')$', r'\2', field)
-
+        debug.trace(T8, f"_preprocess_output({in_field!r}) ==  {field!r}")
         return field
 
     def _common_process(self, test):

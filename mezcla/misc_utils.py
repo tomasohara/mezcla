@@ -26,6 +26,11 @@ from mezcla import text_utils
 
 # Constants
 ELLIPSIS = "\u2026"                 # Horizontal Ellipsis
+TYPICAL_EPSILON = system.getenv_float("TYPICAL_EPSILON", 1e-6,
+                                      description="Traditional floating-point error factor")
+VALUE_EPSILON = system.getenv_float("VALUE_EPSILON", 1e-3,
+                                    description="Epsilon for floating-point comparison")
+debug.assertion(TYPICAL_EPSILON < VALUE_EPSILON)
 
 
 def transitive_closure(edge_list):
@@ -251,6 +256,16 @@ def elide_string_values(obj, depth=0, max_len=None):
     else:
         pass
     return obj
+
+
+def is_close(value1, value2, epsilon=VALUE_EPSILON):
+    """Whether VALUE1 and VALUE2 are close (i.e., absolute difference <= epsilon)"""
+    # See https://stackoverflow.com/questions/35324893/using-math-isclose-function-with-values-close-to-0
+    ## EX: is_close(1.001, 1.002, epsilon=.005)
+    ## EX: (not is_close(1.001, 1.002, epsilon=.0005))
+    result = math.isclose(value1, value2, abs_tol=epsilon)
+    debug.trace(6, f"is_close({value1}, {value2}, [eps={epsilon}]) => {result}")
+    return result
 
 #-------------------------------------------------------------------------------
 

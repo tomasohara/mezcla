@@ -21,19 +21,19 @@ from __future__ import absolute_import, with_statement
 
 # Standard modules
 from collections import namedtuple
-## OLD: import os
 import re
 import sys  # python2 support
 from threading import RLock
 
 # Installed modules
+## TODO: find better documented memoization package
 from cachetools import LRUCache, cached  # python2 support
 from nltk.stem import SnowballStemmer
 from six.moves.html_parser import HTMLParser  # python2 support
+from sklearn.feature_extraction.text import CountVectorizer
 from stop_words import get_stop_words
 
 # Local modules
-## OLD: from .dockeyword import DocKeyword
 from mezcla import debug
 from mezcla import system
 from mezcla.tfidf.dockeyword import DocKeyword
@@ -44,21 +44,20 @@ unescape = HTMLParser().unescape
 # TODO: Get WORD_REGEX from environment.
 # TODO: Have option to ignore words with specific punctuation (or to include).
 # TODO: strip period to allow for ngrams with abbreviations (e.g., "Dr. Jones").
-## OLD: import os
-## OLD: import sys
-## OLD:
-## SPLIT_WORDS_TEXT = os.environ.get("SPLIT_WORDS", "False")
-## SPLIT_WORDS = (str(SPLIT_WORDS_TEXT).upper() in ["TRUE", "1"])
-## BAD_WORD_PUNCT_REGEX = os.environ.get("BAD_WORD_PUNCT_REGEX", r"[^a-zA-Z0-9_'$ -]")
 SPLIT_WORDS = system.getenv_bool("SPLIT_WORDS", False,
                                  "Split by word token instead of whitespace")
 BAD_WORD_PUNCT_REGEX = system.getenv_text("BAD_WORD_PUNCT_REGEX", r"[^a-zA-Z0-9_'$ -]",
                                           "Regex for punctuation not in words")
 SKIP_WORD_CLEANING = system.getenv_bool("SKIP_WORD_CLEANING", False,
                                         "Omit word punctuation cleanup")
+## OLD:
+## SKLEARN_TOKENIZER = system.getenv_bool("SKLEARN_TOKENIZER", False,
+##                                        "Use sklearn CountVectorizer for ngrams")
+USE_SKLEARN_COUNTER = system.getenv_bool("USE_SKLEARN_COUNTER", False,
+                                         "Use sklearn CountVectorizer for ngrams")
+
 
 if SPLIT_WORDS:
-    ## OLD: sys.stderr.write("Splitting by word token (not whitespace)\n")
     debug.trace(1, "Splitting by word token (not whitespace)\n")
     ## BAD: True
 WORD_REGEX = r'\w+' if SPLIT_WORDS else r'\S+'
@@ -66,7 +65,6 @@ WORD_REGEX = r'\w+' if SPLIT_WORDS else r'\S+'
 def handle_unicode(text):
     """Needed for the description fields."""
     if re.search(r'\\+((u([0-9]|[a-z]|[A-Z]){4}))', text):
-        ## OLD: text = text.encode('utf-8').decode('unicode-escape')
         text = text.encode('utf-8', 'ignore').decode('unicode-escape', 'ignore')
     text = re.sub(r'\\n', '\n', text)
     text = re.sub(r'\\t', '\t', text)
@@ -172,20 +170,17 @@ class Preprocessor(object):
         'russian', 'spanish', 'swedish', 'turkish'
     )
 
-    def __init__(self, language=None, gramsize=1, all_ngrams=None, min_ngram_size=None,
-                 stopwords_file=None, stemmer=None):
+    def __init__(self, min_ngram_size=None, max_ngram_size=None,
+                 language=None, stopwords_file=None, stemmer=None,
+                 gramsize=None, all_ngrams=None):
         """Preprocessor must be initalized for use if using stopwords.
 
         stopwords_file (filename): contains stopwords, one per line
         stemmer (function):  takes in a word and returns the stemmed version
-        gramsize (int=1): maximum word size for ngrams
-        all_ngrams (bool):
-            if true, all possible ngrams of length "gramsize" and smaller will
-            be examined. If false, only ngrams of _exactly_ length "gramsize"
-            will be run.
-            Note: deprecated (use min_ngram_size instead).
         min_ngram_size (int-or-None):
-            if integral, gives the lower bound unless all_ngrams specified.
+            if integral, gives the lower bound
+        max_ngram_size (int-or-None):
+            if integral, gives the upper bound
         negative_gram_breaks (regex):
             if a word ends with one of these characters, an
             ngram may not cross that. Expressed as a _negative_ regex.
@@ -201,19 +196,19 @@ class Preprocessor(object):
             Default None:
                 Use the NLTK snowball stemmer for the sepcified language. If
                 language is not found, no stemming will take place.
+        gramsize (int-or-None): maximum word size for ngrams
+            Note: deprecated (use min_ngram_size instead).
+        all_ngrams (bool):
+            if true, all possible ngrams of length "gramsize" and smaller will
+            be examined. If false, only ngrams of _exactly_ length "gramsize"
+            will be run.
+            Note: deprecated (use min_ngram_size instead).
         """
         self.__stemmer = None
         if language:
-            ## OLD: assert language in self.supported_languages
             debug.assertion(language in self.supported_languages)
             if language in SnowballStemmer.languages:
-                ## OLD: sb_stemmer = SnowballStemmer(language)
-                ## self.__stemmer = sb_stemmer.stem
                 self.__stemmer = create_stemmer(language)
-            ## OLD:
-            ## else:
-            ##     debug.trace(3, "Warning: defining no-op stemmer in Preprocessor")
-            ##     self.__stemmer = lambda x: x  # no change to word
             self.stopwords = get_stop_words(language)
         if stopwords_file:
             self._load_stopwords(stopwords_file)
@@ -222,7 +217,10 @@ class Preprocessor(object):
         if not self.__stemmer:
             debug.trace(3, "Warning: defining no-op stemmer in Preprocessor")
             self.__stemmer = lambda x: x  # no change to word
-        self.__gramsize = gramsize
+        debug.assertion(not (gramsize and max_ngram_size))
+        debug.assertion(not (all_ngrams and min_ngram_size))
+        ## OLD: self.__gramsize = gramsize
+        self.__gramsize = (max_ngram_size or gramsize)
         self.__all_ngrams = all_ngrams
         self.__min_ngram_size = (min_ngram_size or gramsize)
 
@@ -274,11 +272,9 @@ class Preprocessor(object):
         text = self.handle_stopwords(text)
         return self.stem_term(text)
 
-    ## OLD: @cached(LRUCache(maxsize=10000))
     ## TODO: do performance tests to select suitable cache size
     @cached(LRUCache(maxsize=100000), lock=RLock())
     def _stem(self, word):
-        ## OLD: """The stem cache is used to cache up to 10,000 stemmed words.
         """The stem cache is used to cache up to 100,000 stemmed words.
 
         This substantially speeds up the word stemming on larger documents.
@@ -307,12 +303,19 @@ class Preprocessor(object):
             s = "All the cars were honking their horns."
             ['all', 'the', 'car', 'were', 'honk', 'their', 'horn']
         """
+        ## TODO: yield_method = self.slow_yield_keywords if not USE_SKLEARN_COUNTER else self.yield_sklearn_keywords
+        if USE_SKLEARN_COUNTER:
+            result = self.quick_yield_keywords(raw_text, document=document)
+        else:
+            result = self.full_yield_keywords(raw_text, document=document)
+        return result
+
+    def full_yield_keywords(self, raw_text, document=None):
+        """Full-featured version of keyword generation, including support for offsets"""
         if sys.version_info[0] < 3:  # python2 support
             if isinstance(raw_text, str):
                 raw_text = raw_text.decode('utf-8', 'ignore')
         ## TPO: HACK: support min ngram size
-        ## OLD: min_ngram_size = self.min_ngram_size if not self.all_ngrams else 1
-        ## OLD: gramlist = range(1, self.gramsize + 1) if self.all_ngrams else [self.gramsize]
         gramlist = None
         if self.all_ngrams:
             gramlist = range(1, self.gramsize + 1)
@@ -327,8 +330,6 @@ class Preprocessor(object):
         debug.trace_fmt(7, "gramlist={gl}\n", gl=gramlist)
 
         for sentence in positional_splitter(self.negative_gram_breaks, raw_text):
-            ## OLD: words = [x for x in positional_splitter(r'\S+', sentence.text)]
-            ## OLD: words = [x for x in positional_splitter(WORD_REGEX, sentence.text)]
             words = positional_splitter(WORD_REGEX, sentence.text)
             # Remove all stopwords
             words_no_stopwords = []
@@ -343,7 +344,7 @@ class Preprocessor(object):
             for gramsize in gramlist:
                 # You need to try as many offsets as chunk size
                 # TODO: Allow stopwords in middle of ngram of size 3 or more
-                for offset in range(0, gramsize):  # number of words offest
+                for offset in range(0, gramsize):  # number of words offset
                     data = words_no_stopwords[offset:]
                     text_in_chunks = [data[pos:pos + gramsize]
                                       for pos in range(0, len(data), gramsize)
@@ -353,20 +354,22 @@ class Preprocessor(object):
                         if (SPLIT_WORDS or (not re.search(BAD_WORD_PUNCT_REGEX, word_text))):
                             word_global_start = sentence.start + word_list[0].start
                             word_global_end = sentence.start + word_list[-1].end
-                            ## OLD: yield DocKeyword(word_text, document=document,
-                            ##                       start=word_global_start, end=word_global_end)
-                            try:
-                                yield DocKeyword(word_text, document=document, start=word_global_start, end=word_global_end)
-                            except StopIteration:
-                                pass
-        ## Ye olde introduce-a-stupid-feature at M.m (rather than M.0)--gotta hate Python!
-        ##    https://www.python.org/dev/peps/pep-0479.
-        ## OLD: raise StopIteration
+                            yield DocKeyword(word_text, document=document, start=word_global_start, end=word_global_end)
+        return
+
+    def quick_yield_keywords(self, raw_text, document=None):
+        """Quick version for yielfing keywords, using sklearn for ngram generation
+        Note: the DocKeyword objects don't include offset information"""
+        # TODO1: support BAD_WORD_PUNCT_REGEX
+
+        vectorizer = CountVectorizer(ngram_range=(self.min_ngram_size, self.gramsize))
+        analyzer = vectorizer.build_analyzer()
+        for ngram in analyzer(raw_text):
+            yield DocKeyword(ngram, document=document)
         return
 
 
 PositionalWord = namedtuple('PositionalWord', ['text', 'start', 'end'])
-
 
 def positional_splitter(regex, text):
     r"""Yield sentence chunks (as defined by the regex) as well as their location.
@@ -377,13 +380,11 @@ def positional_splitter(regex, text):
         r'\S+'  <-- "a chain of anything that's NOT whitespace"
     """
     for res in re.finditer(regex, text):
-        ## OLD: yield PositionalWord(res.group(0), res.start(), res.end())
+        ## TODO: drop try/except
         try:
             yield PositionalWord(res.group(0), res.start(), res.end())
         except StopIteration:
             pass
-    ## Same as above
-    ## OLD: raise StopIteration
     return
 
 
@@ -393,10 +394,10 @@ def main():
     p = Preprocessor(gramsize=2)
     debug.trace_object(4, p)
     ngrams = list([p.text for p in p.yield_keywords(text)])
+    debug.trace_expr(3, text, ngrams)
     debug.assertion("my man" in ngrams)
     debug.assertion("my man fran" not in ngrams)
     debug.assertion("fran man" not in ngrams)
-    debug.trace_expr(4, ngrams)
     
 #-------------------------------------------------------------------------------
     

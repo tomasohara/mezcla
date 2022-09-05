@@ -1,8 +1,8 @@
 #! /usr/bin/env python
+## TODO: handle case when env installed elsehere (e.g., maldito mac)
+## #! env python
 # 
 # TODO what the script does (detailed)
-#
-# The software is Open Source, licensed under the GNU Lesser General Public Version 3 (LGPLv3). See LICENSE.txt in repository.
 #
 ## TODO: see example/template.py for simpler version suitable for cut-n-paste from online examples
 #
@@ -114,5 +114,6 @@ if __name__ == '__main__':
         # Note: Following added for indentation: float options are not common
         float_options=None)
     app.run()
+    # Make sure no TODO_vars above (i.e., in namespace)
     debug.assertion(not any(re.search(r"^TODO_", m, re.IGNORECASE)
                             for m in dir(app)))

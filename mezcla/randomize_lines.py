@@ -30,6 +30,7 @@
 #
 #------------------------------------------------------------------------
 # TODO:
+# - * Add support for paragraph-mode sorting (e.g., CR-encoding).
 # - Rework using main.py
 # - Add sanity check for disk space issues.
 # - Have streamlined version just using output from sort.
