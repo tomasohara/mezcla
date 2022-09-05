@@ -13,18 +13,23 @@
 # TODO: supporting commands (e.g., lynx)
 bs4
 cherrypy
+<<<<<<< Updated upstream
 <<<<<<< HEAD
 pyenchant
 =======
 gensim
 lxml
 >>>>>>> 617b87b9ceae8d235591a191d7191294a7c65d77
+=======
+lxml
+>>>>>>> Stashed changes
 mako
 matplotlib
 nltk
 numpy
 ## OLD: ordereddict
 pandas>=1.3.0
+pyenchant
 requests
 scipy
 sklearn
@@ -40,16 +45,19 @@ xgboost
 # TODO:
 # - show comand for downloading Spacy en_core_web_lg model
 #
-#opt# bert-tensorflow
 #opt# gensim
+<<<<<<< Updated upstream
 =======
 # TODO: #opt# bert-tensorflow
 # TODO: #opt# tensorflow
 >>>>>>> 617b87b9ceae8d235591a191d7191294a7c65d77
+=======
+# TODO: #opt# bert-tensorflow
+>>>>>>> Stashed changes
 #opt# pyyaml
 #opt# spacy>=3.0.0
 # TODO: python -m spacy download en
-#opt# tensorflow
+# TODO: #opt# tensorflow
 #
 # NOTE: the following are for setting up typical development environment
 #opt# ipython
