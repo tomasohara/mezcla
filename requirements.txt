@@ -13,16 +13,7 @@
 # TODO: supporting commands (e.g., lynx)
 bs4
 cherrypy
-<<<<<<< Updated upstream
-<<<<<<< HEAD
-pyenchant
-=======
-gensim
 lxml
->>>>>>> 617b87b9ceae8d235591a191d7191294a7c65d77
-=======
-lxml
->>>>>>> Stashed changes
 mako
 matplotlib
 nltk
@@ -41,19 +32,11 @@ xgboost
 #...............................................................................
 # Optional requirements
 #
-<<<<<<< HEAD
 # TODO:
 # - show comand for downloading Spacy en_core_web_lg model
 #
 #opt# gensim
-<<<<<<< Updated upstream
-=======
 # TODO: #opt# bert-tensorflow
-# TODO: #opt# tensorflow
->>>>>>> 617b87b9ceae8d235591a191d7191294a7c65d77
-=======
-# TODO: #opt# bert-tensorflow
->>>>>>> Stashed changes
 #opt# pyyaml
 #opt# spacy>=3.0.0
 # TODO: python -m spacy download en
