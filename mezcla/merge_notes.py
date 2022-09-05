@@ -63,6 +63,12 @@ from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
 
+SKIP_BOM = system.getenv_bool("SKIP_BOM", False,
+                              "Don't output byte order mark U+FEFF")
+
+## TEMP: quiet picky pylint
+# pylint: disable=consider-using-f-string
+
 #...............................................................................
 
 def resolve_date(textual_date, default_date=None):
@@ -233,7 +239,14 @@ def main():
                      k="\t\n".join([str(v) for v in notes_hash.keys()]))
     #
     # TODO: make byte order mark optional (used so special characters resolved automatically in Emacs)
-    print("\uFEFF")
+    if not SKIP_BOM:
+        try:
+            ## OLD:
+            print("\uFEFF")
+            ## TEMP: print("\uFEFF".encode("UTF8"))
+        except:
+            system.print_exception_info("printing BOM")
+    #
     for pos, date in enumerate(sorted(notes_hash.keys(), 
                                       key=get_resolved_date)):
         debug.trace_fmtd(6, "outputting notes for date {d} [resolved: {r}]", 
@@ -242,7 +255,13 @@ def main():
             print("-" * 80)
         debug.trace_fmtd(6, "[src={f}:{n}]", skip_newline=True,
                          f=fileinput.filename(), n=fileinput.filelineno())
-        print("%s\n\n" % notes_hash[date])
+        ## OLD: print("%s\n\n" % notes_hash[date])
+        ## TEMP:
+        try:
+            ## BAD: print("%s\n\n" % notes_hash[date].encode("UTF8", errors="ignore"))
+            print("%s\n\n" % notes_hash[date])
+        except:
+            system.print_exception_info("printing entry")
 
     return
 
