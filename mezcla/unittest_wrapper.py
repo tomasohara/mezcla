@@ -13,6 +13,7 @@
 #   tests/test_extract_company_info.py for an example.
 # TODO:
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
+# - Clarify that this can co-exist with pytest-based tests (see tests/test_main.py).
 #
 #-------------------------------------------------------------------------------
 # Sample test (streamlined version of test_simple_main_example.py):
