@@ -18,8 +18,8 @@ Adhoc usage:
 Tom O'Hara
 Feb 2022
 """
-__VERSION__ = '1.3.0'
-__version__ = '1.3.0'
+__VERSION__ = '1.3.1'
+__version__ = '1.3.1'
 
 # Standard module(s)
 import sys
