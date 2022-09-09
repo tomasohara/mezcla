@@ -22,6 +22,7 @@ import tempfile
 
 # Installed packages
 import pytest
+import pickle
 
 # Local packages
 from mezcla import glue_helpers as gh
@@ -312,7 +313,7 @@ class TestTpoCommon:
         # pylint: disable=redefined-outer-name
         FOOBAR = 21
         assert THE_MODULE.format("{FOO}", FOO=FOOBAR) == str(FOOBAR)
-        # TODO: assert "Hey Jos\xc3\xa9" == THE_MODULE.format("Hey {j}", j=JOSE)
+        ## TODO: assert "Hey Jos\xc3\xa9" == THE_MODULE.format("Hey {j}", j=JOSE)
         return
 
     def test_init_logging(self):
@@ -323,17 +324,51 @@ class TestTpoCommon:
     def test_load_object(self):
         """Ensure load_object works as expected"""
         debug.trace(4, "test_load_object()")
-        ## TODO: WORK-IN=PROGRESS
+        test_dict = {
+            1: 'first',
+            2: 'second',
+        }
+        test_filename = tempfile.NamedTemporaryFile().name
+        test_file = open(test_filename, 'wb')
+        pickle.dump(test_dict, test_file)
+        test_file.close()
+
+        assert THE_MODULE.load_object(test_filename) == test_dict
 
     def test_store_object(self):
         """Ensure store_object works as expected"""
         debug.trace(4, "test_store_object()")
-        ## TODO: WORK-IN=PROGRESS
+        test_dict = {
+            1: 'first',
+            2: 'second',
+        }
+        test_filename = tempfile.NamedTemporaryFile().name
+
+        THE_MODULE.store_object(test_filename, test_dict)
+
+        test_file = open(test_filename, 'rb')
+        actual_object = pickle.load(test_file)
+        assert actual_object == test_dict
+        test_file.close()
 
     def test_dump_stored_object(self):
         """Ensure dump_stored_object works as expected"""
         debug.trace(4, "test_dump_stored_object()")
-        ## TODO: WORK-IN=PROGRESS
+
+        ## TODO: add tests related to redirect_stderr and restore_stderr
+
+        test_dict = {
+            1: 'first',
+            2: 'second',
+        }
+        test_filename = tempfile.NamedTemporaryFile().name
+
+        THE_MODULE.store_object(test_filename, test_dict)
+
+        test_file = open(test_filename, 'rb')
+        actual_object = pickle.load(test_file)
+        assert actual_object == test_dict
+        test_file.close()
 
     def test_create_lookup_table(self):
         """Ensure create_lookup_table works as expected"""
@@ -343,7 +378,12 @@ class TestTpoCommon:
     def test_lookup_key(self):
         """Ensure lookup_key works as expected"""
         debug.trace(4, "test_lookup_key()")
-        ## TODO: WORK-IN=PROGRESS
+        test_table = {
+            'first': '1st',
+            'second': '2nd',
+        }
+        assert THE_MODULE.lookup_key(test_table, 'second', 'two-nd') == '2nd'
+        assert THE_MODULE.lookup_key(test_table, 'third', '3rd') == '3rd'
 
     def test_create_boolean_lookup_table(self):
         """Ensure create_boolean_lookup_table works as expected"""
@@ -409,11 +449,13 @@ class TestTpoCommon:
         """Ensure remove_all works as expected"""
         debug.trace(4, "test_remove_all()")
         assert THE_MODULE.remove_all([5, 4, 3, 2, 1], [4, 2, 0]) == [5, 3, 1]
+        assert THE_MODULE.remove_all(['A', 'B', 'C', 'D'], ['A', 'B', 'D']) == ['C']
+        assert THE_MODULE.remove_all(['a', 'B', 'c', 'D'], ['A', 'b', 'd'], ignore_case=True) == ['c']
 
     def test_equivalent(self):
         """Ensure equivalent works as expected"""
         debug.trace(4, "test_equivalent()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.equivalent([1, 2, 3], [1, 2, 3])
 
     def test_append_new(self):
         """Ensure append_new works as expected"""
@@ -424,7 +466,7 @@ class TestTpoCommon:
     def test_extract_list(self):
         """Ensure extract_list works as expected"""
         debug.trace(4, "test_extract_list()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.extract_list('a,b,c') == ['a', 'b', 'c']
 
     def test_is_subsumed(self):
         """Ensure is_subsumed works as expected"""
@@ -480,12 +522,12 @@ class TestTpoCommon:
         debug.trace(4, "test_memodict()")
         ## TODO: WORK-IN=PROGRESS
 
-    def test_dummy_main(self):
+    def test_dummy_main(self, capsys):
         """Ensure dummy_main works as expected"""
         debug.trace(4, "test_dummy_main()")
-        ## TODO: WORK-IN=PROGRESS
-
-    ## TODO: test main
+        THE_MODULE.dummy_main()
+        captured = capsys.readouterr()
+        assert 'Environment options' in captured.out
 
 
 def set_test_env_var():
