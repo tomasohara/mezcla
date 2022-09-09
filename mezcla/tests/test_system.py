@@ -18,6 +18,7 @@ from math import pi
 
 # Installed packages
 import pytest
+import pickle
 
 # Local packages
 from mezcla import glue_helpers as gh
@@ -216,12 +217,32 @@ class TestSystem:
     def test_save_object(self):
         """Ensure save_object works as expected"""
         debug.trace(4, "test_save_object()")
-        ## TODO: WORK-IN=PROGRESS
+        test_dict = {
+            1: 'first',
+            2: 'second',
+        }
+        test_filename = tempfile.NamedTemporaryFile().name
+
+        THE_MODULE.save_object(test_filename, test_dict)
+
+        test_file = open(test_filename, 'rb')
+        actual_object = pickle.load(test_file)
+        assert actual_object == test_dict
+        test_file.close()
 
     def test_load_object(self):
         """Ensure load_object works as expected"""
         debug.trace(4, "test_load_object()")
-        ## TODO: WORK-IN=PROGRESS
+        test_dict = {
+            1: 'first',
+            2: 'second',
+        }
+        test_filename = tempfile.NamedTemporaryFile().name
+        test_file = open(test_filename, 'wb')
+        pickle.dump(test_dict, test_file)
+        test_file.close()
+
+        assert THE_MODULE.load_object(test_filename) == test_dict
 
     def test_quote_url_text(self):
         """Ensure quote_url_text works as expected"""
@@ -265,8 +286,8 @@ class TestSystem:
 
         ## TODO: set fixed sys.version_info.major > 2.
 
-        assert THE_MODULE.unescape_html_text("&lt;2/") == "<2/" 
-        assert THE_MODULE.unescape_html_text("Joe&#x27;s hat") == "Joe's hat" 
+        assert THE_MODULE.unescape_html_text("&lt;2/") == "<2/"
+        assert THE_MODULE.unescape_html_text("Joe&#x27;s hat") == "Joe's hat"
 
         ## TODO: test with sys.version_info.major < 2
 
@@ -314,7 +335,7 @@ class TestSystem:
     def test_read_lookup_table(self):
         """Ensure read_lookup_table works as expected"""
         debug.trace(4, "test_read_lookup_table()")
-        
+
         content = (
             'COUNTRY -> CAPITAL\n'
             'United States -> Washington D. C.\n'
@@ -489,7 +510,7 @@ class TestSystem:
     def test_to_utf8(self):
         """Ensure to_utf8 works as expected"""
         debug.trace(4, "test_to_utf8()")
-        assert THE_MODULE.to_utf8(u"\ufeff") == "\xEF\xBB\xBF"
+        assert THE_MODULE.to_utf8("\ufeff") == "\xEF\xBB\xBF"
 
     def test_to_str(self):
         """Ensure to_str works as expected"""
@@ -504,7 +525,7 @@ class TestSystem:
     def test_to_unicode(self):
         """Ensure to_unicode works as expected"""
         debug.trace(4, "test_to_unicode()")
-        assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == u"\ufeff"
+        assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\ufeff"
 
     def test_from_unicode(self):
         """Ensure from_unicode works as expected"""
@@ -515,7 +536,7 @@ class TestSystem:
         """Ensure to_string works as expected"""
         debug.trace(4, "test_to_string()")
         assert THE_MODULE.to_string(123) == "123"
-        assert THE_MODULE.to_string(u"\u1234") ==  u"\u1234"
+        assert THE_MODULE.to_string("\u1234") ==  "\u1234"
         assert THE_MODULE.to_string(None) == "None"
 
     def test_chomp(self):
@@ -683,11 +704,6 @@ class TestSystem:
     def test_python_maj_min_version(self):
         """Ensure python_maj_min_version works as expected"""
         debug.trace(4, "test_python_maj_min_version()")
-        ## TODO: WORK-IN=PROGRESS
-
-    def test_get_args(self):
-        """Ensure get_args works as expected"""
-        debug.trace(4, "test_get_args()")
         ## TODO: WORK-IN=PROGRESS
 
     def test_get_args(self):
