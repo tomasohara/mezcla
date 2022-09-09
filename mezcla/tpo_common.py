@@ -991,7 +991,7 @@ def load_object(filename):
     """Load object data from FILENAME in pickle format"""
     debug_print("Loading object from %s" % filename, 3)
     object_data = None
-    f = open(filename, 'r')
+    f = open(filename, 'rb')
     if f:
         object_data = pickle.load(f)
         f.close()
@@ -1001,7 +1001,7 @@ def load_object(filename):
 def store_object(filename, object_data):
     """Store OBJECT_DATA in FILENAME using pickle format"""
     debug_print("Saving object to %s" % filename, 3)
-    f = open(filename, 'w')
+    f = open(filename, 'wb')
     if f:
         pickle.dump(object_data, f)
         f.close()
