@@ -45,7 +45,7 @@ class TestIt(TestWrapper):
     def test_dir_path(self):
         """Ensure dir_path works as expected"""
         debug.trace(4, "test_dir_path()")
-        assert THE_MODULE.dir_path("/tmp/solr-4888.log") == "/tmp" 
+        assert THE_MODULE.dir_path("/tmp/solr-4888.log") == "/tmp"
 
     def test_file_exists(self):
         """Ensure file_exists works as expected"""
@@ -70,23 +70,35 @@ class TestIt(TestWrapper):
     def test_real_path(self):
         """Ensure real_path works as expected"""
         debug.trace(4, "test_real_path()")
-        assert re.search("vmlinuz.*\d.\d", THE_MODULE.real_path("/vmlinuz"))
+        assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
 
     def test_indent(self):
         """Ensure indent works as expected"""
         debug.trace(4, "test_indent()")
-        ## TODO: WORK-IN=PROGRESS
+        test_text = 'this is an example text to be indented'
+        tab_indented_text = '\tthis is an example text to be indented\n'
+        assert THE_MODULE.indent(test_text, '\t') == tab_indented_text
 
     def test_indent_lines(self):
         """Ensure indent_lines works as expected"""
         debug.trace(4, "test_indent_lines()")
-        ## TODO: WORK-IN=PROGRESS
+        test_text = (
+            'this is\n'
+            'an example text\n'
+            'to be indented'
+        )
+        tab_indented_text = (
+            '\tthis is\n'
+            '\tan example text\n'
+            '\tto be indented\n'
+        )
+        assert THE_MODULE.indent_lines(test_text, '\t') == tab_indented_text
 
     def test_elide(self):
         """Ensure elide works as expected"""
         debug.trace(4, "test_elide()")
         assert THE_MODULE.elide("=" * 80, max_len=8) == "========..."
-        assert THE_MODULE.elide(None, 10) == None
+        assert THE_MODULE.elide(None, 10) is None
 
     def test_elide_values(self):
         """Ensure elide_values works as expected"""
@@ -106,14 +118,14 @@ class TestIt(TestWrapper):
     def test_issue(self):
         """Ensure issue works as expected"""
         debug.trace(4, "test_issue()")
-        assert THE_MODULE.issue("ls /") == None
+        assert THE_MODULE.issue("ls /") is None
         assert THE_MODULE.issue("xeyes &")
 
     def test_get_hex_dump(self):
         """Ensure get_hex_dump works as expected"""
         debug.trace(4, "test_get_hex_dump()")
         ## TODO: mock hexview.perl output
-        ## assert THE_MODULE.get_hex_dump("Tomás") == "00000000  54 6F 6D C3 A1 73       -                          Tom..s" 
+        ## assert THE_MODULE.get_hex_dump("Tomás") == "00000000  54 6F 6D C3 A1 73       -                          Tom..s"
 
     def test_extract_matches(self):
         """Tests for extract_matches(pattern, lines)"""
@@ -160,7 +172,7 @@ class TestIt(TestWrapper):
         """Ensure count_it works as expected"""
         debug.trace(4, "test_count_it()")
         assert dict(THE_MODULE.count_it("[a-z]", "Panama")) == {"a": 3, "n": 1, "m": 1}
-        assert THE_MODULE.count_it("\w+", "My d@wg's fleas have fleas")["fleas"] == 2
+        assert THE_MODULE.count_it(r"\w+", "My d@wg's fleas have fleas")["fleas"] == 2
 
     def test_read_lines(self):
         """Ensure read_lines works as expected"""
