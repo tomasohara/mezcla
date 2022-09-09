@@ -193,7 +193,7 @@ class TestIt(TestWrapper):
     def test_expand_misc_param(self):
         """Ensure expand_misc_param() works as expected"""
         debug.trace(4, "test_expand_misc_param()")
-        assert THE_MODULE.expand_misc_param({'x': 1, 'y': 2, 'z': 'a=3, b=4'}, 'z') == {'x': 1, 'y': 2, 'z': 'a=3 b=4', 'a': 3, 'b': 4}
+        assert THE_MODULE.expand_misc_param({'x': 1, 'y': 2, 'z': 'a=3, b=4'}, 'z') == {'x': 1, 'y': 2, 'z': 'a=3, b=4', 'a': 3, 'b': 4}
 
     def test__read_file(self):
         """Ensure _read_file() works as expected"""
