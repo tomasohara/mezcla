@@ -367,7 +367,7 @@ def expand_misc_param(misc_dict, param_name, param_dict=None):
     - PARAM_DICT defaults to the global user_parameters (or MISC_DICT if unset): see set_param_dict.
     - This was added to support having multiple user parameters specified in an HTML field.
     """
-    # EX: expand_misc_param({'x': 1, 'y': 2, 'z': 'a=3, b=4'}, 'z') => {'x': 1, 'y':, 2, 'z': 'a=3 b=4', 'a': 3, 'b': 4}
+    # EX: expand_misc_param({'x': 1, 'y': 2, 'z': 'a=3, b=4'}, 'z') => {'x': 1, 'y':, 2, 'z': 'a=3 b=4', 'a': '3', 'b': '4'}
     debug.trace(6, f"expand_misc_param({misc_dict}, {param_name}, {param_dict})")
     ## TODO: debug.trace_expr(6, misc_dict, param_name, param_dict=None, prefix="expand_misc_param: ")
     if param_dict is None:
