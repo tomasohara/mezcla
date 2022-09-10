@@ -181,10 +181,12 @@ class TestSystem:
         captured = capsys.readouterr()
         assert "Error: FOObar!" in captured.err
 
-    def test_print_exception_info(self):
+    def test_print_exception_info(self, capsys):
         """Ensure print_exception_info works as expected"""
         debug.trace(4, "test_print_exception_info()")
-        ## TODO: WORK-IN=PROGRESS
+        THE_MODULE.print_exception_info("Foobar")
+        captured = capsys.readouterr()
+        assert "Foobar" in captured.err
 
     def test_exit(self):
         """Ensure exit works as expected"""
