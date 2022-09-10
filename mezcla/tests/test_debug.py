@@ -4,6 +4,8 @@
 #     https://stackoverflow.com/questions/16039463/how-to-access-the-py-test-capsys-from-inside-a-test
 #
 # Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH="." python tests/test_debug.py
 # - For tests that capture standard error, see
 #       https://docs.pytest.org/en/6.2.x/capture.html
 # - This uses capsys fixture mentioned in above link.
