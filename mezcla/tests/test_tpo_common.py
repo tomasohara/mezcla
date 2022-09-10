@@ -131,23 +131,20 @@ class TestTpoCommon:
     def test_normalize_unicode(self):
         """Ensure normalize_unicode works as expected"""
         debug.trace(4, "test_normalize_unicode()")
-        assert THE_MODULE.normalize_unicode('\u1234') == '\xe1\x88\xb4'
         assert THE_MODULE.normalize_unicode("ASCII") == "ASCII"
         assert THE_MODULE.normalize_unicode(UTF8_BOM) == UTF8_BOM
         ## TODO: assert "Jos\xc3\xa9", THE_MODULE.normalize_unicode(JOSE)
-
-    def test__normalize_unicode(self):
-        """Ensure _normalize_unicode works as expected"""
-        debug.trace(4, "test__normalize_unicode()")
-        ## TODO: WORK-IN=PROGRESS
+        ## TODO: add tests for sys.version_info.major < 3
+        ## assert THE_MODULE.normalize_unicode('\u1234') == '\xe1\x88\xb4'
 
     def test_ensure_unicode(self):
         """Ensure ensure_unicode works as expected"""
         debug.trace(4, "test_ensure_unicode()")
-        assert THE_MODULE.ensure_unicode('\xe1\x88\xb4') == '\u1234'
         assert THE_MODULE.ensure_unicode("ASCII") == "ASCII"
         assert "Jos\xe9" == THE_MODULE.ensure_unicode(JOSE)
         ## TODO: assert THE_MODULE.ensure_unicode(UTF8_BOM) == '\ufeff'
+        ## TODO: add tests for sys.version_info.major < 3
+        ## assert THE_MODULE.ensure_unicode('\xe1\x88\xb4') == '\u1234'
 
     def test_print_stderr(self):
         """Ensure print_stderr works as expected"""
