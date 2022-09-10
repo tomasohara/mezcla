@@ -94,17 +94,17 @@ class TestMiscUtils:
             'peach': 43,
         }
         sorted_hash = [
-            ('apples', 1411),
-            ('peach', 43),
             ('bananas', 3),
+            ('peach', 43),
+            ('apples', 1411),
         ]
         reversed_hash = [
-            ('bananas', 3),
-            ('peach', 43),
             ('apples', 1411),
+            ('peach', 43),
+            ('bananas', 3),
         ]
-        assert THE_MODULE.sort_weighted_hash(test_hash) == sorted_hash
-        assert THE_MODULE.sort_weighted_hash(test_hash, reverse=True) == reversed_hash
+        assert THE_MODULE.sort_weighted_hash(test_hash) == reversed_hash
+        assert THE_MODULE.sort_weighted_hash(test_hash, reverse=False) == sorted_hash
         assert len(THE_MODULE.sort_weighted_hash(test_hash, max_num=2)) == 2
 
     def test_unzip(self):
