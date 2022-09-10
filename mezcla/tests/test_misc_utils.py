@@ -124,16 +124,24 @@ class TestMiscUtils:
         """Ensure eval_expression works as expected"""
         debug.trace(4, "test_eval_expression()")
         assert THE_MODULE.eval_expression("len([123, 321]) == 2")
+        assert not THE_MODULE.eval_expression("'helloworld' == 2")
 
-    def test_trace_named_object(self):
+    def test_trace_named_object(self, capsys):
         """Ensure trace_named_object works as expected"""
         debug.trace(4, "test_trace_named_object()")
-        assert THE_MODULE.trace_named_object(4, "sys.argv")
+        # With level -1 we ensure that the trace will be printed
+        THE_MODULE.trace_named_object(-1, "sys.argv")
+        captured = capsys.readouterr()
+        assert "sys.argv" in captured.err
 
-    def test_trace_named_objects(self):
+    def test_trace_named_objects(self, capsys):
         """Ensure trace_named_objects works as expected"""
         debug.trace(4, "test_trace_named_objects()")
-        assert THE_MODULE.trace_named_object(4, "[len(sys.argv), sys.argv]")
+        # With level -1 we ensure that the trace will be printed
+        THE_MODULE.trace_named_objects(-1, "[len(sys.argv), sys.argv]")
+        captured = capsys.readouterr()
+        assert "len(sys.argv)" in captured.err
+        assert "sys.argv" in captured.err
 
     def test_exactly1(self):
         """Ensure exactly1 works as expected"""
