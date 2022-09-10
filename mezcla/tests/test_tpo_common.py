@@ -417,7 +417,24 @@ class TestTpoCommon:
     def test_sort_weighted_hash(self):
         """Ensure sort_weighted_hash works as expected"""
         debug.trace(4, "test_sort_weighted_hash()")
-        ## TODO: WORK-IN=PROGRESS
+        test_hash = {
+            'bananas': 3,
+            'apples': 1411,
+            'peach': 43,
+        }
+        sorted_hash = [
+            ('bananas', 3),
+            ('peach', 43),
+            ('apples', 1411),
+        ]
+        reversed_hash = [
+            ('apples', 1411),
+            ('peach', 43),
+            ('bananas', 3),
+        ]
+        assert THE_MODULE.sort_weighted_hash(test_hash) == reversed_hash
+        assert THE_MODULE.sort_weighted_hash(test_hash, reverse=False) == sorted_hash
+        assert len(THE_MODULE.sort_weighted_hash(test_hash, max_num=2)) == 2
 
     def test_format_freq_hash(self):
         """Ensure format_freq_hash works as expected"""
