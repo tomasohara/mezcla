@@ -513,7 +513,9 @@ class TestSystem:
     def test_to_utf8(self):
         """Ensure to_utf8 works as expected"""
         debug.trace(4, "test_to_utf8()")
-        assert THE_MODULE.to_utf8("\ufeff") == "\xEF\xBB\xBF"
+        assert THE_MODULE.to_utf8("\ufeff") == "\ufeff"
+        ## TODO: add tests for sys.version_info.major < 3
+        ## assert THE_MODULE.to_utf8("\ufeff") == "\xEF\xBB\xBF"
 
     def test_to_str(self):
         """Ensure to_str works as expected"""
@@ -528,7 +530,9 @@ class TestSystem:
     def test_to_unicode(self):
         """Ensure to_unicode works as expected"""
         debug.trace(4, "test_to_unicode()")
-        assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\ufeff"
+        assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\xEF\xBB\xBF"
+        ## TODO: add tests for sys.version_info.major < 3
+        ## assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\ufeff"
 
     def test_from_unicode(self):
         """Ensure from_unicode works as expected"""
