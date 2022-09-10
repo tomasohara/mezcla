@@ -28,7 +28,7 @@ from mezcla import system
 #    TestIt.script_module   string name
 import mezcla.text_utils as THE_MODULE
 
-HTML_FILENAME = "simple-window-dimensions.html"
+HTML_FILENAME = "./resources/simple-window-dimensions.html"
 
 EXPECTED_TEXT = """
    Simple window dimensions
@@ -45,7 +45,7 @@ EXPECTED_TEXT = """
 # NOTE: Whitespace and punctuation gets normalized
 # TODO: restore bullet points (e.g., "* Screen dimensions")
 
-MS_WORD_FILENAME = "spanish-accents.docx"
+MS_WORD_FILENAME = "./resources/spanish-accents.docx"
 
 MS_WORD_TEXT = "Tío Tomás\t\t\t\tUncle Tom\n\n¡Buenos días!\t\t\t\tGood morning\n\nçãêâôöèäàÃëÇÂîòïÔìðÊÅåùÀŠý\t\tcaeaooeaaAeCAioiOioEAauASy"
 
