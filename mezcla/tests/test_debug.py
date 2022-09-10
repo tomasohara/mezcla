@@ -27,7 +27,6 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.debug as THE_MODULE
 
 class TestDebug:
@@ -44,6 +43,156 @@ class TestDebug:
         self.stderr_text = "world"
         self.expected_stdout_trace = self.stdout_text + "\n"
         self.expected_stderr_trace = self.stderr_text + "\n"
+
+    def test_set_level(self):
+        """Ensure set_level works as expected"""
+        debug.trace(4, f"test_set_level(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_get_level(self):
+        """Ensure get_level works as expected"""
+        debug.trace(4, f"test_get_level(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_get_output_timestamps(self):
+        """Ensure get_output_timestamps works as expected"""
+        debug.trace(4, f"test_get_output_timestamps(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_set_output_timestamps(self):
+        """Ensure set_output_timestamps works as expected"""
+        debug.trace(4, f"test_set_output_timestamps(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_trace(self):
+        """Ensure trace works as expected"""
+        debug.trace(4, f"test_trace(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_trace_fmtd(self):
+        """Ensure trace_fmtd works as expected"""
+        debug.trace(4, f"test_trace_fmtd(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_trace_object(self):
+        """Ensure trace_object works as expected"""
+        debug.trace(4, f"test_trace_object(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_trace_values(self):
+        """Ensure trace_values works as expected"""
+        debug.trace(4, f"test_trace_values(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_trace_expr(self):
+        """Ensure trace_expr works as expected"""
+        debug.trace(4, f"test_trace_expr(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_trace_current_context(self):
+        """Ensure trace_current_context works as expected"""
+        debug.trace(4, f"test_trace_current_context(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_trace_exception(self):
+        """Ensure trace_exception works as expected"""
+        debug.trace(4, f"test_trace_exception(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_raise_exception(self):
+        """Ensure raise_exception works as expected"""
+        debug.trace(4, f"test_raise_exception(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_assertion(self):
+        """Ensure assertion works as expected"""
+        debug.trace(4, f"test_assertion(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_val(self):
+        """Ensure val works as expected"""
+        debug.trace(4, f"test_val(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_code(self):
+        """Ensure code works as expected"""
+        debug.trace(4, f"test_code(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_debug_print(self):
+        """Ensure debug_print works as expected"""
+        debug.trace(4, f"test_debug_print(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_timestamp(self):
+        """Ensure timestamp works as expected"""
+        debug.trace(4, f"test_timestamp(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_debugging(self):
+        """Ensure debugging works as expected"""
+        debug.trace(4, f"test_debugging(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_detailed_debugging(self):
+        """Ensure detailed_debugging works as expected"""
+        debug.trace(4, f"test_detailed_debugging(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_verbose_debugging(self):
+        """Ensure verbose_debugging works as expected"""
+        debug.trace(4, f"test_verbose_debugging(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_format_value(self):
+        """Ensure format_value works as expected"""
+        debug.trace(4, f"test_format_value(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_xor(self):
+        """Ensure xor works as expected"""
+        debug.trace(4, f"test_xor(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_xor3(self):
+        """Ensure xor3 works as expected"""
+        debug.trace(4, f"test_xor3(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_init_logging(self):
+        """Ensure init_logging works as expected"""
+        debug.trace(4, f"test_init_logging(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_profile_function(self):
+        """Ensure profile_function works as expected"""
+        debug.trace(4, f"test_profile_function(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_reference_var(self):
+        """Ensure reference_var works as expected"""
+        debug.trace(4, f"test_reference_var(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_clip_value(self):
+        """Ensure clip_value works as expected"""
+        debug.trace(4, f"test_clip_value(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_read_line(self):
+        """Ensure read_line works as expected"""
+        debug.trace(4, f"test_read_line(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_debug_init(self):
+        """Ensure debug_init works as expected"""
+        debug.trace(4, f"test_debug_init(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_display_ending_time_etc(self):
+        """Ensure display_ending_time_etc works as expected"""
+        debug.trace(4, f"test_display_ending_time_etc(): self={self}")
+        ## TODO: WORK-IN-PROGRESS
 
     def test_visible_simple_trace(self, capsys):
         """Make sure level-1 trace outputs to stderr"""
@@ -108,6 +257,7 @@ class TestDebug:
         THE_MODULE.code(4, lambda: increment)
         THE_MODULE.set_level(save_trace_level)
         assert(count == 0)
+
 
 #------------------------------------------------------------------------
 
