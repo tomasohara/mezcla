@@ -1180,7 +1180,7 @@ def equivalent(list1, list2):
     assert(isinstance(list1, list) and isinstance(list2, list))
     len1 = len(set(list1))
     len2 = len(set(list2))
-    ok = (len1 == len2) and (len(intersection(list1, list2) == len1))
+    ok = len1 == len2 and len(intersection(list1, list2)) == len1
     debug_format("equivalent({list1}, {list1}) => {ok}", 5)
     return ok
 

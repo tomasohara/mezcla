@@ -470,6 +470,8 @@ class TestTpoCommon:
         """Ensure equivalent works as expected"""
         debug.trace(4, "test_equivalent()")
         assert THE_MODULE.equivalent([1, 2, 3], [1, 2, 3])
+        assert not THE_MODULE.equivalent([1, 2, 3, 4], [1, 2, 3])
+        assert not THE_MODULE.equivalent([1, 3], [1, 2])
 
     def test_append_new(self):
         """Ensure append_new works as expected"""
