@@ -167,16 +167,19 @@ class TestSystem:
         debug.trace(4, "test_get_exception()")
         ## TODO: WORK-IN=PROGRESS
 
-    def test_print_error(self):
+    def test_print_error(self, capsys):
         """Ensure print_error works as expected"""
         debug.trace(4, "test_print_error()")
-        ## TODO: WORK-IN=PROGRESS
+        THE_MODULE.print_error("this is an test error message")
+        captured = capsys.readouterr()
+        assert "this is an test error message" in captured.err
 
-    def test_print_stderr(self):
+    def test_print_stderr(self, capsys):
         """Ensure print_stderr works as expected"""
         debug.trace(4, "test_print_stderr()")
-        ## TODO: WORK-IN=PROGRESS
-        ## NOTE: print_stderr is deprecated, has lowest priority to be tested.
+        THE_MODULE.print_stderr("Error: F{oo}bar!", oo='OO')
+        captured = capsys.readouterr()
+        assert "Error: FOObar!" in captured.err
 
     def test_print_exception_info(self):
         """Ensure print_exception_info works as expected"""
