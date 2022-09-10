@@ -220,7 +220,7 @@ class TestIt(TestWrapper):
     def test_old_download_web_document(self):
         """Ensure old_download_web_document() works as expected"""
         debug.trace(4, "test_old_download_web_document()")
-        assert "Search" in THE_MODULE.old_download_web_document("https://www.google.com")
+        assert "<!doctype html>" in THE_MODULE.old_download_web_document("https://www.google.com")
 
     def test_download_web_document(self):
         """Ensure download_web_document() works as expected"""
