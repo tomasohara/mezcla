@@ -118,7 +118,8 @@ class TestIt(TestWrapper):
     def test_issue(self):
         """Ensure issue works as expected"""
         debug.trace(4, "test_issue()")
-        assert THE_MODULE.issue("ls /") is None
+        ## TODO: test trace stdout
+        assert THE_MODULE.issue("ls /")
         assert THE_MODULE.issue("xeyes &")
 
     def test_get_hex_dump(self):
