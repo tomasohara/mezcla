@@ -45,6 +45,11 @@ class TestIt(TestWrapper):
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
+    def test_something_else(self):
+        """TODO: flesh out test for something else"""
+        debug.trace(4, "test_something_else()")
+        ## ex: assert THE_MODULE.TODO_function() == TODO_value
+
     def test_sklearn_report(self):
         """Ensure sklearn_report works as expected"""
         debug.trace(4, "test_sklearn_report()")
@@ -78,13 +83,6 @@ class TestIt(TestWrapper):
         gh.write_lines(self.temp_file, data)
         output = self.run_script("", self.temp_file)
         assert re.search(r"TODO-pattern", output.strip())
-        return
-
-    def test_something_else(self):
-        """TODO: flesh out test for something else"""
-        debug.trace(4, "test_something_else()")
-        self.fail("TODO: code test")
-        ## ex: assert THE_MODULE.TODO_function() == TODO_value
         return
 
     ## TODO: test ClassifierWrapper class
