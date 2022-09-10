@@ -4,7 +4,7 @@ branch = True
 [report]
 omit = 
   # Omit test files and init
-  */tests/test_*
+  */test_*
   */__init__.py
 
   # Omit lowest testing priority
