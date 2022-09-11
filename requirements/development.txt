@@ -9,3 +9,5 @@
 flit
 pytest
 coverage
+ipython
+pylint
