@@ -221,17 +221,30 @@ class TestDebug:
     def test_debugging(self):
         """Ensure debugging works as expected"""
         debug.trace(4, f"test_debugging(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.set_level(4)
+        assert THE_MODULE.debugging(2)
+        assert THE_MODULE.debugging(4)
+        assert not THE_MODULE.debugging(6)
 
     def test_detailed_debugging(self):
         """Ensure detailed_debugging works as expected"""
         debug.trace(4, f"test_detailed_debugging(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.set_level(2)
+        assert not THE_MODULE.detailed_debugging()
+        THE_MODULE.set_level(4)
+        assert THE_MODULE.detailed_debugging()
+        THE_MODULE.set_level(6)
+        assert THE_MODULE.detailed_debugging()
 
     def test_verbose_debugging(self):
         """Ensure verbose_debugging works as expected"""
         debug.trace(4, f"test_verbose_debugging(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.set_level(2)
+        assert not THE_MODULE.verbose_debugging()
+        THE_MODULE.set_level(5)
+        assert THE_MODULE.verbose_debugging()
+        THE_MODULE.set_level(7)
+        assert THE_MODULE.verbose_debugging()
 
     def test_format_value(self):
         """Ensure format_value works as expected"""
@@ -241,6 +254,7 @@ class TestDebug:
     def test_xor(self, capsys):
         """Ensure xor works as expected"""
         debug.trace(4, f"test_xor(): self={self}")
+        THE_MODULE.set_level(7)
         # Test the XOR table
         assert not THE_MODULE.xor(0, 0.0)
         assert THE_MODULE.xor(0, 1.0)
@@ -253,6 +267,7 @@ class TestDebug:
     def test_xor3(self, capsys):
         """Ensure xor3 works as expected"""
         debug.trace(4, f"test_xor3(): self={self}")
+        THE_MODULE.set_level(7)
         # Test the XOR table
         assert not THE_MODULE.xor3(0, 0, 0)
         assert THE_MODULE.xor3(0, 0, 1)
