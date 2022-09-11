@@ -14,6 +14,8 @@ omit =
   ./mezcla/_postprocess_bert_predictions.py
   ./mezcla/run_albert_classifier.py
   ./mezcla/run_bert_classifier.py
+exclude_lines =
+  .*sys.version_info.major *< *3.*
 
 [html]
 directory = mezcla/tests/htmlcov
