@@ -49,27 +49,36 @@ class TestDebug:
     def test_set_level(self):
         """Ensure set_level works as expected"""
         debug.trace(4, f"test_set_level(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.set_level(5)
+        assert THE_MODULE.trace_level == 5
 
     def test_get_level(self):
         """Ensure get_level works as expected"""
         debug.trace(4, f"test_get_level(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.trace_level = 5
+        assert THE_MODULE.get_level() == 5
 
     def test_get_output_timestamps(self):
         """Ensure get_output_timestamps works as expected"""
         debug.trace(4, f"test_get_output_timestamps(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.output_timestamps = 'some-test-value'
+        assert THE_MODULE.get_output_timestamps() == 'some-test-value'
 
     def test_set_output_timestamps(self):
         """Ensure set_output_timestamps works as expected"""
         debug.trace(4, f"test_set_output_timestamps(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.output_timestamps = False
+        THE_MODULE.set_output_timestamps('some-test-value')
+        assert THE_MODULE.output_timestamps == 'some-test-value'
 
-    def test_trace(self):
+    def test_trace(self, capsys):
         """Ensure trace works as expected"""
         debug.trace(4, f"test_trace(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.output_timestamps = True
+        THE_MODULE.trace(-1, 'error foobar', indentation=' -> ')
+        captured = capsys.readouterr()
+        assert " -> error foobar" in captured.err
+        THE_MODULE.output_timestamps = False
 
     def test_trace_fmtd(self):
         """Ensure trace_fmtd works as expected"""
@@ -106,20 +115,46 @@ class TestDebug:
         debug.trace(4, f"test_raise_exception(): self={self}")
         ## TODO: WORK-IN-PROGRESS
 
-    def test_assertion(self):
+    def test_assertion(self, capsys):
         """Ensure assertion works as expected"""
         debug.trace(4, f"test_assertion(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        # Not prints in stderr
+        THE_MODULE.assertion((2 + 2 + 1) == 5)
+        captured = capsys.readouterr()
+        assert 'failed' not in captured.err
+        # Prints assertion failed in stderr
+        THE_MODULE.assertion((2 + 2) == 5)
+        captured = capsys.readouterr()
+        assert "failed" in captured.err
+        assert "(2 + 2) == 5" in captured.err
 
     def test_val(self):
         """Ensure val works as expected"""
         debug.trace(4, f"test_val(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        save_trace_level = THE_MODULE.get_level()
+        test_value = 22
+        THE_MODULE.set_level(5)
+        level5_value = THE_MODULE.val(5, test_value)
+        THE_MODULE.set_level(0)
+        level0_value = THE_MODULE.val(1, test_value)
+        THE_MODULE.set_level(save_trace_level)
+        assert level5_value == test_value
+        assert level0_value is None
 
     def test_code(self):
         """Ensure code works as expected"""
         debug.trace(4, f"test_code(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        ## TODO: debug.assertion(debug_level, debug.code(debug_level, lambda: (8 / 0 != 0.0)))
+        save_trace_level = THE_MODULE.get_level()
+        count = 0
+        def increment():
+            """Increase counter"""
+            nonlocal count
+            count += 1
+        THE_MODULE.set_level(4)
+        THE_MODULE.code(4, lambda: increment)
+        THE_MODULE.set_level(save_trace_level)
+        assert(count == 0)
 
     def test_debug_print(self):
         """Ensure debug_print works as expected"""
@@ -151,15 +186,33 @@ class TestDebug:
         debug.trace(4, f"test_format_value(): self={self}")
         ## TODO: WORK-IN-PROGRESS
 
-    def test_xor(self):
+    def test_xor(self, capsys):
         """Ensure xor works as expected"""
         debug.trace(4, f"test_xor(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        # Test the XOR table
+        assert not THE_MODULE.xor(0, 0.0)
+        assert THE_MODULE.xor(0, 1.0)
+        assert THE_MODULE.xor(1, 0.0)
+        assert not THE_MODULE.xor(1, 1.0)
+        # Test stderr
+        captured = capsys.readouterr()
+        assert "xor" in captured.err
 
-    def test_xor3(self):
+    def test_xor3(self, capsys):
         """Ensure xor3 works as expected"""
         debug.trace(4, f"test_xor3(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        # Test the XOR table
+        assert not THE_MODULE.xor3(0, 0, 0)
+        assert THE_MODULE.xor3(0, 0, 1)
+        assert THE_MODULE.xor3(0, 1, 0)
+        assert not THE_MODULE.xor3(0, 1, 1)
+        assert THE_MODULE.xor3(1, 0, 0)
+        assert not THE_MODULE.xor3(1, 0, 1)
+        assert not THE_MODULE.xor3(1, 1, 0)
+        assert not THE_MODULE.xor3(1, 1, 1)
+        # Test stderr
+        captured = capsys.readouterr()
+        assert "xor3" in captured.err
 
     def test_init_logging(self):
         """Ensure init_logging works as expected"""
@@ -231,34 +284,6 @@ class TestDebug:
         assert captured.out == self.expected_stdout_trace
         assert captured.err == self.expected_stderr_trace
         THE_MODULE.trace_expr(6, pre_captured, captured)
-
-    def test_debug_val(self):
-        """Make sure debug.val only returns value when at specified level"""
-        debug.trace(4, f"test_debug_val(): self={self}")
-        save_trace_level = THE_MODULE.get_level()
-        test_value = 22
-        THE_MODULE.set_level(5)
-        level5_value = THE_MODULE.val(5, test_value)
-        THE_MODULE.set_level(0)
-        level0_value = THE_MODULE.val(1, test_value)
-        THE_MODULE.set_level(save_trace_level)
-        assert level5_value == test_value
-        assert level0_value is None
-
-    def test_debug_code(self):
-        """Make sure debug code not executed at all"""
-        debug.trace(4, f"test_debug_value(): self={self}")
-        ## TODO: debug.assertion(debug_level, debug.code(debug_level, lambda: (8 / 0 != 0.0)))
-        save_trace_level = THE_MODULE.get_level()
-        count = 0
-        def increment():
-            """Increase counter"""
-            nonlocal count
-            count += 1
-        THE_MODULE.set_level(4)
-        THE_MODULE.code(4, lambda: increment)
-        THE_MODULE.set_level(save_trace_level)
-        assert(count == 0)
 
 
 #------------------------------------------------------------------------
