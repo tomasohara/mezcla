@@ -19,17 +19,19 @@
 """Tests for debug module"""
 
 # Standard packages
-## OLD: import unittest
+import tempfile
+import sys
 
 # Installed packages
 import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.debug as THE_MODULE
+import mezcla.debug as THE_MODULE # pylint: disable=reimported
 
 class TestDebug:
     """Class for test case definitions"""
@@ -75,9 +77,19 @@ class TestDebug:
         """Ensure trace works as expected"""
         debug.trace(4, f"test_trace(): self={self}")
         THE_MODULE.output_timestamps = True
+
         THE_MODULE.trace(-1, 'error foobar', indentation=' -> ')
         captured = capsys.readouterr()
         assert " -> error foobar" in captured.err
+        assert not captured.out
+
+        # Test debug_file
+        THE_MODULE.debug_file = sys.stdout
+        THE_MODULE.trace(-1, 'some text to test debug file')
+        captured = capsys.readouterr()
+        assert 'some text to test debug file' in captured.out
+        THE_MODULE.debug_file = None
+
         THE_MODULE.output_timestamps = False
 
     def test_trace_fmtd(self):
@@ -90,10 +102,50 @@ class TestDebug:
         debug.trace(4, f"test_trace_object(): self={self}")
         ## TODO: WORK-IN-PROGRESS
 
-    def test_trace_values(self):
+    def test_trace_values(self, capsys):
         """Ensure trace_values works as expected"""
         debug.trace(4, f"test_trace_values(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        # Level -1 is used to ensure that always will run
+
+        collection_test = [
+            'foobarerror',
+            'some-error',
+            'another error',
+        ]
+
+        # Test normal usage
+        THE_MODULE.trace_values(-1, collection_test)
+        captured = capsys.readouterr()
+        for element in collection_test:
+            assert f": {element}" in captured.err
+
+        # Test indentation
+        THE_MODULE.trace_values(-1, collection_test, indentation=' -> ')
+        captured = capsys.readouterr()
+        for i, element in enumerate(collection_test):
+            assert f" -> {i}: {element}" in captured.err
+
+        # Test non list collection (string)
+        THE_MODULE.trace_values(-1, "somevalue")
+        captured = capsys.readouterr()
+        for char in "somevalue":
+            assert f": {char}" in captured.err
+
+        # Test non list collection (tuple)
+        THE_MODULE.trace_values(-1, 123)
+        captured = capsys.readouterr()
+        assert ": 123" in captured.err
+
+        # Test use_repr parameter
+        class Person:
+            """Test class"""
+            def __init__(self, name):
+                self.name = name
+            def __repr__(self):
+                return f'Person("{self.name}")'
+        THE_MODULE.trace_values(-1, [Person("Kiran")], use_repr=True)
+        captured = capsys.readouterr()
+        assert 'Person("Kiran")' in captured.err
 
     def test_trace_expr(self):
         """Ensure trace_expr works as expected"""
@@ -232,7 +284,8 @@ class TestDebug:
     def test_clip_value(self):
         """Ensure clip_value works as expected"""
         debug.trace(4, f"test_clip_value(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert THE_MODULE.clip_value('helloworld', 5) == 'hello...'
+        assert THE_MODULE.clip_value('12345678910111213141516', 7) == '1234567...'
 
     def test_read_line(self):
         """Ensure read_line works as expected"""
