@@ -15,6 +15,9 @@
 import tempfile
 import io
 from math import pi
+import time
+import sys
+import re
 
 # Installed packages
 import pytest
@@ -188,10 +191,15 @@ class TestSystem:
         captured = capsys.readouterr()
         assert "Foobar" in captured.err
 
-    def test_exit(self):
+    def test_exit(self, monkeypatch, capsys):
         """Ensure exit works as expected"""
         debug.trace(4, "test_exit()")
-        ## TODO: WORK-IN=PROGRESS
+        def sys_exit_mock():
+            return 'exit'
+        monkeypatch.setattr(sys, "exit", sys_exit_mock)
+        THE_MODULE.exit('test exit method') # Exit is mocked, ignore code editor hidding
+        captured = capsys.readouterr()
+        assert "test exit method" in captured.err
 
     def test_setenv(self):
         """Ensure setenv works as expected"""
@@ -477,7 +485,10 @@ class TestSystem:
     def test_get_file_size(self):
         """Ensure get_file_size works as expected"""
         debug.trace(4, "test_get_file_size()")
-        ## TODO: WORK-IN=PROGRESS
+        temp_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(temp_file, 'content')
+        assert THE_MODULE.get_file_size(temp_file) == 8
+        assert THE_MODULE.get_file_size('non-existent-file.txt') == -1
 
     def test_form_path(self):
         """Ensure form_path works as expected"""
@@ -505,7 +516,7 @@ class TestSystem:
     def test_get_current_directory(self):
         """Ensure get_current_directory works as expected"""
         debug.trace(4, "test_get_current_directory()")
-        ## TODO: WORK-IN=PROGRESS
+        assert '/home/' in THE_MODULE.get_current_directory()
 
     def test_set_current_directory(self):
         """Ensure set_current_directory works as expected"""
@@ -700,25 +711,42 @@ class TestSystem:
         debug.trace(4, "test_sleep()")
         ## TODO: WORK-IN=PROGRESS
 
-    def test_current_time(self):
+    def test_current_time(self, monkeypatch):
         """Ensure current_time works as expected"""
         debug.trace(4, "test_current_time()")
-        ## TODO: WORK-IN=PROGRESS
+        def time_mock():
+            return 12345.6789
+        monkeypatch.setattr(time, "time", time_mock)
+        assert THE_MODULE.current_time() == 12345.6789
+        assert THE_MODULE.current_time(integral=True) == 12346
 
     def test_time_in_secs(self):
         """Ensure time_in_secs works as expected"""
         debug.trace(4, "test_time_in_secs()")
-        ## TODO: WORK-IN=PROGRESS
+        # This method is most covered on test_current_time
+        assert isinstance(THE_MODULE.time_in_secs(), int)
 
     def test_python_maj_min_version(self):
         """Ensure python_maj_min_version works as expected"""
         debug.trace(4, "test_python_maj_min_version()")
-        ## TODO: WORK-IN=PROGRESS
+        assert re.search(r'\d+\.\d+', str(THE_MODULE.python_maj_min_version()))
 
-    def test_get_args(self):
+    def test_get_args(self, monkeypatch):
         """Ensure get_args works as expected"""
         debug.trace(4, "test_get_args()")
-        ## TODO: WORK-IN=PROGRESS
+        args = [
+            "pytest",
+            "--name",
+            "logfilename.log",
+        ]
+        monkeypatch.setattr("sys.argv", args)
+        assert THE_MODULE.get_args() == args
+
+    def test_main(self, capsys):
+        """Ensure main works as expected"""
+        THE_MODULE.main('some-arg')
+        captured = capsys.readouterr()
+        assert "Not intended for direct invocation" in captured.err
 
 
 def set_test_env_var():
