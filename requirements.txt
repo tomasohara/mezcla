@@ -6,6 +6,22 @@
 # Distributed requirements based on
 #    https://stackoverflow.com/a/20720019/15648632
 #
-
--r requirements/production.txt
--r requirements/optional.txt
+bs4
+lxml
+textract
+cherrypy
+gensim
+mako
+matplotlib
+nltk
+numpy
+## OLD: ordereddict
+pandas
+requests
+scipy
+sklearn
+## TODO: put in setup.py
+six
+stopwords
+xgboost
+deprecated
