@@ -13,18 +13,20 @@
 # Standard packages
 import os
 import re
+import tempfile
 
 # Installed packages
 import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 #    TestIt.script_module   string name
-import mezcla.glue_helpers as THE_MODULE
+import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
@@ -33,7 +35,7 @@ class TestIt(TestWrapper):
     def test_get_temp_file(self):
         """Ensure get_temp_file works as expected"""
         debug.trace(4, "test_get_temp_file()")
-        ## TODO: WORK-IN=PROGRESS
+        assert isinstance(THE_MODULE.get_temp_file(), str)
 
     def test_remove_extension(self):
         """Ensure remove_extension works as expected"""
@@ -130,24 +132,19 @@ class TestIt(TestWrapper):
 
     def test_extract_matches(self):
         """Tests for extract_matches(pattern, lines)"""
-        ## OLD
-        ## assert gh.extract_matches("Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]) == ["Smith", "Jones"]
-        ## assert not gh.extract_matches("\t\S+", ["abc\tdef", "123\t456"]) == ["def", "456"]
         assert THE_MODULE.extract_matches(r"Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]) == ["Smith", "Jones"]
-        assert not THE_MODULE.extract_matches(r"\t\S+", ["abc\tdef", "123\t456"]) == ["def", "456"]
-        return
+        assert THE_MODULE.extract_matches(r"\t\S+", ["abc\tdef", "123\t456"]) != ["def", "456"]
 
     def test_extract_match(self):
         """Ensure extract_match works as expected"""
         debug.trace(4, "test_extract_match()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.extract_match(r"Mr. (\S+)", ["Mr. Smith", "Mr. Jones", "Mr.X"]) == "Smith"
 
     def test_basename(self):
         """Tests for basename(path, extension)"""
         assert THE_MODULE.basename("fubar.py", ".py") == "fubar"
         assert not THE_MODULE.basename("fubar.py", "") == "fubar"
         assert THE_MODULE.basename("/tmp/solr-4888.log", ".log") == "solr-4888"
-        return
 
     def test_resolve_path(self):
         """Tests for resolve_path(filename)"""
@@ -156,12 +153,11 @@ class TestIt(TestWrapper):
         # The main script should resolve to parent directory but this one to test dir
         assert not THE_MODULE.resolve_path(script) == os.path.join(os.path.dirname(__file__), test_script)
         assert THE_MODULE.resolve_path(test_script) == os.path.join(os.path.dirname(__file__), test_script)
-        return
 
     def test_extract_match_from_text(self):
         """Ensure extract_match_from_text works as expected"""
         debug.trace(4, "test_extract_match_from_text()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.extract_match_from_text(r"Mr. (\S+)", "Mr. Smith\nMr. Jones\nMr.X") == "Smith"
 
     def test_extract_matches_from_text(self):
         """Ensure extract_matches_from_text works as expected"""
@@ -178,22 +174,53 @@ class TestIt(TestWrapper):
     def test_read_lines(self):
         """Ensure read_lines works as expected"""
         debug.trace(4, "test_read_lines()")
-        ## TODO: WORK-IN=PROGRESS
+        temp_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
+        assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
 
     def test_write_lines(self):
         """Ensure write_lines works as expected"""
         debug.trace(4, "test_write_lines()")
-        ## TODO: WORK-IN=PROGRESS
+
+        content = (
+            'this is\n'
+            'a multiline\n'
+            'text used\n'
+        )
+        content_in_lines = [
+            'this is',
+            'a multiline',
+            'text used',
+        ]
+
+        # Test normal usage
+        filename = tempfile.NamedTemporaryFile().name
+        THE_MODULE.write_lines(filename, content_in_lines)
+        assert THE_MODULE.read_file(filename) == content
+
+        # Test append
+        THE_MODULE.write_lines(filename, ['for testing'], append=True)
+        assert THE_MODULE.read_file(filename) == content + 'for testing\n'
 
     def test_read_file(self):
         """Ensure read_file works as expected"""
         debug.trace(4, "test_read_file()")
-        ## TODO: WORK-IN=PROGRESS
+        temp_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
+        assert THE_MODULE.read_file(temp_file) == 'file\nwith\nmultiple\nlines\n'
 
     def test_write_file(self):
         """Ensure write_file works as expected"""
         debug.trace(4, "test_write_file()")
-        ## TODO: WORK-IN=PROGRESS
+
+        # Test normal usage
+        filename = tempfile.NamedTemporaryFile().name
+        THE_MODULE.write_file(filename, "some test")
+        assert THE_MODULE.read_file(filename) == "some test\n"
+
+        # Test append argument
+        THE_MODULE.write_file(filename, "with appended text", append=True)
+        assert THE_MODULE.read_file(filename) == "some test\nwith appended text\n"
 
     def test_copy_file(self):
         """Ensure copy_file works as expected"""
@@ -213,7 +240,10 @@ class TestIt(TestWrapper):
     def test_file_size(self):
         """Ensure file_size works as expected"""
         debug.trace(4, "test_file_size()")
-        ## TODO: WORK-IN=PROGRESS
+        temp_file = tempfile.NamedTemporaryFile().name
+        gh.write_file(temp_file, 'content')
+        assert THE_MODULE.file_size(temp_file) == 8
+        assert THE_MODULE.file_size('non-existent-file.txt') == -1
 
     def test_get_matching_files(self):
         """Ensure get_matching_files works as expected"""
