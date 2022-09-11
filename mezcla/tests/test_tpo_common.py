@@ -18,7 +18,7 @@
 """Tests for tpo_common module"""
 
 # Standard packages
-import tempfile
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest
@@ -327,7 +327,7 @@ class TestTpoCommon:
             1: 'first',
             2: 'second',
         }
-        test_filename = tempfile.NamedTemporaryFile().name
+        test_filename = gh.get_temp_file()
         test_file = open(test_filename, 'wb')
         pickle.dump(test_dict, test_file)
         test_file.close()
@@ -341,7 +341,7 @@ class TestTpoCommon:
             1: 'first',
             2: 'second',
         }
-        test_filename = tempfile.NamedTemporaryFile().name
+        test_filename = gh.get_temp_file()
 
         THE_MODULE.store_object(test_filename, test_dict)
 
@@ -360,7 +360,7 @@ class TestTpoCommon:
             1: 'first',
             2: 'second',
         }
-        test_filename = tempfile.NamedTemporaryFile().name
+        test_filename = gh.get_temp_file()
 
         THE_MODULE.store_object(test_filename, test_dict)
 
@@ -399,7 +399,7 @@ class TestTpoCommon:
             'isbusiness - true': True,
         }
 
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, content)
         assert THE_MODULE.create_boolean_lookup_table(temp_file) == expected
 

@@ -13,7 +13,6 @@
 
 # Standard packages
 import os
-import tempfile
 
 # Installed packages
 import pytest
@@ -43,7 +42,7 @@ class TestIt:
         debug.trace(4, "test_to_csv()")
 
         # Setup
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         tf = THE_MODULE.read_csv(f"{self.path}/../examples/iris.csv")
         THE_MODULE.to_csv(temp_file, tf)
 

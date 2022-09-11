@@ -12,7 +12,7 @@
 """Tests for misc_utils module"""
 
 # Standard packages
-import tempfile
+## NOTE: this is empty for now
 
 # Installed packages
 import pytest
@@ -48,7 +48,7 @@ class TestMiscUtils:
             'language': 'Python\n',
             'framework': 'Pytest\n',
         }
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, string_table)
         assert THE_MODULE.read_tabular_data(temp_file) == dict_table
 

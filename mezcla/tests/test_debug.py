@@ -19,7 +19,6 @@
 """Tests for debug module"""
 
 # Standard packages
-import tempfile
 import sys
 
 # Installed packages
@@ -27,7 +26,6 @@ import pytest
 
 # Local packages
 from mezcla import debug
-from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object

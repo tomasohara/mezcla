@@ -12,7 +12,6 @@
 """Tests for system module"""
 
 # Standard packages
-import tempfile
 import io
 from math import pi
 import time
@@ -234,7 +233,7 @@ class TestSystem:
             1: 'first',
             2: 'second',
         }
-        test_filename = tempfile.NamedTemporaryFile().name
+        test_filename = gh.get_temp_file()
 
         THE_MODULE.save_object(test_filename, test_dict)
 
@@ -250,7 +249,7 @@ class TestSystem:
             1: 'first',
             2: 'second',
         }
-        test_filename = tempfile.NamedTemporaryFile().name
+        test_filename = gh.get_temp_file()
         test_file = open(test_filename, 'wb')
         pickle.dump(test_dict, test_file)
         test_file.close()
@@ -318,14 +317,14 @@ class TestSystem:
     def test_read_entire_file(self):
         """Ensure read_entire_file works as expected"""
         debug.trace(4, "test_read_entire_file()")
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_entire_file(temp_file) == 'file\nwith\nmultiple\nlines\n'
 
     def test_read_lines(self):
         """Ensure read_lines works as expected"""
         debug.trace(4, "test_read_lines()")
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
 
@@ -368,7 +367,7 @@ class TestSystem:
             'canada': 'ottawa'
         }
 
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, content)
         assert THE_MODULE.read_lookup_table(temp_file, skip_header=False, delim=' -> ', retain_case=False) == expected_lowercase
         assert THE_MODULE.read_lookup_table(temp_file, skip_header=False, delim=' -> ', retain_case=True) == expected_uppercase
@@ -394,7 +393,7 @@ class TestSystem:
             'IsBusiness': True
         }
 
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, content)
         assert THE_MODULE.create_boolean_lookup_table(temp_file, delim=' - ', retain_case=False) == expected_lowercase
         assert THE_MODULE.create_boolean_lookup_table(temp_file, delim=' - ', retain_case=True) == expected_uppercase
@@ -415,12 +414,12 @@ class TestSystem:
         debug.trace(4, "test_write_file()")
 
         # Test normal usage
-        filename = tempfile.NamedTemporaryFile().name
+        filename = gh.get_temp_file()
         THE_MODULE.write_file(filename, "it")
         assert THE_MODULE.read_file(filename) == "it\n"
 
         # Test skip newline argument
-        filename = tempfile.NamedTemporaryFile().name
+        filename = gh.get_temp_file()
         THE_MODULE.write_file(filename, "it", skip_newline=True)
         assert THE_MODULE.read_file(filename) == "it"
         assert THE_MODULE.read_file(filename) != "it\n"
@@ -446,7 +445,7 @@ class TestSystem:
         ]
 
         # Test normal usage
-        filename = tempfile.NamedTemporaryFile().name
+        filename = gh.get_temp_file()
         THE_MODULE.write_lines(filename, content_in_lines)
         assert THE_MODULE.read_file(filename) == content
 
@@ -458,7 +457,7 @@ class TestSystem:
         """Ensure write_temp_file works as expected"""
         debug.trace(4, "test_write_temp_file()")
         ## TODO: Check why is not passing
-        ## THE_MODULE.TEMP_DIR = f'{tempfile.NamedTemporaryFile().name}-test'
+        ## THE_MODULE.TEMP_DIR = f'{gh.get_temp_file()}-test'
         ## THE_MODULE.write_temp_file('testfile', 'random content')
         ## assert THE_MODULE.read_file(f'{THE_MODULE.TEMP_DIR}/testfile') == 'random content\n'
 
@@ -477,7 +476,7 @@ class TestSystem:
     def test_file_exists(self):
         """Ensure file_exists works as expected"""
         debug.trace(4, "test_file_exists()")
-        existent_file = tempfile.NamedTemporaryFile().name
+        existent_file = gh.get_temp_file()
         gh.write_file(existent_file, 'content')
         assert THE_MODULE.file_exists(existent_file)
         assert not THE_MODULE.file_exists('bad_file_name')
@@ -485,7 +484,7 @@ class TestSystem:
     def test_get_file_size(self):
         """Ensure get_file_size works as expected"""
         debug.trace(4, "test_get_file_size()")
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, 'content')
         assert THE_MODULE.get_file_size(temp_file) == 8
         assert THE_MODULE.get_file_size('non-existent-file.txt') == -1
@@ -503,7 +502,7 @@ class TestSystem:
     def test_is_regular_file(self):
         """Ensure is_regular_file works as expected"""
         debug.trace(4, "test_is_regular_file()")
-        filename = tempfile.NamedTemporaryFile().name
+        filename = gh.get_temp_file()
         gh.write_file(filename, 'content')
         assert THE_MODULE.is_regular_file(filename)
         assert not THE_MODULE.is_regular_file('/etc')
@@ -575,14 +574,14 @@ class TestSystem:
         """Ensure non_empty_file works as expected"""
         debug.trace(4, "test_non_empty_file()")
 
-        file_with_content = tempfile.NamedTemporaryFile().name
+        file_with_content = gh.get_temp_file()
         gh.write_file(file_with_content, 'content')
         assert THE_MODULE.non_empty_file(file_with_content)
 
         assert not THE_MODULE.non_empty_file('bad_file_name')
 
         ## TODO: check why is not passing this
-        ## empty_file = tempfile.NamedTemporaryFile().name
+        ## empty_file = gh.get_temp_file()
         ## gh.write_file(empty_file, '')
         ## assert not THE_MODULE.non_empty_file(empty_file)
 

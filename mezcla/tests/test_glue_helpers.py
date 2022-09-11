@@ -12,8 +12,6 @@
 
 # Standard packages
 import os
-import re
-import tempfile
 
 # Installed packages
 import pytest
@@ -174,7 +172,7 @@ class TestIt(TestWrapper):
     def test_read_lines(self):
         """Ensure read_lines works as expected"""
         debug.trace(4, "test_read_lines()")
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
 
@@ -194,7 +192,7 @@ class TestIt(TestWrapper):
         ]
 
         # Test normal usage
-        filename = tempfile.NamedTemporaryFile().name
+        filename = gh.get_temp_file()
         THE_MODULE.write_lines(filename, content_in_lines)
         assert THE_MODULE.read_file(filename) == content
 
@@ -205,7 +203,7 @@ class TestIt(TestWrapper):
     def test_read_file(self):
         """Ensure read_file works as expected"""
         debug.trace(4, "test_read_file()")
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_file(temp_file) == 'file\nwith\nmultiple\nlines\n'
 
@@ -214,7 +212,7 @@ class TestIt(TestWrapper):
         debug.trace(4, "test_write_file()")
 
         # Test normal usage
-        filename = tempfile.NamedTemporaryFile().name
+        filename = gh.get_temp_file()
         THE_MODULE.write_file(filename, "some test")
         assert THE_MODULE.read_file(filename) == "some test\n"
 
@@ -240,7 +238,7 @@ class TestIt(TestWrapper):
     def test_file_size(self):
         """Ensure file_size works as expected"""
         debug.trace(4, "test_file_size()")
-        temp_file = tempfile.NamedTemporaryFile().name
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, 'content')
         assert THE_MODULE.file_size(temp_file) == 8
         assert THE_MODULE.file_size('non-existent-file.txt') == -1
