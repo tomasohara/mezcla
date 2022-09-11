@@ -44,12 +44,14 @@ class TestTpoCommon:
     def test_set_debug_level(self):
         """Ensure set_debug_level works as expected"""
         debug.trace(4, "test_set_debug_level()")
-        ## TODO: WORK-IN=PROGRESS
+        THE_MODULE.set_debug_level(5)
+        assert THE_MODULE.debugging_level() == 5
 
     def test_debugging_level(self):
         """Ensure debugging_level works as expected"""
         debug.trace(4, "test_debugging_level()")
-        ## TODO: WORK-IN=PROGRESS
+        THE_MODULE.set_debug_level(5)
+        assert THE_MODULE.debugging_level() == 5
 
     def test_debug_trace_without_newline(self):
         """Ensure debug_trace_without_newline works as expected"""
