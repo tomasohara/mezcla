@@ -1,8 +1,11 @@
 [run]
 branch = True
+source =
+  mezcla
+  mezcla.tfidf
 
 [report]
-omit = 
+omit =
   # Omit test files and init
   */test_*
   */__init__.py
