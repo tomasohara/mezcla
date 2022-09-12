@@ -18,7 +18,7 @@
 """Tests for tpo_common module"""
 
 # Standard packages
-## NOTE: this is empty for now
+import sys
 
 # Installed packages
 import pytest
@@ -163,10 +163,15 @@ class TestTpoCommon:
         debug.trace(4, "test_restore_stderr()")
         ## TODO: WORK-IN=PROGRESS
 
-    def test_exit(self):
+    def test_exit(self, monkeypatch, capsys):
         """Ensure exit works as expected"""
         debug.trace(4, "test_exit()")
-        ## TODO: WORK-IN=PROGRESS
+        def sys_exit_mock():
+            return 'exit'
+        monkeypatch.setattr(sys, "exit", sys_exit_mock)
+        THE_MODULE.exit('test exit method') # Exit is mocked, ignore code editor hidding
+        captured = capsys.readouterr()
+        assert "test exit method" in captured.err
 
     def test_setenv(self):
         """Ensure setenv works as expected"""
