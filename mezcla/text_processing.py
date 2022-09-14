@@ -118,6 +118,7 @@ stopwords = None
 # NLP toolkit
 if not SKIP_NLTK:
     import nltk            # pylint: disable=ungrouped-imports
+    nltk.download('all')
 # spell checking
 if not SKIP_ENCHANT:
     import enchant         # pylint: disable=ungrouped-imports
