@@ -32,7 +32,7 @@ class TestIt:
         """Ensure split_sentences works as expected"""
         debug.trace(4, "test_split_sentences()")
         assert THE_MODULE.split_sentences("I came. I saw. I conquered!") == ["I came.", "I saw.", "I conquered!"]
-        assert THE_MODULE.split_sentences("Dr. Watson, it's elementary. But why?") == ["Dr. Watson, it's elementary." "But why?"]
+        assert THE_MODULE.split_sentences("Dr. Watson, it's elementary. But why?") == ["Dr. Watson, it's elementary.", "But why?"]
 
     def test_split_word_tokens(self):
         """Ensure split_word_tokens works as expected"""
@@ -48,7 +48,7 @@ class TestIt:
         """Ensure class_for_tag works as expected"""
         debug.trace(4, "test_class_for_tag()")
         assert THE_MODULE.class_for_tag("NNS") == "noun"
-        assert THE_MODULE.class_for_tag("VBG") == "noun"
+        assert THE_MODULE.class_for_tag("VBG") == "verb"
         assert THE_MODULE.class_for_tag("VBG", previous="MD") == "verb"
         assert THE_MODULE.class_for_tag("NNP", word="(") == "punctuation"
 
@@ -82,16 +82,24 @@ class TestIt:
         debug.trace(4, "test_read_freq_data()")
         ## TODO: WORK-IN=PROGRESS
 
-    def test_read_word_POS_data(self):
+    def test_read_word_POS_data(self): # pylint: disable=invalid-name
         """Ensure read_word_POS_data works as expected"""
         debug.trace(4, "test_read_word_POS_data()")
         ## TODO: WORK-IN=PROGRESS
 
-    def test_get_most_common_POS(self):
+    def test_get_most_common_POS(self): # pylint: disable=invalid-name
         """Ensure get_most_common_POS works as expected"""
         debug.trace(4, "test_get_most_common_POS()")
-        assert THE_MODULE.get_most_common_POS("can") == "MD"
+        # Testing if word_POS_hash is not none
+        THE_MODULE.word_POS_hash = {
+            'can': 'MD'
+        }
         assert THE_MODULE.get_most_common_POS("notaword") == "NN"
+        assert THE_MODULE.get_most_common_POS("can") == "MD"
+        # Test reading from freq file
+        ## TODO: for some reason this assertion freezes
+        ## THE_MODULE.WORD_POS_FREQ_FILE = 'tests/resources/word-POS.freq'
+        ## assert THE_MODULE.get_most_common_POS("to") == "TO"
 
     def test_is_noun(self):
         """Ensure is_noun works as expected"""
