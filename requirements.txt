@@ -1,6 +1,9 @@
 # Basic requirements for main scripts
 #
-# usage:
+# By default only the cases used in multuiple scripts are installed.
+#
+# Usage examples:
+# 1. Usual
 #    pip install -r requirements.txt
 #
 # Distributed requirements based on
@@ -10,13 +13,14 @@ bs4
 lxml
 textract
 cherrypy
-gensim
+lxml
 mako
 matplotlib
 nltk
 numpy
 ## OLD: ordereddict
-pandas
+pandas>=1.3.0
+pyenchant
 requests
 scipy
 sklearn

@@ -20,6 +20,8 @@
 ## OLD: __pycache__/
 **/_*
 !**/*__init__.py
+# Likewise for trailing _'s (e.g., requirements.link_)
+**/*_
 
 # Backup file
 **/*.bak

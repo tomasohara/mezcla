@@ -30,14 +30,11 @@ import sys
 
 # Installed packages
 # TODO: require version 1.1 with TPO hacks
-import tfidf
-from tfidf.corpus import Corpus as tfidf_corpus
-from tfidf.preprocess import Preprocessor as tfidf_preprocessor
+from mezcla import tfidf
+from mezcla.tfidf.corpus import Corpus as tfidf_corpus
+from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
 
 # Local packages
-## OLD:
-## import debug
-## import system
 from mezcla import debug
 from mezcla import system
 from mezcla.system import PRECISION
@@ -57,9 +54,11 @@ PRUNE_OVERLAPPING_TERMS = system.getenv_bool("PRUNE_OVERLAPPING_TERMS", False)
 SKIP_STEMMING = system.getenv_bool("SKIP_STEMMING", False,
                                    "Skip word stemming (via Snowball)")
 INCLUDE_STEMMING = not SKIP_STEMMING
-## TODO: "LANGUAGE" => "STEMMER_LANGUAGE"
-LANGUAGE = system.getenv_text("LANGUAGE", "english",
-                              "Language for stemming and stop words (n.b., use '' for n/a)")
+STEMMER_LANGUAGE = system.getenv_value("STEMMER_LANGUAGE", None,
+                                       "Language for stemming and stop words--not recommended")
+LANGUAGE = (STEMMER_LANGUAGE or "")
+TAB_FORMAT = system.getenv_bool("TAB_FORMAT", False,
+                                 "Use tab-delimited format--facilitates spreadsheet import")
 TERM_WIDTH = system.getenv_int("TERM_WIDTH", 32,
                                "Width of term column in output")
 SCORE_WIDTH = system.getenv_int("SCORE_WIDTH", PRECISION + 6,
@@ -68,10 +67,10 @@ SCORE_WIDTH = system.getenv_int("SCORE_WIDTH", PRECISION + 6,
 # Option names and defaults
 NGRAM_SIZE_OPT = "--ngram-size"
 NUM_TOP_TERMS_OPT = "--num-top-terms"
-## OLD: NGRAM_SMOOTHING = "--use-ngram-smoothing"
 SHOW_SUBSCORES = "--show-subscores"
 SHOW_FREQUENCY = "--show-frequency"
 CSV = "--csv"
+TSV = "--tsv"
 
 #...............................................................................
 
@@ -154,7 +153,6 @@ def main():
     """Entry point for script"""
     args = sys.argv[1:]
     ## NOTE: debug now shows args
-    ## OLD: debug.trace_fmtd(5, "main(): args={a}", a=args)
     debug.trace_fmtd(4, "main()")
     debug.trace_fmtd(4, "os.environ={env}", env=os.environ)
 
@@ -162,7 +160,6 @@ def main():
     i = 0
     max_ngram_size = MAX_NGRAM_SIZE
     num_top_terms = DEFAULT_NUM_TOP_TERMS
-    ## OLD: use_ngram_smoothing = False
     show_subscores = False
     show_frequency = False
     csv_file = False
@@ -177,9 +174,6 @@ def main():
         elif (option == NUM_TOP_TERMS_OPT):
             i += 1
             num_top_terms = int(args[i])
-        ## OLD: subsumed by IDF_WEIGHTING
-        ## elif (option == NGRAM_SMOOTHING):
-        ##     use_ngram_smoothing = True
         elif (option == SHOW_SUBSCORES):
             show_subscores = True
         elif (option == SHOW_FREQUENCY):
@@ -195,6 +189,10 @@ def main():
             assert(tfidf_version >= 1.2)
         elif (option == CSV):
             csv_file = True 
+        elif (option == TSV):
+            csv_file = True
+            global DELIMITER
+            DELIMITER = "\t"
         else:
             sys.stderr.write("Error: unknown option '{o}'\n".format(o=option))
             show_usage_and_quit()
@@ -210,9 +208,6 @@ def main():
     # Initialize Tf-IDF module
     debug.assertion(not re.search(r"^en(_\w+)?$", LANGUAGE, re.IGNORECASE))
     # Note: disables stemming
-    ## OLD: my_pp = tfidf_preprocessor(language='english', gramsize=ngram_size, min_ngram_size=MIN_NGRAM_SIZE, all_ngrams=False, stemmer=lambda x: x)
-    ## TODO: make stemming and stopword removal optional (rather than useing LANGUAGE='' hack)
-    ## OLD: my_pp = tfidf_preprocessor(language=LANGUAGE, gramsize=ngram_size, min_ngram_size=MIN_NGRAM_SIZE, all_ngrams=False, stemmer=lambda x: x)
     stemmer_fn = None if INCLUDE_STEMMING else (lambda x: x)
     my_pp = tfidf_preprocessor(language=LANGUAGE, gramsize=max_ngram_size, min_ngram_size=MIN_NGRAM_SIZE, all_ngrams=False, stemmer=stemmer_fn)
     corpus = tfidf_corpus(gramsize=max_ngram_size, min_ngram_size=MIN_NGRAM_SIZE, all_ngrams=False, preprocessor=my_pp)
@@ -235,7 +230,14 @@ def main():
                     except:
                         debug.trace_fmt(5, "Exception processing line {l}", l=line)
                         doc_text = ""
-                    corpus[doc_id] = doc_text
+                    ## TODO: use defaultdict-type hash
+                    if doc_id not in corpus:
+                        corpus[doc_id] = ""
+                    else:
+                        ## TODO: corpus[doc_id] += " "
+                        corpus[doc_id] = (corpus[doc_id].text + " ")
+                    ## TODO: corpus[doc_id] += doc_text
+                    corpus[doc_id] = (corpus[doc_id].text + doc_text)
                     doc_filenames[doc_id] = filename + ":" + str(i + 1)
                     line += 1
         # Otherwise, treat entire file as document and use command-line position as the document ID
@@ -259,14 +261,14 @@ def main():
 
     # Output the top terms per document with scores
     # TODO: change the IDF weighting
-    ## OLD: IDF_WEIGHTING = 'smooth' if use_ngram_smoothing else 'basic'
-    ## BAD: for doc_id in corpus:
     for doc_id in corpus.keys():
         print("{id} [{filename}]".format(id=doc_id, filename=doc_filenames[doc_id]))
-        ## OLD: print("\t".join(headers))
-        term_header_spec = make_fixed_length(headers[0], TERM_WIDTH)
-        other_header_spec = " ".join([make_fixed_length(h, SCORE_WIDTH) for h in headers[1:]])
-        print(term_header_spec + " " + other_header_spec)
+        if TAB_FORMAT:
+            print("\t".join(headers))
+        else:
+            term_header_spec = make_fixed_length(headers[0], TERM_WIDTH)
+            other_header_spec = " ".join([make_fixed_length(h, SCORE_WIDTH) for h in headers[1:]])
+            print(term_header_spec + " " + other_header_spec)
 
         # Get ngrams for document and calculate overall score (TF-IDF).
         # Then print each in tabular format (e.g., "et al   0.000249")
@@ -277,18 +279,12 @@ def main():
         # TODO: Allow overlap if the terms occur in different parts of the document.
         if PRUNE_SUBSUMED_TERMS:
             top_terms = [term_info.ngram.strip() for term_info in top_term_info]
-            #
-            ## OLD:
-            ## def is_subsumed_in_top(term):
-            ##     "Whether TERM is subsumed by another term (in TOP_TERM_INFO from contenxt)"""
-            ##     return is_subsumed(term, top_terms)
-            #
-            ## top_term_info = [t for t in top_term_info if (not is_subsumed_in_top(t.ngram.strip()))]
             top_term_info = [ti for (i, ti) in enumerate(top_term_info) 
                              if (not is_subsumed(ti.ngram, top_terms[0: i]))]
         for (term, score) in [(ti.ngram, ti.score)
                               for ti in top_term_info if ti.ngram.strip()]:
             # Get scores including component values (e.g., IDF)
+            # TODO: don't round the frequency counts (e.g., 10.000 => 10)
             scores = []
             if show_frequency:
                 scores.append(corpus[doc_id].tf_freq(term))
@@ -300,14 +296,14 @@ def main():
             scores.append(score)
 
             # Print term and rounded scores
-            rounded_scores = [make_fixed_length(system.round_as_str(s), SCORE_WIDTH) for s in scores]
-            ## OLD:
-            ## print("{t}\t{rs}".format(t=system.to_utf8(term),
-            ##                          rs="\t".join(rounded_scores)))
-            term_spec = make_fixed_length(system.to_utf8(term), TERM_WIDTH)
-            score_spec = " ".join(rounded_scores)
-            print(term_spec + " " + score_spec)
-            ## TODO: debug.assertion((len(rounded_scores) * PRECISION) < len(score_spec) < (len(rounded_scores) * (1 + SCORE_WIDTH)))
+            if TAB_FORMAT:
+                print(term + "\t" + "\t".join(map(system.round_as_str, scores)))
+            else:
+                rounded_scores = [make_fixed_length(system.round_as_str(s), SCORE_WIDTH) for s in scores]
+                term_spec = make_fixed_length(system.to_utf8(term), TERM_WIDTH)
+                score_spec = " ".join(rounded_scores)
+                print(term_spec + " " + score_spec)
+                ## TODO: debug.assertion((len(rounded_scores) * PRECISION) < len(score_spec) < (len(rounded_scores) * (1 + SCORE_WIDTH)))
         print("")
 
     return

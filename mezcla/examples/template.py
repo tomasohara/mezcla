@@ -37,7 +37,7 @@ TL = debug.TL
 
 def main():
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): filename={system.real_path(__file__)}")
+    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
     ## TODO:
     system.print_error("Error: Implement me!")
     return

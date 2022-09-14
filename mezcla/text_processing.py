@@ -153,7 +153,8 @@ def split_sentences(text):
 
 
 def split_word_tokens(text):
-    """Splits TEXT into word tokens (i.e., words, punctuation, etc.) Note: run split_sentences first (e.g., to allow for proper handling of periods)."""
+    """Splits TEXT into word tokens (i.e., words, punctuation, etc.) Note: run split_sentences first (e.g., to allow for proper handling of periods).
+    By default, this uses NLTK's PunktSentenceTokenizer."""
     # EX: split_word_tokens("How now, brown cow?") => ['How', 'now', ',', 'brown', 'cow', '?']
     tpo.debug_print("split_word_tokens(%s); type=%s" % (text, type(text)), 7)
     if SKIP_NLTK:

@@ -531,6 +531,7 @@ def read_all_stdin():
 def read_entire_file(filename, **kwargs):
     """Read all of FILENAME and return as a string
     Note: optional arguments to open() passed along (e.g., encoding amd error handling)"""
+    # TODO: allow for overriding handling of newlines (e.g., block \r being treated as line delim)
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
@@ -620,7 +621,8 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
                 if (skip_header and (line_num == 1)):
                     continue
                 ## OLD: line = from_utf8(line)
-                line = from_utf8(line.rstrip())
+                ## OLD: line = from_utf8(line.rstrip())
+                line = from_utf8(line.rstrip("\n"))
                 if not retain_case:
                     line = line.lower()
                 if delim in line:
@@ -678,8 +680,8 @@ def lookup_entry(hash_table, entry, retain_case=False):
     return result
 
                 
-def write_file(filename, text, skip_newline=False):
-    """Create FILENAME with TEXT.
+def write_file(filename, text, skip_newline=False, append=False):
+    """Create FILENAME with TEXT and optionally for APPEND.
     Note: A newline is added at the end if missing unless SKIP_NEWLINE"""
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
@@ -687,7 +689,8 @@ def write_file(filename, text, skip_newline=False):
     try:
         if not isinstance(text, STRING_TYPES):
             text = to_string(text)
-        with open(filename, "w") as f:
+        mode = 'a' if append else 'w'
+        with open(filename, mode) as f:
             f.write(to_utf8(text))
             if not text.endswith("\n"):
                 if not skip_newline:
@@ -696,6 +699,8 @@ def write_file(filename, text, skip_newline=False):
         debug.trace_fmtd(1, "Error: Problem writing file '{f}': {exc}",
                          f=filename, exc=get_exception())
     return
+#
+# EX: write_file(f, "new", append=True); read_file(f) => "itnew\n"
 
 
 def write_binary_file(filename, data):
@@ -1165,7 +1170,7 @@ def python_maj_min_version():
 def get_args():
     """Return command-line arguments (as a list of strings)"""
     result = sys.argv
-    debug.trace_fmtd(7, "get_args() => {r}", r=result)
+    debug.trace_fmtd(6, "get_args() => {r}", r=result)
     return result
 
 def init():

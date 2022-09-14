@@ -17,10 +17,12 @@
 
 # Standard module
 import pandas as pd
+import csv
 
 # Local modules
 from mezcla import debug
 from mezcla import system
+from mezcla.text_utils import version_to_number as version_as_float
 
 # Constants
 # Note: Delim defaults to None so that dialect inference can be used.
@@ -30,16 +32,32 @@ DELIM = system.getenv_value("DELIM", None,
 COMMENT = 'comment'
 DIALECT = 'dialect'
 EXCEL = 'excel'
+DELIMITER = 'delimiter'
+SEP = 'sep'
+
+#--------------------------------------------------------------------------------
+
+# Sanity check for version info
+MIN_PANDAS_VERSION = "1.3.0"
+if (version_as_float(pd.__version__) < version_as_float(MIN_PANDAS_VERSION)):
+    system.exit(f"Error: data_utils.py now needs pandas {MIN_PANDAS_VERSION} or higher")
 
 #-------------------------------------------------------------------------------
 
 def read_csv(filename, **in_kw):
-    """Wrapper around pandas read_csv"""
+    """Wrapper around pandas read_csv
+    Note: delimiter defaults to DELIM environment, dtype to str, and both error_bad_lines & keep_default_na to False. (Override these via keyword paramsters.)
+    """
     # EX: tf = read_csv("examples/iris.csv"); tf.shape => (150, 5)
     ## TODO: clarify dtype usage
-    kw = {'delimiter': DELIM, 'dtype': str,
-          'error_bad_lines': False, 'keep_default_na': False}
+    kw = {SEP: DELIM, 'dtype': str,
+          ## BAD: 'error_bad_lines': False, 'keep_default_na': False}
+          'on_bad_lines': 'skip', 'keep_default_na': False}
+    # Overide settings based on explicit keyword arguments
     kw.update(**in_kw)
+    # Turn off quotoing if tab delimited
+    if kw[SEP] == "\t":
+        kw['quoting'] = csv.QUOTE_NONE
     # Add special processing (n.b., a bit idiosyncratic)
     if ((COMMENT not in kw) and (kw.get(DIALECT) != EXCEL)):
         debug.trace_fmt(4, "Enabling comments in read_csv")
@@ -51,11 +69,14 @@ def read_csv(filename, **in_kw):
     return df
 
 
-def to_csv(filename, data_frame):
-    """Output to FILENAME the CSV for DATA_FRAME without index column"""
+def to_csv(filename, data_frame, **in_kw):
+    """Wrapper around pandas DATA_FRAME.to_csv with FILENAME
+    Note: by default, the index is omitted"""
     result = None
+    kw = {SEP: DELIM, 'index': False}
+    kw.update(**in_kw)
     try:
-        result = data_frame.to_csv(filename, index=False)
+        result = data_frame.to_csv(filename, **kw)
     except:
         debug.trace(4, f"Exception during write_csv: {system.get_exception()}")
     debug.trace(4, f"to_csv({filename}, {data_frame}) => {result}")

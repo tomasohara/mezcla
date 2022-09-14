@@ -43,6 +43,8 @@ F_OPT = "f"                             # alias for fields
 FIX = "fix"                             # convert runs of spaces into a tab
 CSV = "csv"                             # comma-separated value format
 TSV = "tsv"                             # tab-separated value format
+OUTPUT_CSV = "output-csv"               # CSV for output
+OUTPUT_TSV = "output-tsv"               # TSV for output
 CONVERT_DELIM = "convert-delim"         # convert input csv to tsv (or vice versa)
 SNIFFER_ARG = "sniffer"                 # run CSV sniffer to detect dialect
 ## TODO
@@ -61,7 +63,8 @@ EXCEL_STYLE = "excel-style"             # use Excel dialect for CSV (redundant w
 UNIX_STYLE = "unix-style"               # use Unix dialect for CSV (otherwise Excel is used)
 PYSPARK_STYLE = "pyspark-style"         # use PySpark dialect for CSV (otherwise Unix is used)
 TAB_STYLE = "tab-style"                 # use (non-Excel) tab dialect
-DIALECT = "dialect"                     # dialect option
+DIALECT = "dialect"                     # --dialect option
+OUTPUT_DIALECT = "output-dialect"       # --output-dialect option
 EXCEL_DIALECT = "excel"                 # dialect parameter for Excel style
 UNIX_DIALECT = "unix"                   # "" for Unix style
 PYSPARK_DIALECT = "pyspark"             # "" for Pyspark style
@@ -144,8 +147,6 @@ class tab_dialect(csv.Dialect):
     delimiter = TAB
     quotechar = ''               # default of '"' leads to multiline rows
     doublequote = False          # uses escaped double quote when embedded
-    ## BAD: escapechar = None            # don't do any special character escaping
-    ## BAD2: escapechar = ''              # don't do any special character escaping
     # TODO: use special Unicode space-like character
     escapechar = '\\'
     skipinitialspace = False     # keep leaing space afer delimiter
@@ -160,12 +161,14 @@ class Script(Main):
     """Input processing class"""
     fields = []
     fix = False
-    delimiter = TAB
+    ## OLD: delimiter = TAB
+    delimiter = None
     output_delimiter = None
     csv = False
     csv_reader = None
     all_fields = False
     dialect = None
+    output_dialect = None
     run_sniffer = False
     single_line = False
     max_field_len = None
@@ -195,14 +198,23 @@ class Script(Main):
         tsv = self.get_parsed_option(TSV, not self.csv)
         if tsv:
             self.delimiter = TAB
+        self.delimiter = self.get_parsed_option(DELIM, self.delimiter)
+        #
+        debug.assertion(self.output_delimiter is None)
+        if self.get_parsed_option(OUTPUT_CSV):
+            self.output_delimiter = COMMA
+        if self.get_parsed_option(OUTPUT_TSV):
+            self.output_delimiter = TAB
+        if self.output_delimiter is None:
+            self.output_delimiter = self.delimiter
         if self.get_parsed_option(CONVERT_DELIM):
             self.output_delimiter = TAB if (self.delimiter == COMMA) else COMMA
-        else:
+        if (self.output_delimiter is None):
             self.output_delimiter = self.delimiter
-        self.delimiter = self.get_parsed_option(DELIM, self.delimiter)
+        #
         self.run_sniffer = self.get_parsed_option(SNIFFER_ARG, self.run_sniffer)
         debug.assertion(not (self.csv and (self.delimiter != COMMA)))
-        self.output_delimiter = self.get_parsed_option(OUT_DELIM, self.output_delimiter)
+        self.output_delimiter = self.get_parsed_option(OUT_DELIM, (self.output_delimiter or self.delimiter))
         self.single_line = self.get_parsed_option(SINGLE_LINE, self.single_line)
         self.max_field_len = self.get_parsed_option(MAX_FIELD_LEN, self.max_field_len)
         # self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
@@ -212,14 +224,19 @@ class Script(Main):
                                                   [DIALECT, EXCEL_DIALECT, UNIX_DIALECT, PYSPARK_DIALECT, TAB_DIALECT]]))
         if self.get_parsed_option(EXCEL_STYLE):
             self.dialect = EXCEL_DIALECT
-        elif self.get_parsed_option(UNIX_STYLE):
+        elif (self.get_parsed_option(UNIX_STYLE) or (self.delimiter == COMMA)):
             self.dialect = UNIX_DIALECT
         elif self.get_parsed_option(PYSPARK_STYLE):
             self.dialect = PYSPARK_DIALECT
-        elif self.get_parsed_option(TAB_STYLE):
+        elif (self.get_parsed_option(TAB_STYLE) or (self.delimiter == TAB)):
             self.dialect = TAB_DIALECT
-        else:
-            self.dialect = self.get_parsed_option(DIALECT, self.dialect)
+        self.dialect = self.get_parsed_option(DIALECT, self.dialect)
+        default_output_dialect = (self.output_dialect or self.dialect) if not self.run_sniffer else self.output_dialect
+        if (self.output_delimiter == TAB):
+            default_output_dialect = TAB_DIALECT
+        if (self.output_delimiter == COMMA):
+            default_output_dialect = UNIX_DIALECT
+        self.output_dialect = self.get_parsed_option(OUTPUT_DIALECT, default_output_dialect)
         # TODO: see if there is an option to determine number of fields (before reading data)
         ## if self.all_fields:
         ##    self.fields = range(self.csv_reader.num_fields)
@@ -286,6 +303,8 @@ class Script(Main):
             self.dialect = csv.Sniffer().sniff(self.input_stream.read(SNIFFER_LOOKAHEAD))
             debug.trace_object(4, self.dialect, "csv sniffer")
             self.input_stream.seek(0)
+            if (self.output_dialect is None):
+                self.output_dialect = self.dialect
 
         # Optionally, fixup input if TSV changins multiple spaces into single tab.
         # Note: makes pass through data, writes to temp file, and then resets input stream to
@@ -311,6 +330,7 @@ class Script(Main):
             sys.stdin = self.input_stream
 
         # Create reader and writer
+        debug.trace_expr(3, self.delimiter, self.output_delimiter, self.dialect, self.output_dialect)
         ## BAD: self.csv_reader = csv.reader(iter(system.stdin_reader()), delimiter=self.delimiter, quotechar='"')
         if (self.input_stream != sys.stdin):
             # note: silly csv.reader requirement for newline option to open (TODO, open what?)
@@ -322,8 +342,7 @@ class Script(Main):
         debug.trace_object(5, self.csv_reader, "csv_reader")
         debug.trace_object(5, self.csv_reader.dialect, "csv_reader.dialect")
         csv_writer = csv.writer(sys.stdout, delimiter=self.output_delimiter, 
-                                ## TODO: dialect=self.output_dialect)
-                                )
+                                dialect=self.output_dialect)
 
         # Iterate through the rows, outputting subset of columns
         last_row_length = None
@@ -414,6 +433,7 @@ if __name__ == '__main__':
         multiple_files=True,
         boolean_options=[(CSV, "Comma-separated values (Excel as per csv module)".format(xls=EXCEL_STYLE)),
                          (TSV, "Tab-separated values"),
+                         OUTPUT_CSV, OUTPUT_TSV,
                          (CONVERT_DELIM, "Convert csv to tsv (or vice versa)"),
                          (SNIFFER_ARG, "Detect csv dialect by lookahead (file-input only)"),
                          ## TODO: INPUT_CSV, OUTPUT_CSV, INPUT_TSV, OUTPUT_TSV,
@@ -428,6 +448,7 @@ if __name__ == '__main__':
         int_options = [(MAX_FIELD_LEN, "Maximum length per field")],
         text_options=[(DELIM, "Input field separator"),
                       (DIALECT, "CSV module dialect: standard (i.e., excel, excel-tab, or unix) or adhoc (e.g., pyspark, hive)"),
+                      (OUTPUT_DIALECT, "dialect for output--defaults to input one"),
                       (FIELDS, "Field specification (1-based): single column, range of columns, or comma-separated columns"),
                       (F_OPT, "Alias for --fields"),
                       (OUT_DELIM, "Output field separator")])
