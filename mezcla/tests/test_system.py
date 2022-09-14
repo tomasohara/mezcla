@@ -196,7 +196,8 @@ class TestSystem:
         def sys_exit_mock():
             return 'exit'
         monkeypatch.setattr(sys, "exit", sys_exit_mock)
-        THE_MODULE.exit('test exit method') # Exit is mocked, ignore code editor hidding
+        assert THE_MODULE.exit('test exit method') == 'exit'
+        # Exit is mocked, ignore code editor hidding
         captured = capsys.readouterr()
         assert "test exit method" in captured.err
 
