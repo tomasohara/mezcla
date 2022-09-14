@@ -6,9 +6,11 @@
 # Distributed requirements based on
 #    https://stackoverflow.com/a/20720019/15648632
 #
+gensim
 bert-tensorflow
 tensorflow
 pyyaml
+pyaml
 librosa
 SpeechRecognition
 ibm-watson
