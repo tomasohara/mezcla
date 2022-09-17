@@ -17,4 +17,5 @@ export PYTHONPATH="$mezcla/:$PYTHONPATH"
 export COVERAGE_RCFILE="$base/.coveragerc"
 
 coverage run -m pytest $tests
+coverage combine
 coverage html
