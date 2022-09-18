@@ -53,6 +53,7 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla import tpo_common as tpo
 
+TODO_FILE = "TODO MODULE"
 TODO_MODULE = "TODO MODULE"
 
 # Note: the following is for transparent resolution of dotted module names
@@ -66,9 +67,12 @@ debug.assertion(THIS_PACKAGE == "mezcla")
 
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition"""
+    script_file = TODO_FILE # name for invocation 'python -m coverage run ...'
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usuually set via derive_tested_module_name)
     temp_base = system.getenv_text("TEMP_BASE",
                                    tempfile.NamedTemporaryFile().name)
+    check_coverage = system.getenv_bool("CHECK_COVERAGE", False,
+                                        "Check coverage during unit testing")
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
     temp_file = tempfile.NamedTemporaryFile().name
@@ -139,6 +143,15 @@ class TestWrapper(unittest.TestCase):
                          f=test_filename, m=full_module_name)
         return (full_module_name)
 
+    @staticmethod
+    def get_module_file_path(test_filename):
+        """Return absolute path of module being tesed"""
+        result = system.absolute_path(test_filename)
+        result = re.sub(r'tests\/test_(.*\.py)', r'\1', result)
+        debug.assertion(result.endswith(".py"))
+        debug.trace(7, f'get_module_file_path({test_filename}) => {result}')
+        return result
+
     def setUp(self):
         """Per-test initializations
         Notes:
@@ -189,9 +202,18 @@ class TestWrapper(unittest.TestCase):
         if not out_file:
             out_file = self.temp_file + ".out"
         # note: output is redirected to a file to preserve tabs
-        debug.assertion(not self.script_module.endswith(".py"))
-        gh.issue("{env} python  -m {module}  {opts}  {path} 1> {out} 2> {log}",
-                 env=env_options, module=self.script_module, 
+
+        # Set converage script path and command spec
+        coverage_spec = ''
+        if self.check_coverage:
+            gh.assertion(self.script_file)
+            self.script_module = self.script_file
+            coverage_spec = 'coverage run'
+        else:
+            debug.assertion(not self.script_module.endswith(".py"))
+
+        gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path} 1> {out} 2> {log}",
+                 env=env_options, cov_spec=coverage_spec, module=self.script_module,
                  opts=options, path=data_path, out=out_file, log=log_file)
         output = gh.read_file(out_file)
         # note; trailing newline removed as with shell output
