@@ -41,6 +41,7 @@ if not re.search(__file__, r"\btemplate.py$"):
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)

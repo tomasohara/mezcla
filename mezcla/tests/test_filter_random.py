@@ -32,6 +32,7 @@ import mezcla.filter_random as THE_MODULE
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.derive_tested_module_name(__file__)
 
     def setUp(self):

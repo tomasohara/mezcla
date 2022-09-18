@@ -60,6 +60,7 @@ NESTED_XML = """<?xml version="1.1"?>
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
 
     def test_data_file(self):
