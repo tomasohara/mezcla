@@ -15,6 +15,7 @@ pip uninstall mezcla &> /dev/null # Avoid conflicts with installed Mezcla
 
 export PYTHONPATH="$mezcla/:$PYTHONPATH"
 export COVERAGE_RCFILE="$base/.coveragerc"
+export CHECK_COVERAGE='true'
 
 coverage run -m pytest $tests
 coverage combine
