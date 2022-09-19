@@ -15,13 +15,13 @@
 #    - Cosine matrix:
 #
 #            [CLS]   april   july    [SEP]   spring  summer  [SEP]
-#    [CLS]   1.0     0.344   0.336   -0.025  0.34    0.341   0.011
-#    april           1.0     0.514   0.047   0.606   0.414   0.062
+#    [CLS]   1.0    *0.344   0.336   -0.025  0.34    0.341   0.011
+#    april           1.0     0.514   0.047  *0.606   0.414   0.062
 #    july                    1.0     0.045   0.366   0.683   0.054
-#    [SEP]                           1.0     0.094   0.064   0.908
-#    spring                                  1.0     0.599   0.107
+#    [SEP]                           1.0     0.094   0.064  *0.908
+#    spring                                  1.0    *0.599   0.107
 #    summer                                          1.0     0.082
-#    [SEP]                                                   1.0
+#    [SEP]                                                  *1.0
 #
 #    - Feature representation:
 #
@@ -173,6 +173,7 @@ LAYER = "layer"
 ALL_TOKENS = "all-tokens"
 VERBOSE = "verbose"
 FILTER = "filter"
+INCLUDE = "include"
 
 def cosine_distance(vector1, vector2):
     """Compute cosine distance between VECTOR1 and VECTOR2"""
@@ -274,6 +275,7 @@ class Script(Main):
     layer = 3
     use_all_tokens = False
     verbose = False
+    include = False
     filter_terms = ""
 
     def setup(self):
@@ -287,6 +289,7 @@ class Script(Main):
         self.show_vectors = self.get_parsed_option(VECTORS, self.show_vectors)
         self.use_all_tokens = self.get_parsed_option(ALL_TOKENS, self.use_all_tokens)
         self.verbose = self.get_parsed_option(VERBOSE, self.verbose)
+        self.include = self.get_parsed_option(INCLUDE, self.include)
         self.filter_terms = self.get_parsed_option(FILTER, self.filter_terms)
         debug.trace_object(5, self, label="Script instance")
         return
@@ -335,7 +338,8 @@ class Script(Main):
         tokens = all_tokens if self.use_all_tokens else system.difference(all_tokens, SENTINEL_TOKENS)
         if self.filter_terms:
             terms_to_filter = text_utils.extract_string_list(self.filter_terms)
-            tokens = system.difference(tokens, terms_to_filter)
+            filter_fn = (system.intersection if self.include else system.difference)
+            tokens = filter_fn(tokens, terms_to_filter)
         features = [h for (i, h) in enumerate(all_features) if all_tokens[i] in tokens]
         debug.assertion(all((len(h["layers"]) == NUM_LAYERS) for h in features))
 
@@ -366,6 +370,7 @@ if __name__ == '__main__':
         boolean_options=[(ALL_TOKENS, "Include all tokens (e.g., sentinels)"),
                          (COSINE, "Show cosine between vectors"),
                          (VECTORS, "Show feature vectors for all tokens"),
+                         (INCLUDE, "Use an inclusion filter"),
                          (VERBOSE, "Verbose output mode")],
         int_options=[(LAYER, "Which layer to use (0-3)")],
         positional_options=[SENTENCE1, SENTENCE2],
