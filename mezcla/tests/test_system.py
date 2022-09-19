@@ -174,7 +174,7 @@ class TestSystem:
         debug.trace(4, "test_print_error()")
         THE_MODULE.print_error("this is an test error message")
         captured = capsys.readouterr()
-        assert "this is an test error message" in captured.err
+        assert "error" in captured.err
 
     def test_print_stderr(self, capsys):
         """Ensure print_stderr works as expected"""
@@ -196,7 +196,7 @@ class TestSystem:
         def sys_exit_mock():
             return 'exit'
         monkeypatch.setattr(sys, "exit", sys_exit_mock)
-        assert THE_MODULE.exit('test exit method') == 'exit'
+        assert THE_MODULE.exit('test exit {method}', method='method') == 'exit'
         # Exit is mocked, ignore code editor hidding
         captured = capsys.readouterr()
         assert "test exit method" in captured.err
@@ -243,9 +243,11 @@ class TestSystem:
         assert actual_object == test_dict
         test_file.close()
 
-    def test_load_object(self):
+    def test_load_object(self, capsys):
         """Ensure load_object works as expected"""
         debug.trace(4, "test_load_object()")
+
+        # Test valid file
         test_dict = {
             1: 'first',
             2: 'second',
@@ -254,8 +256,12 @@ class TestSystem:
         test_file = open(test_filename, 'wb')
         pickle.dump(test_dict, test_file)
         test_file.close()
-
         assert THE_MODULE.load_object(test_filename) == test_dict
+
+        # Test invalid file
+        THE_MODULE.load_object('bad_file_name')
+        captured = capsys.readouterr()
+        assert "Error:" in captured.err
 
     def test_quote_url_text(self):
         """Ensure quote_url_text works as expected"""
@@ -304,10 +310,14 @@ class TestSystem:
 
         ## TODO: test with sys.version_info.major < 2
 
-    def test_stdin_reader(self):
+    def test_stdin_reader(self, monkeypatch):
         """Ensure stdin_reader works as expected"""
         debug.trace(4, "test_stdin_reader()")
-        ## TODO: WORK-IN=PROGRESS
+        monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line\n'))
+        test_iter = THE_MODULE.stdin_reader()
+        assert next(test_iter) == 'my\tinput'
+        assert next(test_iter) == 'some\tline'
+        assert next(test_iter) == ''
 
     def test_read_all_stdin(self, monkeypatch):
         """Ensure read_all_stdin works as expected"""
@@ -315,12 +325,22 @@ class TestSystem:
         monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line'))
         assert THE_MODULE.read_all_stdin() == 'my input\nsome line'
 
-    def test_read_entire_file(self):
+    def test_read_entire_file(self, capsys):
         """Ensure read_entire_file works as expected"""
         debug.trace(4, "test_read_entire_file()")
+
+        # Test valid vile
         temp_file = gh.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_entire_file(temp_file) == 'file\nwith\nmultiple\nlines\n'
+
+        # Test invalid file
+        THE_MODULE.read_entire_file('invalid_file', errors='ignore')
+        captured = capsys.readouterr()
+        assert "Unable to read file" not in captured.err
+        THE_MODULE.read_entire_file('invalid_file')
+        captured = capsys.readouterr()
+        assert "Unable to read file" in captured.err
 
     def test_read_lines(self):
         """Ensure read_lines works as expected"""
@@ -345,7 +365,7 @@ class TestSystem:
         assert "/etc/passwd" in THE_MODULE.get_directory_filenames("/etc")
         assert "/boot" not in THE_MODULE.get_directory_filenames("/", just_regular_files=True)
 
-    def test_read_lookup_table(self):
+    def test_read_lookup_table(self, capsys):
         """Ensure read_lookup_table works as expected"""
         debug.trace(4, "test_read_lookup_table()")
 
@@ -368,21 +388,45 @@ class TestSystem:
             'canada': 'ottawa'
         }
 
+        # Test normal usage parameters
         temp_file = gh.get_temp_file()
         gh.write_file(temp_file, content)
         assert THE_MODULE.read_lookup_table(temp_file, skip_header=False, delim=' -> ', retain_case=False) == expected_lowercase
         assert THE_MODULE.read_lookup_table(temp_file, skip_header=False, delim=' -> ', retain_case=True) == expected_uppercase
-        assert THE_MODULE.read_lookup_table(temp_file, skip_header=True, delim=' -> ', retain_case=False)['country'] == ''
+        assert THE_MODULE.read_lookup_table(temp_file, skip_header=True, retain_case=False)['country'] == ''
 
-    def test_create_boolean_lookup_table(self):
+        # Tests default delim
+        content_with_tabs = content.replace(' -> ', '\t')
+        temp_file = gh.get_temp_file()
+        gh.write_file(temp_file, content_with_tabs)
+        assert THE_MODULE.read_lookup_table(temp_file) == expected_lowercase
+
+        # Test without delim
+        without_delim_content = (
+            'line without delim\n'
+            'France -> Paris\n'
+        )
+        temp_file = gh.get_temp_file()
+        gh.write_file(temp_file, without_delim_content)
+        THE_MODULE.read_lookup_table(temp_file)
+        captured = capsys.readouterr()
+        assert 'Warning: Ignoring line' in captured.err
+
+        # Test invalid filename
+        THE_MODULE.read_lookup_table('bad_filename')
+        captured = capsys.readouterr()
+        assert 'Error' in captured.err
+
+    def test_create_boolean_lookup_table(self, capsys):
         """Ensure create_boolean_lookup_table works as expected"""
         debug.trace(4, "test_create_boolean_lookup_table()")
 
-        content = (
+        content_with_custom_delim = (
             'EmailEntered - someemail@hotmail.com\n'
             'PasswdEntered - 12345\n'
             'IsBusiness - True\n'
         )
+        content_tab_delim = content_with_custom_delim.replace(' - ', '\t')
         expected_lowercase = {
             'emailentered': True,
             'passwdentered': True,
@@ -395,9 +439,19 @@ class TestSystem:
         }
 
         temp_file = gh.get_temp_file()
-        gh.write_file(temp_file, content)
+        gh.write_file(temp_file, content_with_custom_delim)
         assert THE_MODULE.create_boolean_lookup_table(temp_file, delim=' - ', retain_case=False) == expected_lowercase
         assert THE_MODULE.create_boolean_lookup_table(temp_file, delim=' - ', retain_case=True) == expected_uppercase
+
+        # Test default delim tab
+        temp_file = gh.get_temp_file()
+        gh.write_file(temp_file, content_tab_delim)
+        assert THE_MODULE.create_boolean_lookup_table(temp_file, retain_case=True) == expected_uppercase
+
+        # Test invalid file
+        THE_MODULE.create_boolean_lookup_table('/tmp/bad_filename')
+        captured = capsys.readouterr()
+        assert 'Error:' in captured.err
 
     def test_lookup_entry(self):
         """Ensure lookup_entry works as expected"""
@@ -457,10 +511,9 @@ class TestSystem:
     def test_write_temp_file(self):
         """Ensure write_temp_file works as expected"""
         debug.trace(4, "test_write_temp_file()")
-        ## TODO: Check why is not passing
-        ## THE_MODULE.TEMP_DIR = f'{gh.get_temp_file()}-test'
-        ## THE_MODULE.write_temp_file('testfile', 'random content')
-        ## assert THE_MODULE.read_file(f'{THE_MODULE.TEMP_DIR}/testfile') == 'random content\n'
+        temp_file = gh.get_temp_file()
+        THE_MODULE.write_temp_file(temp_file, 'some content')
+        assert THE_MODULE.read_file(temp_file) == 'some content\n'
 
     def test_get_file_modification_time(self):
         """Ensure get_file_modification_time works as expected"""
@@ -473,6 +526,11 @@ class TestSystem:
         assert THE_MODULE.remove_extension("/tmp/document.pdf") == "/tmp/document"
         assert THE_MODULE.remove_extension("it.abc.def") == "it.abc"
         assert THE_MODULE.remove_extension("it.abc.def", "abc.def") == "it"
+        assert THE_MODULE.remove_extension("it.abc.def", ".abc.def") == "it"
+        assert THE_MODULE.remove_extension(".coveragerc") == ".coveragerc"
+
+        ## TODO: Check if this is a valid test case and if the returned value is correct
+        assert THE_MODULE.remove_extension("it.abc.def", "abc.dtf") == "it.abc.def"
 
     def test_file_exists(self):
         """Ensure file_exists works as expected"""
@@ -575,15 +633,18 @@ class TestSystem:
         """Ensure non_empty_file works as expected"""
         debug.trace(4, "test_non_empty_file()")
 
+        # Test valid file
         file_with_content = gh.get_temp_file()
         gh.write_file(file_with_content, 'content')
         assert THE_MODULE.non_empty_file(file_with_content)
 
+        # Test non existent file
         assert not THE_MODULE.non_empty_file('bad_file_name')
 
-        ## TODO: check why is not passing this
-        ## empty_file = gh.get_temp_file()
-        ## gh.write_file(empty_file, '')
+        # Test empty file
+        empty_file = gh.get_temp_file()
+        gh.write_file(empty_file, '')
+        ## TODO: check why the empty file size is 1 instead of 0
         ## assert not THE_MODULE.non_empty_file(empty_file)
 
     def test_absolute_path(self):
@@ -699,6 +760,8 @@ class TestSystem:
         """Ensure round_num works as expected"""
         debug.trace(4, "test_round_num()")
         assert THE_MODULE.round_num(3.15914, 3) == 3.159
+        THE_MODULE.PRECISION = 5
+        assert THE_MODULE.round_num(3.15914311312) == 3.15914
 
     def test_round_as_str(self):
         """Ensure round_as_str works as expected"""
@@ -706,10 +769,15 @@ class TestSystem:
         assert THE_MODULE.round_as_str(3.15914, 3) == "3.159"
         assert isinstance(THE_MODULE.round_as_str(3.15914, 3), str)
 
-    def test_sleep(self):
+    def test_sleep(self, monkeypatch, capsys):
         """Ensure sleep works as expected"""
         debug.trace(4, "test_sleep()")
-        ## TODO: WORK-IN=PROGRESS
+        def sleep_mock(secs):
+            return f'sleeping {secs}'
+        monkeypatch.setattr(time, "sleep", sleep_mock)
+        THE_MODULE.sleep(123123, trace_level=-1)
+        captured = capsys.readouterr()
+        assert '123123' in captured.err
 
     def test_current_time(self, monkeypatch):
         """Ensure current_time works as expected"""
