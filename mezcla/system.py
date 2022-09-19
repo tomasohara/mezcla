@@ -763,8 +763,9 @@ def remove_extension(filename, extension=None):
     # EX: remove_extension("it.abc.def") => "it.abc")
     # EX: remove_extension("it.abc.def", "abc.def") => "it")
     in_extension = extension
+    new_filename = filename
     if extension is None:
-        new_filename = re.sub(r"\.[^\.]*$", "", filename)
+        new_filename = re.sub(r"(\w+)\.[^\.]*$", r'\1', filename)
     else:
         if not extension.startswith("."):
             extension = "." + extension
