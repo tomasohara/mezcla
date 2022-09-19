@@ -664,7 +664,7 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, **kwarg
                 if delim in key:
                     key = key.split(delim)[0]
                 lookup_hash[key] = True
-    except (IOError, ValueError):
+    except (IOError, ValueError, AttributeError):
         debug.trace_fmtd(1, "Error: Creating boolean lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmt(7, "create_boolean_lookup_table => {h}", h=lookup_hash)
