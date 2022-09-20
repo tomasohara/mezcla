@@ -120,7 +120,7 @@ from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla import text_utils
 from mezcla.system import form_path, getenv_bool, getenv_int, getenv_text, getenv_value, round_num
-from mezcla.text_utils import version_to_number as version_as_float
+from mezcla.text_utils import version_to_number as version_as_float, make_fixed_length
 
 # Constants
 SENTINEL_TOKENS = ["[CLS]", "[SEP]"]
@@ -146,8 +146,8 @@ DEFAULT_BERT_DATA_DIR = "albert_base" if USE_ALBERT else "uncased_L-12_H-768_A-1
 BERT_DATA_DIR = getenv_text("BERT_DATA_DIR", 
                             form_path(DEEP_LEARNING_DATA, BERT, DEFAULT_BERT_DATA_DIR),
                             description="Directory for pre-trained data")
-BERT_MODEL_DIR =  getenv_text("BERT_MODEL_DIR", BERT_DATA_DIR,
-                              "Directory for BERT models which can differ from BERT_DATA_DIR if pre-training")
+BERT_MODEL_DIR = getenv_text("BERT_MODEL_DIR", BERT_DATA_DIR,
+                             "Directory for BERT models which can differ from BERT_DATA_DIR if pre-training")
 ## OLD: DEFAULT_CHECKPOINT_FILE = "model.ckpt" if USE_ALBERT else "bert_model.ckpt"
 ## TODO: add Python helper to do this via glob.glob, etc.:
 # note: Uses the latest checkpoint file in the BERT model directory
@@ -162,6 +162,8 @@ NUM_LAYERS = getenv_int("NUM_LAYERS", 4,
                         "Number of layers to extract")
 AVERAGE_LAYERS = getenv_bool("AVERAGE_LAYERS", False,
                              "Take average of layers rather than last one")
+FIELD_WIDTH = getenv_int("FIELD_WIDTH", None,
+                         "Width of fields for cosine matrix")
 
 # Option names
 MODEL = "model"
@@ -186,18 +188,30 @@ def cosine_distance(vector1, vector2):
     return dist
 
 
+def print_vector(vector, fixed_width=None):
+    """Print VECTOR tab-delimited unless FIXED_WIDTH"""
+    debug.assertion(all(isinstance(value, str) for value in vector))
+    if fixed_width:
+        print("".join(make_fixed_length(value, fixed_width)
+                      for value in vector))
+    else:
+        print("\t".join(vector))
+    return
+
+
 def show_cosine_distances(tokens, vectors):
-    """Displays the cosine distance matrix (all pairs of tokens)"""
+    """Displays the cosine distance matrix (all pairs of tokens)
+    Note: prints entries tab-separated unless FIELD_WIDTH global set
+    """
 
     # Calculate distances and display matrix (omitting symmetric cases)
-    print("\t".join([""] + tokens))
+    print_vector([""] + tokens, fixed_width=FIELD_WIDTH)
     for i, token1 in enumerate(tokens):
         info = [token1] + ([""] * i)
         for j in range(i, len(tokens)):
             dist = cosine_distance(vectors[i], vectors[j])
             info.append(str(round_num(dist, 3)))
-        print("\t".join(info))
-
+        print_vector(info, fixed_width=FIELD_WIDTH)
     return
 
 
@@ -340,6 +354,7 @@ class Script(Main):
             terms_to_filter = text_utils.extract_string_list(self.filter_terms)
             filter_fn = (system.intersection if self.include else system.difference)
             tokens = filter_fn(tokens, terms_to_filter)
+        tokens = sorted(tokens)
         features = [h for (i, h) in enumerate(all_features) if all_tokens[i] in tokens]
         debug.assertion(all((len(h["layers"]) == NUM_LAYERS) for h in features))
 
