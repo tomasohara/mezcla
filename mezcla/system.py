@@ -982,35 +982,48 @@ def get_module_version(module_name):
     return version
 
 
-def intersection(list1, list2):
-    """Return intersection of LIST1 and LIST2"""
+def intersection(list1, list2, as_set=None):
+    """Return intersection of LIST1 and LIST2
+    Note: result is a list unless AS_SET specified
+    """
     # note: wrapper around set.intersection used for tracing
-    # EX: intersection([1, 2, 3, 4, 5], [2, 4]) => {1, 3, 5}
+    # EX: sorted(intersection([1, 2, 3, 4, 5], [2, 4])) => [1, 3, 5]
+    # EX: intersection([1, 2, 3, 4, 5], [2, 4], as_set=True)) => {1, 3, 5}
     # TODO: have option for returning list
     result = set(list1).intersection(set(list2))
+    if not as_set:
+        result = list(result)
     debug.trace_fmtd(7, "intersection({l1}, {l2}) => {r}",
                      l1=list1, l2=list2, r=result)
     return result
 
 
-def union(list1, list2):
-    """Return union of LIST1 and LIST2"""
+def union(list1, list2, as_set=None):
+    """Return union of LIST1 and LIST2
+    Note: result is a list unless AS_SET specified
+    """
+    # EX: union([1, 3, 5], [5, 7]) => [1, 3, 5, 7]
     # note: wrapper around set.union used for tracing
     result = set(list1).union(set(list2))
+    if not as_set:
+        result = list(result)
     debug.trace_fmtd(7, "union({l1}, {l2}) => {r}",
                      l1=list1, l2=list2, r=result)
     return result
 
 
-def difference(list1, list2):
-    """Return set difference from LIST1 vs LIST2, preserving order"""
+def difference(list1, list2, as_set=None):
+    """Return set difference from LIST1 vs LIST2, preserving order
+    Note: result is a list unless AS_SET specified
+    """
     # TODO: optmize (e.g., via a hash table)
     # EX: difference([5, 4, 3, 2, 1], [1, 2, 3]) => [5, 4]
-    # TODO: add option for returning set
     diff = []
     for item1 in list1:
         if item1 not in list2:
             diff.append(item1)
+    if as_set:
+        diff = set(diff)
     debug.trace_fmtd(7, "difference({l1}, {l2}) => {d}",
                      l1=list1, l2=list2, d=diff)
     return diff
