@@ -52,5 +52,7 @@ dist
 TAGS
 
 # Unit test / coverage reports
+.pytest_cache
 **/tests/htmlcov
 .coverage
+.coverage.*
