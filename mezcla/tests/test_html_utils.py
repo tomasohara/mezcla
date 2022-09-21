@@ -27,7 +27,6 @@ from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 ## TODO: template => new name
 import mezcla.html_utils as THE_MODULE
 #
@@ -39,7 +38,7 @@ if not re.search(__file__, r"\btemplate.py$"):
 TEST_SELENIUM = system.getenv_bool("TEST_SELENIUM", False,
                                    "Include tests requiring selenium")
 
-class TestIt(TestWrapper):
+class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory

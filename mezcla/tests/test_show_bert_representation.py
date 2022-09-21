@@ -24,10 +24,9 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.show_bert_representation as THE_MODULE
 
-class TestIt:
+class TestShowBertRepresentation:
     """Class for testcase definition"""
 
     def test_cosine_distance(self):

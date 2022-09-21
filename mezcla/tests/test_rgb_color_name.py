@@ -25,7 +25,6 @@ from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.rgb_color_name as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
@@ -41,7 +40,7 @@ if not re.search(__file__, r"\btemplate.py$"):
 ##                            description="Fouled Up Beyond All Recognition processing")
 
 
-class TestIt(TestWrapper):
+class TestRgbColorName(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
@@ -50,7 +49,7 @@ class TestIt(TestWrapper):
 
     def test_data_file(self):
         """Makes sure TODO works as expected"""
-        debug.trace(4, "TestIt.test_data_file()")
+        debug.trace(4, "TestRgbColorName.test_data_file()")
 
         gh.run(f"perl -e 'print(\"\\xFF\\x00\\x00\\x00\\xFF\\x00\\x00\\x00\\xFF\");' | rawtoppm 3 1 | pnmtopng | extcolors > {self.temp_file}")
         #   =>

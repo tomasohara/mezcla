@@ -23,7 +23,6 @@ from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 ## TODO: template => new name
 import mezcla.template as THE_MODULE
 #
@@ -32,14 +31,14 @@ if not re.search(__file__, r"\btemplate.py$"):
     debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 
-class TestIt(TestWrapper):
+class TestTemplate(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
 
     def test_data_file(self):
         """Makes sure to-do grep works as expected"""
-        debug.trace(4, "TestIt.test_data_file()")
+        debug.trace(4, "TestTemplate.test_data_file()")
         data = ["TEMP", "TODO", "DONE"]
         gh.write_lines(self.temp_file, data)
         output = self.run_script("--TODO-arg", self.temp_file)

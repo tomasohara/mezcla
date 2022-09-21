@@ -22,10 +22,9 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.text_processing as THE_MODULE
 
-class TestIt:
+class TestTextProcessing:
     """Class for testcase definition"""
 
     def test_split_sentences(self):

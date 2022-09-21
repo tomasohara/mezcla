@@ -30,7 +30,6 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.tpo_common as THE_MODULE
 
 FUBAR = 101	# sample global for test_format

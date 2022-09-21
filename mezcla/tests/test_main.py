@@ -26,7 +26,6 @@ from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.main as THE_MODULE
 
 class MyArgumentParser(ArgumentParser):
@@ -42,7 +41,7 @@ class MyArgumentParser(ArgumentParser):
             self._print_message(message, sys.stderr)
 
 
-class TestIt(TestWrapper):
+class TestMain(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.derive_tested_module_name(__file__)
     ## HACK: globals for use in embedded classes (TODO: move into Test class below)
@@ -80,7 +79,7 @@ class TestIt(TestWrapper):
             def setup(self):
                 """Post-argument parsing processing: just displays context"""
                 tpo.debug_format("in setup(): self={s}", 5, s=self)
-                TestIt.process_line_count = 0
+                TestMain.process_line_count = 0
                 tpo.trace_current_context(label="Test.setup", 
                                           level=tpo.QUITE_DETAILED)
                 tpo.trace_object(self, tpo.QUITE_DETAILED, "Test instance")
@@ -89,45 +88,45 @@ class TestIt(TestWrapper):
                 """Dummy input processing"""
                 tpo.debug_format("in Test.process_line({l}): self={s}", 5,
                                  l=line, s=self)
-                TestIt.input_processed = True
-                TestIt.process_line_count += 1
+                TestMain.input_processed = True
+                TestMain.process_line_count += 1
 
             #
             def run_main_step(self):
                 """Dummy main step"""
                 tpo.debug_format("in Test.run_main_step()): self={s}", 5,
                                  s=self)
-                TestIt.main_step_invoked = True
+                TestMain.main_step_invoked = True
 
         # Test scriptlet with test script as input w/ and w/o input enabled
-        TestIt.input_processed = None
+        TestMain.input_processed = None
         app1 = Test(skip_input=False, runtime_args=[__file__])
         try:
             app1.run()
         except:
             tpo.print_stderr("Exception during run method: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        assert TestIt.input_processed
+        assert TestMain.input_processed
         #
-        TestIt.input_processed = None
+        TestMain.input_processed = None
         app2 = Test(skip_input=True, runtime_args=[__file__])
         try:
             app2.run()
         except:
             tpo.print_stderr("Exception during run method: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        assert not TestIt.input_processed
+        assert not TestMain.input_processed
 
         # Test scriptlet w/ input disabled and wihout arguments
         # note: auto_help disabled so that no arguments needed
-        TestIt.main_step_invoked = None
+        TestMain.main_step_invoked = None
         app3 = Test(skip_input=True, manual_input=True, auto_help=False, runtime_args=[])
         try:
             app3.run()
         except:
             tpo.print_stderr("Exception during run method: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        assert TestIt.main_step_invoked
+        assert TestMain.main_step_invoked
 
     def test_perl_arg(self):
         """Make sure perl-style arg can be parsed"""
@@ -150,7 +149,7 @@ class TestIt(TestWrapper):
         assert app.parsed_args.get("verbose") == None
 
 
-class TestIt2:
+class TestMain2:
     """Another class for testcase definition
     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
 
@@ -165,7 +164,7 @@ class TestIt2:
         main = THE_MODULE.Main(skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
-        ## TODO: assert(TestIt.process_line_count == num_lines)
+        ## TODO: assert(TestMain.process_line_count == num_lines)
         assert num_lines == len(captured.out.split("\n"))
         debug.trace_expr(5, main, num_lines)
         # paragraph input
@@ -173,7 +172,7 @@ class TestIt2:
         main = THE_MODULE.Main(paragraph_mode=True, skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
-        ## TODO: assert(TestIt.process_line_count == 4)
+        ## TODO: assert(TestMain.process_line_count == 4)
         assert(num_lines == len(captured.out.split("\n")))
         debug.trace_expr(5, main, num_lines)
         # file input
@@ -181,7 +180,7 @@ class TestIt2:
         main = THE_MODULE.Main(file_input_mode=True, skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
-        ## TODO: assert(TestIt.process_line_count == 1)
+        ## TODO: assert(TestMain.process_line_count == 1)
         assert(num_lines == len(captured.out.split("\n")))
         debug.trace_expr(5, main, num_lines, pre_captured)
         
@@ -198,7 +197,7 @@ class TestIt2:
         # note: 1 extra line ('') and 1 extra character (final newline)
         assert (1 + num_lines) == len(captured.out.split("\n"))
         assert (1 + len(contents)) == len(captured.out)
-        ## TODO: assert TestIt.process_line_count == 3
+        ## TODO: assert TestMain.process_line_count == 3
         debug.trace_expr(5, main, num_lines)
 
     def test_has_parsed_option_hack(self):

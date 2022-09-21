@@ -27,17 +27,16 @@ from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.filter_random as THE_MODULE
 
-class TestIt(TestWrapper):
+class TestFilterRandom(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.derive_tested_module_name(__file__)
 
     def setUp(self):
         """Per-test setup"""
-        debug.trace(6, f"TestIt.setUp(); self={self}")
+        debug.trace(6, f"TestFilterRandom.setUp(); self={self}")
         # note: must do parent first (e.g., for temp file support)
         super().setUp()
         num_lines = 10
@@ -58,19 +57,19 @@ class TestIt(TestWrapper):
 
     def test_simple_data_file(self):
         """Makes sure simple canned data file works as expected"""
-        debug.trace(4, f"TestIt.test_simple_data_file({self})")
+        debug.trace(4, f"TestFilterRandom.test_simple_data_file({self})")
         self.setUp()
         return self.run_data_file_test(0.15, self.temp_file, "6\n9\n")
 
     def test_filter_all(self):
         """Makes sure all lines are filtered out with ratio 0.0"""
-        debug.trace(4, f"TestIt.test_filter_all({self})")
+        debug.trace(4, f"TestFilterRandom.test_filter_all({self})")
         self.setUp()
         return self.run_data_file_test(0.0, self.temp_file, "")
 
     def test_filter_none(self):
         """Makes sure no lines are filtered out with ratio 1.0"""
-        debug.trace(4, f"TestIt.test_filter_none({self})")
+        debug.trace(4, f"TestFilterRandom.test_filter_none({self})")
         temp_file_contents = system.read_file(self.temp_file)
         self.setUp()
         return self.run_data_file_test(1.0, self.temp_file, temp_file_contents)

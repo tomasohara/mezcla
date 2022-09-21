@@ -31,10 +31,9 @@ from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.gensim_test as THE_MODULE
 
-class TestIt(TestWrapper):
+class TestGensimTest(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.derive_tested_module_name(__file__)

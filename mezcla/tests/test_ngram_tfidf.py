@@ -22,11 +22,10 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 ## TODO: fix type object 'Preprocessor' has no attribute 'USE_SKLEARN_COUNTER'
 ## import mezcla.ngram_tfidf as THE_MODULE
 
-class TestIt:
+class TestNgramTfidf:
     """Class for testcase definition"""
 
     ## TODO: TESTS WORK-IN-PROGRESS

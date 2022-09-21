@@ -25,7 +25,6 @@ from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.text_utils as THE_MODULE
 
 HTML_FILENAME = "./resources/simple-window-dimensions.html"

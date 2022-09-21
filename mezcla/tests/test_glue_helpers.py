@@ -23,10 +23,9 @@ from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 
-class TestIt(TestWrapper):
+class TestGlueHelpers(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.derive_tested_module_name(__file__)
 

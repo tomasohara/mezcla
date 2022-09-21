@@ -18,8 +18,10 @@ from mezcla import debug
 #    THE_MODULE:	    global module object
 import mezcla.train_language_model as THE_MODULE
 
+class TestTrainLanguageModel:
+    """Class for testcase definition"""
 
-## TODO: TESTS WORK-IN-PROGRESS
+    ## TODO: TESTS WORK-IN-PROGRESS
 
 
 if __name__ == '__main__':

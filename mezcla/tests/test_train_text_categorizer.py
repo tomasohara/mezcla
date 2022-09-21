@@ -18,8 +18,10 @@ from mezcla import debug
 #    THE_MODULE:	    global module object
 import mezcla.train_text_categorizer as THE_MODULE
 
+class TestTrainTextCategorizer:
+    """Class for testcase definition"""
 
-## TODO: TESTS WORK-IN-PROGRESS
+    ## TODO: TESTS WORK-IN-PROGRESS
 
 
 if __name__ == '__main__':

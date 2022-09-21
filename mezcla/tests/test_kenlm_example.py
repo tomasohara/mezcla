@@ -22,11 +22,10 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 ## TODO: solve import issue in kenlm_example
 ## import mezcla.kenlm_example as THE_MODULE
 
-class TestIt:
+class TestKenlmExample:
     """Class for testcase definition"""
 
     ## TODO: TESTS WORK-IN-PROGRESS

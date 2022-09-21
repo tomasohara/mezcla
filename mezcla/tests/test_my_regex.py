@@ -23,10 +23,9 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.my_regex as THE_MODULE
 
-class TestIt(TestWrapper):
+class TestMyRegex(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
     my_re = THE_MODULE.my_re

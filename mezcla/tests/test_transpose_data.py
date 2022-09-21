@@ -18,8 +18,10 @@ from mezcla import debug
 #    THE_MODULE:	    global module object
 import mezcla.transpose_data as THE_MODULE
 
+class TestTransposeData:
+    """Class for testcase definition"""
 
-## TODO: TESTS WORK-IN-PROGRESS
+    ## TODO: TESTS WORK-IN-PROGRESS
 
 
 if __name__ == '__main__':

@@ -22,10 +22,9 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.simple_main_example as THE_MODULE
 
-class TestIt:
+class TestSimpleMainExample:
     """Class for testcase definition"""
 
     ## TODO: TESTS WORK-IN-PROGRESS

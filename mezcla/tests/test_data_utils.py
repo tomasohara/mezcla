@@ -23,10 +23,9 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.data_utils as THE_MODULE
 
-class TestIt:
+class TestDataUtils:
     """Class for testcase definition"""
 
     path = os.path.dirname(os.path.realpath(__file__))

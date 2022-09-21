@@ -22,13 +22,12 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.audio as THE_MODULE
 
 # Constants
 AUDIOFILE = 'samples/test_audiofile.wav'
 
-class TestIt(TestWrapper):
+class TestAudio(TestWrapper):
     """Class for testcase definition"""
     script_module     = TestWrapper.derive_tested_module_name(__file__)
     use_temp_base_dir = True
@@ -37,7 +36,7 @@ class TestIt(TestWrapper):
     @pytest.mark.skip(reason="this will take a while and this require a valid audio path in AUDIOFILE")
     def test_sphinx_engine(self):
         """Test CMUSphinx speech recognition engine class"""
-        debug.trace(debug.DETAILED, f"TestIt.test_sphinx_engine({self})")
+        debug.trace(debug.DETAILED, f"TestAudio.test_sphinx_engine({self})")
 
         sample = THE_MODULE.Audio(AUDIOFILE)
         result_speech = sample.speech_to_text(engine='sphinx')
@@ -46,7 +45,7 @@ class TestIt(TestWrapper):
 
     def test_audio_path(self):
         """Test for audio.path"""
-        debug.trace(debug.DETAILED, f"TestIt.test_audio_path({self})")
+        debug.trace(debug.DETAILED, f"TestAudio.test_audio_path({self})")
 
         path = 'some/path'
 
@@ -61,7 +60,7 @@ class TestIt(TestWrapper):
     @pytest.mark.skip(reason='TODO: tests command-line using batspp style')
     def test_source_single_audio(self):
         """End to end test sourcing a single audio file"""
-        debug.trace(debug.DETAILED, f"TestIt.test_source_single_audio({self})")
+        debug.trace(debug.DETAILED, f"TestAudio.test_source_single_audio({self})")
 
         audio = self.temp_file + '.wav'
         gh.write_file(audio, 'some content')
@@ -73,7 +72,7 @@ class TestIt(TestWrapper):
     @pytest.mark.skip(reason='TODO: tests command-line using batspp style')
     def test_source_list(self):
         """End to end test sourcing a list of audio files"""
-        debug.trace(debug.DETAILED, f"TestIt.test_source_list({self})")
+        debug.trace(debug.DETAILED, f"TestAudio.test_source_list({self})")
 
         list_file = self.temp_file + '.list'
 
@@ -94,7 +93,7 @@ class TestIt(TestWrapper):
     @pytest.mark.skip(reason='TODO: tests command-line using batspp style')
     def test_source_folder(self):
         """End to end test sourcing a folder and discover audiofiles"""
-        debug.trace(debug.DETAILED, f"TestIt.test_source_folder({self})")
+        debug.trace(debug.DETAILED, f"TestAudio.test_source_folder({self})")
 
         ## TODO: resolve librosa find files recursively not woking.
         ## filenames = ['/audio1.wav', '/somedir/audio2.wav', '/audio23.wav']
@@ -111,7 +110,7 @@ class TestIt(TestWrapper):
     @pytest.mark.skip(reason="this will take a while and this require a valid audio path in AUDIOFILE")
     def test_extract_speech(self):
         """End to end test extracting speech using CMUSphinx engine"""
-        debug.trace(debug.DETAILED, f"TestIt.test_extract_speech({self})")
+        debug.trace(debug.DETAILED, f"TestAudio.test_extract_speech({self})")
 
         actual = gh.run(f'python {self.script_module} --verbose --speech sphinx {AUDIOFILE}')
         assert actual

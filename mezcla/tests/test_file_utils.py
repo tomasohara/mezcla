@@ -18,10 +18,9 @@ from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.file_utils as THE_MODULE
 
-class TestIt(TestWrapper):
+class TestFileUtils(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.derive_tested_module_name(__file__)
     use_temp_base_dir = True
@@ -31,7 +30,7 @@ class TestIt(TestWrapper):
     ## @classmethod
     ## def setUpClass(cls):
     ##     """One-time initialization (i.e., for entire class)"""
-    ##     debug.trace(6, f"TestIt.setUpClass(); cls={cls}")
+    ##     debug.trace(6, f"TestFileUtils.setUpClass(); cls={cls}")
     ##     # note: should do parent processing first
     ##     super().setUpClass()
     ##     ...
@@ -39,7 +38,7 @@ class TestIt(TestWrapper):
     ##
     ## def setUp(self):
     ##     """Per-test setup"""
-    ##     debug.trace(6, f"TestIt.setUp(); self={self}")
+    ##     debug.trace(6, f"TestFileUtils.setUp(); self={self}")
     ##     # note: must do parent processing first (e.g., for temp file support)
     ##     super().setUp()
     ##     ...
@@ -105,15 +104,15 @@ class TestIt(TestWrapper):
     ## TODO: optional cleanup methods
     ##
     ## def tearDown(self):
-    ##     debug.trace(6, f"TestIt.tearDown(); self={self}")
-    ##     super(TestIt, cls).tearDownClass()
+    ##     debug.trace(6, f"TestFileUtils.tearDown(); self={self}")
+    ##     super(TestFileUtils, cls).tearDownClass()
     ##     ...
     ##     return
     ##
     ## @classmethod
     ## def tearDownClass(cls):
-    ##     debug.trace(6, f"TestIt.tearDownClass(); cls={cls}")
-    ##     super(TestIt, self).tearDown()
+    ##     debug.trace(6, f"TestFileUtils.tearDownClass(); cls={cls}")
+    ##     super(TestFileUtils, self).tearDown()
     ##     ...
     ##     return
 

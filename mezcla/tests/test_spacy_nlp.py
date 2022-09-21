@@ -22,7 +22,6 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.spacy_nlp as THE_MODULE
 
 
@@ -37,7 +36,7 @@ class TestSentimentAnalyzer:
         assert sentiment.get_score('good') == 0.4404
 
 
-class TestIt:
+class TestSpacyNlpUtils:
     """Class for testcase definition"""
 
     def test_get_char_span(self):
@@ -56,7 +55,7 @@ class TestIt:
         ## TODO: WORK-IN=PROGRESS
 
 
-class TestScript:
+class TestSpacy:
     """Class for testcase definition"""
 
     def test_get_entity_spec(self):

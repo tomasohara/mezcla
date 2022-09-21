@@ -39,7 +39,6 @@ from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.xml_utils as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
@@ -58,14 +57,14 @@ NESTED_XML = """<?xml version="1.1"?>
 <xml><a><b>1<c>2<d/>3</c></b>4</a></xml>
 """
 
-class TestIt(TestWrapper):
+class TestXmlUtils(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
 
     def test_data_file(self):
         """Makes sure simple XML data file parsed OK"""
-        debug.trace(4, "TestIt.test_data_file()")
+        debug.trace(4, "TestXmlUtils.test_data_file()")
         data = "<xml><a>A</a><b>B</b></xml>"
         gh.write_file(self.temp_file, data)
         output = self.run_script("", self.temp_file)

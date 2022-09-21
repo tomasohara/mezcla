@@ -28,7 +28,6 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.system as THE_MODULE
 
 class TestSystem:
@@ -335,6 +334,7 @@ class TestSystem:
         assert THE_MODULE.read_entire_file(temp_file) == 'file\nwith\nmultiple\nlines\n'
 
         # Test invalid file
+        debug.set_level(3)
         THE_MODULE.read_entire_file('invalid_file', errors='ignore')
         captured = capsys.readouterr()
         assert "Unable to read file" not in captured.err

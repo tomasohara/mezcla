@@ -23,10 +23,9 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.merge_notes as THE_MODULE
 
-class TestIt:
+class TestMergeNotes:
     """Class for testcase definition"""
 
     def test_resolve_date(self):

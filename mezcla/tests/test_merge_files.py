@@ -22,10 +22,9 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-#    TestIt.script_module   string name
 import mezcla.merge_files as THE_MODULE
 
-class TestIt:
+class TestMergeFiles:
     """Class for testcase definition"""
 
     def test_get_timestamp(self):
