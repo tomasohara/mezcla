@@ -55,7 +55,7 @@ class TestMain(TestWrapper):
         class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
-            ## TODO: rename as TestMain
+            ## TODO: rename as TestMain?
 
         # note: format is ("option", "description", "default"), or just "option"
         app = Test(text_options=[("name", "Full name", "John Doe")],
@@ -63,7 +63,7 @@ class TestMain(TestWrapper):
                    runtime_args=["--verbose"])
         #
         assert app.parsed_args.get("name") == "John Doe"
-        assert app.parsed_args.get("verbose") == True
+        assert app.parsed_args.get("verbose")
 
     def test_script_without_input(self):
         """Makes sure script class without input doesn't process input and that
@@ -141,12 +141,12 @@ class TestMain(TestWrapper):
                    runtime_args=["-verbose"],
                    perl_switch_parsing=True)
         #
-        assert app.parsed_args.get("verbose") == True
+        assert app.parsed_args.get("verbose")
         #
         app = Test(boolean_options=["verbose"],
                    runtime_args=["-verbose"],
                    perl_switch_parsing=False)
-        assert app.parsed_args.get("verbose") == None
+        assert not app.parsed_args.get("verbose")
 
 
 class TestMain2:
@@ -183,7 +183,7 @@ class TestMain2:
         ## TODO: assert(TestMain.process_line_count == 1)
         assert(num_lines == len(captured.out.split("\n")))
         debug.trace_expr(5, main, num_lines, pre_captured)
-        
+
     def test_missing_newline(self, capsys, monkeypatch):
         """Make sure file with missing newline at end processed OK"""
         debug.trace(4, f"in test_missing_newline({capsys}); self={self}")
