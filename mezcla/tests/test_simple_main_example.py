@@ -6,7 +6,7 @@
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by  unittest_wrapper.py.
 # - This can be run as follows:
-#   $ PYTHONPATH="$(realpath .)/..):$PYTHONPATH" python tests/test_simple_main_example.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_simple_main_example.py
 #
 
 """Tests for simple_main_example module"""

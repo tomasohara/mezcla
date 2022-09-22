@@ -6,7 +6,7 @@
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by  unittest_wrapper.py.
 # - This can be run as follows:
-#   $ PYTHONPATH="$(realpath .)/..):$PYTHONPATH" python tests/test_run_albert_classifier.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_run_albert_classifier.py
 #
 
 """Tests for run_albert_classifier module"""

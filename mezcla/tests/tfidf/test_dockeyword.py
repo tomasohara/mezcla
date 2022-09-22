@@ -2,6 +2,10 @@
 #
 # Tests for tfidf/dockeyword module
 #
+# Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/tfidf/test_dockeyword.py
+#
 
 """Tests for tfidf/dockeyword module"""
 

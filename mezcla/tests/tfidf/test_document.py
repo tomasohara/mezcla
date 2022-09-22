@@ -2,6 +2,10 @@
 #
 # Tests for tfidf/document module
 #
+# Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/tfidf/test_document.py
+#
 
 """Tests for tfidf/document module"""
 

@@ -5,7 +5,8 @@
 #
 # Notes:
 # - This can be run as follows:
-#   $ PYTHONPATH="." python tests/test_tpo_common.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_tpo_common.py
+#
 # TODO:
 # - Address commonly used debugging functions (e.g., debug_print) by redirecting output (via remapping sys.stderr to a file) and then checking file contents.
 # - add tests for normalize_unicode, ensure_unicode and other problematic functions

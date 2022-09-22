@@ -2,6 +2,10 @@
 #
 # Tests for tfidf/corpus module
 #
+# Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/tfidf/test_corpus.py
+#
 
 """Tests for tfidf/corpus module"""
 

@@ -6,7 +6,7 @@
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by  unittest_wrapper.py.
 # - This can be run as follows:
-#   $ PYTHONPATH="$(realpath .)/..):$PYTHONPATH" python tests/test_randomize_lines.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_randomize_lines.py
 #
 
 """Tests for randomize_lines module"""

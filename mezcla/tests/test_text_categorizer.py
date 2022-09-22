@@ -4,7 +4,7 @@
 #
 # Notes:
 # - This can be run as follows:
-#   $ PYTHONPATH="$(realpath .)/..):$PYTHONPATH" python tests/test_<module>.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_<module>.py
 #
 
 """Tests for text_categorizer module"""

@@ -5,7 +5,7 @@
 #
 # Notes:
 # - This can be run as follows:
-#   $ PYTHONPATH="." python tests/test_debug.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_debug.py
 # - For tests that capture standard error, see
 #       https://docs.pytest.org/en/6.2.x/capture.html
 # - This uses capsys fixture mentioned in above link.
@@ -247,7 +247,7 @@ class TestDebug:
     def test_format_value(self):
         """Ensure format_value works as expected"""
         debug.trace(4, f"test_format_value(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert THE_MODULE.format_value("    \n\n\n\n", 6) == "    \\n\\n..."
 
     def test_xor(self, capsys):
         """Ensure xor works as expected"""

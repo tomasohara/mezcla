@@ -2,6 +2,10 @@
 #
 # Test(s) for ../file_utils.py
 #
+# Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_file_utils.py
+#
 
 """Tests for file_utils module"""
 

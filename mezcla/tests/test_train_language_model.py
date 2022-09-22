@@ -2,6 +2,10 @@
 #
 # Tests for train_language_model module
 #
+# Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_train_language_model.py
+#
 
 """Tests for train_language_model module"""
 

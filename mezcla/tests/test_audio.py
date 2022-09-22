@@ -2,7 +2,10 @@
 #
 # Tests for Audio.py
 #
-# NOTE: some tests will take a while.
+# Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_audio.py
+# - some tests will take a while.
 #
 ## TODO: solve test execution long times.
 

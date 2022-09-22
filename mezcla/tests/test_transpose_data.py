@@ -2,6 +2,10 @@
 #
 # Tests for transpose_data module
 #
+# Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_transpose_data.py
+#
 
 """Tests for transpose_data module"""
 

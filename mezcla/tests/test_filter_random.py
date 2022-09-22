@@ -2,9 +2,9 @@
 #
 # Test(s) for ../filter_random.py
 #
-# Note:
+# Notes:
 # - This can be run as follows:
-#   $ PYTHONPATH=".:$PYTHONPATH" python tests/test_filter_random.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_filter_random.py
 #
 # TODO:
 # - Use actual data file (e.g., license).

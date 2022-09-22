@@ -5,7 +5,7 @@
 # Notes:
 # - This is simple test of module not the test template (see ./template.py).
 # - This can be run as follows:
-#   $ PYTHONPATH=".:$PYTHONPATH" python tests/test_template.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_template.py
 #
 
 """Tests for template module"""

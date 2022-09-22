@@ -2,6 +2,10 @@
 #
 # Tests for tfidf/preprocess module
 #
+# Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/tfidf/test_preprocess.py
+#
 
 """Tests for tfidf/preprocess module"""
 

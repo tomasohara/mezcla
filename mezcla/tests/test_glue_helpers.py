@@ -1,7 +1,10 @@
 #! /usr/bin/env python
 #
-# Test(s) for glue_helpers.py. This can be run as follows:
-# $ PYTHONPATH=".:PYTHONPATH" tests/test_glue_helpers.py
+# Test(s) for glue_helpers.py
+#
+# Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_glue_helpers.py
 #
 # TODO:
 # - Add support for write_lines & read_lines.

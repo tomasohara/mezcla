@@ -7,7 +7,7 @@
 # - TODO: If any of the setup/cleanup methods defined, make sure to invoke base
 #   (see examples below for setUp and tearDown).
 # - This can be run as follows:
-#   $ PYTHONPATH=".:$PYTHONPATH" python tests/test_html_utils.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_html_utils.py
 #
 
 """Tests for html_utils module"""

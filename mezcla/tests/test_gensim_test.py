@@ -5,7 +5,7 @@
 # Notes:
 # - Fill out the TODO's through the file.
 # - This can be run as follows:
-#   $ PYTHONPATH="." python tests/test_gensim_test.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_gensim_test.py
 #
 #------------------------------------------------------------------------
 # TODO: adds tests for following

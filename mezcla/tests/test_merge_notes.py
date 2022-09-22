@@ -6,7 +6,7 @@
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by  unittest_wrapper.py.
 # - This can be run as follows:
-#   $ PYTHONPATH="$(realpath .)/..):$PYTHONPATH" python tests/test_merge_notes.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_merge_notes.py
 #
 
 """Tests for merge_notes module"""

@@ -2,6 +2,10 @@
 #
 # Tests for train_text_categorizer module
 #
+# Notes:
+# - This can be run as follows:
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_train_text_categorizer.py
+#
 
 """Tests for train_text_categorizer module"""
 

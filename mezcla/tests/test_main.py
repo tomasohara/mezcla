@@ -4,7 +4,7 @@
 #
 # Notes:
 # - This can be run as follows:
-#   $ PYTHONPATH=".:$PYTHONPATH" python tests/test_main.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_main.py
 # For tips on pytest monkeypatch, see
 #   https://stackoverflow.com/questions/38723140/i-want-to-use-stdin-in-a-pytest-test
 #
