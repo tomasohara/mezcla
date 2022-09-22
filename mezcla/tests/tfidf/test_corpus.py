@@ -22,8 +22,10 @@ from mezcla import debug
 #    THE_MODULE:	    global module object
 import mezcla.tfidf.corpus as THE_MODULE
 
+class TestTfidfCorpus:
+    """Class for testcase definition"""
 
-## TODO: TESTS WORK-IN-PROGRESS
+    ## TODO: TESTS WORK-IN-PROGRESS
 
 
 if __name__ == '__main__':

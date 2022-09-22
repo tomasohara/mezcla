@@ -23,7 +23,11 @@ from mezcla import debug
 import mezcla.tfidf.document as THE_MODULE
 
 
-## TODO: TESTS WORK-IN-PROGRESS
+class TestTfidfDocument:
+    """Class for testcase definition"""
+
+    ## TODO: TESTS WORK-IN-PROGRESS
+
 
 
 if __name__ == '__main__':
