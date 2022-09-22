@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 #
 # Test(s) for glue_helpers.py. This can be run as follows:
-# $ PYTHONPATH="." tests/test_glue_helpers.py
+# $ PYTHONPATH=".:PYTHONPATH" tests/test_glue_helpers.py
 #
 # TODO:
 # - Add support for write_lines & read_lines.
@@ -11,7 +11,8 @@
 """Tests for glue_helpers module"""
 
 # Standard packages
-import os
+from os import path
+from io import StringIO
 
 # Installed packages
 import pytest
@@ -19,15 +20,15 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla import tpo_common as tpo # Deprecated, only used for mock
 from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 
-class TestGlueHelpers(TestWrapper):
+class TestGlueHelpers:
     """Class for testcase definition"""
-    script_module = TestWrapper.derive_tested_module_name(__file__)
 
     def test_get_temp_file(self):
         """Ensure get_temp_file works as expected"""
@@ -49,12 +50,35 @@ class TestGlueHelpers(TestWrapper):
     def test_file_exists(self):
         """Ensure file_exists works as expected"""
         debug.trace(4, "test_file_exists()")
-        ## TODO: WORK-IN=PROGRESS
+        # Existent file
+        test_filename = gh.get_temp_file()
+        gh.write_file(test_filename, 'some content')
+        assert THE_MODULE.file_exists(test_filename)
+        # Not existent file
+        assert not THE_MODULE.file_exists('bad_filename')
+
+    def test_non_empty_file(self):
+        """Ensure non_empty_file works as expected"""
+        debug.trace(4, "test_non_empty_file()")
+
+        # Test valid file
+        file_with_content = gh.get_temp_file()
+        gh.write_file(file_with_content, 'content')
+        assert THE_MODULE.non_empty_file(file_with_content)
+
+        # Test non existent file
+        assert not THE_MODULE.non_empty_file('bad_file_name')
+
+        # Test empty file
+        empty_file = gh.get_temp_file()
+        with open(empty_file, 'wb') as _:
+            pass # gh.write_file cant be used because appends a newline
+        assert not THE_MODULE.non_empty_file(empty_file)
 
     def test_form_path(self):
         """Ensure form_path works as expected"""
         debug.trace(4, "test_form_path()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.form_path("/home/", "User/Desktop", "file.txt") == "/home/User/Desktop/file.txt"
 
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
@@ -114,12 +138,33 @@ class TestGlueHelpers(TestWrapper):
         debug.trace(4, "test_run()")
         assert "root" in THE_MODULE.run("ls /")
 
-    def test_issue(self):
+    def test_issue(self, monkeypatch, capsys):
         """Ensure issue works as expected"""
         debug.trace(4, "test_issue()")
-        ## TODO: test trace stdout
-        ## THE_MODULE.issue("ls /")
-        ## THE_MODULE.issue("xeyes &")
+
+        # Simple command test
+        temp_file = gh.get_temp_file()
+        THE_MODULE.issue(f'echo "this is a simple test" > {temp_file}')
+        assert 'this is a simple test' in gh.read_file(temp_file)
+
+        # Setup log file
+        log_file = gh.get_temp_file()
+        gh.write_file(log_file, 'random content')
+        def debugging_mock():
+            return True
+        monkeypatch.setattr(tpo, 'debugging', debugging_mock)
+        monkeypatch.setenv('TEMP_LOG_FILE', log_file, prepend=False)
+
+        # Run test with log file
+        THE_MODULE.issue('bash bad_filename.bash')
+
+        # Check result of test with log file
+        captured = capsys.readouterr()
+        assert 'stderr' in captured.err
+        assert 'bad_filename.bash' in captured.err
+        ## TODO: for some reason the log_file is not being overriden
+        ## assert 'random content' not in gh.read_file(log_file)
+        ## assert 'bad_filename.bash' in gh.read_file(log_file)
 
     def test_get_hex_dump(self):
         """Ensure get_hex_dump works as expected"""
@@ -148,8 +193,8 @@ class TestGlueHelpers(TestWrapper):
         script = "glue_helpers.py"
         test_script = "test_glue_helpers.py"
         # The main script should resolve to parent directory but this one to test dir
-        assert not THE_MODULE.resolve_path(script) == os.path.join(os.path.dirname(__file__), test_script)
-        assert THE_MODULE.resolve_path(test_script) == os.path.join(os.path.dirname(__file__), test_script)
+        assert not THE_MODULE.resolve_path(script) == path.join(path.dirname(__file__), test_script)
+        assert THE_MODULE.resolve_path(test_script) == path.join(path.dirname(__file__), test_script)
 
     def test_extract_match_from_text(self):
         """Ensure extract_match_from_text works as expected"""
@@ -168,12 +213,27 @@ class TestGlueHelpers(TestWrapper):
         assert dict(THE_MODULE.count_it("[a-z]", "Panama")) == {"a": 3, "n": 1, "m": 1}
         assert THE_MODULE.count_it(r"\w+", "My d@wg's fleas have fleas")["fleas"] == 2
 
-    def test_read_lines(self):
+    def test_read_lines(self, monkeypatch, capsys):
         """Ensure read_lines works as expected"""
         debug.trace(4, "test_read_lines()")
+
+        # Test valid file
         temp_file = gh.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
+
+        # Test no filename (read from stdin)
+        monkeypatch.setattr('sys.stdin', StringIO('my input\nsome line'))
+        assert THE_MODULE.read_lines() == ['my input', 'some line']
+        ## TODO: solve "ValueError: I/O operation on closed file."
+        ## THE_MODULE.read_lines()
+        ## captured = capsys.readouterr()
+        ## assert 'stdin' in captured.err
+
+        # Test invalid filename
+        THE_MODULE.read_lines(filename='bad_filename.txt')
+        captured = capsys.readouterr()
+        assert 'Warning:' in captured.err
 
     def test_write_lines(self):
         """Ensure write_lines works as expected"""
@@ -222,17 +282,45 @@ class TestGlueHelpers(TestWrapper):
     def test_copy_file(self):
         """Ensure copy_file works as expected"""
         debug.trace(4, "test_copy_file()")
-        ## TODO: WORK-IN=PROGRESS
+        first_temp_file = gh.get_temp_file()
+        second_temp_file = gh.get_temp_file()
+        gh.write_file(first_temp_file, 'some random content')
+        THE_MODULE.copy_file(first_temp_file, second_temp_file)
+        assert gh.read_file(second_temp_file) == 'some random content\n'
 
     def test_rename_file(self):
         """Ensure rename_file works as expected"""
         debug.trace(4, "test_rename_file()")
-        ## TODO: WORK-IN=PROGRESS
+        test_filename = gh.get_temp_file()
+        new_test_filename = gh.get_temp_file() + '_this_append_avoids_bad_file_exists'
+        gh.write_file(test_filename, 'some content')
 
-    def test_delete_file(self):
+        # Check existense of files before rename
+        assert gh.file_exists(test_filename)
+        assert not gh.file_exists(new_test_filename)
+
+        THE_MODULE.rename_file(test_filename, new_test_filename)
+
+        # Check integrity of renamed file
+        assert gh.file_exists(new_test_filename)
+        assert not gh.file_exists(test_filename)
+        assert gh.read_file(new_test_filename) == 'some content\n'
+
+    def test_delete_file(self, capsys):
         """Ensure delete_file works as expected"""
         debug.trace(4, "test_delete_file()")
-        ## TODO: WORK-IN=PROGRESS
+
+        # Test valid file to delete
+        test_filename = gh.get_temp_file()
+        gh.write_file(test_filename, 'some content')
+        assert gh.file_exists(test_filename)
+        THE_MODULE.delete_file(test_filename)
+        assert not gh.file_exists(test_filename)
+
+        # Test invalid file
+        THE_MODULE.delete_file('bad_filename.txt')
+        captured = capsys.readouterr()
+        assert 'assertion failed' in captured.err
 
     def test_file_size(self):
         """Ensure file_size works as expected"""
@@ -255,12 +343,35 @@ class TestGlueHelpers(TestWrapper):
     def test_get_directory_listing(self):
         """Ensure get_directory_listing works as expected"""
         debug.trace(4, "test_get_directory_listing()")
-        ## TODO: WORK-IN=PROGRESS
+        filenames = [gh.get_temp_file() for _ in range(5)]
+        for file in filenames:
+            gh.write_file(file, 'random content')
+        filenames = [file.replace('/tmp/', '') for file in filenames]
+        assert set(filenames).issubset(THE_MODULE.get_directory_listing('/tmp/'))
 
-    def test_getenv_filename(self):
+    def test_getenv_filename(self, monkeypatch, capsys):
         """Ensure getenv_filename works as expected"""
         debug.trace(4, "test_getenv_filename()")
-        ## TODO: WORK-IN=PROGRESS
+
+        # Test valid filename with valid content
+        test_filename = gh.get_temp_file()
+        gh.write_file(test_filename, 'random content')
+        monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
+        assert THE_MODULE.getenv_filename('TEST_ENV_FILENAME') == test_filename
+
+        # Test valid filename with empty content
+        test_filename = gh.get_temp_file()
+        with open(test_filename, 'wb') as _:
+            pass # gh.write_file cant be used because appends a newline
+        debug.set_level(7)
+        monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
+        THE_MODULE.getenv_filename('TEST_ENV_FILENAME')
+        captured = capsys.readouterr()
+        assert 'Error' in captured.err
+        assert test_filename in captured.err
+
+        # Test non enviroment var
+        assert THE_MODULE.getenv_filename('BAD_ENV_VAR', default='altfile') == 'altfile'
 
 
 if __name__ == '__main__':
