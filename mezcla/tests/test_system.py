@@ -643,9 +643,9 @@ class TestSystem:
 
         # Test empty file
         empty_file = gh.get_temp_file()
-        gh.write_file(empty_file, '')
-        ## TODO: check why the empty file size is 1 instead of 0
-        ## assert not THE_MODULE.non_empty_file(empty_file)
+        with open(empty_file, 'wb') as _:
+            pass # gh.write_file cant be used because appends a newline
+        assert not THE_MODULE.non_empty_file(empty_file)
 
     def test_absolute_path(self):
         """Ensure absolute_path works as expected"""
