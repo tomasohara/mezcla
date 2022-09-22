@@ -53,7 +53,7 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla import tpo_common as tpo
 
-TODO_FILE = "TODO MODULE"
+TODO_FILE = "TODO MODULE FILE"
 TODO_MODULE = "TODO MODULE"
 
 # Note: the following is for transparent resolution of dotted module names
@@ -67,7 +67,7 @@ debug.assertion(THIS_PACKAGE == "mezcla")
 
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition"""
-    script_file = TODO_FILE # name for invocation 'python -m coverage run ...'
+    script_file = TODO_FILE # name for invocation via 'python -m coverage run ...'
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usuually set via derive_tested_module_name)
     temp_base = system.getenv_text("TEMP_BASE",
                                    tempfile.NamedTemporaryFile().name)
