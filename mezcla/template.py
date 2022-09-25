@@ -55,6 +55,10 @@ class Script(Main):
     ## alt_todo_arg = ""
 
     # TODO: add class constructor if needed for non-standard initialization
+    ## WARNING: For Script classes involving complex logic, it is best to use helper classes,
+    ## as done in show_bert_representation.py.
+    ## NOTE: Such class decomposition is also beneficial for unit tests.
+    #
     ## def __init__(self, *args, **kwargs):
     ##     debug.trace_fmtd(5, "Script.__init__({a}): keywords={kw}; self={s}",
     ##                      a=",".join(args), kw=kwargs, s=self)
@@ -100,7 +104,10 @@ def main():
         # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
         skip_input=False,
         manual_input=False,
-        # TODO: Disable inference of --help argument
+        ## TODO (specify auto_help such as when manual_input set):
+        ## # Note: shows brief usage if no arguments given
+        ## auto_help=True,
+        ## -or-: # Disable inference of --help argument
         ## auto_help=False,
         ## TODO: specify options and (required) arguments
         boolean_options=[(TODO_ARG, "TODO-desc")],
