@@ -42,6 +42,7 @@ xgboost
 #opt# spacy>=3.0.0
 # TODO: python -m spacy download en
 # TODO: #opt# tensorflow
+# TODO: #opt# keras
 #
 # NOTE: the following are for setting up typical development environment
 #opt# ipython
