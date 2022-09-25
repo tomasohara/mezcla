@@ -13,6 +13,7 @@
 
 #
 # TODO:
+# - * Isolate csv support from Script class.
 # - Add option for specifying output dialect.
 # - Add support for selecting by columns instead of fields (e.g., as with -c1-40 with cut command).
 #
