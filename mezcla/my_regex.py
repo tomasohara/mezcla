@@ -186,6 +186,13 @@ class regex_wrapper():
     def span(self, group=0):
         """Tuple with GROUP start and end"""
         return (self.match_result and self.match_result.span(group))
+
+    def split(self, pattern, string, maxsplit=0, flags=0):
+        """Use PATTERN to split STRING, optionally up to MAXSPLIT with FLAGS"""
+        result = re.split(pattern, string, maxsplit, flags)
+        debug.trace_fmt(self.TRACE_LEVEL, "split{args} => {r}",
+                        args=tuple([pattern, string, maxsplit, flags]), r=result)
+        return result
     
 #...............................................................................
 # Initialization
