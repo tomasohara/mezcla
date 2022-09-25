@@ -1,5 +1,4 @@
 # Basic requirements for main scripts
-# optional: keras, tensorflow
 #
 # By default only the cases used in multuiple scripts are installed.
 #
