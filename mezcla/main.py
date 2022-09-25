@@ -190,6 +190,7 @@ class Main(object):
             brief_usage = BRIEF_USAGE
         self.brief_usage = brief_usage  # show brief usage instead of full --help
         if auto_help is None:
+            ## TODO: rework to be default if none specified for both skip_input and manual_input
             ## OLD: auto_help = self.skip_input
             auto_help = self.skip_input or not self.manual_input
         self.auto_help = auto_help      # adds --help to command line if no arguments
