@@ -943,7 +943,7 @@ def absolute_path(path):
     """Return resolved absolute pathname for PATH, as with Linux realpath command w/ --no-symlinks"""
     # EX: absolute_path("/etc/mtab").startswith("/etc")
     result = os.path.abspath(path)
-    debug.trace(7, f"real_path({path}) => {result}")
+    debug.trace(7, f"absolute_path({path}) => {result}")
     return result
 
 
