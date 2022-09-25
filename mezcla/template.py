@@ -92,12 +92,8 @@ class Script(Main):
     ##           debug.trace(6, f"Script.wrap_up(); self={self}")
     ##           # ...
 
-#-------------------------------------------------------------------------------
-    
-if __name__ == '__main__':
-    debug.trace_current_context(level=debug.QUITE_DETAILED)
-    debug.trace_fmt(4, "Environment options: {eo}",
-                    eo=system.formatted_environment_option_descriptions())
+def main():
+    """Entry point"""
     app = Script(
         description=__doc__,
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
@@ -116,4 +112,12 @@ if __name__ == '__main__':
     app.run()
     # Make sure no TODO_vars above (i.e., in namespace)
     debug.assertion(not any(re.search(r"^TODO_", m, re.IGNORECASE)
-                            for m in dir(app)))
+                            for m in dir(app)))    
+    
+#-------------------------------------------------------------------------------
+    
+if __name__ == '__main__':
+    debug.trace_current_context(level=debug.QUITE_DETAILED)
+    debug.trace_fmt(4, "Environment options: {eo}",
+                    eo=system.formatted_environment_option_descriptions())
+    main()
