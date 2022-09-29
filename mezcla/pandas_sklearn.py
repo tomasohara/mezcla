@@ -72,7 +72,7 @@ from mezcla.text_utils import getenv_ints
 # to enable. These include XBG, Keras, and Auto-Sklearn.
 
 VERBOSE = getenv_bool("VERBOSE", False)
-DATA_FILE = getenv_text("DATA_FILE", "tests/iris.csv")
+DATA_FILE = getenv_text("DATA_FILE", "examples/iris.csv")
 FIELD_SEP = getenv_text("FIELD_SEP", ",",
                         description="Field separator (delimiter)")
 SKIP_DATAFRAME = getenv_bool("SKIP_DATAFRAME", False)
