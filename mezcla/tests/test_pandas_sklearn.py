@@ -19,12 +19,20 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.pandas_sklearn as THE_MODULE
 
-class TestPandasSklearn:
+# Constants
+EXAMPLES = f'{gh.dir_path(__file__)}/../examples'
+RESOURCES = f'{gh.dir_path(__file__)}/resources'
+IRIS_EXAMPLE = f'{EXAMPLES}/iris.csv'
+IRIS_OUTPUT = f'{EXAMPLES}/iris.csv'
+
+class TestPandasSklearnUtils:
     """Class for testcase definition"""
 
     def test_create_feature_mapping(self):
@@ -47,10 +55,25 @@ class TestPandasSklearn:
         debug.trace(4, "test_show_average_precision_recall()")
         ## TODO: WORK-IN-PROGRESS
 
-    def test_main(self):
-        """Ensure main works as expected"""
-        debug.trace(4, "test_main()")
-        ## TODO: WORK-IN-PROGRESS
+
+class TestPandasSklearn(TestWrapper):
+    """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__)
+
+    def test_main_without_args(self):
+        """Ensure main without args works as expected"""
+        debug.trace(4, "test_main_without_args()")
+        ## TODO: for some reason, the output differs from used in tests files and with command-line
+        output = self.run_script(data_file='')
+        assert 'Usage:' in gh.read_file(output)
+
+    def test_normal_usage(self):
+        """Ensure main without args works as expected"""
+        debug.trace(4, "test_normal_usage()")
+        ## TODO: for some reason, the output differs from used in tests files and with command-line
+        output = self.run_script(data_file=IRIS_EXAMPLE)
+        assert output + '\n' == gh.read_file(IRIS_OUTPUT)
 
 
 if __name__ == '__main__':
