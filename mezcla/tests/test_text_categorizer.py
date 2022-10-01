@@ -38,12 +38,8 @@ if not re.search(__file__, r"\btemplate.py$"):
 ##                            description="Fouled Up Beyond All Recognition processing")
 
 
-class TestTextCategorizer(TestWrapper):
+class TestTextCategorizerUtils(TestWrapper):
     """Class for testcase definition"""
-    script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
-    # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
-    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
     def test_something_else(self):
         """TODO: flesh out test for something else"""
@@ -85,22 +81,26 @@ class TestTextCategorizer(TestWrapper):
         assert re.search(r"TODO-pattern", output.strip())
         return
 
-    ## TODO: test ClassifierWrapper class
-    ## TODO: test TextCategorizer class
-
     def test_format_index_html(self):
         """Ensure format_index_html works as expected"""
         debug.trace(4, "test_format_index_html()")
         ## TODO: WORK-IN=PROGRESS
-
-    ## TODO: test web_controller class
 
     def test_start_web_controller(self):
         """Ensure start_web_controller works as expected"""
         debug.trace(4, "test_start_web_controller()")
         ## TODO: WORK-IN=PROGRESS
 
-    ## TODO: test main
+
+class TestTextCategorizerScript(TestWrapper):
+    """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__)
+    # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
+    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
+
+    ## TODO: WORK-IN-PROGRESS TESTS
+
 
 #------------------------------------------------------------------------
 
