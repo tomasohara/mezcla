@@ -19,10 +19,12 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.spacy_nlp as THE_MODULE
+from mezcla.unittest_wrapper import TestWrapper
 
 
 class TestSentimentAnalyzer:
@@ -55,28 +57,12 @@ class TestSpacyNlpUtils:
         ## TODO: WORK-IN=PROGRESS
 
 
-class TestSpacy:
+class TestSpacy(TestWrapper):
     """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__)
 
-    def test_get_entity_spec(self):
-        """Ensure script.get_entity_spec works as expected"""
-        debug.trace(4, "test_get_entity_spec()")
-        ## TODO: WORK-IN=PROGRESS
-
-    def test_get_sentiment_score(self):
-        """Ensure script.get_sentiment_score works as expected"""
-        debug.trace(4, "test_get_sentiment_score()")
-        ## TODO: WORK-IN=PROGRESS
-
-    def test_process_line(self):
-        """Ensure script.process_line works as expected"""
-        debug.trace(4, "test_process_line()")
-        ## TODO: WORK-IN=PROGRESS
-
-    def test_process_sentence(self):
-        """Ensure script.process_sentence works as expected"""
-        debug.trace(4, "test_process_sentence()")
-        ## TODO: WORK-IN=PROGRESS
+    ## TODO: WORK-IN-PROGRESS TESTS
 
 
 if __name__ == '__main__':
