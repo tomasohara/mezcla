@@ -19,10 +19,18 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.text_processing as THE_MODULE
+from mezcla.unittest_wrapper import TestWrapper
+
+# Constants
+RESOURCES = f'{gh.dir_path(__file__)}/resources'
+TEXT_EXAMPLE = f'{RESOURCES}/example_text.txt'
+TEXT_EXAMPLE_TAGS = f'{RESOURCES}/example_text_tags.txt'
+WORD_POS_FREQ_FILE = f'{RESOURCES}/word-POS.freq'
 
 class TestTextProcessing:
     """Class for testcase definition"""
@@ -103,47 +111,73 @@ class TestTextProcessing:
     def test_is_noun(self):
         """Ensure is_noun works as expected"""
         debug.trace(4, "test_is_noun()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.is_noun('notaword', 'NN')
+        assert not THE_MODULE.is_noun('can', 'MD')
 
     def test_is_verb(self):
         """Ensure is_verb works as expected"""
         debug.trace(4, "test_is_verb()")
+        assert THE_MODULE.is_verb('run', 'VB')
         assert not THE_MODULE.is_verb('can', 'NN')
-        ## TODO: add positive assertion
 
     def test_is_adverb(self):
         """Ensure is_adverb works as expected"""
         debug.trace(4, "test_is_adverb()")
         assert THE_MODULE.is_adverb('quickly', 'RB')
-        ## TODO: add negative assertion
+        assert not THE_MODULE.is_adverb('can', 'MD')
 
     def test_is_adjective(self):
         """Ensure is_adjective works as expected"""
         debug.trace(4, "test_is_adjective()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.is_adjective('quick', 'JJ')
+        assert not THE_MODULE.is_adjective('can', 'MD')
 
     def test_is_comma(self):
         """Ensure is_comma works as expected"""
         debug.trace(4, "test_is_comma()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.is_comma('comma', ',')
+        assert THE_MODULE.is_comma(',', 'comma')
+        assert not THE_MODULE.is_comma('can', 'MD')
 
     def test_is_quote(self):
         """Ensure is_quote works as expected"""
         debug.trace(4, "test_is_quote()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.is_quote('\'', '')
+        assert THE_MODULE.is_quote('\"', '')
+        assert not THE_MODULE.is_quote('can', 'MD')
 
     def test_is_punct(self):
         """Ensure is_punct works as expected"""
         debug.trace(4, "test_is_punct()")
         assert THE_MODULE.is_punct('$', '$')
-        ## TODO: WORK-IN=PROGRESS
+        assert not THE_MODULE.is_punct('can', 'MD')
 
     def test_usage(self):
         """Ensure usage works as expected"""
         debug.trace(4, "test_usage()")
         ## TODO: WORK-IN=PROGRESS
 
-    ## TODO: test main
+
+class TestTextProcessingScript(TestWrapper):
+    """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
+    script_module =TestWrapper.get_testing_module_name(__file__)
+
+    def test_all(self):
+        """Ensure text_processing without argument works as expected"""
+        debug.trace(4, "test_all()")
+        output = self.run_script(data_file=TEXT_EXAMPLE)
+        assert output == gh.read_file(TEXT_EXAMPLE_TAGS)[:-1]
+
+    def test_just_tokenize(self):
+        """Ensure just_tokenize argument works as expected"""
+        debug.trace(4, "test_just_tokenize()")
+        ## TODO: WORK-IN-PROGRESS
+
+    def test_make_lowercase(self):
+        """Ensure make_lowercase argument works as expected"""
+        debug.trace(4, "test_make_lowercase()")
+        ## TODO: WORK-IN-PROGRESS
 
 
 if __name__ == '__main__':
