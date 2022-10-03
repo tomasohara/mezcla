@@ -12,11 +12,11 @@ Sample of data set (head, tail, random):
 148          6.2         3.4          5.4         2.3  Iris-virginica
 149          5.9         3.0          5.1         1.8  Iris-virginica
     sepal_length sepal_width petal_length petal_width            class
-18           5.7         3.8          1.7         0.3      Iris-setosa
-26           5.0         3.4          1.6         0.4      Iris-setosa
-92           5.8         2.6          4.0         1.2  Iris-versicolor
-57           4.9         2.4          3.3         1.0  Iris-versicolor
-125          7.2         3.2          6.0         1.8   Iris-virginica
+107          7.3         2.9          6.3         1.8   Iris-virginica
+146          6.3         2.5          5.0         1.9   Iris-virginica
+85           6.0         3.4          4.5         1.6  Iris-versicolor
+4            5.0         3.6          1.4         0.2      Iris-setosa
+82           5.8         2.7          3.9         1.2  Iris-versicolor
 statistical summary:
        sepal_length sepal_width petal_length petal_width        class
 count           150         150          150         150          150
