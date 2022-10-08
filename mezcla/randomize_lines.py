@@ -45,11 +45,6 @@ import random
 import sys
 
 # Local modules
-## OLD:
-## import debug
-## import glue_helpers as gh
-## import tpo_common as tpo
-## import system
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
@@ -92,13 +87,10 @@ def main():
     input_stream = sys.stdin
     if (filename != "-"):
         assert(os.path.exists(filename))
-        ## OLD: input_stream = open(filename, "r")
         input_stream = system.open_file(filename)
         assert(input_stream)
     else:
-        ## OLD: tpo.debug_print("Processing stdin", 6)
         debug.trace(5, "Re-opening stdin w/ UTF-8 support")
-        ## BAD: input_stream = system.open_file(sys.stdin)
         ## TODO: figure out proper way to re-open stdin
         STDIN = 0
         input_stream = system.open_file(STDIN)
@@ -121,7 +113,6 @@ def main():
     header = None
     line_num = 0
     # Note: uses main class to allow for reading pages and paragraphs
-    ## OLD: for line in input_stream:
     main_app = Dummy_Main(input_stream)
     main_app.process_input()
     multi_line_mode = not main_app.is_line_mode()
@@ -143,14 +134,6 @@ def main():
     # NOTES:
     # - This needs to ensure that the unix version of sort is used.
     # - The Win32 version of run() doesn't support pipes. 
-    ## BAD: gh.run("/usr/bin/sort -n < {in_file} | cut -f2- >| {out_file}",
-    ##             in_file=temp_input_file, out_file=temp_output_file)
-    ## OLD: temp_mid_file = gh.get_temp_file()
-    ## BAD2: gh.run("PATH='/usr/bin:$PATH' sort -n < '{in_file}' > '{temp_mid}'",
-    ## OLD: gh.run('/usr/bin/sort -n < "{in_file}" > "{temp_mid}"',
-    ## OLD:        in_file=temp_input_file, temp_mid=temp_mid_file)
-    ## OLD: gh.run("cut -f2- '{temp_mid}' > '{out_file}'",
-    ## OLD:        temp_mid=temp_mid_file, out_file=temp_output_file)
     ## TODO: Use another way to bypass Windows sort command (e.g., in case sort
     ## is located in a different directory than /usr/bin).
     gh.delete_existing_file(temp_output_file)
