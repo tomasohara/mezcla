@@ -10,8 +10,7 @@
 """TODO: what module does (brief)"""
 
 # Standard modules
-import re
-
+## TODO: from collections import defaultdict
 # Installed modules
 ## TODO: import numpy
 
@@ -20,8 +19,8 @@ import re
 from mezcla import debug
 from mezcla.main import Main
 from mezcla import system
+from mezcla.my_regex import my_re
 ## TODO:
-## from mezcla.my_regex import my_re
 ## from mezcla import glue_helpers as gh
 ##
 ## Optional:
@@ -33,7 +32,7 @@ from mezcla import system
 ##    M-: (query-replace-regexp "todo\\([-_]\\)arg" "arg\\1name")
 ## where M-: is the emacs keystroke short-cut for eval-expression.
 TODO_ARG = "TODO-arg"
-## ALT_TODO_ARG = "alt-todo-arg"
+## TODO_TEXT_ARG = "alt-todo-arg"
 ## TODO_FILENAME = "TODO_filename"
 
 ## TODO:
@@ -52,7 +51,7 @@ class Script(Main):
     # TODO: -or-: """Adhoc script class (e.g., no I/O loop, just run calls)"""
     ## TODO: class-level member variables for arguments (avoids need for class constructor)
     todo_arg = False
-    ## alt_todo_arg = ""
+    ## todo_text_arg = ""
 
     # TODO: add class constructor if needed for non-standard initialization
     ## WARNING: For Script classes involving complex logic, it is best to use helper classes,
@@ -62,14 +61,14 @@ class Script(Main):
     ## def __init__(self, *args, **kwargs):
     ##     debug.trace_fmtd(5, "Script.__init__({a}): keywords={kw}; self={s}",
     ##                      a=",".join(args), kw=kwargs, s=self)
-    ##     super(Script, self).__init__(*args, **kwargs)
+    ##     super().__init__(*args, **kwargs)
     
     def setup(self):
         """Check results of command line processing"""
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
         ## TODO: extract argument values
         self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
-        ## self.alt_todo_arg = self.get_parsed_option(alt_todo_arg, self.alt_todo_arg)
+        ## self.todo_text_arg = self.get_parsed_option(todo_text_arg, self.todo_text_arg)
         # TODO: self.TODO_filename = self.get_parsed_argument(TODO_FILENAME)
         debug.trace_object(5, self, label="Script instance")
 
@@ -78,9 +77,9 @@ class Script(Main):
         debug.trace_fmtd(6, "Script.process_line({l})", l=line)
         # TODO: flesh out
         if self.todo_arg and "TODO" in line:
-            print("arg1 line ({n}): {l}".format(n=self.line_num, l=line))
+            print(f"arg1 line ({self.line_num}): {line}")
         ## TODO: regex pattern matching
-        ## elif my_re.search(self.alt_todo_arg, line):
+        ## elif my_re.search(self.todo_text_arg, line):
         ##     print("arg2 line: %s" % line)
 
     ## TODO: if no input proocessed, customize run_main_step instead
@@ -113,12 +112,12 @@ def main():
         boolean_options=[(TODO_ARG, "TODO-desc")],
         # Note: FILENAME is default argument unless skip_input
         ## positional_arguments=[FILENAME1, FILENAME2], 
-        ## text_options=[(alt_todo_arg, "TODO-desc")],
+        ## text_options=[(todo_text_arg, "TODO-desc")],
         # Note: Following added for indentation: float options are not common
         float_options=None)
     app.run()
     # Make sure no TODO_vars above (i.e., in namespace)
-    debug.assertion(not any(re.search(r"^TODO_", m, re.IGNORECASE)
+    debug.assertion(not any(my_re.search(r"^TODO_", m, my_re.IGNORECASE)
                             for m in dir(app)))    
     
 #-------------------------------------------------------------------------------
