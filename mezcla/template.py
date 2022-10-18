@@ -22,6 +22,7 @@ from mezcla import system
 from mezcla.my_regex import my_re
 ## TODO:
 ## from mezcla import glue_helpers as gh
+## from mezcla import data_utils as du
 ##
 ## Optional:
 ## # Increase trace level for regex searching, etc. (e.g., from 6 to 7)
@@ -68,7 +69,7 @@ class Script(Main):
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
         ## TODO: extract argument values
         self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
-        ## self.todo_text_arg = self.get_parsed_option(todo_text_arg, self.todo_text_arg)
+        ## self.todo_text_arg = self.get_parsed_option(TODO_TEXT_ARG, self.todo_text_arg)
         # TODO: self.TODO_filename = self.get_parsed_argument(TODO_FILENAME)
         debug.trace_object(5, self, label="Script instance")
 
@@ -112,7 +113,7 @@ def main():
         boolean_options=[(TODO_ARG, "TODO-desc")],
         # Note: FILENAME is default argument unless skip_input
         ## positional_arguments=[FILENAME1, FILENAME2], 
-        ## text_options=[(todo_text_arg, "TODO-desc")],
+        ## text_options=[(TODO_TEXT_ARG, "TODO-desc")],
         # Note: Following added for indentation: float options are not common
         float_options=None)
     app.run()
