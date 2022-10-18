@@ -34,7 +34,8 @@ xgboost
 # Optional requirements
 #
 # TODO:
-# - show comand for downloading Spacy en_core_web_lg model
+# - download Spacy model(s):
+#   python -m spacy download en_core_web_lg
 #
 #opt# gensim
 # TODO: #opt# bert-tensorflow
@@ -48,3 +49,6 @@ xgboost
 # NOTE: the following are for setting up typical development environment
 #opt# ipython
 #opt# pylint
+#opt# jupyter
+#opt# bash_kernel
+# TODO: python -m bash_kernel.install
