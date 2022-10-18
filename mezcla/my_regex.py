@@ -34,7 +34,7 @@ from mezcla import system
 ## OLD:
 ## # Expose public symbols from re package,
 ## __all__ = re.__all__
-## DEBUG: system.print_stderr("checking SKIP_RE_ALL")
+## DEBUG: system.print_error("checking SKIP_RE_ALL")
 RE_ALL = (not system.getenv_bool("SKIP_RE_ALL", False,
                                  "Don't use re.__all__: for sake of pylint"))
 __all__ = ['regex_wrapper', 'my_re']
@@ -109,6 +109,14 @@ class regex_wrapper():
         except:
             system.print_exception_info("__init__ re.* importation")
 
+    def check_pattern(self, regex):
+        """Apply sanity checks to REGEX when debugging
+        Note: Added to account for potential f-string confusion"""
+        # TODO: Add way to disable check
+        debug.reference_var(self)
+        if (debug.debugging(1) and re.search(r"[^{]{[^{}]+}[^}]", regex)):
+            system.print_error(f"Warning: potentially unresolved f-string in {regex}")
+
     def search(self, regex, text, flags=0, base_trace_level=None):
         """Search for REGEX in TEXT with optional FLAGS and BASE_TRACE_LEVEL (e.g., 6)"""
         ## TODO: rename as match_anywhere for clarity
@@ -117,6 +125,7 @@ class regex_wrapper():
         debug.trace_fmtd((1 + base_trace_level), "my_regex.search({r!r}, {t!r}, {f}): self={s}",
                          r=regex, t=text, f=flags, s=self)
         debug.assertion(isinstance(text, six.string_types))
+        self.check_pattern(regex)
         self.match_result = re.search(regex, text, flags)
         if self.match_result:
             debug.trace_fmt(base_trace_level, "match: {m!r}; regex: {r}", m=self.grouping(), r=regex)
@@ -129,6 +138,7 @@ class regex_wrapper():
             base_trace_level = self.TRACE_LEVEL
         debug.trace_fmtd((1 + base_trace_level), "my_regex.match({r!r}, {t!r}, {f}): self={s}",
                          r=regex, t=text, f=flags, s=self)
+        self.check_pattern(regex)
         self.match_result = re.match(regex, text, flags)
         if self.match_result:
             debug.trace_fmt(base_trace_level, "match: {m!r}; regex: {r!r}", m=self.grouping(), r=regex)
@@ -181,6 +191,7 @@ class regex_wrapper():
         result = re.sub(pattern, replacement, string, count, flags)
         debug.reference_var(self)
         debug.trace(self.TRACE_LEVEL + 1, f"my_regex.sub({pattern!r}, {replacement!r}, {string!r}, [count=[count]], flags={flags}]) => {result!r}\n")
+        self.check_pattern(pattern)
         return result
 
     def span(self, group=0):
@@ -202,6 +213,6 @@ class regex_wrapper():
 my_re = regex_wrapper()
 
 if __name__ == '__main__':
-    system.print_stderr("Warning: not intended for command-line use")
+    system.print_error("Warning: not intended for command-line use")
     ## Note: truth in advertising:
     ## debug.trace(4, f"mp: {MalditoPython()}")
