@@ -7,7 +7,7 @@
 #    pip install -r requirements.txt
 #
 # 2. Full (i.e., including optional):
-#    pip install $(perl -00 -pe 's/^#opt#\s*//gm;' ~/python/Mezcla/requirements.txt | grep -v '^#')
+#    pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' ~/python/Mezcla/requirements.txt | grep -v '^#')
 #
 # TODO: supporting commands (e.g., lynx)
 bs4
