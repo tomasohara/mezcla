@@ -198,6 +198,7 @@ if __debug__:
     
     def trace(level, text, empty_arg=None, no_eol=False, indentation=None):
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE"""
+        # TODO: add option to use format_value
         # Note: trace should not be used with text that gets formatted to avoid
         # subtle errors
         ## DEBUG: sys.stderr.write("trace({l}, {t})\n".format(l=level, t=text))
