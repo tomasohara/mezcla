@@ -573,13 +573,16 @@ def file_size(filename):
     return size
 
 
-def get_matching_files(pattern):
-    """Get list of files matching PATTERN via shell globbing"""
+def get_matching_files(pattern, warn=False):
+    """Get list of files matching PATTERN via shell globbing
+    Note: Optionally issues WARNing"""
     # NOTE: Multiple glob specs not allowed in PATTERN
     # TODO: See whether the result should be sorted lexicographically
     files = glob.glob(pattern)
     tpo.debug_format("get_matching_files({p}) => {l}", 5,
                      p=pattern, l=files)
+    if ((not files) and warn):
+        system.print_stderr(f"Warning: no matching files for {pattern}")
     return files
 
 
