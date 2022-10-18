@@ -769,6 +769,18 @@ def remove_extension(filename, extension=None):
     return new_filename
 
 
+def get_extension(filename):
+    """Return extension in FILENAME"""
+    # EX: get_extension("document.pdf") => "pdf"
+    # EX: get_extension("it.abc.def") => "def"
+    # EX: get_extension("no-period") => ""
+    extension = ""
+    if "." in filename:
+        extension = filename.split(".")[-1]
+    debug.trace(5, f"get_extension({filename}) => {extension}")
+    return extension
+
+
 def file_exists(filename):
     """Returns True iff FILENAME exists"""
     does_exist = os.path.exists(filename)
