@@ -223,6 +223,7 @@ class Main(object):
             use_temp_base_dir = system.getenv_bool("USE_TEMP_BASE_DIR", False)
         self.use_temp_base_dir = use_temp_base_dir
         if self.use_temp_base_dir:
+            ## TODO: gh.full_mkdir
             gh.run("mkdir -p {dir}", dir=self.temp_base)
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
