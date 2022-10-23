@@ -11,6 +11,7 @@
 
 # Standard modules
 ## TODO: from collections import defaultdict
+
 # Installed modules
 ## TODO: import numpy
 
@@ -33,8 +34,8 @@ from mezcla.my_regex import my_re
 ##    M-: (query-replace-regexp "todo\\([-_]\\)arg" "arg\\1name")
 ## where M-: is the emacs keystroke short-cut for eval-expression.
 TODO_ARG = "TODO-arg"
-## TODO_TEXT_ARG = "alt-todo-arg"
-## TODO_FILENAME = "TODO_filename"
+## TEXT_ARG = "text-arg"
+## ALT_FILENAME = "alt_filename"
 
 ## TODO:
 ## # Environment options
@@ -52,7 +53,7 @@ class Script(Main):
     # TODO: -or-: """Adhoc script class (e.g., no I/O loop, just run calls)"""
     ## TODO: class-level member variables for arguments (avoids need for class constructor)
     todo_arg = False
-    ## todo_text_arg = ""
+    ## text_arg = ""
 
     # TODO: add class constructor if needed for non-standard initialization
     ## WARNING: For Script classes involving complex logic, it is best to use helper classes,
@@ -69,8 +70,9 @@ class Script(Main):
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
         ## TODO: extract argument values
         self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
-        ## self.todo_text_arg = self.get_parsed_option(TODO_TEXT_ARG, self.todo_text_arg)
-        # TODO: self.TODO_filename = self.get_parsed_argument(TODO_FILENAME)
+        ## TODO:
+        ## self.text_arg = self.get_parsed_option(TEXT_ARG, self.text_arg)
+        ## self.alt_filename = self.get_parsed_argument(ALT_FILENAME)
         debug.trace_object(5, self, label="Script instance")
 
     def process_line(self, line):
@@ -80,7 +82,7 @@ class Script(Main):
         if self.todo_arg and "TODO" in line:
             print(f"arg1 line ({self.line_num}): {line}")
         ## TODO: regex pattern matching
-        ## elif my_re.search(self.todo_text_arg, line):
+        ## elif my_re.search(self.text_arg, line):
         ##     print("arg2 line: %s" % line)
 
     ## TODO: if no input proocessed, customize run_main_step instead
@@ -111,10 +113,11 @@ def main():
         ## auto_help=False,
         ## TODO: specify options and (required) arguments
         boolean_options=[(TODO_ARG, "TODO-desc")],
-        # Note: FILENAME is default argument unless skip_input
-        ## positional_arguments=[FILENAME1, FILENAME2], 
-        ## text_options=[(TODO_TEXT_ARG, "TODO-desc")],
-        # Note: Following added for indentation: float options are not common
+        ## TODO
+        ## Note: FILENAME is default argument unless skip_input
+        ## positional_arguments=[ALT_FILENAME], 
+        ## text_options=[(TEXT_ARG, "TODO-desc")],
+        ## Note: Following added for indentation float options not common (TODO: remove?)
         float_options=None)
     app.run()
     # Make sure no TODO_vars above (i.e., in namespace)
