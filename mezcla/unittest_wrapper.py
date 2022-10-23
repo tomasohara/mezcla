@@ -74,7 +74,18 @@ class TestWrapper(unittest.TestCase):
     temp_file = tempfile.NamedTemporaryFile().name
     use_temp_base_dir = None
     test_num = 1
-
+    
+    ## TEST:
+    ## NOTE: leads to pytest warning. See
+    ##   https://stackoverflow.com/questions/62460557/cannot-collect-test-class-testmain-because-it-has-a-init-constructor-from
+    ## def __init__(self, *args, **kwargs):
+    ##     debug.trace_fmtd(5, "TestWrapper.__init__({a}): keywords={kw}; self={s}",
+    ##                      a=",".join(args), kw=kwargs, s=self)
+    ##     super().__init__(*args, **kwargs)
+    ##    debug.trace_object(5, self, label="TestWrapper instance")
+    ##
+    ## __test__ = False                 # make sure not assumed test
+        
     @classmethod
     def setUpClass(cls):
         """Per-class initialization: make sure script_module set properly"""
@@ -101,6 +112,7 @@ class TestWrapper(unittest.TestCase):
             # TODO: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); cls.use_temp_base_dir = bool(temp_base_dir.strip()); ...
         if cls.use_temp_base_dir:
             ## TODO: pure python
+            ## TODO: gh.full_mkdir
             gh.run("mkdir -p {dir}", dir=cls.temp_base)
 
         return
