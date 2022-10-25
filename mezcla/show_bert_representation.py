@@ -107,11 +107,28 @@
 import json
 import os
 import re
+import sys
 
 # Installed packages
 import numpy as np
 import scipy.spatial.distance
-import tensorflow as tf
+try:
+    tf = None
+    if ("--help" not in sys.argv):
+        import tensorflow as tf
+except:
+    ## TODO: system.print_exception_info("tensorflow import")
+    sys.stderr.write(f"Problem importing tensorflow: {sys.exc_info()}")
+if not tf:
+    ## TODO: tf = object(); move into supporting module (e.g., misc_utils)
+    class Fubar:
+        """Fouled-up, etc."""
+        pass
+    f_inner = Fubar()
+    tf = Fubar()
+    ## TODO: tf = json.loads('{"version": {"VERSION": "-1"}}')
+    setattr(f_inner, "VERSION", "-1")
+    setattr(tf, "version", f_inner)
 
 # Local packages
 from mezcla import debug
@@ -375,7 +392,6 @@ class Script(Main):
     
 if __name__ == '__main__':
     debug.trace_current_context(level=debug.QUITE_DETAILED)
-    debug.assertion(version_as_float("1.13") <= version_as_float(tf.version.VERSION) < version_as_float("2.0"))
     app = Script(
         description=__doc__,
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
@@ -392,4 +408,5 @@ if __name__ == '__main__':
         text_options=[(MODEL, "Basename of BERT model file"),
                       (FILTER, "Terms to filter from output")]
         )
+    debug.assertion(version_as_float("1.13") <= version_as_float(tf.version.VERSION) < version_as_float("2.0"))
     app.run()
