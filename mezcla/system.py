@@ -680,6 +680,7 @@ def write_file(filename, text, skip_newline=False, append=False):
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
     # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
+    debug.assertion(isinstance(text, str))
     try:
         if not isinstance(text, STRING_TYPES):
             text = to_string(text)
@@ -700,6 +701,7 @@ def write_file(filename, text, skip_newline=False, append=False):
 def write_binary_file(filename, data):
     """Create FILENAME with binary DATA"""
     debug.trace_fmt(7, "write_binary_file({f}, _)", f=filename)
+    debug.assertion(isinstance(text, bytes))
     try:
         with open(filename, "wb") as f:
             f.write(data)
@@ -713,6 +715,7 @@ def write_lines(filename, text_lines, append=False):
     """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND"""
     debug.trace_fmt(5, "write_lines({f}, _, {a})", f=filename, a=append)
     debug.trace_fmt(6, "    text_lines={tl}", tl=text_lines)
+    debug.assertion(isinstance(text_lines, list))
     f = None
     try:
         mode = 'a' if append else 'w'
