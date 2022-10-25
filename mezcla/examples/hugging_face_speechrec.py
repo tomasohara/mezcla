@@ -1,5 +1,7 @@
 #! /usr/bin/env python
 #
+# Uses the Hugging Face API for automatic speech recognition (ASR).
+#
 # Based on following:
 #   https://stackoverflow.com/questions/71568142/how-can-i-extract-and-store-the-text-generated-from-an-automatic-speech-recognit
 #
@@ -38,6 +40,12 @@ TL = debug.TL
 ## ENABLE_FUBAR = system.getenv_bool("ENABLE_FUBAR", False,
 ##                                   description="Enable fouled up beyond all recognition processing")
 
+ASR_TASK = "automatic-speech-recognition"
+# TODO: WHISPER = getenv...("whisper-large"); DEFAULT_MODEL = ...
+DEFAULT_MODEL = "facebook/s2t-medium-librispeech-asr"
+ASR_MODEL = system.getenv_text("ASR_MODEL", DEFAULT_MODEL,
+                               "Hugging Face model for ASR")
+
 #-------------------------------------------------------------------------------
 
 SOUND_FILE = system.getenv_text("SOUND_FILE", "data/ljspeech.wav",
@@ -52,7 +60,7 @@ def main():
     ## BAD:
     ## model = pipeline(task="automatic-speech-recognition",
     ##                  model="facebook/s2t-medium-librispeech-asr")
-    model = pipeline("automatic-speech-recognition")
+    model = pipeline(task=ASR_TASK, model=ASR_MODEL)
 
     if USE_INTERFACE:
         pipeline_if = gr.Interface.from_pipeline(
