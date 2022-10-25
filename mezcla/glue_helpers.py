@@ -111,15 +111,28 @@ def remove_extension(filename, extension):
 ##           ...
 
 
-def dir_path(filename):
-    """Wrapper around os.path.dirname"""
+def dir_path(filename, explicit=False):
+    """Wrapper around os.path.dirname over FILENAME
+    Note: With EXPLICIT, returns . instead of "" (e.g., if filename in current direcotry)
+    """
     # TODO: return . for filename without directory (not "")
-    # EX: dirname("/tmp/solr-4888.log") => "/tmp"
+    # EX: dir_path("/tmp/solr-4888.log") => "/tmp"
+    # EX: dir_path("README.md") => ""
     path = os.path.dirname(filename)
+    if (not path and explicit):
+        path = "."
     debug.trace(5, f"dirname({filename}) => {path}")
     # TODO: add realpath (i.e., canonical path)
-    debug.assertion(form_path(path, basename(filename)) == filename)
+    if not explicit:
+        debug.assertion(form_path(path, basename(filename)) == filename)
     return path
+
+
+def dirname(file_path):
+    """"Returns directory component of FILE_PATH as with Unix dirname"""
+    # EX: dirname("/tmp/solr-4888.log") => "/tmp"
+    # EX: dirname("README.md") => "."
+    return dir_path(file_path, explicit=True)
 
 
 def file_exists(filename):
@@ -185,6 +198,7 @@ def create_directory(path):
 
 def full_mkdir(path):
     """Issues mkdir to ensure path directory, including parents (assuming Linux like shell)"""
+    ## TODO: os.makedirs(path, exist_ok=True)
     debug.assertion(os.name == "posix")
     issue('mkdir --parents "{p}"', p=path)
     debug.assertion(is_directory(path))
