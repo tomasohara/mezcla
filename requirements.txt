@@ -37,18 +37,24 @@ xgboost
 # - download Spacy model(s):
 #   python -m spacy download en_core_web_lg
 #
+#opt# cachetools
 #opt# gensim
+#opt# kenlm
+#opt# lucene
 # TODO: #opt# bert-tensorflow
 #opt# more_itertools
 #opt# pyyaml
+#opt# selenium
 #opt# spacy>=3.0.0
 # TODO: python -m spacy download en
 # TODO: #opt# tensorflow
 # TODO: #opt# keras
 #
+#opt# textract
 # NOTE: the following are for setting up typical development environment
 #opt# ipython
 #opt# pylint
 #opt# jupyter
 #opt# bash_kernel
 # TODO: python -m bash_kernel.install
+#opt# webcolors
