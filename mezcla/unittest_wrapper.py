@@ -53,6 +53,9 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla import tpo_common as tpo
 
+KEEP_TEMP = system.getenv_bool("KEEP_TEMP", tpo.detailed_debugging(),
+                               "keep temporary files")
+
 TODO_MODULE = "TODO MODULE"
 
 # Note: the following is for transparent resolution of dotted module names
@@ -64,14 +67,24 @@ THIS_PACKAGE = getattr(mezcla.debug, "__package__", None)
 debug.assertion(THIS_PACKAGE == "mezcla")
 
 
+def get_temp_dir(keep=False):
+    """Get temporary directory, omitting later deletion if KEEP"""
+    if keep is None:
+        keep = KEEP_TEMP
+    dir_path = tempfile.NamedTemporaryFile(delete=(not keep)).name
+    gh.full_mkdir(dir_path)
+    debug.trace(5, "get_temp_dir() => {dir_path}")
+    return dir_path
+
+
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition"""
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usuually set via derive_tested_module_name)
-    temp_base = system.getenv_text("TEMP_BASE",
-                                   tempfile.NamedTemporaryFile().name)
+    temp_base = system.getenv_text("TEMP_BASE", get_temp_dir())
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
-    temp_file = tempfile.NamedTemporaryFile().name
+    ## OLD: temp_file = tempfile.NamedTemporaryFile().name
+    temp_file = None
     use_temp_base_dir = None
     test_num = 1
     
@@ -104,7 +117,7 @@ class TestWrapper(unittest.TestCase):
             if (not ((re.search(r"warning:.*not intended", help_usage,
                                 re.IGNORECASE))
                      or ("usage:" in help_usage.lower()))):
-                system.print_stderr("Warning: mezcla scripts should implement --help")
+                system.print_stderr("Warning: script should implement --help")
 
         # Optionally, setup temp-base directory (normally just a file)
         if cls.use_temp_base_dir is None:
@@ -230,7 +243,7 @@ class TestWrapper(unittest.TestCase):
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         tpo.debug_print("TestWrapper.tearDown()", 4)
-        if not tpo.detailed_debugging():
+        if not KEEP_TEMP:
             gh.run("rm -vf {file}*", file=self.temp_file)
         return
 
@@ -238,7 +251,8 @@ class TestWrapper(unittest.TestCase):
     def tearDownClass(cls):
         """Per-class cleanup: stub for tracing purposes"""
         tpo.debug_format("TestWrapper.tearDownClass(); cls={c}", 5, c=cls)
-        if not tpo.detailed_debugging():
+        if not KEEP_TEMP:
+            ## TODO: use shutil
             if cls.use_temp_base_dir:
                 gh.run("rm -rvf {dir}", dir=cls.temp_base)
             else:
