@@ -18,8 +18,8 @@ Adhoc usage:
 Tom O'Hara
 Feb 2022
 """
-__VERSION__ = '1.3.1'
-__version__ = '1.3.1'
+__VERSION__ = '1.3.3'
+__version__ = __VERSION__
 
 # Standard module(s)
 import sys
@@ -46,6 +46,7 @@ assert PYTHON3_PLUS, "Python 3 or higher: ¡por favor!"
 ##     ## DEBUG: debug.trace_expr(TL.DEFAULT, debug, mezcla, system, TL)
 ## else:
 ##     TL = None
+## TODO: drop mezcla
 import mezcla
 from mezcla import debug
 from mezcla import glue_helpers as gh
@@ -55,5 +56,5 @@ from mezcla import system
 TL = debug.TL
 
 # Expose commonly used modules
-# TODO: drop gh
+# TODO: drop mezcla
 __all__ = ["debug", "gh", "mezcla", "system", "TL"]
