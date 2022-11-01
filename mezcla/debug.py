@@ -109,8 +109,9 @@ max_trace_value_len = 512
 if __debug__:    
 
     # Initialize debug tracing level
+    # TODO: mark as "private" (e.g., trace_level => _trace_level)
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
-    trace_level = TL.DEFAULT            # typically same as TL.WARNING (2)
+    trace_level = TL.DEFAULT            # typically same as TL.WARNING (2); TODO: global_trace_level
     output_timestamps = False           # prefix output with timestamp
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
@@ -144,7 +145,7 @@ if __debug__:
         ## return trace_level
         level = 0
         try:
-            assertion(isinstance(level, int))
+            ## OLD: assertion(isinstance(level, int))
             level = int(trace_level)
         except:
             _print_exception_info("get_level")
@@ -421,6 +422,7 @@ if __debug__:
         to derive label for each expression. By default, the following format is used:
            expr1=value1; ... exprN=valueN
         Notes:
+        - Currently, the labels are not resolved properly under ipython (or Jupyter).
         - For simplicity, the values are assumed to separated by ', ' (or expression _SEP)--barebones parsing applied.
         - Use DELIM to specify delimiter; otherwise '; ' used;
           if so, NO_EOL applies to intermediate values (EOL always used at end).
@@ -430,8 +432,14 @@ if __debug__:
         - Use MAX_LEN to specify maximum value length.
         - Use PREFIX to specify initial trace output
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
-        trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw})",
-                  l=level, args=values, kw=kwargs)
+        trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw}); debug_level={dl}",
+                  l=level, args=values, kw=kwargs, dl=trace_level)
+        ## DEBUG:
+        ## trace_fmt(1, "(global_trace_level:{g} < level:{l})={v}",
+        ##           g=trace_level, l=level, v=(trace_level < level))
+        if (trace_level < level):
+            # note: Short-circuits processing to avoid errors about known problem (e.g., under ipython)
+            return
         sep = kwargs.get('sep') or kwargs.get('_sep')
         delim = kwargs.get('delim') or kwargs.get('_delim')
         no_eol = kwargs.get('no_eol') or kwargs.get('_no_eol')
@@ -551,12 +559,20 @@ if __debug__:
         return
 
 
-    def assertion(expression, message=None):
+    def assertion(expression, message=None, assert_level=None):
         """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
-        Note: This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so)"""
+        Note:
+        - This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so).
+        - Currently, the expression text is not resolved properly under ipython (or Jupyter).
+        - The optional ASSERT_LEVEL overrides use of ALWAYS."""
         # EX: assertion((2 + 2) != 5)
         # TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
         # TODO: trace out local and globals to aid in diagnosing assertion failures; ex: add automatic tarcing of variables used in the assertion expression)
+        if (assert_level is None):
+            assert_level = ALWAYS
+        if (trace_level < assert_level):
+            # note: Short-circuits processing to avoid extraneous warnings (e.g., trace_expr under ipython)
+            return
         if (not expression):
             try:
                 # Get source information for failed assertion
