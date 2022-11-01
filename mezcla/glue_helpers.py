@@ -192,7 +192,7 @@ def create_directory(path):
         os.mkdir(path)
         debug_format("os.mkdir({p})", 6, p=path)
     else:
-        assertion(os.path.isdir(path))
+        debug.assertion(os.path.isdir(path))
     return
 
 
@@ -286,7 +286,7 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     # TODO: make sure no template markers left in command text (e.g., "tar cvfz {tar_file}")
     # EX: "root" in run("ls /")
     # Note: Script tracing controlled DEBUG_LEVEL environment variable.
-    assertion(isinstance(trace_level, int))
+    debug.assertion(isinstance(trace_level, int))
     debug_print("run(%s, [trace_level=%s], [subtrace_level=%s])" % (command, trace_level, subtrace_level), (trace_level + 2))
     global default_subtrace_level
     # Keep track of current debug level setting
@@ -305,12 +305,12 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     # Run the command
     # TODO: check for errors (e.g., "sh: filter_file.py: not found"); make wait explicit
     wait = not command.endswith("&")
-    assertion(wait or not just_issue)
+    debug.assertion(wait or not just_issue)
     # Note: Unix supports the '>|' pipe operator (i.e., output with overwrite); but,
     # it is not supported under Windows. To avoid unexpected porting issues, clients
     # should replace 'run("... >| f")' usages with 'delete_file(f); run(...)'.
     # note: TestWrapper.setUp handles the deletion automatically
-    assertion(">|" not in command_line)
+    debug.assertion(">|" not in command_line)
     result = None
     ## TODO: if (just_issue or not wait): ... else: ...
     result = getoutput(command_line) if wait else str(os.system(command_line))
@@ -535,14 +535,17 @@ def write_file(filename, text, append=False):
 
 
 def copy_file(source, target):
-    """Copy SOURCE file to TARGET file"""
+    """Copy SOURCE file to TARGET file (or directory)"""
     # Note: meta data is not copied (e.g., access control lists)); see
     #    https://docs.python.org/2/library/shutil.html
     # TODO: have option to skip if non-dir target exists
     debug_print("copy_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
-    assertion(non_empty_file(source))
+    debug.assertion(non_empty_file(source))
     shutil.copy(source, target)
-    assertion(non_empty_file(target))
+    ## OLD: debug.assertion(non_empty_file(target))
+    target_file = (target if system.is_regular_file(target) else form_path(target, basename(source)))
+    ## TODO: debug.assertion(file_size(source) == file_size(target_file))
+    debug.assertion(non_empty_file(target_file))
     return
 
 
@@ -550,16 +553,16 @@ def rename_file(source, target):
     """Rename SOURCE file as TARGET file"""
     # TODO: have option to skip if target exists
     debug_print("rename_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
-    assertion(non_empty_file(source))
+    debug.assertion(non_empty_file(source))
     os.rename(source, target)
-    assertion(non_empty_file(target))
+    debug.assertion(non_empty_file(target))
     return
 
 
 def delete_file(filename):
     """Deletes FILENAME"""
     debug_print("delete_file(%s)" % tpo.normalize_unicode(filename), 5)
-    assertion(os.path.exists(filename))
+    debug.assertion(os.path.exists(filename))
     ok = False
     try:
         ok = os.remove(filename)
@@ -641,8 +644,15 @@ def getenv_filename(var, default="", description=None):
 
 if __debug__:
 
+    assertion_deprecation_shown = False
+    
     def assertion(condition):
-        """Issues warning if CONDITION doesn't hold"""
+        """Issues warning if CONDITION doesn't hold
+        Note: deprecated function--use debug.assertion instead"""
+        global assertion_deprecation_shown
+        if not assertion_deprecation_shown:
+            debug.trace(4, "Warning: glue_helpers.assertion() is deprecated")
+            assertion_deprecation_shown = True
         # EX: assertion(2 + 2 != 5)
         # TODO: rename as soft_assertion???; add to tpo_common.py (along with run???)
         if not condition:
