@@ -40,7 +40,7 @@ xgboost
 #opt# cachetools
 #opt# gensim
 #opt# kenlm
-#opt# lucene
+# TODO: #opt# lucene
 # TODO: #opt# bert-tensorflow
 #opt# more_itertools
 #opt# pyyaml
