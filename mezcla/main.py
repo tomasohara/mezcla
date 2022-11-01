@@ -26,9 +26,9 @@
 #   can be simplfied by using class-level variables for options, as follows:
 #      Script(Main):
 #          count = 5
-#          verbose = False
+#          fubar = False
 #          def setup(self):
-#              verbose = self.get_parsed_option("verbose")
+#              fubar = self.get_parsed_option("fubar")
 # - With non-trivial command processing (e.g., positional arguments), it 
 #   might be better to do this in the constructor, as follows:
 #       def __init__(*args, **kwargs):
@@ -59,7 +59,7 @@
 # - *** Convert tpo_common calls (i.e., tpo.xyz) to debug!'
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 # - Specify argument via input dicts, such as in 
-#      options=[{"name": "verbose", "type": bool}, 
+#      options=[{"name": "fubar", "type": bool}, 
 #               {"name": "count", type: int, default: 10}]
 # - Add support for perl-style paragraph mode in input processing.
 # - Add support for multple input files (e.g., via fileinput module).
@@ -118,7 +118,7 @@ INDENT = system.getenv_text("INDENT", "    ",
 BRIEF_USAGE = system.getenv_bool("BRIEF_USAGE", False,
                                  "Show brief usage with autohelp")
 PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
-                                         "Prepocesess args to expand Perl-style -var[=[val=1]] to --var=val")
+                                         "Preprocess args to expand Perl-style -var[=[val=1]] to --var=val")
 
 #-------------------------------------------------------------------------------
 
@@ -128,6 +128,7 @@ class Main(object):
     force_unicode = False
     # TODO: add more class-wide member
     ## temp_base, temp_file
+    verbose = False
 
     def __init__(self, runtime_args=None, description=None, skip_args=False,
                  # TODO: Either rename xyz_optiom to match python type name 
@@ -499,8 +500,10 @@ class Main(object):
         # Parse the command line and get result
         tpo.debug_format("parser={p}", 6, p=parser)
         self.parser = parser
+        # note: not trapped to allow for early exit
         self.parsed_args = vars(parser.parse_args(runtime_args))
         debug.trace(5, f"parsed_args = {self.parsed_args}")
+        self.verbose = self.get_parsed_option("verbose")
 
         # Get filename unless input ignored and fixup if returned as list
         # TODO: add an option to retain self.filename as is
