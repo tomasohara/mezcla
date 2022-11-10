@@ -102,6 +102,7 @@ STRING_TYPES = six.string_types
 INDENT0 = ""
 INDENT1 = "    "
 INDENT = INDENT1
+MISSING_LINE = "???"
 
 # Globals
 max_trace_value_len = 512
@@ -462,8 +463,11 @@ if __debug__:
         try:
             # TODO: rework introspection following icecream (e.g., using abstract syntax tree)
             caller = inspect.stack()[1]
-            (_frame, filename, line_number, _function, _context, _index) = caller
+            ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
+            (_frame, filename, line_number, _function, context, _index) = caller
             statement = read_line(filename, line_number).strip()
+            if statement == MISSING_LINE:
+                statement = str(context).replace(")\\n']", "")
             # Extract list of argument expressions (removing optional comment)
             statement = re.sub(r"#.*$", "", statement)
             statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
@@ -578,10 +582,14 @@ if __debug__:
                 # Get source information for failed assertion
                 trace_fmtd(MOST_VERBOSE, "Call stack: {st}", st=inspect.stack())
                 caller = inspect.stack()[1]
-                (_frame, filename, line_number, _function, _context, _index) = caller
+                ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
+                (_frame, filename, line_number, _function, context, _index) = caller
+                trace(4, f"filename={filename!r}, context={context!r}")
                 # Read statement in file and extract assertion expression
                 # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
                 statement = read_line(filename, line_number).strip()
+                if statement == MISSING_LINE:
+                    statement = str(context).replace(")\\n']", "")
                 statement = re.sub("#.*$", "", statement)
                 statement = re.sub(r"^(\S*)assertion\(", "", statement)
                 expression = re.sub(r"\);?\s*$", "", statement)
@@ -860,14 +868,17 @@ def clip_value(value, max_len=CLIPPED_MAX):
     return clipped
 
 def read_line(filename, line_number):
-    """Returns contents of FILENAME at LINE_NUMBER"""
+    """Returns contents of FILENAME at LINE_NUMBER
+    Note: returns '???' upon exception
+    """
     # ex: "debugging" in read_line(os.path.join(os.getcwd(), "debug.py"), 3)
+    # TODO: use rare Unicode value instead of "???"
     try:
         file_handle = open(filename)
         line_contents = (list(file_handle))[line_number - 1]
         file_handle.close()
     except:
-        line_contents = "???"
+        line_contents = MISSING_LINE
     return line_contents
 
 #-------------------------------------------------------------------------------
