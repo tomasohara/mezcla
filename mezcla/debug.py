@@ -345,7 +345,7 @@ if __debug__:
                 member_type_id_label = (member + " [" + str(type(value)) + " " + hex(id(value)) + "]")
                 trace_object(level, value, label=member_type_id_label, show_all=show_all,
                              indentation=(indentation + INDENT), pretty_print=None,
-                             max_depth=(max_depth - 1))
+                             max_depth=(max_depth - 1), max_value_len=max_value_len)
                 continue
             # Otherwise, derive value spec. (trapping for various exceptions)
             ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
@@ -874,7 +874,7 @@ def read_line(filename, line_number):
     # ex: "debugging" in read_line(os.path.join(os.getcwd(), "debug.py"), 3)
     # TODO: use rare Unicode value instead of "???"
     try:
-        file_handle = open(filename)
+        file_handle = open(filename, encoding="UTF-8")
         line_contents = (list(file_handle))[line_number - 1]
         file_handle.close()
     except:
