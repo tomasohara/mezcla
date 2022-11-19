@@ -64,7 +64,11 @@ def read_csv(filename, **in_kw):
         kw[COMMENT] = "#"
     debug.trace_fmt(5, "read_csv({f}, [in_kw={ikw}])", f=filename, ikw=in_kw)
     debug.trace_fmt(6, "\tkw={k}", k=kw)
-    df = pd.read_csv(filename, **kw)
+    df = None
+    try:
+        df = pd.read_csv(filename, **kw)
+    except:
+        debug.trace(4, f"Exception during read_csv: {system.get_exception()}")
     debug.trace(4, f"read_csv({filename}) => {df}")
     return df
 
