@@ -280,7 +280,7 @@ def get_date_ddmmmyy(date=None):
     except:
         system.print_exception_info("get_today_ddmmmyy")
         result = "???"
-    debug.trace(6, f"get_today_ddmmmyy({in_date}) => {result}")
+    debug.trace(6, f"get_date_ddmmmyy({in_date}) => {result}")
     return result
 
 #-------------------------------------------------------------------------------
