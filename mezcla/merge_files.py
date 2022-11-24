@@ -39,7 +39,8 @@ USE_STDOUT = "stdout"
 SKIP_BASELINE = "skip-baseline"
 UPDATE_MAIN_FILE = "update-main-file"
 IGNORE_ERRORS = "ignore-errors"
-MERGE = system.getenv_text("MERGE", "/usr/bin/merge -p",
+## OLD: MERGE = system.getenv_text("MERGE", "/usr/bin/merge -p",
+MERGE = system.getenv_text("MERGE", "merge -p",
                            description="Command line for merge with output piping arg (e.g., -p)")
 
 #...............................................................................
@@ -73,6 +74,7 @@ class Script(Main):
     quiet = False
     use_stdout = None
     ignore_errors = False
+    ## TODO: use_temp_base_dir = True
 
     def setup(self):
         """Check results of command line processing"""
@@ -85,17 +87,18 @@ class Script(Main):
         self.update_file1 = self.get_parsed_option(UPDATE_MAIN_FILE, self.update_file1)
         self.skip_baseline = self.get_parsed_option(SKIP_BASELINE, self.skip_baseline)
         self.quiet = self.get_parsed_option(QUIET, self.quiet)
-        self.use_stdout = self.get_parsed_option(USE_STDOUT, self.update_file1)
+        self.use_stdout = self.get_parsed_option(USE_STDOUT, not self.update_file1)
         self.ignore_errors = self.get_parsed_option(IGNORE_ERRORS)
         debug.trace_object(5, self, label="Script instance")
 
     def check_regular_file(self, filename):
         """Make sure regular file exists; otherwise, issue error and exit"""
+        debug.trace(4, f"Script.check_regular_file({filename})")
         ok = (system.file_exists(filename) and system.is_regular_file(filename))
         if not ok and not self.ignore_errors:
             system.exit(f"Error: expecting regular file for '{filename}'")
         return ok
-        
+
     def run_main_step(self):
         """Main processing step"""
         debug.trace_fmtd(5, "Script.run_main_step(): self={s}", s=self)
@@ -166,6 +169,7 @@ if __name__ == '__main__':
         description=__doc__,
         skip_input=True,
         manual_input=True,
+        use_temp_base_dir=True,
         boolean_options=[(IGNORE_ERRORS, "Ignore errors in processing"),
                          (UPDATE_MAIN_FILE, f"Replace {MAIN_FILENAME} with merged result--be careful"),
                          (USE_STDOUT, "Use standard output for result"),
