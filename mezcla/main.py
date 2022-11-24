@@ -229,6 +229,9 @@ class Main(object):
         self.use_temp_base_dir = use_temp_base_dir
         if self.use_temp_base_dir:
             ## TODO: gh.full_mkdir
+            ## TEMP HACK: remove file if not a dir (n.b., quirk with NamedTemporaryFile
+            if system.is_regular_file(self.temp_base):
+                gh.delete_file(self.temp_base)
             gh.run("mkdir -p {dir}", dir=self.temp_base)
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
