@@ -28,6 +28,7 @@ sklearn
 ## TODO: put in setup.py
 six
 stopwords
+textract
 xgboost
 
 #...............................................................................
