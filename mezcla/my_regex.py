@@ -188,6 +188,7 @@ class regex_wrapper():
 
     def sub(self, pattern, replacement, string, *, count=0, flags=0):
         """Version of re.sub requiring explicit keyword parameters"""
+        # Note: Explicit keywords enforced to avoid confusion
         result = re.sub(pattern, replacement, string, count, flags)
         debug.reference_var(self)
         debug.trace(self.TRACE_LEVEL + 1, f"my_regex.sub({pattern!r}, {replacement!r}, {string!r}, [count=[count]], flags={flags}]) => {result!r}\n")
