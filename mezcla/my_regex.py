@@ -194,6 +194,8 @@ class regex_wrapper():
         self.check_pattern(pattern)
         return result
 
+    # TODO: findall and other missing re functions
+    
     def span(self, group=0):
         """Tuple with GROUP start and end"""
         return (self.match_result and self.match_result.span(group))
