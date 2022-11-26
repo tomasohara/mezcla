@@ -3,6 +3,9 @@
 # Convenience class for regex searching, providing simple wrapper around
 # static match results.
 #
+# Note: This provides tracing for commonly used functions (e.g., search and sub),
+# with aliasing used for miscellaneous others (e.g., subn).
+#
 # Example usage:
 #
 #    from my_regex import my_re
@@ -91,7 +94,8 @@ class regex_wrapper():
     DOTALL = re.DOTALL
     VERBOSE = re.VERBOSE
     UNICODE = re.UNICODE
-
+    # TODO: add miscellaneous re functions (e.g., subn)
+    
     # pylint: disable=super-init-not-called
     #
     def __init__(self, ):
@@ -195,8 +199,6 @@ class regex_wrapper():
         self.check_pattern(pattern)
         return result
 
-    # TODO: findall and other missing re functions
-    
     def span(self, group=0):
         """Tuple with GROUP start and end"""
         return (self.match_result and self.match_result.span(group))
@@ -206,6 +208,13 @@ class regex_wrapper():
         result = re.split(pattern, string, maxsplit, flags)
         debug.trace_fmt(self.TRACE_LEVEL, "split{args} => {r}",
                         args=tuple([pattern, string, maxsplit, flags]), r=result)
+        return result
+    
+    def findall(self, pattern, string, flags=0):
+        """Use PATTERN to split STRING, optionally with specified FLAGS"""
+        result = re.findall(pattern, string, flags)
+        debug.trace_fmt(self.TRACE_LEVEL, "findall{args} => {r}",
+                        args=tuple([pattern, string, flags]), r=result)
         return result
     
 #...............................................................................
