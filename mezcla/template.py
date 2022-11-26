@@ -37,6 +37,9 @@ TODO_ARG = "TODO-arg"
 ## TEXT_ARG = "text-arg"
 ## ALT_FILENAME = "alt_filename"
 
+# Constants
+TL = debug.TL
+
 ## TODO:
 ## # Environment options
 ## # Note: These are just intended for internal options, not for end users.
@@ -61,13 +64,13 @@ class Script(Main):
     ## NOTE: Such class decomposition is also beneficial for unit tests.
     #
     ## def __init__(self, *args, **kwargs):
-    ##     debug.trace_fmtd(5, "Script.__init__({a}): keywords={kw}; self={s}",
+    ##     debug.trace_fmtd(TL.VERBOSE, "Script.__init__({a}): keywords={kw}; self={s}",
     ##                      a=",".join(args), kw=kwargs, s=self)
     ##     super().__init__(*args, **kwargs)
     
     def setup(self):
         """Check results of command line processing"""
-        debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
+        debug.trace_fmtd(TL.VERBOSE, "Script.setup(): self={s}", s=self)
         ## TODO: extract argument values
         self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
         ## TODO:
@@ -77,7 +80,7 @@ class Script(Main):
 
     def process_line(self, line):
         """Processes current line from input"""
-        debug.trace_fmtd(6, "Script.process_line({l})", l=line)
+        debug.trace_fmtd(TL.QUITE_DETAILED, "Script.process_line({l})", l=line)
         # TODO: flesh out
         if self.todo_arg and "TODO" in line:
             print(f"arg1 line ({self.line_num}): {line}")
@@ -127,7 +130,7 @@ def main():
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
-    debug.trace_current_context(level=debug.QUITE_DETAILED)
-    debug.trace_fmt(4, "Environment options: {eo}",
+    debug.trace_current_context(level=TL.QUITE_DETAILED)
+    debug.trace_fmt(TL.USUAL, "Environment options: {eo}",
                     eo=system.formatted_environment_option_descriptions())
     main()
