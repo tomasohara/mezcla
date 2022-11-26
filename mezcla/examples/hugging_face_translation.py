@@ -90,6 +90,7 @@ def main():
             print(translation[0].get(TRANSLATION_TEXT) or "")
         except:
             system.print_exception_info("translation")
+    debug.code(4, lambda: debug.trace(1, gh.run("nvidia-smi")))
 
     return
 
