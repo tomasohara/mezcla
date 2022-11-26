@@ -75,8 +75,10 @@ def get_temp_file(delete=None):
 ## TEMP_LOG_FILE = tpo.getenv_text(
 ##     # "Log file for stderr (e.g., for issue function)"
 ##     "TEMP_LOG_FILE", get_temp_file())
-TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file(),
-                                "Log file for stderr such as for issue function)")
+TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file() + "-log",
+                                "Log file for stderr such as for issue function")
+TEMP_SCRIPT_FILE = tpo.getenv_text("TEMP_SCRIPT_FILE", get_temp_file() + "-script",
+                                   "File for command invocation")
 
 
 def basename(filename, extension=None):
@@ -121,7 +123,7 @@ def dir_path(filename, explicit=False):
     path = os.path.dirname(filename)
     if (not path and explicit):
         path = "."
-    debug.trace(5, f"dirname({filename}) => {path}")
+    debug.trace(5, f"dir_path({filename}, [explicit={explicit}]) => {path}")
     # TODO: add realpath (i.e., canonical path)
     if not explicit:
         debug.assertion(form_path(path, basename(filename)) == filename)
@@ -321,6 +323,15 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     return result
 
 
+def run_via_bash(command, trace_level=4, subtrace_level=None, **namespace):
+    """Version of run that runs COMMAND with aliases defined
+    Note: This can be slow due to alias definition overhead
+    """
+    system.write_file(TEMP_SCRIPT_FILE, command)
+    command_line = f"bash -i -f {TEMP_SCRIPT_FILE}"
+    return run(command_line, trace_level=trace_level, subtrace_level=subtrace_level, just_issue=False, **namespace)
+
+
 def issue(command, trace_level=4, subtrace_level=None, **namespace):
     """Wrapper around run() for when output is not being saved (i.e., just issues command). 
     Note:
@@ -479,7 +490,7 @@ def read_lines(filename=None, make_unicode=False):
             tpo.debug_format("Reading from stdin", 4)
             f = sys.stdin
         else:
-            f = open(filename)
+            f = system.open_file(filename)
             if not f:
                 raise IOError
         # Read line by line
@@ -505,7 +516,7 @@ def write_lines(filename, text_lines, append=False):
     f = None
     try:
         mode = 'a' if append else 'w'
-        f = open(filename, mode)
+        f = system.open_file(filename, mode=mode)
         for line in text_lines:
             line = tpo.normalize_unicode(line)
             f.write(line + "\n")
@@ -612,18 +623,18 @@ def get_files_matching_specs(patterns):
     return files
 
 
-def get_directory_listing(dirname, make_unicode=False):
-    """Returns files in DIRNAME"""
+def get_directory_listing(dir_name, make_unicode=False):
+    """Returns files in DIR_NAME"""
     all_file_names = []
     try:
-        all_file_names = os.listdir(dirname)
+        all_file_names = os.listdir(dir_name)
     except OSError:
         tpo.debug_format("Exception during get_directory_listing: {exc}", 4,
                          exc=str(sys.exc_info()))
     if make_unicode:
         all_file_names = [tpo.ensure_unicode(f) for f in all_file_names]
     tpo.debug_format("get_directory_listing({dir}) => {files}", 5,
-                     dir=dirname, files=all_file_names)
+                     dir=dir_name, files=all_file_names)
     return all_file_names
 
 #-------------------------------------------------------------------------------
