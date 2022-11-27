@@ -465,9 +465,11 @@ if __debug__:
             caller = inspect.stack()[1]
             ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
             (_frame, filename, line_number, _function, context, _index) = caller
+            trace(6, f"filename={filename!r}, context={context!r}")
             statement = read_line(filename, line_number).strip()
             if statement == MISSING_LINE:
-                statement = str(context).replace(")\\n']", "")
+                ## OLD: statement = str(context).replace(")\\n']", "")
+                statement = str(context).replace("\\n']", "")
             # Extract list of argument expressions (removing optional comment)
             statement = re.sub(r"#.*$", "", statement)
             statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
@@ -476,7 +478,9 @@ if __debug__:
             # Remove trailing comma (e.g., if split across lines)
             statement = re.sub(r",?\s*$", "", statement)
             # Skip first argument (level)
-            expressions = statement.split(sep)[1:]
+            ## BAD: expressions = statement.split(sep)[1:]
+            expressions = re.split(", +", statement)[1:]
+            trace(7, f"expressions={expressions!r}\nvalues={values!r}")
         except:
             trace_fmtd(ALWAYS, "Exception isolating expression in trace_vals: {exc}",
                        exc=sys.exc_info())
@@ -589,7 +593,8 @@ if __debug__:
                 # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
                 statement = read_line(filename, line_number).strip()
                 if statement == MISSING_LINE:
-                    statement = str(context).replace(")\\n']", "")
+                    ## OLD: statement = str(context).replace(")\\n']", "")
+                    statement = str(context).replace("\\n']", "")
                 statement = re.sub("#.*$", "", statement)
                 statement = re.sub(r"^(\S*)assertion\(", "", statement)
                 expression = re.sub(r"\);?\s*$", "", statement)
