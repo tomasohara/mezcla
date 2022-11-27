@@ -48,6 +48,9 @@ if RE_ALL:
 else:
     debug.trace(4, "Omitting use of re __all__")
 
+REGEX_TRACE_LEVEL = system.getenv_int("REGEX_TRACE_LEVEL", debug.QUITE_DETAILED,
+                                      "Trace level for my_regex")
+    
 ## TODO # HACK: make sure regex can be used as plug-in replacement 
 ## from from re import *
 
@@ -84,7 +87,7 @@ class regex_wrapper():
     note: Allows regex to be used directly in conditions"""
     # TODO: IGNORECASE = re.IGNORECASE, etc.
     # import from RE so other methods supported directly (and above constants)
-    TRACE_LEVEL = debug.QUITE_DETAILED
+    TRACE_LEVEL = REGEX_TRACE_LEVEL
     ##
     ## Malditos python & pylint!
     ASCII = re.ASCII
@@ -118,7 +121,7 @@ class regex_wrapper():
         Note: Added to account for potential f-string confusion"""
         # TODO: Add way to disable check
         debug.reference_var(self)
-        if (debug.debugging(1) and re.search(r"[^{]{[^{}]+}[^}]", regex)):
+        if (debug.debugging(1) and re.search(r"[^{]\{[A-Fa-f0-9][^{}]+\}[^}]", regex)):
             system.print_error(f"Warning: potentially unresolved f-string in {regex}")
 
     def search(self, regex, text, flags=0, base_trace_level=None):
