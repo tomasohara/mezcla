@@ -9,6 +9,7 @@
 """Misc. utility functions"""
 
 # Standard packages
+import datetime
 from difflib import ndiff
 import inspect
 import math
@@ -265,6 +266,21 @@ def is_close(value1, value2, epsilon=VALUE_EPSILON):
     ## EX: (not is_close(1.001, 1.002, epsilon=.0005))
     result = math.isclose(value1, value2, abs_tol=epsilon)
     debug.trace(6, f"is_close({value1}, {value2}, [eps={epsilon}]) => {result}")
+    return result
+
+
+def get_date_ddmmmyy(date=None):
+    """Return (today's) date in DDMMMYY format (e.g., 10oct22)"""
+    ## TODO EX: get_date_ddmmmyy(datetime.date(0)) => "01jan70"
+    in_date = date
+    if date is None:
+        date = datetime.date.today()
+    try:
+        result = date.strftime("%d%b%y").lower()
+    except:
+        system.print_exception_info("get_today_ddmmmyy")
+        result = "???"
+    debug.trace(6, f"get_date_ddmmmyy({in_date}) => {result}")
     return result
 
 #-------------------------------------------------------------------------------

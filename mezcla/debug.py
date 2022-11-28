@@ -102,6 +102,7 @@ STRING_TYPES = six.string_types
 INDENT0 = ""
 INDENT1 = "    "
 INDENT = INDENT1
+MISSING_LINE = "???"
 
 # Globals
 max_trace_value_len = 512
@@ -109,8 +110,9 @@ max_trace_value_len = 512
 if __debug__:    
 
     # Initialize debug tracing level
+    # TODO: mark as "private" (e.g., trace_level => _trace_level)
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
-    trace_level = TL.DEFAULT            # typically same as TL.WARNING (2)
+    trace_level = TL.DEFAULT            # typically same as TL.WARNING (2); TODO: global_trace_level
     output_timestamps = False           # prefix output with timestamp
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
@@ -144,7 +146,7 @@ if __debug__:
         ## return trace_level
         level = 0
         try:
-            assertion(isinstance(level, int))
+            ## OLD: assertion(isinstance(level, int))
             level = int(trace_level)
         except:
             _print_exception_info("get_level")
@@ -198,6 +200,7 @@ if __debug__:
     
     def trace(level, text, empty_arg=None, no_eol=False, indentation=None):
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE"""
+        # TODO: add option to use format_value
         # Note: trace should not be used with text that gets formatted to avoid
         # subtle errors
         ## DEBUG: sys.stderr.write("trace({l}, {t})\n".format(l=level, t=text))
@@ -342,7 +345,7 @@ if __debug__:
                 member_type_id_label = (member + " [" + str(type(value)) + " " + hex(id(value)) + "]")
                 trace_object(level, value, label=member_type_id_label, show_all=show_all,
                              indentation=(indentation + INDENT), pretty_print=None,
-                             max_depth=(max_depth - 1))
+                             max_depth=(max_depth - 1), max_value_len=max_value_len)
                 continue
             # Otherwise, derive value spec. (trapping for various exceptions)
             ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
@@ -420,6 +423,7 @@ if __debug__:
         to derive label for each expression. By default, the following format is used:
            expr1=value1; ... exprN=valueN
         Notes:
+        - Currently, the labels are not resolved properly under ipython (or Jupyter).
         - For simplicity, the values are assumed to separated by ', ' (or expression _SEP)--barebones parsing applied.
         - Use DELIM to specify delimiter; otherwise '; ' used;
           if so, NO_EOL applies to intermediate values (EOL always used at end).
@@ -429,8 +433,14 @@ if __debug__:
         - Use MAX_LEN to specify maximum value length.
         - Use PREFIX to specify initial trace output
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
-        trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw})",
-                  l=level, args=values, kw=kwargs)
+        trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw}); debug_level={dl}",
+                  l=level, args=values, kw=kwargs, dl=trace_level)
+        ## DEBUG:
+        ## trace_fmt(1, "(global_trace_level:{g} < level:{l})={v}",
+        ##           g=trace_level, l=level, v=(trace_level < level))
+        if (trace_level < level):
+            # note: Short-circuits processing to avoid errors about known problem (e.g., under ipython)
+            return
         sep = kwargs.get('sep') or kwargs.get('_sep')
         delim = kwargs.get('delim') or kwargs.get('_delim')
         no_eol = kwargs.get('no_eol') or kwargs.get('_no_eol')
@@ -453,8 +463,13 @@ if __debug__:
         try:
             # TODO: rework introspection following icecream (e.g., using abstract syntax tree)
             caller = inspect.stack()[1]
-            (_frame, filename, line_number, _function, _context, _index) = caller
+            ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
+            (_frame, filename, line_number, _function, context, _index) = caller
+            trace(6, f"filename={filename!r}, context={context!r}")
             statement = read_line(filename, line_number).strip()
+            if statement == MISSING_LINE:
+                ## OLD: statement = str(context).replace(")\\n']", "")
+                statement = str(context).replace("\\n']", "")
             # Extract list of argument expressions (removing optional comment)
             statement = re.sub(r"#.*$", "", statement)
             statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
@@ -463,7 +478,9 @@ if __debug__:
             # Remove trailing comma (e.g., if split across lines)
             statement = re.sub(r",?\s*$", "", statement)
             # Skip first argument (level)
-            expressions = statement.split(sep)[1:]
+            ## BAD: expressions = statement.split(sep)[1:]
+            expressions = re.split(", +", statement)[1:]
+            trace(7, f"expressions={expressions!r}\nvalues={values!r}")
         except:
             trace_fmtd(ALWAYS, "Exception isolating expression in trace_vals: {exc}",
                        exc=sys.exc_info())
@@ -550,21 +567,34 @@ if __debug__:
         return
 
 
-    def assertion(expression, message=None):
+    def assertion(expression, message=None, assert_level=None):
         """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
-        Note: This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so)"""
+        Note:
+        - This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so).
+        - Currently, the expression text is not resolved properly under ipython (or Jupyter).
+        - The optional ASSERT_LEVEL overrides use of ALWAYS."""
         # EX: assertion((2 + 2) != 5)
         # TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
         # TODO: trace out local and globals to aid in diagnosing assertion failures; ex: add automatic tarcing of variables used in the assertion expression)
+        if (assert_level is None):
+            assert_level = ALWAYS
+        if (trace_level < assert_level):
+            # note: Short-circuits processing to avoid extraneous warnings (e.g., trace_expr under ipython)
+            return
         if (not expression):
             try:
                 # Get source information for failed assertion
                 trace_fmtd(MOST_VERBOSE, "Call stack: {st}", st=inspect.stack())
                 caller = inspect.stack()[1]
-                (_frame, filename, line_number, _function, _context, _index) = caller
+                ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
+                (_frame, filename, line_number, _function, context, _index) = caller
+                trace(6, f"filename={filename!r}, context={context!r}")
                 # Read statement in file and extract assertion expression
                 # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
                 statement = read_line(filename, line_number).strip()
+                if statement == MISSING_LINE:
+                    ## OLD: statement = str(context).replace(")\\n']", "")
+                    statement = str(context).replace("\\n']", "")
                 statement = re.sub("#.*$", "", statement)
                 statement = re.sub(r"^(\S*)assertion\(", "", statement)
                 expression = re.sub(r"\);?\s*$", "", statement)
@@ -843,14 +873,17 @@ def clip_value(value, max_len=CLIPPED_MAX):
     return clipped
 
 def read_line(filename, line_number):
-    """Returns contents of FILENAME at LINE_NUMBER"""
+    """Returns contents of FILENAME at LINE_NUMBER
+    Note: returns '???' upon exception
+    """
     # ex: "debugging" in read_line(os.path.join(os.getcwd(), "debug.py"), 3)
+    # TODO: use rare Unicode value instead of "???"
     try:
-        file_handle = open(filename)
+        file_handle = open(filename, encoding="UTF-8")
         line_contents = (list(file_handle))[line_number - 1]
         file_handle.close()
     except:
-        line_contents = "???"
+        line_contents = MISSING_LINE
     return line_contents
 
 #-------------------------------------------------------------------------------

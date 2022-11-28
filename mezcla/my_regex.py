@@ -3,6 +3,9 @@
 # Convenience class for regex searching, providing simple wrapper around
 # static match results.
 #
+# Note: This provides tracing for commonly used functions (e.g., search and sub),
+# with aliasing used for miscellaneous others (e.g., subn).
+#
 # Example usage:
 #
 #    from my_regex import my_re
@@ -34,7 +37,7 @@ from mezcla import system
 ## OLD:
 ## # Expose public symbols from re package,
 ## __all__ = re.__all__
-## DEBUG: system.print_stderr("checking SKIP_RE_ALL")
+## DEBUG: system.print_error("checking SKIP_RE_ALL")
 RE_ALL = (not system.getenv_bool("SKIP_RE_ALL", False,
                                  "Don't use re.__all__: for sake of pylint"))
 __all__ = ['regex_wrapper', 'my_re']
@@ -45,6 +48,9 @@ if RE_ALL:
 else:
     debug.trace(4, "Omitting use of re __all__")
 
+REGEX_TRACE_LEVEL = system.getenv_int("REGEX_TRACE_LEVEL", debug.QUITE_DETAILED,
+                                      "Trace level for my_regex")
+    
 ## TODO # HACK: make sure regex can be used as plug-in replacement 
 ## from from re import *
 
@@ -81,7 +87,7 @@ class regex_wrapper():
     note: Allows regex to be used directly in conditions"""
     # TODO: IGNORECASE = re.IGNORECASE, etc.
     # import from RE so other methods supported directly (and above constants)
-    TRACE_LEVEL = debug.QUITE_DETAILED
+    TRACE_LEVEL = REGEX_TRACE_LEVEL
     ##
     ## Malditos python & pylint!
     ASCII = re.ASCII
@@ -91,7 +97,8 @@ class regex_wrapper():
     DOTALL = re.DOTALL
     VERBOSE = re.VERBOSE
     UNICODE = re.UNICODE
-
+    # TODO: add miscellaneous re functions (e.g., subn)
+    
     # pylint: disable=super-init-not-called
     #
     def __init__(self, ):
@@ -109,6 +116,14 @@ class regex_wrapper():
         except:
             system.print_exception_info("__init__ re.* importation")
 
+    def check_pattern(self, regex):
+        """Apply sanity checks to REGEX when debugging
+        Note: Added to account for potential f-string confusion"""
+        # TODO: Add way to disable check
+        debug.reference_var(self)
+        if (debug.debugging(1) and re.search(r"[^{]\{[A-Fa-f0-9][^{}]+\}[^}]", regex)):
+            system.print_error(f"Warning: potentially unresolved f-string in {regex}")
+
     def search(self, regex, text, flags=0, base_trace_level=None):
         """Search for REGEX in TEXT with optional FLAGS and BASE_TRACE_LEVEL (e.g., 6)"""
         ## TODO: rename as match_anywhere for clarity
@@ -117,6 +132,7 @@ class regex_wrapper():
         debug.trace_fmtd((1 + base_trace_level), "my_regex.search({r!r}, {t!r}, {f}): self={s}",
                          r=regex, t=text, f=flags, s=self)
         debug.assertion(isinstance(text, six.string_types))
+        self.check_pattern(regex)
         self.match_result = re.search(regex, text, flags)
         if self.match_result:
             debug.trace_fmt(base_trace_level, "match: {m!r}; regex: {r}", m=self.grouping(), r=regex)
@@ -129,6 +145,7 @@ class regex_wrapper():
             base_trace_level = self.TRACE_LEVEL
         debug.trace_fmtd((1 + base_trace_level), "my_regex.match({r!r}, {t!r}, {f}): self={s}",
                          r=regex, t=text, f=flags, s=self)
+        self.check_pattern(regex)
         self.match_result = re.match(regex, text, flags)
         if self.match_result:
             debug.trace_fmt(base_trace_level, "match: {m!r}; regex: {r!r}", m=self.grouping(), r=regex)
@@ -178,14 +195,30 @@ class regex_wrapper():
 
     def sub(self, pattern, replacement, string, *, count=0, flags=0):
         """Version of re.sub requiring explicit keyword parameters"""
+        # Note: Explicit keywords enforced to avoid confusion
         result = re.sub(pattern, replacement, string, count, flags)
         debug.reference_var(self)
         debug.trace(self.TRACE_LEVEL + 1, f"my_regex.sub({pattern!r}, {replacement!r}, {string!r}, [count=[count]], flags={flags}]) => {result!r}\n")
+        self.check_pattern(pattern)
         return result
 
     def span(self, group=0):
         """Tuple with GROUP start and end"""
         return (self.match_result and self.match_result.span(group))
+
+    def split(self, pattern, string, maxsplit=0, flags=0):
+        """Use PATTERN to split STRING, optionally up to MAXSPLIT with FLAGS"""
+        result = re.split(pattern, string, maxsplit, flags)
+        debug.trace_fmt(self.TRACE_LEVEL, "split{args} => {r}",
+                        args=tuple([pattern, string, maxsplit, flags]), r=result)
+        return result
+    
+    def findall(self, pattern, string, flags=0):
+        """Use PATTERN to split STRING, optionally with specified FLAGS"""
+        result = re.findall(pattern, string, flags)
+        debug.trace_fmt(self.TRACE_LEVEL, "findall{args} => {r}",
+                        args=tuple([pattern, string, flags]), r=result)
+        return result
     
 #...............................................................................
 # Initialization
@@ -195,6 +228,6 @@ class regex_wrapper():
 my_re = regex_wrapper()
 
 if __name__ == '__main__':
-    system.print_stderr("Warning: not intended for command-line use")
+    system.print_error("Warning: not intended for command-line use")
     ## Note: truth in advertising:
     ## debug.trace(4, f"mp: {MalditoPython()}")

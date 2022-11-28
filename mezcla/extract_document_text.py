@@ -30,6 +30,7 @@ from mezcla import debug
 # Determine environment-based options
 STDOUT = system.getenv_boolean("STDOUT", False)
 ## TODO: USE_TODAY = system.getenv_boolean("USE_TODAY", False)
+## TODO: use new misc_util.get_date_ddmmmyy()
 TODAY_DDMMMYY = datetime.date.today().strftime("%d%b%y").lower()
 ADD_DATE = system.getenv_boolean("ADD_DATE", False)
 DEFAULT_SUFFIX = "" if (STDOUT or not ADD_DATE) else TODAY_DDMMMYY

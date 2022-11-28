@@ -680,6 +680,7 @@ def write_file(filename, text, skip_newline=False, append=False):
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
     # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
+    debug.assertion(isinstance(text, str))
     try:
         if not isinstance(text, STRING_TYPES):
             text = to_string(text)
@@ -700,6 +701,7 @@ def write_file(filename, text, skip_newline=False, append=False):
 def write_binary_file(filename, data):
     """Create FILENAME with binary DATA"""
     debug.trace_fmt(7, "write_binary_file({f}, _)", f=filename)
+    debug.assertion(isinstance(text, bytes))
     try:
         with open(filename, "wb") as f:
             f.write(data)
@@ -713,6 +715,7 @@ def write_lines(filename, text_lines, append=False):
     """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND"""
     debug.trace_fmt(5, "write_lines({f}, _, {a})", f=filename, a=append)
     debug.trace_fmt(6, "    text_lines={tl}", tl=text_lines)
+    debug.assertion(isinstance(text_lines, list))
     f = None
     try:
         mode = 'a' if append else 'w'
@@ -767,6 +770,18 @@ def remove_extension(filename, extension=None):
     debug.trace_fmtd(5, "remove_extension({f}, [{ex}]) => {r}",
                      f=filename, ex=in_extension, r=new_filename)
     return new_filename
+
+
+def get_extension(filename):
+    """Return extension in FILENAME"""
+    # EX: get_extension("document.pdf") => "pdf"
+    # EX: get_extension("it.abc.def") => "def"
+    # EX: get_extension("no-period") => ""
+    extension = ""
+    if "." in filename:
+        extension = filename.split(".")[-1]
+    debug.trace(5, f"get_extension({filename}) => {extension}")
+    return extension
 
 
 def file_exists(filename):
@@ -943,7 +958,7 @@ def absolute_path(path):
     """Return resolved absolute pathname for PATH, as with Linux realpath command w/ --no-symlinks"""
     # EX: absolute_path("/etc/mtab").startswith("/etc")
     result = os.path.abspath(path)
-    debug.trace(7, f"real_path({path}) => {result}")
+    debug.trace(7, f"absolute_path({path}) => {result}")
     return result
 
 
@@ -982,35 +997,48 @@ def get_module_version(module_name):
     return version
 
 
-def intersection(list1, list2):
-    """Return intersection of LIST1 and LIST2"""
+def intersection(list1, list2, as_set=None):
+    """Return intersection of LIST1 and LIST2
+    Note: result is a list unless AS_SET specified
+    """
     # note: wrapper around set.intersection used for tracing
-    # EX: intersection([1, 2, 3, 4, 5], [2, 4]) => {1, 3, 5}
+    # EX: sorted(intersection([1, 2, 3, 4, 5], [2, 4])) => [1, 3, 5]
+    # EX: intersection([1, 2, 3, 4, 5], [2, 4], as_set=True)) => {1, 3, 5}
     # TODO: have option for returning list
     result = set(list1).intersection(set(list2))
+    if not as_set:
+        result = list(result)
     debug.trace_fmtd(7, "intersection({l1}, {l2}) => {r}",
                      l1=list1, l2=list2, r=result)
     return result
 
 
-def union(list1, list2):
-    """Return union of LIST1 and LIST2"""
+def union(list1, list2, as_set=None):
+    """Return union of LIST1 and LIST2
+    Note: result is a list unless AS_SET specified
+    """
+    # EX: union([1, 3, 5], [5, 7]) => [1, 3, 5, 7]
     # note: wrapper around set.union used for tracing
     result = set(list1).union(set(list2))
+    if not as_set:
+        result = list(result)
     debug.trace_fmtd(7, "union({l1}, {l2}) => {r}",
                      l1=list1, l2=list2, r=result)
     return result
 
 
-def difference(list1, list2):
-    """Return set difference from LIST1 vs LIST2, preserving order"""
+def difference(list1, list2, as_set=None):
+    """Return set difference from LIST1 vs LIST2, preserving order
+    Note: result is a list unless AS_SET specified
+    """
     # TODO: optmize (e.g., via a hash table)
     # EX: difference([5, 4, 3, 2, 1], [1, 2, 3]) => [5, 4]
-    # TODO: add option for returning set
     diff = []
     for item1 in list1:
         if item1 not in list2:
             diff.append(item1)
+    if as_set:
+        diff = set(diff)
     debug.trace_fmtd(7, "difference({l1}, {l2}) => {d}",
                      l1=list1, l2=list2, d=diff)
     return diff

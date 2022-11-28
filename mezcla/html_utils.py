@@ -574,6 +574,7 @@ def retrieve_web_document(url, meta_hash=None, as_binary=False, ignore=False):
         r = requests.get(url, timeout=DOWNLOAD_TIMEOUT)
         status_code = r.status_code
         result = r.content
+        debug.assertion(isinstance(result, bytes))
         if not as_binary:
             result = result.decode(errors='ignore')
         if meta_hash is not None:

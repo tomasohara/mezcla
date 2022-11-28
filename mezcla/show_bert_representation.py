@@ -15,13 +15,13 @@
 #    - Cosine matrix:
 #
 #            [CLS]   april   july    [SEP]   spring  summer  [SEP]
-#    [CLS]   1.0     0.344   0.336   -0.025  0.34    0.341   0.011
-#    april           1.0     0.514   0.047   0.606   0.414   0.062
+#    [CLS]   1.0    *0.344   0.336   -0.025  0.34    0.341   0.011
+#    april           1.0     0.514   0.047  *0.606   0.414   0.062
 #    july                    1.0     0.045   0.366   0.683   0.054
-#    [SEP]                           1.0     0.094   0.064   0.908
-#    spring                                  1.0     0.599   0.107
+#    [SEP]                           1.0     0.094   0.064  *0.908
+#    spring                                  1.0    *0.599   0.107
 #    summer                                          1.0     0.082
-#    [SEP]                                                   1.0
+#    [SEP]                                                  *1.0
 #
 #    - Feature representation:
 #
@@ -107,11 +107,28 @@
 import json
 import os
 import re
+import sys
 
 # Installed packages
 import numpy as np
 import scipy.spatial.distance
-import tensorflow as tf
+try:
+    tf = None
+    if ("--help" not in sys.argv):
+        import tensorflow as tf
+except:
+    ## TODO: system.print_exception_info("tensorflow import")
+    sys.stderr.write(f"Problem importing tensorflow: {sys.exc_info()}")
+if not tf:
+    ## TODO: tf = object(); move into supporting module (e.g., misc_utils)
+    class Fubar:
+        """Fouled-up, etc."""
+        pass
+    f_inner = Fubar()
+    tf = Fubar()
+    ## TODO: tf = json.loads('{"version": {"VERSION": "-1"}}')
+    setattr(f_inner, "VERSION", "-1")
+    setattr(tf, "version", f_inner)
 
 # Local packages
 from mezcla import debug
@@ -120,7 +137,7 @@ from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla import text_utils
 from mezcla.system import form_path, getenv_bool, getenv_int, getenv_text, getenv_value, round_num
-from mezcla.text_utils import version_to_number as version_as_float
+from mezcla.text_utils import version_to_number as version_as_float, make_fixed_length
 
 # Constants
 SENTINEL_TOKENS = ["[CLS]", "[SEP]"]
@@ -146,8 +163,8 @@ DEFAULT_BERT_DATA_DIR = "albert_base" if USE_ALBERT else "uncased_L-12_H-768_A-1
 BERT_DATA_DIR = getenv_text("BERT_DATA_DIR", 
                             form_path(DEEP_LEARNING_DATA, BERT, DEFAULT_BERT_DATA_DIR),
                             description="Directory for pre-trained data")
-BERT_MODEL_DIR =  getenv_text("BERT_MODEL_DIR", BERT_DATA_DIR,
-                              "Directory for BERT models which can differ from BERT_DATA_DIR if pre-training")
+BERT_MODEL_DIR = getenv_text("BERT_MODEL_DIR", BERT_DATA_DIR,
+                             "Directory for BERT models which can differ from BERT_DATA_DIR if pre-training")
 ## OLD: DEFAULT_CHECKPOINT_FILE = "model.ckpt" if USE_ALBERT else "bert_model.ckpt"
 ## TODO: add Python helper to do this via glob.glob, etc.:
 # note: Uses the latest checkpoint file in the BERT model directory
@@ -162,6 +179,8 @@ NUM_LAYERS = getenv_int("NUM_LAYERS", 4,
                         "Number of layers to extract")
 AVERAGE_LAYERS = getenv_bool("AVERAGE_LAYERS", False,
                              "Take average of layers rather than last one")
+FIELD_WIDTH = getenv_int("FIELD_WIDTH", None,
+                         "Width of fields for cosine matrix")
 
 # Option names
 MODEL = "model"
@@ -173,6 +192,7 @@ LAYER = "layer"
 ALL_TOKENS = "all-tokens"
 VERBOSE = "verbose"
 FILTER = "filter"
+INCLUDE = "include"
 
 def cosine_distance(vector1, vector2):
     """Compute cosine distance between VECTOR1 and VECTOR2"""
@@ -185,18 +205,30 @@ def cosine_distance(vector1, vector2):
     return dist
 
 
+def print_vector(vector, fixed_width=None):
+    """Print VECTOR tab-delimited unless FIXED_WIDTH"""
+    debug.assertion(all(isinstance(value, str) for value in vector))
+    if fixed_width:
+        print("".join(make_fixed_length(value, fixed_width)
+                      for value in vector))
+    else:
+        print("\t".join(vector))
+    return
+
+
 def show_cosine_distances(tokens, vectors):
-    """Displays the cosine distance matrix (all pairs of tokens)"""
+    """Displays the cosine distance matrix (all pairs of tokens)
+    Note: prints entries tab-separated unless FIELD_WIDTH global set
+    """
 
     # Calculate distances and display matrix (omitting symmetric cases)
-    print("\t".join([""] + tokens))
+    print_vector([""] + tokens, fixed_width=FIELD_WIDTH)
     for i, token1 in enumerate(tokens):
         info = [token1] + ([""] * i)
         for j in range(i, len(tokens)):
             dist = cosine_distance(vectors[i], vectors[j])
             info.append(str(round_num(dist, 3)))
-        print("\t".join(info))
-
+        print_vector(info, fixed_width=FIELD_WIDTH)
     return
 
 
@@ -274,6 +306,7 @@ class Script(Main):
     layer = 3
     use_all_tokens = False
     verbose = False
+    include = False
     filter_terms = ""
 
     def setup(self):
@@ -287,6 +320,7 @@ class Script(Main):
         self.show_vectors = self.get_parsed_option(VECTORS, self.show_vectors)
         self.use_all_tokens = self.get_parsed_option(ALL_TOKENS, self.use_all_tokens)
         self.verbose = self.get_parsed_option(VERBOSE, self.verbose)
+        self.include = self.get_parsed_option(INCLUDE, self.include)
         self.filter_terms = self.get_parsed_option(FILTER, self.filter_terms)
         debug.trace_object(5, self, label="Script instance")
         return
@@ -335,7 +369,9 @@ class Script(Main):
         tokens = all_tokens if self.use_all_tokens else system.difference(all_tokens, SENTINEL_TOKENS)
         if self.filter_terms:
             terms_to_filter = text_utils.extract_string_list(self.filter_terms)
-            tokens = system.difference(tokens, terms_to_filter)
+            filter_fn = (system.intersection if self.include else system.difference)
+            tokens = filter_fn(tokens, terms_to_filter)
+        tokens = sorted(tokens)
         features = [h for (i, h) in enumerate(all_features) if all_tokens[i] in tokens]
         debug.assertion(all((len(h["layers"]) == NUM_LAYERS) for h in features))
 
@@ -356,7 +392,6 @@ class Script(Main):
     
 if __name__ == '__main__':
     debug.trace_current_context(level=debug.QUITE_DETAILED)
-    debug.assertion(version_as_float("1.13") <= version_as_float(tf.version.VERSION) < version_as_float("2.0"))
     app = Script(
         description=__doc__,
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
@@ -366,10 +401,12 @@ if __name__ == '__main__':
         boolean_options=[(ALL_TOKENS, "Include all tokens (e.g., sentinels)"),
                          (COSINE, "Show cosine between vectors"),
                          (VECTORS, "Show feature vectors for all tokens"),
+                         (INCLUDE, "Use an inclusion filter"),
                          (VERBOSE, "Verbose output mode")],
         int_options=[(LAYER, "Which layer to use (0-3)")],
         positional_options=[SENTENCE1, SENTENCE2],
         text_options=[(MODEL, "Basename of BERT model file"),
                       (FILTER, "Terms to filter from output")]
         )
+    debug.assertion(version_as_float("1.13") <= version_as_float(tf.version.VERSION) < version_as_float("2.0"))
     app.run()

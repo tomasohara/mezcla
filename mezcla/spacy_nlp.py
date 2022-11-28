@@ -9,6 +9,7 @@
 # - To compensate, sentiment analyzer is based on vader:
 #      https://medium.com/swlh/simple-sentiment-analysis-for-nlp-beginners-and-everyone-else-using-vader-and-textblob-728da3dbe33d
 # TODO:
+# - ** Disable stupid tensorflow warnings (unless feature used): see https://stackoverflow.com/questions/72033928/python-spacy-module-warning-involving-tensorflow-and-libcudart!
 # - * Add part-of-speech tagging (see https://spacy.io/api/tagger).
 # - Add support for parsing.
 # - Integrate state-of-the-art sentiment analysis.

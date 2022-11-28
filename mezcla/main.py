@@ -26,9 +26,9 @@
 #   can be simplfied by using class-level variables for options, as follows:
 #      Script(Main):
 #          count = 5
-#          verbose = False
+#          fubar = False
 #          def setup(self):
-#              verbose = self.get_parsed_option("verbose")
+#              fubar = self.get_parsed_option("fubar")
 # - With non-trivial command processing (e.g., positional arguments), it 
 #   might be better to do this in the constructor, as follows:
 #       def __init__(*args, **kwargs):
@@ -59,7 +59,7 @@
 # - *** Convert tpo_common calls (i.e., tpo.xyz) to debug!'
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 # - Specify argument via input dicts, such as in 
-#      options=[{"name": "verbose", "type": bool}, 
+#      options=[{"name": "fubar", "type": bool}, 
 #               {"name": "count", type: int, default: 10}]
 # - Add support for perl-style paragraph mode in input processing.
 # - Add support for multple input files (e.g., via fileinput module).
@@ -69,8 +69,8 @@
 #   just tracking page number with
 # - Clarify the input processing in various modes: line, paragraph and file-input.
 # - Add function for getting temp_base as dir:
-#       dummy_app = Main(use_temp_base_dir=True)
-#       temp_wav_path = gh.form_path(dummy_app.temp_base, WAV_FILE)
+#       dummy_app = Main([], use_temp_base_dir=True)
+#       temp_wav_path = gh.form_path(dummy_app.temp_base, "sample.wav")
 #
 
 """Module for encapsulating main() processing"""
@@ -94,6 +94,7 @@ from mezcla.system import getenv_bool
 # Constants
 HELP_ARG = "--help"
 USAGE_ARG = "--usage"
+VERBOSE_ARG = "verbose"
 USE_PARAGRAPH_MODE_DEFAULT = getenv_bool("USE_PARAGRAPH_MODE", False)
 USE_PARAGRAPH_MODE = getenv_bool("PARAGRAPH_MODE", USE_PARAGRAPH_MODE_DEFAULT,
                                  "Process input in Perl-style paragraph mode")
@@ -117,7 +118,7 @@ INDENT = system.getenv_text("INDENT", "    ",
 BRIEF_USAGE = system.getenv_bool("BRIEF_USAGE", False,
                                  "Show brief usage with autohelp")
 PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
-                                         "Prepocesess args to expand Perl-style -var[=[val=1]] to --var=val")
+                                         "Preprocess args to expand Perl-style -var[=[val=1]] to --var=val")
 
 #-------------------------------------------------------------------------------
 
@@ -127,6 +128,7 @@ class Main(object):
     force_unicode = False
     # TODO: add more class-wide member
     ## temp_base, temp_file
+    verbose = False
 
     def __init__(self, runtime_args=None, description=None, skip_args=False,
                  # TODO: Either rename xyz_optiom to match python type name 
@@ -144,16 +146,17 @@ class Main(object):
         for BOOLEAN_OPTIONS, TEXT_OPTIONS, INT_OPTIONS, FLOAT_OPTIONS, and POSITIONAL_OPTIONS
         (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args)."""
         tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts},"
-                         + " i={ints}, f={floats}, p={posns}, s={skip}, m={mi}, ah={auto}, bu={usage}"
-                         + " pm={para}, tp={page}, fim={file}, prog={prog}, noargs={skip_args}, kw={kw})", 5,
+                         + " i={ints}, f={floats}, po={posns}, pa={pargs}, si={skip}, m={mi}, ah={auto}, bu={usage},"
+                         + " pm={para}, tp={page}, fim={file}, nl={nl}, prog={prog}, sa={skip_args},"
+                         + " mult={mf}, temp_base={utbd} notes={us} kw={kw})", 5,
                          args=runtime_args, desc=description, bools=boolean_options,
                          texts=text_options, ints=int_options, floats=float_options,
-                         posns=positional_options, skip=skip_input, mi=manual_input,
-                         auto=auto_help, usage=brief_usage,
-                         para=paragraph_mode, page=track_pages, file=file_input_mode,
+                         mf=multiple_files, utbd=use_temp_base_dir,
+                         posns=positional_options, pargs=positional_arguments, skip=skip_input, mi=manual_input,
+                         auto=auto_help, usage=brief_usage, us=usage_notes,
+                         para=paragraph_mode, page=track_pages, file=file_input_mode, nl=newlines,
                          prog=program, ha=HELP_ARG, skip_args=skip_args, kw=kwargs)
-        self.description = "TODO: what the script does"   # *** DONT'T MODIFY: defaults TODO note for client
-        # TODO: boolean_options = [(VERBOSE, "Verbose output mode")]
+        self.description = "TODO: what the script does"   # *** DONT'T MODIFY: default TODO note for client
         self.boolean_options = []
         self.text_options = []
         self.int_options = []
@@ -190,6 +193,7 @@ class Main(object):
             brief_usage = BRIEF_USAGE
         self.brief_usage = brief_usage  # show brief usage instead of full --help
         if auto_help is None:
+            ## TODO: rework to be default if none specified for both skip_input and manual_input
             ## OLD: auto_help = self.skip_input
             auto_help = self.skip_input or not self.manual_input
         self.auto_help = auto_help      # adds --help to command line if no arguments
@@ -210,8 +214,10 @@ class Main(object):
         # Setup temporary file and/or base directory
         # Note: Uses NamedTemporaryFile (hence ntf_args)
         # TODO: allow temp_base handling to be overridable by constructor options
+        # TODO: reconcile with unittest_wrapper.py.get_temp_dir
         prefix = (FILE_BASE + "-")
         ntf_args = {'prefix': prefix,
+                    'delete': not debug.detailed_debugging(),
                     ## TODO: 'suffix': "-"
                     }
         self.temp_base = system.getenv_text("TEMP_BASE",
@@ -222,6 +228,10 @@ class Main(object):
             use_temp_base_dir = system.getenv_bool("USE_TEMP_BASE_DIR", False)
         self.use_temp_base_dir = use_temp_base_dir
         if self.use_temp_base_dir:
+            ## TODO: gh.full_mkdir
+            ## TEMP HACK: remove file if not a dir (n.b., quirk with NamedTemporaryFile
+            if system.is_regular_file(self.temp_base):
+                gh.delete_file(self.temp_base)
             gh.run("mkdir -p {dir}", dir=self.temp_base)
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
@@ -234,7 +244,7 @@ class Main(object):
         #
         if ((runtime_args is None) and (not skip_args)):
             runtime_args = sys.argv[1:]
-            tpo.debug_print("Using sys.argv[1:] for runtime args: %s" % runtime_args, 4)
+            debug.trace(4, f"Using sys.argv[1:] for runtime args: {runtime_args}")
             if self.auto_help and not runtime_args:
                 help_arg = (USAGE_ARG if self.brief_usage else HELP_ARG)
                 debug.trace(4, f"Adding {help_arg} to command line (as per auto_help)")
@@ -265,7 +275,9 @@ class Main(object):
         if description:
             self.description = description
         if boolean_options:
-            self.boolean_options = boolean_options
+            self.boolean_options += boolean_options
+        if (VERBOSE_ARG not in [list(t)[0].lower() for t in self.boolean_options]):
+            self.boolean_options += [(VERBOSE_ARG, "Verbose output mode")]
         if text_options:
             self.text_options = text_options
         if int_options:
@@ -405,12 +417,20 @@ class Main(object):
         if not self.argument_parser:
             self.argument_parser = argparse.ArgumentParser
         usage_notes = self.notes
-        if (not usage_notes and SHOW_ENV_OPTIONS):
-            env_opts = system.formatted_environment_option_descriptions(sort=True, indent=INDENT)
+        ## OLD: if (not usage_notes and SHOW_ENV_OPTIONS):
+        if (not usage_notes):
+            env_opt_spec = ""
+            if (SHOW_ENV_OPTIONS or (f"--{VERBOSE_ARG}" in sys.argv)):
+                env_opts = system.formatted_environment_option_descriptions(sort=True, indent=INDENT)
+                env_opt_spec = f"- Available env. options:\n{INDENT}{env_opts}"
+            elided_path = re.sub(f"^.*/", ".../", sys.argv[0])
+            # note: A dash ("-") is used to indicate stdin with filename arg or to bypass usage w/o one
+            # TODO1: get dash put in usage to make more explicit, such as in following:
+            #     usage: main.py [-h] [--verbose] [filename] [-]
             usage_notes = ("Notes: \n"
-                           + ("- Use - for stdin to skip usage\n" if (not self.skip_input) else "")
-                           + ("- Available env. options:\n{indent}{opts}".format(
-                               opts=env_opts, indent=INDENT)))
+                           + ("- Use - for filename to skip usage (i.e., a la stdin).\n" if (not self.skip_input) else "")
+                           + (f"- Use \"ENV1='v1' ENV2='v2' python {elided_path} ...\" for environment options.\n")
+                           + env_opt_spec)
         parser = self.argument_parser(description=self.description,
                                       epilog=usage_notes, prog=self.program,
                                       formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -464,7 +484,7 @@ class Main(object):
             parser.add_argument(opt_label, default=opt_default, nargs=nargs, 
                                 help=opt_desc)
 
-        # Add filename last and make optional with '-' default (stdin)
+        # Add filename last and make optional with "-" default (i.e., for stdin)
         # Note: with nargs=+, the result is a list of filenames (even if one file [WTH?]!)
         if not self.skip_input:
             filename_nargs = ('?' if (not self.multiple_files) else "+")
@@ -483,8 +503,10 @@ class Main(object):
         # Parse the command line and get result
         tpo.debug_format("parser={p}", 6, p=parser)
         self.parser = parser
+        # note: not trapped to allow for early exit
         self.parsed_args = vars(parser.parse_args(runtime_args))
-        tpo.debug_print("parsed_args = %s" % self.parsed_args, 5)
+        debug.trace(5, f"parsed_args = {self.parsed_args}")
+        self.verbose = self.get_parsed_option("verbose")
 
         # Get filename unless input ignored and fixup if returned as list
         # TODO: add an option to retain self.filename as is
@@ -495,7 +517,7 @@ class Main(object):
                     debug.trace(3, "Warning: Making (list) self.filename a string & setting self.other_filenames to remainder")
                 file_list = self.filename
                 self.other_filenames = file_list[1:]
-                self.filename =  file_list[0] if len(file_list) else "-"
+                self.filename = file_list[0] if len(file_list) else "-"
         debug.trace(6, "end Main.check_arguments()")
         return
 
@@ -650,10 +672,10 @@ class Main(object):
             self.raw_line = line
             if line.endswith("\n"):
                 line = line[:-1]
-            tpo.debug_print("L%d: %s" % (self.line_num, line), 6)
+            debug.trace_fmt(6, "L{n}: {l}", n=self.line_num, l=line)
             if self.force_unicode:
                 line = tpo.ensure_unicode(line)
-            tpo.debug_print("\ttype(line): %s" % (type(line)), 7)
+            debug.trace(7, f"\ttype(line): {type(line)}")
             if self.track_pages:
                 for i, line_segment in enumerate(line.split(FORM_FEED)):
                     debug.trace(7, f"LS{i}: {line_segment}")
@@ -777,7 +799,7 @@ class Main(object):
 #-------------------------------------------------------------------------------
 # Global instance for convenient adhoc usage
 # 
-# note: useful fo temporary file support (e.g., dummy_app.temp_file)
+# note: useful for temporary file support (e.g., dummy_app.temp_file)
 #
 
 dummy_app = Main([])
@@ -787,8 +809,8 @@ debug.trace_current_context(8, "main.py context")
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone")
-    main = Main()
-    ## TODO??: main.description = "Script class support"
+    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone\n")
+    # note: Follwing used for argument parsing
+    main = Main(description=__doc__)
     main.run()
 

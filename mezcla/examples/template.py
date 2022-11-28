@@ -14,7 +14,7 @@
 
 # Local modules
 from mezcla import debug
-## from mezcla.main import Main, dummy_app
+from mezcla.main import Main
 from mezcla import system
 ## TODO:
 ## from mezcla import glue_helpers as gh
@@ -38,6 +38,11 @@ TL = debug.TL
 def main():
     """Entry point"""
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+
+    # Show simple usage if --help given
+    dummy_main_app = Main(description=__doc__, skip_input=False, manual_input=False)
+    debug.assertion(dummy_main_app.parsed_args)
+
     ## TODO:
     system.print_error("Error: Implement me!")
     return
