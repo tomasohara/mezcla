@@ -45,11 +45,6 @@ import random
 import sys
 
 # Local modules
-## OLD:
-## import debug
-## import glue_helpers as gh
-## import tpo_common as tpo
-## import system
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
@@ -59,6 +54,8 @@ from mezcla import system
 RANDOM_SEED = tpo.getenv_integer("RANDOM_SEED", 15485863,
                                  "Integral seed for random number generation (n.b., use ' ' for default [time of day based])")
 
+## TEMP:
+## pylint: disable=consider-using-f-string
 
 class Dummy_Main(Main):
     """Class for reading input using Main"""
@@ -82,9 +79,12 @@ def main():
         sys.exit()
 
     # Check command-line arguments
-    parser = argparse.ArgumentParser(description="Randomize lines in a file (without reading entirely into memory).")
+    global RANDOM_SEED
+    ## OLD: parser = argparse.ArgumentParser(description="Randomize lines in a file (without reading entirely into memory).")
+    parser = argparse.ArgumentParser(description=f"Randomize lines in a file (without reading entirely into memory).The default seed is {RANDOM_SEED}.")
     parser.add_argument("--include-header", default=False, action='store_true', help="Keep first line as headers")
-    parser.add_argument("--seed", type=int, default=None, help="random seed (e.g., 122949823, the seven-millionth prime)")
+    ## OLD: parser.add_argument("--seed", type=int, default=None, help="random seed (e.g., 122949823, the seven-millionth prime)")
+    parser.add_argument("--seed", type=int, default=RANDOM_SEED, help="random seed (e.g., 122949823, the seven-millionth prime)")
     parser.add_argument("filename", nargs='?', default='-', help="Input filename")
     args = vars(parser.parse_args())
     tpo.debug_print("args = %s" % args, 5)
@@ -92,18 +92,19 @@ def main():
     input_stream = sys.stdin
     if (filename != "-"):
         assert(os.path.exists(filename))
-        ## OLD: input_stream = open(filename, "r")
         input_stream = system.open_file(filename)
         assert(input_stream)
     else:
-        ## OLD: tpo.debug_print("Processing stdin", 6)
         debug.trace(5, "Re-opening stdin w/ UTF-8 support")
-        ## BAD: input_stream = system.open_file(sys.stdin)
         ## TODO: figure out proper way to re-open stdin
         STDIN = 0
         input_stream = system.open_file(STDIN)
-    global RANDOM_SEED
-    if args['seed']:
+    ## TODO: cleanup RANDOM_SEED access
+    ## OLD:
+    ## global RANDOM_SEED
+    ## if args['seed']:
+    debug.assertion(args['seed'])
+    if (args['seed'] is not None):
         RANDOM_SEED = int(args['seed'])
     include_header = args['include_header']
 
@@ -115,13 +116,13 @@ def main():
     temp_base = tpo.getenv_text("TEMP_FILE", gh.get_temp_file())
     temp_input_file = temp_base + ".input"
     temp_output_file = temp_base + ".output"
-    temp_input_handle = open(temp_input_file, "w")
+    ## OLD: temp_input_handle = open(temp_input_file, "w")
+    temp_input_handle = system.open_file(temp_input_file, mode="w")
     assert(temp_input_handle)
     #
     header = None
     line_num = 0
     # Note: uses main class to allow for reading pages and paragraphs
-    ## OLD: for line in input_stream:
     main_app = Dummy_Main(input_stream)
     main_app.process_input()
     multi_line_mode = not main_app.is_line_mode()
@@ -143,14 +144,6 @@ def main():
     # NOTES:
     # - This needs to ensure that the unix version of sort is used.
     # - The Win32 version of run() doesn't support pipes. 
-    ## BAD: gh.run("/usr/bin/sort -n < {in_file} | cut -f2- >| {out_file}",
-    ##             in_file=temp_input_file, out_file=temp_output_file)
-    ## OLD: temp_mid_file = gh.get_temp_file()
-    ## BAD2: gh.run("PATH='/usr/bin:$PATH' sort -n < '{in_file}' > '{temp_mid}'",
-    ## OLD: gh.run('/usr/bin/sort -n < "{in_file}" > "{temp_mid}"',
-    ## OLD:        in_file=temp_input_file, temp_mid=temp_mid_file)
-    ## OLD: gh.run("cut -f2- '{temp_mid}' > '{out_file}'",
-    ## OLD:        temp_mid=temp_mid_file, out_file=temp_output_file)
     ## TODO: Use another way to bypass Windows sort command (e.g., in case sort
     ## is located in a different directory than /usr/bin).
     gh.delete_existing_file(temp_output_file)
@@ -159,7 +152,8 @@ def main():
 
     # Display result
     # TODO: send output of command above to stdout
-    temp_output_handle = open(temp_output_file, "r")
+    ## OLD: temp_output_handle = open(temp_output_file, "r")
+    temp_output_handle = system.open_file(temp_output_file, mode="r")
     assert(temp_output_handle)
     line_num = 0
     IO_error = False

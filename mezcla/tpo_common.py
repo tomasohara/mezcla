@@ -778,6 +778,7 @@ def getenv_value(var, default=None, description=None, export=None):
 def getenv_text(var, default="", description=None):
     """Returns textual value for environment variable VAR (or string version of DEFAULT unless None)"""
     # Note: This is a simple wrapper around getenv_value using lower tracing level (as former is intended as helper for specialized types given below).
+    # TODO: define in terms of system.getenv_text
     value = getenv_value(var, default, description=description)
     text_value = to_string(value) if value is not None else ""
     debug_print("getenv_text('%s', '%s') => '%s'" % (var, default, text_value), 4)

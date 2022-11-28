@@ -46,7 +46,7 @@ if (version_as_float(pd.__version__) < version_as_float(MIN_PANDAS_VERSION)):
 
 def read_csv(filename, **in_kw):
     """Wrapper around pandas read_csv
-    Note: delimiter defaults to DELIM environment, dtype to str, and both error_bad_lines & keep_default_na to False. (Override these via keyword paramsters.)
+    Note: delimiter SEP defaults to DELIM env. var, dtype to str, and both error_bad_lines & keep_default_na to False. (Override these via keyword paramsters.)
     """
     # EX: tf = read_csv("examples/iris.csv"); tf.shape => (150, 5)
     ## TODO: clarify dtype usage
@@ -64,14 +64,19 @@ def read_csv(filename, **in_kw):
         kw[COMMENT] = "#"
     debug.trace_fmt(5, "read_csv({f}, [in_kw={ikw}])", f=filename, ikw=in_kw)
     debug.trace_fmt(6, "\tkw={k}", k=kw)
-    df = pd.read_csv(filename, **kw)
+    df = None
+    try:
+        df = pd.read_csv(filename, **kw)
+    except:
+        debug.trace(4, f"Exception during read_csv: {system.get_exception()}")
     debug.trace(4, f"read_csv({filename}) => {df}")
     return df
 
 
 def to_csv(filename, data_frame, **in_kw):
     """Wrapper around pandas DATA_FRAME.to_csv with FILENAME
-    Note: by default, the index is omitted"""
+    Note: by default, the index is omitted;
+    and, delimiter SEP defaults to DELIM env. var"""
     result = None
     kw = {SEP: DELIM, 'index': False}
     kw.update(**in_kw)

@@ -105,7 +105,8 @@ class Script(Main):
         
         # Extract RGB references and add color name label
         # ex: "(128, 128, 128):  72.98% (1888)" => "<Grey, (128, 128, 128)>:  72.98% (1888)
-        MAX_TRIES = max(1, line.count("("))
+        ## OLD: MAX_TRIES = max(1, line.count("("))
+        MAX_TRIES = (1 + len(re.findall(self.rgb_regex, line)))
         debug.trace(5, f"len: {len(line)}; MAX_TRIES={MAX_TRIES}")
         num_tries = 0
         text = line

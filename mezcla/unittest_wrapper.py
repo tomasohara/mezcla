@@ -53,7 +53,9 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla import tpo_common as tpo
 
-TODO_FILE = "TODO MODULE FILE"
+
+KEEP_TEMP = system.getenv_bool("KEEP_TEMP", tpo.detailed_debugging(),
+                               "keep temporary files")
 TODO_MODULE = "TODO MODULE"
 
 # Note: the following is for transparent resolution of dotted module names
@@ -63,6 +65,16 @@ TODO_MODULE = "TODO MODULE"
 # explicitly specified in the python path, such as via 'PYTHONPATH=package-dir:...'.)
 THIS_PACKAGE = getattr(mezcla.debug, "__package__", None)
 debug.assertion(THIS_PACKAGE == "mezcla")
+
+
+def get_temp_dir(keep=False):
+    """Get temporary directory, omitting later deletion if KEEP"""
+    if keep is None:
+        keep = KEEP_TEMP
+    dir_path = tempfile.NamedTemporaryFile(delete=(not keep)).name
+    gh.full_mkdir(dir_path)
+    debug.trace(5, "get_temp_dir() => {dir_path}")
+    return dir_path
 
 
 class TestWrapper(unittest.TestCase):
@@ -75,10 +87,22 @@ class TestWrapper(unittest.TestCase):
                                         "Check coverage during unit testing")
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
-    temp_file = tempfile.NamedTemporaryFile().name
+    ## OLD: temp_file = tempfile.NamedTemporaryFile().name
+    temp_file = None
     use_temp_base_dir = None
     test_num = 1
-
+    
+    ## TEST:
+    ## NOTE: leads to pytest warning. See
+    ##   https://stackoverflow.com/questions/62460557/cannot-collect-test-class-testmain-because-it-has-a-init-constructor-from
+    ## def __init__(self, *args, **kwargs):
+    ##     debug.trace_fmtd(5, "TestWrapper.__init__({a}): keywords={kw}; self={s}",
+    ##                      a=",".join(args), kw=kwargs, s=self)
+    ##     super().__init__(*args, **kwargs)
+    ##    debug.trace_object(5, self, label="TestWrapper instance")
+    ##
+    ## __test__ = False                 # make sure not assumed test
+        
     @classmethod
     def setUpClass(cls):
         """Per-class initialization: make sure script_module set properly"""
@@ -97,7 +121,7 @@ class TestWrapper(unittest.TestCase):
             if (not ((re.search(r"warning:.*not intended", help_usage,
                                 re.IGNORECASE))
                      or ("usage:" in help_usage.lower()))):
-                system.print_stderr("Warning: mezcla scripts should implement --help")
+                system.print_stderr("Warning: script should implement --help")
 
         # Optionally, setup temp-base directory (normally just a file)
         if cls.use_temp_base_dir is None:
@@ -105,6 +129,7 @@ class TestWrapper(unittest.TestCase):
             # TODO: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); cls.use_temp_base_dir = bool(temp_base_dir.strip()); ...
         if cls.use_temp_base_dir:
             ## TODO: pure python
+            ## TODO: gh.full_mkdir
             gh.run("mkdir -p {dir}", dir=cls.temp_base)
 
         return
@@ -240,7 +265,7 @@ class TestWrapper(unittest.TestCase):
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         tpo.debug_print("TestWrapper.tearDown()", 4)
-        if not tpo.detailed_debugging():
+        if not KEEP_TEMP:
             gh.run("rm -vf {file}*", file=self.temp_file)
         return
 
@@ -248,7 +273,8 @@ class TestWrapper(unittest.TestCase):
     def tearDownClass(cls):
         """Per-class cleanup: stub for tracing purposes"""
         tpo.debug_format("TestWrapper.tearDownClass(); cls={c}", 5, c=cls)
-        if not tpo.detailed_debugging():
+        if not KEEP_TEMP:
+            ## TODO: use shutil
             if cls.use_temp_base_dir:
                 gh.run("rm -rvf {dir}", dir=cls.temp_base)
             else:

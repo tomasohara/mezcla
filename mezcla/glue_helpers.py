@@ -75,8 +75,10 @@ def get_temp_file(delete=None):
 ## TEMP_LOG_FILE = tpo.getenv_text(
 ##     # "Log file for stderr (e.g., for issue function)"
 ##     "TEMP_LOG_FILE", get_temp_file())
-TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file(),
-                                "Log file for stderr such as for issue function)")
+TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file() + "-log",
+                                "Log file for stderr such as for issue function")
+TEMP_SCRIPT_FILE = tpo.getenv_text("TEMP_SCRIPT_FILE", get_temp_file() + "-script",
+                                   "File for command invocation")
 
 
 def basename(filename, extension=None):
@@ -111,15 +113,28 @@ def remove_extension(filename, extension):
 ##           ...
 
 
-def dir_path(filename):
-    """Wrapper around os.path.dirname"""
+def dir_path(filename, explicit=False):
+    """Wrapper around os.path.dirname over FILENAME
+    Note: With EXPLICIT, returns . instead of "" (e.g., if filename in current direcotry)
+    """
     # TODO: return . for filename without directory (not "")
-    # EX: dirname("/tmp/solr-4888.log") => "/tmp"
+    # EX: dir_path("/tmp/solr-4888.log") => "/tmp"
+    # EX: dir_path("README.md") => ""
     path = os.path.dirname(filename)
-    debug.trace(5, f"dirname({filename}) => {path}")
+    if (not path and explicit):
+        path = "."
+    debug.trace(5, f"dir_path({filename}, [explicit={explicit}]) => {path}")
     # TODO: add realpath (i.e., canonical path)
-    debug.assertion(form_path(path, basename(filename)) == filename)
+    if not explicit:
+        debug.assertion(form_path(path, basename(filename)) == filename)
     return path
+
+
+def dirname(file_path):
+    """"Returns directory component of FILE_PATH as with Unix dirname"""
+    # EX: dirname("/tmp/solr-4888.log") => "/tmp"
+    # EX: dirname("README.md") => "."
+    return dir_path(file_path, explicit=True)
 
 
 def file_exists(filename):
@@ -179,12 +194,13 @@ def create_directory(path):
         os.mkdir(path)
         debug_format("os.mkdir({p})", 6, p=path)
     else:
-        assertion(os.path.isdir(path))
+        debug.assertion(os.path.isdir(path))
     return
 
 
 def full_mkdir(path):
     """Issues mkdir to ensure path directory, including parents (assuming Linux like shell)"""
+    ## TODO: os.makedirs(path, exist_ok=True)
     debug.assertion(os.name == "posix")
     issue('mkdir --parents "{p}"', p=path)
     debug.assertion(is_directory(path))
@@ -272,7 +288,7 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     # TODO: make sure no template markers left in command text (e.g., "tar cvfz {tar_file}")
     # EX: "root" in run("ls /")
     # Note: Script tracing controlled DEBUG_LEVEL environment variable.
-    assertion(isinstance(trace_level, int))
+    debug.assertion(isinstance(trace_level, int))
     debug_print("run(%s, [trace_level=%s], [subtrace_level=%s])" % (command, trace_level, subtrace_level), (trace_level + 2))
     global default_subtrace_level
     # Keep track of current debug level setting
@@ -291,12 +307,12 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     # Run the command
     # TODO: check for errors (e.g., "sh: filter_file.py: not found"); make wait explicit
     wait = not command.endswith("&")
-    assertion(wait or not just_issue)
+    debug.assertion(wait or not just_issue)
     # Note: Unix supports the '>|' pipe operator (i.e., output with overwrite); but,
     # it is not supported under Windows. To avoid unexpected porting issues, clients
     # should replace 'run("... >| f")' usages with 'delete_file(f); run(...)'.
     # note: TestWrapper.setUp handles the deletion automatically
-    assertion(">|" not in command_line)
+    debug.assertion(">|" not in command_line)
     result = None
     ## TODO: if (just_issue or not wait): ... else: ...
     result = getoutput(command_line) if wait else str(os.system(command_line))
@@ -305,6 +321,27 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
         setenv("DEBUG_LEVEL", debug_level_env)
     debug_print("run(_) => {\n%s\n}" % indent_lines(result), (trace_level + 1))
     return result
+
+
+def run_via_bash(command, trace_level=4, subtrace_level=None, init_file=None,
+                 **namespace):
+    """Version of run that runs COMMAND with aliases defined
+    Notes:
+    - This can be slow due to alias definition overhead
+    - INIT_FILE is file to source before running the command
+    - TRACE_LEVEL and SUBTRACE_LEVEL control tracing for COMMAND and any subcommands, respectively
+    """
+    debug_print("issuing: %s" % command, trace_level)
+    commands_to_run = ""
+    if init_file:
+        commands_to_run += system.read_file(init_file) + "\n"
+    commands_to_run += command
+    system.write_file(TEMP_SCRIPT_FILE, commands_to_run)
+    
+    ## HACK: make sure tomohara-aliases don't output anything
+    command_line = f"BATCH_MODE=1 bash -i -f {TEMP_SCRIPT_FILE}"
+    ## TODO: command_line = f"bash -i -f {TEMP_SCRIPT_FILE}"
+    return run(command_line, trace_level=(trace_level + 1), subtrace_level=subtrace_level, just_issue=False, **namespace)
 
 
 def issue(command, trace_level=4, subtrace_level=None, **namespace):
@@ -465,7 +502,7 @@ def read_lines(filename=None, make_unicode=False):
             tpo.debug_format("Reading from stdin", 4)
             f = sys.stdin
         else:
-            f = open(filename)
+            f = system.open_file(filename)
             if not f:
                 raise IOError
         # Read line by line
@@ -491,7 +528,7 @@ def write_lines(filename, text_lines, append=False):
     f = None
     try:
         mode = 'a' if append else 'w'
-        f = open(filename, mode)
+        f = system.open_file(filename, mode=mode)
         for line in text_lines:
             line = tpo.normalize_unicode(line)
             f.write(line + "\n")
@@ -521,14 +558,17 @@ def write_file(filename, text, append=False):
 
 
 def copy_file(source, target):
-    """Copy SOURCE file to TARGET file"""
+    """Copy SOURCE file to TARGET file (or directory)"""
     # Note: meta data is not copied (e.g., access control lists)); see
     #    https://docs.python.org/2/library/shutil.html
     # TODO: have option to skip if non-dir target exists
     debug_print("copy_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
-    assertion(non_empty_file(source))
+    debug.assertion(non_empty_file(source))
     shutil.copy(source, target)
-    assertion(non_empty_file(target))
+    ## OLD: debug.assertion(non_empty_file(target))
+    target_file = (target if system.is_regular_file(target) else form_path(target, basename(source)))
+    ## TODO: debug.assertion(file_size(source) == file_size(target_file))
+    debug.assertion(non_empty_file(target_file))
     return
 
 
@@ -536,16 +576,16 @@ def rename_file(source, target):
     """Rename SOURCE file as TARGET file"""
     # TODO: have option to skip if target exists
     debug_print("rename_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
-    assertion(non_empty_file(source))
+    debug.assertion(non_empty_file(source))
     os.rename(source, target)
-    assertion(non_empty_file(target))
+    debug.assertion(non_empty_file(target))
     return
 
 
 def delete_file(filename):
     """Deletes FILENAME"""
     debug_print("delete_file(%s)" % tpo.normalize_unicode(filename), 5)
-    assertion(os.path.exists(filename))
+    debug.assertion(os.path.exists(filename))
     ok = False
     try:
         ok = os.remove(filename)
@@ -573,13 +613,15 @@ def file_size(filename):
     return size
 
 
-def get_matching_files(pattern):
-    """Get list of files matching PATTERN via shell globbing"""
+def get_matching_files(pattern, warn=False):
+    """Get sorted list of files matching PATTERN via shell globbing
+    Note: Optionally issues WARNing"""
     # NOTE: Multiple glob specs not allowed in PATTERN
-    # TODO: See whether the result should be sorted lexicographically
-    files = glob.glob(pattern)
+    files = sorted(glob.glob(pattern))
     tpo.debug_format("get_matching_files({p}) => {l}", 5,
                      p=pattern, l=files)
+    if ((not files) and warn):
+        system.print_stderr(f"Warning: no matching files for {pattern}")
     return files
 
 
@@ -593,18 +635,18 @@ def get_files_matching_specs(patterns):
     return files
 
 
-def get_directory_listing(dirname, make_unicode=False):
-    """Returns files in DIRNAME"""
+def get_directory_listing(dir_name, make_unicode=False):
+    """Returns files in DIR_NAME"""
     all_file_names = []
     try:
-        all_file_names = os.listdir(dirname)
+        all_file_names = os.listdir(dir_name)
     except OSError:
         tpo.debug_format("Exception during get_directory_listing: {exc}", 4,
                          exc=str(sys.exc_info()))
     if make_unicode:
         all_file_names = [tpo.ensure_unicode(f) for f in all_file_names]
     tpo.debug_format("get_directory_listing({dir}) => {files}", 5,
-                     dir=dirname, files=all_file_names)
+                     dir=dir_name, files=all_file_names)
     return all_file_names
 
 #-------------------------------------------------------------------------------
@@ -624,8 +666,15 @@ def getenv_filename(var, default="", description=None):
 
 if __debug__:
 
+    assertion_deprecation_shown = False
+    
     def assertion(condition):
-        """Issues warning if CONDITION doesn't hold"""
+        """Issues warning if CONDITION doesn't hold
+        Note: deprecated function--use debug.assertion instead"""
+        global assertion_deprecation_shown
+        if not assertion_deprecation_shown:
+            debug.trace(4, "Warning: glue_helpers.assertion() is deprecated")
+            assertion_deprecation_shown = True
         # EX: assertion(2 + 2 != 5)
         # TODO: rename as soft_assertion???; add to tpo_common.py (along with run???)
         if not condition:

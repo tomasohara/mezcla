@@ -36,8 +36,9 @@
 **/output-files
 **/downloads
 
-# Top level distribution dir
+# Top level distribution dir and related
 dist
+.tox
 
 # Idiosyncratic stuff for Tom
 #
