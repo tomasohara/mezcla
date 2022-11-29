@@ -56,6 +56,7 @@ from mezcla import tpo_common as tpo
 
 KEEP_TEMP = system.getenv_bool("KEEP_TEMP", tpo.detailed_debugging(),
                                "keep temporary files")
+TODO_FILE = "TODO FILE"
 TODO_MODULE = "TODO MODULE"
 
 # Note: the following is for transparent resolution of dotted module names
