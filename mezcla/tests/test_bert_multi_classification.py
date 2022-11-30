@@ -22,7 +22,8 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.bert_multi_classification as THE_MODULE
+## TODO: fix ModuleNotFoundError: No module named 'tensorflow'
+## import mezcla.bert_multi_classification as THE_MODULE
 
 class TestBertMultiClassification:
     """Class for testcase definition"""
