@@ -4,7 +4,7 @@
 #
 # Notes:
 # - This can be run as follows:
-#   $ PYTHONPATH=".:$PYTHONPATH" python tests/test_main.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_main.py
 # For tips on pytest monkeypatch, see
 #   https://stackoverflow.com/questions/38723140/i-want-to-use-stdin-in-a-pytest-test
 #
@@ -21,9 +21,12 @@ import pytest
 
 # Local packages
 from mezcla import debug
-from mezcla.main import Main
 from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper
+
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:	    global module object
+import mezcla.main as THE_MODULE
 
 class MyArgumentParser(ArgumentParser):
     """Version of ArgumentParser that doesn't exit upon failure"""
@@ -38,7 +41,7 @@ class MyArgumentParser(ArgumentParser):
             self._print_message(message, sys.stderr)
 
 
-class TestIt(TestWrapper):
+class TestMain(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.derive_tested_module_name(__file__)
     ## HACK: globals for use in embedded classes (TODO: move into Test class below)
@@ -49,19 +52,18 @@ class TestIt(TestWrapper):
     def test_script_options(self):
         """Makes sure script option specifications are parsed OK"""
         debug.trace(4, f"in test_script_options(); self={self}")
-        from mezcla.main import Main  # pylint: disable=import-outside-toplevel, redefined-outer-name, reimported
-        class Test(Main):
+        class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
-            ## TODO: rename as TestMain
+            ## TODO: rename as TestMain?
 
         # note: format is ("option", "description", "default"), or just "option"
         app = Test(text_options=[("name", "Full name", "John Doe")],
                    boolean_options=["verbose"],
                    runtime_args=["--verbose"])
         #
-        self.assertEqual(app.parsed_args.get("name"), "John Doe")
-        self.assertEqual(app.parsed_args.get("verbose"), True)
+        assert app.parsed_args.get("name") == "John Doe"
+        assert app.parsed_args.get("verbose")
 
     def test_script_without_input(self):
         """Makes sure script class without input doesn't process input and that
@@ -70,15 +72,14 @@ class TestIt(TestWrapper):
 
         # Create scriptlet checking for input and processing main step
         # TODO: rework with external script as argparse exits upon failure
-        from mezcla.main import Main  # pylint: disable=import-outside-toplevel, redefined-outer-name, reimported
-        class Test(Main):
+        class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
 
             def setup(self):
                 """Post-argument parsing processing: just displays context"""
                 tpo.debug_format("in setup(): self={s}", 5, s=self)
-                TestIt.process_line_count = 0
+                TestMain.process_line_count = 0
                 tpo.trace_current_context(label="Test.setup", 
                                           level=tpo.QUITE_DETAILED)
                 tpo.trace_object(self, tpo.QUITE_DETAILED, "Test instance")
@@ -87,52 +88,51 @@ class TestIt(TestWrapper):
                 """Dummy input processing"""
                 tpo.debug_format("in Test.process_line({l}): self={s}", 5,
                                  l=line, s=self)
-                TestIt.input_processed = True
-                TestIt.process_line_count += 1
-                
+                TestMain.input_processed = True
+                TestMain.process_line_count += 1
+
             #
             def run_main_step(self):
                 """Dummy main step"""
                 tpo.debug_format("in Test.run_main_step()): self={s}", 5,
                                  s=self)
-                TestIt.main_step_invoked = True
+                TestMain.main_step_invoked = True
 
         # Test scriptlet with test script as input w/ and w/o input enabled
-        TestIt.input_processed = None
+        TestMain.input_processed = None
         app1 = Test(skip_input=False, runtime_args=[__file__])
         try:
             app1.run()
         except:
             tpo.print_stderr("Exception during run method: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        self.assertTrue(TestIt.input_processed)
+        assert TestMain.input_processed
         #
-        TestIt.input_processed = None
+        TestMain.input_processed = None
         app2 = Test(skip_input=True, runtime_args=[__file__])
         try:
             app2.run()
         except:
             tpo.print_stderr("Exception during run method: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        self.assertFalse(TestIt.input_processed)
+        assert not TestMain.input_processed
 
         # Test scriptlet w/ input disabled and wihout arguments
         # note: auto_help disabled so that no arguments needed
-        TestIt.main_step_invoked = None
+        TestMain.main_step_invoked = None
         app3 = Test(skip_input=True, manual_input=True, auto_help=False, runtime_args=[])
         try:
             app3.run()
         except:
             tpo.print_stderr("Exception during run method: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        self.assertTrue(TestIt.main_step_invoked)
+        assert TestMain.main_step_invoked
 
     def test_perl_arg(self):
         """Make sure perl-style arg can be parsed"""
         # TODO: create generic app-creation helper
         debug.trace(4, f"in test_perl_arg(); self={self}")
-        from mezcla.main import Main  # pylint: disable=import-outside-toplevel, redefined-outer-name, reimported
-        class Test(Main):
+        class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
 
@@ -141,15 +141,15 @@ class TestIt(TestWrapper):
                    runtime_args=["-verbose"],
                    perl_switch_parsing=True)
         #
-        self.assertEqual(app.parsed_args.get("verbose"), True)
+        assert app.parsed_args.get("verbose")
         #
         app = Test(boolean_options=["verbose"],
                    runtime_args=["-verbose"],
                    perl_switch_parsing=False)
-        self.assertEqual(app.parsed_args.get("verbose"), None)
+        assert not app.parsed_args.get("verbose")
 
 
-class TestIt2:
+class TestMain2:
     """Another class for testcase definition
     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
 
@@ -161,29 +161,29 @@ class TestIt2:
         pre_captured = capsys.readouterr()
         # line input
         monkeypatch.setattr('sys.stdin', io.StringIO(contents))
-        main = Main(skip_args=True, auto_help=False)
+        main = THE_MODULE.Main(skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
-        ## TODO: assert(TestIt.process_line_count == num_lines)
-        assert(num_lines == len(captured.out.split("\n")))
+        ## TODO: assert(TestMain.process_line_count == num_lines)
+        assert num_lines == len(captured.out.split("\n"))
         debug.trace_expr(5, main, num_lines)
         # paragraph input
         monkeypatch.setattr('sys.stdin', io.StringIO(contents))
-        main = Main(paragraph_mode=True, skip_args=True, auto_help=False)
+        main = THE_MODULE.Main(paragraph_mode=True, skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
-        ## TODO: assert(TestIt.process_line_count == 4)
+        ## TODO: assert(TestMain.process_line_count == 4)
         assert(num_lines == len(captured.out.split("\n")))
         debug.trace_expr(5, main, num_lines)
         # file input
         monkeypatch.setattr('sys.stdin', io.StringIO(contents))
-        main = Main(file_input_mode=True, skip_args=True, auto_help=False)
+        main = THE_MODULE.Main(file_input_mode=True, skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
-        ## TODO: assert(TestIt.process_line_count == 1)
+        ## TODO: assert(TestMain.process_line_count == 1)
         assert(num_lines == len(captured.out.split("\n")))
         debug.trace_expr(5, main, num_lines, pre_captured)
-        
+
     def test_missing_newline(self, capsys, monkeypatch):
         """Make sure file with missing newline at end processed OK"""
         debug.trace(4, f"in test_missing_newline({capsys}); self={self}")
@@ -191,13 +191,13 @@ class TestIt2:
         num_lines = len(contents.split("\n"))
         _pre_captured = capsys.readouterr()
         monkeypatch.setattr('sys.stdin', io.StringIO(contents))
-        main = Main(skip_args=True, auto_help=False)
+        main = THE_MODULE.Main(skip_args=True, auto_help=False)
         main.run()
         captured = capsys.readouterr()
         # note: 1 extra line ('') and 1 extra character (final newline)
-        assert((1 + num_lines) == len(captured.out.split("\n")))
-        assert((1 + len(contents)) == len(captured.out))
-        ## TODO: assert(TestIt.process_line_count == 3)
+        assert (1 + num_lines) == len(captured.out.split("\n"))
+        assert (1 + len(contents)) == len(captured.out)
+        ## TODO: assert TestMain.process_line_count == 3
         debug.trace_expr(5, main, num_lines)
 
     def test_has_parsed_option_hack(self):
@@ -205,10 +205,10 @@ class TestIt2:
         debug.trace(4, f"in test_has_parsed_option_hack(); self={self}")
         ok_arg = "ok"
         missing_arg = "missing"
-        main = Main(skip_args=True, auto_help=False)
+        main = THE_MODULE.Main(skip_args=True, auto_help=False)
         main.parsed_args = {ok_arg: True}
-        assert(main.has_parsed_option_old(ok_arg) == main.has_parsed_option(ok_arg))
-        assert(main.has_parsed_option_old(missing_arg) != main.has_parsed_option(missing_arg))
+        assert main.has_parsed_option_old(ok_arg) == main.has_parsed_option(ok_arg)
+        assert main.has_parsed_option_old(missing_arg) != main.has_parsed_option(missing_arg)
 
 #------------------------------------------------------------------------
 

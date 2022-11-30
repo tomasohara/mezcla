@@ -51,7 +51,9 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import misc_utils as misc
 from mezcla import system
-from system import getenv_bool, getenv_float, getenv_int, getenv_text
+from mezcla.system import (
+    getenv_bool, getenv_float, getenv_int, getenv_text,
+)
 
 #................................................................................
 # Constants (e.g., environment-based options)

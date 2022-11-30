@@ -85,8 +85,11 @@ def get_registered_env_options():
 
 
 def get_environment_option_descriptions(include_all=None, include_default=None, indent=" "):
-    """Returns list of environment options and their descriptions"""
-    # get_environment_option_descriptions() => [("TMP": "Old temp. dir. (/tmp)"), ("TMPDIR": "New temp. dir. (None)"), ("EMPTYDIR": "Empty. dir. ('')")]
+    """
+    Returns list of environment options and their descriptions,
+    also can be included their default values with INCLUDE_DEFAULT, separated by INDENT
+    """
+    # get_environment_option_descriptions() => [("TMP", "Old temp. dir. (/tmp)"), ("TMPDIR", "New temp. dir. (None)"), ("EMPTYDIR", "Empty. dir. ('')")]
     # Note: include_default is True when parameter is None
     debug.trace_fmt(5, "env_options={eo}", eo=env_options)
     debug.trace_fmt(5, "env_defaults={ed}", ed=env_defaults)
@@ -94,6 +97,8 @@ def get_environment_option_descriptions(include_all=None, include_default=None, 
         include_all = debug.verbose_debugging()
     if include_default is None:
         include_default = True
+    if not include_default:
+        indent = ''
     #
     def _format_env_option(opt):
         """Returns OPT description and optionally default value (if INCLUDE_DEFAULT)"""
@@ -399,7 +404,7 @@ def quote_url_text(text, unquote=False):
     # Note: This is a wrapper around quote_plus and thus escapes slashes, along with spaces and other special characters (";?:@&=+$,\"'").
     # EX: quote_url_text("<2/") => "%3C2%2f"
     # EX: quote_url_text("Joe's hat") => "Joe%27s+hat"
-    # EX: quote_url_text("Joe%27s+hat") => "Joe%27s+hat"
+    # EX: quote_url_text("Joe%27s+hat") => "Joe%2527s%2Bhat"
     debug.trace_fmtd(7, "in quote_url_text({t})", t=text)
     result = text
     quote = (not unquote)
@@ -436,7 +441,7 @@ def escape_html_text(text):
     # Note: This is wrapper around html.escape and just handles
     # '&', '<', '>', and '"'.
     # EX: escape_html_text("<2/") => "&lt;2/"
-    # EX: escape_html_text("Joe's hat") => "Joe's hat"
+    # EX: escape_html_text("Joe's hat") => "Joe&#x27;s hat"
     debug.trace_fmtd(7, "in escape_html_text({t})", t=text)
     result = ""
     if (sys.version_info.major > 2):
@@ -455,7 +460,8 @@ def unescape_html_text(text):
     # Note: This is wrapper around html.unescape (Python 3+) or
     # HTMLParser.unescape (Python 2).
     # See https://stackoverflow.com/questions/21342549/unescaping-html-with-special-characters-in-python-2-7-3-raspberry-pi.
-    # EX: unescape_html_text(escape_html_text("<2/")) => "<2/"
+    # EX: unescape_html_text("&lt;2/") => "<2/"
+    # EX: unescape_html_text("Joe&#x27;s hat") => "Joe's hat"
     debug.trace_fmtd(7, "in unescape_html_text({t})", t=text)
     result = ""
     if (sys.version_info.major > 2):
@@ -658,7 +664,7 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, **kwarg
                 if delim in key:
                     key = key.split(delim)[0]
                 lookup_hash[key] = True
-    except (IOError, ValueError):
+    except (IOError, ValueError, AttributeError):
         debug.trace_fmtd(1, "Error: Creating boolean lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmt(7, "create_boolean_lookup_table => {h}", h=lookup_hash)
@@ -760,8 +766,9 @@ def remove_extension(filename, extension=None):
     # EX: remove_extension("it.abc.def") => "it.abc")
     # EX: remove_extension("it.abc.def", "abc.def") => "it")
     in_extension = extension
+    new_filename = filename
     if extension is None:
-        new_filename = re.sub(r"\.[^\.]*$", "", filename)
+        new_filename = re.sub(r"(\w+)\.[^\.]*$", r'\1', filename)
     else:
         if not extension.startswith("."):
             extension = "." + extension
@@ -1002,8 +1009,8 @@ def intersection(list1, list2, as_set=None):
     Note: result is a list unless AS_SET specified
     """
     # note: wrapper around set.intersection used for tracing
-    # EX: sorted(intersection([1, 2, 3, 4, 5], [2, 4])) => [1, 3, 5]
-    # EX: intersection([1, 2, 3, 4, 5], [2, 4], as_set=True)) => {1, 3, 5}
+    # EX: sorted(intersection([1, 2, 3, 4, 5], [2, 4])) => [2, 4]
+    # EX: intersection([1, 2, 3, 4, 5], [2, 4], as_set=True)) => {2, 4}
     # TODO: have option for returning list
     result = set(list1).intersection(set(list2))
     if not as_set:
@@ -1046,8 +1053,8 @@ def difference(list1, list2, as_set=None):
 
 def append_new(in_list, item):
     """Returns copy of LIST with ITEM included unless already in it"""
-    # ex: append_new([1, 2], 3]) => [1, 2, 3]
-    # ex: append_new([1, 2, 3], 3]) => [1, 2, 3]
+    # ex: append_new([1, 2], 3) => [1, 2, 3]
+    # ex: append_new([1, 2, 3], 3) => [1, 2, 3]
     result = in_list[:]
     if item not in result:
         result.append(item)
@@ -1057,7 +1064,7 @@ def append_new(in_list, item):
 
 
 def just_one_true(in_list, strict=False):
-    """True iff only one element of IN_LIST is considered True (or all None unless STRICT)"""
+    """True if only one element of IN_LIST is considered True (or all None unless STRICT)"""
     # Note: Consider using misc_utils.just1 (based on more_itertools.exactly_n)
     # TODO: Trap exceptions (e.g., string input)
     min_count = 1 if strict else 0
@@ -1068,7 +1075,7 @@ def just_one_true(in_list, strict=False):
 
 
 def just_one_non_null(in_list, strict=False):
-    """True iff only one element of IN_LIST is not None (or all None unless STRICT)"""
+    """True if only one element of IN_LIST is not None (or all None unless STRICT)"""
     min_count = 1 if strict else 0
     is_true = (min_count <= sum([int(x is not None) for x in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
     debug.trace_fmt(6, "just_one_non_null({l}) => {r}", l=in_list, r=is_true)

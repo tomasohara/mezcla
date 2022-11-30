@@ -56,6 +56,7 @@ import logging
 import os
 from pprint import pprint
 import re
+from xml.dom.minidom import Element
 import six
 import sys
 import time
@@ -391,7 +392,7 @@ if __debug__:
                 collection = list(collection)
             else:
                 trace(level + 1, "Warning: [trace_values] coercing input into list")
-                collection = list(collection)
+                collection = [collection]
         if indentation is None:
             indentation = INDENT1
         if label is None:
