@@ -546,8 +546,9 @@ read_file = read_entire_file
 
 def read_lines(filename):
     """Return lines in FILENAME as list (each without newline)"""
+    # TODO: add support for open() keyword args (e.g., via read_entire_file)
     # EX: read_lines("/tmp/fu123.list") => ["1", "2", "3"]
-    # note: The final newline is ignored, s
+    # note: The final newline is ignored, s[TODO ...]
     contents = read_entire_file(filename)
     lines = contents.split("\n")
     if ((lines[-1] == "") and contents.endswith("\n")):
@@ -816,7 +817,7 @@ def is_directory(path):
 
 
 def is_regular_file(path):
-    """Determines whether PATH represents a directory"""
+    """Determines whether PATH represents a plain file"""
     # EX: (not is_regular_file("/etc"))
     ok = os.path.isfile(path)
     debug.trace_fmt(6, "is_regular_file({p}) => {r}", p=path, r=ok)
