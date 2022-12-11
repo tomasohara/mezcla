@@ -27,6 +27,10 @@ def reset_plot():
 
     # Clear the figure
     plt.clf()
+
+    # Close all plot figures
+    plt.close('all')
+    
     return
 
 #-------------------------------------------------------------------------------
