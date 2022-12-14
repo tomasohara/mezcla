@@ -118,6 +118,7 @@ stopwords = None
 # NLP toolkit
 if not SKIP_NLTK:
     import nltk            # pylint: disable=ungrouped-imports
+    nltk.download('all')
 # spell checking
 if not SKIP_ENCHANT:
     import enchant         # pylint: disable=ungrouped-imports
@@ -128,7 +129,7 @@ if not SKIP_ENCHANT:
 def split_sentences(text):
     """Splits TEXT into sentences"""
     # EX: split_sentences("I came. I saw. I conquered!") => ["I came.", "I saw.", "I conquered!"]
-    # EX: split_sentences("Dr. Watson, it's elementary. But why?") => ["Dr. Watson, it's elementary." "But why?"]
+    # EX: split_sentences("Dr. Watson, it's elementary. But why?") => ["Dr. Watson, it's elementary.", "But why?"]
     if SKIP_NLTK:
         # Split around sentence-ending punctuation followed by space,
         # but excluding initials (TODO handle abbreviations (e.g., "mo.")
@@ -200,7 +201,7 @@ fallback_POS_class = {  # classes for parts-of-speech not covered by rules (see 
 def class_for_tag(POS, word=None, previous=None):
     """Returns class label for POS tag, optionally over WORD and for PREVIOUS tag. Note: most cases are resolved without previous tag for context, except for gerunds and past participles which are considered nouns unless previous is auxiliary. Similarly, the word is only considered for special cases like punctuation."""
     # EX: class_for_tag("NNS") => "noun"
-    # EX: class_for_tag("VBG") => "noun"
+    # EX: class_for_tag("VBG") => "verb"
     # EX: class_for_tag("VBG", previous="MD") => "verb"
     # EX: class_for_tag("NNP", word="(") => "punctuation"
     tag_class = "unknown"

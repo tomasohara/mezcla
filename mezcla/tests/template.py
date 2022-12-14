@@ -9,17 +9,16 @@
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by  unittest_wrapper.py.
 # - This can be run as follows:
-#   $ PYTHONPATH="$(realpath .)/..):$PYTHONPATH" python tests/test_<module>.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_<module>.py
 #
 
 """TODO: Tests for <module> module"""
 
 # Standard packages
 import re
-import unittest
 
 # Installed packages
-## TODO: import pytest
+import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
@@ -29,7 +28,6 @@ from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:            global module object
-#    TestIt.script_module   string name
 ## TODO: change template to new name
 THE_MODULE = None           ## TODO: remove this line (n.b., used just to avoid syntax problems with <module> in following)
 ## TODO: import mezcla.<module> as THE_MODULE
@@ -47,7 +45,7 @@ if not re.search(__file__, r"\btemplate.py$"):
 ##                            description="Fouled Up Beyond All Recognition processing")
 
 
-class TestIt(TestWrapper):
+class TestTemplate(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
     # -or- non-mezcla: script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
@@ -77,7 +75,7 @@ class TestIt(TestWrapper):
 
     ## TODO: use assertEqual, etc.
     ##   not assertEquals, etc. [maldito unittest!]
-    
+
     def test_data_file(self):
         """Makes sure TODO works as expected"""
         debug.trace(4, "TestIt.test_data_file()")
@@ -124,5 +122,4 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    unittest.main()
-    ## TODO: pytest.main([__file__])
+    pytest.main([__file__])

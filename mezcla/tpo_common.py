@@ -785,7 +785,7 @@ def getenv_text(var, default="", description=None):
     return text_value
 
 
-def getenv_boolean(var, default=False, description=None):
+def getenv_bool(var, default=False, description=None):
     """Returns boolean flag based on environment VAR (or DEFAULT value which can be None). Note: "0" or "False" is interpreted as False, and any value as True."""
     bool_value = default
     value_text = getenv_text(var, default, description=description)
@@ -800,6 +800,8 @@ def getenv_boolean(var, default=False, description=None):
             bool_value = False
     debug_print("getenv_boolean(%s, %s) => %s" % (var, default, bool_value), 4)
     return bool_value
+#
+getenv_boolean = getenv_bool
 
 
 def getenv_number(var, default=-1, description=None, integral=False):
@@ -819,9 +821,11 @@ def getenv_number(var, default=-1, description=None, integral=False):
     return num_value
 
 
-def getenv_integer(var, default=-1, description=None):
+def getenv_int(var, default=-1, description=None):
     """Variant of getenv_number for integers. Note: returns integer unless None is default."""
     return getenv_number(var, default, description=description, integral=True)
+#
+getenv_integer = getenv_int
 
 
 def getenv_real(var, default=-1, description=None):
@@ -829,19 +833,9 @@ def getenv_real(var, default=-1, description=None):
     return getenv_number(var, default, description=description, integral=False)
 
 
-def getenv_int(var, default=-1, description=None):
-    """Alias for getenv_integer"""
-    return getenv_integer(var, default, description=description)
-
-
 def getenv_float(var, default=-1, description=None):
     """Alias for getenv_real"""
     return getenv_number(var, default, description=description)
-
-
-def getenv_bool(var, default=False, description=None):
-    """Alias for getenv_boolean"""
-    return getenv_boolean(var, default, description=description)
 
 
 def get_current_function_name():
@@ -998,7 +992,7 @@ def load_object(filename):
     """Load object data from FILENAME in pickle format"""
     debug_print("Loading object from %s" % filename, 3)
     object_data = None
-    f = open(filename, 'r')
+    f = open(filename, 'rb')
     if f:
         object_data = pickle.load(f)
         f.close()
@@ -1008,7 +1002,7 @@ def load_object(filename):
 def store_object(filename, object_data):
     """Store OBJECT_DATA in FILENAME using pickle format"""
     debug_print("Saving object to %s" % filename, 3)
-    f = open(filename, 'w')
+    f = open(filename, 'wb')
     if f:
         pickle.dump(object_data, f)
         f.close()
@@ -1187,7 +1181,7 @@ def equivalent(list1, list2):
     assert(isinstance(list1, list) and isinstance(list2, list))
     len1 = len(set(list1))
     len2 = len(set(list2))
-    ok = (len1 == len2) and (len(intersection(list1, list2) == len1))
+    ok = len1 == len2 and len(intersection(list1, list2)) == len1
     debug_format("equivalent({list1}, {list1}) => {ok}", 5)
     return ok
 
@@ -1252,7 +1246,7 @@ def round_nums(numbers, precision=None, zero_fill=True):
 def round(number_or_list, precision=None):    # pylint: disable=redefined-builtin
     """Llke round_num(s) but returning float(s)"""
     # EX: round(15000) => 15000.0
-    # EX: round([0.333333, 0.666666, 0.99999]) => [0.333, 0.666, 1.0]
+    # EX: round([0.333333, 0.666666, 0.99999]) => [0.333, 0.667, 1.0]
     # Note: This is different from built-in round in that list is allowed and
     # for use of rounding-precision environment option (via round_num).
     rounded_result = 0

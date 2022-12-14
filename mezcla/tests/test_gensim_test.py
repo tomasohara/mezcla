@@ -5,7 +5,7 @@
 # Notes:
 # - Fill out the TODO's through the file.
 # - This can be run as follows:
-#   $ PYTHONPATH="." python tests/test_gensim_test.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_gensim_test.py
 #
 #------------------------------------------------------------------------
 # TODO: adds tests for following
@@ -17,9 +17,11 @@
 
 """Tests for gensim_test module"""
 
-# Installed packages
+# Standard packages
 import re
-import unittest
+
+# Installed packages
+import pytest
 
 # Local packages
 from mezcla import debug
@@ -27,8 +29,13 @@ from mezcla import glue_helpers as gh
 from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper
 
-class TestIt(TestWrapper):
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:	    global module object
+import mezcla.gensim_test as THE_MODULE
+
+class TestGensimTest(TestWrapper):
     """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.derive_tested_module_name(__file__)
 
     def test_data_file(self):
@@ -38,22 +45,23 @@ class TestIt(TestWrapper):
         temp_data_file = self.temp_base + "-" + data_file
         gh.copy_file(gh.resolve_path(data_file), temp_data_file)
         output = self.run_script("--save", temp_data_file)
-        ## TODO: self.assertTrue(re.search("storing corpus in Matrix Market format", output))
-        self.assertTrue(gh.non_empty_file(temp_data_file.replace(".txt", ".bow.mm")))
+        ## TODO: assert re.search("storing corpus in Matrix Market format", output)
+        assert gh.non_empty_file(temp_data_file.replace(".txt", ".bow.mm"))
         debug.trace_expr(5, output)
         return
-        
+
     def test_vector_printing(self):
         """Test printing of corpus vector for simple input"""
         tpo.debug_print("test_vector_printing()", 4)
         temp_file = self.temp_base + ".txt"
         gh.write_file(temp_file, "My dog has fleas.\n")
         output = self.run_script("--print --verbose", temp_file)
-        self.assertTrue(re.search(r"\(u?'dog', 1\),.*\(u?'has', 1\)", output))
+        assert re.search(r"\(u?'dog', 1\),.*\(u?'has', 1\)", output)
         debug.trace_expr(5, output)
         return
 
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    unittest.main()
+    debug.trace_current_context()
+    pytest.main([__file__])

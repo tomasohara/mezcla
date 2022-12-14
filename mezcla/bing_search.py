@@ -34,7 +34,6 @@ from six.moves.urllib.request import Request, build_opener  # pylint: disable=im
 import tempfile
 
 # Local packages
-import tpo_common as tpo
 from mezcla import tpo_common as tpo
 # TODO: import xml.dom.minidom
 from mezcla import debug

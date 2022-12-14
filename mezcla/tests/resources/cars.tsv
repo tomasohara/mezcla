@@ -1,0 +1,4 @@
+car_ID\tsymboling\tCarName\tfueltype\taspiration\tdoornumber\tcarbody\tdrivewheel\tenginelocation\twheelbase\tcarlength\tcarwidth\tcarheight\tcurbweight\tenginetype\tcylindernumber\tenginesize\tfuelsystem\tboreratio\tstroke\tcompressionratio\thorsepower\tpeakrpm\tcitympg\thighwaympg\tprice
+1\t3\tcar model one\tgas\tstd\ttwo\tconvertible\trwd\tfront\t88.6\t168.8\t64.1\t48.8\t2548\tdohc\tfour\t130\tmpfi\t3.47\t2.68\t9\t111\t5000\t21\t27\t13495
+2\t3\tcar model two\tgas\tstd\ttwo\tconvertible\trwd\tfront\t88.6\t168.8\t64.1\t48.8\t2548\tdohc\tfour\t130\tmpfi\t3.47\t2.68\t9\t111\t5000\t21\t27\t16500
+3\t1\tcat model three\tgas\tstd\ttwo\thatchback\trwd\tfront\t94.5\t171.2\t65.5\t52.4\t2823\tohcv\tsix\t152\tmpfi\t2.68\t3.47\t9\t154\t5000\t19\t26\t16500
