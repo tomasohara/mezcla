@@ -68,7 +68,8 @@ def document_to_text(doc_filename):
     """Returns text version of document FILENAME of unspecified type"""
     text = ""
     try:
-        text = system.from_utf8(textract.process(doc_filename))
+        ## OLD: text = system.from_utf8(textract.process(doc_filename))
+        text = textract.process(doc_filename).decode("UTF-8")
     except:
         debug.trace_fmtd(3, "Warning: problem converting document file {f}: {e}",
                          f=doc_filename, e=sys.exc_info())

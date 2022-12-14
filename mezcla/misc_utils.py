@@ -56,7 +56,7 @@ def read_tabular_data(filename):
     Note: key made lowercase"""
     debug.trace_fmtd(4, "read_tabular_file({f})", f=filename)
     table = {}
-    with open(filename) as f:
+    with system.open_file(filename) as f:
         for (i, line) in enumerate(f):
             line = system.from_utf8(line)
             items = line.split("\t")
@@ -118,6 +118,24 @@ def is_prime(num):
 
     debug.trace_fmt(5, "is_prime({n}) => {ip}", n=num, ip=is_prime_num)
     return is_prime_num
+
+
+def prime_factorization(num):
+    """Return list of primne factors for NUM"""
+    ## EX: prime_factors(123) => [3, 41]
+    ## EX: prime_factors(127) => [127]
+    i = 2
+    factors = []
+    while i * i <= num:
+        if num % i:
+            i += 1
+        else:
+            num //= i
+            factors.append(i)
+    if num > 1:
+        factors.append(num)
+    debug.trace(6, f"prime_factorization({num}) => factors")
+    return factors
 
 
 def fibonacci(max_num):

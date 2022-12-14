@@ -80,7 +80,7 @@ def get_temp_dir(keep=False):
 
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition"""
-    script_file = TODO_FILE # name for invocation via 'python -m coverage run ...'
+    script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usuually set via derive_tested_module_name)
     temp_base = system.getenv_text("TEMP_BASE",
                                    tempfile.NamedTemporaryFile().name)

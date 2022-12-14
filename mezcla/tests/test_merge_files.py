@@ -12,34 +12,49 @@
 """Tests for merge_files module"""
 
 # Standard packages
-## NOTE: this is empty for now
+import re
 
 # Installed packages
 import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla import system
+from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.merge_files as THE_MODULE
 
-class TestMergeFiles:
+class TestMergeFiles(TestWrapper):
     """Class for testcase definition"""
+    script_module = TestWrapper.get_testing_module_name(__file__)
+    use_temp_base_dir = True            # treat TEMP_BASE as directory
 
     def test_get_timestamp(self):
         """Ensure get_timestamp works as expected"""
-        debug.trace(4, "test_get_timestamp()")
-        ## TODO: solve flaky test
-        ## assert THE_MODULE.get_timestamp("/vmlinuz") == "2021-04-15 04:24:54"
+        debug.trace(4, f"test_get_timestamp(); self={self}")
+        # Note: "/sbin should be from April of LTS year (2018, 2022, etc.)
+        assert(re.search(r"(2018|2022)-04-\d\d \d\d:\d\d:\d\d", THE_MODULE.get_timestamp("/sbin")))
 
     def test_get_numeric_timestamp(self):
         """Ensure get_numeric_timestamp works as expected"""
-        debug.trace(4, "test_get_numeric_timestamp()")
-        ## TODO: solve flaky test
-        ## assert THE_MODULE.get_numeric_timestamp("/vmlinuz") == 1618478694.0
+        debug.trace(4, f"test_get_numeric_timestamp(); self={self}")
+        # Note: /tmp should be newer than /vmlinuz
+        assert(THE_MODULE.get_numeric_timestamp("/vmlinuz") < THE_MODULE.get_numeric_timestamp("/tmp"))
 
-    ## TODO: test Script class
+    def test_simple_merge(self):
+        """Make sure simple merge works"""
+        debug.trace(4, "test_simple_merge()")
+        tmp = self.temp_base
+        system.write_lines(f"{tmp}/1.list", map(str, [0, 1, 2, 3]))
+        gh.full_mkdir(f"{tmp}/backup")
+        system.write_lines(f"{tmp}/backup/1.list~", map(str, [1, 2, 3]))
+        system.write_lines(f"{tmp}/other-1.list", map(str, [1, 2, 3, 4]))
+        assert(self.run_script(env_options="IGNORE_TIMESTAMP=1", uses_stdin=True, data_file="",
+                               options=f"{tmp}/1.list {tmp}/other-1.list").split()
+               == "0 1 2 3 4".split())
 
 if __name__ == '__main__':
     debug.trace_current_context()
