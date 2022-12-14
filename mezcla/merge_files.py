@@ -42,6 +42,8 @@ IGNORE_ERRORS = "ignore-errors"
 ## OLD: MERGE = system.getenv_text("MERGE", "/usr/bin/merge -p",
 MERGE = system.getenv_text("MERGE", "merge -p",
                            description="Command line for merge with output piping arg (e.g., -p)")
+IGNORE_TIMESTAMP = system.getenv_bool("IGNORE_TIMESTAMP", False,
+                                      "Whether to ignore time of backup files")
 
 #...............................................................................
 
@@ -82,8 +84,12 @@ class Script(Main):
         self.main_filename = self.get_parsed_argument(MAIN_FILENAME)
         self.other_filename = self.get_parsed_argument(OTHER_FILENAME)
         self.backup_filename = self.get_parsed_option(BACKUP_FILENAME)
-        self.backup_dir = self.get_parsed_option(BACKUP_DIR, self.backup_dir)
-        self.basename = self.get_parsed_option(BASENAME, self.main_filename)
+        default_backup_dir = gh.form_path(gh.dirname(self.main_filename),
+                                          self.backup_dir) 
+        self.backup_dir = self.get_parsed_option(BACKUP_DIR,
+                                                 default_backup_dir)
+        self.basename = self.get_parsed_option(BASENAME,
+                                               gh.basename(self.main_filename))
         self.update_file1 = self.get_parsed_option(UPDATE_MAIN_FILE, self.update_file1)
         self.skip_baseline = self.get_parsed_option(SKIP_BASELINE, self.skip_baseline)
         self.quiet = self.get_parsed_option(QUIET, self.quiet)
@@ -115,15 +121,18 @@ class Script(Main):
             other_timestamp = get_numeric_timestamp(self.other_filename)
             min_timestamp = min(main_timestamp, other_timestamp) - EPSILON
 
-            # Find most recent backup older than two files
+            # Find most recent backup older than the two files
+            # TODO: reinstate ~ check (or ./backup/f ./backup/~ and backup/f.~N~)
             SEP = "\t"
-            backup_files = gh.get_files_matching_specs("{d}/{b}{SEP}{d}/{b}.*~*".
-                                                       format(d=self.backup_dir, b=self.basename, SEP=SEP)
+            backup_files = gh.get_files_matching_specs("{d}/{b}{SEP}{d}/{b}*".
+                                                       format(d=self.backup_dir,
+                                                              b=self.basename, SEP=SEP)
                                                        .split(SEP))
             timestamped_backups = [(f, ts) for (f, ts) in sorted(zip(backup_files,
                                                                      map(get_numeric_timestamp, backup_files)),
                                                                  key=lambda f_ts: f_ts[1], reverse=True)
-                                   if (ts <= min_timestamp)]
+                                   if ((ts <= min_timestamp) or IGNORE_TIMESTAMP)]
+            debug.trace_expr(5, timestamped_backups)
             if timestamped_backups:
                 self.backup_filename = timestamped_backups[0][0]
 
