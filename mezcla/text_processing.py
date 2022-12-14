@@ -108,6 +108,8 @@ VERBOSE = not TERSE_OUTPUT
 # TODO: make misspellings optional (add --classic mode???)
 SKIP_NLTK = tpo.getenv_boolean("SKIP_NLTK", False, "Omit usage of Natural Language Toolkit (NLTK)")
 SKIP_ENCHANT = tpo.getenv_boolean("SKIP_ENCHANT", SKIP_MISSPELLINGS, "Omit usage of Enchant package for spell checking")
+DOWNLOAD_DATA = system.getenv_bool("DOWNLOAD_DATA", False,
+                                   "Download data from NLTK")
 
 # List of stopwords (e.g., high-freqency function words)
 stopwords = None
@@ -118,7 +120,8 @@ stopwords = None
 # NLP toolkit
 if not SKIP_NLTK:
     import nltk            # pylint: disable=ungrouped-imports
-    nltk.download('all')
+    if DOWNLOAD_DATA:
+        nltk.download('all')
 # spell checking
 if not SKIP_ENCHANT:
     import enchant         # pylint: disable=ungrouped-imports
