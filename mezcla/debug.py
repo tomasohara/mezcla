@@ -466,7 +466,7 @@ if __debug__:
             caller = inspect.stack()[1]
             ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
             (_frame, filename, line_number, _function, context, _index) = caller
-            trace(6, f"filename={filename!r}, context={context!r}")
+            trace(7, f"filename={filename!r}, context={context!r}")
             statement = read_line(filename, line_number).strip()
             if statement == MISSING_LINE:
                 ## OLD: statement = str(context).replace(")\\n']", "")
@@ -589,7 +589,7 @@ if __debug__:
                 caller = inspect.stack()[1]
                 ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
                 (_frame, filename, line_number, _function, context, _index) = caller
-                trace(6, f"filename={filename!r}, context={context!r}")
+                trace(7, f"filename={filename!r}, context={context!r}")
                 # Read statement in file and extract assertion expression
                 # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
                 statement = read_line(filename, line_number).strip()
@@ -777,7 +777,7 @@ def xor3(value1, value2, value3):
     """Whether one and only one of VALUE1, VALUE2, and VALUE3 are true"""
     ## result = (xor(value1, xor(value2m value3))
     ##           and not (bool(value1) and bool(value2) and bool(value3)))
-    num_true = sum([int(bool(v)) for v in [value1, value2, value3]])
+    num_true = sum(int(bool(v)) for v in [value1, value2, value3])
     result = (num_true == 1)
     trace_fmt(QUITE_VERBOSE, "xor3({v1}, {v2}, {v3}) => {r}",
               v1=value1, v2=value2, v3=value3, r=result)
