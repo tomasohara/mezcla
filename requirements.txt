@@ -84,3 +84,5 @@ vaderSentiment==3.3.2
 #opt# coverage
 #opt# ipython
 #opt# pylint
+#opt# gradio
+#opt# sentencepiece
