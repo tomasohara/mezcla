@@ -25,7 +25,7 @@ import mezcla.train_text_categorizer as THE_MODULE
 class TestTrainTextCategorizer:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    
 
 
 if __name__ == '__main__':

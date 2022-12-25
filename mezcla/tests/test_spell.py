@@ -25,9 +25,18 @@ from mezcla.unittest_wrapper import TestWrapper
 #    THE_MODULE:	    global module object
 
 # Since importing doesn't work properly, a temporary fix is specifying the path
-SPELL_PATH = f'$PWD/mezcla/spell.py'
 # import mezcla.spell as THE_MODULE 
-
+PATH1 = f'$PWD/mezcla/spell.py'
+PATH2 = f'$PWD/spell.py'
+PATH3 = f'../spell.py'
+PWD_COMMAND = f'echo $PWD'
+echo_PWD = gh.run(PWD_COMMAND)
+if (echo_PWD.endswith('/mezcla/mezcla')):
+    SPELL_PATH = PATH2
+elif (echo_PWD.endswith('/mezcla')):
+    SPELL_PATH = PATH1
+else:
+    SPELL_PATH = PATH3
 
 class SpellFiles(TestWrapper):
     """Class for testcase definition"""
@@ -114,7 +123,6 @@ class SpellFiles(TestWrapper):
         temp_phrase = None
         test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
         test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
-
         test_phrase_error = "casandoxx"
          
         debug.trace(4, f"test_spell_query_ES(); self={self}")
