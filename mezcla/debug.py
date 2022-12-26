@@ -56,7 +56,7 @@ import logging
 import os
 from pprint import pprint
 import re
-from xml.dom.minidom import Element
+## OLD: from xml.dom.minidom import Element
 import six
 import sys
 import time
@@ -454,7 +454,7 @@ if __debug__:
         if no_eol is None:
             ## OLD: no_eol = False
             trace(7, "1")
-            no_eol = (False if (delim != "\n") else True)
+            no_eol = (delim == "\n")
         if delim is None:
             delim = "; "
             if in_no_eol is None:
@@ -930,7 +930,7 @@ if __debug__:
         """Debug-only initialization"""
         time_start = time.time()
         trace(DETAILED, "in debug_init()")
-        trace_expr(VERBOSE, sys.argv)
+        trace_expr(DETAILED, sys.argv)
 
         # Open external file for copy of trace output
         global debug_file
@@ -971,7 +971,7 @@ if __debug__:
         monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
         if monitor_functions:
             sys.setprofile(profile_function)
-        trace_expr(DETAILED, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
+        trace_expr(VERBOSE, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
 
         # Show additional information when detailed debugging
         # TODO: sort keys to facilate comparisons of log files
@@ -979,7 +979,8 @@ if __debug__:
         if para_mode_tracing:
             pre = post = "\n"
         trace_fmt(DETAILED, "{pre}environment: {{\n\t{env}\n}}{post}",
-                  env="\n\t".join([(k + ': ' + os.environ[k]) for k in sorted(dict(os.environ))]),
+                  env="\n\t".join([(k + ': ' + format_value(os.environ[k]))
+                                   for k in sorted(dict(os.environ))]),
                   pre=pre, post=post)
 
         # Likewise show additional information during verbose debug tracing
