@@ -210,6 +210,7 @@ class Main(object):
         if track_pages is None:
             track_pages = TRACK_PAGES
         self.track_pages = track_pages
+        self.binary_input = kwargs.get("binary_input", False)
 
         # Setup temporary file and/or base directory
         # Note: Uses NamedTemporaryFile (hence ntf_args)
@@ -423,7 +424,7 @@ class Main(object):
             if (SHOW_ENV_OPTIONS or (f"--{VERBOSE_ARG}" in sys.argv)):
                 env_opts = system.formatted_environment_option_descriptions(sort=True, indent=INDENT)
                 env_opt_spec = f"- Available env. options:\n{INDENT}{env_opts}"
-            elided_path = re.sub(f"^.*/", ".../", sys.argv[0])
+            elided_path = re.sub(r"^.*/", ".../", sys.argv[0])
             # note: A dash ("-") is used to indicate stdin with filename arg or to bypass usage w/o one
             # TODO1: get dash put in usage to make more explicit, such as in following:
             #     usage: main.py [-h] [--verbose] [filename] [-]
@@ -563,7 +564,8 @@ class Main(object):
             else:
                 debug.assertion(isinstance(self.filename, str))
                 debug.assertion(os.path.exists(self.filename))
-                self.input_stream = system.open_file(self.filename)
+                mode = ("r" if (not self.binary_input) else "rb")
+                self.input_stream = system.open_file(self.filename, mode=mode)
                 debug.assertion(self.input_stream)
         if self.newlines:
             debug.trace(4, f"Changing input stream newlines from {self.input_stream.newlines!r} to {self.newlines!r}")
@@ -675,7 +677,7 @@ class Main(object):
             debug.trace_fmt(6, "L{n}: {l}", n=self.line_num, l=line)
             if self.force_unicode:
                 line = tpo.ensure_unicode(line)
-            debug.trace(7, f"\ttype(line): {type(line)}")
+            ## TEST: debug.trace(7, f"\ttype(line): {type(line)}; offset={self.input_stream.tell()}")
             if self.track_pages:
                 for i, line_segment in enumerate(line.split(FORM_FEED)):
                     debug.trace(7, f"LS{i}: {line_segment}")

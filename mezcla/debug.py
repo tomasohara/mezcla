@@ -56,7 +56,7 @@ import logging
 import os
 from pprint import pprint
 import re
-from xml.dom.minidom import Element
+## OLD: from xml.dom.minidom import Element
 import six
 import sys
 import time
@@ -424,7 +424,6 @@ if __debug__:
         to derive label for each expression. By default, the following format is used:
            expr1=value1; ... exprN=valueN
         Notes:
-        - Currently, the labels are not resolved properly under ipython (or Jupyter).
         - For simplicity, the values are assumed to separated by ', ' (or expression _SEP)--barebones parsing applied.
         - Use DELIM to specify delimiter; otherwise '; ' used;
           if so, NO_EOL applies to intermediate values (EOL always used at end).
@@ -442,23 +441,30 @@ if __debug__:
         if (trace_level < level):
             # note: Short-circuits processing to avoid errors about known problem (e.g., under ipython)
             return
-        sep = kwargs.get('sep') or kwargs.get('_sep')
-        delim = kwargs.get('delim') or kwargs.get('_delim')
-        no_eol = kwargs.get('no_eol') or kwargs.get('_no_eol')
-        use_repr = kwargs.get('use_repr') or kwargs.get('_use_repr')
-        max_len = kwargs.get('max_len') or kwargs.get('_max_len')
-        prefix = kwargs.get('prefix') or kwargs.get('_prefix')
+        # Note: checks alternative keyword first, so False ones not misintepretted
+        sep = kwargs.get('_sep') or kwargs.get('sep')
+        delim = kwargs.get('_delim') or kwargs.get('delim')
+        no_eol = kwargs.get('_no_eol') or kwargs.get('no_eol')
+        in_no_eol = no_eol
+        use_repr = kwargs.get('_use_repr') or kwargs.get('use_repr')
+        max_len = kwargs.get('_max_len') or kwargs.get('max_len')
+        prefix = kwargs.get('_prefix') or kwargs.get('prefix')
         if sep is None:
             sep = ", "
         if no_eol is None:
-            no_eol = False
+            ## OLD: no_eol = False
+            trace(7, "1")
+            no_eol = (delim == "\n")
         if delim is None:
             delim = "; "
-            no_eol = True
+            if in_no_eol is None:
+                trace(7, "2")
+                no_eol = True
         if use_repr is None:
             use_repr = True
         if prefix is None:
             prefix = ""
+        trace(8, f"sep={sep!r}, del={delim!r}, noe={no_eol}, rep={use_repr}, len={max_len}, pre={prefix}")
         # Get symbolic expressions for the values
         # TODO: handle cases split across lines
         try:
@@ -466,7 +472,7 @@ if __debug__:
             caller = inspect.stack()[1]
             ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
             (_frame, filename, line_number, _function, context, _index) = caller
-            trace(6, f"filename={filename!r}, context={context!r}")
+            trace(8, f"filename={filename!r}, context={context!r}")
             statement = read_line(filename, line_number).strip()
             if statement == MISSING_LINE:
                 ## OLD: statement = str(context).replace(")\\n']", "")
@@ -481,7 +487,7 @@ if __debug__:
             # Skip first argument (level)
             ## BAD: expressions = statement.split(sep)[1:]
             expressions = re.split(", +", statement)[1:]
-            trace(7, f"expressions={expressions!r}\nvalues={values!r}")
+            trace(8, f"expressions={expressions!r}\nvalues={values!r}")
         except:
             trace_fmtd(ALWAYS, "Exception isolating expression in trace_vals: {exc}",
                        exc=sys.exc_info())
@@ -501,7 +507,8 @@ if __debug__:
             except:
                 trace_fmtd(ALWAYS, "Exception tracing values in trace_vals: {exc}",
                        exc=sys.exc_info())            
-        if no_eol:
+        ## OLD: if no_eol:
+        if (no_eol and (delim != "\n")):
             trace(level, "", no_eol=False)
         return
 
@@ -589,7 +596,7 @@ if __debug__:
                 caller = inspect.stack()[1]
                 ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
                 (_frame, filename, line_number, _function, context, _index) = caller
-                trace(6, f"filename={filename!r}, context={context!r}")
+                trace(7, f"filename={filename!r}, context={context!r}")
                 # Read statement in file and extract assertion expression
                 # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
                 statement = read_line(filename, line_number).strip()
@@ -777,7 +784,7 @@ def xor3(value1, value2, value3):
     """Whether one and only one of VALUE1, VALUE2, and VALUE3 are true"""
     ## result = (xor(value1, xor(value2m value3))
     ##           and not (bool(value1) and bool(value2) and bool(value3)))
-    num_true = sum([int(bool(v)) for v in [value1, value2, value3]])
+    num_true = sum(int(bool(v)) for v in [value1, value2, value3])
     result = (num_true == 1)
     trace_fmt(QUITE_VERBOSE, "xor3({v1}, {v2}, {v3}) => {r}",
               v1=value1, v2=value2, v3=value3, r=result)
@@ -923,7 +930,7 @@ if __debug__:
         """Debug-only initialization"""
         time_start = time.time()
         trace(DETAILED, "in debug_init()")
-        trace_expr(VERBOSE, sys.argv)
+        trace_expr(DETAILED, sys.argv)
 
         # Open external file for copy of trace output
         global debug_file
@@ -964,7 +971,7 @@ if __debug__:
         monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
         if monitor_functions:
             sys.setprofile(profile_function)
-        trace_expr(DETAILED, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
+        trace_expr(VERBOSE, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
 
         # Show additional information when detailed debugging
         # TODO: sort keys to facilate comparisons of log files
@@ -972,7 +979,8 @@ if __debug__:
         if para_mode_tracing:
             pre = post = "\n"
         trace_fmt(DETAILED, "{pre}environment: {{\n\t{env}\n}}{post}",
-                  env="\n\t".join([(k + ': ' + os.environ[k]) for k in sorted(dict(os.environ))]),
+                  env="\n\t".join([(k + ': ' + format_value(os.environ[k]))
+                                   for k in sorted(dict(os.environ))]),
                   pre=pre, post=post)
 
         # Likewise show additional information during verbose debug tracing

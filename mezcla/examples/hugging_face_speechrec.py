@@ -16,7 +16,7 @@
 # TODO: import re
 
 # Intalled module
-import gradio as gr
+## OLD: import gradio as gr
 ## TODO:
 ## from transformers import pipeline
 
@@ -52,6 +52,12 @@ SOUND_FILE = system.getenv_text("SOUND_FILE", "fuzzy-testing-1-2-3.wav",
                                 "Audio file with speech to recognize")
 USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
                                    "Use web-based interface via gradio")
+
+# Optionally load UI support
+gr = None
+if USE_INTERFACE:
+    import gradio as gr                 # pylint: disable=import-error
+
 
 def main():
     """Entry point"""

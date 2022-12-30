@@ -147,9 +147,11 @@ def getenv(var, default_value=None):
 
 
 def getenv_text(var, default=None, description=None, helper=False):
-    """Returns textual value for environment variable VAR (or DEFAULT value).
-    Notes: HELPER indicates that this call is in support of another getenv-type function (e.g., getenv_bool), so that tracing is only shown at higher verbosity level (e.g., 6 not 5).
-    DESCRIPTION used for get_environment_option_descriptions."""
+    """Returns textual value for environment variable VAR (or DEFAULT value, excluding None).
+    Notes:
+    - Use getenv_value if default can be None, as result is always a string.
+    - HELPER indicates that this call is in support of another getenv-type function (e.g., getenv_bool), so that tracing is only shown at higher verbosity level (e.g., 6 not 5).
+    - DESCRIPTION used for get_environment_option_descriptions."""
     # Note: default is empty string to ensure result is string (not NoneType)
     ## TODO: add way to block registration
     register_env_option(var, description, default)
@@ -200,6 +202,7 @@ getenv_boolean = getenv_bool
 
 def getenv_number(var, default=-1.0, description=None, helper=False):
     """Returns number based on environment VAR (or DEFAULT value), with optional description"""
+    # TODO: def getenv_number(...) -> Optional(float):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
     value = getenv_value(var, description=description, default=default)
@@ -348,9 +351,10 @@ def open_file(filename, encoding=None, errors=None, **kwargs):
     """Wrapper around around open() with FILENAME using UTF-8 encoding and ignoring ERRORS (both by default)
     Note: mode is left at default (i.e., 'r')"""
     # TODO: implement as with-style context
-    if encoding is None:
+    ## OLD: if encoding is None:
+    if (encoding is None) and (kwargs.get("mode") != "rb"):
         encoding = "UTF-8"
-    if errors is None:
+    if (encoding and (errors is None)):
         errors = 'ignore'
     result = None
     try:
@@ -369,7 +373,7 @@ def save_object(file_name, obj):
     # See https://stackoverflow.com/questions/556269/importerror-no-module-named-copy-reg-pickle.
     debug.trace_fmtd(6, "save_object({f}, _)", f=file_name)
     try:
-        with open(file_name, 'wb') as f:
+        with open(file_name, mode='wb') as f:
             pickle.dump(obj, f)
     except (AttributeError, IOError, TypeError, ValueError):
         debug.trace_fmtd(1, "Error: Unable to save object to {f}: {exc}",
@@ -383,7 +387,7 @@ def load_object(file_name, ignore_error=False):
     #    https://stackoverflow.com/questions/32957708/python-pickle-error-unicodedecodeerror
     obj = None
     try:
-        with open(file_name, 'rb') as f:
+        with open(file_name, mode='rb') as f:
             ## OLD: obj = pickle.load(f)
             try:
                 obj = pickle.load(f)
@@ -570,7 +574,7 @@ def read_binary_file(filename):
     debug.trace_fmt(7, "read_binary_file({f}, _)", f=filename)
     data = []
     try:
-        with open(filename, "rb") as f:
+        with open(filename, mode="rb") as f:
             data = f.read()
     except (IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem reading file '{f}': {exc}",
@@ -616,7 +620,7 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
     line_num = 0
     try:
         # TODO: use csv.reader
-        with open(filename) as f:
+        with open(filename, encoding="UTF-8") as f:
             for line in f:
                 line_num += 1
                 if (skip_header and (line_num == 1)):
@@ -692,7 +696,7 @@ def write_file(filename, text, skip_newline=False, append=False):
         if not isinstance(text, STRING_TYPES):
             text = to_string(text)
         mode = 'a' if append else 'w'
-        with open(filename, mode) as f:
+        with open(filename, encoding="UTF-8", mode=mode) as f:
             f.write(to_utf8(text))
             if not text.endswith("\n"):
                 if not skip_newline:
@@ -708,9 +712,9 @@ def write_file(filename, text, skip_newline=False, append=False):
 def write_binary_file(filename, data):
     """Create FILENAME with binary DATA"""
     debug.trace_fmt(7, "write_binary_file({f}, _)", f=filename)
-    debug.assertion(isinstance(text, bytes))
+    debug.assertion(isinstance(data, bytes))
     try:
-        with open(filename, "wb") as f:
+        with open(filename, mode="wb") as f:
             f.write(data)
     except (IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem writing file '{f}': {exc}",
@@ -727,7 +731,7 @@ def write_lines(filename, text_lines, append=False):
     try:
         mode = 'a' if append else 'w'
         ## OLD f = open(filename, mode)
-        with open(filename, mode) as f:
+        with open(filename, encoding="UTF-8", mode=mode) as f:
             for line in text_lines:
                 line = to_utf8(line)
                 f.write(line + "\n")
