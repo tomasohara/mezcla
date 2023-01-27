@@ -1187,9 +1187,11 @@ def current_time(integral=False):
     debug.trace(5, f"current_time([integral={integral}]) => {secs}")
     return secs
 
+
 def time_in_secs():
     """Wrapper around current_time"""
     return current_time(integral=True)
+
 
 def python_maj_min_version():
     """Return Python version as a float of form Major.Minor"""
@@ -1206,6 +1208,7 @@ def get_args():
     result = sys.argv
     debug.trace_fmtd(6, "get_args() => {r}", r=result)
     return result
+
 
 def init():
     """Performs module initilization"""
