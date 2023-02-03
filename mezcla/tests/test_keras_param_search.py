@@ -18,11 +18,12 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import text_utils
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 ## TODO: fix ModuleNotFoundError: No module named 'keras'
-## import mezcla.keras_param_search as THE_MODULE
+import mezcla.keras_param_search as THE_MODULE
 
 class TestKerasParamSearch:
     """Class for testcase definition"""
@@ -36,6 +37,14 @@ class TestKerasParamSearch:
         """Ensure non_negative works as expected"""
         debug.trace(4, "test_non_negative()")
         ## TODO: WORK-IN=PROGRESS
+        test_num = 32.86209423
+        assert (THE_MODULE.non_negative(test_num) == True)
+
+    def test_round3(self):
+        """Ensure test_round3 works as expected"""
+        debug.trace(4, "test_non_negative()")
+        test_num = 3.1415926543
+        assert (THE_MODULE.round3(test_num) == 3.142)
 
     def test_create_feature_mapping(self):
         """Ensure create_feature_mapping works as expected"""
@@ -45,9 +54,19 @@ class TestKerasParamSearch:
     def test_create_keras_model(self):
         """Ensure create_keras_model works as expected"""
         debug.trace(4, "test_create_keras_model()")
-        ## TODO: WORK-IN=PROGRESS
+        # model = THE_MODULE.create_keras_model(
+        #     num_input_features = 100, 
+        #     num_classes = 2,
+        #     hidden_units = text_utils.getenv_ints("HIDDEN_UNITS", "20 30")  
+        #     )
+        # assert (model == )
+        ## TODO: Work-in-progress
 
     ## TODO: test MyKerasClassifier class
+    def test_MyKerasClassifier_check_params(self):
+        """Ensure MyKerasClassifier.check_params works as expected"""
+        debug.trace(4, "test_MyKerasClassifier_check_params()")
+        
     ## TODO: test main
 
 
