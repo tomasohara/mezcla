@@ -1,0 +1,14 @@
+5-gram model
+sentence: One kiss is all it takes.
+model score: -98.425
+normalized score: -16.404
+Constituent ngrams
+Offset	Prob	Length	Unseen	Words
+0	-2.411	1	*	One
+1	-15.000	2	*	One kiss
+2	-23.688	1		is
+3	-2.297	1	*	all
+4	-15.000	2	*	all it
+5	-17.000	2	*	it takes.
+6	-23.029	1		</s>
+out-of-vocabulary words: ['One', 'kiss', 'all', 'it', 'takes.']
