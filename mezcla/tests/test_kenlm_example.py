@@ -18,6 +18,7 @@
 
 # Installed packages
 import pytest
+import re
 
 # Local packages
 from mezcla import debug
@@ -115,7 +116,7 @@ class TestKenlmExample(TestWrapper):
         sentence = "One kiss is all it takes."
         known_seen_character = "is"
         command_export_LM = 'export LM=../lm/test.arpa'
-        command_kenlm = f'VERBOSE=True ../kenlm_example.py {sentence} > {self.temp_file} | tail -n 1 | cut -c 26-'
+        command_kenlm = f'VERBOSE=True ../kenlm_example.py {sentence} | tail -n 1 | cut -c 26- > {self.temp_file}'
 
         debug.trace(4, f"test_kenlm_example_OUTOFVOCAB(); self={self}")
         gh.run(command_export_LM)
@@ -127,15 +128,53 @@ class TestKenlmExample(TestWrapper):
 
         ## [TODO]: WORK IN PROGRESS
         # TEST 2 - Checking for seen words in out-of-vocabs dict (VERBOSE)
-        def return_seen_character(gow):
+        def return_words(gow):
+            x = []
             for word in gow.split():
-                if word in output:
-                    return word
+                x += [word]
+            return str(x)
+        
+        def UncommonWords(A, B):
+            # count will contain all the word counts
+            count = {}
+        
+            for word in A.split():
+                count[word] = count.get(word, 0) + 1
 
-        seen_words = return_seen_character(sentence)
+            for word in B.split():
+                count[word] = count.get(word, 0) + 1
 
-        assert ("is" in seen_words)
-        return 
+            return [word for word in count if count[word] == 1]
+
+        uncommon_str = str(UncommonWords(return_words(sentence), output))
+        ## [WARNING]: Use of regex shows warning in pytest       
+        # uncommon_filter = re.sub('[\W_]+', '', uncommon_str)
+        uncommon_filter = "".join(list([val for val in uncommon_str if val.isalnum()]))
+        
+        assert ("is" == uncommon_filter)
+        return
+
+    def test_kenlm_example_PRECISION(self):
+        """Ensures that kenlm_example_PRECISION works properly"""
+        PRECISION_VALUE = str(7)
+        sentence = "THis is gonna be the last dance"
+        command_export_LM = 'export LM=../lm/test.arpa'
+        command_kenlm = f'ROUNDING_PRECISION={PRECISION_VALUE} ../kenlm_example.py {sentence} | tail -n 1 | cut -c 19- > {self.temp_file}'
+
+        debug.trace(4, f"test_kenlm_example_VERBOSE(); self={self}")
+        gh.run(command_export_LM)
+        gh.run(command_kenlm)
+        
+        ## [OLD]: Didn't work, returned tmp path as sentence
+        # output = self.run_script(self.temp_file)
+        output = gh.read_file(self.temp_file)
+
+        def count_precision(num_string):
+            before_decimal, after_decimal = num_string.split(".")
+            return len(after_decimal) - 1
+
+        assert (count_precision(output) == int(PRECISION_VALUE))
+        return
 
 if __name__ == '__main__':
     debug.trace_current_context()

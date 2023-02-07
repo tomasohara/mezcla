@@ -1,4 +1,0 @@
-5-gram model
-sentence: A quick brown fox jumps over a lazy dog.
-model score: -149.4206
-normalized score: -16.6023
