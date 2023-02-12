@@ -38,6 +38,8 @@ EXT = system.getenv_text("EXT", ".txt")
 SUFFIX = system.getenv_text("SUFFIX", DEFAULT_SUFFIX)
 USE_AFFIX = system.getenv_boolean("USE_AFFIX", False)
 FORCE = system.getenv_boolean("FORCE", False)
+EXTENSION = system.getenv_value("EXTENSION", None,
+                                "Extension of file for conversion")
 
 
 def show_usage_and_quit():
@@ -69,7 +71,9 @@ def document_to_text(doc_filename):
     text = ""
     try:
         ## OLD: text = system.from_utf8(textract.process(doc_filename))
-        text = textract.process(doc_filename).decode("UTF-8")
+        text = textract.process(doc_filename,
+                                extension=EXTENSION
+                                ).decode("UTF-8")
     except:
         debug.trace_fmtd(3, "Warning: problem converting document file {f}: {e}",
                          f=doc_filename, e=sys.exc_info())
@@ -111,7 +115,7 @@ def main():
         else:
             new_filename = system.remove_extension(filename) + affix + EXT + suffix
             if system.non_empty_file(new_filename) and not FORCE:
-                system.print_stderr("Error: file {nf} exists".
+                system.print_stderr("Error: file {nf} exists. Use FORCE to overwrite".
                                     format(nf=new_filename))
             else:
                 system.write_file(new_filename, text)
