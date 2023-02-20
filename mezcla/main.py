@@ -277,7 +277,11 @@ class Main(object):
             self.description = description
         if boolean_options:
             self.boolean_options += boolean_options
-        if (VERBOSE_ARG not in [list(t)[0].lower() for t in self.boolean_options]):
+        # note: adds --verbose unless already specified (TODO: add way to disable)
+        boolean_options_proper = [t for t in self.boolean_options if isinstance(t, str)]
+        boolean_options_proper += [t[0] for t in self.boolean_options if isinstance(t, list)]
+        if (VERBOSE_ARG not in boolean_options_proper):
+            debug.trace(6, f"Adding {VERBOSE_ARG} to {self.boolean_options}")
             self.boolean_options += [(VERBOSE_ARG, "Verbose output mode")]
         if text_options:
             self.text_options = text_options
