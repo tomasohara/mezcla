@@ -86,3 +86,4 @@ vaderSentiment==3.3.2
 #opt# pylint
 #opt# gradio
 #opt# sentencepiece
+#opt# sacremoses
