@@ -580,7 +580,9 @@ if __debug__:
         Note:
         - This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so).
         - Currently, the expression text is not resolved properly under ipython (or Jupyter).
-        - The optional ASSERT_LEVEL overrides use of ALWAYS."""
+        - The optional ASSERT_LEVEL overrides use of ALWAYS.
+        - Uses introspection to derive text for assertion expression.
+        """
         # EX: assertion((2 + 2) != 5)
         # TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
         # TODO: trace out local and globals to aid in diagnosing assertion failures; ex: add automatic tarcing of variables used in the assertion expression)
@@ -603,6 +605,8 @@ if __debug__:
                 if statement == MISSING_LINE:
                     ## OLD: statement = str(context).replace(")\\n']", "")
                     statement = str(context).replace("\\n']", "")
+                # Format expression and message
+                # note: removes comments, along with the assertion call prefix and suffix
                 statement = re.sub("#.*$", "", statement)
                 statement = re.sub(r"^(\S*)assertion\(", "", statement)
                 expression = re.sub(r"\);?\s*$", "", statement)
@@ -929,7 +933,7 @@ if __debug__:
     def debug_init():
         """Debug-only initialization"""
         time_start = time.time()
-        trace(DETAILED, "in debug_init()")
+        trace(DETAILED, f"in debug_init(); {timestamp()}")
         trace(USUAL, " ".join(sys.argv))
         trace_expr(DETAILED, sys.argv)
 
