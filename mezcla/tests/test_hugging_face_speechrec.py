@@ -12,6 +12,8 @@
 # Installed packages
 import pytest
 import re
+import json
+import ast
 
 # Local packages
 from mezcla import debug
@@ -35,13 +37,28 @@ class TestKenlmExample(TestWrapper):
         """Ensures that test_speechrec_default works properly"""
         debug.trace(4, "test_speechrec_default()")
 
-        text_output = "{'text': 'then you have a portfolio that is crammed with sub prime carbon assets'}"
-        SOUND_PATH = "../examples/speechrec_wav/us1.wav"
+        text_output = "but we also got to see the whole thing"
+        SOUND_PATH = "../examples/speech-wav/us1.wav"
         command_1 = f"SOUND_FILE='{SOUND_PATH}' ../examples/hugging_face_speechrec.py {SOUND_PATH} > {self.temp_file}"
         gh.run(command_1)
 
-        output = gh.read_file(self.temp_file).strip()
+        output_json = ast.literal_eval(gh.read_file(self.temp_file).strip())
+        output = output_json["text"]
+        assert (output == text_output)
+        return 
+    
+    # TEST - 2 : SPEECHREC USING DIFFERENT MODEL (EN)
+    def test_speechrec_default(self):
+        """Ensures that test_speechrec_default works properly"""
+        debug.trace(4, "test_speechrec_default()")
 
+        text_output = "but we also got to see the whole thing"
+        SOUND_PATH = "../examples/speech-wav/us1.wav"
+        command_1 = f"SOUND_FILE='{SOUND_PATH}' ../examples/hugging_face_speechrec.py {SOUND_PATH} > {self.temp_file}"
+        gh.run(command_1)
+
+        output_json = ast.literal_eval(gh.read_file(self.temp_file).strip())
+        output = output_json["text"]
         assert (output == text_output)
         return 
 
