@@ -14,14 +14,15 @@
 
 # Intalled module
 import gradio as gr
-## TODO: import transformers
+import transformers
+import torch
 ## OLD: from transformers import pipeline
 
 # Local modules
 from mezcla import debug
 from mezcla.main import Main
 from mezcla import system
-
+from mezcla import glue_helpers as gh
 # Constants
 TL = debug.TL
 
@@ -46,13 +47,15 @@ MT_TASK = f"translation_{SOURCE_LANG}_to_{TARGET_LANG}"
 DEFAULT_MODEL = f"Helsinki-NLP/opus-mt-{SOURCE_LANG}-{TARGET_LANG}"
 MT_MODEL = system.getenv_text("MT_MODEL", DEFAULT_MODEL,
                               "Hugging Face model for MT")
-
 #-------------------------------------------------------------------------------
-
+USE_CPU = system.getenv_bool("USE_CPU", True, "Uses Torch on CPU if True")
+MAX_LENGTH = system.getenv_int("MAX_LENGTH", 512, "Maximum Length of Tokens")
 TEXT_FILE = system.getenv_text("TEXT_FILE", "-",
                                "Text file to translate")
 USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
                                    "Use web-based interface via gradio")
+
+device = torch.device("cpu") if USE_CPU else torch.device("cuda")
 
 def main():
     """Entry point"""
@@ -72,7 +75,7 @@ def main():
     ## TEMP:
     ## pylint: disable=import-outside-toplevel
     from transformers import pipeline
-    model = pipeline(task=MT_TASK, model=MT_MODEL)
+    model = pipeline(task=MT_TASK, model=MT_MODEL, device=device)
 
     if USE_INTERFACE:
         pipeline_if = gr.Interface.from_pipeline(
@@ -84,7 +87,7 @@ def main():
     else:
         TRANSLATION_TEXT = "translation_text"
         try:
-            translation = model(text)
+            translation = model(text, max_length=MAX_LENGTH)
             debug.assertion(isinstance(translation, list)
                             and (TRANSLATION_TEXT in translation[0]))
             print(translation[0].get(TRANSLATION_TEXT) or "")
