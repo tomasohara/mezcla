@@ -7,7 +7,12 @@
 ## TODO: see example/template.py for simpler version suitable for cut-n-paste from online examples
 #
 
-"""TODO: what module does (brief)"""
+"""
+TODO: what module does (brief)
+
+Sample usage:
+   echo $'TODO:task1\\nDONE:task2' | {script} --TODO-arg --
+"""
 
 # Standard modules
 ## TODO: from collections import defaultdict
@@ -28,6 +33,8 @@ from mezcla.my_regex import my_re
 ## Optional:
 ## # Increase trace level for regex searching, etc. (e.g., from 6 to 7)
 ## my_re.TRACE_LEVEL = debug.QUITE_VERBOSE
+debug.trace(5, f"global __doc__: {__doc__}")
+debug.assertion(__doc__)
 
 ## TODO: Constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
 ## Note: Run following in Emacs to interactively replace TODO_ARG with option label
@@ -40,15 +47,14 @@ TODO_ARG = "TODO-arg"
 # Constants
 TL = debug.TL
 
-## TODO:
-## # Environment options
-## # Note: These are just intended for internal options, not for end users.
-## # It also allows for enabling options in one place rather than four
-## # (e.g., [Main member] initialization, run-time value, and argument spec., along
-## # with string constant definition).
-## #
-## FUBAR = system.getenv_bool("FUBAR", False,
-##                            description="Fouled Up Beyond All Recognition processing")
+# Environment options
+# Note: These are just intended for internal options, not for end users.
+# It also allows for enabling options in one place rather than four
+# (e.g., [Main member] initialization, run-time value, and argument spec., along
+# with string constant definition).
+#
+TODO_FUBAR = system.getenv_bool("TODO_FUBAR", False,
+                                description="TODO:Fouled Up Beyond All Recognition processing")
 
 
 class Script(Main):
@@ -84,6 +90,8 @@ class Script(Main):
         # TODO: flesh out
         if self.todo_arg and "TODO" in line:
             print(f"arg1 line ({self.line_num}): {line}")
+        else:
+            debug.trace(3, f"Ignoring line ({self.line_num}): {line}")
         ## TODO: regex pattern matching
         ## elif my_re.search(self.text_arg, line):
         ##     print("arg2 line: %s" % line)
@@ -104,7 +112,7 @@ class Script(Main):
 def main():
     """Entry point"""
     app = Script(
-        description=__doc__,
+        description=__doc__.format(script=__file__),
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
         # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
         skip_input=False,
@@ -131,6 +139,9 @@ def main():
     
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_DETAILED)
-    debug.trace_fmt(TL.USUAL, "Environment options: {eo}",
-                    eo=system.formatted_environment_option_descriptions())
+    ## OLD:
+    ## debug.trace_fmt(TL.USUAL, "Environment options: {eo}",
+    ##                 eo=system.formatted_environment_option_descriptions())
+    debug.trace(5, f"main __doc__: {main.__doc__}")
+    debug.assertion(main.__doc__)
     main()
