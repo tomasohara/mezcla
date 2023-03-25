@@ -378,7 +378,7 @@ if __debug__:
         return
 
 
-    def trace_values(level, collection, label=None, indentation=None, use_repr=None):
+    def trace_values(level, collection, label=None, indentation=None, use_repr=None, max_len=None):
         """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
         trace_fmt(MOST_VERBOSE, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
                   dl=level, lbl=label, coll=collection, ind=indentation)
@@ -409,7 +409,7 @@ if __debug__:
                 if use_repr:
                     value = repr(value)
                 trace_fmtd(ALWAYS, "{ind}{k}: {v}", ind=indentation, k=k,
-                           v=value)
+                           v=format_value(value, max_len=max_len))
             except:
                 trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}",
                            k=_to_utf8(k), exc=sys.exc_info())
