@@ -248,7 +248,7 @@ class Main(object):
             debug.trace(4, f"Using sys.argv[1:] for runtime args: {runtime_args}")
             if self.auto_help and not runtime_args:
                 help_arg = (USAGE_ARG if self.brief_usage else HELP_ARG)
-                debug.trace(4, f"Adding {help_arg} to command line (as per auto_help)")
+                debug.trace(4, f"FYI: Adding {help_arg} to command line (as per auto_help)")
                 runtime_args = [help_arg]
         #
         # Process special hook for converting Perl-style switches like -fu=123 to --fu=123
