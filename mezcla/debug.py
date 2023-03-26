@@ -269,12 +269,14 @@ if __debug__:
     STANDARD_TYPES = (int, float, dict, list)
     SIMPLE_TYPES = (bool, int, float, type(None), str)
     #
-    def trace_object(level, obj, label=None, show_all=None, show_private=None, show_methods_etc=None, indentation=None, pretty_print=None, max_value_len=max_trace_value_len, max_depth=0):
+    def trace_object(level, obj, label=None, show_all=None, show_private=None, show_methods_etc=None, indentation=None, pretty_print=None, max_value_len=max_trace_value_len, max_depth=0, regular_standard=False):
         """Trace out OBJ's members to stderr if at trace LEVEL or higher.
         Note: Optionally uses output LABEL, with INDENTATION, SHOWing_ALL members, and PRETTY_PRINTing.
         TODO: Use SHOW_PRIVATE to display private members and SHOW_METHODS_ETC for methods.
-        If max_depth > 0, this uses recursion to show values for instance members."""
+        Unless REGULAR_STANDARD, object like lists and dicts treated specially.
+        If MAX_DEPTH > 0, this uses recursion to show values for instance members."""
         # HACK: Members for STANDARD_TYPES omitted unless show_all.
+        # TODO: Make REGULAR_STANDARD True by default
         # Notes:
         # - This is intended for arbitrary objects, use trace_values for objects known to be lists or hashes.
         # - Support for show_private and show_methods_etc is not yet implemented (added for sake of tpo_common.py).
@@ -317,7 +319,7 @@ if __debug__:
             trace_fmtd(QUITE_VERBOSE, "Warning: Problem getting member list in trace_object: {exc}",
                        exc=sys.exc_info())
         ## HACK: show standard type value as special member
-        if isinstance(obj, STANDARD_TYPES):
+        if (isinstance(obj, STANDARD_TYPES) and (not regular_standard)):
             member_info = [("(value)", obj)] + [(("__(" + m + ")__"), v) for (m, v) in member_info]
             trace_fmtd(QUITE_VERBOSE, "{ind}Special casing standard type as member {m}",
                        ind=indentation, m=member_info[0][0])
@@ -346,7 +348,8 @@ if __debug__:
                 member_type_id_label = (member + " [" + str(type(value)) + " " + hex(id(value)) + "]")
                 trace_object(level, value, label=member_type_id_label, show_all=show_all,
                              indentation=(indentation + INDENT), pretty_print=None,
-                             max_depth=(max_depth - 1), max_value_len=max_value_len)
+                             max_depth=(max_depth - 1), max_value_len=max_value_len,
+                             regular_standard=regular_standard)
                 continue
             # Otherwise, derive value spec. (trapping for various exceptions)
             ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
