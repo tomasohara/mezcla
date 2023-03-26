@@ -2,6 +2,8 @@
 # file extension but also accounting for some idiosyncratic usages.
 #
 # Note:
+# - *** Please add examples when adding exclusions.
+# - ** Also Explain used for if not standard Python (e.g., tox.ini)
 # - This is shared across projects, so there might seem to be
 #   some apparently extraneous patterns included.
 # - Used to pruned 'git status' output, which gets
@@ -9,6 +11,9 @@
 # - The patterns are glob-like with the extension that **/GLOB
 #   matches the glob pattern in any subdirectory.
 # - See 'man gitignore' for details.
+#
+# TODO:
+# - Address the TODO's below.
 #
 
 # Log files and listings
@@ -22,6 +27,11 @@
 !**/*__init__.py
 # Likewise for trailing _'s (e.g., requirements.link_)
 **/*_
+
+# Special case
+# TODO: see why excluded by the rules
+# Workflow files (e.g., .github/workflows/tests.yml).
+!.github/**
 
 # Backup file
 **/*.bak
@@ -37,6 +47,8 @@
 **/downloads
 
 # Top level distribution dir and related
+# Note: tox support PyPi packaging
+# TODO: dist created by tox utiility???
 dist
 .tox
 
@@ -53,6 +65,7 @@ dist
 TAGS
 
 # Unit test / coverage reports
+# TODO: show examples
 .pytest_cache
 **/tests/htmlcov
 .coverage
