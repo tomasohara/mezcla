@@ -41,7 +41,7 @@ jobs:
     - name: Test with pytest
       run: |
         ## BAD: PYTHONPATH="$(dirname $(realpath -s $0))/mezcla/:$PYTHONPATH" coverage run -m pytest ./mezcla/tests/
-	## DEBUG:
-	echo "\$0=$0"
+        ## DEBUG:
+        echo "\$0=$0"
         PYTHONPATH="$(realpath --no-symlinks $(dirname $0))/mezcla/:$PYTHONPATH" coverage run -m pytest ./mezcla/tests/
         coverage xml
