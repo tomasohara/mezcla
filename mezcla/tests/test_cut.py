@@ -30,7 +30,8 @@ import mezcla.cut as THE_MODULE
 RESOURCES = f'{gh.dir_path(__file__)}/resources'
 CSV_EXAMPLE = f'{RESOURCES}/cars.csv'
 TSV_EXAMPLE = f'{RESOURCES}/cars.tsv'
-CUTTED_LEN_3 = f'{RESOURCES}/cars-len-3.txt'
+CUTTED_TSV_LEN_3 = f'{RESOURCES}/cars-tsv-len-3.txt'
+CUTTED_CSV_LEN_3 = f'{RESOURCES}/cars-csv-len-3.txt'
 FIELDS_2_3_4 = f'{RESOURCES}/cars-fields-2-3-4.txt'
 
 class TestCutUtils:
@@ -55,14 +56,13 @@ class TestCutScript(TestWrapper):
         """Ensure csv files are cutted as expected"""
         script_output = self.run_script(options='--csv --max-field-len 3', data_file=CSV_EXAMPLE)
         assert script_output
-        assert script_output + '\n' == gh.read_file(CUTTED_LEN_3)
+        assert script_output + '\n' == gh.read_file(CUTTED_CSV_LEN_3)
 
     def test_cut_tsv(self):
         """Ensure tsv files are cutted as expected"""
         script_output = self.run_script(options='--tsv --max-field-len 3', data_file=TSV_EXAMPLE)
         assert script_output
-        ## TODO: fix this failing, for some reason, the tabs arent good delimited on csv.reader
-        assert script_output + '\n' == gh.read_file(CUTTED_LEN_3)
+        assert script_output + '\n' == gh.read_file(CUTTED_TSV_LEN_3)
 
     def test_fields(self):
         """Ensure fields parameter works as expected"""
