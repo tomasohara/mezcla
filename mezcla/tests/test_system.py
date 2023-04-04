@@ -665,13 +665,16 @@ class TestSystem:
     def test_intersection(self):
         """Ensure intersection works as expected"""
         debug.trace(4, "test_intersection()")
-        assert THE_MODULE.intersection([1, 2], [5, 7, 8]) == set()
-        assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4]) == {2, 4}
+        assert THE_MODULE.intersection([1, 2], [5, 7, 8]) == []
+        assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4]) == [2, 4]
+        assert THE_MODULE.intersection([1, 2], [5, 7, 8], as_set=True) == set()
+        assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4], as_set=True) == {2, 4}
 
     def test_union(self):
         """Ensure union works as expected"""
         debug.trace(4, "test_union()")
-        assert THE_MODULE.union([1, 2, 3], [2, 3, 4, 5]) == {1, 2, 3, 4, 5}
+        assert THE_MODULE.union([1, 2, 3], [2, 3, 4, 5]) == [1, 2, 3, 4, 5]
+        assert THE_MODULE.union([1, 2, 3], [2, 3, 4, 5], as_set=True) == {1, 2, 3, 4, 5}
 
     def test_difference(self):
         """Ensure difference works as expected"""
