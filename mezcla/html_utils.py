@@ -57,6 +57,7 @@ import sys
 import time
 import urllib
 from urllib.error import HTTPError, URLError
+from typing import Dict
 
 # Installed packages
 # Note: selenium import now optional; BeautifulSoup also optional
@@ -81,7 +82,7 @@ POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("POST_DOWNLOAD_SLEEP_SECONDS
                                                     "Courtesy delay after URL access--prior to download")
 SKIP_BROWSER_CACHE = system.getenv_boolean("SKIP_BROWSER_CACHE", False,
                                            "Don't use cached webdriver browsers")
-USE_BROWSER_CACHE = (not SKIP_BROWSER_CACHE)
+USE_BROWSER_CACHE = not SKIP_BROWSER_CACHE
 DOWNLOAD_VIA_URLLIB = system.getenv_bool("DOWNLOAD_VIA_URLLIB", False,
                                          "Use old-style download via urllib instead of requests")
 DOWNLOAD_VIA_REQUESTS = (not DOWNLOAD_VIA_URLLIB)
@@ -91,13 +92,15 @@ HEADLESS_WEBDRIVER = system.getenv_bool("HEADLESS_WEBDRIVER", True,
                                         "Whether Selenium webdriver is hidden")
 STABLE_DOWNLOAD_CHECK = system.getenv_bool("STABLE_DOWNLOAD_CHECK", False,
                                            "Wait until download size stablizes--for dynamic content")
+EXCLUDE_IMPORTS = system.getenv_bool("EXCLUDE_IMPORTS", False,
+                                     "Sets --follow-imports=silent; no import files are checked")
 HEADERS = "headers"
 FILENAME = "filename"
 
 # Globals
 # note: for convenience in Mako template code
-user_parameters = {}
-issued_param_dict_warning = False
+user_parameters:Dict[str, str] = {}
+issued_param_dict_warning:bool = False
 
 # Placeholders for dynamically loaded modules
 BeautifulSoup = None
@@ -105,7 +108,7 @@ BeautifulSoup = None
 #-------------------------------------------------------------------------------
 # HTML utility functions
 
-browser_cache = {}
+browser_cache:Dict[str, str] = {}
 ##
 def get_browser(url):
     """Get existing browser for URL or create new one
@@ -115,7 +118,8 @@ def get_browser(url):
     """
     browser = None
     global browser_cache
-    debug.assertion(USE_BROWSER_CACHE, "Note: Browser automation without cache not well tested!")
+    debug.assertion(USE_BROWSER_CACHE, 
+                    "Note: Browser automation without cache not well tested!")
 
     # Check for cached version of browser. If none, create one and access page.
     browser = browser_cache.get(url) if USE_BROWSER_CACHE else None
@@ -149,7 +153,7 @@ def get_browser(url):
     return browser
 
 
-def get_inner_html(url):
+def get_inner_html(url:str):
     """Return the fully-rendered version of the URL HTML source (e.g., after JavaScript DOM manipulation)
     Note:
     - requires selenium webdriver (browser specific)
@@ -165,7 +169,7 @@ def get_inner_html(url):
         wait_until_ready(url)
         # Extract fully-rendered HTML
         ## OLD: inner_html = browser.execute_script("return document.body.innerHTML")
-        inner_html = browser.page_source
+        inner_html:str = browser.page_source
     except:
         inner_html = ""
         system.print_exception_info("get_inner_html")
@@ -173,7 +177,7 @@ def get_inner_html(url):
     return inner_html
 
 
-def get_inner_text(url):
+def get_inner_text(url:str):
     """Get text of URL (i.e., without HTML tags) after JavaScript processing (via selenium)"""
     debug.trace_fmt(5, "get_inner_text({u})", u=url)
     # See https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText
@@ -183,25 +187,25 @@ def get_inner_text(url):
         # Wait for Javascript to finish processing
         wait_until_ready(url)
         # Extract fully-rendered text
-        inner_text = browser.execute_script("return document.body.innerText")
+        inner_text:str = browser.execute_script("return document.body.innerText")
     except:
         system.print_exception_info("get_inner_text")
     debug.trace_fmt(7, "get_inner_text({u}) => {it}", u=url, it=inner_text)
     return inner_text
 
 
-def document_ready(url):
+def document_ready(url:str):
     """Determine whether document for URL has completed loading (via selenium)"""
     # See https://developer.mozilla.org/en-US/docs/Web/API/Document/readyState
     browser = get_browser(url)
     ready_state = browser.execute_script("return document.readyState")
-    is_ready = (ready_state == "complete")
+    is_ready:bool = (ready_state == "complete")
     debug.trace_fmt(6, "document_ready({u}) => {r}; state={s}",
                     u=url, r=is_ready, s=ready_state)
     return is_ready
 
 
-def wait_until_ready(url, stable_download_check=STABLE_DOWNLOAD_CHECK):
+def wait_until_ready(url:str, stable_download_check:bool=STABLE_DOWNLOAD_CHECK):
     """Wait for document_ready (q.v.) and pause to allow loading to finish (via selenium)
     Note: If STABLE_DOWNLOAD_CHECK, the wait incoporates check for download size differences"""
     # TODO: make sure the sleep is proper way to pause
@@ -663,7 +667,7 @@ def main(args):
         filename = system.quote_url_text(url)
         if debug.debugging():
             write_temp_file("pre-" + filename, html_data)
-
+        
         # Show inner/outer HTML
         # Note: The browser is hidden unless MOZ_HEADLESS false
         # TODO: Support Chrome
