@@ -99,10 +99,11 @@ class TestFileUtils(TestWrapper):
     def test_get_modification_date(self):
         """Tests for get_modification_date(path)"""
         gh.run(f'touch {self.temp_file}')
-
         ls_date = gh.run(f'ls -l {self.temp_file}').lower()
-        ls_date = re.search(r'\w\w\w +\d\d +\d\d:\d\d', ls_date).group()
-
+        # Extract date
+        ls_date = re.search(r'\w\w\w +\d\d? +\d\d:\d\d', ls_date).group()
+        # Remove extra spaces
+        ls_date = re.sub(r'\s+', ' ', ls_date)
         assert THE_MODULE.get_modification_date(self.temp_file, strftime='%b %-d %H:%M').lower() == ls_date
 
     ## TODO: optional cleanup methods
