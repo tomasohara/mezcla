@@ -323,7 +323,7 @@ class TestGlueHelpers:
         # Test invalid file
         THE_MODULE.delete_file('bad_filename.txt')
         captured = capsys.readouterr()
-        assert 'assertion failed' in captured.err
+        assert 'assertion failed' in captured.err.lower()
 
     def test_file_size(self):
         """Ensure file_size works as expected"""
@@ -352,7 +352,7 @@ class TestGlueHelpers:
         filenames = [file.replace('/tmp/', '') for file in filenames]
         assert set(filenames).issubset(THE_MODULE.get_directory_listing('/tmp/'))
 
-    def test_getenv_filename(self, monkeypatch, capsys):
+    def test_getenv_filename(self, monkeypatch, capfd):
         """Ensure getenv_filename works as expected"""
         debug.trace(4, "test_getenv_filename()")
 
@@ -369,7 +369,7 @@ class TestGlueHelpers:
         debug.set_level(7)
         monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
         THE_MODULE.getenv_filename('TEST_ENV_FILENAME')
-        captured = capsys.readouterr()
+        captured = capfd.readouterr() # Note: capfd must be used instead of capsys to capture stderr
         assert 'Error' in captured.err
         assert test_filename in captured.err
 
