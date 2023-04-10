@@ -142,6 +142,7 @@ if __name__ == '__main__':
     ## OLD:
     ## debug.trace_fmt(TL.USUAL, "Environment options: {eo}",
     ##                 eo=system.formatted_environment_option_descriptions())
+    ## TODO: main => global
     debug.trace(5, f"main __doc__: {main.__doc__}")
     debug.assertion(main.__doc__)
     main()
