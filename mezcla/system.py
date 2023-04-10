@@ -823,7 +823,7 @@ def is_directory(path):
     """Determines whether PATH represents a directory"""
     # EX: is_directory("/etc")
     is_dir = os.path.isdir(path)
-    debug.trace_fmt(6, "is_dir({p} => {r}", p=path, r=is_dir)
+    debug.trace_fmt(6, "is_dir({p}) => {r}", p=path, r=is_dir)
     return is_dir
 
 
