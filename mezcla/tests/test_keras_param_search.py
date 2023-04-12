@@ -21,8 +21,7 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-## TODO: fix ModuleNotFoundError: No module named 'keras'
-## import mezcla.keras_param_search as THE_MODULE
+import mezcla.keras_param_search as THE_MODULE
 
 class TestKerasParamSearch:
     """Class for testcase definition"""
