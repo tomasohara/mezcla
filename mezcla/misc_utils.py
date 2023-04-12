@@ -196,7 +196,7 @@ def eval_expression(expr_text, frame=None):
         result = eval(expr_text, frame.f_globals, frame.f_locals)
     except:
         debug.trace_fmt(5, "Exception during eval_expression({expr}): {exc}",
-                        exp=expr_text, exc=sys.exc_info())
+                        expr=expr_text, exc=sys.exc_info())
     debug.trace_fmt(7, "eval_expression({expr}) => {r}",
                     expr=expr_text, r=result)
     return result
