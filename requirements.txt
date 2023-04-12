@@ -62,8 +62,8 @@ vaderSentiment==3.3.2
 #opt# selenium
 #opt# spacy>=3.0.0
 ## TODO: python -m spacy download en
-## TODO: #opt# tensorflow
-## TODO: #opt# keras
+#opt# tensorflow
+#opt# keras
 #
 #opt# textract
 #opt# librosa
