@@ -80,7 +80,7 @@ def get_registered_env_options():
     """Returns list of environment options registered via register_env_option"""
     ## OLD: option_names = [k for k in env_options if (env_options[k] and env_options[k].strip())]
     option_names = [k for k in env_options if (env_options[k] is not None)]
-    debug.trace_fmt(5, "get_registered_env_options() => {ON}", on=option_names)
+    debug.trace_fmt(5, "get_registered_env_options() => {on}", on=option_names)
     return option_names
 
 
