@@ -29,32 +29,43 @@ import mezcla.merge_files as THE_MODULE
 
 class TestMergeFiles(TestWrapper):
     """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
     use_temp_base_dir = True            # treat TEMP_BASE as directory
 
     def test_get_timestamp(self):
         """Ensure get_timestamp works as expected"""
         debug.trace(4, f"test_get_timestamp(); self={self}")
-        # Note: "/sbin should be from April of LTS year (2018, 2022, etc.)
-        assert(re.search(r"(2018|2022)-04-\d\d \d\d:\d\d:\d\d", THE_MODULE.get_timestamp("/sbin")))
+        lsb_date = gh.run('date +%F -r /proc/fb').strip().split('-')
+        lts_year = lsb_date[0]
+        lts_month = lsb_date[1]
+        assert re.search(fr"({lts_year})-{lts_month}-\d\d \d\d:\d\d:\d\d", THE_MODULE.get_timestamp("/proc/fb"))
 
     def test_get_numeric_timestamp(self):
         """Ensure get_numeric_timestamp works as expected"""
         debug.trace(4, f"test_get_numeric_timestamp(); self={self}")
-        # Note: /tmp should be newer than /vmlinuz
-        assert(THE_MODULE.get_numeric_timestamp("/vmlinuz") < THE_MODULE.get_numeric_timestamp("/tmp"))
+        # Note: /tmp should be newer than /etc
+        first_timestamp = THE_MODULE.get_numeric_timestamp("/etc")
+        second_timestamp = THE_MODULE.get_numeric_timestamp("/tmp")
+        assert first_timestamp is not None
+        assert second_timestamp is not None
+        assert first_timestamp < second_timestamp
 
     def test_simple_merge(self):
         """Make sure simple merge works"""
         debug.trace(4, "test_simple_merge()")
         tmp = self.temp_base
-        system.write_lines(f"{tmp}/1.list", map(str, [0, 1, 2, 3]))
+        system.write_lines(f"{tmp}/1.list", list(map(str, [0, 1, 2, 3])))
         gh.full_mkdir(f"{tmp}/backup")
-        system.write_lines(f"{tmp}/backup/1.list~", map(str, [1, 2, 3]))
-        system.write_lines(f"{tmp}/other-1.list", map(str, [1, 2, 3, 4]))
-        assert(self.run_script(env_options="IGNORE_TIMESTAMP=1", uses_stdin=True, data_file="",
-                               options=f"{tmp}/1.list {tmp}/other-1.list").split()
-               == "0 1 2 3 4".split())
+        system.write_lines(f"{tmp}/backup/1.list", list(map(str, ['1', '2', '3'])))
+        system.write_lines(f"{tmp}/other-1.list", list(map(str, ['1', '2', '3', '4'])))
+        actual = self.run_script(
+            env_options="IGNORE_TIMESTAMP=1",
+            uses_stdin=True,
+            data_file="",
+            options=f"{tmp}/1.list {tmp}/other-1.list",
+            )
+        assert actual.split() == "0 1 2 3 4".split()
 
 if __name__ == '__main__':
     debug.trace_current_context()
