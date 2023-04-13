@@ -72,6 +72,7 @@ class TestTextCategorizerUtils(TestWrapper):
         debug.trace(4, "test_param_or_default()")
         ## TODO: WORK-IN=PROGRESS
 
+    @pytest.mark.skip(reason="TODO: test not yet implemented")
     def test_data_file(self):
         """Makes sure TODO works as expected"""
         debug.trace(4, "TestTextCategorizer.test_data_file()")

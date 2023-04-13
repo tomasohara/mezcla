@@ -63,6 +63,7 @@ class TestRgbColorName(TestWrapper):
             )
         return
 
+    @pytest.mark.skip(reason="TODO: test not yet implemented")
     def test_something_else(self):
         """TODO: flesh out test for something else"""
         debug.trace(4, "test_something_else()")
