@@ -50,5 +50,5 @@ RUN python -m nltk.downloader -d /usr/local/share/nltk_data all
 
 # Install required tools and libraries
 RUN apt-get install netpbm -y
-RUN apt-get install -y lsb-release && apt-get clean all
+RUN apt-get update && apt-get install -y lsb-release && apt-get clean all
 RUN apt install rcs
