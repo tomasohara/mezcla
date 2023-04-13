@@ -16,6 +16,7 @@
 # Standard packages
 from os import path
 from io import StringIO
+import sys
 
 # Installed packages
 import pytest
@@ -368,6 +369,7 @@ class TestGlueHelpers:
             pass # gh.write_file cant be used because appends a newline
         debug.set_level(7)
         monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
+        tpo.stderr = sys.stderr # ensure that other test has not changed this
         THE_MODULE.getenv_filename('TEST_ENV_FILENAME')
         captured = capfd.readouterr() # Note: capfd must be used instead of capsys to capture stderr
         assert 'Error' in captured.err
