@@ -21,6 +21,7 @@ import pytest
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -64,10 +65,9 @@ class TestPandasSklearn(TestWrapper):
     def test_main_without_args(self):
         """Ensure main without args works as expected"""
         debug.trace(4, "test_main_without_args()")
-        ## TODO: for some reason, the output differs from used in tests files and with command-line
-        output = self.run_script(data_file='')
-        assert output
-        assert 'Usage:' in gh.read_file(output)
+        log_file = gh.get_temp_file()
+        self.run_script(data_file='', log_file=log_file)
+        assert 'Usage:' in gh.read_file(log_file)
 
     def test_normal_usage(self):
         """Ensure normal usage works as expected"""
@@ -171,6 +171,11 @@ class TestPandasSklearn(TestWrapper):
             'average recall:\n'
             '\t[1.0]'
         )
+        # Replace very small numbers to avoid flaky results
+        pattern = r'\d\d\d\de-'
+        substitute = '0000e-'
+        expected_content = re.sub(pattern, substitute, expected_content)
+        output = re.sub(pattern, substitute, output)
         assert expected_content in output
 
 
