@@ -95,11 +95,11 @@ class TestSystem:
         # Test sort
         expected = (
             'VAR_STRING\tthis is a string variable (\'empty\')\n'
-            '\tANOTHER_VAR\tthis is another env. var. (None)'
+            '\tANOTHER_VAR\tthis is another env. var. (\'2022\')'
         )
         assert THE_MODULE.formatted_environment_option_descriptions(sort=False) == expected
         expected = (
-            'ANOTHER_VAR\tthis is another env. var. (None)\n'
+            'ANOTHER_VAR\tthis is another env. var. (\'2022\')\n'
             '\tVAR_STRING\tthis is a string variable (\'empty\')'
         )
         assert THE_MODULE.formatted_environment_option_descriptions(sort=True) == expected
@@ -110,7 +110,7 @@ class TestSystem:
         # Test indent
         expected = (
             'VAR_STRING + this is a string variable (\'empty\')\n'
-            ' + ANOTHER_VAR + this is another env. var. (None)'
+            ' + ANOTHER_VAR + this is another env. var. (\'2022\')'
         )
         assert THE_MODULE.formatted_environment_option_descriptions(indent=' + ') == expected
 
@@ -826,7 +826,7 @@ def set_test_env_var():
         'VAR_STRING': 'this is a string variable',
         'ANOTHER_VAR': 'this is another env. var.'
     }
-    THE_MODULE.env_default = {
+    THE_MODULE.env_defaults = {
         'VAR_STRING': 'empty',
         'ANOTHER_VAR': '2022'
     }
