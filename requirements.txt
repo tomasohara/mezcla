@@ -8,6 +8,7 @@
 # 2. Full (i.e., including optional):
 #    pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' ~/python/Mezcla/requirements.txt | grep -v '^#')
 #
+wheel==0.38.4
 bs4
 lxml
 textract
@@ -28,7 +29,6 @@ scipy
 ## TODO: put in setup.py
 six
 stopwords
-textract
 xgboost
 pyaml
 ## TODO: check absl module ($ grep -r "absl" .)
@@ -66,7 +66,6 @@ extcolors==1.0.0
 #opt# tensorflow
 #opt# keras
 #
-#opt# textract
 #opt# librosa
 #opt# SpeechRecognition
 #opt# ibm-watson
