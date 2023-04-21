@@ -59,8 +59,8 @@ class TestMain(TestWrapper):
 
         # note: format is ("option", "description", "default"), or just "option"
         app = Test(text_options=[("name", "Full name", "John Doe")],
-                   boolean_options=["verbose"],
-                   runtime_args=["--verbose"])
+                   boolean_options=[("verbose", "testing verbose option", True)],
+                   )
         #
         assert app.parsed_args.get("name") == "John Doe"
         assert app.parsed_args.get("verbose")
@@ -137,16 +137,15 @@ class TestMain(TestWrapper):
             argument_parser = MyArgumentParser
 
         # Test with and without Perl support
-        app = Test(boolean_options=["verbose"],
-                   runtime_args=["-verbose"],
+        app = Test(boolean_options=[("verbose", "testing verbose option")],
                    perl_switch_parsing=True)
         #
-        assert app.parsed_args.get("verbose")
+        assert app.parsed_args.get("verbose") == 0
         #
-        app = Test(boolean_options=["verbose"],
-                   runtime_args=["-verbose"],
+        app = Test(boolean_options=[("verbose", "testing verbose option")],
                    perl_switch_parsing=False)
-        assert not app.parsed_args.get("verbose")
+        # NOTE: this ensure that is None and not 0
+        assert app.parsed_args.get("verbose") is None
 
 
 class TestMain2:
