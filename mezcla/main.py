@@ -444,7 +444,8 @@ class Main(object):
             if self.perl_switch_parsing:
                 # note: With Perl argument support, booleans treated as integers due to argparse quirk.
                 ## TEST: parser.add_argument(opt_label, type=int, nargs='?', default=opt_default, help=opt_desc)
-                parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
+                numeric_default = 1 if opt_default else 0
+                parser.add_argument(opt_label, type=int, default=numeric_default, help=opt_desc)
             else:
                 parser.add_argument(opt_label, default=opt_default, action='store_true', help=opt_desc)
         for opt_spec in self.int_options:
