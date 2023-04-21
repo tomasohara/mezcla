@@ -3,8 +3,11 @@
 # Build the image:
 # $ docker build -t mezcla-dev -f- . <Dockerfile
 #
-# Run the image:
-# $ docker run -it --rm  --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
+# Run tests using the created image:
+# $ docker run -it --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
+#
+# Run a bash shell using the created image:
+# $ docker run -it --rm --entrypoint='/bin/bash' --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
 #
 # Remove the image:
 # $ docker rmi mezcla-dev
@@ -49,6 +52,8 @@ RUN python -m pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' $REQUIREME
 RUN python -m nltk.downloader -d /usr/local/share/nltk_data all
 
 # Install required tools and libraries
-RUN apt-get install netpbm -y
+RUN apt-get update && apt-get install netpbm -y
 RUN apt-get update && apt-get install -y lsb-release && apt-get clean all
 RUN apt install rcs
+
+ENTRYPOINT './tools/run_tests.bash'
