@@ -70,6 +70,9 @@ class TestMain(TestWrapper):
         the main step gets invoked"""
         debug.trace(4, f"in test_script_without_input(); self={self}")
 
+        # This avoids flaky stderr due to other tests
+        tpo.restore_stderr()
+
         # Create scriptlet checking for input and processing main step
         # TODO: rework with external script as argparse exits upon failure
         class Test(THE_MODULE.Main):
