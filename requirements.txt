@@ -11,7 +11,8 @@
 wheel==0.38.4
 bs4
 lxml
-textract
+# Note: installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
+git+https://github.com/tehabstract/textract.git
 cherrypy
 lxml
 pyenchant
