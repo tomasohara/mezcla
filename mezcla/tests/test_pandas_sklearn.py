@@ -172,8 +172,8 @@ class TestPandasSklearn(TestWrapper):
             '\t[1.0]'
         )
         # Replace very small numbers to avoid flaky results
-        pattern = r'\d\d\d\de-| +|\t|\n'
-        substitute = '-'
+        pattern = r'\d\d\d\de-'
+        substitute = '0000e-'
         expected_content = re.sub(pattern, substitute, expected_content)
         output = re.sub(pattern, substitute, output)
         assert expected_content in output
