@@ -23,4 +23,4 @@ jobs:
         docker build -t mezcla-dev -f- . <Dockerfile
     - name: Run tests
       run: |
-        docker run -it --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
+        docker run --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
