@@ -54,6 +54,19 @@ if ALLOW_SUBCOMMAND_TRACING:
 
 INDENT = "    "                          # default indentation
 
+# 
+# note: See main.py for similar support as part of Main scipt class
+FILE_BASE = system.getenv_text("FILE_BASE", "_temp",
+                               "Basename for output files including dir")
+TEMP_PREFIX = (FILE_BASE + "-")
+NTF_ARGS = {'prefix': TEMP_PREFIX,
+            'delete': not debug.detailed_debugging(),
+            ## TODO: 'suffix': "-"
+            }
+TEMP_FILE = system.getenv_text("TEMP_FILE", tempfile.NamedTemporaryFile(**NTF_ARGS).name,
+                               description="Basename for temporary files")
+
+
 #------------------------------------------------------------------------
 
 def get_temp_file(delete=None):
@@ -62,7 +75,7 @@ def get_temp_file(delete=None):
     # TODO: allow for overriding other options to NamedTemporaryFile
     if ((delete is None) and tpo.detailed_debugging()):
         delete = False
-    temp_file_name = tempfile.NamedTemporaryFile(delete=delete).name
+    temp_file_name = TEMP_FILE
     # HACK: get rid of double backslashes in Win32 filenames
     # ex: r'c:\\temp\\fubar' => r'c:\temp\fubar' 
     ## if os.pathsep == r'\\':
@@ -79,6 +92,13 @@ TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file() + "-log",
                                 "Log file for stderr such as for issue function")
 TEMP_SCRIPT_FILE = tpo.getenv_text("TEMP_SCRIPT_FILE", get_temp_file() + "-script",
                                    "File for command invocation")
+
+def create_temp_file(contents):
+    """Create temporary file with CONTENTS and return full path"""
+    temp_filename = get_temp_file()
+    system.write_file(temp_filename, contents)
+    debug.trace(6, "create_temp_file({contents!r}) => {temp_filename}")
+    return temp_filename
 
 
 def basename(filename, extension=None):
@@ -252,6 +272,8 @@ def elide(text: str, max_len=None):
     # TODO: add support for eliding at word-boundaries
     tpo.debug_print("elide(_, _)", 8)
     debug.assertion(isinstance(text, str))
+    if text is None:
+        text = ""
     if max_len is None:
         max_len = MAX_ELIDED_TEXT_LEN
     result = text
@@ -260,7 +282,7 @@ def elide(text: str, max_len=None):
     tpo.debug_print("elide({%s}, [{%s}]) => {%s}" % (text, max_len, result), 9)
     return result
 #
-# EX: gh.elide(None, 10) => None
+# EX: elide(None, 10) => ''
 
 def elide_values(values: list, **kwargs):
     """List version of elide [q.v.]"""
@@ -282,7 +304,7 @@ def disable_subcommand_tracing():
 def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespace):
     """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
    Notes:
-   - The result includes stderr, so direct if not desired:
+   - The result includes stderr, so direct if not desired (see issue):
          gh.run("ls /tmp/fubar 2> /dev/null")
    - This is only intended for running simple commands. It would be better to create a subprocess for any complex interactions.
    - This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed.
