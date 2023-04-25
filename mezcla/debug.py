@@ -456,12 +456,12 @@ if __debug__:
             sep = ", "
         if no_eol is None:
             ## OLD: no_eol = False
-            trace(7, "1")
+            ## DEBUG: trace(7, "1")
             no_eol = (delim == "\n")
         if delim is None:
             delim = "; "
             if in_no_eol is None:
-                trace(7, "2")
+                ## DEBUG: trace(7, "2")
                 no_eol = True
         if use_repr is None:
             use_repr = True
