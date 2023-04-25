@@ -53,7 +53,6 @@ RUN python -m pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' $REQUIREME
 RUN python -m nltk.downloader -d /usr/local/share/nltk_data all
 
 # Install required tools and libraries
-RUN apt-get update -y && apt-get install netpbm -y
 RUN apt-get update -y && apt-get install -y lsb-release && apt-get clean all
 RUN apt install rcs
 
