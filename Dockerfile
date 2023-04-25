@@ -1,16 +1,16 @@
 # This builds the base images that we can use for development
 #
+# Notes:
+#   - Docker docs https://docs.docker.com/get-started/
+#
 # Build the image:
-# $ docker build -t mezcla-dev -f- . <Dockerfile
-#
+#   $ docker build -t mezcla-dev -f- . <Dockerfile
 # Run tests using the created image:
-# $ docker run -it --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
-#
+#   $ docker run -it --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
 # Run a bash shell using the created image:
-# $ docker run -it --rm --entrypoint='/bin/bash' --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
-#
+#   $ docker run -it --rm --entrypoint='/bin/bash' --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
 # Remove the image:
-# $ docker rmi mezcla-dev
+#   $ docker rmi mezcla-dev
 #
 
 FROM ubuntu:18.04

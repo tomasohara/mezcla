@@ -7,6 +7,7 @@
 #     https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 #     https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 # - Based initially on version from https://github.com/LimaBD/batspp.
+# - Running Github Actions with Docker: https://stackoverflow.com/a/64373702
 #
 
 name: tests
