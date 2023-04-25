@@ -281,13 +281,17 @@ class Script(Main):
             except:
                 system.print_stderr("Problem with alternative load of model {m}: {exc}",
                                     m=self.spacy_model, exc=system.get_exception())
+        debug.assertion(self.nlp)
 
         # Disable pipeline components not needed
         unused = ["parser", "tok2vec"]
         if not self.run_ner:
             unused.append("ner")
         for component in unused:
-            self.nlp.disable_pipe(component)
+            try:
+                self.nlp.disable_pipe(component)
+            except:
+                system.print_exception_info(f"disable Spacy pipe component {component}")
         debug.trace(4, f"Pipeline components: {[x[0] for x in self.nlp.pipeline]}")
 
         # Load in optional SpaCy components
@@ -302,7 +306,7 @@ class Script(Main):
             self.nlp.add_pipe("sentencizer")
                 
         # Sanity checks
-        debug.assertion(self.nlp)
+        ## OLD: debug.assertion(self.nlp)
         debug.assertion(self.type_prefix != self.entity_delim)
                 
         debug.trace_object(5, self, label="Script instance")
@@ -354,7 +358,7 @@ class Script(Main):
         if self.verbose:
             line_text = re.sub(r"\r?\n", " <newline> ", line)
             print(f"input: {line_text}")
-        if TRACK_PAGES:
+        if TRACK_PAGES and self.verbose:
             print("location info (page/sentence):")
         self.sent_num = 0
         for s in self.doc.sents:
@@ -377,7 +381,10 @@ class Script(Main):
             # Notes: Paragraph numbers are relative to each page; and, likewise
             # sentence numbers are relative to each paragraph.
             # See process_line and Main.read_input.
-            print(f"Pg#{self.page_num}/Sent#{self.sent_num}: {sentence_text}")
+            ## OLD: print(f"Pg#{self.page_num}/Sent#{self.sent_num}: {sentence_text}")
+            if self.verbose:
+                print(f"Pg#{self.page_num}/Sent#{self.sent_num}: ", end="")
+            print(sentence_text)
             debug.trace(4, f"Offset: {self.char_offset}")
 
         # Show synopsis of word token representations

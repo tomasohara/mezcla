@@ -39,6 +39,7 @@ from mezcla import tfidf
 from mezcla.compute_tfidf import terms_overlap
 from mezcla.tfidf.corpus import Corpus as tfidf_corpus
 from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
+from mezcla.tfidf import preprocess as tfidf_preprocess
 
 PREPROCESSOR_LANG = system.getenv_text("PREPROCESSOR_LANG", "english",
                                        "Language for ngram preprocessor")
@@ -58,7 +59,8 @@ ALLOW_NGRAM_SUBSUMPTION = system.getenv_boolean("ALLOW_NGRAM_SUBSUMPTION", False
 ALLOW_NGRAM_OVERLAP = system.getenv_boolean("ALLOW_NGRAM_OVERLAP", False,
                                             "Allows ngrams to overlap--token boundariese")
 ALLOW_NUMERIC_NGRAMS = system.getenv_boolean("ALLOW_NUMERIC_NGRAMS", False)
-DEFAULT_USE_CORPUS_COUNTER = (not tfidf_preprocessor.USE_SKLEARN_COUNTER)
+## OLD: DEFAULT_USE_CORPUS_COUNTER = (not tfidf_preprocessor.USE_SKLEARN_COUNTER)
+DEFAULT_USE_CORPUS_COUNTER = (not tfidf_preprocess.USE_SKLEARN_COUNTER)
 USE_CORPUS_COUNTER = system.getenv_boolean("USE_CORPUS_COUNTER", DEFAULT_USE_CORPUS_COUNTER,
                                            "Use slow tfidf package ngram tabulation")
 

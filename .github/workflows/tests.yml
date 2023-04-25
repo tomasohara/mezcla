@@ -35,8 +35,13 @@ jobs:
         sudo apt-get install libsndfile1
 
         # Mezcla requirements
+        # Note: this installs optional packages not used for most scripts
+        # TODO: make less hackish here and in the requirements file (the basis for the hack)
         pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' ./requirements.txt | grep -v '^#')
     - name: Test with pytest
       run: |
-        PYTHONPATH="$(dirname $(realpath -s $0))/mezcla/:$PYTHONPATH" coverage run -m pytest ./mezcla/tests/
+        ## BAD: PYTHONPATH="$(dirname $(realpath -s $0))/mezcla/:$PYTHONPATH" coverage run -m pytest ./mezcla/tests/
+        ## DEBUG:
+        echo "\$0=$0"
+        PYTHONPATH="$(realpath --no-symlinks $(dirname $0))/mezcla/:$PYTHONPATH" coverage run -m pytest ./mezcla/tests/
         coverage xml

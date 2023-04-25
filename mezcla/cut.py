@@ -414,12 +414,14 @@ class Script(Main):
             debug.trace(4, "note: csv vs. pandas row count sanity check")
             ## BAD: debug.assertion(num_rows == len(du.read_csv(self.filename, delimiter=self.delimiter))
             dataframe = du.read_csv(self.filename, delimiter=self.delimiter, dialect=self.dialect)
-            df_num_rows = 1 + len(dataframe)
-            df_num_cols = len(dataframe.columns)
-            debug.trace_fmt(3, "csv dimensions: {nr}x{nc}", nr=num_rows, nc=num_cols)
-            debug.trace_fmt(3, "pandas dimensions: {nr}x{nc}", nr=df_num_rows, nc=df_num_cols)
-            debug.assertion(num_rows == df_num_rows)
-            debug.assertion(num_cols == df_num_cols)
+            debug.assertion(dataframe)
+            if dataframe:
+                df_num_rows = 1 + len(dataframe)
+                df_num_cols = len(dataframe.columns)
+                debug.trace_fmt(3, "csv dimensions: {nr}x{nc}", nr=num_rows, nc=num_cols)
+                debug.trace_fmt(3, "pandas dimensions: {nr}x{nc}", nr=df_num_rows, nc=df_num_cols)
+                debug.assertion(num_rows == df_num_rows)
+                debug.assertion(num_cols == df_num_cols)
 
         return
 
