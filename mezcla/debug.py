@@ -269,12 +269,14 @@ if __debug__:
     STANDARD_TYPES = (int, float, dict, list)
     SIMPLE_TYPES = (bool, int, float, type(None), str)
     #
-    def trace_object(level, obj, label=None, show_all=None, show_private=None, show_methods_etc=None, indentation=None, pretty_print=None, max_value_len=max_trace_value_len, max_depth=0):
+    def trace_object(level, obj, label=None, show_all=None, show_private=None, show_methods_etc=None, indentation=None, pretty_print=None, max_value_len=max_trace_value_len, max_depth=0, regular_standard=False):
         """Trace out OBJ's members to stderr if at trace LEVEL or higher.
         Note: Optionally uses output LABEL, with INDENTATION, SHOWing_ALL members, and PRETTY_PRINTing.
         TODO: Use SHOW_PRIVATE to display private members and SHOW_METHODS_ETC for methods.
-        If max_depth > 0, this uses recursion to show values for instance members."""
+        Unless REGULAR_STANDARD, object like lists and dicts treated specially.
+        If MAX_DEPTH > 0, this uses recursion to show values for instance members."""
         # HACK: Members for STANDARD_TYPES omitted unless show_all.
+        # TODO: Make REGULAR_STANDARD True by default
         # Notes:
         # - This is intended for arbitrary objects, use trace_values for objects known to be lists or hashes.
         # - Support for show_private and show_methods_etc is not yet implemented (added for sake of tpo_common.py).
@@ -317,7 +319,7 @@ if __debug__:
             trace_fmtd(QUITE_VERBOSE, "Warning: Problem getting member list in trace_object: {exc}",
                        exc=sys.exc_info())
         ## HACK: show standard type value as special member
-        if isinstance(obj, STANDARD_TYPES):
+        if (isinstance(obj, STANDARD_TYPES) and (not regular_standard)):
             member_info = [("(value)", obj)] + [(("__(" + m + ")__"), v) for (m, v) in member_info]
             trace_fmtd(QUITE_VERBOSE, "{ind}Special casing standard type as member {m}",
                        ind=indentation, m=member_info[0][0])
@@ -346,7 +348,8 @@ if __debug__:
                 member_type_id_label = (member + " [" + str(type(value)) + " " + hex(id(value)) + "]")
                 trace_object(level, value, label=member_type_id_label, show_all=show_all,
                              indentation=(indentation + INDENT), pretty_print=None,
-                             max_depth=(max_depth - 1), max_value_len=max_value_len)
+                             max_depth=(max_depth - 1), max_value_len=max_value_len,
+                             regular_standard=regular_standard)
                 continue
             # Otherwise, derive value spec. (trapping for various exceptions)
             ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
@@ -378,7 +381,7 @@ if __debug__:
         return
 
 
-    def trace_values(level, collection, label=None, indentation=None, use_repr=None):
+    def trace_values(level, collection, label=None, indentation=None, use_repr=None, max_len=None):
         """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
         trace_fmt(MOST_VERBOSE, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
                   dl=level, lbl=label, coll=collection, ind=indentation)
@@ -409,7 +412,7 @@ if __debug__:
                 if use_repr:
                     value = repr(value)
                 trace_fmtd(ALWAYS, "{ind}{k}: {v}", ind=indentation, k=k,
-                           v=value)
+                           v=format_value(value, max_len=max_len))
             except:
                 trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}",
                            k=_to_utf8(k), exc=sys.exc_info())
@@ -453,12 +456,12 @@ if __debug__:
             sep = ", "
         if no_eol is None:
             ## OLD: no_eol = False
-            trace(7, "1")
+            ## DEBUG: trace(7, "1")
             no_eol = (delim == "\n")
         if delim is None:
             delim = "; "
             if in_no_eol is None:
-                trace(7, "2")
+                ## DEBUG: trace(7, "2")
                 no_eol = True
         if use_repr is None:
             use_repr = True
@@ -580,7 +583,9 @@ if __debug__:
         Note:
         - This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so).
         - Currently, the expression text is not resolved properly under ipython (or Jupyter).
-        - The optional ASSERT_LEVEL overrides use of ALWAYS."""
+        - The optional ASSERT_LEVEL overrides use of ALWAYS.
+        - Uses introspection to derive text for assertion expression.
+        """
         # EX: assertion((2 + 2) != 5)
         # TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
         # TODO: trace out local and globals to aid in diagnosing assertion failures; ex: add automatic tarcing of variables used in the assertion expression)
@@ -603,6 +608,8 @@ if __debug__:
                 if statement == MISSING_LINE:
                     ## OLD: statement = str(context).replace(")\\n']", "")
                     statement = str(context).replace("\\n']", "")
+                # Format expression and message
+                # note: removes comments, along with the assertion call prefix and suffix
                 statement = re.sub("#.*$", "", statement)
                 statement = re.sub(r"^(\S*)assertion\(", "", statement)
                 expression = re.sub(r"\);?\s*$", "", statement)
@@ -929,7 +936,8 @@ if __debug__:
     def debug_init():
         """Debug-only initialization"""
         time_start = time.time()
-        trace(DETAILED, "in debug_init()")
+        trace(DETAILED, f"in debug_init(); {timestamp()}")
+        trace(USUAL, " ".join(sys.argv))
         trace_expr(DETAILED, sys.argv)
 
         # Open external file for copy of trace output

@@ -19,7 +19,7 @@ import sys
 import fileinput
 
 # Installed modules
-import enchant			# spell checking
+import enchant                  # spell checking
 
 # Local modules
 from mezcla import debug

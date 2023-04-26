@@ -3,6 +3,7 @@
 # TODO:
 # - Fix env-spec above and put coding on same line.
 # - Verify the fixup for PEP-0479 didn't break anything in Python 2 (e.g., for regression testing).
+# - *** Remove Python2-specific code!
 #
 
 """Pre-processing step for text.
@@ -24,12 +25,13 @@ from collections import namedtuple
 import re
 import sys  # python2 support
 from threading import RLock
+import html
 
 # Installed modules
 ## TODO: find better documented memoization package
 from cachetools import LRUCache, cached  # python2 support
 from nltk.stem import SnowballStemmer
-from six.moves.html_parser import HTMLParser  # python2 support
+## OLD: from six.moves.html_parser import HTMLParser  # python2 support
 from sklearn.feature_extraction.text import CountVectorizer
 from stop_words import get_stop_words
 
@@ -38,7 +40,9 @@ from mezcla import debug
 from mezcla import system
 from mezcla.tfidf.dockeyword import DocKeyword
 
-unescape = HTMLParser().unescape
+## OLD: unescape = HTMLParser().unescape
+unescape = html.unescape
+
 
 # TPO: Allow word splitting pattern to be overwritten.
 # TODO: Get WORD_REGEX from environment.
@@ -402,5 +406,5 @@ def main():
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
-    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone. A simple test willl be run.")
+    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone. A simple test will be run.")
     main()

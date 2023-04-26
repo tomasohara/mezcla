@@ -87,3 +87,4 @@ extcolors==1.0.0
 #opt# pylint
 #opt# gradio
 #opt# sentencepiece
+#opt# sacremoses
