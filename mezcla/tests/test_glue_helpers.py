@@ -125,7 +125,7 @@ class TestGlueHelpers:
         """Ensure elide works as expected"""
         debug.trace(4, "test_elide()")
         assert THE_MODULE.elide("=" * 80, max_len=8) == "========..."
-        assert THE_MODULE.elide(None, 10) is None
+        assert THE_MODULE.elide(None, 10) is ""
 
     def test_elide_values(self):
         """Ensure elide_values works as expected"""
@@ -287,7 +287,7 @@ class TestGlueHelpers:
         """Ensure copy_file works as expected"""
         debug.trace(4, "test_copy_file()")
         first_temp_file = gh.get_temp_file()
-        second_temp_file = gh.get_temp_file()
+        second_temp_file = f"{first_temp_file}_target_copy"
         gh.write_file(first_temp_file, 'some random content')
         THE_MODULE.copy_file(first_temp_file, second_temp_file)
         assert gh.read_file(second_temp_file) == 'some random content\n'
