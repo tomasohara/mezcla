@@ -55,6 +55,7 @@ def read_csv(filename, **in_kw):
           'on_bad_lines': 'skip', 'keep_default_na': False}
     # Overide settings based on explicit keyword arguments
     kw.update(**in_kw)
+    kw['engine'] = 'python'
     # Turn off quotoing if tab delimited
     if kw[SEP] == "\t":
         kw['quoting'] = csv.QUOTE_NONE

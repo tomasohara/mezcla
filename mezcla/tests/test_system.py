@@ -95,11 +95,11 @@ class TestSystem:
         # Test sort
         expected = (
             'VAR_STRING\tthis is a string variable (\'empty\')\n'
-            '\tANOTHER_VAR\tthis is another env. var. (None)'
+            '\tANOTHER_VAR\tthis is another env. var. (\'2022\')'
         )
         assert THE_MODULE.formatted_environment_option_descriptions(sort=False) == expected
         expected = (
-            'ANOTHER_VAR\tthis is another env. var. (None)\n'
+            'ANOTHER_VAR\tthis is another env. var. (\'2022\')\n'
             '\tVAR_STRING\tthis is a string variable (\'empty\')'
         )
         assert THE_MODULE.formatted_environment_option_descriptions(sort=True) == expected
@@ -110,7 +110,7 @@ class TestSystem:
         # Test indent
         expected = (
             'VAR_STRING + this is a string variable (\'empty\')\n'
-            ' + ANOTHER_VAR + this is another env. var. (None)'
+            ' + ANOTHER_VAR + this is another env. var. (\'2022\')'
         )
         assert THE_MODULE.formatted_environment_option_descriptions(indent=' + ') == expected
 
@@ -665,13 +665,16 @@ class TestSystem:
     def test_intersection(self):
         """Ensure intersection works as expected"""
         debug.trace(4, "test_intersection()")
-        assert THE_MODULE.intersection([1, 2], [5, 7, 8]) == set()
-        assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4]) == {2, 4}
+        assert THE_MODULE.intersection([1, 2], [5, 7, 8]) == []
+        assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4]) == [2, 4]
+        assert THE_MODULE.intersection([1, 2], [5, 7, 8], as_set=True) == set()
+        assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4], as_set=True) == {2, 4}
 
     def test_union(self):
         """Ensure union works as expected"""
         debug.trace(4, "test_union()")
-        assert THE_MODULE.union([1, 2, 3], [2, 3, 4, 5]) == {1, 2, 3, 4, 5}
+        assert THE_MODULE.union([1, 2, 3], [2, 3, 4, 5]) == [1, 2, 3, 4, 5]
+        assert THE_MODULE.union([1, 2, 3], [2, 3, 4, 5], as_set=True) == {1, 2, 3, 4, 5}
 
     def test_difference(self):
         """Ensure difference works as expected"""
@@ -823,7 +826,7 @@ def set_test_env_var():
         'VAR_STRING': 'this is a string variable',
         'ANOTHER_VAR': 'this is another env. var.'
     }
-    THE_MODULE.env_default = {
+    THE_MODULE.env_defaults = {
         'VAR_STRING': 'empty',
         'ANOTHER_VAR': '2022'
     }

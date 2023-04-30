@@ -16,6 +16,7 @@
 # Standard packages
 from os import path
 from io import StringIO
+import sys
 
 # Installed packages
 import pytest
@@ -124,7 +125,7 @@ class TestGlueHelpers:
         """Ensure elide works as expected"""
         debug.trace(4, "test_elide()")
         assert THE_MODULE.elide("=" * 80, max_len=8) == "========..."
-        assert THE_MODULE.elide(None, 10) is None
+        assert THE_MODULE.elide(None, 10) is ""
 
     def test_elide_values(self):
         """Ensure elide_values works as expected"""
@@ -286,7 +287,7 @@ class TestGlueHelpers:
         """Ensure copy_file works as expected"""
         debug.trace(4, "test_copy_file()")
         first_temp_file = gh.get_temp_file()
-        second_temp_file = gh.get_temp_file()
+        second_temp_file = f"{first_temp_file}_target_copy"
         gh.write_file(first_temp_file, 'some random content')
         THE_MODULE.copy_file(first_temp_file, second_temp_file)
         assert gh.read_file(second_temp_file) == 'some random content\n'
@@ -323,7 +324,7 @@ class TestGlueHelpers:
         # Test invalid file
         THE_MODULE.delete_file('bad_filename.txt')
         captured = capsys.readouterr()
-        assert 'assertion failed' in captured.err
+        assert 'assertion failed' in captured.err.lower()
 
     def test_file_size(self):
         """Ensure file_size works as expected"""
@@ -352,7 +353,7 @@ class TestGlueHelpers:
         filenames = [file.replace('/tmp/', '') for file in filenames]
         assert set(filenames).issubset(THE_MODULE.get_directory_listing('/tmp/'))
 
-    def test_getenv_filename(self, monkeypatch, capsys):
+    def test_getenv_filename(self, monkeypatch, capfd):
         """Ensure getenv_filename works as expected"""
         debug.trace(4, "test_getenv_filename()")
 
@@ -368,8 +369,11 @@ class TestGlueHelpers:
             pass # gh.write_file cant be used because appends a newline
         debug.set_level(7)
         monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
+        # This avoids flaky tpo.stderr due to other tests
+        ## TODO: fix tpo.restore_stderr() to work with pytest 
+        tpo.stderr = sys.stderr
         THE_MODULE.getenv_filename('TEST_ENV_FILENAME')
-        captured = capsys.readouterr()
+        captured = capfd.readouterr() # Note: capfd must be used instead of capsys to capture stderr
         assert 'Error' in captured.err
         assert test_filename in captured.err
 

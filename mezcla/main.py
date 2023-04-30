@@ -279,7 +279,7 @@ class Main(object):
             self.boolean_options += boolean_options
         # note: adds --verbose unless already specified (TODO: add way to disable)
         boolean_options_proper = [t for t in self.boolean_options if isinstance(t, str)]
-        boolean_options_proper += [t[0] for t in self.boolean_options if isinstance(t, list)]
+        boolean_options_proper += [t[0] for t in self.boolean_options if isinstance(t, (list, tuple))]
         if (VERBOSE_ARG not in boolean_options_proper):
             debug.trace(6, f"Adding {VERBOSE_ARG} to {self.boolean_options}")
             self.boolean_options += [(VERBOSE_ARG, "Verbose output mode")]
@@ -448,7 +448,8 @@ class Main(object):
             if self.perl_switch_parsing:
                 # note: With Perl argument support, booleans treated as integers due to argparse quirk.
                 ## TEST: parser.add_argument(opt_label, type=int, nargs='?', default=opt_default, help=opt_desc)
-                parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
+                numeric_default = 1 if opt_default else 0
+                parser.add_argument(opt_label, type=int, default=numeric_default, help=opt_desc)
             else:
                 parser.add_argument(opt_label, default=opt_default, action='store_true', help=opt_desc)
         for opt_spec in self.int_options:

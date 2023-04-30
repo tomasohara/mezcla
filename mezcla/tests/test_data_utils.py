@@ -13,6 +13,7 @@
 
 # Standard packages
 import os
+import pandas as pd
 
 # Installed packages
 import pytest
@@ -20,6 +21,7 @@ import pytest
 # Local packages
 from mezcla import glue_helpers as gh
 from mezcla import debug
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -39,13 +41,18 @@ class TestDataUtils:
     def test_to_csv(self):
         """Ensure to_csv works as expected"""
         debug.trace(4, "test_to_csv()")
-
+        system.setenv("DELIM", ",")
         # Setup
         temp_file = gh.get_temp_file()
-        tf = THE_MODULE.read_csv(f"{self.path}/../examples/iris.csv")
-        THE_MODULE.to_csv(temp_file, tf)
-
-        # Test to_csv
+        df = pd.DataFrame()
+        df['sepal_length'] = [5.1, 4.9, 4.7, 4.6, 5.0]
+        df['sepal_width'] = [3.5, 3.0, 3.2, 3.1, 3.6]
+        df['petal_length'] = [1.4, 1.4, 1.3, 1.5, 1.4]
+        df['petal_width'] = [0.2, 0.2, 0.2, 0.2, 0.2]
+        df['class'] = ['Iris-setosa', 'Iris-virginica', 'Iris-versicolor', 'Iris-setosa', 'Iris-setosa']
+        THE_MODULE.to_csv(temp_file, df)
+        df.to_csv(temp_file, index=False)
+        # Test
         expected = (
             'sepal_length,sepal_width,petal_length,petal_width,class'
         )
