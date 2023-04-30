@@ -284,12 +284,14 @@ def print_exception_info(task, show_stack=None):
     return
 
 
-def exit(message, **namespace):    # pylint: disable=redefined-builtin
+def exit(message=None, **namespace):    # pylint: disable=redefined-builtin
     """Display error MESSAGE to stderr and then exit, using optional
     NAMESPACE for format"""
+    debug.trace(6, f"system.exit{(message, namespace)})")
     if namespace:
         message = message.format(**namespace)
-    print_stderr(message)
+    if message:
+        print_stderr(message)
     return sys.exit()
 
 
