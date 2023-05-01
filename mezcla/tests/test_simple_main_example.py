@@ -27,6 +27,7 @@ import mezcla.simple_main_example as THE_MODULE
 class TestSimpleMainExample:
     """Class for testcase definition"""
 
+    @pytest.mark.xfail
     def test_whatever(self):
         assert(False)
 

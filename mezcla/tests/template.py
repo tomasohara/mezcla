@@ -86,6 +86,7 @@ class TestTemplate(TestWrapper):
                                   output.strip()))
         return
 
+    @pytest.mark.xfail
     def test_something_else(self):
         """TODO: flesh out test for something else"""
         debug.trace(4, "TestIt.test_something_else()")
