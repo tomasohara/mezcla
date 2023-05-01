@@ -186,7 +186,7 @@ DEFAULT_GETENV_BOOL = False
 #
 def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None):
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION
-    Note: "0" or "False" is interpreted as False, and any other value as True."""
+    Note: "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)"""
     # EX: getenv_bool("bad env var", None) => False
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
@@ -217,12 +217,15 @@ getenv_float = getenv_number
 
 
 
-def getenv_int(var, default=-1, description=None):
-    """Version of getenv_number for integers, with optional DESCRIPTION"""
+def getenv_int(var, default=-1, allow_none=False, description=None):
+    """Version of getenv_number for integers, with optional DESCRIPTION
+    Note: Return is an integer unless ALLOW_NONE
+    """
     # EX: getenv_int("?", 1.5) => 1
     value = getenv_number(var, description=description, default=default, helper=True)
     if (not isinstance(value, int)):
-        value = to_int(value)
+        if ((value is not None) or allow_none):
+            value = to_int(value)
     debug.trace_fmtd(5, "getenv_int({v}, {d}) => {r}",
                      v=var, d=default, r=value)
     return (value)
