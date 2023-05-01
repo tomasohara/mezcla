@@ -27,7 +27,8 @@ import mezcla.simple_main_example as THE_MODULE
 class TestSimpleMainExample:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    def test_whatever(self):
+        assert(False)
 
 
 if __name__ == '__main__':
