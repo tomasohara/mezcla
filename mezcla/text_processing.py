@@ -121,7 +121,8 @@ stopwords = None
 if not SKIP_NLTK:
     import nltk            # pylint: disable=ungrouped-imports
     if DOWNLOAD_DATA:
-        nltk.download('all')
+        ## TODO: nltk.download('all')
+        nltk.download('punkt')
 # spell checking
 if not SKIP_ENCHANT:
     import enchant         # pylint: disable=ungrouped-imports
