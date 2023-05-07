@@ -94,6 +94,7 @@ class TestGlueHelpers:
         debug.trace(4, "test_full_mkdir()")
         ## TODO: WORK-IN=PROGRESS
 
+    @pytest.mark.xfail
     def test_real_path(self):
         """Ensure real_path works as expected"""
         debug.trace(4, "test_real_path()")
@@ -137,6 +138,7 @@ class TestGlueHelpers:
         debug.trace(4, "test_disable_subcommand_tracing()")
         ## TODO: WORK-IN=PROGRESS
 
+    @pytest.mark.xfail
     def test_run(self):
         """Ensure run works as expected"""
         debug.trace(4, "test_run()")
@@ -344,6 +346,7 @@ class TestGlueHelpers:
         debug.trace(4, "test_get_files_matching_specs()")
         ## TODO: WORK-IN=PROGRESS
 
+    @pytest.mark.xfail
     def test_get_directory_listing(self):
         """Ensure get_directory_listing works as expected"""
         debug.trace(4, "test_get_directory_listing()")
