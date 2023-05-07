@@ -52,7 +52,8 @@ RUN python -m pip install -r $REQUIREMENTS
 RUN python -m pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' $REQUIREMENTS | grep -v '^#')
 
 # Download the NLTK required data
-RUN python -m nltk.downloader -d /usr/local/share/nltk_data all
+## OLD: RUN python -m nltk.downloader -d /usr/local/share/nltk_data all
+RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perceptron_tagger
 
 # Install required tools and libraries
 RUN apt-get update -y && apt-get install -y lsb-release && apt-get clean all
