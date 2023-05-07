@@ -18,6 +18,8 @@ FROM ubuntu:18.04
 ARG WORKDIR=/home/mezcla
 ARG REQUIREMENTS=$WORKDIR/requirements.txt
 
+## TODO?: RUN mkdir -p $WORKDIR
+
 WORKDIR $WORKDIR
 
 # Install Python
