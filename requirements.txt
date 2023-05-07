@@ -2,11 +2,15 @@
 #
 # By default only the cases used in multuiple scripts are installed.
 #
-# Usage examples:
+# Note:
+# - Usage examples:
 # 1. Usual
 #    pip install -r requirements.txt
-# 2. Full (i.e., including optional):
+# 2. Optional (i.e., including most optional):
 #    pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' ~/python/Mezcla/requirements.txt | grep -v '^#')
+# 3. Full (i.e., including all optional):
+#    pip install --verbose $(perl -00 -pe 's/^#full#\s*//gm;' ~/python/Mezcla/requirements.txt | grep -v '^#')
+# - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
 #
 wheel==0.38.4
 bs4
@@ -57,15 +61,15 @@ extcolors==1.0.0
 #opt# cachetools
 #opt# gensim
 #opt# kenlm
-## TODO: #opt# lucene
-## TODO: #opt# bert-tensorflow
+#full# lucene
+#full# bert-tensorflow
 #opt# more_itertools
 #opt# pyyaml
 #opt# selenium
 #opt# spacy>=3.0.0
 ## TODO: python -m spacy download en
-#opt# tensorflow
-#opt# keras
+#full# tensorflow
+#full# keras
 #
 #opt# librosa
 #opt# SpeechRecognition
@@ -81,6 +85,7 @@ extcolors==1.0.0
 ## TODO: python -m bash_kernel.install
 #opt# webcolors
 #opt# flit
+#opt# gradio
 #opt# pytest
 #opt# coverage
 #opt# ipython
@@ -88,3 +93,4 @@ extcolors==1.0.0
 #opt# gradio
 #opt# sentencepiece
 #opt# sacremoses
+#opt# transformers
