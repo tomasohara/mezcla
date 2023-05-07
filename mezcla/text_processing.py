@@ -122,7 +122,7 @@ if not SKIP_NLTK:
     import nltk            # pylint: disable=ungrouped-imports
     if DOWNLOAD_DATA:
         ## TODO: nltk.download('all')
-        nltk.download('punkt')
+        nltk.download(['punkt', 'averaged_perceptron_tagger'])
 # spell checking
 if not SKIP_ENCHANT:
     import enchant         # pylint: disable=ungrouped-imports

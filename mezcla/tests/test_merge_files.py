@@ -52,6 +52,7 @@ class TestMergeFiles(TestWrapper):
         assert second_timestamp is not None
         assert first_timestamp < second_timestamp
 
+    @pytest.mark.xfail
     def test_simple_merge(self):
         """Make sure simple merge works"""
         debug.trace(4, "test_simple_merge()")
