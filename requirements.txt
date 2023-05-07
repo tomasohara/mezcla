@@ -4,12 +4,12 @@
 #
 # Note:
 # - Usage examples:
-# 1. Usual
-#    pip install -r requirements.txt
-# 2. Optional (i.e., including most optional):
-#    pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' ~/python/Mezcla/requirements.txt | grep -v '^#')
-# 3. Full (i.e., including all optional):
-#    pip install --verbose $(perl -00 -pe 's/^#full#\s*//gm;' ~/python/Mezcla/requirements.txt | grep -v '^#')
+#   1. Usual
+#      pip install -r requirements.txt
+#   2. Optional (i.e., including most optional):
+#      pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' ~/python/Mezcla/requirements.txt | grep -v '^#')
+#   3. Full (i.e., including all optional):
+#      pip install --verbose $(perl -00 -pe 's/^#full#\s*//gm;' ~/python/Mezcla/requirements.txt | grep -v '^#')
 # - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
 #
 wheel==0.38.4
