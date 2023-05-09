@@ -76,9 +76,10 @@ class TestTemplate(TestWrapper):
     ## TODO: use assertEqual, etc.
     ##   not assertEquals, etc. [maldito unittest!]
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_data_file(self):
         """Makes sure TODO works as expected"""
-        debug.trace(4, "TestIt.test_data_file()")
+        debug.trace(4, f"TestIt.test_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
         gh.write_lines(self.temp_file, data)
         output = self.run_script("", self.temp_file)
@@ -86,10 +87,10 @@ class TestTemplate(TestWrapper):
                                   output.strip()))
         return
 
-    @pytest.mark.xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_something_else(self):
         """TODO: flesh out test for something else"""
-        debug.trace(4, "TestIt.test_something_else()")
+        debug.trace(4, f"TestIt.test_something_else(); self={self}")
         self.fail("TODO: code test")
         ## ex: self.assertEqual(THE_MODULE.TODO_function() == TODO_value)
         return
