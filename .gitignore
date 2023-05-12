@@ -28,7 +28,7 @@
 # Likewise for trailing _'s (e.g., requirements.link_)
 **/*_
 
-# Special case
+# Special cases
 # TODO: see why excluded by the rules
 # Workflow files (e.g., .github/workflows/tests.yml).
 !.github/**
@@ -64,9 +64,10 @@ dist
 # Emacs
 TAGS
 
-# Unit test / coverage reports
+# Unit test, coverage reports, etc.
 # TODO: show examples
 .pytest_cache
 **/tests/htmlcov
 .coverage
 .coverage.*
+.hypothesis**
