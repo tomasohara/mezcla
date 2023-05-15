@@ -27,7 +27,8 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:            global module object
+#    THE_MODULE:                  global module object
+#    TestTemplate.script_module:  path to file
 ## TODO: change template to new name
 THE_MODULE = None           ## TODO: remove this line (n.b., used just to avoid syntax problems with <module> in following)
 ## TODO: import mezcla.<module> as THE_MODULE
