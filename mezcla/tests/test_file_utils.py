@@ -43,7 +43,7 @@ class TestFileUtils(TestWrapper):
         """
 
         # Setup files and folders
-        folders     = [self.temp_base, f'{gh.form_path{self.temp_base, other_folder}']
+        folders     = [self.temp_base, gh.form_path(self.temp_base, 'other_folder')]
         filenames   = ['analize.py', 'debug.cpp', 'main.txt', 'misc_utils.perl']
 
         for foldername in folders:
