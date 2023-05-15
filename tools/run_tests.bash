@@ -3,6 +3,11 @@
 # Run unitests and pytest files
 # and generate coverage report
 #
+# Note:
+# - The status of the last command determines whether the dockerfile run fails.
+# - This is normally pytest which returns success (0) if no tests fail,
+#   excluding tests marked with xfail.
+#
 # Usage:
 # $ ./tools/run_tests.bash
 # $ ./tools/run_tests.bash --coverage
