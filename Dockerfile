@@ -59,4 +59,6 @@ RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perce
 RUN apt-get update -y && apt-get install -y lsb-release && apt-get clean all
 RUN apt install rcs
 
+# Run the test, normally pytest over mezcla/tests
+# Note: the status code (i.e., $?) determines whether docker run succeeds (e.h., OK if 0)
 ENTRYPOINT './tools/run_tests.bash'
