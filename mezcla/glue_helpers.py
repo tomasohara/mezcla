@@ -269,7 +269,8 @@ MAX_ELIDED_TEXT_LEN = tpo.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 def elide(text: str, max_len=None):
     """Returns TEXT elided to at most MAX_LEN characters (with '...' used to indicate remainder). Note: intended for tracing long string."""
     # EX: elide("=" * 80, max_len=8) => "========..."
-    # TODO: add support for eliding at word-boundaries
+    # NOTE: Make sure compatible with debug.format_value (TODO3: add equivalent to strict argument)
+    # TODO2: add support for eliding at word-boundaries
     tpo.debug_print("elide(_, _)", 8)
     debug.assertion(isinstance(text, str))
     if text is None:
