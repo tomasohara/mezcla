@@ -49,7 +49,7 @@ ENV PYTHONPATH="${PYTHONPATH}:$WORKDIR"
 RUN python -m pip install --upgrade pip
 COPY ./requirements.txt $REQUIREMENTS
 RUN python -m pip install -r $REQUIREMENTS
-RUN python -m pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' $REQUIREMENTS | grep -v '^#')
+RUN python -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')
 
 # Download the NLTK required data
 ## OLD: RUN python -m nltk.downloader -d /usr/local/share/nltk_data all
