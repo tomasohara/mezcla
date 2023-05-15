@@ -118,6 +118,7 @@ if __debug__:
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
     debug_file = None                   # file for log output
+    debug_file_hack = False             # work around concurrent writes by reopening after each trace
     para_mode_tracing = False           # multiline tracing adds blank line (e.g., for para-mode grep)
     #
     try:
@@ -230,6 +231,8 @@ if __debug__:
                 logging.debug(indentation + _to_utf8(text))
             if debug_file:
                 print(indentation + _to_utf8(text), file=debug_file, end=end)
+            if debug_file_hack:
+                reopen_debug_file()
         if empty_arg is not None:
             sys.stderr.write("Error: trace only accepts two positional arguments (was trace_expr intended?)\n")
         return
@@ -764,16 +767,42 @@ def _getenv_int(name, default_value):
     return result
 
 
-def format_value(value, max_len=None):
-    """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines"""
-    # EX: format_value("    \n\n\n\n", 6) => "    \\n\\n..."
-    trace(MOST_VERBOSE, f"format_value({value}, max_len={max_len})")
+def format_value(value, max_len=None, strict=None):
+    """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines
+    Note: With STRICT, MAX_LEN is maximum length for returned string (i.e., including "...") unless OLD_MAX_SPEC
+    """
+    # EX: format_value("    \n\n\n\n", max_len=11) => "    \\n\\n..."
+    # EX: format_value("fubar", max_len=3) => "fub..."
+    # EX: format_value("fubar", max_len=3, strict=True) => "..."
+    # TODO2: rework with result determined via repr
+    trace(MOST_VERBOSE, f"format_value({value!r}, max_len={max_len})")
     if max_len is None:
         max_len = max_trace_value_len
+    if strict is None:
+        strict = False
     result = value if isinstance(value, str) else str(value)
-    if len(result) > max_len:
-        result = result[:max_len] + "..."
     result = re.sub("\n", r"\\n", result)
+    ellipsis = "..."
+    extra = (len(result) - max_len)
+    if (extra <= 0):
+        pass
+    elif not strict:
+        result = result[:-extra] + ellipsis
+    else:
+        l = MOST_DETAILED
+        trace(l, f"0. {result!r}")
+        extra2 = 0
+        if (len(result) - extra + len(ellipsis) > max_len):
+            extra2 = (len(result) - extra + len(ellipsis) - max_len)
+        trace_expr(l, extra, extra2)
+        result = result[:-(extra + extra2)]
+        trace(l, f"1. {result!r}")
+        result += ellipsis
+        trace(l, f"2. {result!r}")
+        result = result[:max_len]
+        trace(l, f"3. {result!r}")
+        assertion(len(result) <= max_len)
+    trace(MOST_DETAILED, f"format_value() => {result!r}")
     return result
 
 
@@ -933,25 +962,52 @@ def main(args):
 
 if __debug__:
 
-    def debug_init():
-        """Debug-only initialization"""
-        time_start = time.time()
-        trace(DETAILED, f"in debug_init(); {timestamp()}")
-        trace(USUAL, " ".join(sys.argv))
-        trace_expr(DETAILED, sys.argv)
-
-        # Open external file for copy of trace output
+    def open_debug_file():
+        """Open external file for copy of trace output"""
+        trace(5, "open_debug_file()")
         global debug_file
+        assertion(debug_file is None)
+
+        # Open the file
         debug_filename = os.getenv("DEBUG_FILE")
         if debug_filename is not None:
             ## OLD: debug_file = open(debug_filename, mode="w", encoding="UTF-8")
             ## TEST: open unbuffered which requires binary output mode
             ## BAD: debug_file = open(debug_filename, mode="wb", buffering=0, encoding="UTF-8")
             ## note: uses line buffering
-            mode = ("a" if _getenv_bool("DEBUG_FILE_APPEND", False) else "w")
+            for_append = _getenv_bool("DEBUG_FILE_APPEND", False) or _getenv_bool("DEBUG_FILE_HACK", False)
+            mode = ("a" if for_append else "w")
             trace_expr(5, mode)
             debug_file = open(debug_filename, mode=mode, buffering=1, encoding="UTF-8")
-        
+        trace_fmtd(VERBOSE, "debug_filename={fn} debug_file={f}",
+                   fn=debug_filename, f=debug_file)
+        return
+
+    def reopen_debug_file():
+        """Re-open debug file to work around concurrent access issues
+        Note: The debug file is mainly used with pytest to work around stderr tracing issues"""
+        trace(5, "open_debug_file()")
+        global debug_file
+        assertion(debug_file is not None)
+
+        # Close file if opened
+        if debug_file:
+            debug_file.close()
+            debug_file = None
+
+        # Open fresh
+        open_debug_file()
+        return
+                        
+
+    def debug_init():
+        """Debug-only initialization"""
+        time_start = time.time()
+        trace(DETAILED, f"in debug_init(); {timestamp()}")
+        trace(USUAL, " ".join(sys.argv))
+        trace_expr(DETAILED, sys.argv)
+        open_debug_file()
+
         # Determine whether tracing include time and date
         global output_timestamps
         ## OLD
@@ -963,8 +1019,6 @@ if __debug__:
         module_file = __file__
         trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
         trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
-        trace_fmtd(VERBOSE, "debug_filename={fn} debug_file={f}",
-                   fn=debug_filename, f=debug_file)
 
         # Determine other debug-only environment options
         global para_mode_tracing
@@ -993,7 +1047,7 @@ if __debug__:
 
         # Likewise show additional information during verbose debug tracing
         # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
-        trace_expr(VERBOSE, globals())
+        trace_expr(VERBOSE, globals(), max_len=65536)
 
         # Register to show shuttdown time and elapsed seconds
         # TODO: rename to reflect generic-exit nature
@@ -1013,7 +1067,10 @@ if __debug__:
             if debug_file:
                 debug_file.close()
                 debug_file = None
-        if not _getenv_bool("SKIP_ATEXIT", False):
+        # note: atexit support is enabled by default unless DEBUG_FILE used (n.b., cleanup issues)
+        skip_atexit = _getenv_bool("SKIP_ATEXIT", (debug_file is not None))
+        trace_expr(4, skip_atexit)
+        if not skip_atexit:
             atexit.register(display_ending_time_etc)
         
         return
