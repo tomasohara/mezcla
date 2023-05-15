@@ -33,7 +33,7 @@ scipy
 ## OLD: sklearn (PyPI package is deprecated, use 'scikit-learn')
 ## TODO: put in setup.py
 six
-stopwords
+## OLD: stopwords
 xgboost
 pyaml
 ## TODO: check absl module ($ grep -r "absl" .)
@@ -50,13 +50,15 @@ stop_words==2018.7.23
 tensorflow_hub==0.12.0
 vaderSentiment==3.3.2
 extcolors==1.0.0
-
+#
 #...............................................................................
 # Optional requirements
 #
 ## TODO:
 # - download Spacy model(s):
 #   python -m spacy download en_core_web_lg
+# NOTE:
+# - tensorflow and related not installed by default due to size of repo and C compilation overhead.
 #
 #opt# cachetools
 #opt# gensim
@@ -91,6 +93,6 @@ extcolors==1.0.0
 #opt# ipython
 #opt# pylint
 #opt# gradio
-#opt# sentencepiece
-#opt# sacremoses
+#full# sentencepiece
+#full# sacremoses
 #opt# transformers
