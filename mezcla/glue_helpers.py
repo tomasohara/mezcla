@@ -350,23 +350,28 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
 
 
 def run_via_bash(command, trace_level=4, subtrace_level=None, init_file=None,
+                 enable_aliases=False,
                  **namespace):
     """Version of run that runs COMMAND with aliases defined
     Notes:
     - This can be slow due to alias definition overhead
     - INIT_FILE is file to source before running the command
     - TRACE_LEVEL and SUBTRACE_LEVEL control tracing for COMMAND and any subcommands, respectively
+    - Used in bash to python translation; see
+         https://github.com/tomasohara/shell-scripts/blob/main/bash2python.py
     """
     debug_print("issuing: %s" % command, trace_level)
     commands_to_run = ""
+    if enable_aliases:
+        commands_to_run += "shopt -s expand_aliases\n";
     if init_file:
         commands_to_run += system.read_file(init_file) + "\n"
     commands_to_run += command
     system.write_file(TEMP_SCRIPT_FILE, commands_to_run)
     
     ## HACK: make sure tomohara-aliases don't output anything
-    command_line = f"BATCH_MODE=1 bash -i -f {TEMP_SCRIPT_FILE}"
-    ## TODO: command_line = f"bash -i -f {TEMP_SCRIPT_FILE}"
+    ## OLD: command_line = f"BATCH_MODE=1 bash -i -f {TEMP_SCRIPT_FILE}"
+    command_line = f"bash -f {TEMP_SCRIPT_FILE}"
     return run(command_line, trace_level=(trace_level + 1), subtrace_level=subtrace_level, just_issue=False, **namespace)
 
 
