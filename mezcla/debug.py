@@ -199,6 +199,11 @@ if __debug__:
                 result = "%s" % result
         return result
 
+    def do_print(text, end=None):
+        """Print TEXT to stderr and optionally to DEBUG_FILE"""
+        print(text, file=sys.stderr, end=end)
+        if debug_file:
+            print(text, file=debug_file, end=end)
     
     def trace(level, text, empty_arg=None, no_eol=False, indentation=None):
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE"""
@@ -218,19 +223,15 @@ if __debug__:
                     diff = round(1000.0 * (time.time() - last_trace_time), 3)
                     timestamp_time += f" diff={diff}ms"
                     last_trace_time = time.time()
-                print(indentation + "[" + timestamp_time + "]", end=": ", file=sys.stderr)
-                if debug_file:
-                    print(indentation + "[" + timestamp_time + "]", end=": ", file=debug_file)
+                do_print(indentation + "[" + timestamp_time + "]", end=": ")
             # Print trace, converted to UTF8 if necessary (Python2 only)
             # TODO: add version of assertion that doesn't use trace or trace_fmtd
             ## TODO: assertion(not(re.search(r"{\S*}", text)))
             end = "\n" if (not no_eol) else ""
-            print(indentation + _to_utf8(text), file=sys.stderr, end=end)
+            do_print(indentation + _to_utf8(text), end=end)
             if use_logging:
                 # TODO: see if way to specify logging terminator
                 logging.debug(indentation + _to_utf8(text))
-            if debug_file:
-                print(indentation + _to_utf8(text), file=debug_file, end=end)
             if debug_file_hack:
                 reopen_debug_file()
         if empty_arg is not None:
@@ -285,7 +286,6 @@ if __debug__:
         # - Support for show_private and show_methods_etc is not yet implemented (added for sake of tpo_common.py).
         # - See https://stackoverflow.com/questions/383944/what-is-a-python-equivalent-of-phps-var-dump.
         # TODO: support recursive trace; specialize show_all into show_private and show_methods
-        ## OLD: print("{stmt} < {current}: {r}".format(stmt=level, current=trace_level,
         # TODO: handle tuples
         ##                                       r=(trace_level < level)))
         trace_fmt(MOST_VERBOSE, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
@@ -332,12 +332,13 @@ if __debug__:
             trace_fmtd(MOST_DETAILED, "{i}{m}={v}; type={t}", i=indentation, m=member, v=value, t=type(value))
             value_spec = format_value(value, max_len=max_value_len)
             if (trace_level >= MOST_VERBOSE):
-                sys.stderr.write(indentation + member + ": ")
+                do_print(indentation + member + ": ", end="")
                 if pretty_print:
                     pprint(value_spec, stream=sys.stderr)
+                    if debug_file:
+                        pprint(value_spec, stream=debug_file)
                 else:
-                    sys.stderr.write(value_spec)
-                sys.stderr.write("\n")
+                    do_print(value_spec)
                 if use_logging:
                     logging.debug(_to_utf8((indentation + member + ": " + value_spec)))
                 continue
@@ -369,13 +370,12 @@ if __debug__:
                            exc=sys.exc_info())
                 value_spec = "__n/a__"
             if include_member:
-                sys.stderr.write(indentation + member + ": ")
+                do_print(indentation + member + ": ", end="")
                 if pretty_print:
                     # TODO: remove quotes from numbers and booleans
                     pprint(value_spec, stream=sys.stderr, indent=len(indentation))
                 else:
-                    sys.stderr.write(_to_utf8(value_spec))
-                    sys.stderr.write("\n")
+                    do_print(_to_utf8(value_spec))
                 if use_logging:
                     logging.debug(_to_utf8((indentation + member + ":" + value_spec)))
         trace(ALWAYS, indentation + "}")
@@ -975,7 +975,8 @@ if __debug__:
             ## TEST: open unbuffered which requires binary output mode
             ## BAD: debug_file = open(debug_filename, mode="wb", buffering=0, encoding="UTF-8")
             ## note: uses line buffering
-            for_append = _getenv_bool("DEBUG_FILE_APPEND", False) or _getenv_bool("DEBUG_FILE_HACK", False)
+            ## OLD: for_append = _getenv_bool("DEBUG_FILE_APPEND", False) or _getenv_bool("DEBUG_FILE_HACK", False)
+            for_append = _getenv_bool("DEBUG_FILE_APPEND", True)
             mode = ("a" if for_append else "w")
             trace_expr(5, mode)
             debug_file = open(debug_filename, mode=mode, buffering=1, encoding="UTF-8")
