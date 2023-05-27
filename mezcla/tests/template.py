@@ -46,7 +46,7 @@ if not re.search(__file__, r"\btemplate.py$"):
 ##                            description="Fouled Up Beyond All Recognition processing")
 
 
-class TestTemplate(TestWrapper):
+class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
     # -or- non-mezcla: script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
@@ -74,9 +74,6 @@ class TestTemplate(TestWrapper):
     ##     # TODO: debug.trace_current_context(level=debug.QUITE_DETAILED)
     ##     return
 
-    ## TODO: use assertEqual, etc.
-    ##   not assertEquals, etc. [maldito unittest!]
-
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_data_file(self):
         """Makes sure TODO works as expected"""
@@ -84,8 +81,8 @@ class TestTemplate(TestWrapper):
         data = ["TODO1", "TODO2"]
         gh.write_lines(self.temp_file, data)
         output = self.run_script("", self.temp_file)
-        self.assertTrue(re.search(r"TODO-pattern", 
-                                  output.strip()))
+        assert(re.search(r"TODO-pattern", 
+                         output.strip()))
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -93,7 +90,7 @@ class TestTemplate(TestWrapper):
         """TODO: flesh out test for something else"""
         debug.trace(4, f"TestIt.test_something_else(); self={self}")
         self.fail("TODO: code test")
-        ## ex: self.assertEqual(THE_MODULE.TODO_function() == TODO_value)
+        ## ex: assert(THE_MODULE.TODO_function() == TODO_value)
         return
 
 
