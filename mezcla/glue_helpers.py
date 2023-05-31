@@ -241,20 +241,24 @@ def real_path(path):
     return result
 
 
-def indent(text, indentation=INDENT, max_width=512):
+def indent(text, indentation=None, max_width=512):
     """Indent TEXT with INDENTATION at beginning of each line, returning string ending in a newline unless empty and with resulting lines longer than max_width characters wrapped. Text is treated as a single paragraph."""
+    if indentation is None:
+        indentation = INDENT
     # Note: an empty text is returned without trailing newline
     tw = textwrap.TextWrapper(width=max_width, initial_indent=indentation, subsequent_indent=indentation)
     wrapped_text = "\n".join(tw.wrap(text))
-    if wrapped_text:
+    if wrapped_text and text.endswith("\n"):
         wrapped_text += "\n"
     return wrapped_text
 
 
-def indent_lines(text, indentation=INDENT, max_width=512):
+def indent_lines(text, indentation=None, max_width=512):
     """Like indent, except that each line is indented separately. That is, the text is not treated as a single paragraph."""
     # Sample usage: print("log contents: {{\n{log}\n}}".format(log=indent_lines(lines)))
     # TODO: add support to simplify above idiom (e.g., indent_lines_bracketed); rename to avoid possible confusion that input is array (as wih write_lines)
+    if indentation is None:
+        indentation = INDENT
     result = ""
     for line in text.split("\n"):
         indented_line = indent(line, indentation, max_width)
