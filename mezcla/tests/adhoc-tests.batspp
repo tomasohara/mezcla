@@ -23,3 +23,17 @@ ABC	"""DEF GHI"""	JKL
 
 $ echo $'ABC,"DEF GHI",JKL' | cut.py --csv --output-tsv - 
 ABC	DEF GHI	JKL
+
+#-------------------------------------------------------------------------------
+# Tests for count_it.py
+
+## note: odd quirk in pattern matching
+## $ ls *.py | count-it 'test_(m)'
+## m	5
+## $ ls | count-it '^test_(.)*.py$' | grep m
+## m	2
+
+$ r1=$(ls *.py | count-it 'test_(m)')
+$ r2=$(ls | count-it '^test_(.)*.py$' | grep m)
+$ [ "$r1" = "$r2" ]; echo "$?"
+0
