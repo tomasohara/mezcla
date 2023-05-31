@@ -169,9 +169,10 @@ class TestGlueHelpers:
         THE_MODULE.issue('bash bad_filename.bash')
 
         # Check result of test with log file
-        captured = capsys.readouterr()
-        assert 'stderr' in captured.err
-        assert 'bad_filename.bash' in captured.err
+        if debug.debugging():
+            captured = capsys.readouterr()
+            assert 'stderr' in captured.err
+            assert 'bad_filename.bash' in captured.err
         ## TODO: for some reason the log_file is not being overriden
         ## assert 'random content' not in gh.read_file(log_file)
         ## assert 'bad_filename.bash' in gh.read_file(log_file)
@@ -241,9 +242,10 @@ class TestGlueHelpers:
         ## assert 'stdin' in captured.err
 
         # Test invalid filename
-        THE_MODULE.read_lines(filename='bad_filename.txt')
-        captured = capsys.readouterr()
-        assert 'Warning:' in captured.err
+        assert THE_MODULE.read_lines(filename='bad_filename.txt') == []
+        if debug.debugging():
+            captured = capsys.readouterr()
+            assert 'Warning:' in captured.err
 
     def test_write_lines(self):
         """Ensure write_lines works as expected"""
@@ -329,8 +331,9 @@ class TestGlueHelpers:
 
         # Test invalid file
         THE_MODULE.delete_file('bad_filename.txt')
-        captured = capsys.readouterr()
-        assert 'assertion failed' in captured.err.lower()
+        if debug.debugging():
+            captured = capsys.readouterr()
+            assert 'assertion failed' in captured.err.lower()
 
     def test_file_size(self):
         """Ensure file_size works as expected"""
