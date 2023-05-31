@@ -107,7 +107,8 @@ class regex_wrapper():
         # TODO: self.regex = ""
 
         # HACK: Import attributes from re class
-        # TODO: see if clean way to do this
+        # TODO3: see if clean way to do this
+        # TODO4: find way to disable pylint no-member warning
         try:
             for var in re.__all__:
                 if var not in dir(self):
@@ -218,6 +219,12 @@ class regex_wrapper():
         result = re.findall(pattern, string, flags)
         debug.trace_fmt(self.TRACE_LEVEL, "findall{args} => {r!r}",
                         args=tuple([pattern, string, flags]), r=result)
+        return result
+
+    def escape(self, text):
+        """Escape special characters in TEXT"""
+        result = re.escape(text)
+        debug.trace(self.TRACE_LEVEL + 1, f"escape({text!r}) => {result!r}")
         return result
     
 #...............................................................................
