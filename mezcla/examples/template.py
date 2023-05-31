@@ -4,7 +4,12 @@
 #   TODO: url
 #
 
-"""TODO: overview"""
+"""
+TODO: what module does (brief)
+
+Sample usage:
+   echo $'TODO:task1\\nDONE:task2' | {script} --TODO-arg --
+"""
 
 # Standard modules
 # TODO: import re
@@ -14,10 +19,10 @@
 
 # Local modules
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla.main import Main
 from mezcla import system
-## TODO:
-## from mezcla import glue_helpers as gh
+## TODO2: streamline imports by exposing common functions, etc. in mezcla
 
 # Constants
 TL = debug.TL
@@ -40,7 +45,8 @@ def main():
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
 
     # Show simple usage if --help given
-    dummy_main_app = Main(description=__doc__, skip_input=False, manual_input=False)
+    dummy_main_app = Main(description=__doc__.format(script=gh.basename(__file__)),
+                          skip_input=False, manual_input=False)
     debug.assertion(dummy_main_app.parsed_args)
 
     ## TODO:
