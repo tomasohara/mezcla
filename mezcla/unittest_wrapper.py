@@ -171,7 +171,7 @@ class TestWrapper(unittest.TestCase):
 
     @staticmethod
     def get_module_file_path(test_filename):
-        """Return absolute path of module being tesed"""
+        """Return absolute path of module being tested"""
         result = system.absolute_path(test_filename)
         result = re.sub(r'tests\/test_(.*\.py)', r'\1', result)
         debug.assertion(result.endswith(".py"))
