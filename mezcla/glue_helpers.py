@@ -76,6 +76,7 @@ def get_temp_file(delete=None):
     if ((delete is None) and tpo.detailed_debugging()):
         delete = False
     temp_file_name = TEMP_FILE
+    debug.assertion(not delete, "Support for delete not implemented")
     # HACK: get rid of double backslashes in Win32 filenames
     # ex: r'c:\\temp\\fubar' => r'c:\temp\fubar' 
     ## if os.pathsep == r'\\':
@@ -248,6 +249,8 @@ def indent(text, indentation=None, max_width=512):
     # Note: an empty text is returned without trailing newline
     tw = textwrap.TextWrapper(width=max_width, initial_indent=indentation, subsequent_indent=indentation)
     wrapped_text = "\n".join(tw.wrap(text))
+    ## OLD: if wrapped_text:
+    ## TEST:
     if wrapped_text and text.endswith("\n"):
         wrapped_text += "\n"
     return wrapped_text
@@ -260,8 +263,8 @@ def indent_lines(text, indentation=None, max_width=512):
     if indentation is None:
         indentation = INDENT
     result = ""
-    for line in text.split("\n"):
-        indented_line = indent(line, indentation, max_width)
+    for line in text.splitlines():
+        indented_line = indent(line + "\n", indentation, max_width)
         if not indented_line:
             indented_line = "\n"
         result += indented_line
