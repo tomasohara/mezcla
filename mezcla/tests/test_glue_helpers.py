@@ -25,7 +25,8 @@ import pytest
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import tpo_common as tpo # Deprecated, only used for mock
-from mezcla.unittest_wrapper import TestWrapper
+## OLD: from mezcla.unittest_wrapper import TestWrapper
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -84,15 +85,17 @@ class TestGlueHelpers:
         debug.trace(4, "test_form_path()")
         assert THE_MODULE.form_path("/home/", "User/Desktop", "file.txt") == "/home/User/Desktop/file.txt"
 
+    @pytest.mark.xfail
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
         debug.trace(4, "test_create_directory()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False
 
+    @pytest.mark.xfail
     def test_full_mkdir(self):
         """Ensure full_mkdir works as expected"""
         debug.trace(4, "test_full_mkdir()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False
 
     @pytest.mark.xfail
     def test_real_path(self):
@@ -133,10 +136,11 @@ class TestGlueHelpers:
         debug.trace(4, "test_elide_values()")
         assert THE_MODULE.elide_values(["1", "22", "333"], max_len=2) == ["1", "22", "33..."]
 
+    @pytest.mark.xfail
     def test_disable_subcommand_tracing(self):
         """Ensure disable_subcommand_tracing works as expected"""
         debug.trace(4, "test_disable_subcommand_tracing()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False
 
     @pytest.mark.xfail
     def test_run(self):
@@ -155,7 +159,7 @@ class TestGlueHelpers:
 
         # Setup log file
         log_file = gh.get_temp_file()
-        gh.write_file(log_file, 'random content')
+        system.write_file(log_file, 'random content')
         def debugging_mock():
             return True
         monkeypatch.setattr(tpo, 'debugging', debugging_mock)
@@ -336,15 +340,17 @@ class TestGlueHelpers:
         assert THE_MODULE.file_size(temp_file) == 8
         assert THE_MODULE.file_size('non-existent-file.txt') == -1
 
+    @pytest.mark.xfail
     def test_get_matching_files(self):
         """Ensure get_matching_files works as expected"""
         debug.trace(4, "test_get_matching_files()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False
 
+    @pytest.mark.xfail
     def test_get_files_matching_specs(self):
         """Ensure get_files_matching_specs works as expected"""
         debug.trace(4, "test_get_files_matching_specs()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False
 
     @pytest.mark.xfail
     def test_get_directory_listing(self):
