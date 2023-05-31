@@ -47,7 +47,6 @@ default_subtrace_level = SUB_DEBUG_LEVEL
 ALLOW_SUBCOMMAND_TRACING = tpo.getenv_boolean("ALLOW_SUBCOMMAND_TRACING",
                                               (SUB_DEBUG_LEVEL > DEFAULT_SUB_DEBUG_LEVEL),
                                               "Whether sub-commands have tracing above TL.USUAL")
-## OLD: default_subtrace_level = min(tpo.USUAL, debug.get_level())
 if ALLOW_SUBCOMMAND_TRACING:
     # TODO: work out intuitive default if both SUB_DEBUG_LEVEL and ALLOW_SUBCOMMAND_TRACING specified
     default_subtrace_level = max(debug.get_level(), SUB_DEBUG_LEVEL)
@@ -77,18 +76,9 @@ def get_temp_file(delete=None):
         delete = False
     temp_file_name = TEMP_FILE
     debug.assertion(not delete, "Support for delete not implemented")
-    # HACK: get rid of double backslashes in Win32 filenames
-    # ex: r'c:\\temp\\fubar' => r'c:\temp\fubar' 
-    ## if os.pathsep == r'\\':
-    ##     double_pathspec = os.pathsep + os.pathsep
-    ##     temp_file_name = temp_file_name.replace(double_pathspec, os.pathsep)
     debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
     return temp_file_name
 #
-## OLD:
-## TEMP_LOG_FILE = tpo.getenv_text(
-##     # "Log file for stderr (e.g., for issue function)"
-##     "TEMP_LOG_FILE", get_temp_file())
 TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file() + "-log",
                                 "Log file for stderr such as for issue function")
 TEMP_SCRIPT_FILE = tpo.getenv_text("TEMP_SCRIPT_FILE", get_temp_file() + "-script",
@@ -108,8 +98,6 @@ def basename(filename, extension=None):
     # EX: basename("fubar.py", "py") => "fubar."
     # EX: basename("/tmp/solr-4888.log", ".log") => "solr-4888"
     base = os.path.basename(filename)
-    ## OLD: if extension != None:
-    ## BAD: if extension is None:
     if extension is not None:
         pos = base.find(extension)
         if pos > -1:
@@ -211,9 +199,19 @@ def is_directory(path):
     return is_dir
 
 
+## TODO2: add decorator for flagging obsolete functions
+##   def obsolete():
+##      """Flag fucntion as obsolete in docstring and issue warning if called"""
+##      warning = f"Warning {func} obsolete use version in system.py instead"
+##      func.docstring += warning
+##      func.body = f'debug.trace(3, "{warning}")' + func.body
+
+
 def create_directory(path):
-    """Wrapper around os.mkdir over PATH (with tracing)"""
-    ## Note: obsolete use version in system.py instead
+    """Wrapper around os.mkdir over PATH (with tracing)
+    Warning: obsolete
+    """
+    debug.trace(3, "Warning: create_directory obsolete use version in system.py instead")
     if not os.path.exists(path):
         os.mkdir(path)
         debug_format("os.mkdir({p})", 6, p=path)
@@ -249,8 +247,6 @@ def indent(text, indentation=None, max_width=512):
     # Note: an empty text is returned without trailing newline
     tw = textwrap.TextWrapper(width=max_width, initial_indent=indentation, subsequent_indent=indentation)
     wrapped_text = "\n".join(tw.wrap(text))
-    ## OLD: if wrapped_text:
-    ## TEST:
     if wrapped_text and text.endswith("\n"):
         wrapped_text += "\n"
     return wrapped_text
@@ -276,10 +272,11 @@ MAX_ELIDED_TEXT_LEN = tpo.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 def elide(text: str, max_len=None):
     """Returns TEXT elided to at most MAX_LEN characters (with '...' used to indicate remainder). Note: intended for tracing long string."""
     # EX: elide("=" * 80, max_len=8) => "========..."
+    # EX: elide(None) => ""
     # NOTE: Make sure compatible with debug.format_value (TODO3: add equivalent to strict argument)
     # TODO2: add support for eliding at word-boundaries
     tpo.debug_print("elide(_, _)", 8)
-    debug.assertion(isinstance(text, str))
+    debug.assertion(isinstance(text, (str, type(None))))
     if text is None:
         text = ""
     if max_len is None:
@@ -370,14 +367,12 @@ def run_via_bash(command, trace_level=4, subtrace_level=None, init_file=None,
     debug_print("issuing: %s" % command, trace_level)
     commands_to_run = ""
     if enable_aliases:
-        commands_to_run += "shopt -s expand_aliases\n";
+        commands_to_run += "shopt -s expand_aliases\n"
     if init_file:
         commands_to_run += system.read_file(init_file) + "\n"
     commands_to_run += command
     system.write_file(TEMP_SCRIPT_FILE, commands_to_run)
     
-    ## HACK: make sure tomohara-aliases don't output anything
-    ## OLD: command_line = f"BATCH_MODE=1 bash -i -f {TEMP_SCRIPT_FILE}"
     command_line = f"bash -f {TEMP_SCRIPT_FILE}"
     return run(command_line, trace_level=(trace_level + 1), subtrace_level=subtrace_level, just_issue=False, **namespace)
 
@@ -580,17 +575,23 @@ def write_lines(filename, text_lines, append=False):
 
 def read_file(filename, make_unicode=False):
     """Returns text from FILENAME (single string), including newline(s).
-    Note: optionally returned as unicde."""
+    Note: optionally returned as unicde.
+    Warning: deprecated function--use system.read_file instead
+    """
     debug_print("read_file(%s)" % filename, 7)
+    debug_print("Warning: Deprecated (glue_helpers.read_file): use version in system", 3)
     text = "\n".join(read_lines(filename, make_unicode=make_unicode))
     return (text + "\n") if text else ""
 
 
 def write_file(filename, text, append=False):
-    """Writes FILENAME using contents in TEXT, adding trailing newline and optionally for APPEND"""
+    """Writes FILENAME using contents in TEXT, adding trailing newline and optionally for APPEND
+    Warning: deprecated function--use system.write_file instead
+    """
     ## TEST: debug_print(u"write_file(%s, %s)" % (filename, text), 7)
     ## TEST: debug_print(u"write_file(%s, %s)" % (filename, tpo.normalize_unicode(text)), 7)
     debug_print("write_file(%s, %s)" % (tpo.normalize_unicode(filename), tpo.normalize_unicode(text)), 7)
+    debug_print("Warning: Deprecated (glue_helpers.write_file): use version in system", 3)
     text_lines = text.rstrip("\n").split("\n")
     return write_lines(filename, text_lines, append)
 
@@ -603,7 +604,6 @@ def copy_file(source, target):
     debug_print("copy_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
     debug.assertion(non_empty_file(source))
     shutil.copy(source, target)
-    ## OLD: debug.assertion(non_empty_file(target))
     target_file = (target if system.is_regular_file(target) else form_path(target, basename(source)))
     ## TODO: debug.assertion(file_size(source) == file_size(target_file))
     debug.assertion(non_empty_file(target_file))
@@ -694,6 +694,7 @@ def get_directory_listing(dir_name, make_unicode=False):
 def getenv_filename(var, default="", description=None):
     """Returns text filename based on environment variable VAR (or string version of DEFAULT) 
     with optional DESCRIPTION. This includes a sanity check for file being non-empty."""
+    # TODO4: explain motivation
     debug_format("getenv_filename({v}, {d}, {desc})", 6,
                  v=var, d=default, desc=description)
     filename = tpo.getenv_text(var, default, description)
@@ -711,7 +712,7 @@ if __debug__:
         Note: deprecated function--use debug.assertion instead"""
         global assertion_deprecation_shown
         if not assertion_deprecation_shown:
-            debug.trace(4, "Warning: glue_helpers.assertion() is deprecated")
+            debug.trace(3, "Warning: glue_helpers.assertion() is deprecated")
             assertion_deprecation_shown = True
         # EX: assertion(2 + 2 != 5)
         # TODO: rename as soft_assertion???; add to tpo_common.py (along with run???)
