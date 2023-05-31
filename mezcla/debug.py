@@ -458,19 +458,16 @@ if __debug__:
         if sep is None:
             sep = ", "
         if no_eol is None:
-            ## OLD: no_eol = False
-            ## DEBUG: trace(7, "1")
             no_eol = (delim == "\n")
         if delim is None:
             delim = "; "
             if in_no_eol is None:
-                ## DEBUG: trace(7, "2")
                 no_eol = True
         if use_repr is None:
             use_repr = True
         if prefix is None:
             prefix = ""
-        trace(8, f"sep={sep!r}, del={delim!r}, noe={no_eol}, rep={use_repr}, len={max_len}, pre={prefix}")
+        trace(9, f"sep={sep!r}, del={delim!r}, noe={no_eol}, rep={use_repr}, len={max_len}, pre={prefix}")
         # Get symbolic expressions for the values
         # TODO: handle cases split across lines
         try:
@@ -478,7 +475,7 @@ if __debug__:
             caller = inspect.stack()[1]
             ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
             (_frame, filename, line_number, _function, context, _index) = caller
-            trace(8, f"filename={filename!r}, context={context!r}")
+            trace(9, f"filename={filename!r}, context={context!r}")
             statement = read_line(filename, line_number).strip()
             if statement == MISSING_LINE:
                 ## OLD: statement = str(context).replace(")\\n']", "")
@@ -493,7 +490,7 @@ if __debug__:
             # Skip first argument (level)
             ## BAD: expressions = statement.split(sep)[1:]
             expressions = re.split(", +", statement)[1:]
-            trace(8, f"expressions={expressions!r}\nvalues={values!r}")
+            trace(9, f"expressions={expressions!r}\nvalues={values!r}")
         except:
             trace_fmtd(ALWAYS, "Exception isolating expression in trace_vals: {exc}",
                        exc=sys.exc_info())
@@ -604,7 +601,7 @@ if __debug__:
                 caller = inspect.stack()[1]
                 ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
                 (_frame, filename, line_number, _function, context, _index) = caller
-                trace(7, f"filename={filename!r}, context={context!r}")
+                trace(8, f"filename={filename!r}, context={context!r}")
                 # Read statement in file and extract assertion expression
                 # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
                 statement = read_line(filename, line_number).strip()
@@ -775,7 +772,7 @@ def format_value(value, max_len=None, strict=None):
     # EX: format_value("fubar", max_len=3) => "fub..."
     # EX: format_value("fubar", max_len=3, strict=True) => "..."
     # TODO2: rework with result determined via repr
-    trace(MOST_VERBOSE, f"format_value({value!r}, max_len={max_len})")
+    trace(1 + MOST_VERBOSE, f"format_value({value!r}, max_len={max_len})")
     if max_len is None:
         max_len = max_trace_value_len
     if strict is None:
@@ -789,7 +786,7 @@ def format_value(value, max_len=None, strict=None):
     elif not strict:
         result = result[:-extra] + ellipsis
     else:
-        l = MOST_DETAILED
+        l = 2 + MOST_VERBOSE
         trace(l, f"0. {result!r}")
         extra2 = 0
         if (len(result) - extra + len(ellipsis) > max_len):
@@ -802,7 +799,7 @@ def format_value(value, max_len=None, strict=None):
         result = result[:max_len]
         trace(l, f"3. {result!r}")
         assertion(len(result) <= max_len)
-    trace(MOST_DETAILED, f"format_value() => {result!r}")
+    trace(MOST_VERBOSE, f"format_value() => {result!r}")
     return result
 
 
