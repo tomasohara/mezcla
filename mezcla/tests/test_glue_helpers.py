@@ -104,7 +104,7 @@ class TestGlueHelpers:
         """Ensure indent works as expected"""
         debug.trace(4, "test_indent()")
         test_text = 'this is an example text to be indented'
-        tab_indented_text = '\tthis is an example text to be indented\n'
+        tab_indented_text = '\tthis is an example text to be indented'
         assert THE_MODULE.indent(test_text, '\t') == tab_indented_text
 
     def test_indent_lines(self):
@@ -113,7 +113,7 @@ class TestGlueHelpers:
         test_text = (
             'this is\n'
             'an example text\n'
-            'to be indented'
+            'to be indented\n'
         )
         tab_indented_text = (
             '\tthis is\n'
@@ -353,6 +353,7 @@ class TestGlueHelpers:
         filenames = [gh.get_temp_file() for _ in range(5)]
         for file in filenames:
             gh.write_file(file, 'random content')
+        debug.assertion("/tmp" == system.getenv("TMP"))
         filenames = [file.replace('/tmp/', '') for file in filenames]
         assert set(filenames).issubset(THE_MODULE.get_directory_listing('/tmp/'))
 
