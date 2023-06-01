@@ -5,7 +5,7 @@
 #
 # Build the image:
 #   $ docker build -t mezcla-dev -f- . <Dockerfile
-# Run tests using the created image:
+# Run tests using the created image (n.b., uses entrypoint at end below with run_tests.bash):
 #   $ docker run -it --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
 # Run a bash shell using the created image:
 #   $ docker run -it --rm --entrypoint='/bin/bash' --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
