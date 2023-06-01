@@ -10,6 +10,7 @@
 """Tests for file_utils module"""
 
 # Standard packages
+import json
 import re
 
 # Installed packages
@@ -19,34 +20,17 @@ import pytest
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:	                global module object
+#    TestTemplate.script_module:        path to file
 import mezcla.file_utils as THE_MODULE
 
 class TestFileUtils(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.derive_tested_module_name(__file__)
     use_temp_base_dir = True
-
-    ## TODO: optional setup methods
-    ##
-    ## @classmethod
-    ## def setUpClass(cls):
-    ##     """One-time initialization (i.e., for entire class)"""
-    ##     debug.trace(6, f"TestFileUtils.setUpClass(); cls={cls}")
-    ##     # note: should do parent processing first
-    ##     super().setUpClass()
-    ##     ...
-    ##     return
-    ##
-    ## def setUp(self):
-    ##     """Per-test setup"""
-    ##     debug.trace(6, f"TestFileUtils.setUp(); self={self}")
-    ##     # note: must do parent processing first (e.g., for temp file support)
-    ##     super().setUp()
-    ##     ...
-    ##     return
 
     def test_get_directory_listing(self):
         """
@@ -59,13 +43,14 @@ class TestFileUtils(TestWrapper):
         """
 
         # Setup files and folders
-        folders     = [self.temp_base, f'{self.temp_base}/other_folder']
+        folders     = [self.temp_base, gh.form_path(self.temp_base, 'other_folder')]
         filenames   = ['analize.py', 'debug.cpp', 'main.txt', 'misc_utils.perl']
 
         for foldername in folders:
+            ## TODO3: use mezcla wrappers (e.g., gh.full_mkdir)
             gh.run(f'mkdir {foldername}')
             for filename in filenames:
-                gh.run(f'touch {foldername}/{filename}')
+                gh.run(f'touch {gh.form_path(foldername, filename)}')
 
         # Run Test
         list_result = THE_MODULE.get_directory_listing(f'{self.temp_base}', recursive=True, long=True, return_string=True)
@@ -89,7 +74,7 @@ class TestFileUtils(TestWrapper):
         """Tests for get_permissions(path)"""
 
         # Setup
-        test_file = self.temp_base + '/' + 'some-file.cpp'
+        test_file = gh.form_path(self.temp_base, 'some-file.cpp')
         gh.run(f'touch {test_file}')
 
         # Run
@@ -106,20 +91,24 @@ class TestFileUtils(TestWrapper):
         ls_date = re.sub(r'\s+', ' ', ls_date)
         assert THE_MODULE.get_modification_date(self.temp_file, strftime='%b %-d %H:%M').lower() == ls_date
 
-    ## TODO: optional cleanup methods
-    ##
-    ## def tearDown(self):
-    ##     debug.trace(6, f"TestFileUtils.tearDown(); self={self}")
-    ##     super(TestFileUtils, cls).tearDownClass()
-    ##     ...
-    ##     return
-    ##
-    ## @classmethod
-    ## def tearDownClass(cls):
-    ##     debug.trace(6, f"TestFileUtils.tearDownClass(); cls={cls}")
-    ##     super(TestFileUtils, self).tearDown()
-    ##     ...
-    ##     return
+    def test_json_to_jsonl(self):
+        """Tests for json_to_jsonl"""
+        in_file = gh.form_path(self.temp_base, "some-file.json")
+        out_file = gh.form_path(self.temp_base, "some-file.jsonl")
+        sample_array = [1, 2, 3]
+        system.write_file(in_file, f"{sample_array}\n")
+        THE_MODULE.json_to_jsonl(in_file, out_file)
+        assert(system.read_lines(out_file) == list(map(str, sample_array)))
+
+    def test_jsonl_to_json(self):
+        """Tests for jsonl_to_json"""
+        in_file = gh.form_path(self.temp_base, "another-file.jsonl")
+        out_file = gh.form_path(self.temp_base, "another-file.json")
+        sample_array = ["dog", "cat", {"fav": "???"}]
+        system.write_lines(in_file, [json.dumps(item) for item in sample_array])
+        THE_MODULE.jsonl_to_json(in_file, out_file)
+        assert(json.loads(system.read_file(out_file)) == sample_array)
+
 
 #------------------------------------------------------------------------
 

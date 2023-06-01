@@ -5,7 +5,7 @@
 #
 # Build the image:
 #   $ docker build -t mezcla-dev -f- . <Dockerfile
-# Run tests using the created image:
+# Run tests using the created image (n.b., uses entrypoint at end below with run_tests.bash):
 #   $ docker run -it --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
 # Run a bash shell using the created image:
 #   $ docker run -it --rm --entrypoint='/bin/bash' --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
@@ -17,6 +17,8 @@ FROM ubuntu:18.04
 
 ARG WORKDIR=/home/mezcla
 ARG REQUIREMENTS=$WORKDIR/requirements.txt
+
+## TODO?: RUN mkdir -p $WORKDIR
 
 WORKDIR $WORKDIR
 
@@ -47,13 +49,16 @@ ENV PYTHONPATH="${PYTHONPATH}:$WORKDIR"
 RUN python -m pip install --upgrade pip
 COPY ./requirements.txt $REQUIREMENTS
 RUN python -m pip install -r $REQUIREMENTS
-RUN python -m pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' $REQUIREMENTS | grep -v '^#')
+RUN python -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')
 
 # Download the NLTK required data
-RUN python -m nltk.downloader -d /usr/local/share/nltk_data all
+## OLD: RUN python -m nltk.downloader -d /usr/local/share/nltk_data all
+RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perceptron_tagger
 
 # Install required tools and libraries
 RUN apt-get update -y && apt-get install -y lsb-release && apt-get clean all
 RUN apt install rcs
 
+# Run the test, normally pytest over mezcla/tests
+# Note: the status code (i.e., $?) determines whether docker run succeeds (e.h., OK if 0)
 ENTRYPOINT './tools/run_tests.bash'

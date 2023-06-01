@@ -19,15 +19,17 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import os_utils
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.os_utils as THE_MODULE
+## TODO: import mezcla.os_utils as THE_MODULE
 
 class TestOsUtils:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    def test_split_extension(self):
+        assert(os_utils.split_extension("fubar.txt") == ("fubar", ".txt"))
 
 
 if __name__ == '__main__':

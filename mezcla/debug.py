@@ -118,6 +118,7 @@ if __debug__:
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
     debug_file = None                   # file for log output
+    debug_file_hack = False             # work around concurrent writes by reopening after each trace
     para_mode_tracing = False           # multiline tracing adds blank line (e.g., for para-mode grep)
     #
     try:
@@ -198,6 +199,11 @@ if __debug__:
                 result = "%s" % result
         return result
 
+    def do_print(text, end=None):
+        """Print TEXT to stderr and optionally to DEBUG_FILE"""
+        print(text, file=sys.stderr, end=end)
+        if debug_file:
+            print(text, file=debug_file, end=end)
     
     def trace(level, text, empty_arg=None, no_eol=False, indentation=None):
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE"""
@@ -217,19 +223,17 @@ if __debug__:
                     diff = round(1000.0 * (time.time() - last_trace_time), 3)
                     timestamp_time += f" diff={diff}ms"
                     last_trace_time = time.time()
-                print(indentation + "[" + timestamp_time + "]", end=": ", file=sys.stderr)
-                if debug_file:
-                    print(indentation + "[" + timestamp_time + "]", end=": ", file=debug_file)
+                do_print(indentation + "[" + timestamp_time + "]", end=": ")
             # Print trace, converted to UTF8 if necessary (Python2 only)
             # TODO: add version of assertion that doesn't use trace or trace_fmtd
             ## TODO: assertion(not(re.search(r"{\S*}", text)))
             end = "\n" if (not no_eol) else ""
-            print(indentation + _to_utf8(text), file=sys.stderr, end=end)
+            do_print(indentation + _to_utf8(text), end=end)
             if use_logging:
                 # TODO: see if way to specify logging terminator
                 logging.debug(indentation + _to_utf8(text))
-            if debug_file:
-                print(indentation + _to_utf8(text), file=debug_file, end=end)
+            if debug_file_hack:
+                reopen_debug_file()
         if empty_arg is not None:
             sys.stderr.write("Error: trace only accepts two positional arguments (was trace_expr intended?)\n")
         return
@@ -282,7 +286,6 @@ if __debug__:
         # - Support for show_private and show_methods_etc is not yet implemented (added for sake of tpo_common.py).
         # - See https://stackoverflow.com/questions/383944/what-is-a-python-equivalent-of-phps-var-dump.
         # TODO: support recursive trace; specialize show_all into show_private and show_methods
-        ## OLD: print("{stmt} < {current}: {r}".format(stmt=level, current=trace_level,
         # TODO: handle tuples
         ##                                       r=(trace_level < level)))
         trace_fmt(MOST_VERBOSE, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
@@ -329,12 +332,13 @@ if __debug__:
             trace_fmtd(MOST_DETAILED, "{i}{m}={v}; type={t}", i=indentation, m=member, v=value, t=type(value))
             value_spec = format_value(value, max_len=max_value_len)
             if (trace_level >= MOST_VERBOSE):
-                sys.stderr.write(indentation + member + ": ")
+                do_print(indentation + member + ": ", end="")
                 if pretty_print:
                     pprint(value_spec, stream=sys.stderr)
+                    if debug_file:
+                        pprint(value_spec, stream=debug_file)
                 else:
-                    sys.stderr.write(value_spec)
-                sys.stderr.write("\n")
+                    do_print(value_spec)
                 if use_logging:
                     logging.debug(_to_utf8((indentation + member + ": " + value_spec)))
                 continue
@@ -366,13 +370,12 @@ if __debug__:
                            exc=sys.exc_info())
                 value_spec = "__n/a__"
             if include_member:
-                sys.stderr.write(indentation + member + ": ")
+                do_print(indentation + member + ": ", end="")
                 if pretty_print:
                     # TODO: remove quotes from numbers and booleans
                     pprint(value_spec, stream=sys.stderr, indent=len(indentation))
                 else:
-                    sys.stderr.write(_to_utf8(value_spec))
-                    sys.stderr.write("\n")
+                    do_print(_to_utf8(value_spec))
                 if use_logging:
                     logging.debug(_to_utf8((indentation + member + ":" + value_spec)))
         trace(ALWAYS, indentation + "}")
@@ -455,19 +458,16 @@ if __debug__:
         if sep is None:
             sep = ", "
         if no_eol is None:
-            ## OLD: no_eol = False
-            ## DEBUG: trace(7, "1")
             no_eol = (delim == "\n")
         if delim is None:
             delim = "; "
             if in_no_eol is None:
-                ## DEBUG: trace(7, "2")
                 no_eol = True
         if use_repr is None:
             use_repr = True
         if prefix is None:
             prefix = ""
-        trace(8, f"sep={sep!r}, del={delim!r}, noe={no_eol}, rep={use_repr}, len={max_len}, pre={prefix}")
+        trace(9, f"sep={sep!r}, del={delim!r}, noe={no_eol}, rep={use_repr}, len={max_len}, pre={prefix}")
         # Get symbolic expressions for the values
         # TODO: handle cases split across lines
         try:
@@ -475,7 +475,7 @@ if __debug__:
             caller = inspect.stack()[1]
             ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
             (_frame, filename, line_number, _function, context, _index) = caller
-            trace(8, f"filename={filename!r}, context={context!r}")
+            trace(9, f"filename={filename!r}, context={context!r}")
             statement = read_line(filename, line_number).strip()
             if statement == MISSING_LINE:
                 ## OLD: statement = str(context).replace(")\\n']", "")
@@ -490,7 +490,7 @@ if __debug__:
             # Skip first argument (level)
             ## BAD: expressions = statement.split(sep)[1:]
             expressions = re.split(", +", statement)[1:]
-            trace(8, f"expressions={expressions!r}\nvalues={values!r}")
+            trace(9, f"expressions={expressions!r}\nvalues={values!r}")
         except:
             trace_fmtd(ALWAYS, "Exception isolating expression in trace_vals: {exc}",
                        exc=sys.exc_info())
@@ -601,7 +601,7 @@ if __debug__:
                 caller = inspect.stack()[1]
                 ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
                 (_frame, filename, line_number, _function, context, _index) = caller
-                trace(7, f"filename={filename!r}, context={context!r}")
+                trace(8, f"filename={filename!r}, context={context!r}")
                 # Read statement in file and extract assertion expression
                 # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
                 statement = read_line(filename, line_number).strip()
@@ -764,16 +764,42 @@ def _getenv_int(name, default_value):
     return result
 
 
-def format_value(value, max_len=None):
-    """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines"""
-    # EX: format_value("    \n\n\n\n", 6) => "    \\n\\n..."
-    trace(MOST_VERBOSE, f"format_value({value}, max_len={max_len})")
+def format_value(value, max_len=None, strict=None):
+    """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines
+    Note: With STRICT, MAX_LEN is maximum length for returned string (i.e., including "...") unless OLD_MAX_SPEC
+    """
+    # EX: format_value("    \n\n\n\n", max_len=11) => "    \\n\\n..."
+    # EX: format_value("fubar", max_len=3) => "fub..."
+    # EX: format_value("fubar", max_len=3, strict=True) => "..."
+    # TODO2: rework with result determined via repr
+    trace(1 + MOST_VERBOSE, f"format_value({value!r}, max_len={max_len})")
     if max_len is None:
         max_len = max_trace_value_len
+    if strict is None:
+        strict = False
     result = value if isinstance(value, str) else str(value)
-    if len(result) > max_len:
-        result = result[:max_len] + "..."
     result = re.sub("\n", r"\\n", result)
+    ellipsis = "..."
+    extra = (len(result) - max_len)
+    if (extra <= 0):
+        pass
+    elif not strict:
+        result = result[:-extra] + ellipsis
+    else:
+        l = 2 + MOST_VERBOSE
+        trace(l, f"0. {result!r}")
+        extra2 = 0
+        if (len(result) - extra + len(ellipsis) > max_len):
+            extra2 = (len(result) - extra + len(ellipsis) - max_len)
+        trace_expr(l, extra, extra2)
+        result = result[:-(extra + extra2)]
+        trace(l, f"1. {result!r}")
+        result += ellipsis
+        trace(l, f"2. {result!r}")
+        result = result[:max_len]
+        trace(l, f"3. {result!r}")
+        assertion(len(result) <= max_len)
+    trace(MOST_VERBOSE, f"format_value() => {result!r}")
     return result
 
 
@@ -933,25 +959,53 @@ def main(args):
 
 if __debug__:
 
-    def debug_init():
-        """Debug-only initialization"""
-        time_start = time.time()
-        trace(DETAILED, f"in debug_init(); {timestamp()}")
-        trace(USUAL, " ".join(sys.argv))
-        trace_expr(DETAILED, sys.argv)
-
-        # Open external file for copy of trace output
+    def open_debug_file():
+        """Open external file for copy of trace output"""
+        trace(5, "open_debug_file()")
         global debug_file
+        assertion(debug_file is None)
+
+        # Open the file
         debug_filename = os.getenv("DEBUG_FILE")
         if debug_filename is not None:
             ## OLD: debug_file = open(debug_filename, mode="w", encoding="UTF-8")
             ## TEST: open unbuffered which requires binary output mode
             ## BAD: debug_file = open(debug_filename, mode="wb", buffering=0, encoding="UTF-8")
             ## note: uses line buffering
-            mode = ("a" if _getenv_bool("DEBUG_FILE_APPEND", False) else "w")
+            ## OLD: for_append = _getenv_bool("DEBUG_FILE_APPEND", False) or _getenv_bool("DEBUG_FILE_HACK", False)
+            for_append = _getenv_bool("DEBUG_FILE_APPEND", True)
+            mode = ("a" if for_append else "w")
             trace_expr(5, mode)
             debug_file = open(debug_filename, mode=mode, buffering=1, encoding="UTF-8")
-        
+        trace_fmtd(VERBOSE, "debug_filename={fn} debug_file={f}",
+                   fn=debug_filename, f=debug_file)
+        return
+
+    def reopen_debug_file():
+        """Re-open debug file to work around concurrent access issues
+        Note: The debug file is mainly used with pytest to work around stderr tracing issues"""
+        trace(5, "open_debug_file()")
+        global debug_file
+        assertion(debug_file is not None)
+
+        # Close file if opened
+        if debug_file:
+            debug_file.close()
+            debug_file = None
+
+        # Open fresh
+        open_debug_file()
+        return
+                        
+
+    def debug_init():
+        """Debug-only initialization"""
+        time_start = time.time()
+        trace(DETAILED, f"in debug_init(); {timestamp()}")
+        trace(USUAL, " ".join(sys.argv))
+        trace_expr(DETAILED, sys.argv)
+        open_debug_file()
+
         # Determine whether tracing include time and date
         global output_timestamps
         ## OLD
@@ -963,8 +1017,6 @@ if __debug__:
         module_file = __file__
         trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
         trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
-        trace_fmtd(VERBOSE, "debug_filename={fn} debug_file={f}",
-                   fn=debug_filename, f=debug_file)
 
         # Determine other debug-only environment options
         global para_mode_tracing
@@ -993,7 +1045,7 @@ if __debug__:
 
         # Likewise show additional information during verbose debug tracing
         # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
-        trace_expr(VERBOSE, globals())
+        trace_expr(VERBOSE, globals(), max_len=65536)
 
         # Register to show shuttdown time and elapsed seconds
         # TODO: rename to reflect generic-exit nature
@@ -1013,7 +1065,10 @@ if __debug__:
             if debug_file:
                 debug_file.close()
                 debug_file = None
-        if not _getenv_bool("SKIP_ATEXIT", False):
+        # note: atexit support is enabled by default unless DEBUG_FILE used (n.b., cleanup issues)
+        skip_atexit = _getenv_bool("SKIP_ATEXIT", (debug_file is not None))
+        trace_expr(4, skip_atexit)
+        if not skip_atexit:
             atexit.register(display_ending_time_etc)
         
         return

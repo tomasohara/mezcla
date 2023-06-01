@@ -27,7 +27,8 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:            global module object
+#    THE_MODULE:                  global module object
+#    TestTemplate.script_module:  path to file
 ## TODO: change template to new name
 THE_MODULE = None           ## TODO: remove this line (n.b., used just to avoid syntax problems with <module> in following)
 ## TODO: import mezcla.<module> as THE_MODULE
@@ -45,7 +46,7 @@ if not re.search(__file__, r"\btemplate.py$"):
 ##                            description="Fouled Up Beyond All Recognition processing")
 
 
-class TestTemplate(TestWrapper):
+class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
     # -or- non-mezcla: script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
@@ -73,24 +74,23 @@ class TestTemplate(TestWrapper):
     ##     # TODO: debug.trace_current_context(level=debug.QUITE_DETAILED)
     ##     return
 
-    ## TODO: use assertEqual, etc.
-    ##   not assertEquals, etc. [maldito unittest!]
-
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_data_file(self):
         """Makes sure TODO works as expected"""
-        debug.trace(4, "TestIt.test_data_file()")
+        debug.trace(4, f"TestIt.test_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
         gh.write_lines(self.temp_file, data)
         output = self.run_script("", self.temp_file)
-        self.assertTrue(re.search(r"TODO-pattern", 
-                                  output.strip()))
+        assert(re.search(r"TODO-pattern", 
+                         output.strip()))
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_something_else(self):
         """TODO: flesh out test for something else"""
-        debug.trace(4, "TestIt.test_something_else()")
+        debug.trace(4, f"TestIt.test_something_else(); self={self}")
         self.fail("TODO: code test")
-        ## ex: self.assertEqual(THE_MODULE.TODO_function() == TODO_value)
+        ## ex: assert(THE_MODULE.TODO_function() == TODO_value)
         return
 
 

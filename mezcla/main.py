@@ -119,6 +119,9 @@ BRIEF_USAGE = system.getenv_bool("BRIEF_USAGE", False,
                                  "Show brief usage with autohelp")
 PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
                                          "Preprocess args to expand Perl-style -var[=[val=1]] to --var=val")
+## HACK: This is needed if boolean options default to true based on run-time initialization
+NEGATIVE_BOOL_ARGS = system.getenv_bool("NEGATIVE_BOOL_ARGS", False,
+                                        "Add negation option for each boolean option")
 
 #-------------------------------------------------------------------------------
 
@@ -313,6 +316,7 @@ class Main(object):
         Notes: The description and default of the specification are optional,
         and the parentheses can be omitted if just the label is given. Also,
         if POSITIONAL the option prefix (--) is omitted."""
+        # EX: label, _desc, _default = Main.convert_option("--mucho-backflips"); label => "--mucho-backflips"
         ## TEST: result = ["", "", ""]
         opt_label = None
         opt_desc = None
@@ -350,6 +354,7 @@ class Main(object):
 
     def get_option_name(self, label):
         """Return internal name for parser options (e.g. dashes converted to underscores)"""
+        # EX: dummy_app.get_option_name("mucho-backflips") => "mucho_backflips"
         name = label.replace("-", "_")
         tpo.debug_format("get_option_name({l}) => {n}; self={s}", 6,
                          l=label, n=name, s=self)
@@ -434,6 +439,7 @@ class Main(object):
             #     usage: main.py [-h] [--verbose] [filename] [-]
             usage_notes = ("Notes: \n"
                            + ("- Use - for filename to skip usage (i.e., a la stdin).\n" if (not self.skip_input) else "")
+                           + ("- Use --non-... for any boolean arg\n" if NEGATIVE_BOOL_ARGS else "")
                            + (f"- Use \"ENV1='v1' ENV2='v2' python {elided_path} ...\" for environment options.\n")
                            + env_opt_spec)
         parser = self.argument_parser(description=self.description,
@@ -452,6 +458,18 @@ class Main(object):
                 parser.add_argument(opt_label, type=int, default=numeric_default, help=opt_desc)
             else:
                 parser.add_argument(opt_label, default=opt_default, action='store_true', help=opt_desc)
+                if NEGATIVE_BOOL_ARGS:
+                    # BAD: label = f"non-{opt_label}"
+                    under_label = my_re.sub(r"^__", "", opt_label.replace("-", "_"))
+                    label = "--non-" + under_label
+                    ## SO-SO
+                    ## # note: converts "Description ..." into "Do not description ..."
+                    ## opt_desc_uncapitalized = ((opt_desc[:1].lower() + opt_desc[1:]) if opt_desc else "")
+                    ## desc = f"Non {opt_desc_uncapitalized}"
+                    # note: the argument is not shown in help to avoid clutter
+                    desc = argparse.SUPPRESS
+                    debug.trace(4, f"Adding negative-boolean: label={label} dest={under_label}")
+                    parser.add_argument(label, default=opt_default, dest=under_label, action='store_false', help=desc)
         for opt_spec in self.int_options:
             (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
             parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)

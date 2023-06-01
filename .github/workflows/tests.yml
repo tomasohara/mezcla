@@ -8,6 +8,9 @@
 #     https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 # - Based initially on version from https://github.com/LimaBD/batspp.
 # - Running Github Actions with Docker: https://stackoverflow.com/a/64373702
+# - Docker documentation:
+#   https://docs.docker.com/engine/reference/commandline/cli/
+#   https://docs.docker.com/storage/bind-mounts
 #
 
 name: tests

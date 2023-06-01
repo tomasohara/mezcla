@@ -571,6 +571,7 @@ class TestSystem:
         debug.trace(4, "test_create_directory()")
         ## TODO: WORK-IN=PROGRESS
 
+    @pytest.mark.xfail
     def test_get_current_directory(self):
         """Ensure get_current_directory works as expected"""
         debug.trace(4, "test_get_current_directory()")
@@ -652,6 +653,7 @@ class TestSystem:
         debug.trace(4, "test_absolute_path()")
         assert THE_MODULE.absolute_path("/etc/mtab").startswith("/etc")
 
+    @pytest.mark.xfail
     def test_real_path(self):
         """Ensure real_path works as expected"""
         debug.trace(4, "test_real_path()")

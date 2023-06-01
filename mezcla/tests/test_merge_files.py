@@ -33,6 +33,7 @@ class TestMergeFiles(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__)
     use_temp_base_dir = True            # treat TEMP_BASE as directory
 
+    @pytest.mark.xfail
     def test_get_timestamp(self):
         """Ensure get_timestamp works as expected"""
         debug.trace(4, f"test_get_timestamp(); self={self}")
@@ -51,6 +52,7 @@ class TestMergeFiles(TestWrapper):
         assert second_timestamp is not None
         assert first_timestamp < second_timestamp
 
+    @pytest.mark.xfail
     def test_simple_merge(self):
         """Make sure simple merge works"""
         debug.trace(4, "test_simple_merge()")

@@ -17,7 +17,12 @@
 #   -- Accounting for changes elsewhere.
 #
 
-"""Perform 3-way merge with baseline from backup dir"""
+"""Perform 3-way merge with baseline from backup dir
+
+Sample usage:
+
+{prog} --stdout .bashrc ~/temp/.bashrc > .new-bashrc
+"""
 
 # Standard packages
 import re
@@ -111,7 +116,9 @@ class Script(Main):
 
         # Validate input files
         self.check_regular_file(self.main_filename)
-        # TODO: if .../is_dir(self.other_filename): self.other_filename = .../form_path(other_filename, basename(other_filename))
+        if system.is_directory(self.other_filename):
+            self.other_filename = gh.form_path(self.other_filename,
+                                               gh.basename(self.main_filename))
         self.check_regular_file(self.other_filename)
 
         # Find the backup baseline if not specified
@@ -175,7 +182,7 @@ if __name__ == '__main__':
     debug.trace_current_context(level=debug.QUITE_DETAILED)
     # TODO: add examples (especially with consolidated backup directory)
     app = Script(
-        description=__doc__,
+        description=__doc__.format(prog=gh.basename(__file__)),
         skip_input=True,
         manual_input=True,
         use_temp_base_dir=True,

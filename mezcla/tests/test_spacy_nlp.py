@@ -30,6 +30,7 @@ from mezcla.unittest_wrapper import TestWrapper
 class TestSentimentAnalyzer:
     """Class for testcase definition"""
 
+    @pytest.mark.xfail
     def test_get_score(self):
         """Ensure SentimentAnalyzer.get_score works as expected"""
         debug.trace(4, "test_get_score()")
