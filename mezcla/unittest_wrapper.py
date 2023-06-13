@@ -42,10 +42,17 @@
 
 """Unit test support class"""
 
+# Standard modules
+
 import os
 import re
 import tempfile
 import unittest
+
+# Installed modules
+## TODO: import pytest
+
+# Local modules
 
 import mezcla
 from mezcla import debug
@@ -54,6 +61,9 @@ from mezcla import system
 from mezcla import tpo_common as tpo
 
 
+# Constants (e.g., environment options)
+
+TL = debug.TL
 KEEP_TEMP = system.getenv_bool("KEEP_TEMP", tpo.detailed_debugging(),
                                "keep temporary files")
 TODO_FILE = "TODO FILE"
@@ -282,3 +292,9 @@ class TestWrapper(unittest.TestCase):
                 gh.run("rm -vf {base}*", base=cls.temp_base)
         super(TestWrapper, cls).tearDownClass()
         return
+    
+#-------------------------------------------------------------------------------
+    
+if __name__ == '__main__':
+    debug.trace_current_context(level=TL.QUITE_DETAILED)
+    debug.trace(TL.USUAL, "Warning: not intended for command-line use\n")
