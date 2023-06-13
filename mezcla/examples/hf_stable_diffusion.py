@@ -85,10 +85,11 @@ def init():
     # TODO2: automatically use LOW_MEMORY if GPU memory below 8gb
     dtype=(torch.float16 if LOW_MEMORY else None)
     pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=dtype)
+    debug.trace_expr(5, pipe, dtype)
     pipe = pipe.to(device)
     pipe.set_progress_bar_config(disable=True)
     pipe.enable_attention_slicing()
-    debug.trace_object(5, pipe)
+    debug.trace_object(6, pipe)
     show_gpu_usage()
 
 
@@ -472,12 +473,14 @@ def main():
 
     # Invoke UI via HTTP unless in batch mode
     if batch_mode:
-        print(infer(prompt, negative_prompt, guidance))
-        # TODO2: return list of files from infer()
+        ## OLD: print(infer(prompt, negative_prompt, guidance))
+        infer(prompt, negative_prompt, guidance)
+        # TODO2: get list of files via infer()
         file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))
         print(f"See {file_spec}")
     else:
         run_ui()
+    show_gpu_usage()
 
 #-------------------------------------------------------------------------------
     
