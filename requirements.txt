@@ -96,3 +96,7 @@ extcolors==1.0.0
 #full# sentencepiece
 #full# sacremoses
 #opt# transformers
+#opt# torch
+#opt# accelerate
+#opt# datasets
+#opt# diffusers
