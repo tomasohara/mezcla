@@ -1,4 +1,4 @@
-f#! /usr/bin/env python
+#! /usr/bin/env python
 #
 # Illustratrates how to use Stable Diffusion via Hugging Face diffuser package,
 # including gradio-based UI.
@@ -6,39 +6,42 @@ f#! /usr/bin/env python
 # via https://huggingface.co/spaces/stabilityai/stable-diffusion
 # also uses https://huggingface.co/CompVis/stable-diffusion-v1-4
 #
+# Note:
+# - For tips on parameter settings, see
+#   https://getimg.ai/guides/interactive-guide-to-stable-diffusion-guidance-scale-parameter
+#
 
 """Image generation via HF Stable Diffusion API"""
 
-## TEMP:
-from mezcla import debug
-
 # Standard modules
 import base64
-## OLD: import os
 import re
 
 # Installed modules
 
-import gradio as gr
 from datasets import load_dataset
-## OLD: from PIL import Image
-import torch
 from diffusers import StableDiffusionPipeline
-
-import requests
+import gradio as gr
 import PIL
+import requests
+import torch
 
 # Local modules
 
-## TODO: from mezcla import debug
-## pylint: disable=ungrouped-imports
-## OLD: from mezcla import glue_helpers as gh
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla.main import Main
 from mezcla import system
-
-## OLD: from share_btn import community_icon_html, loading_icon_html, share_js
 
 # Constants/globals
 TL = debug.TL
+PROMPT = system.getenv_text("PROMPT", "your favorite politician in a tutu",
+                            "Textual prompt describing image")
+NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
+                            "Negative tips for image")
+GUIDANCE = system.getenv_int("GUIDANCE", 7,
+                             "How much the image generation follows the prompt")
+
 JAX_BACKEND_URL = system.getenv_value("JAX_BACKEND_URL", None,
                                       "URL for JAX backend running stable diffusion")
 USE_HF_API = system.getenv_bool("USE_HF_API", not JAX_BACKEND_URL,
@@ -49,6 +52,12 @@ NUM_IMAGES = system.getenv_int("NUM_IMAGES", 1,
                                "Number of images to generated")
 BASENAME = system.getenv_text("BASENAME", "sd-app-image",
                               "Basename for saving images")
+LOW_MEMORY = system.getenv_bool("LOW_MEMORY", False,
+                                "Use low memory computations such as via float16")
+BATCH_ARG = "batch"
+PROMPT_ARG = "prompt"
+NEGATIVE_ARG = "negative"
+GUIDANCE_ARG = "guidance"
 
 word_list = []
 if CHECK_UNSAFE:
@@ -56,10 +65,15 @@ if CHECK_UNSAFE:
     word_list = word_list_dataset["train"]['text']
     debug.trace_expr(5, word_list)
 
-## OLD: is_gpu_busy = False
-
 pipe = None
 text = negative = guidance_scale = None
+
+
+def show_gpu_usage(level=TL.DETAILED):
+    """Show usage for GPU memory, etc.
+    TODO: support other types besides NVidia"""
+    debug.trace(level, "GPU usage")
+    debug.trace(level, gh.run("nvidia-smi"))
 
 
 def init():
@@ -68,18 +82,21 @@ def init():
     global pipe
     model_id = "CompVis/stable-diffusion-v1-4"
     device = "cuda"
-    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+    # TODO2: automatically use LOW_MEMORY if GPU memory below 8gb
+    dtype=(torch.float16 if LOW_MEMORY else None)
+    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=dtype)
     pipe = pipe.to(device)
+    pipe.set_progress_bar_config(disable=True)
     pipe.enable_attention_slicing()
+    show_gpu_usage()
 
 
 def infer(prompt, negative_prompt, scale):
-## TODO: def infer(prompt, negative_prompt, scale) -> List(PIL.Image.Image):
     """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE
     Returns list of image specifications in base64 format (e.g., for use in HTML)
     """
+    ## TODO: def infer(prompt, negative_prompt, scale) -> List(PIL.Image.Image):
     debug.trace(4, f"infer{(prompt, negative_prompt, scale)}")
-    ## OLD: global is_gpu_busy
     for prompt_filter in word_list:
         if re.search(rf"\b{prompt_filter}\b", prompt):
             raise gr.Error("Unsafe content found. Please try again with different prompts.")
@@ -93,16 +110,12 @@ def infer(prompt, negative_prompt, scale):
                           num_images_per_prompt=NUM_IMAGES)
         debug.trace_expr(4, image_info)
         debug.trace_object(5, image_info, "image_info")
-        ## TODO: images += [f"data:image/jpeg;base64,{image}" for image in image_info]
-        ## OLD: image_path = gh.get_temp_file() + ".png"
-        ## NOTE: result is a tuple with images first
         num_images = 0
         for i, image in enumerate(image_info.images):
             debug.trace_expr(4, image)
             debug.trace_object(5, image, "image")
             b64_encoding = image
-            debug.assertion(isinstance(image, PIL.Image.Image) or ((i + 1) == len(image_info)))
-            ## OLD: if isinstance(image, PIL.Image.Image):
+            debug.assertion(isinstance(image, PIL.Image.Image))
             try:
                 image_path = f"{BASENAME}-{i + 1}.png"
                 image.save(image_path)
@@ -110,21 +123,21 @@ def infer(prompt, negative_prompt, scale):
                 b64_encoding = base64.b64encode(system.read_binary_file(image_path)).decode()
             except:
                 system.print_exception_info("image-to-base64")
-            images += f"data:image/jpeg;base64,{b64_encoding}"
+            images.append(f"data:image/jpeg;base64,{b64_encoding}")
         debug.assertion(num_images == NUM_IMAGES)
 
     else:
         debug.assertion(JAX_BACKEND_URL)
-        ## OLD: url = os.getenv('JAX_BACKEND_URL')
         url = JAX_BACKEND_URL
         payload = {'prompt': prompt, 'negative_prompt': negative_prompt, 'guidance_scale': scale}
-        images_request = requests.post(url, json = payload)
+        images_request = requests.post(url, json=payload, timeout=5*60)
         for image in images_request.json()["images"]:
             image_b64 = (f"data:image/jpeg;base64,{image}")
             images.append(image_b64)
     result = images
     debug.trace(5, f"infer() => {result}")
-            
+    show_gpu_usage()
+    
     return images
     
     
@@ -381,13 +394,6 @@ with block:
             label="Generated images", show_label=False, elem_id="gallery"
         ).style(grid=[2], height="auto")
 
-        ## OLD:
-        ## with gr.Group(elem_id="container-advanced-btns"):
-        ##     #advanced_button = gr.Button("Advanced options", elem_id="advanced-btn")
-        ##     with gr.Group(elem_id="share-btn-container"):
-        ##         community_icon = gr.HTML(community_icon_html)
-        ##         loading_icon = gr.HTML(loading_icon_html)
-        ##         share_button = gr.Button("Share to community", elem_id="share-btn")
 
         with gr.Accordion("Advanced settings", open=False):
         #    gr.Markdown("Advanced settings are temporarily unavailable")
@@ -404,7 +410,6 @@ with block:
         #        randomize=True,
         #    )
 
-        ## OLD: ex = gr.Examples(examples=examples, fn=infer, inputs=[text, negative, guidance_scale], outputs=[gallery, community_icon, loading_icon, share_button], cache_examples=False)
         ex = gr.Examples(examples=examples, fn=infer, inputs=[text, negative, guidance_scale], outputs=[gallery], cache_examples=False)
         ex.dataset.headers = [""]
         negative.submit(infer, inputs=[text, negative, guidance_scale], outputs=[gallery], postprocess=False)
@@ -421,13 +426,6 @@ with block:
         #        options.style.display = ["none", ""].includes(options.style.display) ? "flex" : "none";
         #    }""",
         #)
-        ## OLD:
-        ## share_button.click(
-        ##     None,
-        ##     [],
-        ##     [],
-        ##     _js=share_js,
-        ## )
         gr.HTML(
             """
                 <div class="footer">
@@ -446,14 +444,37 @@ Despite how impressive being able to turn text into image is, beware to the fact
                </div>
                 """
             )
-        
+
+def main():
+    """Entry point"""
+
+    # Parse command line argument, show usage if --help given
+    main_app = Main(description=__doc__, skip_input=True, manual_input=True,
+                    boolean_options=[(BATCH_ARG, "Use batch mode--no UI")],
+                    text_options=[(PROMPT_ARG, "Positive prompt"),
+                                  (NEGATIVE_ARG, "Negative prompt")],
+                    int_options=[(GUIDANCE_ARG, "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)")])
+    debug.trace_object(5, main_app)
+    debug.assertion(main_app.parsed_args)
+    #
+    batch_mode = main_app.get_parsed_argument(BATCH_ARG)
+    prompt = main_app.get_parsed_argument(PROMPT_ARG, PROMPT)
+    negative_prompt = main_app.get_parsed_argument(NEGATIVE_ARG, NEGATIVE_PROMPT)
+    guidance = main_app.get_parsed_argument(GUIDANCE_ARG, GUIDANCE)
+    # TODO2: BASENAME and NUM_IMAGES
+    ## TODO: x_mode = main_app.get_parsed_argument(X_ARG)
+
+    # Invoke UI via HTTP unless in batch mode
+    if batch_mode:
+        print(infer(prompt, negative_prompt, guidance))
+        # TODO2: return list of files from infer()
+        file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))
+        print(f"See {file_spec}")
+    else:
+        block.queue(concurrency_count=80, max_size=100).launch(max_threads=150)
 
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_DETAILED)
-
-    if "--hack" in system.get_args():
-        print(infer("prompt", "negative prompt", 1))
-    else:
-        block.queue(concurrency_count=80, max_size=100).launch(max_threads=150)
+    main()
