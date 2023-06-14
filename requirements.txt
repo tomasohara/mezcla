@@ -100,3 +100,4 @@ extcolors==1.0.0
 #opt# accelerate
 #opt# datasets
 #opt# diffusers
+#opt# flask
