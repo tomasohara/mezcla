@@ -1,26 +1,29 @@
 #! /usr/bin/env python
 #
-# Illustratrates how to use Stable Diffusion via Hugging Face diffuser package,
+# Illustrates how to use Stable Diffusion via Hugging Face diffuser package,
 # including gradio-based UI.
 #
 # via https://huggingface.co/spaces/stabilityai/stable-diffusion
 # also uses https://huggingface.co/CompVis/stable-diffusion-v1-4
+# and https://stackoverflow.com/questions/48273205/accessing-incoming-post-data-in-flask
 #
 # Note:
 # - For tips on parameter settings, see
 #   https://getimg.ai/guides/interactive-guide-to-stable-diffusion-guidance-scale-parameter
 #
 
-"""Image generation via HF Stable Diffusion API"""
+"""Image generation via HF Stable Diffusion (SD) API"""
 
 # Standard modules
 import base64
-import re
+import json
 
 # Installed modules
 
 from datasets import load_dataset
 from diffusers import StableDiffusionPipeline
+import flask
+from flask import Flask, request
 import gradio as gr
 import PIL
 import requests
@@ -31,6 +34,7 @@ import torch
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
+from mezcla.my_regex import my_re
 from mezcla import system
 
 # Constants/globals
@@ -41,11 +45,14 @@ NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
                             "Negative tips for image")
 GUIDANCE = system.getenv_int("GUIDANCE", 7,
                              "How much the image generation follows the prompt")
-
-JAX_BACKEND_URL = system.getenv_value("JAX_BACKEND_URL", None,
-                                      "URL for JAX backend running stable diffusion")
-USE_HF_API = system.getenv_bool("USE_HF_API", not JAX_BACKEND_URL,
-                                "Use Huggingface API instead of JAX server")
+SD_URL = system.getenv_value("SD_URL", None,
+                             "URL for SD TCP/restful server")
+SD_PORT = system.getenv_int("SD_PORT", 9700,
+                            "TCP port for SD server")
+SD_DEBUG = system.getenv_int("SD_DEBUG", False,
+                             "Run SD server in debug mode")
+USE_HF_API = system.getenv_bool("USE_HF_API", not SD_URL,
+                                "Use Huggingface API instead of TCP server")
 CHECK_UNSAFE = system.getenv_bool("CHECK_UNSAFE", False,
                                   "Apply unsafe word list regex filter")
 NUM_IMAGES = system.getenv_int("NUM_IMAGES", 1,
@@ -54,7 +61,12 @@ BASENAME = system.getenv_text("BASENAME", "sd-app-image",
                               "Basename for saving images")
 LOW_MEMORY = system.getenv_bool("LOW_MEMORY", False,
                                 "Use low memory computations such as via float16")
+DUMMY_RESULT = system.getenv_bool("DUMMY_RESULT", False,
+                                  "Mock up SD server result")
+
 BATCH_ARG = "batch"
+SERVER_ARG = "server"
+PORT_ARG = "port"
 PROMPT_ARG = "prompt"
 NEGATIVE_ARG = "negative"
 GUIDANCE_ARG = "guidance"
@@ -65,8 +77,10 @@ if CHECK_UNSAFE:
     word_list = word_list_dataset["train"]['text']
     debug.trace_expr(5, word_list)
 
-pipe = None
+## OLD; pipe = None
+sd_instance = None
 ## OLD: text = negative = guidance_scale = None
+app = Flask(__name__)
 
 
 def show_gpu_usage(level=TL.DETAILED):
@@ -75,73 +89,142 @@ def show_gpu_usage(level=TL.DETAILED):
     debug.trace(level, "GPU usage")
     debug.trace(level, gh.run("nvidia-smi"))
 
+#-------------------------------------------------------------------------------
+# Main Stable Diffusion support
 
-def init():
-    """Initialize Stable Diffusion"""
-    debug.trace(4, "init()")
-    global pipe
-    model_id = "CompVis/stable-diffusion-v1-4"
-    device = "cuda"
-    # TODO2: automatically use LOW_MEMORY if GPU memory below 8gb
-    dtype=(torch.float16 if LOW_MEMORY else None)
-    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=dtype)
-    debug.trace_expr(5, pipe, dtype)
-    pipe = pipe.to(device)
-    pipe.set_progress_bar_config(disable=True)
-    pipe.enable_attention_slicing()
-    debug.trace_object(6, pipe)
-    show_gpu_usage()
+class StableDiffusion:
+    """Class providing Stable Diffusion generative AI (e.g., text-to-image)"""
+
+    def __init__(self, use_hf_api=None, server_url=None, server_port=None):
+        debug.trace(4, f"__init__{(use_hf_api, server_url, server_port)}")
+        if use_hf_api is None:
+            use_hf_api = USE_HF_API
+        self.use_hf_api = use_hf_api
+        if (server_url is None) and (not self.use_hf_api):
+            server_url = SD_URL
+        self.server_url = server_url
+        if server_port is None:
+            server_port = SD_PORT
+        if self.server_url and not my_re.search(r":\d+", self.server_url):
+            # TODO3: http://base-url/path => http://base-url:port/path
+            self.server_url += f":{server_port}"
+        self.pipe = None
+        debug.assertion(bool(self.use_hf_api) != bool(self.server_url))
+        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+    
+    def init_pipeline(self):
+        """Initialize Stable Diffusion"""
+        debug.trace(4, "init_pipeline()")
+        model_id = "CompVis/stable-diffusion-v1-4"
+        device = "cuda"
+        # TODO2: automatically use LOW_MEMORY if GPU memory below 8gb
+        dtype=(torch.float16 if LOW_MEMORY else None)
+        pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=dtype)
+        debug.trace_expr(5, pipe, dtype)
+        pipe = pipe.to(device)
+        pipe.set_progress_bar_config(disable=True)
+        pipe.enable_attention_slicing()
+        debug.trace_object(6, pipe)
+        show_gpu_usage()
+        return pipe
 
 
-def infer(prompt, negative_prompt, scale):
-    """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE
-    Returns list of image specifications in base64 format (e.g., for use in HTML)
+    def infer(self, prompt=None, negative_prompt=None, scale=None):
+        """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE
+        Returns list of image specifications in base64 format (e.g., for use in HTML)
+        """
+        ## TODO: def infer(prompt, negative_prompt, scale) -> List(PIL.Image.Image):
+        debug.trace(4, f"StableDiffusion.infer{(prompt, negative_prompt, scale)}")
+        for prompt_filter in word_list:
+            if my_re.search(rf"\b{prompt_filter}\b", prompt):
+                raise gr.Error("Unsafe content found. Please try again with different prompts.")
+    
+        images = []
+    
+        if self.use_hf_api:
+            ## HACK:
+            if DUMMY_RESULT:
+                result = ["data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAMzMzP////8AAABGA1scAAAAJUlEQVR4nGNgAAFGQUEowRoa6sCABBZowAgsgBEIGUQCRALAPACMHAOQvR4HGwAAAABJRU5ErkJggg=="]
+                debug.trace(5, f"early exit infer() => {result}")
+                return result
+
+            if not self.pipe:
+                self.pipe = self.init_pipeline()
+            image_info = self.pipe(prompt, negative_prompt=negative_prompt, guidance_scale=scale,
+                                   num_images_per_prompt=NUM_IMAGES)
+            debug.trace_expr(4, image_info)
+            debug.trace_object(5, image_info, "image_info")
+            num_images = 0
+            for i, image in enumerate(image_info.images):
+                debug.trace_expr(4, image)
+                debug.trace_object(5, image, "image")
+                b64_encoding = image
+                debug.assertion(isinstance(image, PIL.Image.Image))
+                try:
+                    image_path = f"{BASENAME}-{i + 1}.png"
+                    image.save(image_path)
+                    num_images += 1
+                    b64_encoding = base64.b64encode(system.read_binary_file(image_path)).decode()
+                except:
+                    system.print_exception_info("image-to-base64")
+                images.append(f"data:image/jpeg;base64,{b64_encoding}")
+            debug.assertion(num_images == NUM_IMAGES)
+            show_gpu_usage()
+        else:
+            debug.assertion(self.server_url)
+            url = self.server_url
+            payload = {'prompt': prompt, 'negative_prompt': negative_prompt, 'scale': scale}
+            ## BAD: images_request = requests.post(url, json=json.dumps(payload), timeout=5*60)
+            images_request = requests.post(url, json=payload, timeout=(5 * 60))
+            debug.trace_object(6, images_request)
+            debug.trace_expr(5, payload, images_request, images_request.json(), delim="\n")
+            for image in images_request.json()["images"]:
+                image_b64 = (f"data:image/jpeg;base64,{image}")
+                images.append(image_b64)
+        result = images
+        debug.trace(5, f"infer() => {result}")
+        
+        return result
+
+#-------------------------------------------------------------------------------
+# Middleware
+
+@app.route('/', methods=['GET', 'POST'])
+def handle_infer():
+    """Process request to do inference to generate image"""
+    debug.trace(6, "handle_infer()")
+    # TODO3: request => flask_request
+    debug.trace_object(5, request)
+    ## OLD:
+    ## params = {
+    ##     'prompt': request.values.get('prompt'),
+    ##     'negative_prompt': request.values.get('negative_prompt'),
+    ##     'scale': request.values.get('guidance_scale'),
+    ## }
+    ## params = flask.Request.get_json()
+    params = request.get_json()
+    debug.trace_expr(5, params)
+    images_spec = {"images": sd_instance.infer(**params)}
+    ## OLD: return flask.Response(status=200, mimetype='application/json', response=json.dumps(images_spec))
+    ## BAD: result = flask.Response(status=200, mimetype='application/json', response=images_spec)
+    ## TEST: result = (images_spec, 200)
+    # note: see https://stackoverflow.com/questions/45412228/sending-json-and-status-code-with-a-flask-response
+    result = (json.dumps(images_spec), 200)
+    debug.trace_object(7, result)
+    debug.trace(7, f"handle_infer() => {result}")
+    return result
+
+
+def infer(prompt=None, negative_prompt=None, scale=None):
+    """Wrapper around StableDiffusion.infer()
+    Note: intended just for the gradio UI"
     """
-    ## TODO: def infer(prompt, negative_prompt, scale) -> List(PIL.Image.Image):
-    debug.trace(4, f"infer{(prompt, negative_prompt, scale)}")
-    for prompt_filter in word_list:
-        if re.search(rf"\b{prompt_filter}\b", prompt):
-            raise gr.Error("Unsafe content found. Please try again with different prompts.")
+    debug.trace(6, f"infer{(prompt, negative_prompt, scale)}")
+    return sd_instance.infer(prompt=prompt, negative_prompt=negative_prompt, scale=scale)
 
-    images = []
+#-------------------------------------------------------------------------------
+# User interface
 
-    if USE_HF_API:
-        if not pipe:
-            init()
-        image_info = pipe(prompt, negative_prompt=negative_prompt, guidance_scale=scale,
-                          num_images_per_prompt=NUM_IMAGES)
-        debug.trace_expr(4, image_info)
-        debug.trace_object(5, image_info, "image_info")
-        num_images = 0
-        for i, image in enumerate(image_info.images):
-            debug.trace_expr(4, image)
-            debug.trace_object(5, image, "image")
-            b64_encoding = image
-            debug.assertion(isinstance(image, PIL.Image.Image))
-            try:
-                image_path = f"{BASENAME}-{i + 1}.png"
-                image.save(image_path)
-                num_images += 1
-                b64_encoding = base64.b64encode(system.read_binary_file(image_path)).decode()
-            except:
-                system.print_exception_info("image-to-base64")
-            images.append(f"data:image/jpeg;base64,{b64_encoding}")
-        debug.assertion(num_images == NUM_IMAGES)
-
-    else:
-        debug.assertion(JAX_BACKEND_URL)
-        url = JAX_BACKEND_URL
-        payload = {'prompt': prompt, 'negative_prompt': negative_prompt, 'guidance_scale': scale}
-        images_request = requests.post(url, json=payload, timeout=5*60)
-        for image in images_request.json()["images"]:
-            image_b64 = (f"data:image/jpeg;base64,{image}")
-            images.append(image_b64)
-    result = images
-    debug.trace(5, f"infer() => {result}")
-    show_gpu_usage()
-    
-    return images
-    
 def run_ui():
     """Run user interface via gradio serving by default at localhost:7860
     Note: The environment variable GRADIO_SERVER_NAME can be used to serve via 0.0.0.0"""
@@ -452,12 +535,16 @@ def run_ui():
     block.queue(concurrency_count=80, max_size=100).launch(max_threads=150)
 
                 
+#-------------------------------------------------------------------------------
+# Runtime support
+
 def main():
     """Entry point"""
 
     # Parse command line argument, show usage if --help given
     main_app = Main(description=__doc__, skip_input=True, manual_input=True,
-                    boolean_options=[(BATCH_ARG, "Use batch mode--no UI")],
+                    boolean_options=[(BATCH_ARG, "Use batch mode--no UI"),
+                                     (SERVER_ARG, "Run flask server")],
                     text_options=[(PROMPT_ARG, "Positive prompt"),
                                   (NEGATIVE_ARG, "Negative prompt")],
                     int_options=[(GUIDANCE_ARG, "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)")])
@@ -465,25 +552,31 @@ def main():
     debug.assertion(main_app.parsed_args)
     #
     batch_mode = main_app.get_parsed_argument(BATCH_ARG)
+    server_mode = main_app.get_parsed_argument(SERVER_ARG)
     prompt = main_app.get_parsed_argument(PROMPT_ARG, PROMPT)
     negative_prompt = main_app.get_parsed_argument(NEGATIVE_ARG, NEGATIVE_PROMPT)
     guidance = main_app.get_parsed_argument(GUIDANCE_ARG, GUIDANCE)
     # TODO2: BASENAME and NUM_IMAGES
     ## TODO: x_mode = main_app.get_parsed_argument(X_ARG)
+    debug.assertion(not (batch_mode and server_mode))
 
     # Invoke UI via HTTP unless in batch mode
+    global sd_instance
+    sd_instance = StableDiffusion()
     if batch_mode:
         ## OLD: print(infer(prompt, negative_prompt, guidance))
         infer(prompt, negative_prompt, guidance)
         # TODO2: get list of files via infer()
         file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))
         print(f"See {file_spec}")
+    elif server_mode:
+        debug.trace_object(5, app)
+        app.run(host=SD_URL, port=SD_PORT, debug=SD_DEBUG)
     else:
         run_ui()
     show_gpu_usage()
 
-#-------------------------------------------------------------------------------
-    
+
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_DETAILED)
     main()
