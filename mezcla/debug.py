@@ -987,7 +987,7 @@ if __debug__:
     def reopen_debug_file():
         """Re-open debug file to work around concurrent access issues
         Note: The debug file is mainly used with pytest to work around stderr tracing issues"""
-        trace(5, "open_debug_file()")
+        trace(5, "reopen_debug_file()")
         global debug_file
         assertion(debug_file is not None)
 
