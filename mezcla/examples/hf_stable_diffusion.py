@@ -17,12 +17,14 @@
 # Standard modules
 import base64
 import json
+import time
 
 # Installed modules
 
 from datasets import load_dataset
-from diffusers import StableDiffusionPipeline
-import flask
+## NOTE: slows down startup and not needed for client
+## OLD: from diffusers import StableDiffusionPipeline
+## OLD: import flask
 from flask import Flask, request
 import gradio as gr
 import PIL
@@ -78,9 +80,7 @@ if CHECK_UNSAFE:
     word_list = word_list_dataset["train"]['text']
     debug.trace_expr(5, word_list)
 
-## OLD; pipe = None
 sd_instance = None
-## OLD: text = negative = guidance_scale = None
 app = Flask(__name__)
 
 
@@ -116,6 +116,8 @@ class StableDiffusion:
     def init_pipeline(self):
         """Initialize Stable Diffusion"""
         debug.trace(4, "init_pipeline()")
+        # pylint: disable=import-outside-toplevel
+        from diffusers import StableDiffusionPipeline
         model_id = "CompVis/stable-diffusion-v1-4"
         device = "cuda"
         # TODO2: automatically use LOW_MEMORY if GPU memory below 8gb
@@ -130,12 +132,14 @@ class StableDiffusion:
         return pipe
 
 
-    def infer(self, prompt=None, negative_prompt=None, scale=None):
+    def infer(self, prompt=None, negative_prompt=None, scale=None, num_images=None):
         """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE
-        Returns list of image specifications in base64 format (e.g., for use in HTML)
+        Returns list of NUM image specifications in base64 format (e.g., for use in HTML)
         """
         ## TODO: def infer(prompt, negative_prompt, scale) -> List(PIL.Image.Image):
-        debug.trace(4, f"StableDiffusion.infer{(prompt, negative_prompt, scale)}")
+        debug.trace(4, f"StableDiffusion.infer{(prompt, negative_prompt, scale, num_images)}")
+        if num_images is None:
+            num_images = NUM_IMAGES
         for prompt_filter in word_list:
             if my_re.search(rf"\b{prompt_filter}\b", prompt):
                 raise gr.Error("Unsafe content found. Please try again with different prompts.")
@@ -145,17 +149,18 @@ class StableDiffusion:
         if self.use_hf_api:
             ## HACK:
             if DUMMY_RESULT:
-                result = ["data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAMzMzP////8AAABGA1scAAAAJUlEQVR4nGNgAAFGQUEowRoa6sCABBZowAgsgBEIGUQCRALAPACMHAOQvR4HGwAAAABJRU5ErkJggg=="]
+                result = ["iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAMzMzP////8AAABGA1scAAAAJUlEQVR4nGNgAAFGQUEowRoa6sCABBZowAgsgBEIGUQCRALAPACMHAOQvR4HGwAAAABJRU5ErkJggg=="]
                 debug.trace(5, f"early exit infer() => {result}")
                 return result
 
             if not self.pipe:
                 self.pipe = self.init_pipeline()
+            start_time = time.time()
             image_info = self.pipe(prompt, negative_prompt=negative_prompt, guidance_scale=scale,
-                                   num_images_per_prompt=NUM_IMAGES)
+                                   num_images_per_prompt=num_images)
             debug.trace_expr(4, image_info)
             debug.trace_object(5, image_info, "image_info")
-            num_images = 0
+            num_generated = 0
             for i, image in enumerate(image_info.images):
                 debug.trace_expr(4, image)
                 debug.trace_object(5, image, "image")
@@ -164,26 +169,28 @@ class StableDiffusion:
                 try:
                     image_path = f"{BASENAME}-{i + 1}.png"
                     image.save(image_path)
-                    num_images += 1
+                    num_generated += 1
                     b64_encoding = base64.b64encode(system.read_binary_file(image_path)).decode()
                 except:
                     system.print_exception_info("image-to-base64")
-                images.append(f"data:image/jpeg;base64,{b64_encoding}")
-            debug.assertion(num_images == NUM_IMAGES)
+                images.append(b64_encoding)
+            elapsed = round(time.time() - start_time, 3)
+            debug.trace(4, f"{elapsed} seconds to generate {num_images} images")
+            debug.assertion(num_generated == num_images)
             show_gpu_usage()
         else:
             debug.assertion(self.server_url)
             url = self.server_url
-            payload = {'prompt': prompt, 'negative_prompt': negative_prompt, 'scale': scale}
-            ## BAD: images_request = requests.post(url, json=json.dumps(payload), timeout=5*60)
+            payload = {'prompt': prompt, 'negative_prompt': negative_prompt, 'scale': scale,
+                       'num_images': num_images}
             images_request = requests.post(url, json=payload, timeout=(5 * 60))
             debug.trace_object(6, images_request)
             debug.trace_expr(5, payload, images_request, images_request.json(), delim="\n")
             for image in images_request.json()["images"]:
-                image_b64 = (f"data:image/jpeg;base64,{image}")
+                image_b64 = (f"data:image/png;base64,{image}")
                 images.append(image_b64)
         result = images
-        debug.trace(5, f"infer() => {result}")
+        debug.trace(5, f"infer() => {debug.format_value(result)}")
         
         return result
 
@@ -192,7 +199,7 @@ class StableDiffusion:
 
 @app.route('/', methods=['GET', 'POST'])
 def handle_infer():
-    """Process request to do inference to generate image"""
+    """Process request to do inference to generate image from text"""
     debug.trace(6, "handle_infer()")
     # TODO3: request => flask_request
     debug.trace_object(5, request)
@@ -216,12 +223,12 @@ def handle_infer():
     return result
 
 
-def infer(prompt=None, negative_prompt=None, scale=None):
+def infer(prompt=None, negative_prompt=None, scale=None, num_images=None):
     """Wrapper around StableDiffusion.infer()
     Note: intended just for the gradio UI"
     """
     debug.trace(6, f"infer{(prompt, negative_prompt, scale)}")
-    return sd_instance.infer(prompt=prompt, negative_prompt=negative_prompt, scale=scale)
+    return sd_instance.infer(prompt=prompt, negative_prompt=negative_prompt, scale=scale, num_images=num_images)
 
 #-------------------------------------------------------------------------------
 # User interface
@@ -450,7 +457,7 @@ def run_ui():
             with gr.Box():
                 with gr.Row(elem_id="prompt-container").style(mobile_collapse=False, equal_height=True):
                     with gr.Column():
-                        text = gr.Textbox(
+                        prompt_control = gr.Textbox(
                             label="Enter your prompt",
                             show_label=False,
                             max_lines=1,
@@ -461,7 +468,7 @@ def run_ui():
                             rounded=(True, False, False, True),
                             container=False,
                         )
-                        negative = gr.Textbox(
+                        negative_control = gr.Textbox(
                             label="Enter your negative prompt",
                             show_label=False,
                             max_lines=1,
@@ -487,9 +494,13 @@ def run_ui():
             #    gr.Markdown("Advanced settings are temporarily unavailable")
             #    samples = gr.Slider(label="Images", minimum=1, maximum=4, value=4, step=1)
             #    steps = gr.Slider(label="Steps", minimum=1, maximum=50, value=45, step=1)
-                 guidance_scale = gr.Slider(
+                 guidance_control = gr.Slider(
                     label="Guidance Scale", minimum=0, maximum=50, value=9, step=0.1
                  )
+                 num_control = gr.Slider(
+                    label="Number of images", minimum=1, maximum=10, value=2, step=1
+                 )
+                 
             #    seed = gr.Slider(
             #        label="Seed",
             #        minimum=0,
@@ -497,12 +508,16 @@ def run_ui():
             #        step=1,
             #        randomize=True,
             #    )
-    
-            ex = gr.Examples(examples=examples, fn=infer, inputs=[text, negative, guidance_scale], outputs=[gallery], cache_examples=False)
+
+            input_controls = [prompt_control, negative_control, guidance_control, num_control]
+            output_controls = [gallery]
+            ex = gr.Examples(examples=examples, fn=infer,
+                             inputs=input_controls,
+                             outputs=output_controls, cache_examples=False)
             ex.dataset.headers = [""]
-            negative.submit(infer, inputs=[text, negative, guidance_scale], outputs=[gallery], postprocess=False)
-            text.submit(infer, inputs=[text, negative, guidance_scale], outputs=[gallery], postprocess=False)
-            btn.click(infer, inputs=[text, negative, guidance_scale], outputs=[gallery], postprocess=False)
+            negative_control.submit(infer, inputs=input_controls, outputs=output_controls, postprocess=False)
+            prompt_control.submit(infer, inputs=input_controls, outputs=output_controls, postprocess=False)
+            btn.click(infer, inputs=input_controls, outputs=output_controls, postprocess=False)
             
             #advanced_button.click(
             #    None,
@@ -566,14 +581,14 @@ def main():
 
     # Invoke UI via HTTP unless in batch mode
     global sd_instance
-    sd_instance = StableDiffusion()
+    sd_instance = StableDiffusion(use_hf_api=server_mode)
     if batch_mode:
-        ## OLD: print(infer(prompt, negative_prompt, guidance))
         infer(prompt, negative_prompt, guidance)
         # TODO2: get list of files via infer()
         file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))
         print(f"See {file_spec}")
     elif server_mode:
+        debug.assertion(SD_URL)
         debug.trace_object(5, app)
         app.run(host=SD_URL, port=SD_PORT, debug=SD_DEBUG)
     else:
