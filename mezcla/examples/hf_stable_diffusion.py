@@ -66,6 +66,7 @@ DUMMY_RESULT = system.getenv_bool("DUMMY_RESULT", False,
 
 BATCH_ARG = "batch"
 SERVER_ARG = "server"
+UI_ARG = "UI"
 PORT_ARG = "port"
 PROMPT_ARG = "prompt"
 NEGATIVE_ARG = "negative"
@@ -542,9 +543,11 @@ def main():
     """Entry point"""
 
     # Parse command line argument, show usage if --help given
-    main_app = Main(description=__doc__, skip_input=True, manual_input=True,
+    # TODO? auto_help=False
+    main_app = Main(description=__doc__, skip_input=True, manual_input=True, 
                     boolean_options=[(BATCH_ARG, "Use batch mode--no UI"),
-                                     (SERVER_ARG, "Run flask server")],
+                                     (SERVER_ARG, "Run flask server"),
+                                     (UI_ARG, "Show user interface")],
                     text_options=[(PROMPT_ARG, "Positive prompt"),
                                   (NEGATIVE_ARG, "Negative prompt")],
                     int_options=[(GUIDANCE_ARG, "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)")])
@@ -553,6 +556,7 @@ def main():
     #
     batch_mode = main_app.get_parsed_argument(BATCH_ARG)
     server_mode = main_app.get_parsed_argument(SERVER_ARG)
+    ui_mode = main_app.get_parsed_argument(UI_ARG)
     prompt = main_app.get_parsed_argument(PROMPT_ARG, PROMPT)
     negative_prompt = main_app.get_parsed_argument(NEGATIVE_ARG, NEGATIVE_PROMPT)
     guidance = main_app.get_parsed_argument(GUIDANCE_ARG, GUIDANCE)
@@ -573,6 +577,7 @@ def main():
         debug.trace_object(5, app)
         app.run(host=SD_URL, port=SD_PORT, debug=SD_DEBUG)
     else:
+        debug.assertion(ui_mode)
         run_ui()
     show_gpu_usage()
 
