@@ -495,7 +495,7 @@ def run_ui():
             #    samples = gr.Slider(label="Images", minimum=1, maximum=4, value=4, step=1)
             #    steps = gr.Slider(label="Steps", minimum=1, maximum=50, value=45, step=1)
                  guidance_control = gr.Slider(
-                    label="Guidance Scale", minimum=0, maximum=50, value=9, step=0.1
+                    label="Guidance Scale", minimum=0, maximum=31, value=GUIDANCE, step=0.1
                  )
                  num_control = gr.Slider(
                     label="Number of images", minimum=1, maximum=10, value=2, step=1
@@ -559,7 +559,7 @@ def main():
 
     # Parse command line argument, show usage if --help given
     # TODO? auto_help=False
-    main_app = Main(description=__doc__, skip_input=True, manual_input=True, 
+    main_app = Main(description=__doc__, skip_input=True,
                     boolean_options=[(BATCH_ARG, "Use batch mode--no UI"),
                                      (SERVER_ARG, "Run flask server"),
                                      (UI_ARG, "Show user interface")],
@@ -586,7 +586,7 @@ def main():
         infer(prompt, negative_prompt, guidance)
         # TODO2: get list of files via infer()
         file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))
-        print(f"See {file_spec}")
+        print(f"See {file_spec} for output image(s).")
     elif server_mode:
         debug.assertion(SD_URL)
         debug.trace_object(5, app)
