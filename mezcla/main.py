@@ -13,7 +13,7 @@
 #           if "funny" in line:
 #               print("Funny looking line: %s" % line)
 #
-#    if __name__ == '__main__':
+#    if __name__ == "__main__":
 #        MyMain().run()
 #    
 # Notes:
@@ -56,8 +56,9 @@
 #      https://github.com/spotify/luigi/issues/193 [boolean as command-line arg]
 #
 # TODO:
-# - *** Convert tpo_common calls (i.e., tpo.xyz) to debug!'
+# - *** Convert tpo_common calls (i.e., tpo.xyz) to debug!
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
+# - ** Create cheatsheet for argparse tricks (e.,g., using argparse.SUPPRESS to hide).
 # - Specify argument via input dicts, such as in 
 #      options=[{"name": "fubar", "type": bool}, 
 #               {"name": "count", type: int, default: 10}]
@@ -182,7 +183,7 @@ class Main(object):
         # (see template.py), and both should be assumed false.
         # TODO: *** Add better sanity checking (such as a filename on command line).
         if manual_input is None:
-            # NOTE: skip_input=>manual_input: T=>T  F=>F  None=>F
+            # NOTE: skip_input=>manual_input: T=>T  F=>F  None=>F (i.e., bool(skip_input))
             manual_input = False if (skip_input is None) else skip_input
             debug.trace_fmt(7, "inferred manual_input: {mi}", mi=manual_input)
         self.manual_input = manual_input
@@ -199,6 +200,7 @@ class Main(object):
             ## TODO: rework to be default if none specified for both skip_input and manual_input
             ## OLD: auto_help = self.skip_input
             auto_help = self.skip_input or not self.manual_input
+            debug.trace(7, f"inferred auto_help: {auto_help}")
         self.auto_help = auto_help      # adds --help to command line if no arguments
         if usage_notes is None:
             usage_notes = ""
@@ -220,9 +222,9 @@ class Main(object):
         # TODO: allow temp_base handling to be overridable by constructor options
         # TODO: reconcile with unittest_wrapper.py.get_temp_dir
         prefix = (FILE_BASE + "-")
-        ntf_args = {'prefix': prefix,
-                    'delete': not debug.detailed_debugging(),
-                    ## TODO: 'suffix': "-"
+        ntf_args = {"prefix": prefix,
+                    "delete": not debug.detailed_debugging(),
+                    ## TODO: "suffix": "-"
                     }
         self.temp_base = system.getenv_text("TEMP_BASE",
                                             tempfile.NamedTemporaryFile(**ntf_args).name)
@@ -266,7 +268,6 @@ class Main(object):
                 if arg in ["-", "--"]:
                     break
                 if my_re.search(r"^-([a-z0-9_]+\w*)=?(.*)$", arg, flags=re.IGNORECASE):
-                    ## OLD: new_arg = "-" + arg
                     option = my_re.group(1)
                     value = (my_re.group(2) if len(my_re.group(2)) else "1")
                     new_arg = f"--{option}={value}"
@@ -364,7 +365,7 @@ class Main(object):
         """Whether option for LABEL specified (i.e., non-null value)
         Note: OLD version that checks for non-null value)
         """
-        # EX: self.parsed_args = {'it': False}; self.has_parsed_option_old('nonit') => False
+        # EX: self.parsed_args = {"it": False}; self.has_parsed_option_old("nonit") => False
         name = self.get_option_name(label)
         has_option = (name in self.parsed_args and (self.parsed_args[name] is not None))
         tpo.debug_format("has_parsed_option_old({l}) => {r}", 6,
@@ -375,7 +376,7 @@ class Main(object):
         """Value for LABEL specified or None if not applicable
         Note: This is a deprecated method (use get_parsed_option instead)
         """
-        # EX: self.parsed_args = {'it': False}; self.has_parsed_option('notit') => None
+        # EX: self.parsed_args = {"it": False}; self.has_parsed_option("notit") => None
         ## TEMP HACK: if called by a subclass, treate as alias to get_parsed_option
         if (self.__class__ != "__main__.Script"):
             debug.trace(4, "Warning: deprecated method: has_parsed_option => get_parsed_option")
@@ -438,7 +439,8 @@ class Main(object):
             # TODO1: get dash put in usage to make more explicit, such as in following:
             #     usage: main.py [-h] [--verbose] [filename] [-]
             usage_notes = ("Notes: \n"
-                           + ("- Use - for filename to skip usage (i.e., a la stdin).\n" if (not self.skip_input) else "")
+                           + ("- Use - for filename to skip usage (i.e., a la stdin).\n" if (not self.skip_input)
+                              else "- Use - to skip usage if no arguments needed.\n" if self.auto_help else "")
                            + ("- Use --non-... for any boolean arg\n" if NEGATIVE_BOOL_ARGS else "")
                            + (f"- Use \"ENV1='v1' ENV2='v2' python {elided_path} ...\" for environment options.\n")
                            + env_opt_spec)
@@ -453,11 +455,11 @@ class Main(object):
             (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
             if self.perl_switch_parsing:
                 # note: With Perl argument support, booleans treated as integers due to argparse quirk.
-                ## TEST: parser.add_argument(opt_label, type=int, nargs='?', default=opt_default, help=opt_desc)
+                ## TEST: parser.add_argument(opt_label, type=int, nargs="?", default=opt_default, help=opt_desc)
                 numeric_default = 1 if opt_default else 0
                 parser.add_argument(opt_label, type=int, default=numeric_default, help=opt_desc)
             else:
-                parser.add_argument(opt_label, default=opt_default, action='store_true', help=opt_desc)
+                parser.add_argument(opt_label, default=opt_default, action="store_true", help=opt_desc)
                 if NEGATIVE_BOOL_ARGS:
                     # BAD: label = f"non-{opt_label}"
                     under_label = my_re.sub(r"^__", "", opt_label.replace("-", "_"))
@@ -469,7 +471,7 @@ class Main(object):
                     # note: the argument is not shown in help to avoid clutter
                     desc = argparse.SUPPRESS
                     debug.trace(4, f"Adding negative-boolean: label={label} dest={under_label}")
-                    parser.add_argument(label, default=opt_default, dest=under_label, action='store_false', help=desc)
+                    parser.add_argument(label, default=opt_default, dest=under_label, action="store_false", help=desc)
         for opt_spec in self.int_options:
             (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
             parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
@@ -485,7 +487,7 @@ class Main(object):
         # Note: These are used as reminders on how to flesh out the initialization
         if tpo.detailed_debugging():
             if not self.boolean_options:
-                parser.add_argument("--TODO-bool-arg", default=False, action='store_true',
+                parser.add_argument("--TODO-bool-arg", default=False, action="store_true",
                                     help="Add via boolean_options keyword")
             if not self.text_options:
                 parser.add_argument("--TODO-text-arg", default="",
@@ -511,10 +513,25 @@ class Main(object):
         # Add filename last and make optional with "-" default (i.e., for stdin)
         # Note: with nargs=+, the result is a list of filenames (even if one file [WTH?]!)
         if not self.skip_input:
-            filename_nargs = ('?' if (not self.multiple_files) else "+")
+            filename_nargs = ("?" if (not self.multiple_files) else "+")
             tpo.debug_format("filename_nargs={nargs}", 6, nargs=filename_nargs)
-            parser.add_argument("filename", nargs=filename_nargs, default='-',
+            parser.add_argument("filename", nargs=filename_nargs, default="-",
                                 help="Input filename")
+        elif self.auto_help:
+            dash_nargs = "?"
+            debug.trace_expr(6, dash_nargs)
+            ## TAKE1:
+            ## TODO2: hide [dash] from usage (maldito argparse)
+            ## parser.add_argument("dash", nargs=dash_nargs, default="-",
+            ##                     help="Use - to bypass usage statement")
+            parser.add_argument("-", dest="_", help=argparse.SUPPRESS,
+                                default="-", action="store_true")
+            ## TODO3
+            ## parser.add_argument("--", dest="_", help=argparse.SUPPRESS,
+            ##                     default="-", action="store_true")
+            ## NOTE: currently leads to "error: unrecognized arguments: --" unlike when - used
+        else:
+            debug.trace(6, "Not adding filename nor dash argument")
 
         # Optionally, show brief usage and exit
         # note: print_usage just prints command line synopsis (not individual descriptions)
@@ -535,7 +552,7 @@ class Main(object):
         # Get filename unless input ignored and fixup if returned as list
         # TODO: add an option to retain self.filename as is
         if not self.skip_input:
-            self.filename = self.parsed_args['filename']
+            self.filename = self.parsed_args["filename"]
             if (isinstance(self.filename, list)):
                 if not self.multiple_files:
                     debug.trace(3, "Warning: Making (list) self.filename a string & setting self.other_filenames to remainder")
@@ -621,13 +638,13 @@ class Main(object):
             ## debug.trace_fmt(6, "Silly exception processing input: {exc}", 
             ##                 exc=system.get_exception)
             ##
-            ## exit("Note: you can Ignore any silly BrokenPipeError's thrown by Python!")
+            ## exit("Note: you can Ignore any silly BrokenPipeError"s thrown by Python!")
             ##
             ## pass
             ##
             ## take 3+:
             ## Based on https://stackoverflow.com/questions/26692284/how-to-prevent-brokenpipeerror-when-doing-a-flush-in-python
-            ## sys.stderr.close()                       [doesn't work for Python 3]
+            ## sys.stderr.close()                       [doesn"t work for Python 3]
             ##
             ## take 4 [gotta hate Python!]:
             # Python flushes standard streams on exit; redirect remaining output
@@ -663,7 +680,7 @@ class Main(object):
         0. Use read_entire_input for method to return all text at once (i.e., non-generator).
         1. This is called automatically via process_input.
         2. When page mode is in effect, 
-           a. lines don't include form feeds
+           a. lines don"t include form feeds
            b. pages are not buffered: the page number is just tracked.
         3. Paragraph end at empty lines or form feeds (i.e., implicit).
         """
@@ -833,7 +850,7 @@ debug.trace_current_context(8, "main.py context")
 
 #------------------------------------------------------------------------
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone\n")
     # note: Follwing used for argument parsing
     main = Main(description=__doc__)
