@@ -58,13 +58,11 @@ import mezcla
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
-from mezcla import tpo_common as tpo
-
 
 # Constants (e.g., environment options)
 
 TL = debug.TL
-KEEP_TEMP = system.getenv_bool("KEEP_TEMP", tpo.detailed_debugging(),
+KEEP_TEMP = system.getenv_bool("KEEP_TEMP", debug.detailed_debugging(),
                                "keep temporary files")
 TODO_FILE = "TODO FILE"
 TODO_MODULE = "TODO MODULE"
@@ -77,7 +75,6 @@ TODO_MODULE = "TODO MODULE"
 THIS_PACKAGE = getattr(mezcla.debug, "__package__", None)
 debug.assertion(THIS_PACKAGE == "mezcla")
 
-
 def get_temp_dir(keep=False):
     """Get temporary directory, omitting later deletion if KEEP"""
     if keep is None:
@@ -86,7 +83,6 @@ def get_temp_dir(keep=False):
     gh.full_mkdir(dir_path)
     debug.trace(5, "get_temp_dir() => {dir_path}")
     return dir_path
-
 
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition"""
@@ -117,7 +113,7 @@ class TestWrapper(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Per-class initialization: make sure script_module set properly"""
-        tpo.debug_format("TestWrapper.setupClass(): cls={c}", 5, c=cls)
+        debug.trace_fmtd(5, "TestWrapper.setupClass(): cls={c}", c=cls)
         super(TestWrapper, cls).setUpClass()
         debug.trace_object(5, cls, "TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
@@ -149,21 +145,22 @@ class TestWrapper(unittest.TestCase):
     def derive_tested_module_name(test_filename):
         """Derive the name of the module being tested from TEST_FILENAME. Used as follows:
               script_module = TestWrapper.derive_tested_module_name(__file__)
-        Note: Deprecated method (see get_testing_module_name)
+        Note: *** Deprecated method *** (see get_testing_module_name)
         """
-        tpo.debug_format("Warning: in deprecrated derive_tested_module_name", 5)
+        debug.trace(3, "Warning: in deprecrated derive_tested_module_name")
         module = os.path.split(test_filename)[-1]
         module = re.sub(r".py[oc]?$", "", module)
         module = re.sub(r"^test_", "", module)
-        tpo.debug_format("derive_tested_module_name({f}) => {m}", 5,
+        debug.trace_fmtd(5, "derive_tested_module_name({f}) => {m}",
                          f=test_filename, m=module)
         return (module)
 
     @staticmethod
     def get_testing_module_name(test_filename, module_object=None):
-        """Derive the name of the module being tested from TEST_FILENAME and MODULE_OBJECT"""
-        # TODO: used as follows (see tests/test_template.py):
-        #    script_module = TestWrapper.get_testing_module_name(__file__)
+        """Derive the name of the module being tested from TEST_FILENAME and MODULE_OBJECT
+        Note: used as follows (see tests/test_template.py):
+            script_module = TestWrapper.get_testing_module_name(__file__)
+        """
         module_name = os.path.split(test_filename)[-1]
         module_name = re.sub(r".py[oc]?$", "", module_name)
         module_name = re.sub(r"^test_", "", module_name)
@@ -175,8 +172,8 @@ class TestWrapper(unittest.TestCase):
             full_module_name = package_name + "." + module_name
         else:
             full_module_name = module_name
-        tpo.debug_format("get_testing_module_name({f}) => {m}", 4,
-                         f=test_filename, m=full_module_name)
+        debug.trace_fmtd(4, "get_testing_module_name({f}, [{mo}]) => {m}",
+                         f=test_filename, m=full_module_name, mo=module_object)
         return (full_module_name)
 
     @staticmethod
@@ -194,7 +191,7 @@ class TestWrapper(unittest.TestCase):
         - Disables tracing scripts invoked via run() unless ALLOW_SUBCOMMAND_TRACING
         - Initializes temp file name (With override from environment)."""
         # Note: By default, each test gets its own temp file.
-        tpo.debug_print("TestWrapper.setUp()", 4)
+        debug.trace(4, "TestWrapper.setUp()")
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
         # The temp file is an extension of temp-base file by default.
@@ -208,7 +205,6 @@ class TestWrapper(unittest.TestCase):
         gh.delete_existing_file(self.temp_file)
         TestWrapper.test_num += 1
 
-        ## OLD: tpo.trace_object(self, 5, "TestWrapper instance")
         debug.trace_object(5, self, "TestWrapper instance")
         return
 
@@ -220,7 +216,8 @@ class TestWrapper(unittest.TestCase):
         Notes:
         - issues warning if script invocation leads to error
         - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)"""
-        tpo.debug_format("TestWrapper.run_script({opts}, {df}, {lf}, {of}, {env})", trace_level + 1,
+        debug.trace_fmtd(trace_level + 1,
+                         "TestWrapper.run_script({env}, {opts}, {df}, {lf}, {of}",
                          opts=options, df=data_file, lf=log_file, 
                          of=out_file, env=env_options)
         if options is None:
@@ -230,6 +227,7 @@ class TestWrapper(unittest.TestCase):
 
         # Derive the full paths for data file and log, and then invoke script.
         # TODO: derive from temp base and data file name?;
+        # TODO1: derive default for uses_stdin based use of filename argment (e.g., from usage)
         data_path = ("" if uses_stdin else "-")
         if data_file is not None:
             data_path = (gh.resolve_path(data_file) if len(data_file) else data_file)
@@ -255,7 +253,7 @@ class TestWrapper(unittest.TestCase):
         # note; trailing newline removed as with shell output
         if output.endswith("\n"):
             output = output[:-1]
-        tpo.debug_format("output: {{\n{out}\n}}", trace_level,
+        debug.trace_fmtd(trace_level, "output: {{\n{out}\n}}",
                          out=gh.indent_lines(output))
 
         # Make sure no python or bash errors. For example,
@@ -264,8 +262,8 @@ class TestWrapper(unittest.TestCase):
         error_found = re.search(r"(\S+error:)|(no module)|(command not found)",
                                 log_contents.lower())
         gh.assertion(not error_found)
-        tpo.debug_format("log contents: {{\n{log}\n}}", trace_level + 1,
-                         log=gh.indent_lines(log_contents))
+        debug.trace_fmt(trace_level + 1, "log contents: {{\n{log}\n}}",
+                        log=gh.indent_lines(log_contents))
 
         # Do sanity check for python exceptions
         traceback_found = re.search("Traceback.*most recent call", log_contents)
@@ -275,7 +273,7 @@ class TestWrapper(unittest.TestCase):
 
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
-        tpo.debug_print("TestWrapper.tearDown()", 4)
+        debug.trace(4, "TestWrapper.tearDown()")
         if not KEEP_TEMP:
             gh.run("rm -vf {file}*", file=self.temp_file)
         return
@@ -283,7 +281,7 @@ class TestWrapper(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Per-class cleanup: stub for tracing purposes"""
-        tpo.debug_format("TestWrapper.tearDownClass(); cls={c}", 5, c=cls)
+        debug.trace_fmtd(5, "TestWrapper.tearDownClass(); cls={c}", c=cls)
         if not KEEP_TEMP:
             ## TODO: use shutil
             if cls.use_temp_base_dir:
