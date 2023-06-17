@@ -403,10 +403,16 @@ class Main(object):
             # Do sanity check for positional argument being checked by mistake
             # TODO: do automatic correction?
             if opt_label != label:
-                if positional:
-                    debug.assertion(opt_label not in self.parsed_args)
-                else:
-                    debug.assertion(label not in self.parsed_args)
+                ## OLD:
+                ## if positional:
+                ##     debug.assertion(opt_label not in self.parsed_args)
+                ## else:
+                ##     debug.assertion(label not in self.parsed_args)
+                debug.assertion(label not in self.parsed_args)
+            else:
+                under_label = label.replace("-", "_")
+                debug.assertion(under_label not in self.parsed_args)
+            debug.trace(6, label, opt_label, under_label)
         # Return result, after tracing invocation
         tpo.debug_format("get_parsed_option({l}, [{d}], [{p}]) => {v}", 5,
                          l=label, d=default, p=positional, v=value)
