@@ -12,7 +12,7 @@ Sample usage:
 """
 
 # Standard modules
-# TODO: import re
+## TODO: import json
 
 # Intalled module
 # TODO: import numpy as np
@@ -21,6 +21,7 @@ Sample usage:
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
+## TODO: from mezcla.my_regex import my_re
 from mezcla import system
 ## TODO2: streamline imports by exposing common functions, etc. in mezcla
 
