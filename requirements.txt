@@ -49,7 +49,8 @@ scispacy==0.5.0
 stop_words==2018.7.23
 tensorflow_hub==0.12.0
 vaderSentiment==3.3.2
-extcolors==1.0.0
+## OLD: extcolors==1.0.0
+extcolors>=1.0.0
 #
 #...............................................................................
 # Optional requirements
