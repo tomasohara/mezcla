@@ -96,7 +96,7 @@ def show_gpu_usage(level=TL.DETAILED):
 class StableDiffusion:
     """Class providing Stable Diffusion generative AI (e.g., text-to-image)"""
 
-    def __init__(self, use_hf_api=None, server_url=None, server_port=None):
+    def __init__(self, use_hf_api=None, server_url=None, server_port=None, low_memory=None):
         debug.trace(4, f"__init__{(use_hf_api, server_url, server_port)}")
         if use_hf_api is None:
             use_hf_api = USE_HF_API
@@ -109,6 +109,9 @@ class StableDiffusion:
         if self.server_url and not my_re.search(r":\d+", self.server_url):
             # TODO3: http://base-url/path => http://base-url:port/path
             self.server_url += f":{server_port}"
+        if low_memory is None:
+            low_memory = LOW_MEMORY
+        self.low_memory = low_memory
         self.pipe = None
         debug.assertion(bool(self.use_hf_api) != bool(self.server_url))
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
@@ -121,7 +124,7 @@ class StableDiffusion:
         model_id = "CompVis/stable-diffusion-v1-4"
         device = "cuda"
         # TODO2: automatically use LOW_MEMORY if GPU memory below 8gb
-        dtype=(torch.float16 if LOW_MEMORY else None)
+        dtype=(torch.float16 if self.low_memory else None)
         pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=dtype)
         debug.trace_expr(5, pipe, dtype)
         pipe = pipe.to(device)
@@ -360,7 +363,7 @@ def run_ui():
             .image_duplication{position: absolute; width: 100px; left: 50px}
     """
     
-    block = gr.Blocks(css=css)
+    block = gr.Blocks(css=css, title="HF Stable Diffusion gradio UI")
     
     examples = [
         [
