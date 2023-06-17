@@ -17,7 +17,7 @@
 """Tests for hf_stable_diffusion module"""
 
 # Standard packages
-import re
+import base64
 
 # Installed packages
 import pytest
@@ -25,6 +25,10 @@ try:
     import diffusers
 except:
     diffusers = None
+try:
+    import extcolors
+except:
+    extcolors = None
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
@@ -39,7 +43,7 @@ from mezcla.my_regex import my_re
 import mezcla.examples.hf_stable_diffusion as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
-if not re.search(__file__, r"\btemplate.py$"):
+if not my_re.search(__file__, r"\btemplate.py$"):
     debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 class TestIt(TestWrapper):
@@ -57,7 +61,7 @@ class TestIt(TestWrapper):
         # ex: See sd-app-image-1.png
         output = self.run_script(
             options="--batch --prompt 'orange ball' --negative 'green blue red yellow purple pink brown'",
-            env_options=f"BASENAME='{self.temp_base}'", uses_stdin=True)
+            env_options=f"BASENAME='{self.temp_base}' LOW_MEMORY=1", uses_stdin=True)
         debug.trace_expr(5, output)
         assert (my_re.search(r"See (\S+.png) for output image(s).", output.strip()))
         image_file = my_re.group(1)
@@ -66,15 +70,6 @@ class TestIt(TestWrapper):
         debug.trace_expr(5, file_info)
         assert (my_re.search("PNG image data, 512 x 512, 8-bit/color RGB", file_info))
         # TODO2: orange in rgb-color profile for image
-        return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
-    @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
-    def test_something_else(self):
-        """TODO: flesh out test for something else"""
-        debug.trace(4, f"TestIt.test_something_else(); self={self}")
-        self.fail("TODO: code test")
-        # ex: extcolors sd-app-image-1.png | rgb_color_name.py - | grep -i orange
         return
 
 #...............................................................................
@@ -86,13 +81,32 @@ class TestIt2:
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
     def test_pipeline(self):
         """Make sure valid SD pipeline created"""
-        debug.trace(4, f"TestIt.test_something_else(); self={self}")
+        debug.trace(4, f"TestIt2.test_something_else(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True)
         pipe = sd.init_pipeline()
         actual = my_re.split(r"\W+", str(pipe))
         expect = "CLIPImageProcessor CLIPTextModel StableDiffusionSafetyChecker text_encoder".split()
         debug.trace_expr(5, actual, expect, delim="\n")
         assert (len(system.intersection(actual, expect)) > 2)
+        return
+
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not extcolors, reason="extcolors package missing")
+    def test_something_else(self):
+        """TODO: flesh out test for something else"""
+        debug.trace(4, f"TestIt2.test_something_else(); self={self}")
+        sd = THE_MODULE.StableDiffusion(use_hf_api=True, low_memory=True)
+        images = sd.infer(prompt="a ripe orange", scale=30)
+        image_data = base64.decodebytes(images[0]).decode()
+        image_path = gh.create_temp_file(image_data)
+        # note: use of rgb_color_name.py allows for fudge factor
+        # $ extcolors sd-app-image-1.png | rgb_color_name.py - | grep orange
+        # <(255, 92, 0), orangered>   :  47.07% (123388)
+        # <(255, 153, 0), orange>  :   6.13% (16074)
+        output = gh.run(f"extcolors '{image_path}' | rgb_color_name.py -")
+        assert ("orange" in output)
+        assert (len(images) == 1)
         return
 
 #------------------------------------------------------------------------
