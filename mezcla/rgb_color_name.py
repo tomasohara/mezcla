@@ -36,7 +36,11 @@
 # - Add option to invoke extcolors automatically.
 #
 
-"""Convert RGB tuples into color names"""
+"""Convert RGB tuples into color names
+
+Sample usage:
+   extcolors tests/resources/orange-gradient.png | {script} -
+"""
 
 # Standard packages
 import re
@@ -47,6 +51,7 @@ from scipy.spatial import KDTree
 
 # Local packages
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla.main import Main
 from mezcla import system
 from mezcla.my_regex import my_re
@@ -57,6 +62,7 @@ from mezcla.my_regex import my_re
 RGB_REGEX = "rgb-regex"
 HEX = "hex"
 SKIP_DIRECT = "skip-direct"
+SHOW_HEX = "show-hex"
 
 class Script(Main):
     """Input processing class: convert RGB tuples to <RGB, label> pairs"""
@@ -66,6 +72,7 @@ class Script(Main):
     color_names = []
     hex = False
     skip_direct = False
+    show_hex = False
     check_direct_match = None
 
     def setup(self):
@@ -78,6 +85,7 @@ class Script(Main):
         debug.assertion(re.search(spec_regex, self.rgb_regex, re.IGNORECASE))
         self.hex = self.get_parsed_option(HEX, self.hex)
         self.skip_direct = self.get_parsed_option(SKIP_DIRECT, self.skip_direct)
+        self.show_hex = self.get_parsed_option(SHOW_HEX, self.show_hex)
         self.check_direct_match = not self.skip_direct
 
         # Populate color names into spatial name database
@@ -144,7 +152,11 @@ class Script(Main):
                 continue
 
             rgb_spec = rgb
-            color_spec = f"<{rgb_spec}, {color_name}>"
+            hex_spec = ""
+            if self.show_hex:
+                # https://stackoverflow.com/questions/2269827/how-to-convert-an-int-to-a-hex-string
+                hex_spec = " 0x" + "".join(f"{c:0>2X}" for c in query_color)
+            color_spec = f"<{rgb_spec}, {color_name}{hex_spec}>"
             processed_text += text[0: my_re.start()] + color_spec
             text = text[my_re.end():]
             debug.trace_fmtd(4, "match: {m}; new text: {new}",
@@ -154,18 +166,15 @@ class Script(Main):
         # Print revised line
         print(processed_text + text)
 
-#-------------------------------------------------------------------------------
-
-if __name__ == '__main__':
-    debug.trace_current_context(level=debug.QUITE_DETAILED)
+def main():
+    """Entry point"""
     app = Script(
-        description=__doc__,
+        description=__doc__.format(script=gh.basename(__file__)),
         usage_notes="Note: Input is not an image (e.g., use extcolors)",
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
         # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
-        skip_input=False,
-        manual_input=False,
         boolean_options=[(HEX, "RGB triple specified in hex (not decimal)"),
+                         (SHOW_HEX, "Show hex-style specification XXXXXX"),
                          (SKIP_DIRECT, "Don't include direct match (for nearest neighbor test")],
         # Note: FILENAME is default argument unless skip_input
         text_options=[
@@ -175,3 +184,10 @@ if __name__ == '__main__':
         # Note: Following added for indentation: float options are not common
         float_options=None)
     app.run()
+    
+        
+#-------------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    debug.trace_current_context(level=debug.QUITE_DETAILED)
+    main()
