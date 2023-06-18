@@ -63,7 +63,7 @@ class TestIt(TestWrapper):
             options="--batch --prompt 'orange ball' --negative 'green blue red yellow purple pink brown'",
             env_options=f"BASENAME='{self.temp_base}' LOW_MEMORY=1", uses_stdin=True)
         debug.trace_expr(5, output)
-        assert (my_re.search(r"See (\S+.png) for output image(s).", output.strip()))
+        assert (my_re.search(r"See (\S+.png) for output image\(s\).", output.strip()))
         image_file = my_re.group(1)
         # ex: sd-app-image-3.png: PNG image data, 512 x 512, 8-bit/color RGB, non-interlaced
         file_info = gh.run(f"file {image_file}")
