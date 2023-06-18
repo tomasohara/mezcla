@@ -104,8 +104,8 @@ class AudioArgumentProcessing(Main):
 
         # Check the command-line options
         source       = self.get_parsed_argument(SOURCE, "")
-        self.output  = self.get_parsed_argument(OUTPUT, self.output)
-        self.speech  = self.get_parsed_argument(SPEECH, self.speech)
+        self.output  = self.get_parsed_option(OUTPUT, self.output)
+        self.speech  = self.get_parsed_option(SPEECH, self.speech)
         self.verbose = self.get_parsed_option(VERBOSE)
 
         # Process source
