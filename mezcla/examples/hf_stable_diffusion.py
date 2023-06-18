@@ -572,14 +572,14 @@ def main():
     debug.trace_object(5, main_app)
     debug.assertion(main_app.parsed_args)
     #
-    batch_mode = main_app.get_parsed_argument(BATCH_ARG)
-    server_mode = main_app.get_parsed_argument(SERVER_ARG)
-    ui_mode = main_app.get_parsed_argument(UI_ARG)
-    prompt = main_app.get_parsed_argument(PROMPT_ARG, PROMPT)
-    negative_prompt = main_app.get_parsed_argument(NEGATIVE_ARG, NEGATIVE_PROMPT)
-    guidance = main_app.get_parsed_argument(GUIDANCE_ARG, GUIDANCE)
+    batch_mode = main_app.get_parsed_option(BATCH_ARG)
+    server_mode = main_app.get_parsed_option(SERVER_ARG)
+    ui_mode = main_app.get_parsed_option(UI_ARG)
+    prompt = main_app.get_parsed_option(PROMPT_ARG, PROMPT)
+    negative_prompt = main_app.get_parsed_option(NEGATIVE_ARG, NEGATIVE_PROMPT)
+    guidance = main_app.get_parsed_option(GUIDANCE_ARG, GUIDANCE)
     # TODO2: BASENAME and NUM_IMAGES
-    ## TODO: x_mode = main_app.get_parsed_argument(X_ARG)
+    ## TODO: x_mode = main_app.get_parsed_option(X_ARG)
     debug.assertion(not (batch_mode and server_mode))
 
     # Invoke UI via HTTP unless in batch mode
