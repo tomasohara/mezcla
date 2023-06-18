@@ -294,7 +294,7 @@ class Main(object):
         if float_options:
             self.float_options = float_options
         if positional_options or positional_arguments:
-            # TODO: mark positional_options as decprecated
+            # TODO: mark positional_options as deprecated
             debug.assertion(not (positional_options and positional_arguments))
             self.positional_options = positional_options or positional_arguments
         self.multiple_files = multiple_files      # sets other_filenames if multiple w/ nargs=+ 
@@ -400,19 +400,15 @@ class Main(object):
         # Override null value with default
         if value is None:
             value = default
+            under_label = label.replace("-", "_")
             # Do sanity check for positional argument being checked by mistake
             # TODO: do automatic correction?
             if opt_label != label:
-                ## OLD:
-                ## if positional:
-                ##     debug.assertion(opt_label not in self.parsed_args)
-                ## else:
-                ##     debug.assertion(label not in self.parsed_args)
                 debug.assertion(label not in self.parsed_args)
-            else:
-                under_label = label.replace("-", "_")
-                debug.assertion(under_label not in self.parsed_args)
-            debug.trace(6, label, opt_label, under_label)
+            elif under_label != label:
+                debug.assertion(under_label not in self.parsed_args,
+                                "potential option/argument mismatch")
+            debug.trace_expr(6, label, opt_label, under_label)
         # Return result, after tracing invocation
         tpo.debug_format("get_parsed_option({l}, [{d}], [{p}]) => {v}", 5,
                          l=label, d=default, p=positional, v=value)
@@ -422,6 +418,7 @@ class Main(object):
         """Get value for positional argument LABEL using DEFAULT value"""
         tpo.debug_format("get_parsed_agument({l}, [{d}])", 6,
                          l=label, d=default)
+        ## TODO2: debug.assertion(label in ((l[0] if isinstance(l, list) else l)) for l in self.positional_options)
         return self.get_parsed_option(label, default, positional=True)
 
     def check_arguments(self, runtime_args):
