@@ -45,8 +45,8 @@ PROMPT = system.getenv_text("PROMPT", "your favorite politician in a tutu",
                             "Textual prompt describing image")
 NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
                             "Negative tips for image")
-GUIDANCE = system.getenv_int("GUIDANCE", 7,
-                             "How much the image generation follows the prompt")
+GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
+                                   "How much the image generation follows the prompt")
 SD_URL = system.getenv_value("SD_URL", None,
                              "URL for SD TCP/restful server")
 SD_PORT = system.getenv_int("SD_PORT", 9700,
@@ -81,7 +81,7 @@ if CHECK_UNSAFE:
     debug.trace_expr(5, word_list)
 
 sd_instance = None
-app = Flask(__name__)
+flask_app = Flask(__name__)
 
 
 def show_gpu_usage(level=TL.DETAILED):
@@ -106,9 +106,14 @@ class StableDiffusion:
         self.server_url = server_url
         if server_port is None:
             server_port = SD_PORT
+        if self.server_url and not my_re.search(r"^https?", self.server_url):
+            self.server_url = f"http://{self.server_url}"
+            debug.trace(4, f"Added http protocol to URL: {self.server_url}")
         if self.server_url and not my_re.search(r":\d+", self.server_url):
             # TODO3: http://base-url/path => http://base-url:port/path
             self.server_url += f":{server_port}"
+        else:
+            system.print_stderr(f"Warning: ignoring port {server_port} as already in URL {self.server_url}")
         if low_memory is None:
             low_memory = LOW_MEMORY
         self.low_memory = low_memory
@@ -135,14 +140,18 @@ class StableDiffusion:
         return pipe
 
 
-    def infer(self, prompt=None, negative_prompt=None, scale=None, num_images=None):
+    def infer(self, prompt=None, negative_prompt=None, scale=None, num_images=None,
+              skip_img_spec=False):
         """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE
         Returns list of NUM image specifications in base64 format (e.g., for use in HTML)
+        Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag
         """
         ## TODO: def infer(prompt, negative_prompt, scale) -> List(PIL.Image.Image):
         debug.trace(4, f"StableDiffusion.infer{(prompt, negative_prompt, scale, num_images)}")
         if num_images is None:
             num_images = NUM_IMAGES
+        if scale is None:
+            scale = GUIDANCE_SCALE
         for prompt_filter in word_list:
             if my_re.search(rf"\b{prompt_filter}\b", prompt):
                 raise gr.Error("Unsafe content found. Please try again with different prompts.")
@@ -173,7 +182,7 @@ class StableDiffusion:
                     image_path = f"{BASENAME}-{i + 1}.png"
                     image.save(image_path)
                     num_generated += 1
-                    b64_encoding = base64.b64encode(system.read_binary_file(image_path)).decode()
+                    b64_encoding = (base64.b64encode(system.read_binary_file(image_path))).decode()
                 except:
                     system.print_exception_info("image-to-base64")
                 images.append(b64_encoding)
@@ -190,7 +199,9 @@ class StableDiffusion:
             debug.trace_object(6, images_request)
             debug.trace_expr(5, payload, images_request, images_request.json(), delim="\n")
             for image in images_request.json()["images"]:
-                image_b64 = (f"data:image/png;base64,{image}")
+                image_b64 = image
+                if not skip_img_spec:
+                    image_b64 = (f"data:image/png;base64,{image_b64}")
                 images.append(image_b64)
         result = images
         debug.trace(5, f"infer() => {debug.format_value(result)}")
@@ -200,7 +211,7 @@ class StableDiffusion:
 #-------------------------------------------------------------------------------
 # Middleware
 
-@app.route('/', methods=['GET', 'POST'])
+@flask_app.route('/', methods=['GET', 'POST'])
 def handle_infer():
     """Process request to do inference to generate image from text"""
     debug.trace(6, "handle_infer()")
@@ -226,12 +237,12 @@ def handle_infer():
     return result
 
 
-def infer(prompt=None, negative_prompt=None, scale=None, num_images=None):
+def infer(prompt=None, negative_prompt=None, scale=None, num_images=None, skip_img_spec=None):
     """Wrapper around StableDiffusion.infer()
     Note: intended just for the gradio UI"
     """
-    debug.trace(6, f"infer{(prompt, negative_prompt, scale)}")
-    return sd_instance.infer(prompt=prompt, negative_prompt=negative_prompt, scale=scale, num_images=num_images)
+    debug.trace(6, f"infer{(prompt, negative_prompt, scale, skip_img_spec)}")
+    return sd_instance.infer(prompt=prompt, negative_prompt=negative_prompt, scale=scale, num_images=num_images, skip_img_spec=skip_img_spec)
 
 #-------------------------------------------------------------------------------
 # User interface
@@ -498,7 +509,7 @@ def run_ui():
             #    samples = gr.Slider(label="Images", minimum=1, maximum=4, value=4, step=1)
             #    steps = gr.Slider(label="Steps", minimum=1, maximum=50, value=45, step=1)
                  guidance_control = gr.Slider(
-                    label="Guidance Scale", minimum=0, maximum=31, value=GUIDANCE, step=0.1
+                    label="Guidance Scale", minimum=0, maximum=31, value=GUIDANCE_SCALE, step=0.1
                  )
                  num_control = gr.Slider(
                     label="Number of images", minimum=1, maximum=10, value=2, step=1
@@ -574,10 +585,10 @@ def main():
     #
     batch_mode = main_app.get_parsed_option(BATCH_ARG)
     server_mode = main_app.get_parsed_option(SERVER_ARG)
-    ui_mode = main_app.get_parsed_option(UI_ARG)
+    ui_mode = main_app.get_parsed_option(UI_ARG, not (batch_mode or server_mode))
     prompt = main_app.get_parsed_option(PROMPT_ARG, PROMPT)
     negative_prompt = main_app.get_parsed_option(NEGATIVE_ARG, NEGATIVE_PROMPT)
-    guidance = main_app.get_parsed_option(GUIDANCE_ARG, GUIDANCE)
+    guidance = main_app.get_parsed_option(GUIDANCE_ARG, GUIDANCE_SCALE)
     # TODO2: BASENAME and NUM_IMAGES
     ## TODO: x_mode = main_app.get_parsed_option(X_ARG)
     debug.assertion(not (batch_mode and server_mode))
@@ -586,18 +597,21 @@ def main():
     global sd_instance
     sd_instance = StableDiffusion(use_hf_api=server_mode)
     if batch_mode:
-        infer(prompt, negative_prompt, guidance)
+        images = infer(prompt, negative_prompt, guidance, skip_img_spec=True)
+        for i, image_encoding in enumerate(images):
+            image_data = base64.decodebytes(image_encoding.encode())
+            system.write_binary_file(f"{BASENAME}-{i + 1}.png", image_data)
         # TODO2: get list of files via infer()
-        file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))
+        file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))  
         print(f"See {file_spec} for output image(s).")
     elif server_mode:
         debug.assertion(SD_URL)
-        debug.trace_object(5, app)
-        app.run(host=SD_URL, port=SD_PORT, debug=SD_DEBUG)
+        debug.trace_object(5, flask_app)
+        flask_app.run(host=SD_URL, port=SD_PORT, debug=SD_DEBUG)
     else:
         debug.assertion(ui_mode)
         run_ui()
-    show_gpu_usage()
+    ## OLD: show_gpu_usage()
 
 
 if __name__ == '__main__':
