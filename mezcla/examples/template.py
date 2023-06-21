@@ -46,10 +46,11 @@ def main():
     """Entry point"""
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
 
-    # Show simple usage if --help given
+    # Parse command line options, show usage if --help given
+    # TODO: manual_input=True; short_options=True
     main_app = Main(description=__doc__.format(script=gh.basename(__file__)),
                     ## TODO: boolean_boolean_options=[(TODO_OPT1, "TODO desc1")]
-                    skip_input=False, manual_input=False)
+                    skip_input=False)
     debug.assertion(main_app.parsed_args)
     ## TODO_OPT1 = main_app.get_parsed_option(TODO_OPT1)
 
