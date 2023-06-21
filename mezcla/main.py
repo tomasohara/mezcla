@@ -218,8 +218,13 @@ class Main(object):
         if track_pages is None:
             track_pages = TRACK_PAGES
         self.track_pages = track_pages
-        self.binary_input = kwargs.get("binary_input", False)
         self.short_options = (short_options if (short_options is not None) else SHORT_OPTIONS)
+
+        # Check miscellaneous options
+        BINARY_INPUT_OPTION = "binary_input"
+        PERL_SWITCH_PARSING_OPTION = "perl_switch_parsing"
+        debug.assertion(not (system.difference(kwargs.keys(), [BINARY_INPUT_OPTION, PERL_SWITCH_PARSING_OPTION])))
+        self.binary_input = kwargs.get(BINARY_INPUT_OPTION, False)
 
         # Setup temporary file and/or base directory
         # Note: Uses NamedTemporaryFile (hence ntf_args)
