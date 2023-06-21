@@ -12,7 +12,7 @@ Sample usage:
 """
 
 # Standard modules
-# TODO: import re
+## TODO: import json
 
 # Intalled module
 # TODO: import numpy as np
@@ -21,11 +21,13 @@ Sample usage:
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
+## TODO: from mezcla.my_regex import my_re
 from mezcla import system
 ## TODO2: streamline imports by exposing common functions, etc. in mezcla
 
 # Constants
 TL = debug.TL
+## TODO: TODO_OPT1 = "todo-option1"
 
 ## TODO:
 ## # Environment options
@@ -44,10 +46,13 @@ def main():
     """Entry point"""
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
 
-    # Show simple usage if --help given
-    dummy_main_app = Main(description=__doc__.format(script=gh.basename(__file__)),
-                          skip_input=False, manual_input=False)
-    debug.assertion(dummy_main_app.parsed_args)
+    # Parse command line options, show usage if --help given
+    # TODO: manual_input=True; short_options=True
+    main_app = Main(description=__doc__.format(script=gh.basename(__file__)),
+                    ## TODO: boolean_boolean_options=[(TODO_OPT1, "TODO desc1")]
+                    skip_input=False)
+    debug.assertion(main_app.parsed_args)
+    ## TODO_OPT1 = main_app.get_parsed_option(TODO_OPT1)
 
     ## TODO:
     system.print_error("Error: Implement me!")

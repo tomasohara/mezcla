@@ -3,7 +3,7 @@
 #
 # Note:
 # - *** Please add examples when adding exclusions.
-# - ** Also explain if used for non standard Python (e.g., tox.ini)
+# - ** Also explain if used for non standard stuff (e.g., tox.ini with Python).
 # - This is shared across projects, so there might seem to be
 #   some apparently extraneous patterns included.
 # - Used to pruned 'git status' output, which gets
@@ -24,7 +24,7 @@
 # Any files with leading _, except specified cases
 **/_*
 !**/*__init__.py
-# Likewise for trailing _'s (e.g., requirements.link_)
+# Likewise for trailing _'s (e.g., master-dir-link_)
 **/*_
 
 # Special cases
@@ -50,6 +50,12 @@
 # TODO: dist created by tox utiility???
 dist
 .tox
+
+# Jupyter
+.ipynb_checkpoints
+
+# (maldito) Mac
+.DS_Store
 
 #...............................................................................
 # Idiosyncratic stuff for Tom

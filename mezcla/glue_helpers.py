@@ -84,10 +84,10 @@ TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file() + "-log",
 TEMP_SCRIPT_FILE = tpo.getenv_text("TEMP_SCRIPT_FILE", get_temp_file() + "-script",
                                    "File for command invocation")
 
-def create_temp_file(contents):
+def create_temp_file(contents, binary=False):
     """Create temporary file with CONTENTS and return full path"""
     temp_filename = get_temp_file()
-    system.write_file(temp_filename, contents)
+    system.write_file(temp_filename, contents, binary=binary)
     debug.trace(6, "create_temp_file({contents!r}) => {temp_filename}")
     return temp_filename
 

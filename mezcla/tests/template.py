@@ -15,7 +15,7 @@
 """TODO: Tests for <module> module"""
 
 # Standard packages
-import re
+## TODO: from collections import defaultdict
 
 # Installed packages
 import pytest
@@ -23,18 +23,18 @@ import pytest
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
-## TODO: from mezcla import system
+from mezcla.my_regex import my_re
 from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                  global module object
 #    TestTemplate.script_module:  path to file
-## TODO: change template to new name
+## TODO (vvv): change template to new name; *** use commented out template below ***
 THE_MODULE = None           ## TODO: remove this line (n.b., used just to avoid syntax problems with <module> in following)
-## TODO: import mezcla.<module> as THE_MODULE
+## TODO (^^^): import mezcla.<module> as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
-if not re.search(__file__, r"\btemplate.py$"):
+if not my_re.search(__file__, r"\btemplate.py$"):
     debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 ## TODO:
@@ -48,7 +48,7 @@ if not re.search(__file__, r"\btemplate.py$"):
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     # -or- non-mezcla: script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     #
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
@@ -80,9 +80,9 @@ class TestIt(TestWrapper):
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
         gh.write_lines(self.temp_file, data)
-        output = self.run_script("", self.temp_file)
-        assert(re.search(r"TODO-pattern", 
-                         output.strip()))
+        ## TODO: add use_stdin=True to following if no file argument
+        output = self.run_script(options="", data_file=self.temp_file)
+        assert my_re.search(r"TODO-pattern", output.strip())
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -90,7 +90,7 @@ class TestIt(TestWrapper):
         """TODO: flesh out test for something else"""
         debug.trace(4, f"TestIt.test_something_else(); self={self}")
         self.fail("TODO: code test")
-        ## ex: assert(THE_MODULE.TODO_function() == TODO_value)
+        ## ex: assert (THE_MODULE.TODO_function() == TODO_value)
         return
 
 
@@ -115,7 +115,13 @@ class TestIt(TestWrapper):
 ## class TestIt2:
 ##     """Another class for testcase definition
 ##     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
-##     pass
+##
+##    def test_whatever(self):
+##        """TODO: flesh out test for whatever"""
+##        debug.trace(4, f"TestIt2.test_whatever(); self={self}")
+##        assert False, "TODO: code test"
+##        ## ex: assert THE_MODULE.fast_sort() == THE_MODULE.slow_sort()
+##        return
 ##
 
 #------------------------------------------------------------------------

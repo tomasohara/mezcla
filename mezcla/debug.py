@@ -585,15 +585,17 @@ if __debug__:
         - Currently, the expression text is not resolved properly under ipython (or Jupyter).
         - The optional ASSERT_LEVEL overrides use of ALWAYS.
         - Uses introspection to derive text for assertion expression.
+        - Returns expression text or None if not triggered.
         """
         # EX: assertion((2 + 2) != 5)
         # TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
         # TODO: trace out local and globals to aid in diagnosing assertion failures; ex: add automatic tarcing of variables used in the assertion expression)
+        expression_text = None
         if (assert_level is None):
             assert_level = ALWAYS
         if (trace_level < assert_level):
             # note: Short-circuits processing to avoid extraneous warnings (e.g., trace_expr under ipython)
-            return
+            return expression_text
         if (not expression):
             try:
                 # Get source information for failed assertion
@@ -613,6 +615,7 @@ if __debug__:
                 statement = re.sub("#.*$", "", statement)
                 statement = re.sub(r"^(\S*)assertion\(", "", statement)
                 expression = re.sub(r"\);?\s*$", "", statement)
+                expression_text = expression
                 qualification_spec = (": " + message) if message else ""
                 # Output information
                 # TODO: omit subsequent warnings
@@ -622,7 +625,7 @@ if __debug__:
                 trace_fmtd(ALWAYS, "Exception formatting assertion: {exc}",
                            exc=sys.exc_info())
                 trace_object(ALWAYS, inspect.currentframe(), "caller frame", pretty_print=True)
-        return
+        return expression_text
 
     def val(level, value):
         """Returns VALUE if at trace LEVEL or higher otherwise None
@@ -984,7 +987,7 @@ if __debug__:
     def reopen_debug_file():
         """Re-open debug file to work around concurrent access issues
         Note: The debug file is mainly used with pytest to work around stderr tracing issues"""
-        trace(5, "open_debug_file()")
+        trace(5, "reopen_debug_file()")
         global debug_file
         assertion(debug_file is not None)
 
@@ -1002,7 +1005,11 @@ if __debug__:
         """Debug-only initialization"""
         time_start = time.time()
         trace(DETAILED, f"in debug_init(); {timestamp()}")
-        trace(USUAL, " ".join(sys.argv))
+        # note: shows command invocation unless invoked via "python -c ..."
+        command_line = " ".join(sys.argv)
+        assertion(command_line)
+        if (command_line and (command_line != "-c")):
+            trace(USUAL, command_line)
         trace_expr(DETAILED, sys.argv)
         open_debug_file()
 

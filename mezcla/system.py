@@ -79,6 +79,8 @@ def register_env_option(var, description, default):
 def get_registered_env_options():
     """Returns list of environment options registered via register_env_option"""
     ## OLD: option_names = [k for k in env_options if (env_options[k] and env_options[k].strip())]
+    ## TEMP
+    # pylint: disable=consider-using-dict-items
     option_names = [k for k in env_options if (env_options[k] is not None)]
     debug.trace_fmt(5, "get_registered_env_options() => {on}", on=option_names)
     return option_names
@@ -121,6 +123,8 @@ def get_environment_option_descriptions(include_all=None, include_default=None, 
         debug.trace_fmt(9, "_format_env_option() => {r}", r=result)
         return result
     #
+    ## TEMP
+    # pylint: disable=consider-using-dict-items
     option_descriptions = [_format_env_option(opt) for opt in env_options if (env_options[opt] or include_all)]
     debug.trace_fmt(5, "get_environment_option_descriptions() => {od}",
                     od=option_descriptions)
@@ -690,9 +694,11 @@ def lookup_entry(hash_table, entry, retain_case=False):
     return result
 
                 
-def write_file(filename, text, skip_newline=False, append=False):
+def write_file(filename, text, skip_newline=False, append=False, binary=False):
     """Create FILENAME with TEXT and optionally for APPEND.
-    Note: A newline is added at the end if missing unless SKIP_NEWLINE"""
+    Note: A newline is added at the end if missing unless SKIP_NEWLINE.
+    A binary file is created if BINARY (n.b., incompatible with APPEND).
+    """
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
     # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
@@ -700,7 +706,9 @@ def write_file(filename, text, skip_newline=False, append=False):
     try:
         if not isinstance(text, STRING_TYPES):
             text = to_string(text)
-        mode = 'a' if append else 'w'
+        ## OLD: mode = 'a' if append else 'w'
+        debug.assertion(not binary and append)
+        mode = "wb" if binary else "a" if append else "w"
         with open(filename, encoding="UTF-8", mode=mode) as f:
             f.write(to_utf8(text))
             if not text.endswith("\n"):
