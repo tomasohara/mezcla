@@ -123,6 +123,8 @@ PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
 ## HACK: This is needed if boolean options default to true based on run-time initialization
 NEGATIVE_BOOL_ARGS = system.getenv_bool("NEGATIVE_BOOL_ARGS", False,
                                         "Add negation option for each boolean option")
+SHORT_OPTIONS = system.getenv_bool("SHORT_OPTIONS", False,
+                                   "Automatically derive short options")
 
 #-------------------------------------------------------------------------------
 
@@ -145,21 +147,22 @@ class Main(object):
                  paragraph_mode=None, track_pages=None, file_input_mode=None, newlines=None,
                  boolean_options=None, text_options=None, int_options=None,
                  float_options=None, positional_options=None, positional_arguments=None,
-                 skip_input=None, manual_input=None, auto_help=None, brief_usage=None, **kwargs):
+                 skip_input=None, manual_input=None, auto_help=None, brief_usage=None,
+                 short_options=None, **kwargs):
         """Class constructor: parses RUNTIME_ARGS (or command line), with specifications
         for BOOLEAN_OPTIONS, TEXT_OPTIONS, INT_OPTIONS, FLOAT_OPTIONS, and POSITIONAL_OPTIONS
-        (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args)."""
+        (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args). Also allows for SHORT_OPTIONS"""
         tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts},"
                          + " i={ints}, f={floats}, po={posns}, pa={pargs}, si={skip}, m={mi}, ah={auto}, bu={usage},"
                          + " pm={para}, tp={page}, fim={file}, nl={nl}, prog={prog}, sa={skip_args},"
-                         + " mult={mf}, temp_base={utbd} notes={us} kw={kw})", 5,
+                         + " mult={mf}, temp_base={utbd} notes={us} short={so} kw={kw})", 5,
                          args=runtime_args, desc=description, bools=boolean_options,
                          texts=text_options, ints=int_options, floats=float_options,
                          mf=multiple_files, utbd=use_temp_base_dir,
                          posns=positional_options, pargs=positional_arguments, skip=skip_input, mi=manual_input,
                          auto=auto_help, usage=brief_usage, us=usage_notes,
                          para=paragraph_mode, page=track_pages, file=file_input_mode, nl=newlines,
-                         prog=program, ha=HELP_ARG, skip_args=skip_args, kw=kwargs)
+                         prog=program, ha=HELP_ARG, skip_args=skip_args, so=short_options, kw=kwargs)
         self.description = "TODO: what the script does"   # *** DONT'T MODIFY: default TODO note for client
         self.boolean_options = []
         self.text_options = []
@@ -216,6 +219,7 @@ class Main(object):
             track_pages = TRACK_PAGES
         self.track_pages = track_pages
         self.binary_input = kwargs.get("binary_input", False)
+        self.short_options = (short_options if (short_options is not None) else SHORT_OPTIONS)
 
         # Setup temporary file and/or base directory
         # Note: Uses NamedTemporaryFile (hence ntf_args)
@@ -315,8 +319,12 @@ class Main(object):
     def convert_option(self, option_spec, default_value=None, positional=False):
         """Convert OPTION_SPEC to (label, description, default) tuple. 
         Notes: The description and default of the specification are optional,
-        and the parentheses can be omitted if just the label is given. Also,
-        if POSITIONAL the option prefix (--) is omitted."""
+        and the parentheses can be omitted if just the label is given. For example,
+             ("--num-eggs", "Number of eggs", 2)
+        If POSITIONAL, the option prefix (--) is omitted and the option_SPEC
+        includes an optional nargs component, such as"
+             ("other-files", "Other file names", ["f1", "f2", "f3"], "+")
+        """
         # EX: label, _desc, _default = Main.convert_option("--mucho-backflips"); label => "--mucho-backflips"
         ## TEST: result = ["", "", ""]
         opt_label = None
@@ -333,6 +341,7 @@ class Main(object):
             if len(option_components) > 2:
                 opt_default = option_components[2]
             if len(option_components) > 3:
+                debug.assertion(positional)
                 opt_nargs = option_components[3]
                 debug.assertion(positional)
         else:
@@ -350,7 +359,7 @@ class Main(object):
     def convert_argument(self, argument_spec, default_value=None):
         """Convert ARGUMENT_SPEC to (label, description, default) tuple. 
         Note: This is a wrapper around convert_option for positional arguments."""
-        debug.trace(6, f"convert_option({argument_spec}, {default_value}")
+        debug.trace(6, f"convert_argument({argument_spec}, {default_value}")
         return self.convert_option(argument_spec, default_value, positional=True)
 
     def get_option_name(self, label):
@@ -452,6 +461,18 @@ class Main(object):
                                       formatter_class=argparse.RawDescriptionHelpFormatter)
         # TODO: use capitalized script description but lowercase argument help
 
+        def add_argument(opt_label, add_short=None, **kwargs):   # pylint: disable=redefined-builtin
+            """Wrapper around argparse.ArgumentParser.add_argument
+            Note: adds short options string if ADD_SHORT (see self.short_options)"""
+            debug.trace(6, f"add_argument{(opt_label, add_short, kwargs)}")
+            if add_short is None:
+                add_short = self.short_options
+            if self.short_options and my_re.search(r"-(-[a-z])[a-z]+", opt_label):
+                short_label = my_re.group(1)
+                parser.add_argument(short_label, opt_label, **kwargs)
+            else:
+                parser.add_argument(opt_label, **kwargs)
+    
         # Check for options of specific types
         # TODO: consolidate processing for the groups; add option for environment-based default; resolve stupid pylint false positive about unbalanced-tuple-unpacking
         for opt_spec in self.boolean_options:
@@ -460,9 +481,9 @@ class Main(object):
                 # note: With Perl argument support, booleans treated as integers due to argparse quirk.
                 ## TEST: parser.add_argument(opt_label, type=int, nargs="?", default=opt_default, help=opt_desc)
                 numeric_default = 1 if opt_default else 0
-                parser.add_argument(opt_label, type=int, default=numeric_default, help=opt_desc)
+                add_argument(opt_label, type=int, default=numeric_default, help=opt_desc)
             else:
-                parser.add_argument(opt_label, default=opt_default, action="store_true", help=opt_desc)
+                add_argument(opt_label, default=opt_default, action="store_true", help=opt_desc)
                 if NEGATIVE_BOOL_ARGS:
                     # BAD: label = f"non-{opt_label}"
                     under_label = my_re.sub(r"^__", "", opt_label.replace("-", "_"))
@@ -474,17 +495,16 @@ class Main(object):
                     # note: the argument is not shown in help to avoid clutter
                     desc = argparse.SUPPRESS
                     debug.trace(4, f"Adding negative-boolean: label={label} dest={under_label}")
-                    parser.add_argument(label, default=opt_default, dest=under_label, action="store_false", help=desc)
+                    parser.add_argument(label, default=opt_default, dest=under_label, action="store_false", help=desc, add_short=False)
         for opt_spec in self.int_options:
             (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            parser.add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
+            add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
         for opt_spec in self.float_options:
             (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            parser.add_argument(opt_label, type=float, default=opt_default,
-                                help=opt_desc)
+            add_argument(opt_label, type=float, default=opt_default, help=opt_desc)
         for opt_spec in self.text_options:
             (opt_label, opt_desc, opt_default) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            parser.add_argument(opt_label, default=opt_default, help=opt_desc)
+            add_argument(opt_label, default=opt_default, help=opt_desc)
 
         # Add dummy arguments
         # Note: These are used as reminders on how to flesh out the initialization
