@@ -58,3 +58,7 @@ TL = debug.TL
 # Expose commonly used modules
 # TODO: drop mezcla
 __all__ = ["debug", "gh", "mezcla", "system", "TL"]
+
+if __name__ == '__main__':
+    debug.trace(TL.USUAL, f"Version: {__VERSION__}")
+    system.print_error(f"Warning: {__file__} is not intended to be run standalone\n")
