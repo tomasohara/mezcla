@@ -26,7 +26,6 @@ import time
 ## OLD: from diffusers import StableDiffusionPipeline
 ## OLD: import flask
 from flask import Flask, request
-import gradio as gr
 import PIL
 import requests
 ## OLD: import torch
@@ -77,10 +76,12 @@ GUIDANCE_ARG = "guidance"
 # Conditional imports for HG/PyTorch
 torch = None
 load_dataset = None
+gr = None
 if USE_HF_API:
     # pylint: disable=import-outside-toplevel, import-error
     import load_dataset
     import torch
+    import gradio as gr
 
 word_list = []
 if CHECK_UNSAFE:
