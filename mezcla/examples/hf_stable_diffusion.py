@@ -21,7 +21,7 @@ import time
 
 # Installed modules
 
-from datasets import load_dataset
+## OLD: from datasets import load_dataset
 ## NOTE: slows down startup and not needed for client
 ## OLD: from diffusers import StableDiffusionPipeline
 ## OLD: import flask
@@ -29,7 +29,7 @@ from flask import Flask, request
 import gradio as gr
 import PIL
 import requests
-import torch
+## OLD: import torch
 
 # Local modules
 
@@ -73,6 +73,14 @@ PORT_ARG = "port"
 PROMPT_ARG = "prompt"
 NEGATIVE_ARG = "negative"
 GUIDANCE_ARG = "guidance"
+
+# Conditional imports for HG/PyTorch
+torch = None
+load_dataset = None
+if USE_HF_API:
+    # pylint: disable=import-outside-toplevel, import-error
+    import load_dataset
+    import torch
 
 word_list = []
 if CHECK_UNSAFE:
