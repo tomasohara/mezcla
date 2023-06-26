@@ -62,8 +62,10 @@ NTF_ARGS = {'prefix': TEMP_PREFIX,
             'delete': not debug.detailed_debugging(),
             ## TODO: 'suffix': "-"
             }
-TEMP_FILE = system.getenv_text("TEMP_FILE", tempfile.NamedTemporaryFile(**NTF_ARGS).name,
-                               description="Basename for temporary files")
+TEMP_BASE = system.getenv_value("TEMP_BASE", None,
+                                "Override for temporary file basename")
+TEMP_FILE = system.getenv_value("TEMP_FILE", None,
+                                "Override for temporary filename")
 
 
 #------------------------------------------------------------------------
@@ -74,7 +76,7 @@ def get_temp_file(delete=None):
     # TODO: allow for overriding other options to NamedTemporaryFile
     if ((delete is None) and tpo.detailed_debugging()):
         delete = False
-    temp_file_name = TEMP_FILE
+    temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
     debug.assertion(not delete, "Support for delete not implemented")
     debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
     return temp_file_name
@@ -313,6 +315,7 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
          gh.run("ls /tmp/fubar 2> /dev/null")
    - This is only intended for running simple commands. It would be better to create a subprocess for any complex interactions.
    - This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed.
+   - If TEMP_FILE or TEMP_BASE defined, these are modified to be unique to avoid conflicts across processeses.
    """
     # TODO: add automatic log file support as in run_script from unittest_wrapper.py
     # TODO: make sure no template markers left in command text (e.g., "tar cvfz {tar_file}")
@@ -328,6 +331,12 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     if subtrace_level != trace_level:
         debug_level_env = os.getenv("DEBUG_LEVEL")
         setenv("DEBUG_LEVEL", str(subtrace_level))
+    save_temp_base = TEMP_BASE
+    if TEMP_BASE:
+         setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
+    save_temp_file = TEMP_FILE
+    if TEMP_FILE:
+        setenv("TEMP_FILE", TEMP_FILE + "_subprocess_")
     # Expand the command template
     # TODO: make this optional
     command_line = command
@@ -349,6 +358,10 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     # Restore debug level setting in environment
     if debug_level_env:
         setenv("DEBUG_LEVEL", debug_level_env)
+    if save_temp_base:
+        setenv("TEMP_BASE", save_temp_base)
+    if save_temp_file:
+        setenv("TEMP_FILE", save_temp_file)
     debug_print("run(_) => {\n%s\n}" % indent_lines(result), (trace_level + 1))
     return result
 
