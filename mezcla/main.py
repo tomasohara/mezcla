@@ -125,6 +125,18 @@ NEGATIVE_BOOL_ARGS = system.getenv_bool("NEGATIVE_BOOL_ARGS", False,
                                         "Add negation option for each boolean option")
 SHORT_OPTIONS = system.getenv_bool("SHORT_OPTIONS", False,
                                    "Automatically derive short options")
+## TEST
+## TEMP_BASE = system.getenv_value("TEMP_BASE", None,
+##                                 "Override for temporary file basename")
+TEMP_BASE = gh.TEMP_BASE
+USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", False,
+                                       "Whether TEMP_BASE should be a dir instead of prefix")
+## TEST
+## TEMP_FILE = system.getenv_value("TEMP_FILE", None,
+##                                 "Override for temporary filename")
+TEMP_FILE = gh.TEMP_FILE
+KEEP_TEMP_FILES = system.getenv_bool("KEEP_TEMP_FILES", debug.detailed_debugging(),
+                                     "Retain temporary files")
 
 #-------------------------------------------------------------------------------
 
@@ -235,12 +247,11 @@ class Main(object):
                     "delete": not debug.detailed_debugging(),
                     ## TODO: "suffix": "-"
                     }
-        self.temp_base = system.getenv_text("TEMP_BASE",
-                                            tempfile.NamedTemporaryFile(**ntf_args).name)
+        self.temp_base = (TEMP_BASE or tempfile.NamedTemporaryFile(**ntf_args).name)
         # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
         # -or-: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
         if use_temp_base_dir is None:
-            use_temp_base_dir = system.getenv_bool("USE_TEMP_BASE_DIR", False)
+            use_temp_base_dir = USE_TEMP_BASE_DIR
         self.use_temp_base_dir = use_temp_base_dir
         if self.use_temp_base_dir:
             ## TODO: gh.full_mkdir
@@ -251,9 +262,8 @@ class Main(object):
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
             default_temp_file = self.temp_base
-        self.temp_file = system.getenv_text("TEMP_FILE", default_temp_file)
+        self.temp_file = (TEMP_FILE or default_temp_file)
 
-        # Get arguments from specified parameter or via command line
         # Note: --help assumed for input-less scripts with command line options
         # to avoid inadvertent script processing.
         #
@@ -859,10 +869,18 @@ class Main(object):
         """Removes temporary files, etc."""
         # note: not intended to be overridden
         tpo.debug_format("Main.clean_up(): self={s}", 5, s=self)
-        if not tpo.detailed_debugging():
+        if not KEEP_TEMP_FILES:
+            ## TODO2: 3=>6
+            debug.trace_fmt(3, "Deleting any temporary files: {files}",
+                            files=gh.run(f"echo {self.temp_base}* {self.temp_file}* | sort -u"))
+                                
+            # Remove all temp_base* files (or the temp_base directory)
             if self.use_temp_base_dir:
                 gh.run("rm -rvf {dir}", dir=self.temp_base)
             else:
+                gh.run("rm -vf {file}*", file=self.temp_base)
+            # Likewise remove all temp_file* files
+            if (self.temp_file != self.temp_base):
                 gh.run("rm -vf {file}*", file=self.temp_file)
         return
 
