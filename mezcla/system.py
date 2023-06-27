@@ -355,7 +355,11 @@ def get_current_function_name():
 
 def open_file(filename, encoding=None, errors=None, **kwargs):
     """Wrapper around around open() with FILENAME using UTF-8 encoding and ignoring ERRORS (both by default)
-    Note: mode is left at default (i.e., 'r')"""
+    Notes:
+    - mode is left at default (i.e., 'r')
+    - As with open(), result can be used in a with statement:
+        with system.open_file(filename) as f: ...
+    """
     # TODO: implement as with-style context
     if (encoding is None) and (kwargs.get("mode") != "rb"):
         encoding = "UTF-8"
@@ -542,11 +546,10 @@ def read_entire_file(filename, **kwargs):
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
-        with open_file(filename, encoding="UTF-8", **kwargs) as f:
+        ## TODO: with open_file(filename, **kwargs) as f:
+        with open(filename, encoding="UTF-8", **kwargs) as f:
             data = f.read()
-    except (AttributeError):
-        print_exception_info("read_entire_file/AttributeError")
-    except (IOError):
+    except (AttributeError, IOError):
         debug.trace_exception(1, "read_entire_file/IOError")
         report_errors = (kwargs.get("errors") != "ignore")
         if report_errors:
@@ -580,7 +583,7 @@ def read_binary_file(filename):
     try:
         with open(filename, mode="rb") as f:
             data = f.read()
-    except (IOError, ValueError):
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem reading file '{f}': {exc}",
                          f=filename, exc=get_exception())
     ## TODO: output hexdump excerpt (e.g., via https://pypi.org/project/hexdump)
@@ -638,7 +641,7 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
                     delim_spec = ("\\t" if (delim == "\t") else delim)
                     debug.trace_fmt(2, "Warning: Ignoring line {n} w/o delim ({d}): {l}", 
                                     n=line_num, d=delim_spec, l=line)
-    except (IOError, ValueError):
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmtd(1, "Error creating lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmtd(7, "read_lookup_table({f}) => {r}", f=filename, r=hash_table)
@@ -667,7 +670,7 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, **kwarg
                 if delim in key:
                     key = key.split(delim)[0]
                 lookup_hash[key] = True
-    except (IOError, ValueError, AttributeError):
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmtd(1, "Error: Creating boolean lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmt(7, "create_boolean_lookup_table => {h}", h=lookup_hash)
@@ -702,7 +705,7 @@ def write_file(filename, text, skip_newline=False, append=False, binary=False):
             if not text.endswith("\n"):
                 if not skip_newline:
                     f.write("\n")
-    except (IOError, ValueError):
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem writing file '{f}': {exc}",
                          f=filename, exc=get_exception())
     return
@@ -717,7 +720,7 @@ def write_binary_file(filename, data):
     try:
         with open(filename, mode="wb") as f:
             f.write(data)
-    except (IOError, ValueError):
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem writing file '{f}': {exc}",
                          f=filename, exc=get_exception())
     return
@@ -735,7 +738,7 @@ def write_lines(filename, text_lines, append=False):
             for line in text_lines:
                 line = to_utf8(line)
                 f.write(line + "\n")
-    except IOError:
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmt(2, "Warning: Exception writing file {f}: {e}",
                         f=filename, e=get_exception())
     finally:
