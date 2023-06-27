@@ -11,6 +11,9 @@
 # - For tips on parameter settings, see
 #   https://getimg.ai/guides/interactive-guide-to-stable-diffusion-guidance-scale-parameter
 #
+# TODO:
+# - Set GRADIO_SERVER_NAME to 0.0.0.0?
+#
 
 """Image generation via HF Stable Diffusion (SD) API"""
 
@@ -20,18 +23,13 @@ import json
 import time
 
 # Installed modules
-
-## OLD: from datasets import load_dataset
-## NOTE: slows down startup and not needed for client
-## OLD: from diffusers import StableDiffusionPipeline
-## OLD: import flask
+import diskcache
 from flask import Flask, request
 import PIL
 import requests
-## OLD: import torch
+import gradio as gr
 
 # Local modules
-
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
@@ -64,6 +62,8 @@ LOW_MEMORY = system.getenv_bool("LOW_MEMORY", False,
                                 "Use low memory computations such as via float16")
 DUMMY_RESULT = system.getenv_bool("DUMMY_RESULT", False,
                                   "Mock up SD server result")
+DISK_CACHE = system.getenv_value("SD_DISK_CACHE", None,
+                                 "Path to directory with disk cache")
 
 BATCH_ARG = "batch"
 SERVER_ARG = "server"
@@ -76,12 +76,11 @@ GUIDANCE_ARG = "guidance"
 # Conditional imports for HG/PyTorch
 torch = None
 load_dataset = None
-gr = None
 if USE_HF_API:
     # pylint: disable=import-outside-toplevel, import-error
-    import load_dataset
+    ## BAD: import load_dataset
+    from datasets import load_dataset
     import torch
-    import gradio as gr
 
 word_list = []
 if CHECK_UNSAFE:
@@ -127,6 +126,13 @@ class StableDiffusion:
             low_memory = LOW_MEMORY
         self.low_memory = low_memory
         self.pipe = None
+        self.cache = None
+        if DISK_CACHE:
+            self.cache = diskcache.Cache(
+                DISK_CACHE,                   # path to dir
+                disk=diskcache.core.JSONDisk, # avoid serialization issue
+                disk_compress_level=0,        # no compression
+                cull_limit=0)                 # no automatic pruning
         debug.assertion(bool(self.use_hf_api) != bool(self.server_url))
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
     
@@ -166,7 +172,22 @@ class StableDiffusion:
                 raise gr.Error("Unsafe content found. Please try again with different prompts.")
     
         images = []
-    
+        params = (prompt, negative_prompt, scale, num_images, skip_img_spec)
+
+        if self.cache:
+            images = self.cache.get(params)
+        if len(images) > 0:
+            debug.trace_fmt(6, "Using cached result (r={images})", r=images)
+        else:
+            result = self.infer_non_cached(prompt, negative_prompt, scale, num_images, skip_img_spec)
+            if self.cache:
+                self.cache.set(params, images)
+        return result
+            
+    def infer_non_cached(self, prompt, negative_prompt, scale, num_images, skip_img_spec):
+        """Non-cached version of infer"""
+        debug.trace(5, f"StableDiffusion.infer_non_cached{(prompt, negative_prompt, scale, num_images)}")
+        images = []
         if self.use_hf_api:
             ## HACK:
             if DUMMY_RESULT:
@@ -213,7 +234,7 @@ class StableDiffusion:
                     image_b64 = (f"data:image/png;base64,{image_b64}")
                 images.append(image_b64)
         result = images
-        debug.trace(5, f"infer() => {debug.format_value(result)}")
+        debug.trace_fmt(5, "infer() => {r}", r=result)
         
         return result
 
