@@ -45,7 +45,7 @@ NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
 GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
                                    "How much the image generation follows the prompt")
 SD_URL = system.getenv_value("SD_URL", None,
-                             "URL for SD TCP/restful server")
+                             "URL for SD TCP/restful serve--new via flask or remote")
 SD_PORT = system.getenv_int("SD_PORT", 9700,
                             "TCP port for SD server")
 SD_DEBUG = system.getenv_int("SD_DEBUG", False,
@@ -115,6 +115,7 @@ class StableDiffusion:
         if server_port is None:
             server_port = SD_PORT
         if self.server_url and not my_re.search(r"^https?", self.server_url):
+            # note: remote flask server (e.g., on GPU server)
             self.server_url = f"http://{self.server_url}"
             debug.trace(4, f"Added http protocol to URL: {self.server_url}")
         if self.server_url and not my_re.search(r":\d+", self.server_url):
@@ -174,15 +175,16 @@ class StableDiffusion:
         images = []
         params = (prompt, negative_prompt, scale, num_images, skip_img_spec)
 
-        if self.cache:
+        if self.cache is not None:
             images = self.cache.get(params)
-        if len(images) > 0:
+        if images and len(images) > 0:
             debug.trace_fmt(6, "Using cached result (r={images})", r=images)
         else:
-            result = self.infer_non_cached(prompt, negative_prompt, scale, num_images, skip_img_spec)
-            if self.cache:
+            images = self.infer_non_cached(prompt, negative_prompt, scale, num_images, skip_img_spec)
+            if self.cache is not None:
                 self.cache.set(params, images)
-        return result
+                debug.trace_fmt(6, "Setting cached result (r={images})", r=images)
+        return images
             
     def infer_non_cached(self, prompt, negative_prompt, scale, num_images, skip_img_spec):
         """Non-cached version of infer"""
@@ -192,7 +194,7 @@ class StableDiffusion:
             ## HACK:
             if DUMMY_RESULT:
                 result = ["iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAMzMzP////8AAABGA1scAAAAJUlEQVR4nGNgAAFGQUEowRoa6sCABBZowAgsgBEIGUQCRALAPACMHAOQvR4HGwAAAABJRU5ErkJggg=="]
-                debug.trace(5, f"early exit infer() => {result}")
+                debug.trace(5, f"early exit infer_non_cached() => {result}")
                 return result
 
             if not self.pipe:
@@ -234,7 +236,7 @@ class StableDiffusion:
                     image_b64 = (f"data:image/png;base64,{image_b64}")
                 images.append(image_b64)
         result = images
-        debug.trace_fmt(5, "infer() => {r}", r=result)
+        debug.trace_fmt(5, "infer_non_cached() => {r}", r=result)
         
         return result
 
@@ -263,7 +265,7 @@ def handle_infer():
     # note: see https://stackoverflow.com/questions/45412228/sending-json-and-status-code-with-a-flask-response
     result = (json.dumps(images_spec), 200)
     debug.trace_object(7, result)
-    debug.trace(7, f"handle_infer() => {result}")
+    debug.trace_fmt(7, f"handle_infer() => {r}", r=result)
     return result
 
 
@@ -499,6 +501,7 @@ def run_ui():
         )
         with gr.Group():
             with gr.Box():
+                ## TODO: drop 'rounded', border, margin, and other options no longer supported (see log)
                 with gr.Row(elem_id="prompt-container").style(mobile_collapse=False, equal_height=True):
                     with gr.Column():
                         prompt_control = gr.Textbox(
@@ -636,6 +639,7 @@ def main():
         print(f"See {file_spec} for output image(s).")
     elif server_mode:
         debug.assertion(SD_URL)
+        debug.assertion(not sd_instance.server_url)
         debug.trace_object(5, flask_app)
         flask_app.run(host=SD_URL, port=SD_PORT, debug=SD_DEBUG)
     else:
