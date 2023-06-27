@@ -251,7 +251,8 @@ if __debug__:
                     ## TODO: assertion(re.search(r"{\S*}", text))
                     ## OLD: assertion("{" in text)
                     ## OLD: trace(level, text.format(**kwargs))
-                    kwargs_unicode = {k: _to_unicode(_to_string(v)) for (k, v) in list(kwargs.items())}
+                    ## OLD: kwargs_unicode = {k: _to_unicode(_to_string(v)) for (k, v) in list(kwargs.items())}
+                    kwargs_unicode = {k: format_value(_to_unicode(_to_string(v))) for (k, v) in list(kwargs.items())}
                     trace(level, _to_unicode(text).format(**kwargs_unicode))
                 except(KeyError, ValueError, UnicodeEncodeError):
                     raise_exception(max(VERBOSE, level + 1))
@@ -347,7 +348,8 @@ if __debug__:
             include_member = (show_all or (not (member.startswith("__") or 
                                                 re.search(r"^<.*(method|module|function).*>$", value_spec))))
             # Optionally, process recursively (TODO: make INDENT an env. option)
-            if ((max_depth > 0) and include_member and (not isinstance(value, SIMPLE_TYPES))):
+            is_simple_type = isinstance(value, SIMPLE_TYPES)
+            if ((max_depth > 0) and include_member and (not is_simple_type)):
                 # TODO: add helper for formatting type & address (for use here and above)
                 member_type_id_label = (member + " [" + str(type(value)) + " " + hex(id(value)) + "]")
                 trace_object(level, value, label=member_type_id_label, show_all=show_all,
@@ -359,7 +361,11 @@ if __debug__:
             ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
             try:
                 try:
-                    value_spec = format_value("%s" % ((value),), max_len=max_value_len)
+                    ## OLD: value_spec = format_value("%r" % ((value),), max_len=max_value_len)
+                    if is_simple_type and not isinstance(value, str):
+                        value_spec = value
+                    else:
+                        value_spec = format_value("%r" % ((value),), max_len=max_value_len)
                 except(TypeError, ValueError):
                     trace_fmtd(QUITE_VERBOSE, "Warning: Problem in tracing member {m}: {exc}",
                                m=member, exc=sys.exc_info())
@@ -910,6 +916,7 @@ CLIPPED_MAX = 132
 #
 def clip_value(value, max_len=CLIPPED_MAX):
     """Return clipped version of VALUE (e.g., first MAX_LEN chars)"""
+    # TODO3: replace with format_value
     # TODO: omit conversion to text if already text [DUH!]
     clipped = "%s" % value
     if (len(clipped) > max_len):
