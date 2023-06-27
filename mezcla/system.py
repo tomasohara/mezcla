@@ -17,6 +17,10 @@
 #   ex: def fu(): r = sys.fu(); trace(N, f"fub() returned {r}"); return r
 #       => fu = define_wrapper(trace_level=N, sys.fu)
 #
+# TODO2:
+# - convert additional open() calls to open_file()
+# - drop python 2 support
+#
 
 """System-related functions"""
 
@@ -27,13 +31,11 @@ import inspect
 import os
 import pickle
 import re
-import six
 import sys
 import time
-## OLD: import urllib
 
 # Installed packages
-## OLD: import requests
+import six
 
 # Local packages
 from mezcla import debug
@@ -65,12 +67,10 @@ def register_env_option(var, description, default):
     """Register environment VAR as option with DESCRIPTION and DEFAULT"""
     # Note: The default value is typically the default value passes into the
     # getenv_xyz call, not the current value from the environment.
-    ## OLD: debug.trace_fmt(7, "register_env_option({v}, {d})", v=var, d=description)
     debug.trace_fmt(7, "register_env_option({v}, {dsc}, {dft})",
                     v=var, dsc=description, dft=default)
     global env_options
     global env_defaults
-    ## OLD: env_options[var] = (description or "")
     env_options[var] = description
     env_defaults[var] = default
     return
@@ -78,7 +78,6 @@ def register_env_option(var, description, default):
 
 def get_registered_env_options():
     """Returns list of environment options registered via register_env_option"""
-    ## OLD: option_names = [k for k in env_options if (env_options[k] and env_options[k].strip())]
     ## TEMP
     # pylint: disable=consider-using-dict-items
     option_names = [k for k in env_options if (env_options[k] is not None)]
@@ -105,7 +104,6 @@ def get_environment_option_descriptions(include_all=None, include_default=None, 
     def _format_env_option(opt):
         """Returns OPT description and optionally default value (if INCLUDE_DEFAULT)"""
         debug.trace_fmt(7, "_format_env_option({o})", o=opt)
-        ## OLD: desc_spec = env_options.get(opt, "_")
         ## TEST: Uses unicode O-with-stoke (U+00D8) to indicate n/a
         ## TEMP: desc_spec = to_text(env_options.get(opt))
         env_desc = env_options.get(opt)
@@ -163,7 +161,6 @@ def getenv_text(var, default=None, description=None, helper=False):
         debug.trace(4, f"Warning: getenv_text treats default None as ''; consider using getenv_value for '{var}' instead")
         default = ""
     text_value = os.getenv(var)
-    ## OLD: if not text_value:
     ## TODO?: if ((not helper and (text_value is None)) or (not text_value)):
     if (text_value is None):
         debug.trace_fmtd(6, "getenv_text: no value for var {v}", v=var)
@@ -360,7 +357,6 @@ def open_file(filename, encoding=None, errors=None, **kwargs):
     """Wrapper around around open() with FILENAME using UTF-8 encoding and ignoring ERRORS (both by default)
     Note: mode is left at default (i.e., 'r')"""
     # TODO: implement as with-style context
-    ## OLD: if encoding is None:
     if (encoding is None) and (kwargs.get("mode") != "rb"):
         encoding = "UTF-8"
     if (encoding and (errors is None)):
@@ -397,7 +393,6 @@ def load_object(file_name, ignore_error=False):
     obj = None
     try:
         with open(file_name, mode='rb') as f:
-            ## OLD: obj = pickle.load(f)
             try:
                 obj = pickle.load(f)
             except (UnicodeDecodeError):
@@ -422,7 +417,6 @@ def quote_url_text(text, unquote=False):
     result = text
     quote = (not unquote)
     try:
-        ## BAD: if not re.search("%[0-9A-F]{2}", text):
         proceed = True
         if proceed:
             # pylint: disable=no-member
@@ -548,14 +542,15 @@ def read_entire_file(filename, **kwargs):
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
-        ## OLD: with open(filename) as f:
-        with open_file(filename, **kwargs) as f:
-            data = from_utf8(f.read())
-    ## OLD except IOError:
-    except (AttributeError, IOError):
-        # TODO: use print_stderr so that shown in optimized version
-        Level = 4 if (kwargs.get("errors") == "ignore") else 1
-        debug.trace_fmtd(Level, "Error: Unable to read file '{f}': {exc}",
+        with open_file(filename, encoding="UTF-8", **kwargs) as f:
+            data = f.read()
+    except (AttributeError):
+        print_exception_info("read_entire_file/AttributeError")
+    except (IOError):
+        debug.trace_exception(1, "read_entire_file/IOError")
+        report_errors = (kwargs.get("errors") != "ignore")
+        if report_errors:
+            print_stderr("Error: Unable to read file '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmtd(8, "read_entire_file({f}) => {r}", f=filename, r=data)
     return data
@@ -624,18 +619,15 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
                     f=filename, sh=skip_header, d=delim, rc=retain_case)
     if delim is None:
         delim = "\t"
-    ## OLD: hash_table = {}
     hash_table = defaultdict(str)
     line_num = 0
     try:
         # TODO: use csv.reader
-        with open(filename, encoding="UTF-8") as f:
+        with open_file(filename) as f:
             for line in f:
                 line_num += 1
                 if (skip_header and (line_num == 1)):
                     continue
-                ## OLD: line = from_utf8(line)
-                ## OLD: line = from_utf8(line.rstrip())
                 line = from_utf8(line.rstrip("\n"))
                 if not retain_case:
                     line = line.lower()
@@ -667,14 +659,11 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, **kwarg
                     f=filename, rc=retain_case)
     lookup_hash = defaultdict(bool)
     try:
-        ## with open(filename) as f:
         with open_file(filename, **kwargs) as f:
             for line in f:
-                ## OLD: key = line.strip().lower()
                 key = line.strip()
                 if not retain_case:
                     key = key.lower()
-                ## OLD: debug.assertion(delim not in key)
                 if delim in key:
                     key = key.split(delim)[0]
                 lookup_hash[key] = True
@@ -706,8 +695,7 @@ def write_file(filename, text, skip_newline=False, append=False, binary=False):
     try:
         if not isinstance(text, STRING_TYPES):
             text = to_string(text)
-        ## OLD: mode = 'a' if append else 'w'
-        debug.assertion(not binary and append)
+        debug.assertion(not (binary and append))
         mode = "wb" if binary else "a" if append else "w"
         with open(filename, encoding="UTF-8", mode=mode) as f:
             f.write(to_utf8(text))
@@ -743,7 +731,6 @@ def write_lines(filename, text_lines, append=False):
     f = None
     try:
         mode = 'a' if append else 'w'
-        ## OLD f = open(filename, mode)
         with open(filename, encoding="UTF-8", mode=mode) as f:
             for line in text_lines:
                 line = to_utf8(line)
@@ -932,7 +919,6 @@ def from_unicode(text, encoding=None):
 
 
 def to_string(text):
-    ## OLD: """Ensure TEXT is a string type
     """Ensure VALUE is a string type
     Note: under Python 2, result is str or Unicode; but for Python 3+, it is always str"""
     # EX: to_string(123) => "123"
@@ -1086,7 +1072,6 @@ def just_one_true(in_list, strict=False):
     # Note: Consider using misc_utils.just1 (based on more_itertools.exactly_n)
     # TODO: Trap exceptions (e.g., string input)
     min_count = 1 if strict else 0
-    ## OLD: is_true = (1 == sum([int(bool(b)) for b in in_list]))         # pylint: disable=misplaced-comparison-constant
     is_true = (min_count <= sum([int(bool(b)) for b in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
     debug.trace_fmt(6, "just_one_true({l}) => {r}", l=in_list, r=is_true)
     return is_true
@@ -1125,14 +1110,11 @@ def to_float(text, default_value=0.0):
 safe_float = to_float
 
 
-## OLD: def to_int(text, default_value=0):
 def to_int(text, default_value=0, base=None):
-    ## OLD: """Interpret TEXT as integer, using DEFAULT_VALUE"""
     """Interpret TEXT as integer with optional DEFAULT_VALUE and BASE"""
     # TODO: use generic to_num with argument specifying type
     result = default_value
     try:
-        ## OLD: result = int(text)
         result = int(text, base) if (base and isinstance(text, str)) else int(text)
     except (TypeError, ValueError):
         debug.trace_fmtd(6, "Exception in to_int: {exc}", exc=get_exception())
@@ -1164,7 +1146,6 @@ PRECISION = getenv_int("PRECISION", 6,
 #
 def round_num(value, precision=None):
     """Round VALUE [to PRECISION places, 6 by default]"""
-    ## BAD: """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
     # EX: round_num(3.15914, 3) => 3.159
     if precision is None:
         precision = PRECISION
