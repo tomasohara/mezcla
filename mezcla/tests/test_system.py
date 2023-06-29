@@ -819,7 +819,8 @@ class TestSystem:
         """Ensure main works as expected"""
         THE_MODULE.main('some-arg')
         captured = capsys.readouterr()
-        assert "Not intended for direct invocation" in captured.err
+        # ex: Warning, tomohara: system.py not intended for direct invocation!
+        assert "not intended" in captured.err.lower()
 
 
 def set_test_env_var():
