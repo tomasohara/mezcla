@@ -78,7 +78,6 @@ torch = None
 load_dataset = None
 if USE_HF_API:
     # pylint: disable=import-outside-toplevel, import-error
-    ## BAD: import load_dataset
     from datasets import load_dataset
     import torch
 
@@ -105,7 +104,7 @@ class StableDiffusion:
     """Class providing Stable Diffusion generative AI (e.g., text-to-image)"""
 
     def __init__(self, use_hf_api=None, server_url=None, server_port=None, low_memory=None):
-        debug.trace(4, f"__init__{(use_hf_api, server_url, server_port)}")
+        debug.trace(4, f"{self.__class__.__name__}.__init__{(use_hf_api, server_url, server_port)}")
         if use_hf_api is None:
             use_hf_api = USE_HF_API
         self.use_hf_api = use_hf_api
@@ -162,8 +161,7 @@ class StableDiffusion:
         Returns list of NUM image specifications in base64 format (e.g., for use in HTML)
         Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag
         """
-        ## TODO: def infer(prompt, negative_prompt, scale) -> List(PIL.Image.Image):
-        debug.trace(4, f"StableDiffusion.infer{(prompt, negative_prompt, scale, num_images)}")
+        debug.trace(4, f"{self.__class__.__name__}.infer{(prompt, negative_prompt, scale, num_images)}")
         if num_images is None:
             num_images = NUM_IMAGES
         if scale is None:
@@ -178,7 +176,7 @@ class StableDiffusion:
         if self.cache is not None:
             images = self.cache.get(params)
         if images and len(images) > 0:
-            debug.trace_fmt(6, "Using cached result (r={images})", r=images)
+            debug.trace_fmt(6, "Using cached result ({r})", r=images)
         else:
             images = self.infer_non_cached(prompt, negative_prompt, scale, num_images, skip_img_spec)
             if self.cache is not None:
@@ -188,10 +186,9 @@ class StableDiffusion:
             
     def infer_non_cached(self, prompt, negative_prompt, scale, num_images, skip_img_spec):
         """Non-cached version of infer"""
-        debug.trace(5, f"StableDiffusion.infer_non_cached{(prompt, negative_prompt, scale, num_images)}")
+        debug.trace(5, f"{self.__class__.__name__}.infer_non_cached{(prompt, negative_prompt, scale, num_images)}")
         images = []
         if self.use_hf_api:
-            ## HACK:
             if DUMMY_RESULT:
                 result = ["iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAMzMzP////8AAABGA1scAAAAJUlEQVR4nGNgAAFGQUEowRoa6sCABBZowAgsgBEIGUQCRALAPACMHAOQvR4HGwAAAABJRU5ErkJggg=="]
                 debug.trace(5, f"early exit infer_non_cached() => {result}")
@@ -246,26 +243,16 @@ class StableDiffusion:
 @flask_app.route('/', methods=['GET', 'POST'])
 def handle_infer():
     """Process request to do inference to generate image from text"""
-    debug.trace(6, "handle_infer()")
+    debug.trace(6, "[flask_app /] handle_infer()")
     # TODO3: request => flask_request
     debug.trace_object(5, request)
-    ## OLD:
-    ## params = {
-    ##     'prompt': request.values.get('prompt'),
-    ##     'negative_prompt': request.values.get('negative_prompt'),
-    ##     'scale': request.values.get('guidance_scale'),
-    ## }
-    ## params = flask.Request.get_json()
     params = request.get_json()
     debug.trace_expr(5, params)
     images_spec = {"images": sd_instance.infer(**params)}
-    ## OLD: return flask.Response(status=200, mimetype='application/json', response=json.dumps(images_spec))
-    ## BAD: result = flask.Response(status=200, mimetype='application/json', response=images_spec)
-    ## TEST: result = (images_spec, 200)
     # note: see https://stackoverflow.com/questions/45412228/sending-json-and-status-code-with-a-flask-response
     result = (json.dumps(images_spec), 200)
     debug.trace_object(7, result)
-    debug.trace_fmt(7, f"handle_infer() => {r}", r=result)
+    debug.trace_fmt(7, "handle_infer() => {r}", r=result)
     return result
 
 
@@ -273,7 +260,7 @@ def infer(prompt=None, negative_prompt=None, scale=None, num_images=None, skip_i
     """Wrapper around StableDiffusion.infer()
     Note: intended just for the gradio UI"
     """
-    debug.trace(6, f"infer{(prompt, negative_prompt, scale, skip_img_spec)}")
+    debug.trace(6, f"[sd_instance] infer{(prompt, negative_prompt, scale, skip_img_spec)}")
     return sd_instance.infer(prompt=prompt, negative_prompt=negative_prompt, scale=scale, num_images=num_images, skip_img_spec=skip_img_spec)
 
 #-------------------------------------------------------------------------------
@@ -645,7 +632,6 @@ def main():
     else:
         debug.assertion(ui_mode)
         run_ui()
-    ## OLD: show_gpu_usage()
 
 
 if __name__ == '__main__':
