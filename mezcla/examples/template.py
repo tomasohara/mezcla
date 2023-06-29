@@ -61,5 +61,5 @@ def main():
 #-------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    debug.trace_current_context(level=TL.QUITE_DETAILED)
+    debug.trace_current_context(level=TL.QUITE_VERBOSE)
     main()
