@@ -98,7 +98,7 @@ class TestIt2:
         debug.trace(4, f"TestIt2.test_something_else(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True, low_memory=True)
         images = sd.infer(prompt="a ripe orange", scale=30)
-        image_data = (base64.decodebytes(images[0].encode())).decode()
+        image_data = (base64.decodebytes(images[0].encode()))
         ## OLD: image_path = gh.create_temp_file(image_data)
         image_path = gh.create_temp_file(image_data, binary=True)
         # note: use of rgb_color_name.py allows for fudge factor
