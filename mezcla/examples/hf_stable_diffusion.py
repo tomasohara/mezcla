@@ -211,6 +211,7 @@ class StableDiffusion:
                     image_path = f"{BASENAME}-{i + 1}.png"
                     image.save(image_path)
                     num_generated += 1
+                    # note: "decodes" base-64 encoded bytes object into UTF-8 string
                     b64_encoding = (base64.b64encode(system.read_binary_file(image_path))).decode()
                 except:
                     system.print_exception_info("image-to-base64")
@@ -619,6 +620,7 @@ def main():
     if batch_mode:
         images = infer(prompt, negative_prompt, guidance, skip_img_spec=True)
         for i, image_encoding in enumerate(images):
+            # note: "encodes" UTF-8 text of base-64 encoding as bytes object for str, and then decodes into image bytes
             image_data = base64.decodebytes(image_encoding.encode())
             system.write_binary_file(f"{BASENAME}-{i + 1}.png", image_data)
         # TODO2: get list of files via infer()
