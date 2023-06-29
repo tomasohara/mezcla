@@ -1015,7 +1015,7 @@ if __debug__:
         # note: shows command invocation unless invoked via "python -c ..."
         command_line = " ".join(sys.argv)
         assertion(command_line)
-        if (command_line and (command_line != "-c")):
+        if (command_line and (command_line != "-c") and (command_line != "-m")):
             trace(USUAL, command_line)
         trace_expr(DETAILED, sys.argv)
         open_debug_file()
@@ -1059,7 +1059,7 @@ if __debug__:
 
         # Likewise show additional information during verbose debug tracing
         # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
-        trace_expr(VERBOSE, globals(), max_len=65536)
+        trace_expr(MOST_DETAILED, globals(), max_len=65536)
 
         # Register to show shuttdown time and elapsed seconds
         # TODO: rename to reflect generic-exit nature
@@ -1093,6 +1093,8 @@ if __debug__:
 
 #-------------------------------------------------------------------------------
 
+trace_expr(MOST_VERBOSE, 888)
+#
 if __name__ == '__main__':
     main(sys.argv)
 else:
