@@ -9,12 +9,12 @@
 
 """Run JavaScript embedded in <script> tags through lint-style code checkers"""
 
-# Standard packages
+# Standard modules
 from collections import defaultdict
 import re
 import tempfile
 
-# Local packages
+# Local modules
 # TODO: def tomas_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
 from mezcla import debug
 from mezcla import glue_helpers as gh
@@ -39,8 +39,12 @@ DEFAULT_TEMP_BASE = tempfile.NamedTemporaryFile(prefix=TEMP_PREFIX, suffix=TEMP_
 TEMP_BASE = system.getenv_text("TEMP_BASE", DEFAULT_TEMP_BASE,
                                "Basename with directory for temporary files")
 #
+MAX_ERRORS = system.getenv_int("MAX_ERRORS", 10000,
+                               "Maxmium number of erros to report")
+#
+# note: see DEFAULT_JAVASCRIPT_HEADER below for other options
 JSLINT = "jslint"
-JSLINT_OPTIONS = system.getenv_text("JSLINT_OPTIONS", "--maxerr 10000 --white",
+JSLINT_OPTIONS = system.getenv_text("JSLINT_OPTIONS", f"--maxerr {MAX_ERRORS} --white",
                                     "Options for jslint")
 JSHINT = "jshint"
 JSHINT_OPTIONS = system.getenv_text("JSHINT_OPTIONS", "--show-non-errors",
@@ -53,9 +57,9 @@ SAFEMODE_HEADER = """
 """
 
 # TODO: use separate headers for jslint and jshint
-DEFAULT_JAVASCRIPT_HEADER = """
+DEFAULT_JAVASCRIPT_HEADER = f"""
 // Start of added header (JavaScript and jQuery definitions)
-function $(selector, context) { selector = context; }
+function $(selector, context) {{ selector = context; }}
 var document;
 var window;
 var jQuery;
@@ -66,8 +70,13 @@ var jQuery;
 //    jslint devel          // Allow console.log() and friends.
 //    jslint long           // Allow long lines.
 //    jslint white          // Allow messy whitespace.
+
+// Stuff for jshint:
+//    jshint maxerr: {MAX_ERRORS}
+
 // End of added header
 """
+# TODO3: add pointer to definition (e.g., https://www.jslint.com)
 
 class Script(Main):
     """Input processing class"""
