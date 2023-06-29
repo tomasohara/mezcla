@@ -94,18 +94,19 @@ class TestIt2:
     @pytest.mark.xfail                   # TODO: remove xfail
     @pytest.mark.skipif(not extcolors, reason="extcolors package missing")
     def test_something_else(self):
-        """TODO: flesh out test for something else"""
+        """Make sure prompted color is used"""
         debug.trace(4, f"TestIt2.test_something_else(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True, low_memory=True)
         images = sd.infer(prompt="a ripe orange", scale=30)
+        # note: encodes image base-64 str data into bytes and then decodes into image bytes
         image_data = (base64.decodebytes(images[0].encode()))
-        ## OLD: image_path = gh.create_temp_file(image_data)
         image_path = gh.create_temp_file(image_data, binary=True)
         # note: use of rgb_color_name.py allows for fudge factor
         # $ extcolors sd-app-image-1.png | rgb_color_name.py - | grep orange
         # <(255, 92, 0), orangered>   :  47.07% (123388)
         # <(255, 153, 0), orange>  :   6.13% (16074)
-        output = gh.run(f"extcolors '{image_path}' | rgb_color_name.py -")
+        output = gh.run(f"extcolors '{image_path}' | rgb_color_name.py - 2> /dev/null")
+        debug.trace_expr(4, output)
         assert ("orange" in output)
         assert (len(images) == 1)
         return
