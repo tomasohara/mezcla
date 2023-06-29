@@ -129,8 +129,10 @@ SHORT_OPTIONS = system.getenv_bool("SHORT_OPTIONS", False,
 ## TEMP_BASE = system.getenv_value("TEMP_BASE", None,
 ##                                 "Override for temporary file basename")
 TEMP_BASE = gh.TEMP_BASE
-USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", False,
-                                       "Whether TEMP_BASE should be a dir instead of prefix")
+## OLD:
+## USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", False,
+##                                        "Whether TEMP_BASE should be a dir instead of prefix")
+USE_TEMP_BASE_DIR = gh.USE_TEMP_BASE_DIR
 ## TEST
 ## TEMP_FILE = system.getenv_value("TEMP_FILE", None,
 ##                                 "Override for temporary filename")
