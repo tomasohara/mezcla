@@ -291,6 +291,7 @@ def print_exception_info(task, show_stack=None):
 def exit(message=None, **namespace):    # pylint: disable=redefined-builtin
     """Display error MESSAGE to stderr and then exit, using optional
     NAMESPACE for format"""
+    # EX: exit("Error: {reason}!", reason="Whatever")
     debug.trace(6, f"system.exit{(message, namespace)})")
     if namespace:
         message = message.format(**namespace)
@@ -356,7 +357,7 @@ def get_current_function_name():
 def open_file(filename, encoding=None, errors=None, **kwargs):
     """Wrapper around around open() with FILENAME using UTF-8 encoding and ignoring ERRORS (both by default)
     Notes:
-    - mode is left at default (i.e., 'r')
+    - The mode is left at default (i.e., 'r')
     - As with open(), result can be used in a with statement:
         with system.open_file(filename) as f: ...
     """
@@ -765,6 +766,18 @@ def get_file_modification_time(filename, as_float=False):
             mod_time = str(datetime.datetime.fromtimestamp(mod_time))
     debug.trace_fmtd(5, "get_file_modification_time({f}) => {t}", f=filename, t=mod_time)
     return mod_time
+
+
+def filename_proper(path):
+    """Return PATH sans directories"""
+    # EX: filename_proper("/tmp/document.pdf") => "document.pdf")
+    # EX: filename_proper("/tmp") => "tmp")
+    # EX: filename_proper("/") => "/")
+    (directory, filename) = os.path.split(path)
+    if not filename:
+        filename = directory
+    debug.trace(6, f"filename_proper({path}) => {filename}")
+    return filename
 
 
 def remove_extension(filename, extension=None):
@@ -1181,7 +1194,7 @@ def current_time(integral=False):
     secs = time.time()
     if integral:
         secs = int(round_num(secs, precision=0))
-    debug.trace(5, f"current_time([integral={integral}]) => {secs}")
+    debug.trace(7, f"current_time([integral={integral}]) => {secs}")
     return secs
 
 
@@ -1228,10 +1241,12 @@ init()
 def main(args):
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
-    user = getenv_text("USER")
-    print_stderr("Warning, {u}: Not intended for direct invocation".format(u=user))
+    user = getenv_text("USER", "user")
+    print_stderr("Warning, {u}: {f} not intended for direct invocation!".
+                 format(u=user, f=filename_proper(__file__)))
     debug.trace_fmt(4, "FYI: maximum integer is {maxi}", maxi=maxint())
     return
+
 
 if __name__ == '__main__':
     main(get_args())
