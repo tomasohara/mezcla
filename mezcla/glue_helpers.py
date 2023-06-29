@@ -62,9 +62,15 @@ NTF_ARGS = {'prefix': TEMP_PREFIX,
             'delete': not debug.detailed_debugging(),
             ## TODO: 'suffix': "-"
             }
+USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", False,
+                                       "Whether TEMP_BASE should be a dir instead of prefix")
 TEMP_BASE = system.getenv_value("TEMP_BASE", None,
                                 "Override for temporary file basename")
-TEMP_FILE = system.getenv_value("TEMP_FILE", None,
+TEMP_FILE_DEFAULT = None
+if TEMP_BASE:
+    TEMP_FILENAME = "temp-file.list"
+    TEMP_FILE_DEFAULT = (gh.form_path(TEMP_BASE, TEMP_FILENAME) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{TEMP_FILENAME}")
+TEMP_FILE = system.getenv_value("TEMP_FILE", TEMP_FILE_DEFAULT,
                                 "Override for temporary filename")
 
 
