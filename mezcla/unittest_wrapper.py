@@ -161,6 +161,7 @@ class TestWrapper(unittest.TestCase):
         Note: used as follows (see tests/test_template.py):
             script_module = TestWrapper.get_testing_module_name(__file__)
         """
+        # Note: Used to resolve module name given THE_MODULE (see template).
         module_name = os.path.split(test_filename)[-1]
         module_name = re.sub(r".py[oc]?$", "", module_name)
         module_name = re.sub(r"^test_", "", module_name)
