@@ -67,7 +67,7 @@ def main():
     debug_print("args = %s" % args, 5)
     input_file = sys.stdin
     if (args['filename'] != "-"):
-        input_file = open(args['filename'])
+        input_file = system.open_file(args['filename'])
     verbose_output = args['verbose'] or INCLUDE_CONTEXT
     save_mapping = args['save']
 

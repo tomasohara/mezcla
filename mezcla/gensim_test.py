@@ -33,9 +33,9 @@ import tempfile
 from gensim import corpora, models, similarities
 
 # Local packages
-import mezcla.system as system
+from mezcla import system
 import mezcla.tpo_common as tpo
-import mezcla.debug as debug
+from mezcla import debug
 import mezcla.glue_helpers as gh
 
 # Environment options
@@ -405,7 +405,7 @@ def create_ordered_lookup_table(filename):
     lookup_hash = OrderedDict()
     f = None
     try:
-        f = open(filename)
+        f = system.open_file(filename)
         line_num = 0
         for line in f:
             lookup_hash[str(line_num)] = line.strip()

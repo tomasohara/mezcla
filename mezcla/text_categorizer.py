@@ -161,7 +161,7 @@ def sklearn_report(actual, predicted, actual_labels, predicted_labels, stream=sy
 def create_tabular_file(filename, data):
     """Create tabular FILENAME with SkLearn DATA for use with read_categorization_data"""
     # Note: intended for comparing results here against tutorial (e.g., in ipython shell)
-    with open(filename, "w") as f:
+    with system.open_file(filename, "w") as f:
         for i in range(len(data.data)):
             text = system.to_utf8(re.sub("[\t\n]", " ", data.data[i]))
             f.write("{lbl}\t{txt}\n".format(lbl=data.target_names[data.target[i]], txt=text))
@@ -174,8 +174,7 @@ def read_categorization_data(filename):
     debug.trace_fmtd(4, "read_categorization_data({f})", f=filename)
     labels = []
     values = []
-    # TODO: rework via system.open_file
-    with open(filename) as f:
+    with system.open_file(filename) as f:
         for (i, line) in enumerate(f):
             line = system.from_utf8(line)
             items = line.split("\t")
@@ -226,6 +225,7 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
 
     def _get_param_names(self):
         """Get parameter names for the estimator"""
+        # TODO: drop method
         # Note: This is not class method as in BaseEstimator.
         # pylint: disable=protected-access
         return self.classifier._get_param_names()
@@ -486,7 +486,7 @@ class TextCategorizer(object):
                     text = values[i]
                     context = (text[:CONTEXT_LEN] + "...\n") if (len(text) > CONTEXT_LEN) else text
                     # TODO: why is pylint flagging the format string as invalid?
-                    bad_instances += u"{g}\t{b}\t{t}".format(
+                    bad_instances += "{g}\t{b}\t{t}\n".format(
                         g=self.keys[actual_indices[i]],
                         b=self.keys[predicted_indices[i]],
                         t=context)
