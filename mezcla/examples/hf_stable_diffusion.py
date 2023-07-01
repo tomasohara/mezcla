@@ -161,7 +161,8 @@ class StableDiffusion:
         Returns list of NUM image specifications in base64 format (e.g., for use in HTML)
         Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag
         """
-        debug.trace(4, f"{self.__class__.__name__}.infer{(prompt, negative_prompt, scale, num_images)}")
+        ## OLD: debug.trace(4, f"{self.__class__.__name__}.infer{(prompt, negative_prompt, scale, num_images)}")
+        debug.trace_expr(4, prompt, negative_prompt, scale, num_images, skip_img_spec, prefix=f"in {self.__class__.__name__}.infer:\n\t", delim="\n\t", max_len=132)
         if num_images is None:
             num_images = NUM_IMAGES
         if scale is None:
@@ -176,7 +177,10 @@ class StableDiffusion:
         if self.cache is not None:
             images = self.cache.get(params)
         if images and len(images) > 0:
-            debug.trace_fmt(6, "Using cached result ({r})", r=images)
+            ## TEST:
+            ## debug.trace_fmt(6, "Using cached result for params {p}: ({r})",
+            ##                 p=params, r=images)
+            debug.trace_fmt(5, "Using cached infer result: ({r})", r=images)
         else:
             images = self.infer_non_cached(prompt, negative_prompt, scale, num_images, skip_img_spec)
             if self.cache is not None:
