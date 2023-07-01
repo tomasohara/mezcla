@@ -28,6 +28,7 @@ import pytest
 ## TODO: make sure atexit support disabled unless explcitly requested
 ##   import os; os.environ["SKIP_ATEXIT"] = os.environ.get("SKIP_ATEXIT", "1")
 from mezcla import debug
+from mezcla.my_regex import my_re
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -147,11 +148,25 @@ class TestDebug:
         captured = capsys.readouterr()
         assert 'Person("Kiran")' in captured.err
 
-    def test_trace_expr(self):
-        """Ensure trace_expr works as expected"""
-        debug.trace(4, f"test_trace_expr(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+    def test_trace_expr(self, capsys):
+        """Make sure trace_expr shows 'expr1=value1; expr2=value2'"""
+        var1 = 3
+        var2 = 6
+        THE_MODULE.trace_expr(debug.get_level(), var1, var2)
+        captured = capsys.readouterr()
+        assert "var1=3;var2=6" in my_re.sub(r"\s+", "", captured.err)
 
+    @pytest.mark.xfail
+    def test_trace_expr_expression(self, capsys):
+        """Make sure trace_expr expression resolved when split across lines"""
+        var1 = 3
+        var2 = 6
+        THE_MODULE.trace_expr(debug.get_level(),
+                              var1,
+                              var2)
+        captured = capsys.readouterr()
+        assert "var1=3.*var2=6" in my_re.sub(r"\s+", "", captured.err)
+        
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
@@ -179,6 +194,16 @@ class TestDebug:
         captured = capsys.readouterr()
         assert "failed" in captured.err
         assert "(2 + 2) == 5" in captured.err
+
+    @pytest.mark.xfail
+    def test_assertion_expression(self, capsys):
+        """Make sure assertion expression split across lines resolved"""
+        debug.trace(4, f"test_assertion_expression(): self={self}")
+        THE_MODULE.assertion(2 +
+                             2 ==
+                             5)
+        captured = capsys.readouterr()
+        assert "2+2==5" in my_re.sub(r"\s+", "", captured.err)
 
     def test_val(self):
         """Ensure val works as expected"""
