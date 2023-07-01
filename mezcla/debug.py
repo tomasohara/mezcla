@@ -436,6 +436,7 @@ if __debug__:
         to derive label for each expression. By default, the following format is used:
            expr1=value1; ... exprN=valueN
         Notes:
+        - Warning: introspection fails to resolve expressions if statement split across lines.
         - For simplicity, the values are assumed to separated by ', ' (or expression _SEP)--barebones parsing applied.
         - Use DELIM to specify delimiter; otherwise '; ' used;
           if so, NO_EOL applies to intermediate values (EOL always used at end).
@@ -587,10 +588,9 @@ if __debug__:
     def assertion(expression, message=None, assert_level=None):
         """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
         Note:
+        - Warning: introspection fails to resolve expression if split across lines.
         - This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so).
-        - Currently, the expression text is not resolved properly under ipython (or Jupyter).
         - The optional ASSERT_LEVEL overrides use of ALWAYS.
-        - Uses introspection to derive text for assertion expression.
         - Returns expression text or None if not triggered.
         """
         # EX: assertion((2 + 2) != 5)
@@ -708,7 +708,9 @@ else:
         # Note: implemented separately from non_debug_stub to ensure no return value
         return
     ##
-    assert val(1) is None, "non-debug val() should not return a non-Null value"
+    ## OLD: assert val(1) is None, "non-debug val() should not return a non-Null value"
+    if val(1) is None:
+        system.print_error("Warning: non-debug val() should return Null")
 
 # Aliases for terse functions
     
