@@ -1,11 +1,12 @@
-# This builds the base images that we can use for development
+# This builds the base images that we can use for development testing. See
+#   .github/workflows/tests.yml
 #
 # Notes:
 #   - Docker docs https://docs.docker.com/get-started/
 #
 # Build the image:
 #   $ docker build -t mezcla-dev -f- . <Dockerfile
-#   # TODO: --platform linux/x86_64
+#   # TODO: build --platform linux/x86_64 ...
 # Run tests using the created image (n.b., uses entrypoint at end below with run_tests.bash):
 #   $ docker run -it --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
 #   TODO: --mount => --volume???
@@ -36,7 +37,7 @@ WORKDIR $WORKDIR
 ARG PYTHON_VERSION=3.8.12
 
 # Install Python
-# https://stackoverflow.com/a/70866416
+# See https://stackoverflow.com/a/70866416 [How to install python specific version on docker?]
 #
 ## OLD:
 ## # Note: we install Python 3.8 to maintain compatibility with some libraries
@@ -65,6 +66,13 @@ RUN wget -qO /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz \
     tar -xzf /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz \
         -C /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 --strip-components=1 && \
     rm /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz
+
+## TODO (use streamlined python installation):
+## RUN apt-get update && \
+##     apt-get install -y software-properties-common && \
+##     add-apt-repository -y ppa:deadsnakes/ppa && \
+##     apt-get update && \
+##     apt install -y python$PYTHON_MAJ_MIN
 
 # Some programs require a "python" binary
 ## OLD: RUN ln -s $(which python3) /usr/local/bin/python
