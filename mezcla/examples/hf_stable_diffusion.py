@@ -162,7 +162,7 @@ class StableDiffusion:
         Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag
         """
         ## OLD: debug.trace(4, f"{self.__class__.__name__}.infer{(prompt, negative_prompt, scale, num_images)}")
-        debug.trace_expr(4, prompt, negative_prompt, scale, num_images, skip_img_spec, prefix=f"in {self.__class__.__name__}.infer:\n\t", delim="\n\t", max_len=132)
+        debug.trace_expr(4, prompt, negative_prompt, scale, num_images, skip_img_spec, prefix=f"in {self.__class__.__name__}.infer:\n\t", delim="\n\t", max_len=1024)
         if num_images is None:
             num_images = NUM_IMAGES
         if scale is None:
