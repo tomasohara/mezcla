@@ -47,6 +47,10 @@ MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
 TEMP_DIR = None
 
+## TODO: debug.assertion(python_maj_min_version() >= 3.8, "Require Python 3.8+ for function def's with '/' or '*'")
+## See https://stackoverflow.com/questions/9079036/how-do-i-detect-the-python-version-at-runtime
+debug.assertion(sys.version_info >= (3, 8), "Require Python 3.8+ for function def's with '/' or '*'")
+
 #-------------------------------------------------------------------------------
 # Support for needless python changes
 
@@ -354,22 +358,23 @@ def get_current_function_name():
     return function_name
 
 
-def open_file(filename, encoding=None, errors=None, **kwargs):
+def open_file(filename, /, mode="r", *, encoding=None, errors=None, **kwargs):
     """Wrapper around around open() with FILENAME using UTF-8 encoding and ignoring ERRORS (both by default)
     Notes:
     - The mode is left at default (i.e., 'r')
     - As with open(), result can be used in a with statement:
         with system.open_file(filename) as f: ...
     """
-    # TODO: implement as with-style context
-    if (encoding is None) and (kwargs.get("mode") != "rb"):
+    # Note: position-only args precedes / and keyword only follow * (based on https://stackoverflow.com/questions/24735311/what-does-the-slash-mean-when-help-is-listing-method-signatures):
+    #   def f(pos_only1, pos_only2, /, pos_or_kw1, pos_or_kw2, *, kw_only1, kw_only2): pass
+    if (encoding is None) and ("b" not in mode):
         encoding = "UTF-8"
     if (encoding and (errors is None)):
         errors = 'ignore'
     result = None
     try:
         # pylint: disable=consider-using-with; note: bogus 'Bad option value' warning
-        result = open(filename, encoding=encoding, errors=errors, **kwargs)
+        result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
     except IOError:
         debug.trace_fmtd(3, "Unable to open {f}: {exc}", f=filename, exc=get_exception())
     debug.trace_fmt(5, "open({f}, [{enc}, {err}], kwargs={kw}) => {r}",
