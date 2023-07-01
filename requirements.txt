@@ -25,6 +25,7 @@ albert==1.3.1
 beautifulsoup4==4.11.1
 bert==2.2.0
 bs4
+cachetools
 cherrypy
 extcolors>=1.0.0
 git+https://github.com/tehabstract/textract.git
@@ -48,6 +49,7 @@ six
 stop_words==2018.7.23
 tensorflow_hub==0.12.0
 vaderSentiment==3.3.2
+webcolors
 wheel==0.38.4
 xgboost
 #
@@ -67,7 +69,6 @@ xgboost
 #opt# SpeechRecognition
 #opt# accelerate
 #opt# bash_kernel
-#opt# cachetools
 #opt# coverage
 #opt# datasets
 #opt# diffusers
@@ -86,7 +87,6 @@ xgboost
 #opt# spacy>=3.0.0
 #opt# torch
 #opt# transformers
-#opt# webcolors
 #...............................................................................
 # "Fully optional" requirements
 # Note: these generally involve large or long installations.
