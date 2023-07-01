@@ -465,7 +465,7 @@ if __debug__:
         if sep is None:
             sep = ", "
         if no_eol is None:
-            no_eol = (delim == "\n")
+            no_eol = (delim and ("\n" in delim))
         if delim is None:
             delim = "; "
             if in_no_eol is None:
