@@ -69,7 +69,7 @@ TEMP_BASE = system.getenv_value("TEMP_BASE", None,
 TEMP_FILE_DEFAULT = None
 if TEMP_BASE:
     TEMP_FILENAME = "temp-file.list"
-    TEMP_FILE_DEFAULT = (gh.form_path(TEMP_BASE, TEMP_FILENAME) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{TEMP_FILENAME}")
+    TEMP_FILE_DEFAULT = (form_path(TEMP_BASE, TEMP_FILENAME) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{TEMP_FILENAME}")
 TEMP_FILE = system.getenv_value("TEMP_FILE", TEMP_FILE_DEFAULT,
                                 "Override for temporary filename")
 
@@ -318,7 +318,7 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
    Notes:
    - The result includes stderr, so direct if not desired (see issue):
-         gh.run("ls /tmp/fubar 2> /dev/null")
+         run("ls /tmp/fubar 2> /dev/null")
    - This is only intended for running simple commands. It would be better to create a subprocess for any complex interactions.
    - This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed.
    - If TEMP_FILE or TEMP_BASE defined, these are modified to be unique to avoid conflicts across processeses.
@@ -463,8 +463,7 @@ def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0, para_m
     ## if re_flags is None:
     ##     re_flags = re.DOTALL
     debug.trace_values(6, lines, "lines")
-    ## assert type(lines) == list
-    assert isinstance(lines, list)
+    debug.assertion(isinstance(lines, list))
     if pattern.find("(") == -1:
         pattern = "(" + pattern + ")"
     if (re_flags and (re_flags & re.DOTALL)):
