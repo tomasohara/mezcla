@@ -22,6 +22,11 @@ import re
 
 # Installed packages
 import pytest
+# note: The gensim module is not installed by default, so tests skipped if not found
+try:
+    import gensim
+except:
+    gensim = None
 
 # Local packages
 from mezcla import debug
@@ -38,6 +43,7 @@ class TestGensimTest(TestWrapper):
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.derive_tested_module_name(__file__)
 
+    @pytest.mark.skipif(not gensim, reason="gensim module missing")
     def test_data_file(self):
         """Tests results over a known data file (LICENSE.txt)"""
         tpo.debug_print("test_data_file()", 4)
@@ -50,6 +56,7 @@ class TestGensimTest(TestWrapper):
         debug.trace_expr(5, output)
         return
 
+    @pytest.mark.skipif(not gensim, reason="gensim module missing")
     def test_vector_printing(self):
         """Test printing of corpus vector for simple input"""
         tpo.debug_print("test_vector_printing()", 4)
