@@ -649,3 +649,6 @@ if __name__ == '__main__':
     ## OLD:
     main()
     ## TODO: main(sys.argv)
+
+## TEST (for testing tests/test_gensim_test.py conditional loading):
+## fubar
