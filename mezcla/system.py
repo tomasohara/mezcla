@@ -1088,7 +1088,8 @@ def just_one_true(in_list, strict=False):
     # Note: Consider using misc_utils.just1 (based on more_itertools.exactly_n)
     # TODO: Trap exceptions (e.g., string input)
     min_count = 1 if strict else 0
-    is_true = (min_count <= sum([int(bool(b)) for b in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
+    ## OLD: is_true = (min_count <= sum([int(bool(b)) for b in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
+    is_true = (min_count <= sum([int(bool(b)) for b in in_list]) <= 1)
     debug.trace_fmt(6, "just_one_true({l}) => {r}", l=in_list, r=is_true)
     return is_true
 
@@ -1096,7 +1097,8 @@ def just_one_true(in_list, strict=False):
 def just_one_non_null(in_list, strict=False):
     """True if only one element of IN_LIST is not None (or all None unless STRICT)"""
     min_count = 1 if strict else 0
-    is_true = (min_count <= sum([int(x is not None) for x in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
+    ## OLD: is_true = (min_count <= sum([int(x is not None) for x in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
+    is_true = (min_count <= sum([int(x is not None) for x in in_list]) <= 1)
     debug.trace_fmt(6, "just_one_non_null({l}) => {r}", l=in_list, r=is_true)
     return is_true
 

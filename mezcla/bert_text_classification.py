@@ -70,8 +70,8 @@
 
 # Standard packages
 from datetime import datetime
-import hashlib
-import os
+## OLD: import hashlib
+## OLD: import os
 
 # Installed packages
 import pandas as pd

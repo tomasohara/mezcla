@@ -263,6 +263,7 @@ def main():
     # Reorder columns so classication variable last
     if (CLASS_VAR and (CLASS_VAR != dataset.columns[-1])):
         debug.trace_fmtd(4, "Re-arranging columns")
+        # pylint: disable=no-member
         columns = system.difference(list(dataset.columns), CLASS_VAR)
         columns.append(CLASS_VAR)
         dataset = dataset[columns]
@@ -325,6 +326,7 @@ def main():
         if NUMERIC_CLASSES:
             y = y.astype(np.float64)
     else:
+        # pylint: disable=no-member
         array = dataset.values
         debug.trace_object(7, array, "array")
         num_features = (array.shape[1] - 1)

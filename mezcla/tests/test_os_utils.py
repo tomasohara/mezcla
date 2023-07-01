@@ -29,6 +29,7 @@ class TestOsUtils:
     """Class for testcase definition"""
 
     def test_split_extension(self):
+        """Ensure test_split_extension works as expected"""
         assert(os_utils.split_extension("fubar.txt") == ("fubar", ".txt"))
 
 
