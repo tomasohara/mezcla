@@ -85,7 +85,7 @@ class TestMyRegex(TestWrapper):
         debug.trace(4, "test_simple_regex()")
         if not self.my_re.search(r"(\w+)\W+(\w+)", ">scrap ~!@\n#$ yard<",
                                  re.MULTILINE):
-            self.fail("simple regex search failed")
+            assert(False, "simple regex search failed")
         assert self.my_re.group(1) == "scrap"
         assert self.my_re.group(2) == "yard"
         return

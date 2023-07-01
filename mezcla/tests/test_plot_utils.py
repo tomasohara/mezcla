@@ -31,14 +31,14 @@ class TestPlotUtils:
     def test_something(self):
         """TODO: flesh out test for something"""
         debug.trace(4, "TestIt.test_something()")
-        self.fail("TODO: code test")
+        assert False
         return
 
     @pytest.mark.xfail
     def test_something_else(self):
         """TODO: flesh out test for something else"""
         debug.trace(4, "TestIt.test_something_else()")
-        self.fail("TODO: code test")
+        assert False
         return
 
 if __name__ == '__main__':

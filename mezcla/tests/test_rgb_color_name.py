@@ -75,7 +75,7 @@ class TestRgbColorName(TestWrapper):
     def test_something_else(self):
         """TODO: flesh out test for something else"""
         debug.trace(4, "test_something_else()")
-        self.fail("TODO: code test")
+        assert(False, "TODO: code test")
         ## ex: assert THE_MODULE.TODO_function() == TODO_value
         return
 
