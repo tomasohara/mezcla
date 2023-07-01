@@ -2,18 +2,21 @@
 #   .github/workflows/tests.yml
 #
 # Notes:
-#   - Docker docs https://docs.docker.com/get-started/
+# - Mostly based initially on
+#     https://stackoverflow.com/a/70866416 [How to install python specific version on docker?]
+# - For Docker docs, see https://docs.docker.com/get-started.
 #
-# Build the image:
+# Usage:
+# 1. Build the image:
 #   $ docker build -t mezcla-dev -f- . <Dockerfile
 #   # TODO: build --platform linux/x86_64 ...
-# Run tests using the created image (n.b., uses entrypoint at end below with run_tests.bash):
+# 2. Run tests using the created image (n.b., uses entrypoint at end below with run_tests.bash):
 #   $ docker run -it --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
 #   TODO: --mount => --volume???
 #   NOTE: --rm removes container afterwards; -it is for --interactive with --tty
-# Run a bash shell using the created image:
+# 3. [Optional] Run a bash shell using the created image:
 #   $ docker run -it --rm --entrypoint='/bin/bash' --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
-# Remove the image:
+# 4. Remove the image:
 #   $ docker rmi mezcla-dev
 #
 
