@@ -89,7 +89,7 @@ class TestIt(TestWrapper):
     def test_something_else(self):
         """TODO: flesh out test for something else"""
         debug.trace(4, f"TestIt.test_something_else(); self={self}")
-        self.fail("TODO: code test")
+        assert False
         ## ex: assert (THE_MODULE.TODO_function() == TODO_value)
         return
 
