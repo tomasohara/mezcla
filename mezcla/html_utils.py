@@ -644,6 +644,24 @@ def extract_html_link(html, url=None, base_url=None):
     debug.trace_fmtd(6, "extract_html_links() => {i}", i=links)
     return links
 
+
+def format_checkbox(param_name, label=None, default_value=False):
+    """Returns HTML specification for input checkbox
+    Warning: includes separate hidden field for explicit off state"""
+    ## Note: Checkbox valuee are only submitted if checked, so a hidden field is used to provide explicit off.
+    ## This requires use of html_utils.fix_url_parameters to give preference to final value specified (see results.mako).
+    ## See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox for hidden field tip.
+    ## EX: format_checkbox("disable-touch") => '<label>Disable touch? <input id="disable-touch" type="checkbox" name="disable-touch" ></label>&nbsp;"'
+    checkbox_spec = get_url_param_checkbox_spec(param_name, default_value)
+    if (label is None):
+        label = (param_name.replace("-", " ").capitalize() + "?")
+    result = ""
+    ## TODO: use hidden only if (default_value in ["1", "on", True])???
+    result = f"<input type='hidden' name='{param_name}' value='off'>"
+    result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {checkbox_spec}></label>&nbsp;"
+    debug.trace(6, f"format_checkbox({param_name}, [def={default_value}]) => {result}")
+    return result
+
 #-------------------------------------------------------------------------------
 
 def main(args):
