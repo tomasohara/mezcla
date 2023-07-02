@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# TODO: # -*- coding: utf-8 -*-
 #
 # Based on following:
 #   TODO: url
@@ -56,6 +57,9 @@ def main():
 
     ## TODO:
     system.print_error("Error: Implement me!")
+    ## ALT TODO:
+    ## for line in map_app.read_entire_input():
+    ##     print(modify_fn(line))
     return
 
 #-------------------------------------------------------------------------------
