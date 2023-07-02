@@ -23,8 +23,9 @@ import pytest
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
-from mezcla.my_regex import my_re
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                  global module object
@@ -79,7 +80,7 @@ class TestIt(TestWrapper):
         """Makes sure TODO works as expected"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
-        gh.write_lines(self.temp_file, data)
+        system.write_lines(self.temp_file, data)
         ## TODO: add use_stdin=True to following if no file argument
         output = self.run_script(options="", data_file=self.temp_file)
         assert my_re.search(r"TODO-pattern", output.strip())
@@ -116,12 +117,12 @@ class TestIt(TestWrapper):
 ##     """Another class for testcase definition
 ##     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
 ##
-##    def test_whatever(self):
-##        """TODO: flesh out test for whatever"""
-##        debug.trace(4, f"TestIt2.test_whatever(); self={self}")
-##        assert False, "TODO: code test"
-##        ## ex: assert THE_MODULE.fast_sort() == THE_MODULE.slow_sort()
-##        return
+##     def test_whatever(self):
+##         """TODO: flesh out test for whatever"""
+##         debug.trace(4, f"TestIt2.test_whatever(); self={self}")
+##         assert False, "TODO: code test"
+##         ## ex: assert THE_MODULE.fast_sort() == THE_MODULE.slow_sort()
+##         return
 ##
 
 #------------------------------------------------------------------------
