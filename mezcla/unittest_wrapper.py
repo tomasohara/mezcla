@@ -241,7 +241,7 @@ class TestWrapper(unittest.TestCase):
         # Set converage script path and command spec
         coverage_spec = ''
         if self.check_coverage:
-            gh.assertion(self.script_file)
+            debug.assertion(self.script_file)
             self.script_module = self.script_file
             coverage_spec = 'coverage run'
         else:
@@ -250,7 +250,7 @@ class TestWrapper(unittest.TestCase):
         gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path} 1> {out} 2> {log}",
                  env=env_options, cov_spec=coverage_spec, module=self.script_module,
                  opts=options, path=data_path, out=out_file, log=log_file)
-        output = gh.read_file(out_file)
+        output = system.read_file(out_file)
         # note; trailing newline removed as with shell output
         if output.endswith("\n"):
             output = output[:-1]
@@ -259,16 +259,16 @@ class TestWrapper(unittest.TestCase):
 
         # Make sure no python or bash errors. For example,
         #   "SyntaxError: invalid syntax" and "bash: python: command not found"
-        log_contents = gh.read_file(log_file)
+        log_contents = system.read_file(log_file)
         error_found = re.search(r"(\S+error:)|(no module)|(command not found)",
                                 log_contents.lower())
-        gh.assertion(not error_found)
+        debug.assertion(not error_found)
         debug.trace_fmt(trace_level + 1, "log contents: {{\n{log}\n}}",
                         log=gh.indent_lines(log_contents))
 
         # Do sanity check for python exceptions
         traceback_found = re.search("Traceback.*most recent call", log_contents)
-        gh.assertion(not traceback_found)
+        debug.assertion(not traceback_found)
 
         return output
 
