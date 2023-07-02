@@ -833,8 +833,27 @@ def get_file_size(filename):
     return size
 
 
+def path_separator(sysname=None):
+    """Return text used to separate paths components under current OS (e.g., / or \\).
+    This is basically a wrapper around os.path.sep with tracing, added to avoid using non-existent os.path.delim.
+    Note: can overide SYSNAME to get separator for another system; see os.uname()"""
+    # EX: path_separator(sysname="???") => "/"
+    # TODO: define-tracing-fn path_separator os.path.sep 7
+    result = os.path.sep
+    if (sysname != os.uname().sysname):
+        default_sep = "/"
+        result = "\\" if sysname == "Windows" else default_sep
+    debug.trace(7, f"path_separator() => {result}")
+    return result
+#    
+# EX: path_separator(sysname="Windows") => "\\"
+# EX-SETUP: def when(cond, value): return value if cond else None
+# EX: path_separator() => (when((os.uname().sysname == "Linux"), "/"))
+
+
 def form_path(*filenames):
     """Wrapper around os.path.join over FILENAMEs (with tracing)"""
+    debug.assertion(not any(f.startswith(path_separator()) for f in filenames[1:]))
     path = os.path.join(*filenames)
     debug.trace_fmt(6, "form_path({f}) => {p}", f=tuple(filenames), p=path)
     return path
@@ -974,7 +993,7 @@ def chomp(text, line_separator=os.linesep):
 def normalize_dir(path):
     """Normalize the directory PATH (e.g., removing ending path delim)"""
     # EX: normalize_dir("/etc/") => "/etc")
-    result = chomp(path, os.path.sep)
+    result = chomp(path, path_separator())
     debug.trace(6, f"normalize_dir({path}) => {result}")
     return result
 
