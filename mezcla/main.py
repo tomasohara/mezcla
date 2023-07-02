@@ -237,7 +237,8 @@ class Main(object):
         # Check miscellaneous options
         BINARY_INPUT_OPTION = "binary_input"
         PERL_SWITCH_PARSING_OPTION = "perl_switch_parsing"
-        debug.assertion(not (system.difference(kwargs.keys(), [BINARY_INPUT_OPTION, PERL_SWITCH_PARSING_OPTION])))
+        bad_options = system.difference(kwargs.keys(), [BINARY_INPUT_OPTION, PERL_SWITCH_PARSING_OPTION])
+        debug.assertion(not bad_options, f"Extraneous kwargs: {bad_options}")
         self.binary_input = kwargs.get(BINARY_INPUT_OPTION, False)
 
         # Setup temporary file and/or base directory
@@ -280,7 +281,7 @@ class Main(object):
         # Process special hook for converting Perl-style switches like -fu=123 to --fu=123
         # See -s option under perlrun man page for enabling this rudimentary switch parsing.
         # Note: mainly just intended for when porting Perl scripts.
-        self.perl_switch_parsing = kwargs.get("perl_switch_parsing", PERL_SWITCH_PARSING)
+        self.perl_switch_parsing = kwargs.get(PERL_SWITCH_PARSING_OPTION, PERL_SWITCH_PARSING)
         if self.perl_switch_parsing and runtime_args:
             debug.trace(4, "FYI: Enabling Perl-style options")
             debug.assertion(not re.search(r"--\w+", " ".join(runtime_args)),
