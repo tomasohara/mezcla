@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# TODO: # -*- coding: utf-8 -*-
 ## TODO: handle case when env installed elsewhere (e.g., maldito mac)
 ## #! env python
 # 
