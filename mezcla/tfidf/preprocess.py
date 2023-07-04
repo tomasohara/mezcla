@@ -62,7 +62,7 @@ USE_SKLEARN_COUNTER = system.getenv_bool("USE_SKLEARN_COUNTER", False,
 
 
 if SPLIT_WORDS:
-    debug.trace(1, "Splitting by word token (not whitespace)\n")
+    debug.trace(2, "FYI: Splitting by word token (not whitespace)\n")
     ## BAD: True
 WORD_REGEX = r'\w+' if SPLIT_WORDS else r'\S+'
 
@@ -126,7 +126,7 @@ def clean_text(raw_text):
         regex_subs = ['\t', '\n', '\r', r'\s+', '&']
         for regex_sub in regex_subs:
             text = re.sub(regex_sub, ' ', text)
-    debug.trace(7, "clean_text({raw_text}) => {text}")
+    debug.trace(8, "clean_text({raw_text}) => {text}")
     return text
 
 
@@ -138,7 +138,7 @@ def create_stemmer(language):
     def stem_wordform(wordform):
         """Returned root of WORDFORM"""
         root = stemmer.stem(wordform)
-        debug.trace_fmt(8, "stem_wordform({wf}) => {r}", wf=wordform, r=root)
+        debug.trace_fmt(9, "stem_wordform({wf}) => {r}", wf=wordform, r=root)
         return root
 
     # Do sanity check
@@ -219,7 +219,7 @@ class Preprocessor(object):
         if stemmer:
             self.__stemmer = stemmer
         if not self.__stemmer:
-            debug.trace(3, "Warning: defining no-op stemmer in Preprocessor")
+            debug.trace(4, "Warning: defining no-op stemmer in Preprocessor")
             self.__stemmer = lambda x: x  # no change to word
         debug.assertion(not (gramsize and max_ngram_size))
         debug.assertion(not (all_ngrams and min_ngram_size))
@@ -331,7 +331,7 @@ class Preprocessor(object):
         if not gramlist:
             gramlist = [self.gramsize]
         ## DEBUG: sys.stderr.write("gramlist={gl}\n".format(gl=gramlist))
-        debug.trace_fmt(7, "gramlist={gl}\n", gl=gramlist)
+        debug.trace_fmt(8, "gramlist={gl}\n", gl=gramlist)
 
         for sentence in positional_splitter(self.negative_gram_breaks, raw_text):
             words = positional_splitter(WORD_REGEX, sentence.text)

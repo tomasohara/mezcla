@@ -122,7 +122,7 @@ class Document(object):
         if (num_occurrences == 1) and PENALIZE_SINGLETONS:
             num_occurrences = 0
         tf_raw = float(num_occurrences) / len(self)
-        debug.trace_fmt(6, "tf_raw({ng}): num_occ={no} len(self)={l} result={r}",
+        debug.trace_fmt(7, "tf_raw({ng}): num_occ={no} len(self)={l} result={r}",
                         ng=ngram, no=num_occurrences, l=len(self), r=tf_raw)
         return tf_raw
 
@@ -145,7 +145,7 @@ class Document(object):
     def tf_freq(self, ngram):
         """Returns frequency count for NGRAM"""
         num_occurrences = len(self[ngram]) if ngram in self else 0
-        debug.trace_fmt(6, "tf_freq({ng}): num_occ={no} len(self)={l} result={r}",
+        debug.trace_fmt(7, "tf_freq({ng}): num_occ={no} len(self)={l} result={r}",
                         ng=ngram, no=num_occurrences, l=len(self), r=num_occurrences)
         return num_occurrences
     
@@ -210,7 +210,7 @@ def main():
     """Entry point for script: just runs a simple test"""
     text = "my man fran is not a man"
     d = Document(text, Preprocessor(gramsize=1, stemmer=lambda x: x))
-    debug.trace_expr(4, [d.tf_freq(t) for t in text.split()])
+    debug.trace_expr(5, [d.tf_freq(t) for t in text.split()])
     debug.assertion(d.tf_freq("man") > d.tf_freq("fran"))
     
 #-------------------------------------------------------------------------------
