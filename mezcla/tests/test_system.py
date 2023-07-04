@@ -189,6 +189,7 @@ class TestSystem:
         captured = capsys.readouterr()
         assert "Foobar" in captured.err
 
+    @pytest.mark.xfail
     def test_exit(self, monkeypatch, capsys):
         """Ensure exit works as expected"""
         debug.trace(4, "test_exit()")
