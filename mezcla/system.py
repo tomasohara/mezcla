@@ -292,16 +292,18 @@ def print_exception_info(task, show_stack=None):
     return
 
 
-def exit(message=None, **namespace):    # pylint: disable=redefined-builtin
+def exit(message=None, status_code=None, **namespace):    # pylint: disable=redefined-builtin
     """Display error MESSAGE to stderr and then exit, using optional
-    NAMESPACE for format"""
+    NAMESPACE for format. The STATUS_CODE can be overrided (n.b., 0 if None)."""
     # EX: exit("Error: {reason}!", reason="Whatever")
     debug.trace(6, f"system.exit{(message, namespace)})")
     if namespace:
         message = message.format(**namespace)
     if message:
         print_stderr(message)
-    return sys.exit()
+        if status_code is None:
+            status_code = 1
+    return sys.exit(status_code)
 
 
 def setenv(var, value):
