@@ -455,10 +455,10 @@ def unquote_url_text(text):
     Note: Wrapper around quote_url_text w/ UNQUOTE set"""
     return quote_url_text(text, unquote=True)
 
+
 def escape_html_text(text):
     """Add entity encoding to TEXT to make suitable for HTML"""
-    # Note: This is wrapper around html.escape and just handles
-    # '&', '<', '>', and '"'.
+    # Note: This is wrapper around html.escape and just handles '&', '<', '>', "'", and '"'.
     # EX: escape_html_text("<2/") => "&lt;2/"
     # EX: escape_html_text("Joe's hat") => "Joe&#x27;s hat"
     debug.trace_fmtd(7, "in escape_html_text({t})", t=text)
@@ -475,7 +475,7 @@ def escape_html_text(text):
 
 
 def unescape_html_text(text):
-    """Remove entity encoding, etc. from TEXT (i.e., undo"""
+    """Remove entity encoding, etc. from TEXT (i.e., undo)"""
     # Note: This is wrapper around html.unescape (Python 3+) or
     # HTMLParser.unescape (Python 2).
     # See https://stackoverflow.com/questions/21342549/unescaping-html-with-special-characters-in-python-2-7-3-raspberry-pi.
