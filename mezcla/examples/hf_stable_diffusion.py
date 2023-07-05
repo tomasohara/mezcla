@@ -185,7 +185,7 @@ class StableDiffusion:
             images = self.infer_non_cached(prompt, negative_prompt, scale, num_images, skip_img_spec)
             if self.cache is not None:
                 self.cache.set(params, images)
-                debug.trace_fmt(6, "Setting cached result (r={images})", r=images)
+                debug.trace_fmt(6, "Setting cached result (r={r})", r=images)
         return images
             
     def infer_non_cached(self, prompt, negative_prompt, scale, num_images, skip_img_spec):
