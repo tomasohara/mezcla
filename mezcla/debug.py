@@ -37,11 +37,15 @@
 #     python -c 'from mezcla import debug; debug.trace(debug.DEFAULT + 1, "Not visible")'
 #     DEBUG_LEVEL=3 python -c 'from mezcla import debug; debug.trace(3, "Visible")'
 #
+# TODO1:
+# - Add sanity check to trace_fmt for when keyword in kaargs unused.
+#
 # TODO:
 # - * Add sanity checks for unused environment variables specified on command line (e.g., FUBAR=1 python script.py ...)!
 # - Rename as debug_utils so clear that non-standard package.
 # - Add exception handling throughout (e.g., more in trace_object).
 # - Apply format_value consistently.
+#
 #
 
 """Debugging functions (e.g., tracing)"""
@@ -245,6 +249,7 @@ if __debug__:
         # references, this function does the formatting.
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
         if (trace_level >= level):
+            max_len = kwargs.get('_max_len') or kwargs.get('max_len')
             try:
                 try:
                     # TODO: add version of assertion that doesn't use trace or trace_fmtd
@@ -252,7 +257,8 @@ if __debug__:
                     ## OLD: assertion("{" in text)
                     ## OLD: trace(level, text.format(**kwargs))
                     ## OLD: kwargs_unicode = {k: _to_unicode(_to_string(v)) for (k, v) in list(kwargs.items())}
-                    kwargs_unicode = {k: format_value(_to_unicode(_to_string(v))) for (k, v) in list(kwargs.items())}
+                    kwargs_unicode = {k: format_value(_to_unicode(_to_string(v)), max_len=max_len)
+                                      for (k, v) in list(kwargs.items())}
                     trace(level, _to_unicode(text).format(**kwargs_unicode))
                 except(KeyError, ValueError, UnicodeEncodeError):
                     raise_exception(max(VERBOSE, level + 1))
