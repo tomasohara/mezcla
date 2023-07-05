@@ -267,6 +267,7 @@ def get_param_dict(param_dict=None):
 
 def set_param_dict(param_dict):
     """Sets global user_parameters to value of PARAM_DICT"""
+    # EX: set_param_dict({"param1": "a+b+c", "param2": "a%2Bb%2Bc"}); len(user_parameters) => 2
     debug.trace(7, f"set_param_dict({param_dict})")
     global issued_param_dict_warning
     global user_parameters
@@ -288,16 +289,30 @@ def get_url_param(name, default_value=None, param_dict=None, escaped=False):
     value = system.to_unicode(value)
     if escaped:
         value = escape_html_value(value)
-    debug.trace_fmtd(4, "get_url_param({n}, [{d}]) => {v})",
-                     n=name, d=default_value, v=value)
+    debug.trace_fmt(5, "get_url_param({n}, [{d}]) => {v})",
+                    n=name, d=default_value, v=value)
     return value
 #
 get_url_parameter = get_url_param
 
 
+def get_url_text(name, param_dict=None):
+    """Get TEXT value for URL encoded parameter, using current PARAM_DICT"""
+    # EX: get_url_text("param1") => "a b c"
+    encoded_vaue = get_url_parameter(name, param_dict)
+    value = unescape_html_value(system.unquote_url_text(encoded_vaue))
+    debug.trace_fmt(6, "get_url_text({n}, [d={d}]) => {v})",
+                    n=name, d=param_dict, v=value)
+    return value
+#
+# EX: get_url_text("param2") => "a b c"
+   
+
 def get_url_param_checkbox_spec(name, default_value="", param_dict=None):
     """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT
     Note: the value is only specified/submitted if checked"""
+    # EX: get_url_param_checkbox_spec("param", param_dict={"param": "on"}) => "checked"
+    # EX: get_url_param_checkbox_spec("param", param_dict={"param": "off"}) => ""
     # NOTE: 1 also treated as True
     # TODO: implement in terms of get_url_param
     param_dict = (get_param_dict(param_dict) or {})
@@ -645,22 +660,35 @@ def extract_html_link(html, url=None, base_url=None):
     return links
 
 
-def format_checkbox(param_name, label=None, default_value=False):
+def format_checkbox(param_name, label=None, default_value=False, disabled=False):
     """Returns HTML specification for input checkbox
     Warning: includes separate hidden field for explicit off state"""
     ## Note: Checkbox valuee are only submitted if checked, so a hidden field is used to provide explicit off.
     ## This requires use of html_utils.fix_url_parameters to give preference to final value specified (see results.mako).
     ## See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox for hidden field tip.
+    ## Also see https://stackoverflow.com/questions/155291/can-html-checkboxes-be-set-to-readonly
     ## EX: format_checkbox("disable-touch") => '<label>Disable touch? <input id="disable-touch" type="checkbox" name="disable-touch" ></label>&nbsp;"'
+    ## EX: format_checkbox("disable-touch", disabled=True) => '<label>Disable touch? <input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>&nbsp;"'
     checkbox_spec = get_url_param_checkbox_spec(param_name, default_value)
+    disabled_spec = ("disabled" if disabled else "")
+    status_spec = f"{checkbox_spec} {disabled_spec}".strip()
     if (label is None):
         label = (param_name.replace("-", " ").capitalize() + "?")
     result = ""
     ## TODO: use hidden only if (default_value in ["1", "on", True])???
     result = f"<input type='hidden' name='{param_name}' value='off'>"
-    result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {checkbox_spec}></label>&nbsp;"
+    result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {status_spec}></label>&nbsp;"
     debug.trace(6, f"format_checkbox({param_name}, [def={default_value}]) => {result}")
     return result
+
+def format_url_param(name):
+    """Return URL parameter NAME formatted for an HTML form (e.g., escaped)"""
+    # EX: html_utils.set_param_dict({"q": '"hot dog"'}); format_url_param("q") => '&quot;hot dog&quot;'
+    value_spec = (get_url_param(name) or "")
+    if value_spec:
+        value_spec = system.escape_html_text(value_spec)
+    debug.trace(5, f"format_url_param({name}) => {value_spec!r}")
+    return value_spec
 
 #-------------------------------------------------------------------------------
 
