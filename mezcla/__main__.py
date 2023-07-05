@@ -9,16 +9,29 @@
 """Entry point for mezcla"""
 
 # Standard module(s)
-import os
-import re
-import sys
+## OLD
+## import os
+## import re
+## import sys
+
+# Installed modules
+import mezcla
+from mezcla import debug
+from mezcla.my_regex import my_re
+from mezcla import system
+
+# Contants
+TL = debug.TL
 
 if __name__ == '__main__':
-    sys.stderr.write(f"Warning: {__file__} is not intended to be run standalone.\n")
-    module = "__module__"
+    system.print_error(f"Warning: {__file__} is not intended as standalone.")
+    debug.trace(TL.USUAL, f"Version: {mezcla.__VERSION__}")
+
+    # Derive module name
     # ex: /home/tomohara/python/Mezcla/mezcla/__main__.py => "mezcla"
-    sep = re.escape(os.path.sep)
-    match = re.search(fr"([^{sep}]*){sep}[^{sep}]*$", __file__)
+    module = "module"
+    sep = my_re.escape(system.path_separator())
+    match = my_re.search(fr"([^{sep}]*){sep}[^{sep}]*$", __file__)
     if match:
         module = match.group(1)
-    sys.stderr.write(f"Likewise for the package (e.g., via 'python -m {module}')\n")
+    system.print_error(f"Likewise for the package (e.g., via 'python -m {module}')\n")
