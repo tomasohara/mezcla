@@ -14,27 +14,28 @@ from distutils.core import setup
 setup(name='Mezcla',
       packages=['mezcla'],
       module="mezcla",
+      ## TODO2: import mezcla; version=mezcla.VERSION
       version='1.3.9',
       description-file="README.txt",
       dist-name="Mezcla",
-      ## OLD: py_modules=PYTHON_MODULE_NAMES,
       author="Tom O'Hara",
-      # TODO: find out which email key is preferred
+      # TODO3: find out which email key is preferred
       email="tomasohara@gmail.com",
       author-email="tomasohara@gmail.com"
-      requires-python=">=3.6",
-      ## TODO:
+      requires-python=">=3.8",
+      ## TODO4?:
       ## install_requires=["six"],
       home-page="https://github.com/tomasohara/Mezcla",
       classifiers=[
           "License :: OSI Approved :: LGPLv3",
           "Programming Language :: Python :: 3",
-          "Programming Language :: Python :: 3.7",
+          "Programming Language :: Python :: 3.8",
       ]
       description="""
 Package with core modules from https://github.com/tomasohara/misc-utility
 note: mezcla is Spanish for mixture.
 """)
+# TODO1: Muchas gracias a Bruno y Tana; <thanks in Tibet> to Aviyan
 
 [tool.flit.scripts]
 realpython = "mezcla.__main__:main"
