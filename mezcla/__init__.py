@@ -18,7 +18,7 @@ Adhoc usage:
 Tom O'Hara
 Feb 2022
 """
-__VERSION__ = '1.3.9'
+__VERSION__ = '1.3.9.1'
 __version__ = __VERSION__
 
 # Standard module(s)
