@@ -627,6 +627,7 @@ if __debug__:
                 statement = re.sub("#.*$", "", statement)
                 statement = re.sub(r"^(\S*)assertion\(", "", statement)
                 expression = re.sub(r"\);?\s*$", "", statement)
+                expression = re.sub(r",\s*$", "", statement)
                 expression_text = expression
                 qualification_spec = (": " + message) if message else ""
                 # Output information
@@ -647,9 +648,11 @@ if __debug__:
         # TODO: rename as cond_value???
         return (value if (trace_level >= level) else None)
 
+
     def code(level, no_arg_function):
         """Execute NO_ARG_FUNCTION if at trace LEVEL or higher
         Notes:
+        - Use call() for more flexible invocation (e.g., can avoid lambda function)
         - Given the quirks of Python syntax, a two-step process is required:
            debug.code(4, { line1; line2; ...; lineN })
                =>
@@ -658,11 +661,24 @@ if __debug__:
                    line1; line2; ...; lineN
            debug.code(4, my_stupid_block_workaround)
         - Lambda functions can be used for simple expression-based functions"""
-        trace_object(VERBOSE, f"code({level}, {no_arg_function})")
+        trace(VERBOSE, f"code({level}, {no_arg_function})")
+        result = None
         if (trace_level >= level):
-            trace_object(QUITE_DETAILED, f"Executing {no_arg_function}")
-            no_arg_function()
-        return
+            trace(QUITE_DETAILED, f"Executing {no_arg_function}")
+            result = no_arg_function()
+        return result
+
+    
+    def call(level, function, *args, **kwargs):
+        """Invoke FUNCTION with ARGS and KWARGS if at trace LEVEL or higher
+        Note: Use code() for simpler invocation (e.g., via lambda function)
+        """
+        trace(VERBOSE, f"call({level}, {function}, a={args}, kw={kwargs})")
+        result = None
+        if (trace_level >= level):
+            trace(QUITE_DETAILED, f"Executing {function}")
+            result = function(*args, **kwargs)
+        return result
 
 else:
 
@@ -705,6 +721,8 @@ else:
     assertion = non_debug_stub
 
     code = non_debug_stub
+
+    call = non_debug_stub
 
     ## TODO?:
     ## val = non_debug_stub
