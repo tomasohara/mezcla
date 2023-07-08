@@ -53,6 +53,8 @@ TL = debug.TL
 # It also allows for enabling options in one place rather than four
 # (e.g., [Main member] initialization, run-time value, and argument spec., along
 # with string constant definition).
+# WARNING: To minimize environment comflicts with other programs make the names
+# longer such as two or more tokens (e.g., "FUBAR" => "FUBAR_LEVEL").
 #
 TODO_FUBAR = system.getenv_bool("TODO_FUBAR", False,
                                 description="TODO:Fouled Up Beyond All Recognition processing")
