@@ -40,7 +40,7 @@ jobs:
 
       - name: Run Python Tests
         run: |
-          PYTHONPATH="$(pwd):$PYTHONPATH" python3 ./tools/run_tests.bash
+          PYTHONPATH="$(pwd):$PYTHONPATH" ./tools/run_tests.bash
 
       ## TODO:
       ## See https://github.com/tomasohara/shell-scripts/blob/main/tests/batspp_report.py
