@@ -12,10 +12,29 @@ IMAGE_NAME="local/test-act:latest"
 ACT_WORKFLOW="ubuntu-latest=local/test-act"
 ACT_PULL="false"
 
+# Set bash regular and/or verbose tracing
+if [ "${TRACE:-0}" = "1" ]; then
+    set -o xtrace
+fi
+if [ "${VERBOSE:-0}" = "1" ]; then
+    set -o verbose
+fi
+
 # Build the Docker image
-echo "Building Docker image: $IMAGE_NAME"
-docker build --platform linux/x86_64 -t "$IMAGE_NAME" .
+if [ "${RUN_BUILD:-1}" = "1" ]; then
+    echo "Building Docker image: $IMAGE_NAME"
+    docker build --platform linux/x86_64 -t "$IMAGE_NAME" .
+fi
 
 # Run the Github Actions workflow locally
-echo "Running Github Actions locally"
-act --container-architecture linux/amd64 --pull="$ACT_PULL" -P "$ACT_WORKFLOW" -W ./.github/workflows/act.yml
+if [ "${RUN_WORKFLOW:-1}" = "1" ]; then
+    file="${WORKFLOW_FILE:-act.yml}"
+    echo "Running Github Actions locally w/ $file"
+    act --verbose --container-architecture linux/amd64 --pull="$ACT_PULL" -P "$ACT_WORKFLOW" -W ./.github/workflows/act.yml
+fi
+
+# Run via docker directly
+if [ "${RUN_DOCKER:-1}" = "1" ]; then
+   echo "Running Tests via Docker"
+   docker run -it --env DEBUG_LEVEL="$DEBUG_LEVEL" --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
+fi
