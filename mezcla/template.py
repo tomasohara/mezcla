@@ -142,6 +142,6 @@ def main():
     
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
-    debug.trace(5, f"main __doc__: {main.__doc__}")
+    debug.trace(5, f"module __doc__: {___doc__}")
     debug.assertion("TODO:" not in __doc__)
     main()
