@@ -18,7 +18,8 @@ Adhoc usage:
 Tom O'Hara
 Feb 2022
 """
-__VERSION__ = '1.3.9.1'
+version = "1.3.9.2"
+__VERSION__ = version
 __version__ = __VERSION__
 
 # Standard module(s)
@@ -55,7 +56,7 @@ from mezcla import system
 TL = debug.TL
 
 # Expose commonly used modules
-__all__ = ["debug", "gh", "my_re", "system", "TL"]
+__all__ = ["debug", "gh", "my_re", "system", "TL", __VERSION__]
 
 ## OLD:
 ## if __name__ == '__main__':
