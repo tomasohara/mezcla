@@ -4,10 +4,11 @@
 #
 # Notes:
 # - Fill out TODO's below. Use numbered tests to order (e.g., test_1_usage).
+# - * See test_python_ast.py for simple example of customization.
 # - TODO: If any of the setup/cleanup methods defined, make sure to invoke base
 #   (see examples below for setUp and tearDown).
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
-#   option shows tracing output normally suppressed by  unittest_wrapper.py.
+#   option shows tracing output normally suppressed by unittest_wrapper.py.
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_<module>.py
 #
@@ -48,9 +49,8 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 
 
 class TestIt(TestWrapper):
-    """Class for testcase definition"""
+    """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    # -or- non-mezcla: script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     #
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
@@ -114,8 +114,8 @@ class TestIt(TestWrapper):
 ## #...............................................................................
 ##
 ## class TestIt2:
-##     """Another class for testcase definition
-##     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
+##     """Class for API-based testcase definition
+##     Note: Separate class avoids error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
 ##
 ##     def test_whatever(self):
 ##         """TODO: flesh out test for whatever"""
