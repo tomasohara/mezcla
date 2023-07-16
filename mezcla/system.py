@@ -144,12 +144,20 @@ def formatted_environment_option_descriptions(sort=False, include_all=None, inde
                     d=descriptions)
     return descriptions
 
+
 def getenv(var, default_value=None):
     """Simple wrapper around os.getenv, with tracing"""
     # Note: Use getenv_* for type-specific versions with env. option description
     result = os.getenv(var, default_value)
     debug.trace_fmt(5, "getenv({v}, {dv}) => {r}", v=var, dv=default_value, r=result)
     return result
+
+
+def setenv(var, value):
+    """Set environment VAR to VALUE"""
+    debug.trace_fmtd(5, "setenv({v}, {val})", v=var, val=value)
+    os.environ[var] = value
+    return
 
 
 def getenv_text(var, default=None, description=None, helper=False):
@@ -250,16 +258,17 @@ def print_error(text):
     """Output TEXT to standard error
     Note: Use print_error_fmt to include format keyword arguments"
     """
+    debug.trace(7, f"print_error({text})")
     # ex: print_error("Fubar!")
     print(text, file=sys.stderr)
-    return
+    return None
 
-def print_stderr(text, **kwargs):
-    """Output TEXT to standard error, using KWARGS for formatting"""
-    # NOTE: Deprecated function: use print_error_fmt instead.
+def print_stderr_fmt(text, **kwargs):
+    """Output TEXT to standard error, using KWARGS for formatting"""       
     # ex: print_stderr("Error: F{oo}bar!", oo=("oo" if (time_in_secs() % 2) else "u"))
     # TODO: rename as print_error_fmt
     # TODO: weed out calls that use (text.format(...)) rather than (text, ...)
+    debug.trace(7, f"print_stderr_fmt({text}, kw={kwargs})")
     formatted_text = text
     try:
         # Note: to avoid interpolated text as being interpreted as variable
@@ -273,9 +282,21 @@ def print_stderr(text, **kwargs):
         if debug.verbose_debugging():
             print_full_stack()
     print(formatted_text, file=sys.stderr)
-    return
+    return None
 #
-print_error_fmt = print_stderr
+#
+def print_stderr(text, **kwargs):
+    """Currently, an alias for print_stderr_fmt
+    Note: soon to be alias for print_error (i.e., kwargs will not supported)"""
+    debug.trace(7, f"print_stderr({text}, kw={kwargs})")
+    # TODO?: if kwargs: debug.trace(2, "Warning: kwargs no longer supported; use print_stderr_fmt
+    # NOTE: maldito pylint (see https://github.com/pylint-dev/pylint/issues/2332 [Don't issue assignment-from-none if None is returned explicitly]
+    # pylint: disable=assignment-from-none
+    if not kwargs:
+        result = print_error(text)
+    else:
+        result = print_stderr_fmt(text, **kwargs)
+    return result
 
 
 def print_exception_info(task, show_stack=None):
@@ -295,8 +316,8 @@ def print_exception_info(task, show_stack=None):
 def exit(message=None, status_code=None, **namespace):    # pylint: disable=redefined-builtin
     """Display error MESSAGE to stderr and then exit, using optional
     NAMESPACE for format. The STATUS_CODE can be overrided (n.b., 0 if None)."""
-    # EX: exit("Error: {reason}!", reason="Whatever")
-    debug.trace(6, f"system.exit{(message, namespace)})")
+    # EX: exit("Error: {reason}!", status_code=123, reason="Whatever")
+    debug.trace(6, f"system.exit{(message, status_code, namespace)}")
     if namespace:
         message = message.format(**namespace)
     if message:
@@ -304,14 +325,6 @@ def exit(message=None, status_code=None, **namespace):    # pylint: disable=rede
         if status_code is None:
             status_code = 1
     return sys.exit(status_code)
-
-
-def setenv(var, value):
-    """Set environment VAR to VALUE"""
-    debug.trace_fmtd(5, "setenv({v}, {val})", v=var, val=value)
-    os.environ[var] = value
-    return
-## TODO: move above (e.g., after getenv)
 
 
 def print_full_stack(stream=sys.stderr):
