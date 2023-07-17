@@ -874,7 +874,7 @@ class Main(object):
         tpo.debug_format("Main.clean_up(): self={s}", 5, s=self)
         if not KEEP_TEMP_FILES:
             ## TODO2: 3=>6
-            debug.trace_fmt(3, "Deleting any temporary files: {files}",
+            debug.trace_fmt(4, "Deleting any temporary files: {files}",
                             files=gh.run(f"echo {self.temp_base}* {self.temp_file}* | sort -u"))
                                 
             # Remove all temp_base* files (or the temp_base directory)
