@@ -62,8 +62,16 @@ NTF_ARGS = {'prefix': TEMP_PREFIX,
             'delete': not debug.detailed_debugging(),
             ## TODO: 'suffix': "-"
             }
-TEMP_FILE = system.getenv_text("TEMP_FILE", tempfile.NamedTemporaryFile(**NTF_ARGS).name,
-                               description="Basename for temporary files")
+USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", False,
+                                       "Whether TEMP_BASE should be a dir instead of prefix")
+TEMP_BASE = system.getenv_value("TEMP_BASE", None,
+                                "Override for temporary file basename")
+TEMP_FILE_DEFAULT = None
+if TEMP_BASE:
+    TEMP_FILENAME = "temp-file.list"
+    TEMP_FILE_DEFAULT = (form_path(TEMP_BASE, TEMP_FILENAME) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{TEMP_FILENAME}")
+TEMP_FILE = system.getenv_value("TEMP_FILE", TEMP_FILE_DEFAULT,
+                                "Override for temporary filename")
 
 
 #------------------------------------------------------------------------
@@ -74,7 +82,7 @@ def get_temp_file(delete=None):
     # TODO: allow for overriding other options to NamedTemporaryFile
     if ((delete is None) and tpo.detailed_debugging()):
         delete = False
-    temp_file_name = TEMP_FILE
+    temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
     debug.assertion(not delete, "Support for delete not implemented")
     debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
     return temp_file_name
@@ -185,8 +193,10 @@ def resolve_path(filename, base_dir=None):
 def form_path(*filenames):
     """Wrapper around os.path.join over FILENAMEs (with tracing)
     Note: includes sanity check about absolute filenames except for first
+    Warning: This will be deprecated: uses system.form_path instead.
     """
-    debug.assertion(not any(f.startswith(os.path.sep) for f in filenames[1:]))
+    ## TODO3: return system.form_path(*filenames)
+    debug.assertion(not any(f.startswith(system.path_separator()) for f in filenames[1:]))
     path = os.path.join(*filenames)
     debug_format("form_path{f} => {p}", 6, f=tuple(filenames), p=path)
     return path
@@ -306,20 +316,22 @@ def disable_subcommand_tracing():
     default_subtrace_level = 0
 
 
-def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespace):
+def run(command, trace_level=4, subtrace_level=None, just_issue=False, output=False, **namespace):
     """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
    Notes:
    - The result includes stderr, so direct if not desired (see issue):
-         gh.run("ls /tmp/fubar 2> /dev/null")
+         run("ls /tmp/fubar 2> /dev/null")
    - This is only intended for running simple commands. It would be better to create a subprocess for any complex interactions.
    - This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed.
+   - If TEMP_FILE or TEMP_BASE defined, these are modified to be unique to avoid conflicts across processeses.
+    - If OUTPUT, the result will be printed.
    """
     # TODO: add automatic log file support as in run_script from unittest_wrapper.py
     # TODO: make sure no template markers left in command text (e.g., "tar cvfz {tar_file}")
     # EX: "root" in run("ls /")
     # Note: Script tracing controlled DEBUG_LEVEL environment variable.
     debug.assertion(isinstance(trace_level, int))
-    debug_print("run(%s, [trace_level=%s], [subtrace_level=%s])" % (command, trace_level, subtrace_level), (trace_level + 2))
+    debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output}")
     global default_subtrace_level
     # Keep track of current debug level setting
     debug_level_env = None
@@ -328,6 +340,12 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     if subtrace_level != trace_level:
         debug_level_env = os.getenv("DEBUG_LEVEL")
         setenv("DEBUG_LEVEL", str(subtrace_level))
+    save_temp_base = TEMP_BASE
+    if TEMP_BASE:
+         setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
+    save_temp_file = TEMP_FILE
+    if TEMP_FILE:
+        setenv("TEMP_FILE", TEMP_FILE + "_subprocess_")
     # Expand the command template
     # TODO: make this optional
     command_line = command
@@ -346,9 +364,15 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     result = None
     ## TODO: if (just_issue or not wait): ... else: ...
     result = getoutput(command_line) if wait else str(os.system(command_line))
+    if output:
+        print(result)
     # Restore debug level setting in environment
     if debug_level_env:
         setenv("DEBUG_LEVEL", debug_level_env)
+    if save_temp_base:
+        setenv("TEMP_BASE", save_temp_base)
+    if save_temp_file:
+        setenv("TEMP_FILE", save_temp_file)
     debug_print("run(_) => {\n%s\n}" % indent_lines(result), (trace_level + 1))
     return result
 
@@ -444,8 +468,7 @@ def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0, para_m
     ## if re_flags is None:
     ##     re_flags = re.DOTALL
     debug.trace_values(6, lines, "lines")
-    ## assert type(lines) == list
-    assert isinstance(lines, list)
+    debug.assertion(isinstance(lines, list))
     if pattern.find("(") == -1:
         pattern = "(" + pattern + ")"
     if (re_flags and (re_flags & re.DOTALL)):

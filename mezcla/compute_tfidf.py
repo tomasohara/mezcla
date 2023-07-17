@@ -217,8 +217,7 @@ def main():
     for i, filename in enumerate(args):
         # If CSS file, treat each row as separate document, using ID from first column and data from second
         if csv_file:
-            ## TODO: with open(filename, encoding="utf-8") as fh:
-            with open(filename) as fh:
+            with system.open_file(filename) as fh:
                 csv_reader = csv.reader(iter(fh.readlines()), delimiter=DELIMITER, quotechar='"')
                 # TODO: skip over the header line
                 line = 0

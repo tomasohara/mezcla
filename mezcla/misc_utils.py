@@ -61,7 +61,7 @@ def read_tabular_data(filename):
             line = system.from_utf8(line)
             items = line.split("\t")
             if len(items) == 2:
-                assert(items[0].lower() not in table)
+                debug.assertion(items[0].lower() not in table)
                 table[items[0].lower()] = items[1]
             else:
                 debug.trace_fmtd(4, "Ignoring item w/ unexpected format at line {num}",
@@ -101,7 +101,7 @@ def is_prime(num):
         return is_prime_num
 
     # Next, make sure not divisible by 2 or 3
-    elif ((num % 2 == 0) or (num % 3 == 0)):
+    if ((num % 2 == 0) or (num % 3 == 0)):
         debug.trace_fmt(4, "{n} not prime as divisible by 2 or 3.", n=num)
         return False
 

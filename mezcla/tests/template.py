@@ -4,10 +4,11 @@
 #
 # Notes:
 # - Fill out TODO's below. Use numbered tests to order (e.g., test_1_usage).
+# - * See test_python_ast.py for simple example of customization.
 # - TODO: If any of the setup/cleanup methods defined, make sure to invoke base
 #   (see examples below for setUp and tearDown).
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
-#   option shows tracing output normally suppressed by  unittest_wrapper.py.
+#   option shows tracing output normally suppressed by unittest_wrapper.py.
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_<module>.py
 #
@@ -23,8 +24,9 @@ import pytest
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
-from mezcla.my_regex import my_re
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                  global module object
@@ -47,9 +49,8 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 
 
 class TestIt(TestWrapper):
-    """Class for testcase definition"""
+    """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    # -or- non-mezcla: script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     #
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
@@ -79,7 +80,7 @@ class TestIt(TestWrapper):
         """Makes sure TODO works as expected"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
-        gh.write_lines(self.temp_file, data)
+        system.write_lines(self.temp_file, data)
         ## TODO: add use_stdin=True to following if no file argument
         output = self.run_script(options="", data_file=self.temp_file)
         assert my_re.search(r"TODO-pattern", output.strip())
@@ -89,7 +90,7 @@ class TestIt(TestWrapper):
     def test_something_else(self):
         """TODO: flesh out test for something else"""
         debug.trace(4, f"TestIt.test_something_else(); self={self}")
-        self.fail("TODO: code test")
+        assert False
         ## ex: assert (THE_MODULE.TODO_function() == TODO_value)
         return
 
@@ -113,15 +114,15 @@ class TestIt(TestWrapper):
 ## #...............................................................................
 ##
 ## class TestIt2:
-##     """Another class for testcase definition
-##     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
+##     """Class for API-based testcase definition
+##     Note: Separate class avoids error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
 ##
-##    def test_whatever(self):
-##        """TODO: flesh out test for whatever"""
-##        debug.trace(4, f"TestIt2.test_whatever(); self={self}")
-##        assert False, "TODO: code test"
-##        ## ex: assert THE_MODULE.fast_sort() == THE_MODULE.slow_sort()
-##        return
+##     def test_whatever(self):
+##         """TODO: flesh out test for whatever"""
+##         debug.trace(4, f"TestIt2.test_whatever(); self={self}")
+##         assert False, "TODO: code test"
+##         ## ex: assert THE_MODULE.fast_sort() == THE_MODULE.slow_sort()
+##         return
 ##
 
 #------------------------------------------------------------------------

@@ -32,7 +32,7 @@ class TraceMalloc:
 
     def __init__(self, limit=None):
         """Class intiializer"""
-        debug.trace(4, f"TraceMalloc.__init__()")
+        debug.trace(4, "TraceMalloc.__init__()")
         self.snapshot = None
         self.limit = limit
         tracemalloc.start()
@@ -75,7 +75,7 @@ class TraceMalloc:
     
     def display(self, limit=None):
         """Display current snapshot"""
-        debug.trace(3, f"TraceMalloc.display()")
+        debug.trace(3, "TraceMalloc.display()")
 
         if not self.snapshot:
             self.take_snapshot()
@@ -95,7 +95,7 @@ def main():
     
     counts = Counter()
     fname = WORDLIST_FILE
-    with open(fname) as wordlist_file:
+    with system.open_file(fname) as wordlist_file:
         words = list(wordlist_file)
         for word in words:
             prefix = word[:PREFIX_LEN]

@@ -75,6 +75,7 @@ def main():
         yhat_probs = model.predict_proba(testX)
     # predict crisp classes for test set
     if USE_KERAS:
+        # pylint: disable=no-member
         yhat_classes = model.predict_classes(testX, verbose=0)
     else:
         yhat_classes = model.predict(testX)

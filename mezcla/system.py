@@ -17,6 +17,10 @@
 #   ex: def fu(): r = sys.fu(); trace(N, f"fub() returned {r}"); return r
 #       => fu = define_wrapper(trace_level=N, sys.fu)
 #
+# TODO2:
+# - convert additional open() calls to open_file()
+# - drop python 2 support
+#
 
 """System-related functions"""
 
@@ -27,13 +31,11 @@ import inspect
 import os
 import pickle
 import re
-import six
 import sys
 import time
-## OLD: import urllib
 
 # Installed packages
-## OLD: import requests
+import six
 
 # Local packages
 from mezcla import debug
@@ -44,6 +46,10 @@ STRING_TYPES = six.string_types
 MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
 TEMP_DIR = None
+
+## TODO: debug.assertion(python_maj_min_version() >= 3.8, "Require Python 3.8+ for function def's with '/' or '*'")
+## See https://stackoverflow.com/questions/9079036/how-do-i-detect-the-python-version-at-runtime
+debug.assertion(sys.version_info >= (3, 8), "Require Python 3.8+ for function def's with '/' or '*'")
 
 #-------------------------------------------------------------------------------
 # Support for needless python changes
@@ -65,12 +71,10 @@ def register_env_option(var, description, default):
     """Register environment VAR as option with DESCRIPTION and DEFAULT"""
     # Note: The default value is typically the default value passes into the
     # getenv_xyz call, not the current value from the environment.
-    ## OLD: debug.trace_fmt(7, "register_env_option({v}, {d})", v=var, d=description)
     debug.trace_fmt(7, "register_env_option({v}, {dsc}, {dft})",
                     v=var, dsc=description, dft=default)
     global env_options
     global env_defaults
-    ## OLD: env_options[var] = (description or "")
     env_options[var] = description
     env_defaults[var] = default
     return
@@ -78,7 +82,6 @@ def register_env_option(var, description, default):
 
 def get_registered_env_options():
     """Returns list of environment options registered via register_env_option"""
-    ## OLD: option_names = [k for k in env_options if (env_options[k] and env_options[k].strip())]
     ## TEMP
     # pylint: disable=consider-using-dict-items
     option_names = [k for k in env_options if (env_options[k] is not None)]
@@ -105,7 +108,6 @@ def get_environment_option_descriptions(include_all=None, include_default=None, 
     def _format_env_option(opt):
         """Returns OPT description and optionally default value (if INCLUDE_DEFAULT)"""
         debug.trace_fmt(7, "_format_env_option({o})", o=opt)
-        ## OLD: desc_spec = env_options.get(opt, "_")
         ## TEST: Uses unicode O-with-stoke (U+00D8) to indicate n/a
         ## TEMP: desc_spec = to_text(env_options.get(opt))
         env_desc = env_options.get(opt)
@@ -142,12 +144,20 @@ def formatted_environment_option_descriptions(sort=False, include_all=None, inde
                     d=descriptions)
     return descriptions
 
+
 def getenv(var, default_value=None):
     """Simple wrapper around os.getenv, with tracing"""
     # Note: Use getenv_* for type-specific versions with env. option description
     result = os.getenv(var, default_value)
     debug.trace_fmt(5, "getenv({v}, {dv}) => {r}", v=var, dv=default_value, r=result)
     return result
+
+
+def setenv(var, value):
+    """Set environment VAR to VALUE"""
+    debug.trace_fmtd(5, "setenv({v}, {val})", v=var, val=value)
+    os.environ[var] = value
+    return
 
 
 def getenv_text(var, default=None, description=None, helper=False):
@@ -163,7 +173,6 @@ def getenv_text(var, default=None, description=None, helper=False):
         debug.trace(4, f"Warning: getenv_text treats default None as ''; consider using getenv_value for '{var}' instead")
         default = ""
     text_value = os.getenv(var)
-    ## OLD: if not text_value:
     ## TODO?: if ((not helper and (text_value is None)) or (not text_value)):
     if (text_value is None):
         debug.trace_fmtd(6, "getenv_text: no value for var {v}", v=var)
@@ -249,16 +258,17 @@ def print_error(text):
     """Output TEXT to standard error
     Note: Use print_error_fmt to include format keyword arguments"
     """
+    debug.trace(7, f"print_error({text})")
     # ex: print_error("Fubar!")
     print(text, file=sys.stderr)
-    return
+    return None
 
-def print_stderr(text, **kwargs):
-    """Output TEXT to standard error, using KWARGS for formatting"""
-    # NOTE: Deprecated function: use print_error_fmt instead.
+def print_stderr_fmt(text, **kwargs):
+    """Output TEXT to standard error, using KWARGS for formatting"""       
     # ex: print_stderr("Error: F{oo}bar!", oo=("oo" if (time_in_secs() % 2) else "u"))
     # TODO: rename as print_error_fmt
     # TODO: weed out calls that use (text.format(...)) rather than (text, ...)
+    debug.trace(7, f"print_stderr_fmt({text}, kw={kwargs})")
     formatted_text = text
     try:
         # Note: to avoid interpolated text as being interpreted as variable
@@ -272,9 +282,21 @@ def print_stderr(text, **kwargs):
         if debug.verbose_debugging():
             print_full_stack()
     print(formatted_text, file=sys.stderr)
-    return
+    return None
 #
-print_error_fmt = print_stderr
+#
+def print_stderr(text, **kwargs):
+    """Currently, an alias for print_stderr_fmt
+    Note: soon to be alias for print_error (i.e., kwargs will not supported)"""
+    debug.trace(7, f"print_stderr({text}, kw={kwargs})")
+    # TODO?: if kwargs: debug.trace(2, "Warning: kwargs no longer supported; use print_stderr_fmt
+    # NOTE: maldito pylint (see https://github.com/pylint-dev/pylint/issues/2332 [Don't issue assignment-from-none if None is returned explicitly]
+    # pylint: disable=assignment-from-none
+    if not kwargs:
+        result = print_error(text)
+    else:
+        result = print_stderr_fmt(text, **kwargs)
+    return result
 
 
 def print_exception_info(task, show_stack=None):
@@ -291,23 +313,18 @@ def print_exception_info(task, show_stack=None):
     return
 
 
-def exit(message=None, **namespace):    # pylint: disable=redefined-builtin
+def exit(message=None, status_code=None, **namespace):    # pylint: disable=redefined-builtin
     """Display error MESSAGE to stderr and then exit, using optional
-    NAMESPACE for format"""
-    debug.trace(6, f"system.exit{(message, namespace)})")
+    NAMESPACE for format. The STATUS_CODE can be overrided (n.b., 0 if None)."""
+    # EX: exit("Error: {reason}!", status_code=123, reason="Whatever")
+    debug.trace(6, f"system.exit{(message, status_code, namespace)}")
     if namespace:
         message = message.format(**namespace)
     if message:
         print_stderr(message)
-    return sys.exit()
-
-
-def setenv(var, value):
-    """Set environment VAR to VALUE"""
-    debug.trace_fmtd(5, "setenv({v}, {val})", v=var, val=value)
-    os.environ[var] = value
-    return
-## TODO: move above (e.g., after getenv)
+        if status_code is None:
+            status_code = 1
+    return sys.exit(status_code)
 
 
 def print_full_stack(stream=sys.stderr):
@@ -356,19 +373,23 @@ def get_current_function_name():
     return function_name
 
 
-def open_file(filename, encoding=None, errors=None, **kwargs):
+def open_file(filename, /, mode="r", *, encoding=None, errors=None, **kwargs):
     """Wrapper around around open() with FILENAME using UTF-8 encoding and ignoring ERRORS (both by default)
-    Note: mode is left at default (i.e., 'r')"""
-    # TODO: implement as with-style context
-    ## OLD: if encoding is None:
-    if (encoding is None) and (kwargs.get("mode") != "rb"):
+    Notes:
+    - The mode is left at default (i.e., 'r')
+    - As with open(), result can be used in a with statement:
+        with system.open_file(filename) as f: ...
+    """
+    # Note: position-only args precedes / and keyword only follow * (based on https://stackoverflow.com/questions/24735311/what-does-the-slash-mean-when-help-is-listing-method-signatures):
+    #   def f(pos_only1, pos_only2, /, pos_or_kw1, pos_or_kw2, *, kw_only1, kw_only2): pass
+    if (encoding is None) and ("b" not in mode):
         encoding = "UTF-8"
     if (encoding and (errors is None)):
         errors = 'ignore'
     result = None
     try:
         # pylint: disable=consider-using-with; note: bogus 'Bad option value' warning
-        result = open(filename, encoding=encoding, errors=errors, **kwargs)
+        result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
     except IOError:
         debug.trace_fmtd(3, "Unable to open {f}: {exc}", f=filename, exc=get_exception())
     debug.trace_fmt(5, "open({f}, [{enc}, {err}], kwargs={kw}) => {r}",
@@ -397,7 +418,6 @@ def load_object(file_name, ignore_error=False):
     obj = None
     try:
         with open(file_name, mode='rb') as f:
-            ## OLD: obj = pickle.load(f)
             try:
                 obj = pickle.load(f)
             except (UnicodeDecodeError):
@@ -422,7 +442,6 @@ def quote_url_text(text, unquote=False):
     result = text
     quote = (not unquote)
     try:
-        ## BAD: if not re.search("%[0-9A-F]{2}", text):
         proceed = True
         if proceed:
             # pylint: disable=no-member
@@ -449,10 +468,10 @@ def unquote_url_text(text):
     Note: Wrapper around quote_url_text w/ UNQUOTE set"""
     return quote_url_text(text, unquote=True)
 
+
 def escape_html_text(text):
     """Add entity encoding to TEXT to make suitable for HTML"""
-    # Note: This is wrapper around html.escape and just handles
-    # '&', '<', '>', and '"'.
+    # Note: This is wrapper around html.escape and just handles '&', '<', '>', "'", and '"'.
     # EX: escape_html_text("<2/") => "&lt;2/"
     # EX: escape_html_text("Joe's hat") => "Joe&#x27;s hat"
     debug.trace_fmtd(7, "in escape_html_text({t})", t=text)
@@ -469,7 +488,7 @@ def escape_html_text(text):
 
 
 def unescape_html_text(text):
-    """Remove entity encoding, etc. from TEXT (i.e., undo"""
+    """Remove entity encoding, etc. from TEXT (i.e., undo)"""
     # Note: This is wrapper around html.unescape (Python 3+) or
     # HTMLParser.unescape (Python 2).
     # See https://stackoverflow.com/questions/21342549/unescaping-html-with-special-characters-in-python-2-7-3-raspberry-pi.
@@ -548,14 +567,14 @@ def read_entire_file(filename, **kwargs):
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
-        ## OLD: with open(filename) as f:
-        with open_file(filename, **kwargs) as f:
-            data = from_utf8(f.read())
-    ## OLD except IOError:
+        ## TODO: with open_file(filename, **kwargs) as f:
+        with open(filename, encoding="UTF-8", **kwargs) as f:
+            data = f.read()
     except (AttributeError, IOError):
-        # TODO: use print_stderr so that shown in optimized version
-        Level = 4 if (kwargs.get("errors") == "ignore") else 1
-        debug.trace_fmtd(Level, "Error: Unable to read file '{f}': {exc}",
+        debug.trace_exception(1, "read_entire_file/IOError")
+        report_errors = (kwargs.get("errors") != "ignore")
+        if report_errors:
+            print_stderr("Error: Unable to read file '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmtd(8, "read_entire_file({f}) => {r}", f=filename, r=data)
     return data
@@ -585,7 +604,7 @@ def read_binary_file(filename):
     try:
         with open(filename, mode="rb") as f:
             data = f.read()
-    except (IOError, ValueError):
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem reading file '{f}': {exc}",
                          f=filename, exc=get_exception())
     ## TODO: output hexdump excerpt (e.g., via https://pypi.org/project/hexdump)
@@ -624,18 +643,15 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
                     f=filename, sh=skip_header, d=delim, rc=retain_case)
     if delim is None:
         delim = "\t"
-    ## OLD: hash_table = {}
     hash_table = defaultdict(str)
     line_num = 0
     try:
         # TODO: use csv.reader
-        with open(filename, encoding="UTF-8") as f:
+        with open_file(filename) as f:
             for line in f:
                 line_num += 1
                 if (skip_header and (line_num == 1)):
                     continue
-                ## OLD: line = from_utf8(line)
-                ## OLD: line = from_utf8(line.rstrip())
                 line = from_utf8(line.rstrip("\n"))
                 if not retain_case:
                     line = line.lower()
@@ -646,7 +662,7 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
                     delim_spec = ("\\t" if (delim == "\t") else delim)
                     debug.trace_fmt(2, "Warning: Ignoring line {n} w/o delim ({d}): {l}", 
                                     n=line_num, d=delim_spec, l=line)
-    except (IOError, ValueError):
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmtd(1, "Error creating lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmtd(7, "read_lookup_table({f}) => {r}", f=filename, r=hash_table)
@@ -667,18 +683,15 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, **kwarg
                     f=filename, rc=retain_case)
     lookup_hash = defaultdict(bool)
     try:
-        ## with open(filename) as f:
         with open_file(filename, **kwargs) as f:
             for line in f:
-                ## OLD: key = line.strip().lower()
                 key = line.strip()
                 if not retain_case:
                     key = key.lower()
-                ## OLD: debug.assertion(delim not in key)
                 if delim in key:
                     key = key.split(delim)[0]
                 lookup_hash[key] = True
-    except (IOError, ValueError, AttributeError):
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmtd(1, "Error: Creating boolean lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmt(7, "create_boolean_lookup_table => {h}", h=lookup_hash)
@@ -706,15 +719,14 @@ def write_file(filename, text, skip_newline=False, append=False, binary=False):
     try:
         if not isinstance(text, STRING_TYPES):
             text = to_string(text)
-        ## OLD: mode = 'a' if append else 'w'
-        debug.assertion(not binary and append)
+        debug.assertion(not (binary and append))
         mode = "wb" if binary else "a" if append else "w"
         with open(filename, encoding="UTF-8", mode=mode) as f:
             f.write(to_utf8(text))
             if not text.endswith("\n"):
                 if not skip_newline:
                     f.write("\n")
-    except (IOError, ValueError):
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem writing file '{f}': {exc}",
                          f=filename, exc=get_exception())
     return
@@ -729,7 +741,7 @@ def write_binary_file(filename, data):
     try:
         with open(filename, mode="wb") as f:
             f.write(data)
-    except (IOError, ValueError):
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmtd(1, "Error: Problem writing file '{f}': {exc}",
                          f=filename, exc=get_exception())
     return
@@ -743,12 +755,11 @@ def write_lines(filename, text_lines, append=False):
     f = None
     try:
         mode = 'a' if append else 'w'
-        ## OLD f = open(filename, mode)
         with open(filename, encoding="UTF-8", mode=mode) as f:
             for line in text_lines:
                 line = to_utf8(line)
                 f.write(line + "\n")
-    except IOError:
+    except (AttributeError, IOError, ValueError):
         debug.trace_fmt(2, "Warning: Exception writing file {f}: {e}",
                         f=filename, e=get_exception())
     finally:
@@ -775,6 +786,18 @@ def get_file_modification_time(filename, as_float=False):
             mod_time = str(datetime.datetime.fromtimestamp(mod_time))
     debug.trace_fmtd(5, "get_file_modification_time({f}) => {t}", f=filename, t=mod_time)
     return mod_time
+
+
+def filename_proper(path):
+    """Return PATH sans directories"""
+    # EX: filename_proper("/tmp/document.pdf") => "document.pdf")
+    # EX: filename_proper("/tmp") => "tmp")
+    # EX: filename_proper("/") => "/")
+    (directory, filename) = os.path.split(path)
+    if not filename:
+        filename = directory
+    debug.trace(6, f"filename_proper({path}) => {filename}")
+    return filename
 
 
 def remove_extension(filename, extension=None):
@@ -825,8 +848,27 @@ def get_file_size(filename):
     return size
 
 
+def path_separator(sysname=None):
+    """Return text used to separate paths components under current OS (e.g., / or \\).
+    This is basically a wrapper around os.path.sep with tracing, added to avoid using non-existent os.path.delim.
+    Note: can overide SYSNAME to get separator for another system; see os.uname()"""
+    # EX: path_separator(sysname="???") => "/"
+    # TODO: define-tracing-fn path_separator os.path.sep 7
+    result = os.path.sep
+    if (sysname != os.uname().sysname):
+        default_sep = "/"
+        result = "\\" if sysname == "Windows" else default_sep
+    debug.trace(7, f"path_separator() => {result}")
+    return result
+#    
+# EX: path_separator(sysname="Windows") => "\\"
+# EX-SETUP: def when(cond, value): return value if cond else None
+# EX: path_separator() => (when((os.uname().sysname == "Linux"), "/"))
+
+
 def form_path(*filenames):
     """Wrapper around os.path.join over FILENAMEs (with tracing)"""
+    debug.assertion(not any(f.startswith(path_separator()) for f in filenames[1:]))
     path = os.path.join(*filenames)
     debug.trace_fmt(6, "form_path({f}) => {p}", f=tuple(filenames), p=path)
     return path
@@ -932,7 +974,6 @@ def from_unicode(text, encoding=None):
 
 
 def to_string(text):
-    ## OLD: """Ensure TEXT is a string type
     """Ensure VALUE is a string type
     Note: under Python 2, result is str or Unicode; but for Python 3+, it is always str"""
     # EX: to_string(123) => "123"
@@ -967,7 +1008,7 @@ def chomp(text, line_separator=os.linesep):
 def normalize_dir(path):
     """Normalize the directory PATH (e.g., removing ending path delim)"""
     # EX: normalize_dir("/etc/") => "/etc")
-    result = chomp(path, os.path.sep)
+    result = chomp(path, path_separator())
     debug.trace(6, f"normalize_dir({path}) => {result}")
     return result
 
@@ -1086,8 +1127,8 @@ def just_one_true(in_list, strict=False):
     # Note: Consider using misc_utils.just1 (based on more_itertools.exactly_n)
     # TODO: Trap exceptions (e.g., string input)
     min_count = 1 if strict else 0
-    ## OLD: is_true = (1 == sum([int(bool(b)) for b in in_list]))         # pylint: disable=misplaced-comparison-constant
-    is_true = (min_count <= sum([int(bool(b)) for b in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
+    ## OLD: is_true = (min_count <= sum([int(bool(b)) for b in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
+    is_true = (min_count <= sum([int(bool(b)) for b in in_list]) <= 1)
     debug.trace_fmt(6, "just_one_true({l}) => {r}", l=in_list, r=is_true)
     return is_true
 
@@ -1095,7 +1136,8 @@ def just_one_true(in_list, strict=False):
 def just_one_non_null(in_list, strict=False):
     """True if only one element of IN_LIST is not None (or all None unless STRICT)"""
     min_count = 1 if strict else 0
-    is_true = (min_count <= sum([int(x is not None) for x in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
+    ## OLD: is_true = (min_count <= sum([int(x is not None) for x in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
+    is_true = (min_count <= sum([int(x is not None) for x in in_list]) <= 1)
     debug.trace_fmt(6, "just_one_non_null({l}) => {r}", l=in_list, r=is_true)
     return is_true
 
@@ -1125,14 +1167,11 @@ def to_float(text, default_value=0.0):
 safe_float = to_float
 
 
-## OLD: def to_int(text, default_value=0):
 def to_int(text, default_value=0, base=None):
-    ## OLD: """Interpret TEXT as integer, using DEFAULT_VALUE"""
     """Interpret TEXT as integer with optional DEFAULT_VALUE and BASE"""
     # TODO: use generic to_num with argument specifying type
     result = default_value
     try:
-        ## OLD: result = int(text)
         result = int(text, base) if (base and isinstance(text, str)) else int(text)
     except (TypeError, ValueError):
         debug.trace_fmtd(6, "Exception in to_int: {exc}", exc=get_exception())
@@ -1164,7 +1203,6 @@ PRECISION = getenv_int("PRECISION", 6,
 #
 def round_num(value, precision=None):
     """Round VALUE [to PRECISION places, 6 by default]"""
-    ## BAD: """Round VALUE [to PRECISION places, {p} by default]""".format(p=PRECISION)
     # EX: round_num(3.15914, 3) => 3.159
     if precision is None:
         precision = PRECISION
@@ -1197,7 +1235,7 @@ def current_time(integral=False):
     secs = time.time()
     if integral:
         secs = int(round_num(secs, precision=0))
-    debug.trace(5, f"current_time([integral={integral}]) => {secs}")
+    debug.trace(7, f"current_time([integral={integral}]) => {secs}")
     return secs
 
 
@@ -1244,10 +1282,12 @@ init()
 def main(args):
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
-    user = getenv_text("USER")
-    print_stderr("Warning, {u}: Not intended for direct invocation".format(u=user))
+    user = getenv_text("USER", "user")
+    print_stderr("Warning, {u}: {f} not intended for direct invocation!".
+                 format(u=user, f=filename_proper(__file__)))
     debug.trace_fmt(4, "FYI: maximum integer is {maxi}", maxi=maxint())
     return
+
 
 if __name__ == '__main__':
     main(get_args())

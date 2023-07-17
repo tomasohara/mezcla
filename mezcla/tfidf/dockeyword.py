@@ -26,8 +26,8 @@ class DocKeyword(object):
         self.text = text
         if (start is not None) and (end is not None):
             self.locations.add(Location(document, start, end))
-        ## TODO: debug.trace_object(8, self, "DocKeyword instance", show_all=False)
-        debug.trace_object(7, self, "DocKeyword instance", show_all=False)
+        ## TODO: debug.trace_object(9, self, "DocKeyword instance", show_all=False)
+        debug.trace_object(8, self, "DocKeyword instance", show_all=False)
 
     def update_locations(self, locations):
         """Add LOCATIONS to other locations"""
@@ -72,4 +72,4 @@ class DocKeyword(object):
     
 if __name__ == '__main__':
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone")
-    debug.trace_object(3, DocKeyword("monkeys"))
+    debug.trace_object(4, DocKeyword("monkeys"))

@@ -22,6 +22,12 @@ import re
 
 # Installed packages
 import pytest
+## TAKE1
+## # note: The gensim module is not installed by default, so tests skipped if not found
+## try:
+##     import gensim
+## except:
+##     gensim = None
 
 # Local packages
 from mezcla import debug
@@ -31,13 +37,22 @@ from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.gensim_test as THE_MODULE
+try:
+    import gensim
+    import mezcla.gensim_test as THE_MODULE
+except:
+    ## TEST (maldito pytest):
+    ## print("hey, hey, hey!")
+    debug.trace_exception(3, "importing gensim_test")
+    gensim = None
+    THE_MODULE = None
 
 class TestGensimTest(TestWrapper):
-    """Class for testcase definition"""
+    """Class for script-level testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.derive_tested_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.skipif(not gensim, reason="gensim module missing")
     def test_data_file(self):
         """Tests results over a known data file (LICENSE.txt)"""
         tpo.debug_print("test_data_file()", 4)
@@ -50,6 +65,7 @@ class TestGensimTest(TestWrapper):
         debug.trace_expr(5, output)
         return
 
+    @pytest.mark.skipif(not gensim, reason="gensim module missing")
     def test_vector_printing(self):
         """Test printing of corpus vector for simple input"""
         tpo.debug_print("test_vector_printing()", 4)
@@ -60,6 +76,17 @@ class TestGensimTest(TestWrapper):
         debug.trace_expr(5, output)
         return
 
+    
+class TestGensimTest2:
+     """Class for internal testcase definitions"""
+
+     @pytest.mark.skipif(not gensim, reason="gensim module missing")
+     def test_corpus_data(self):
+         """Test creation of corpus from a file"""
+         corpus = THE_MODULE.CorpusData(__file__)
+         # note: currently 81 unique tokens extracted
+         assert len(list(corpus)) > 50
+   
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':

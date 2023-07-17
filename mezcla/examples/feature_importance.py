@@ -121,7 +121,8 @@ def main():
         dataset = du.read_csv(data_path, delimiter=",", dtype=in_dtype)
         labels = list(dataset.columns)
         if not USE_DATAFRAME:
-            dataset = dataset.values
+            dataset = dataset.values    # pylint: disable=no-member
+
     class_col = (len(labels) - 1)
     class_var = labels[class_col]
     feature_labels = labels[0: class_col]

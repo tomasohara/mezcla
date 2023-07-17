@@ -37,11 +37,15 @@
 #     python -c 'from mezcla import debug; debug.trace(debug.DEFAULT + 1, "Not visible")'
 #     DEBUG_LEVEL=3 python -c 'from mezcla import debug; debug.trace(3, "Visible")'
 #
+# TODO1:
+# - Add sanity check to trace_fmt for when keyword in kaargs unused.
+#
 # TODO:
 # - * Add sanity checks for unused environment variables specified on command line (e.g., FUBAR=1 python script.py ...)!
 # - Rename as debug_utils so clear that non-standard package.
 # - Add exception handling throughout (e.g., more in trace_object).
 # - Apply format_value consistently.
+#
 #
 
 """Debugging functions (e.g., tracing)"""
@@ -245,13 +249,16 @@ if __debug__:
         # references, this function does the formatting.
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
         if (trace_level >= level):
+            max_len = kwargs.get('_max_len') or kwargs.get('max_len')
             try:
                 try:
                     # TODO: add version of assertion that doesn't use trace or trace_fmtd
                     ## TODO: assertion(re.search(r"{\S*}", text))
                     ## OLD: assertion("{" in text)
                     ## OLD: trace(level, text.format(**kwargs))
-                    kwargs_unicode = {k: _to_unicode(_to_string(v)) for (k, v) in list(kwargs.items())}
+                    ## OLD: kwargs_unicode = {k: _to_unicode(_to_string(v)) for (k, v) in list(kwargs.items())}
+                    kwargs_unicode = {k: format_value(_to_unicode(_to_string(v)), max_len=max_len)
+                                      for (k, v) in list(kwargs.items())}
                     trace(level, _to_unicode(text).format(**kwargs_unicode))
                 except(KeyError, ValueError, UnicodeEncodeError):
                     raise_exception(max(VERBOSE, level + 1))
@@ -347,7 +354,8 @@ if __debug__:
             include_member = (show_all or (not (member.startswith("__") or 
                                                 re.search(r"^<.*(method|module|function).*>$", value_spec))))
             # Optionally, process recursively (TODO: make INDENT an env. option)
-            if ((max_depth > 0) and include_member and (not isinstance(value, SIMPLE_TYPES))):
+            is_simple_type = isinstance(value, SIMPLE_TYPES)
+            if ((max_depth > 0) and include_member and (not is_simple_type)):
                 # TODO: add helper for formatting type & address (for use here and above)
                 member_type_id_label = (member + " [" + str(type(value)) + " " + hex(id(value)) + "]")
                 trace_object(level, value, label=member_type_id_label, show_all=show_all,
@@ -359,7 +367,11 @@ if __debug__:
             ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
             try:
                 try:
-                    value_spec = format_value("%s" % ((value),), max_len=max_value_len)
+                    ## OLD: value_spec = format_value("%r" % ((value),), max_len=max_value_len)
+                    if is_simple_type and not isinstance(value, str):
+                        value_spec = value
+                    else:
+                        value_spec = format_value("%r" % ((value),), max_len=max_value_len)
                 except(TypeError, ValueError):
                     trace_fmtd(QUITE_VERBOSE, "Warning: Problem in tracing member {m}: {exc}",
                                m=member, exc=sys.exc_info())
@@ -430,6 +442,7 @@ if __debug__:
         to derive label for each expression. By default, the following format is used:
            expr1=value1; ... exprN=valueN
         Notes:
+        - Warning: introspection fails to resolve expressions if statement split across lines.
         - For simplicity, the values are assumed to separated by ', ' (or expression _SEP)--barebones parsing applied.
         - Use DELIM to specify delimiter; otherwise '; ' used;
           if so, NO_EOL applies to intermediate values (EOL always used at end).
@@ -458,7 +471,7 @@ if __debug__:
         if sep is None:
             sep = ", "
         if no_eol is None:
-            no_eol = (delim == "\n")
+            no_eol = (delim and ("\n" in delim))
         if delim is None:
             delim = "; "
             if in_no_eol is None:
@@ -581,10 +594,9 @@ if __debug__:
     def assertion(expression, message=None, assert_level=None):
         """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
         Note:
+        - Warning: introspection fails to resolve expression if split across lines.
         - This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so).
-        - Currently, the expression text is not resolved properly under ipython (or Jupyter).
         - The optional ASSERT_LEVEL overrides use of ALWAYS.
-        - Uses introspection to derive text for assertion expression.
         - Returns expression text or None if not triggered.
         """
         # EX: assertion((2 + 2) != 5)
@@ -615,6 +627,7 @@ if __debug__:
                 statement = re.sub("#.*$", "", statement)
                 statement = re.sub(r"^(\S*)assertion\(", "", statement)
                 expression = re.sub(r"\);?\s*$", "", statement)
+                expression = re.sub(r",\s*$", "", statement)
                 expression_text = expression
                 qualification_spec = (": " + message) if message else ""
                 # Output information
@@ -635,9 +648,11 @@ if __debug__:
         # TODO: rename as cond_value???
         return (value if (trace_level >= level) else None)
 
+
     def code(level, no_arg_function):
         """Execute NO_ARG_FUNCTION if at trace LEVEL or higher
         Notes:
+        - Use call() for more flexible invocation (e.g., can avoid lambda function)
         - Given the quirks of Python syntax, a two-step process is required:
            debug.code(4, { line1; line2; ...; lineN })
                =>
@@ -646,11 +661,24 @@ if __debug__:
                    line1; line2; ...; lineN
            debug.code(4, my_stupid_block_workaround)
         - Lambda functions can be used for simple expression-based functions"""
-        trace_object(VERBOSE, f"code({level}, {no_arg_function})")
+        trace(VERBOSE, f"code({level}, {no_arg_function})")
+        result = None
         if (trace_level >= level):
-            trace_object(QUITE_DETAILED, f"Executing {no_arg_function}")
-            no_arg_function()
-        return
+            trace(QUITE_DETAILED, f"Executing {no_arg_function}")
+            result = no_arg_function()
+        return result
+
+    
+    def call(level, function, *args, **kwargs):
+        """Invoke FUNCTION with ARGS and KWARGS if at trace LEVEL or higher
+        Note: Use code() for simpler invocation (e.g., via lambda function)
+        """
+        trace(VERBOSE, f"call({level}, {function}, a={args}, kw={kwargs})")
+        result = None
+        if (trace_level >= level):
+            trace(QUITE_DETAILED, f"Executing {function}")
+            result = function(*args, **kwargs)
+        return result
 
 else:
 
@@ -694,6 +722,8 @@ else:
 
     code = non_debug_stub
 
+    call = non_debug_stub
+
     ## TODO?:
     ## val = non_debug_stub
     ##
@@ -702,7 +732,9 @@ else:
         # Note: implemented separately from non_debug_stub to ensure no return value
         return
     ##
-    assert val(1) is None, "non-debug val() should not return a non-Null value"
+    ## OLD: assert val(1) is None, "non-debug val() should not return a non-Null value"
+    if val(1) is None:
+        system.print_error("Warning: non-debug val() should return Null")
 
 # Aliases for terse functions
     
@@ -910,6 +942,7 @@ CLIPPED_MAX = 132
 #
 def clip_value(value, max_len=CLIPPED_MAX):
     """Return clipped version of VALUE (e.g., first MAX_LEN chars)"""
+    # TODO3: replace with format_value
     # TODO: omit conversion to text if already text [DUH!]
     clipped = "%s" % value
     if (len(clipped) > max_len):
@@ -1008,7 +1041,7 @@ if __debug__:
         # note: shows command invocation unless invoked via "python -c ..."
         command_line = " ".join(sys.argv)
         assertion(command_line)
-        if (command_line and (command_line != "-c")):
+        if (command_line and (command_line != "-c") and (command_line != "-m")):
             trace(USUAL, command_line)
         trace_expr(DETAILED, sys.argv)
         open_debug_file()
@@ -1052,7 +1085,7 @@ if __debug__:
 
         # Likewise show additional information during verbose debug tracing
         # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
-        trace_expr(VERBOSE, globals(), max_len=65536)
+        trace_expr(MOST_DETAILED, globals(), max_len=65536)
 
         # Register to show shuttdown time and elapsed seconds
         # TODO: rename to reflect generic-exit nature
@@ -1086,6 +1119,8 @@ if __debug__:
 
 #-------------------------------------------------------------------------------
 
+trace_expr(MOST_VERBOSE, 888)
+#
 if __name__ == '__main__':
     main(sys.argv)
 else:

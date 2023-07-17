@@ -11,6 +11,9 @@
 # - For tips on parameter settings, see
 #   https://getimg.ai/guides/interactive-guide-to-stable-diffusion-guidance-scale-parameter
 #
+# TODO:
+# - Set GRADIO_SERVER_NAME to 0.0.0.0?
+#
 
 """Image generation via HF Stable Diffusion (SD) API"""
 
@@ -20,19 +23,13 @@ import json
 import time
 
 # Installed modules
-
-from datasets import load_dataset
-## NOTE: slows down startup and not needed for client
-## OLD: from diffusers import StableDiffusionPipeline
-## OLD: import flask
+import diskcache
 from flask import Flask, request
-import gradio as gr
 import PIL
 import requests
-import torch
+import gradio as gr
 
 # Local modules
-
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
@@ -48,7 +45,7 @@ NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
 GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
                                    "How much the image generation follows the prompt")
 SD_URL = system.getenv_value("SD_URL", None,
-                             "URL for SD TCP/restful server")
+                             "URL for SD TCP/restful serve--new via flask or remote")
 SD_PORT = system.getenv_int("SD_PORT", 9700,
                             "TCP port for SD server")
 SD_DEBUG = system.getenv_int("SD_DEBUG", False,
@@ -65,6 +62,8 @@ LOW_MEMORY = system.getenv_bool("LOW_MEMORY", False,
                                 "Use low memory computations such as via float16")
 DUMMY_RESULT = system.getenv_bool("DUMMY_RESULT", False,
                                   "Mock up SD server result")
+DISK_CACHE = system.getenv_value("SD_DISK_CACHE", None,
+                                 "Path to directory with disk cache")
 
 BATCH_ARG = "batch"
 SERVER_ARG = "server"
@@ -73,6 +72,14 @@ PORT_ARG = "port"
 PROMPT_ARG = "prompt"
 NEGATIVE_ARG = "negative"
 GUIDANCE_ARG = "guidance"
+
+# Conditional imports for HG/PyTorch
+torch = None
+load_dataset = None
+if USE_HF_API:
+    # pylint: disable=import-outside-toplevel, import-error
+    from datasets import load_dataset
+    import torch
 
 word_list = []
 if CHECK_UNSAFE:
@@ -97,7 +104,7 @@ class StableDiffusion:
     """Class providing Stable Diffusion generative AI (e.g., text-to-image)"""
 
     def __init__(self, use_hf_api=None, server_url=None, server_port=None, low_memory=None):
-        debug.trace(4, f"__init__{(use_hf_api, server_url, server_port)}")
+        debug.trace(4, f"{self.__class__.__name__}.__init__{(use_hf_api, server_url, server_port)}")
         if use_hf_api is None:
             use_hf_api = USE_HF_API
         self.use_hf_api = use_hf_api
@@ -107,6 +114,7 @@ class StableDiffusion:
         if server_port is None:
             server_port = SD_PORT
         if self.server_url and not my_re.search(r"^https?", self.server_url):
+            # note: remote flask server (e.g., on GPU server)
             self.server_url = f"http://{self.server_url}"
             debug.trace(4, f"Added http protocol to URL: {self.server_url}")
         if self.server_url and not my_re.search(r":\d+", self.server_url):
@@ -118,6 +126,13 @@ class StableDiffusion:
             low_memory = LOW_MEMORY
         self.low_memory = low_memory
         self.pipe = None
+        self.cache = None
+        if DISK_CACHE:
+            self.cache = diskcache.Cache(
+                DISK_CACHE,                   # path to dir
+                disk=diskcache.core.JSONDisk, # avoid serialization issue
+                disk_compress_level=0,        # no compression
+                cull_limit=0)                 # no automatic pruning
         debug.assertion(bool(self.use_hf_api) != bool(self.server_url))
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
     
@@ -146,8 +161,8 @@ class StableDiffusion:
         Returns list of NUM image specifications in base64 format (e.g., for use in HTML)
         Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag
         """
-        ## TODO: def infer(prompt, negative_prompt, scale) -> List(PIL.Image.Image):
-        debug.trace(4, f"StableDiffusion.infer{(prompt, negative_prompt, scale, num_images)}")
+        ## OLD: debug.trace(4, f"{self.__class__.__name__}.infer{(prompt, negative_prompt, scale, num_images)}")
+        debug.trace_expr(4, prompt, negative_prompt, scale, num_images, skip_img_spec, prefix=f"in {self.__class__.__name__}.infer:\n\t", delim="\n\t", max_len=1024)
         if num_images is None:
             num_images = NUM_IMAGES
         if scale is None:
@@ -157,12 +172,30 @@ class StableDiffusion:
                 raise gr.Error("Unsafe content found. Please try again with different prompts.")
     
         images = []
-    
+        params = (prompt, negative_prompt, scale, num_images, skip_img_spec)
+
+        if self.cache is not None:
+            images = self.cache.get(params)
+        if images and len(images) > 0:
+            ## TEST:
+            ## debug.trace_fmt(6, "Using cached result for params {p}: ({r})",
+            ##                 p=params, r=images)
+            debug.trace_fmt(5, "Using cached infer result: ({r})", r=images)
+        else:
+            images = self.infer_non_cached(prompt, negative_prompt, scale, num_images, skip_img_spec)
+            if self.cache is not None:
+                self.cache.set(params, images)
+                debug.trace_fmt(6, "Setting cached result (r={r})", r=images)
+        return images
+            
+    def infer_non_cached(self, prompt, negative_prompt, scale, num_images, skip_img_spec):
+        """Non-cached version of infer"""
+        debug.trace(5, f"{self.__class__.__name__}.infer_non_cached{(prompt, negative_prompt, scale, num_images)}")
+        images = []
         if self.use_hf_api:
-            ## HACK:
             if DUMMY_RESULT:
                 result = ["iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAMzMzP////8AAABGA1scAAAAJUlEQVR4nGNgAAFGQUEowRoa6sCABBZowAgsgBEIGUQCRALAPACMHAOQvR4HGwAAAABJRU5ErkJggg=="]
-                debug.trace(5, f"early exit infer() => {result}")
+                debug.trace(5, f"early exit infer_non_cached() => {result}")
                 return result
 
             if not self.pipe:
@@ -182,6 +215,7 @@ class StableDiffusion:
                     image_path = f"{BASENAME}-{i + 1}.png"
                     image.save(image_path)
                     num_generated += 1
+                    # note: "decodes" base-64 encoded bytes object into UTF-8 string
                     b64_encoding = (base64.b64encode(system.read_binary_file(image_path))).decode()
                 except:
                     system.print_exception_info("image-to-base64")
@@ -204,7 +238,7 @@ class StableDiffusion:
                     image_b64 = (f"data:image/png;base64,{image_b64}")
                 images.append(image_b64)
         result = images
-        debug.trace(5, f"infer() => {debug.format_value(result)}")
+        debug.trace_fmt(5, "infer_non_cached() => {r}", r=result)
         
         return result
 
@@ -214,26 +248,16 @@ class StableDiffusion:
 @flask_app.route('/', methods=['GET', 'POST'])
 def handle_infer():
     """Process request to do inference to generate image from text"""
-    debug.trace(6, "handle_infer()")
+    debug.trace(6, "[flask_app /] handle_infer()")
     # TODO3: request => flask_request
     debug.trace_object(5, request)
-    ## OLD:
-    ## params = {
-    ##     'prompt': request.values.get('prompt'),
-    ##     'negative_prompt': request.values.get('negative_prompt'),
-    ##     'scale': request.values.get('guidance_scale'),
-    ## }
-    ## params = flask.Request.get_json()
     params = request.get_json()
     debug.trace_expr(5, params)
     images_spec = {"images": sd_instance.infer(**params)}
-    ## OLD: return flask.Response(status=200, mimetype='application/json', response=json.dumps(images_spec))
-    ## BAD: result = flask.Response(status=200, mimetype='application/json', response=images_spec)
-    ## TEST: result = (images_spec, 200)
     # note: see https://stackoverflow.com/questions/45412228/sending-json-and-status-code-with-a-flask-response
     result = (json.dumps(images_spec), 200)
     debug.trace_object(7, result)
-    debug.trace(7, f"handle_infer() => {result}")
+    debug.trace_fmt(7, "handle_infer() => {r}", r=result)
     return result
 
 
@@ -241,7 +265,7 @@ def infer(prompt=None, negative_prompt=None, scale=None, num_images=None, skip_i
     """Wrapper around StableDiffusion.infer()
     Note: intended just for the gradio UI"
     """
-    debug.trace(6, f"infer{(prompt, negative_prompt, scale, skip_img_spec)}")
+    debug.trace(6, f"[sd_instance] infer{(prompt, negative_prompt, scale, skip_img_spec)}")
     return sd_instance.infer(prompt=prompt, negative_prompt=negative_prompt, scale=scale, num_images=num_images, skip_img_spec=skip_img_spec)
 
 #-------------------------------------------------------------------------------
@@ -469,6 +493,7 @@ def run_ui():
         )
         with gr.Group():
             with gr.Box():
+                ## TODO: drop 'rounded', border, margin, and other options no longer supported (see log)
                 with gr.Row(elem_id="prompt-container").style(mobile_collapse=False, equal_height=True):
                     with gr.Column():
                         prompt_control = gr.Textbox(
@@ -599,6 +624,7 @@ def main():
     if batch_mode:
         images = infer(prompt, negative_prompt, guidance, skip_img_spec=True)
         for i, image_encoding in enumerate(images):
+            # note: "encodes" UTF-8 text of base-64 encoding as bytes object for str, and then decodes into image bytes
             image_data = base64.decodebytes(image_encoding.encode())
             system.write_binary_file(f"{BASENAME}-{i + 1}.png", image_data)
         # TODO2: get list of files via infer()
@@ -606,12 +632,12 @@ def main():
         print(f"See {file_spec} for output image(s).")
     elif server_mode:
         debug.assertion(SD_URL)
+        debug.assertion(not sd_instance.server_url)
         debug.trace_object(5, flask_app)
         flask_app.run(host=SD_URL, port=SD_PORT, debug=SD_DEBUG)
     else:
         debug.assertion(ui_mode)
         run_ui()
-    ## OLD: show_gpu_usage()
 
 
 if __name__ == '__main__':

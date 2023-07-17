@@ -195,6 +195,7 @@ class Script(Main):
             dataset = du.read_csv(dataset_filename)
             # TODO: add CLASS_POS?
             class_var = CLASS_VAR if CLASS_VAR else dataset.columns[-1]
+            # pylint: disable=no-member
             feature_data = dataset.copy()
             feature_data.drop(class_var, axis=1)
             ## OLD: class_index = list(dataset.columns).index(class_var)

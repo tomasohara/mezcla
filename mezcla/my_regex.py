@@ -122,7 +122,10 @@ class regex_wrapper():
         Note: Added to account for potential f-string confusion"""
         # TODO: Add way to disable check
         debug.reference_var(self)
-        if (debug.debugging(1) and re.search(r"[^{]\{[A-Fa-f0-9][^{}]+\}[^}]", regex)):
+        check_regex = r"[^{]\{[A-Fa-f0-9][^{}]+\}[^}]"
+        if isinstance(regex, bytes):
+            check_regex = check_regex.encode()
+        if (debug.debugging(1) and re.search(check_regex, regex)):
             system.print_error(f"Warning: potentially unresolved f-string in {regex}")
 
     def search(self, regex, text, flags=0, base_trace_level=None):
@@ -132,7 +135,8 @@ class regex_wrapper():
             base_trace_level = self.TRACE_LEVEL
         debug.trace_fmtd((1 + base_trace_level), "my_regex.search({r!r}, {t!r}, {f}): self={s}",
                          r=regex, t=text, f=flags, s=self)
-        debug.assertion(isinstance(text, six.string_types))
+        ## OLD: debug.assertion(isinstance(text, six.string_types))
+        debug.assertion(isinstance(text, (str, bytes)) and (type(regex) == type(text)))
         self.check_pattern(regex)
         self.match_result = re.search(regex, text, flags)
         if self.match_result:

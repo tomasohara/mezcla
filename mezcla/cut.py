@@ -434,7 +434,7 @@ if __name__ == '__main__':
         skip_input=False,
         manual_input=True,
         multiple_files=True,
-        boolean_options=[(CSV, "Comma-separated values (Excel as per csv module)".format(xls=EXCEL_STYLE)),
+        boolean_options=[(CSV, "Comma-separated values ({xls} as per csv module)".format(xls=EXCEL_STYLE)),
                          (TSV, "Tab-separated values"),
                          OUTPUT_CSV, OUTPUT_TSV,
                          (CONVERT_DELIM, "Convert csv to tsv (or vice versa)"),
