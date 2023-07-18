@@ -1221,6 +1221,11 @@ def round_as_str(value, precision=PRECISION):
     return result
 
 
+def round3(num):
+    """Round NUM using precision of 3"""
+    return round_num(num, 3)
+
+
 def sleep(num_seconds, trace_level=5):
     """Sleep for NUM_SECONDS"""
     # TODO: annotate num_seconds with float
