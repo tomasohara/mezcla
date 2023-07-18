@@ -23,7 +23,12 @@ from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.spacy_nlp as THE_MODULE
+try:
+    import mezcla.spacy_nlp as THE_MODULE
+except:
+    THE_MODULE = None
+    debug.trace_exception(1, "mezcla.spacy_nlp import")
+
 from mezcla.unittest_wrapper import TestWrapper
 
 
@@ -42,28 +47,40 @@ class TestSentimentAnalyzer:
 class TestSpacyNlpUtils:
     """Class for testcase definition"""
 
+    @pytest.mark.xfail
+    ## TODO: @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
     def test_get_char_span(self):
         """Ensure get_char_span works as expected"""
         debug.trace(4, "test_get_char_span()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
+    @pytest.mark.xfail
+    ## TODO: @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
     def test_pysbd_sentence_boundaries(self):
         """Ensure pysbd_sentence_boundaries works as expected"""
         debug.trace(4, "test_pysbd_sentence_boundaries()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
+    @pytest.mark.xfail
+    ## TODO: @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
     def test_nltk_sentence_boundaries(self):
         """Ensure nltk_sentence_boundaries works as expected"""
         debug.trace(4, "test_nltk_sentence_boundaries()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
 
 class TestSpacy(TestWrapper):
     """Class for testcase definition"""
-    script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    ## TODO: WORK-IN-PROGRESS TESTS
+    @pytest.mark.xfail
+    ## TODO: @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
+    def test_whatever(self):
+        """TODO: flesh out test for whatever"""
+        debug.trace(4, f"TestIt2.test_whatever(); self={self}")
+        assert False, "TODO: code test"
+        ## ex: assert THE_MODULE.fast_sort() == THE_MODULE.slow_sort()
+        return
 
 
 if __name__ == '__main__':
