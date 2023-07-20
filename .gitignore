@@ -50,6 +50,7 @@
 # Top level distribution dir and related
 # Note: tox support PyPi packaging
 # TODO: dist created by tox utiility???
+build
 dist
 .tox
 
