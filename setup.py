@@ -6,6 +6,7 @@
 #       https://github.com/tomasohara/misc-utility
 # - Based on following:
 #       https://stackoverflow.com/questions/1471994/what-is-setup-py
+#       https://stackoverflow.com/questions/26528178/right-way-to-set-python-package-with-sub-packages
 #
 # TODO1:
 # - Fix all the 'BAD' items below
@@ -19,7 +20,7 @@
 from distutils.core import setup
 
 setup(name='Mezcla',
-      packages=['mezcla'],
+      packages=['mezcla', 'mezcla.tfidf'],
       module="mezcla",
       ## TODO2: import mezcla; version=mezcla.VERSION
       version="1.3.9.2",
