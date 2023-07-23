@@ -62,17 +62,13 @@ NTF_ARGS = {'prefix': TEMP_PREFIX,
             'delete': not debug.detailed_debugging(),
             ## TODO: 'suffix': "-"
             }
-USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", False,
-                                       "Whether TEMP_BASE should be a dir instead of prefix")
 TEMP_BASE = system.getenv_value("TEMP_BASE", None,
                                 "Override for temporary file basename")
-TEMP_FILE_DEFAULT = None
-if TEMP_BASE:
-    TEMP_FILENAME = "temp-file.list"
-    TEMP_FILE_DEFAULT = (form_path(TEMP_BASE, TEMP_FILENAME) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{TEMP_FILENAME}")
-TEMP_FILE = system.getenv_value("TEMP_FILE", TEMP_FILE_DEFAULT,
-                                "Override for temporary filename")
-
+TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and system.is_directory(TEMP_BASE))
+USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
+                                       "Whether TEMP_BASE should be a dir instead of prefix")
+# note: see init() for initialization
+TEMP_FILE = None
 
 #------------------------------------------------------------------------
 
@@ -780,6 +776,16 @@ else:
     def assertion(_condition):
         """Non-debug stub for assertion"""
         return
+
+def init():
+    """Work around for Pythion quirk"""
+    # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
+    debug.trace(5, "gh.init()")
+    global TEMP_FILE
+    temp_filename = "temp-file.list"
+    temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
+    TEMP_FILE = system.getenv_value("TEMP_FILE", temp_file_default,
+                                    "Override for temporary filename")
 
 #------------------------------------------------------------------------
 
