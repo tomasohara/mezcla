@@ -9,10 +9,12 @@
 #   the processing is simple row readidng and column extraction (i.e., subsetting).
 # - Have option for setting delim to tab to avoid awkward spec under bash (e.g., --output-delim $'\t').
 # - The CSV dialect defaults to Excel as with csv module (see csv.py).
+# - Warning: by default quotes are added to all values --csv output (a la QUOTE_ALL) unless Excel dialect used.
 #
 
 #
 # TODO:
+# - ** Make --csv output default to pyspark dialect.
 # - * Isolate csv support from Script class.
 # - Add option for specifying output dialect.
 # - Add support for selecting by columns instead of fields (e.g., as with -c1-40 with cut command).
@@ -323,7 +325,7 @@ class Script(Main):
                     line = new_line
                 debug.assertion(SPACE not in line)
                 temp_file_stream.write(line)
-            debug.trace(3, f"Fixed {num_fixed} lines")
+            debug.trace(4, f"Fixed {num_fixed} lines")
             ## OLD: self.input_stream.seek(0)
             temp_file_stream.close()
             self.input_stream = system.open_file(self.temp_file, mode="r")
@@ -331,7 +333,7 @@ class Script(Main):
             sys.stdin = self.input_stream
 
         # Create reader and writer
-        debug.trace_expr(3, self.delimiter, self.output_delimiter, self.dialect, self.output_dialect)
+        debug.trace_expr(4, self.delimiter, self.output_delimiter, self.dialect, self.output_dialect)
         ## BAD: self.csv_reader = csv.reader(iter(system.stdin_reader()), delimiter=self.delimiter, quotechar='"')
         if (self.input_stream != sys.stdin):
             # note: silly csv.reader requirement for newline option to open (TODO, open what?)
@@ -405,6 +407,7 @@ class Script(Main):
                 if self.max_field_len:
                     column = gh.elide(column, max_len=self.max_field_len)
                 output_row.append(column)
+            debug.trace_expr(6, output_row)
             csv_writer.writerow(output_row)
 
         # Do sanity checks
@@ -414,12 +417,13 @@ class Script(Main):
             debug.trace(4, "note: csv vs. pandas row count sanity check")
             ## BAD: debug.assertion(num_rows == len(du.read_csv(self.filename, delimiter=self.delimiter))
             dataframe = du.read_csv(self.filename, delimiter=self.delimiter, dialect=self.dialect)
-            debug.assertion(dataframe)
-            if dataframe:
+            valid_dataframe = (dataframe is not None)
+            debug.assertion(valid_dataframe)
+            if valid_dataframe:
                 df_num_rows = 1 + len(dataframe)
                 df_num_cols = len(dataframe.columns)
-                debug.trace_fmt(3, "csv dimensions: {nr}x{nc}", nr=num_rows, nc=num_cols)
-                debug.trace_fmt(3, "pandas dimensions: {nr}x{nc}", nr=df_num_rows, nc=df_num_cols)
+                debug.trace_fmt(4, "csv dimensions: {nr}x{nc}", nr=num_rows, nc=num_cols)
+                debug.trace_fmt(4, "pandas dimensions: {nr}x{nc}", nr=df_num_rows, nc=df_num_cols)
                 debug.assertion(num_rows == df_num_rows)
                 debug.assertion(num_cols == df_num_cols)
 
