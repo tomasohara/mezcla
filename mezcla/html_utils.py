@@ -681,14 +681,19 @@ def format_checkbox(param_name, label=None, default_value=False, disabled=False)
     debug.trace(6, f"format_checkbox({param_name}, [def={default_value}]) => {result}")
     return result
 
-def format_url_param(name):
+def format_url_param(name, default=None):
     """Return URL parameter NAME formatted for an HTML form (e.g., escaped)"""
     # EX: html_utils.set_param_dict({"q": '"hot dog"'}); format_url_param("q") => '&quot;hot dog&quot;'
-    value_spec = (get_url_param(name) or "")
+    if default is None:
+        default = ""
+    value_spec = (get_url_param(name) or default)
     if value_spec:
         value_spec = system.escape_html_text(value_spec)
     debug.trace(5, f"format_url_param({name}) => {value_spec!r}")
     return value_spec
+#
+# EX: format_url_param("r") => ""
+# EX: format_url_param("r", "R") => "R"
 
 #-------------------------------------------------------------------------------
 
