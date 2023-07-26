@@ -27,7 +27,8 @@ import diskcache
 from flask import Flask, request
 import PIL
 import requests
-import gradio as gr
+## OLD: import gradio as gr
+gr = None
 
 # Local modules
 from mezcla import debug
@@ -169,7 +170,8 @@ class StableDiffusion:
             scale = GUIDANCE_SCALE
         for prompt_filter in word_list:
             if my_re.search(rf"\b{prompt_filter}\b", prompt):
-                raise gr.Error("Unsafe content found. Please try again with different prompts.")
+                ## OLD: raise gr.Error("Unsafe content found. Please try again with different prompts.")
+                raise RuntimeError("Unsafe content found. Please try again with different prompts.")
     
         images = []
         params = (prompt, negative_prompt, scale, num_images, skip_img_spec)
@@ -274,6 +276,7 @@ def infer(prompt=None, negative_prompt=None, scale=None, num_images=None, skip_i
 def run_ui():
     """Run user interface via gradio serving by default at localhost:7860
     Note: The environment variable GRADIO_SERVER_NAME can be used to serve via 0.0.0.0"""
+    import gradio as gr                 # pylint: disable=import-outside-toplevel, redefined-outer-name
     css = """
             .gradio-container {
                 font-family: 'IBM Plex Sans', sans-serif;
