@@ -53,6 +53,11 @@ def read_csv(filename, **in_kw):
     kw = {SEP: DELIM, 'dtype': str,
           ## BAD: 'error_bad_lines': False, 'keep_default_na': False}
           'on_bad_lines': 'skip', 'keep_default_na': False}
+    # Hack: make sure only one of "sep" and "delimiter" specified
+    if DELIMITER in in_kw:
+        debug.assertion(not (kw[SEP] and in_kw[DELIMITER]))
+        kw[SEP] = (kw[SEP] or in_kw[DELIMITER])
+        in_kw[DELIMITER] = None
     # Overide settings based on explicit keyword arguments
     kw.update(**in_kw)
     kw['engine'] = 'python'
@@ -69,7 +74,7 @@ def read_csv(filename, **in_kw):
     try:
         df = pd.read_csv(filename, **kw)
     except:
-        debug.trace(4, f"Exception during read_csv: {system.get_exception()}")
+        debug.trace(3, f"Exception during read_csv: {system.get_exception()}")
     debug.trace(4, f"read_csv({filename}) => {df}")
     return df
 
