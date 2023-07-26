@@ -160,7 +160,7 @@ def setenv(var, value):
     return
 
 
-def getenv_text(var, default=None, description=None, helper=False):
+def getenv_text(var, default=None, description=None, desc=None, helper=False):
     """Returns textual value for environment variable VAR (or DEFAULT value, excluding None).
     Notes:
     - Use getenv_value if default can be None, as result is always a string.
@@ -168,7 +168,7 @@ def getenv_text(var, default=None, description=None, helper=False):
     - DESCRIPTION used for get_environment_option_descriptions."""
     # Note: default is empty string to ensure result is string (not NoneType)
     ## TODO: add way to block registration
-    register_env_option(var, description, default)
+    register_env_option(var, description or desc, default)
     if default is None:
         debug.trace(4, f"Warning: getenv_text treats default None as ''; consider using getenv_value for '{var}' instead")
         default = ""
@@ -184,26 +184,26 @@ def getenv_text(var, default=None, description=None, helper=False):
     return (text_value)
 
 
-def getenv_value(var, default=None, description=None):
+def getenv_value(var, default=None, description=None, desc=None):
     """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION"""
     # EX: getenv_value("bad env var") => None
-    register_env_option(var, description, default)
+    register_env_option(var, description or desc, default)
     value = os.getenv(var, default)
     # note: uses !r for repr()
     debug.trace_fmtd(5, "getenv_value({v!r}, [def={dft!r}], [desc={dsc!r}]]) => {val!r}",
-                     v=var, dft=default, dsc=description, val=value)
+                     v=var, dft=default, dsc=(description or desc), val=value)
     return (value)
 
 
 DEFAULT_GETENV_BOOL = False
 #
-def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None):
+def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None):
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION
     Note: "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)"""
     # EX: getenv_bool("bad env var", None) => False
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
-    value_text = getenv_value(var, description=description, default=default)
+    value_text = getenv_value(var, description=description, desc=desc, default=default)
     if (isinstance(value_text, str) and value_text.strip()):
         bool_value = to_bool(value_text)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
@@ -213,14 +213,15 @@ def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None):
 getenv_boolean = getenv_bool
 
 
-def getenv_number(var, default=-1.0, description=None, helper=False):
+def getenv_number(var, default=-1.0, description=None, desc=None, helper=False):
     """Returns number based on environment VAR (or DEFAULT value), with optional description"""
     # TODO: def getenv_number(...) -> Optional(float):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
-    value = getenv_value(var, description=description, default=default)
+    value = getenv_value(var, description=description, desc=desc, default=default)
     if (isinstance(value, str) and value.strip()):
-         num_value = to_float(value)
+        debug.assertion(is_number(value))
+        num_value = to_float(value)
     trace_level = 6 if helper else 5
     debug.trace_fmtd(trace_level, "getenv_number({v}, {d}) => {r}",
                      v=var, d=default, r=num_value)
@@ -230,12 +231,12 @@ getenv_float = getenv_number
 
 
 
-def getenv_int(var, default=-1, allow_none=False, description=None):
+def getenv_int(var, default=-1, allow_none=False, description=None, desc=None):
     """Version of getenv_number for integers, with optional DESCRIPTION
     Note: Return is an integer unless ALLOW_NONE
     """
     # EX: getenv_int("?", 1.5) => 1
-    value = getenv_number(var, description=description, default=default, helper=True)
+    value = getenv_number(var, description=description, desc=desc, default=default, helper=True)
     if (not isinstance(value, int)):
         if ((value is not None) or allow_none):
             value = to_int(value)
@@ -1152,6 +1153,21 @@ def unique_items(in_list, prune_empty=False):
     result = list(ordered_hash.keys())
     debug.trace_fmt(8, "unique_items({l}) => {r}", l=in_list, r=result)
     return result
+
+
+def is_number(text):
+    """Indicates whether TEXT represents a number (integer or float)"""
+    # EX: is_number("123") => True
+    # EX: is_number("one") => False
+    ok = False
+    value = None
+    try:
+        _value = float(text)
+        ok = True
+    except ValueError:
+        debug.trace_exception(6, "is_number")
+    debug.trace(6, f"is_number({text}) => {ok};  value={value}")
+    return ok
 
 
 def to_float(text, default_value=0.0):
