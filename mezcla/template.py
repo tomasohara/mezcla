@@ -73,8 +73,7 @@ class Script(Main):
     ## NOTE: Such class decomposition is also beneficial for unit tests.
     #
     ## def __init__(self, *args, **kwargs):
-    ##     debug.trace_fmtd(TL.VERBOSE, "Script.__init__({a}): keywords={kw}; self={s}",
-    ##                      a=",".join(args), kw=kwargs, s=self)
+    ##     debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {self.__class__.__name__}.__init__({a})")
     ##     super().__init__(*args, **kwargs)
     
     def setup(self):
