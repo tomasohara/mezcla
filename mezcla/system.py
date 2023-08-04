@@ -469,45 +469,23 @@ def unquote_url_text(text):
     Note: Wrapper around quote_url_text w/ UNQUOTE set"""
     return quote_url_text(text, unquote=True)
 
+def escape_html_value(value):
+    """Escape VALUE for HTML embedding
+    Warning: deprecated function; import from html_utils instead
+    """
+    from mezcla import html_utils       # pylint: disable=import-outside-toplevel
+    return html_utils.escape_html_text(value)
+#
+escape_html_text = escape_html_value
 
-def escape_html_text(text):
-    """Add entity encoding to TEXT to make suitable for HTML"""
-    # Note: This is wrapper around html.escape and just handles '&', '<', '>', "'", and '"'.
-    # EX: escape_html_text("<2/") => "&lt;2/"
-    # EX: escape_html_text("Joe's hat") => "Joe&#x27;s hat"
-    debug.trace_fmtd(7, "in escape_html_text({t})", t=text)
-    result = ""
-    if (sys.version_info.major > 2):
-        # TODO: move import to top
-        import html                    # pylint: disable=import-outside-toplevel, import-error
-        result = html.escape(text)     # pylint: disable=deprecated-method, no-member
-    else:
-        import cgi                     # pylint: disable=import-outside-toplevel, import-error
-        result = cgi.escape(text, quote=True)    # pylint: disable=deprecated-method, no-member
-    debug.trace_fmtd(6, "out escape_html_text({t}) => {r}", t=text, r=result)
-    return result
-
-
-def unescape_html_text(text):
-    """Remove entity encoding, etc. from TEXT (i.e., undo)"""
-    # Note: This is wrapper around html.unescape (Python 3+) or
-    # HTMLParser.unescape (Python 2).
-    # See https://stackoverflow.com/questions/21342549/unescaping-html-with-special-characters-in-python-2-7-3-raspberry-pi.
-    # EX: unescape_html_text("&lt;2/") => "<2/"
-    # EX: unescape_html_text("Joe&#x27;s hat") => "Joe's hat"
-    debug.trace_fmtd(7, "in unescape_html_text({t})", t=text)
-    result = ""
-    if (sys.version_info.major > 2):
-        # TODO: see if six.py supports html-vs-cgi:unescape
-        import html                   # pylint: disable=import-outside-toplevel, import-error
-        result = html.unescape(text)
-    else:
-        import HTMLParser             # pylint: disable=import-outside-toplevel, import-error
-        html_parser = HTMLParser.HTMLParser()
-        result = html_parser.unescape(text)
-    debug.trace_fmtd(6, "out unescape_html_text({t}) => {r}", t=text, r=result)
-    return result
-
+def unescape_html_value(value):
+    """Undo escaped VALUE for HTML embedding
+    Warning: deprecated function; import from html_utils instead
+    """
+    from mezcla import html_utils       # pylint: disable=import-outside-toplevel
+    return html_utils.unescape_html_text(value)
+#
+unescape_html_text = unescape_html_value
 
 NEWLINE = "\n"
 TAB = "\t"
@@ -1128,8 +1106,7 @@ def just_one_true(in_list, strict=False):
     # Note: Consider using misc_utils.just1 (based on more_itertools.exactly_n)
     # TODO: Trap exceptions (e.g., string input)
     min_count = 1 if strict else 0
-    ## OLD: is_true = (min_count <= sum([int(bool(b)) for b in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
-    is_true = (min_count <= sum([int(bool(b)) for b in in_list]) <= 1)
+    is_true = (min_count <= sum(int(bool(b)) for b in in_list) <= 1)
     debug.trace_fmt(6, "just_one_true({l}) => {r}", l=in_list, r=is_true)
     return is_true
 
@@ -1137,8 +1114,7 @@ def just_one_true(in_list, strict=False):
 def just_one_non_null(in_list, strict=False):
     """True if only one element of IN_LIST is not None (or all None unless STRICT)"""
     min_count = 1 if strict else 0
-    ## OLD: is_true = (min_count <= sum([int(x is not None) for x in in_list]) <= 1)    # pylint: disable=misplaced-comparison-constant
-    is_true = (min_count <= sum([int(x is not None) for x in in_list]) <= 1)
+    is_true = (min_count <= sum(int(x is not None) for x in in_list) <= 1)
     debug.trace_fmt(6, "just_one_non_null({l}) => {r}", l=in_list, r=is_true)
     return is_true
 
