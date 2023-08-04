@@ -28,9 +28,9 @@ from mezcla import text_utils
 # Constants
 ELLIPSIS = "\u2026"                 # Horizontal Ellipsis
 TYPICAL_EPSILON = system.getenv_float("TYPICAL_EPSILON", 1e-6,
-                                      description="Traditional floating-point error factor")
+                                      description="Traditional floating-point negligible difference")
 VALUE_EPSILON = system.getenv_float("VALUE_EPSILON", 1e-3,
-                                    description="Epsilon for floating-point comparison")
+                                    description="Epsilon for informal floating-point comparison")
 debug.assertion(TYPICAL_EPSILON < VALUE_EPSILON)
 
 
