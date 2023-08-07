@@ -198,7 +198,7 @@ class TestWrapper(unittest.TestCase):
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
         # The temp file is an extension of temp-base file by default.
-        # Opitonally, if can be a file in temp-base subdrectory.
+        # Optionally, if can be a file in temp-base subdrectory.
         if self.use_temp_base_dir:
             default_temp_file = gh.form_path(self.temp_base, "test-")
         else:
@@ -212,7 +212,8 @@ class TestWrapper(unittest.TestCase):
         return
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
-                   out_file=None, env_options=None, uses_stdin=False):
+                   out_file=None, env_options=None, uses_stdin=None):
+                   ## OLD: out_file=None, env_options=None, uses_stdin=False):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
         not specifed, they  are derived from self.temp_file.
@@ -230,8 +231,10 @@ class TestWrapper(unittest.TestCase):
 
         # Derive the full paths for data file and log, and then invoke script.
         # TODO: derive from temp base and data file name?;
-        # TODO1: derive default for uses_stdin based use of filename argment (e.g., from usage)
-        data_path = ("" if uses_stdin else "-")
+        # TODO1: derive default for uses_stdin based on use of filename argment (e.g., from usage)
+        ## OLD: data_path = ("" if uses_stdin else "-")
+        uses_stdin_false = ((uses_stdin is not None) and not bool(uses_stdin))
+        data_path = ("" if uses_stdin_false else "-")
         if data_file is not None:
             data_path = (gh.resolve_path(data_file) if len(data_file) else data_file)
         if not log_file:
