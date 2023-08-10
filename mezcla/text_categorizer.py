@@ -136,7 +136,7 @@ TFIDF_STOPWORDS = not OMIT_STOPWORDS
 # TODO: Options for Naive Bayes (NB), the default
 all_use_settings = [USE_SVM, USE_SGD, USE_XGB, USE_LR]
 USE_NB = (not any(all_use_settings))
-debug.assertion(sum([int(use) for use in all_use_settings]) <= 1)
+debug.assertion(sum(int(use) for use in all_use_settings) <= 1)
 
 #................................................................................
 # Utility functions
@@ -227,7 +227,7 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         """Get parameter names for the estimator"""
         # TODO: drop method
         # Note: This is not class method as in BaseEstimator.
-        # pylint: disable=protected-access
+        # pylint: disable=protected-access,arguments-differ
         return self.classifier._get_param_names()
 
     def get_params(self, deep=True):
@@ -450,7 +450,7 @@ class TextCategorizer(object):
         debug.trace_values(6, actual_indices, "actual")
         debug.trace_values(6, predicted_indices, "predicted")
         ## TODO: predicted_labels = [self.keys[i] for i in predicted_indices]
-        num_ok = sum([(actual_indices[i] == predicted_indices[i]) for i in range(len(actual_indices))])
+        num_ok = sum((actual_indices[i] == predicted_indices[i]) for i in range(len(actual_indices)))
         accuracy = float(num_ok) / len(values)
 
         # Output classification report
@@ -463,10 +463,10 @@ class TextCategorizer(object):
                 ## TODO: complete conversion to using actual_index (here and below)
                 num_missed = 0
                 for (i, actual_index) in enumerate(actual_indices):
-                    debug.assertion(actual_index == actual_indices[i])
-                    if (actual_indices[i] != predicted_indices[i]):
+                    debug.assertion(actual_index == actual_indices[i])     # pylint: disable=unnecessary-list-index-lookup
+                    if (actual_index != predicted_indices[i]):
                         stream.write("{act}\t{pred}\n".
-                                     format(act=self.keys[actual_indices[i]],
+                                     format(act=self.keys[actual_index],
                                             pred=self.keys[predicted_indices[i]]))
                         num_missed += 1
                 if (num_missed == 0):
@@ -481,13 +481,13 @@ class TextCategorizer(object):
             bad_instances = "Actual\tBad\tText\n"
             # TODO: for (i, actual_index) in enumerate(actual_indices)
             for (i, actual_index) in enumerate(actual_indices):
-                debug.assertion(actual_index == actual_indices[i])
-                if (actual_indices[i] != predicted_indices[i]):
+                debug.assertion(actual_index == actual_index)   # pylint: disable=unnecessary-list-index-lookup
+                if (actual_index != predicted_indices[i]):
                     text = values[i]
                     context = (text[:CONTEXT_LEN] + "...\n") if (len(text) > CONTEXT_LEN) else text
                     # TODO: why is pylint flagging the format string as invalid?
                     bad_instances += "{g}\t{b}\t{t}\n".format(
-                        g=self.keys[actual_indices[i]],
+                        g=self.keys[actual_index],
                         b=self.keys[predicted_indices[i]],
                         t=context)
             bad_filename = filename + ".bad"
@@ -739,7 +739,8 @@ def main(args):
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
     # HACK: ignore --tag label (n.b., used for killing via process regex)
-    if ((len(args) > 0) and (args[1] == "--tag")):
+    ## BAD: if ((len(args) > 0) and (args[1] == "--tag")):
+    if ((len(args) > 1) and (args[1] == "--tag")):
         args[1:] = args[3:]
     if ((len(args) != 2) or (args[1] == "--help")):
         system.print_stderr("Usage: {p} model".format(p=args[0]))
