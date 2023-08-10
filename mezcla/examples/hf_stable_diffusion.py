@@ -46,7 +46,7 @@ NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
 GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
                                    "How much the image generation follows the prompt")
 SD_URL = system.getenv_value("SD_URL", None,
-                             "URL for SD TCP/restful serve--new via flask or remote")
+                             "URL for SD TCP/restful server--new via flask or remote")
 SD_PORT = system.getenv_int("SD_PORT", 9700,
                             "TCP port for SD server")
 SD_DEBUG = system.getenv_int("SD_DEBUG", False,
