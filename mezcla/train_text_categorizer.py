@@ -37,6 +37,7 @@ TEST_PERCENT = system.getenv_value("TEST_PERCENT", None,
 def usage():
     """Show command-line usage"""
     # TODO: remove path from script filename
+    # TODO2: use stdout (as with argparse-based usage)
     script = (__file__ or "n/a")
     system.print_stderr("Usage: {scr} training-file model-file [testing]".format(scr=script))
     system.print_stderr("")
@@ -84,7 +85,9 @@ def main(args=None):
         
         # Split the training file into training proper and test
         # note: the tail --lines=+2 option ignores the header line
-        training_filename = app.temp_base + "train.tsv"
+        training_filename = app.temp_base + "-train.tsv"
+        debug.assertion(not testing_filename)
+        testing_filename = app.temp_base + "-test.tsv"
         gh.issue(f"head --lines=1 < {full_training_filename} > {training_filename}")
         gh.issue(f"tail --lines=+2 < {full_training_filename} | head --lines={num_training_lines} >> {training_filename}")
         testing_filename = app.temp_base + "test.tsv"
