@@ -104,6 +104,7 @@ SGD_VERBOSE = system.getenv_bool("SGD_VERBOSE", False)
 
 # Options for Extreme Gradient Boost (XGBoost)
 USE_XGB = system.getenv_bool("USE_XGB", False)
+xgb = None
 if USE_XGB:
     # pylint: disable=import-outside-toplevel, import-error
     import xgboost as xgb
@@ -238,12 +239,12 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         """Delegates fit() invocation to classifier, after outputing CSV if desired"""
         if OUTPUT_CSV:
             self.output_csv(training_x, training_y, BASENAME)
+        fit_result = self.classifier.fit(training_x, training_y)
         if TRACE_IMPORTANCES:
             debug.trace_fmt(1, "Feature importances: {imp}",
                             imp=self.extract_feature_importance())
         ## DEBUG: debug.trace_object(6, self.tfidf_vectorizer)
-            
-        return self.classifier.fit(training_x, training_y)
+        return fit_result
 
     def predict(self, sample):
         """Return predicted class for each SAMPLE (returning vector)"""
@@ -318,9 +319,10 @@ class TextCategorizer(object):
     """Class for building text categorization"""
     # TODO: add cross-fold validation support; make TF/IDF weighting optional
 
-    def __init__(self, tfidf_max_terms=None, tfidf_min_ngram=None, tfidf_max_ngram=None, tfidf_min_df=None, tfidf_max_df=None, tfidf_stopwords=None, tfidf_char_ngrams=None):
+    def __init__(self, tfidf_max_terms=None, tfidf_min_ngram=None, tfidf_max_ngram=None, tfidf_min_df=None, tfidf_max_df=None, tfidf_stopwords=None, tfidf_char_ngrams=None,
+                 use_xgb=None, use_svm=None, use_sgd=None, use_lr=None):
         """Class constructor: initializes classifier and text categoriation pipeline"""
-        debug.trace_fmtd(4, "tc.__init__(); self=={s}", s=self)
+        debug.trace_fmtd(4, "tc.__init__(); self={s}", s=self)
         self.tfidf_max_terms = param_or_default(tfidf_max_terms, TFIDF_MAX_TERMS)
         self.tfidf_min_ngram = param_or_default(tfidf_min_ngram, TFIDF_MIN_NGRAM)
         self.tfidf_max_ngram = param_or_default(tfidf_max_ngram, TFIDF_MAX_NGRAM)
@@ -333,14 +335,22 @@ class TextCategorizer(object):
         self.keys = []
         self.classifier = None
         classifier = None
+        if use_xgb is None:
+            use_xgb = USE_XGB
+        if use_svm is None:
+            use_svm = USE_SVM
+        if use_sgd is None:
+            use_sgd = USE_SGD
+        if use_lr is None:
+            use_lr = USE_LR
 
         # Derive classifier based on user options
-        if USE_SVM:
+        if use_svm:
             classifier = SVC(kernel=SVM_KERNEL,
                              C=SVM_PENALTY,
                              max_iter=SVM_MAX_ITER,
                              verbose=SVM_VERBOSE)
-        elif USE_SGD:
+        elif use_sgd:
             classifier = SGDClassifier(loss=SGD_LOSS,
                                        penalty=SGD_PENALTY,
                                        alpha=SGD_ALPHA,
@@ -354,7 +364,7 @@ class TextCategorizer(object):
                 num_iter_attribute = "n_iter"
             debug.assertion(hasattr(classifier, num_iter_attribute))
             setattr(classifier, num_iter_attribute, SGD_MAX_ITER)
-        elif USE_XGB:
+        elif use_xgb:
             # TODO: rework to just define classifier here and then pipeline at end.
             # in order to eliminate redundant pipeline-specification code.
             # TODO: n_jobs=-1
@@ -366,7 +376,7 @@ class TextCategorizer(object):
                 misc_xgb_params.update({'gpu_id': GPU_DEVICE})
             debug.trace_fmt(4, 'misc_xgb_params={m}', m=misc_xgb_params)
             classifier = xgb.XGBClassifier(**misc_xgb_params)
-        elif USE_LR:
+        elif use_lr:
             classifier = LogisticRegression()
         else:
             debug.assertion(USE_NB)
@@ -441,17 +451,21 @@ class TextCategorizer(object):
                                  l=label, n=(i + 1))
 
         # Perform classification and determine accuracy
-        predicted_values = self.classifier.predict(values)
-        if ENCODE_CLASSES:
-            predicted_indices = predicted_values
-        else:
-            predicted_indices = [self.keys.index(label) for label in predicted_values]
-        debug.assertion(len(actual_indices) == len(predicted_indices))
-        debug.trace_values(6, actual_indices, "actual")
-        debug.trace_values(6, predicted_indices, "predicted")
-        ## TODO: predicted_labels = [self.keys[i] for i in predicted_indices]
-        num_ok = sum((actual_indices[i] == predicted_indices[i]) for i in range(len(actual_indices)))
-        accuracy = float(num_ok) / len(values)
+        try:
+            predicted_values = self.classifier.predict(values)
+            if ENCODE_CLASSES:
+                predicted_indices = predicted_values
+            else:
+                predicted_indices = [self.keys.index(label) for label in predicted_values]
+            debug.assertion(len(actual_indices) == len(predicted_indices))
+            debug.trace_values(6, actual_indices, "actual")
+            debug.trace_values(6, predicted_indices, "predicted")
+            ## TODO: predicted_labels = [self.keys[i] for i in predicted_indices]
+            num_ok = sum((actual_indices[i] == predicted_indices[i]) for i in range(len(actual_indices)))
+            accuracy = float(num_ok) / len(values)
+        except:
+            accuracy = 0
+            system.print_exception_info("tc.test")
 
         # Output classification report
         if report:
@@ -481,7 +495,7 @@ class TextCategorizer(object):
             bad_instances = "Actual\tBad\tText\n"
             # TODO: for (i, actual_index) in enumerate(actual_indices)
             for (i, actual_index) in enumerate(actual_indices):
-                debug.assertion(actual_index == actual_index)   # pylint: disable=unnecessary-list-index-lookup
+                debug.assertion(actual_index == actual_indices[i])   # pylint: disable=unnecessary-list-index-lookup
                 if (actual_index != predicted_indices[i]):
                     text = values[i]
                     context = (text[:CONTEXT_LEN] + "...\n") if (len(text) > CONTEXT_LEN) else text
@@ -499,8 +513,11 @@ class TextCategorizer(object):
         """Return category for TEXT"""
         debug.trace(4, "tc.categorize(_)")
         debug.trace_fmtd(6, "\ttext={t}", t=text)
-        index = self.classifier.predict([text])[0]
-        label = self.keys[index]
+        try:
+            index = self.classifier.predict([text])[0]
+            label = self.keys[index]
+        except:
+            system.trace_exception_info("categorize")
         debug.trace_fmtd(6, "categorize() => {r}", r=label)
         return label
 
@@ -508,12 +525,16 @@ class TextCategorizer(object):
         """Return probability distribution for TEXT"""
         debug.trace(4, "tc.class_probabilities(_)")
         debug.trace_fmtd(6, "\ttext={t}", t=text)
-        class_names = self.keys
-        class_probs = self.classifier.predict_proba([text])[0]
-        debug.trace_object(7, self.classifier)
-        debug.trace_fmtd(6, "class_names: {cn}\nclass_probs: {cp}", cn=class_names, cp=class_probs)
-        sorted_scores = misc.sort_weighted_hash(dict(zip(class_names, class_probs)))
-        dist=" ".join([(k + ": " + system.round_as_str(s)) for (k, s) in sorted_scores])
+        dist = None
+        try:
+            class_names = self.keys
+            class_probs = self.classifier.predict_proba([text])[0]
+            debug.trace_object(7, self.classifier)
+            debug.trace_fmtd(6, "class_names: {cn}\nclass_probs: {cp}", cn=class_names, cp=class_probs)
+            sorted_scores = misc.sort_weighted_hash(dict(zip(class_names, class_probs)))
+            dist = " ".join([(k + ": " + system.round_as_str(s)) for (k, s) in sorted_scores])
+        except:
+             system.trace_exception_info("class_probabilities")
         debug.trace_fmtd(5, "class_probabilities() => {r}", r=dist)
         return dist
 
