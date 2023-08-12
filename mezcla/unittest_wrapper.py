@@ -212,11 +212,12 @@ class TestWrapper(unittest.TestCase):
         return
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
-                   out_file=None, env_options=None, uses_stdin=None):
+                   out_file=None, env_options=None, uses_stdin=None, post_options=None):
                    ## OLD: out_file=None, env_options=None, uses_stdin=False):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
-        not specifed, they  are derived from self.temp_file.
+        not specifed, they  are derived from self.temp_file. The optional POST_OPTIONS
+        go after the data file.
         Notes:
         - issues warning if script invocation leads to error
         - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)"""
@@ -228,6 +229,8 @@ class TestWrapper(unittest.TestCase):
             options = ""
         if env_options is None:
             env_options = ""
+        if post_options is None:
+            post_options = ""
 
         # Derive the full paths for data file and log, and then invoke script.
         # TODO: derive from temp base and data file name?;
@@ -252,9 +255,9 @@ class TestWrapper(unittest.TestCase):
         else:
             debug.assertion(not self.script_module.endswith(".py"))
 
-        gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path} 1> {out} 2> {log}",
+        gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path}  {post} 1> {out} 2> {log}",
                  env=env_options, cov_spec=coverage_spec, module=self.script_module,
-                 opts=options, path=data_path, out=out_file, log=log_file)
+                 opts=options, path=data_path, out=out_file, log=log_file, post=post_options)
         output = system.read_file(out_file)
         # note; trailing newline removed as with shell output
         if output.endswith("\n"):
