@@ -359,7 +359,10 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, output=Fa
     debug.assertion(">|" not in command_line)
     result = None
     ## TODO: if (just_issue or not wait): ... else: ...
-    result = getoutput(command_line) if wait else str(os.system(command_line))
+    ## OLD: result = getoutput(command_line) if wait else str(os.system(command_line))
+    wait_for_command = (not wait or not just_issue)
+    debug.trace_expr(5, wait, just_issue, wait_for_command)
+    result = getoutput(command_line) if wait_for_command else str(os.system(command_line))
     if output:
         print(result)
     # Restore debug level setting in environment
