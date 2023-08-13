@@ -212,7 +212,7 @@ class TestWrapper(unittest.TestCase):
         return
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
-                   out_file=None, env_options=None, uses_stdin=None, post_options=None):
+                   out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None):
                    ## OLD: out_file=None, env_options=None, uses_stdin=False):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
@@ -254,10 +254,12 @@ class TestWrapper(unittest.TestCase):
             coverage_spec = 'coverage run'
         else:
             debug.assertion(not self.script_module.endswith(".py"))
+        amp_spec = "&" if background else ""
 
-        gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path}  {post} 1> {out} 2> {log}",
+        # Run the command
+        gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path}  {post} 1> {out} 2> {log} {amp_spec}",
                  env=env_options, cov_spec=coverage_spec, module=self.script_module,
-                 opts=options, path=data_path, out=out_file, log=log_file, post=post_options)
+                 opts=options, path=data_path, out=out_file, log=log_file, post=post_options, amp_spec=amp_spec)
         output = system.read_file(out_file)
         # note; trailing newline removed as with shell output
         if output.endswith("\n"):
