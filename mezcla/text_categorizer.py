@@ -764,7 +764,7 @@ def main(args):
     if ((len(args) > 1) and (args[1] == "--tag")):
         args[1:] = args[3:]
     if ((len(args) != 2) or (args[1] == "--help")):
-        system.print_stderr("Usage: {p} model".format(p=args[0]))
+        print("Usage: {p} model".format(p=args[0]))
         return
     model = args[1]
     start_web_controller(model)
