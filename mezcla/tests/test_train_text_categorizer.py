@@ -31,6 +31,16 @@ class TestTrainTextCategorizer(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     resources = gh.resolve_path("resources")
 
+    def test_usage(self):
+        """Test usage statement"""
+        # Current usage:
+        #    Usage: ./train_text_categorizer.py training-file model-file [testing]
+        #    ...
+        #    - Currently, only tab-separated value (TSV) format is accepted:
+        usage = self.run_script(options="--help")
+        assert "model" in usage
+        assert "TSV" in usage
+    
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_data_file(self):
         """Makes sure TODO works as expected"""
