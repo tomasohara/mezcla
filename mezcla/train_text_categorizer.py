@@ -39,14 +39,14 @@ def usage():
     # TODO: remove path from script filename
     # TODO2: use stdout (as with argparse-based usage)
     script = (__file__ or "n/a")
-    system.print_stderr("Usage: {scr} training-file model-file [testing]".format(scr=script))
-    system.print_stderr("")
-    system.print_stderr("Notes:")
-    system.print_stderr("- Use - to indicate the file is not needed (e.g., existing training model).")
-    system.print_stderr("- You need to supply either training file or model file.")
-    system.print_stderr("- The testing file is optional when training.")
-    system.print_stderr("- Currently, only tab-separated value format is accepted:")
-    system.print_stderr("    <label>\t<text>")
+    print("Usage: {scr} training-file model-file [testing]".format(scr=script))
+    print("")
+    print("Notes:")
+    print("- Use - to indicate the file is not needed (e.g., existing training model).")
+    print("- You need to supply either training file or model file.")
+    print("- The testing file is optional when training.")
+    print("- Currently, only tab-separated value (TSV) format is accepted:")
+    print("    <label>\t<text>")
     return
 
 
