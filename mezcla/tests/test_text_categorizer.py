@@ -94,7 +94,7 @@ class TestTextCategorizerUtils(TestWrapper):
         assert(False)
 
 def trap_exception(function):
-    """Trap exception during function"""
+    """Decorator to trap exception during function execution"""
     def wrapper(*args):
         try:
             function(*args)
