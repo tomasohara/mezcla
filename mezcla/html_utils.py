@@ -272,6 +272,7 @@ def set_param_dict(param_dict):
 def get_url_param(name, default_value=None, param_dict=None, escaped=False):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
     Note: It can be ESCAPED for use in HTML."""
+    # TODO3: default_value => default
     if default_value is None:
         default_value = ""
     param_dict = (get_param_dict(param_dict) or {})
@@ -360,6 +361,17 @@ def get_url_parameter_int(param, default_value=0, param_dict=None):
     return result
 #
 get_url_param_int = get_url_parameter_int
+
+
+def get_url_parameter_float(param, default_value=0.0, param_dict=None):
+    """Get floating-point value for PARAM from PARAM_DICT.
+    Note: the hash defaults to user_parameters, and the default value is 0.0"""
+    result = system.to_float(get_url_parameter_value(param, default_value, param_dict))
+    debug.trace_fmtd(4, "get_url_parameter_float({p}, {dft}, _) => {r}",
+                     p=param, dft=default_value, r=result)
+    return result
+#
+get_url_param_float = get_url_parameter_float
 
 
 def fix_url_parameters(url_parameters):
@@ -697,7 +709,10 @@ def format_input_field(param_name, label=None, default_value=None, max_len=None,
     debug.trace_expr(7, param_name, label, default_value, max_len, disabled, prefix="in format_input_field: ")
     if (label is None):
         label = param_name.replace("-", " ").capitalize()
-    value_spec = (f"{default_value}" if default_value else "")
+    if (default_value is None):
+        default_value = ""
+    ## OLD: value_spec = (f"{default_value}" if default_value else "")
+    value_spec = (get_url_param(param_name) or default_value)
     max_len_spec = (f"maxlength={max_len} size={max_len}" if max_len else "")
     disabled_spec = ("disabled" if disabled else "")
     result = f'<label>{label}&nbsp;<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {max_len_spec} {disabled_spec}></label>'
