@@ -153,19 +153,25 @@ def getenv(var, default_value=None):
     return result
 
 
-def setenv(var, value):
-    """Set environment VAR to VALUE"""
+def setenv(var, value, normalize=False):
+    """Set environment VAR to non-Null VALUE
+    If normalize, the var is converted to uppercase and dashes to underscores
+    """
     debug.trace_fmtd(5, "setenv({v}, {val})", v=var, val=value)
-    os.environ[var] = value
+    debug.assertion(value is not None)
+    if normalize:
+        var = var.replace("-", "_").upper()
+    os.environ[var] = str(value)
     return
 
 
-def getenv_text(var, default=None, description=None, desc=None, helper=False):
+def getenv_text(var, default=None, description=None, desc=None, helper=False, update=None):
     """Returns textual value for environment variable VAR (or DEFAULT value, excluding None).
     Notes:
     - Use getenv_value if default can be None, as result is always a string.
     - HELPER indicates that this call is in support of another getenv-type function (e.g., getenv_bool), so that tracing is only shown at higher verbosity level (e.g., 6 not 5).
-    - DESCRIPTION used for get_environment_option_descriptions."""
+    - DESCRIPTION used for get_environment_option_descriptions.
+    - If UPDATE, then the environment is modified with value (e.g., based on default)."""
     # Note: default is empty string to ensure result is string (not NoneType)
     ## TODO: add way to block registration
     register_env_option(var, description or desc, default)
@@ -177,6 +183,8 @@ def getenv_text(var, default=None, description=None, desc=None, helper=False):
     if (text_value is None):
         debug.trace_fmtd(6, "getenv_text: no value for var {v}", v=var)
         text_value = default
+    if update:
+        setenv(var, text_value, normalize=True)
     trace_level = 6 if helper else 5
     ## DEBUG: sys.stderr.write("debug.trace_fmtd({trace_level} \"getenv_text('{v}', [def={dft}], [desc={desc}], [helper={hlpr}]) => {r}\"".format(trace_level=trace_level, v=var, dft=default, desc=description, hlpr=helper, r=text_value))
     debug.trace_fmtd(trace_level, "getenv_text('{v}', [def={dft}], [desc={desc}], [helper={hlpr}]) => {r}",
@@ -184,11 +192,13 @@ def getenv_text(var, default=None, description=None, desc=None, helper=False):
     return (text_value)
 
 
-def getenv_value(var, default=None, description=None, desc=None):
-    """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION"""
+def getenv_value(var, default=None, description=None, desc=None, update=None):
+    """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE"""
     # EX: getenv_value("bad env var") => None
     register_env_option(var, description or desc, default)
     value = os.getenv(var, default)
+    if update:
+        setenv(var, value, normalize=True)
     # note: uses !r for repr()
     debug.trace_fmtd(5, "getenv_value({v!r}, [def={dft!r}], [desc={dsc!r}]]) => {val!r}",
                      v=var, dft=default, dsc=(description or desc), val=value)
@@ -197,13 +207,13 @@ def getenv_value(var, default=None, description=None, desc=None):
 
 DEFAULT_GETENV_BOOL = False
 #
-def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None):
-    """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION
+def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, update=None):
+    """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note: "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)"""
     # EX: getenv_bool("bad env var", None) => False
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
-    value_text = getenv_value(var, description=description, desc=desc, default=default)
+    value_text = getenv_value(var, description=description, desc=desc, default=default, update=update)
     if (isinstance(value_text, str) and value_text.strip()):
         bool_value = to_bool(value_text)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
@@ -213,12 +223,12 @@ def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None):
 getenv_boolean = getenv_bool
 
 
-def getenv_number(var, default=-1.0, description=None, desc=None, helper=False):
-    """Returns number based on environment VAR (or DEFAULT value), with optional description"""
+def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, update=None):
+    """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE"""
     # TODO: def getenv_number(...) -> Optional(float):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
-    value = getenv_value(var, description=description, desc=desc, default=default)
+    value = getenv_value(var, description=description, desc=desc, default=default, update=update)
     if (isinstance(value, str) and value.strip()):
         debug.assertion(is_number(value))
         num_value = to_float(value)
@@ -231,12 +241,12 @@ getenv_float = getenv_number
 
 
 
-def getenv_int(var, default=-1, allow_none=False, description=None, desc=None):
-    """Version of getenv_number for integers, with optional DESCRIPTION
+def getenv_int(var, default=-1, allow_none=False, description=None, desc=None, update=None):
+    """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
     Note: Return is an integer unless ALLOW_NONE
     """
     # EX: getenv_int("?", 1.5) => 1
-    value = getenv_number(var, description=description, desc=desc, default=default, helper=True)
+    value = getenv_number(var, description=description, desc=desc, default=default, helper=True, update=update)
     if (not isinstance(value, int)):
         if ((value is not None) or allow_none):
             value = to_int(value)
