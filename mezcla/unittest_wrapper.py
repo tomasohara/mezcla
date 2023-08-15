@@ -86,6 +86,25 @@ def get_temp_dir(keep=False):
     debug.trace(5, "get_temp_dir() => {dir_path}")
     return dir_path
 
+
+def trap_exception(function):
+    """Decorator to trap exception during function execution
+    Note:
+    - Only intended for use in tests (e.g., fix for maldito pytest).
+    - Issues assertion so that test fails.
+    - Should be inside any pytest.mark.xfail decorators.
+    """
+    def wrapper(*args):
+        try:
+            function(*args)
+        except AssertionError as err:
+            raise
+        except:
+            system.print_exception_info(function)
+            assert(False)
+    return wrapper
+
+
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition"""
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
