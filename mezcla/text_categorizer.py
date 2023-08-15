@@ -26,6 +26,7 @@
 """Text categorization support"""
 
 # Standard packages
+import json
 from itertools import zip_longest
 import os
 import re
@@ -111,6 +112,8 @@ if USE_XGB:
 XGB_BOOSTER = system.getenv_value("XGB_BOOSTER", None)
 XGB_USE_GPUS = system.getenv_bool("XGB_USE_GPUS", False)
 XGB_VERBOSITY = getenv_int("XGB_VERBOSITY", 0, "Degree of verbosity from 0 to 3")
+XGB_JSON = system.getenv_bool("XGB_USE_GPUS", False,
+                              "Use XGBoost model in JSON format")
 
 # Options for Logistic Regression (LR)
 # TODO: add regularization
@@ -517,7 +520,7 @@ class TextCategorizer(object):
             index = self.classifier.predict([text])[0]
             label = self.keys[index]
         except:
-            system.trace_exception_info("categorize")
+            system.print_exception_info("categorize")
         debug.trace_fmtd(6, "categorize() => {r}", r=label)
         return label
 
@@ -534,21 +537,38 @@ class TextCategorizer(object):
             sorted_scores = misc.sort_weighted_hash(dict(zip(class_names, class_probs)))
             dist = " ".join([(k + ": " + system.round_as_str(s)) for (k, s) in sorted_scores])
         except:
-             system.trace_exception_info("class_probabilities")
+             system.print_exception_info("class_probabilities")
         debug.trace_fmtd(5, "class_probabilities() => {r}", r=dist)
         return dist
 
     def save(self, filename):
-        """Save classifier to FILENAME"""
+        """Save classifier to FILENAME
+        Note: with XGB_JSON, the XGBoost JSON format is used (for better portability).
+        """
         debug.trace_fmtd(4, "tc.save({f})", f=filename)
-        system.save_object(filename, [self.keys, self.classifier])
+        try:
+            if XGB_JSON:
+                xgb.XGBModel.save_model(filename)
+                ## TODO: get xgboost to save the keys in the model JSON file
+                system.write_file(filename + ".keys", json.dumps(self.keys))
+            else:
+                system.save_object(filename, [self.keys, self.classifier])
+        except:
+            system.print_exception_info("tc.save")
         return
 
     def load(self, filename):
-        """Load classifier from FILENAME"""
+        """Load classifier from FILENAME
+        Note: with XGB_JSON, uses the XGBoost JSON format.
+        """
         debug.trace_fmtd(4, "tc.load({f})", f=filename)
         try:
-            (self.keys, self.classifier) = system.load_object(filename)
+            if XGB_JSON:
+                self.classifier = xgb.XGBModel.load_model(filename)
+                ## HACK: load keys separately
+                self.keys = json.loads(system.read_file(filename + ".keys"))
+            else:
+                (self.keys, self.classifier) = system.load_object(filename)
         except (TypeError, ValueError):
             system.print_stderr("Problem loading classifier from {f}: {exc}".
                                 format(f=filename, exc=sys.exc_info()))
