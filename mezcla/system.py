@@ -1255,7 +1255,9 @@ def python_maj_min_version():
     """Return Python version as a float of form Major.Minor"""
     # EX: debug.assertion(python_maj_min_version() >= 3.6, "F-Strings are used")
     version = sys.version_info
-    py_maj_min = to_float("{M}.{m}".format(M=version.major, m=version.minor))
+    epsilon = 1e-6
+    py_maj_min = (to_float("{M}.{m}".format(M=version.major, m=version.minor))
+                  + epsilon)
     debug.trace_fmt(5, "Python version (maj.min): {v}", v=py_maj_min)
     debug.assertion(py_maj_min > 0)
     return py_maj_min
