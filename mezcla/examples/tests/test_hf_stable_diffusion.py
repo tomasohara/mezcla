@@ -81,7 +81,7 @@ class TestIt2:
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
     def test_pipeline(self):
         """Make sure valid SD pipeline created"""
-        debug.trace(4, f"TestIt2.test_something_else(); self={self}")
+        debug.trace(4, f"TestIt2.test_pipeline(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True)
         pipe = sd.init_pipeline()
         actual = my_re.split(r"\W+", str(pipe))
