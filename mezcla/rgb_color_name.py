@@ -40,10 +40,12 @@
 
 Sample usage:
    extcolors tests/resources/orange-gradient.png | {script} -
+
+   {script} --rgb-regex '#(.)(.)(.)' <<<"#eee"
 """
 
 # Standard packages
-import re
+## OLD: import re
 
 # Installed packages
 import webcolors
@@ -82,7 +84,7 @@ class Script(Main):
         ## TODO: self.REPLACEMENT = self.get_parsed_option(REPLACEMENT, self.REPLACEMENT)
         self.rgb_regex = self.get_parsed_option(RGB_REGEX, self.rgb_regex)
         spec_regex = r"\([^\(\)]+\).*" * 3
-        debug.assertion(re.search(spec_regex, self.rgb_regex, re.IGNORECASE))
+        debug.assertion(my_re.search(spec_regex, self.rgb_regex, flags=my_re.IGNORECASE))
         self.hex = self.get_parsed_option(HEX, self.hex)
         self.skip_direct = self.get_parsed_option(SKIP_DIRECT, self.skip_direct)
         self.show_hex = self.get_parsed_option(SHOW_HEX, self.show_hex)
@@ -108,13 +110,13 @@ class Script(Main):
         # Do sanity check for inadvertant image input
         # TODO: abort processing unless --force option given
         if (self.line_num <= 1):
-            debug.assertion(not re.search(r"^\s*(IMDR|JFIF|PNG)\s*$", line),
+            debug.assertion(not my_re.search(r"^\s*(IMDR|JFIF|PNG)\s*$", line),
                             "Input should not be an image (e.g., use extcolors output)")
         
         # Extract RGB references and add color name label
         # ex: "(128, 128, 128):  72.98% (1888)" => "<Grey, (128, 128, 128)>:  72.98% (1888)
         ## OLD: MAX_TRIES = max(1, line.count("("))
-        MAX_TRIES = (1 + len(re.findall(self.rgb_regex, line)))
+        MAX_TRIES = (1 + len(my_re.findall(self.rgb_regex, line)))
         debug.trace(5, f"len: {len(line)}; MAX_TRIES={MAX_TRIES}")
         num_tries = 0
         text = line
@@ -122,15 +124,27 @@ class Script(Main):
         while (my_re.search(self.rgb_regex, text) and (num_tries < MAX_TRIES)):
             num_tries += 1
             # Extract RGB components
-            rgb = my_re.group(0)
+            rgb_original = my_re.group(0)
+            rgb = rgb_original
             red = my_re.group(1)
             green = my_re.group(2)
             blue = my_re.group(3)
+            start = my_re.start()
+            end = my_re.end()
 
             # Determine whether RGB in hexadecimal or decimal
             rgb_base = 10
-            if (self.hex or re.search("(0x)|[A-F]|(^#)", rgb, re.IGNORECASE)):
+            if (self.hex or my_re.search("(0x)|[A-F]|(^#)", rgb, flags=my_re.IGNORECASE)):
+                debug.trace(4, f"Assuming hex at line {self.line_num}: {line}")
                 rgb_base = 16
+            # Handle special case of #xyz => #xxyyzz
+            if (my_re.search(r"^#...$", rgb)):
+                debug.trace(4, f"Expanding hex shortcut at line {self.line_num}: {line}")
+                red += red
+                green += green
+                blue += blue
+                rgb = "#" + red + green + blue
+            # Convert to tuple of integers
             query_color = [system.safe_int(c, base=rgb_base) for c in [red, green, blue]]
 
             try:
@@ -157,10 +171,10 @@ class Script(Main):
                 # https://stackoverflow.com/questions/2269827/how-to-convert-an-int-to-a-hex-string
                 hex_spec = " 0x" + "".join(f"{c:0>2X}" for c in query_color)
             color_spec = f"<{rgb_spec}, {color_name}{hex_spec}>"
-            processed_text += text[0: my_re.start()] + color_spec
-            text = text[my_re.end():]
+            processed_text += text[0: start] + color_spec
+            text = text[end:]
             debug.trace_fmtd(4, "match: {m}; new text: {new}",
-                             m=my_re.group(0), new=text)
+                             m=rgb_original, new=text)
         debug.assertion(num_tries <= MAX_TRIES)
 
         # Print revised line
