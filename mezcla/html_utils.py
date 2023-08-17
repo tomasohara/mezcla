@@ -665,7 +665,7 @@ def extract_html_link(html, url=None, base_url=None):
     return links
 
 
-def format_checkbox(param_name, label=None, default_value=False, disabled=False):
+def format_checkbox(param_name, label=None, default_value=False, disabled=False, style=None):
     """Returns HTML specification for input checkbox, optionally with LABEL, DEFAULT_VALUE, and DISABLED
     Warning: includes separate hidden field for explicit off state"""
     ## Note: Checkbox valuee are only submitted if checked, so a hidden field is used to provide explicit off.
@@ -678,15 +678,17 @@ def format_checkbox(param_name, label=None, default_value=False, disabled=False)
     checkbox_spec = get_url_param_checkbox_spec(param_name, default_value)
     disabled_spec = ("disabled" if disabled else "")
     status_spec = f"{checkbox_spec} {disabled_spec}".strip()
+    style_spec = (f"style='{style}'" if style else "")
     if (label is None):
         label = (param_name.replace("-", " ").capitalize() + "?")
-    result = ""
+    ## OLD: result = ""
     ## TODO: use hidden only if (default_value in ["1", "on", True])???
     result = f"<input type='hidden' name='{param_name}' value='off'>"
     ## OLD: result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {status_spec}></label>&nbsp;"
-    result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {status_spec}></label>"
+    result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec}></label>"
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
+
 
 def format_url_param(name, default=None):
     """Return URL parameter NAME formatted for an HTML form (e.g., escaped)"""
@@ -703,7 +705,7 @@ def format_url_param(name, default=None):
 # EX: format_url_param("r", "R") => "R"
 
 
-def format_input_field(param_name, label=None, default_value=None, max_len=None, disabled=None):
+def format_input_field(param_name, label=None, default_value=None, max_len=None, disabled=None, style=None):
     """Returns HTML specification for input field, optionally with LABEL, DEFAULT_VALUE, and DISABLED"""
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
     debug.trace_expr(7, param_name, label, default_value, max_len, disabled, prefix="in format_input_field: ")
@@ -715,7 +717,8 @@ def format_input_field(param_name, label=None, default_value=None, max_len=None,
     value_spec = (get_url_param(param_name) or default_value)
     max_len_spec = (f"maxlength={max_len} size={max_len}" if max_len else "")
     disabled_spec = ("disabled" if disabled else "")
-    result = f'<label>{label}&nbsp;<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {max_len_spec} {disabled_spec}></label>'
+    style_spec = (f"style='{style}'" if style else "")
+    result = f'<label>{label}&nbsp;<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {max_len_spec} {disabled_spec}></label>'
     debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
     return result
 
