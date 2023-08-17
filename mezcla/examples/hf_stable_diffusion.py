@@ -118,11 +118,14 @@ class StableDiffusion:
             # note: remote flask server (e.g., on GPU server)
             self.server_url = f"http://{self.server_url}"
             debug.trace(4, f"Added http protocol to URL: {self.server_url}")
-        if self.server_url and not my_re.search(r":\d+", self.server_url):
-            # TODO3: http://base-url/path => http://base-url:port/path
-            self.server_url += f":{server_port}"
+        if self.server_url:
+            if not my_re.search(r":\d+", self.server_url):
+                # TODO3: http://base-url/path => http://base-url:port/path
+                self.server_url += f":{server_port}"
+            else:
+                system.print_stderr(f"Warning: ignoring port {server_port} as already in URL {self.server_url}")
         else:
-            system.print_stderr(f"Warning: ignoring port {server_port} as already in URL {self.server_url}")
+            debug.trace(4,"Unexpected condition in {self.__class__.__name__}.__init__")
         if low_memory is None:
             low_memory = LOW_MEMORY
         self.low_memory = low_memory
