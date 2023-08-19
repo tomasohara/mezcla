@@ -645,25 +645,21 @@ def format_index_html(base_url=None):
                 <textarea id="textarea1" rows="10" cols="100" name="text"></textarea>
                 <br>
                 <input type="submit">
-            </form>
-            
-        </body>
-    </html>
+            </form>            
     """
-
     #
-    # TODO: define text area dimensions based on browser window size
     html_template += """
-            <!-- Form for entering text for categorization -->
+            <!-- Form for entering text for textcat probability distribution -->
             <hr>
             <form action="{base_url}/probs" method="get">
                 <label for="textarea1">Probabilities</label>
                 <br>
-                <textarea id="textarea1" rows="10" cols="100" name="text"></textarea>
+                <textarea id="textarea2" rows="10" cols="100" name="text"></textarea>
                 <br>
                 <input type="submit">
             </form>
-            
+    """
+    html_template += """          
         </body>
     </html>
     """
@@ -737,9 +733,10 @@ class web_controller(object):
     # TODO: track down delay in python process termination
 
 
-def start_web_controller(model_filename):
+def start_web_controller(model_filename, nonblocking=False):
     """Start up the CherryPy controller for categorization via MODEL_FILENAME
-    Note: The function blocks until server is shutdown"""
+    Note:
+    - The function blocks until server is shutdown unless NONBLOCKING specified.    """
     debug.trace(5, "start_web_controller()")
 
     # Load in CherryPy configuration
@@ -767,9 +764,21 @@ def start_web_controller(model_filename):
     debug.trace_values(4, cherrypy.response.headers, "default response headers")
     textcat_controller = web_controller(model_filename)
     debug.trace_expr(4, textcat_controller.text_cat.keys)
-    cherrypy.quickstart(textcat_controller, config=conf)
-    # Note: the following call blocks
-    cherrypy.engine.start()
+    ## OLD:
+    ## cherrypy.quickstart(textcat_controller, config=conf)
+    ## # Note: the following call blocks
+    ## cherrypy.engine.start()
+    if nonblocking:
+        # Based on cherrypy/__init__.py (version 18.7.0):
+        cherrypy._global_conf_alias.update(conf)  # pylint: disable=protected-access
+        cherrypy.tree.mount(textcat_controller, config=conf)
+        cherrypy.engine.signals.subscribe()
+        debug.trace_expr(4, "starting cherrypy server")
+        cherrypy.engine.start()
+    else:
+        # Note: the following call blocks
+        debug.trace_expr(4, "quick-starting cherrypy server")
+        cherrypy.quickstart(textcat_controller, config=conf)
     return
 
 
