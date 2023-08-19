@@ -665,8 +665,8 @@ def extract_html_link(html, url=None, base_url=None):
     return links
 
 
-def format_checkbox(param_name, label=None, default_value=False, disabled=False, style=None):
-    """Returns HTML specification for input checkbox, optionally with LABEL, DEFAULT_VALUE, and DISABLED
+def format_checkbox(param_name, label=None, default_value=False, disabled=False, style=None, misc_attr=None):
+    """Returns HTML specification for input checkbox, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all)
     Warning: includes separate hidden field for explicit off state"""
     ## Note: Checkbox valuee are only submitted if checked, so a hidden field is used to provide explicit off.
     ## This requires use of fix_url_parameters to give preference to final value specified (see results.mako).
@@ -679,13 +679,14 @@ def format_checkbox(param_name, label=None, default_value=False, disabled=False,
     disabled_spec = ("disabled" if disabled else "")
     status_spec = f"{checkbox_spec} {disabled_spec}".strip()
     style_spec = (f"style='{style}'" if style else "")
+    misc_spec = (misc_attr if misc_attr else "")
     if (label is None):
         label = (param_name.replace("-", " ").capitalize() + "?")
     ## OLD: result = ""
     ## TODO: use hidden only if (default_value in ["1", "on", True])???
     result = f"<input type='hidden' name='{param_name}' value='off'>"
     ## OLD: result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {status_spec}></label>&nbsp;"
-    result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec}></label>"
+    result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
 
@@ -705,8 +706,8 @@ def format_url_param(name, default=None):
 # EX: format_url_param("r", "R") => "R"
 
 
-def format_input_field(param_name, label=None, default_value=None, max_len=None, disabled=None, style=None):
-    """Returns HTML specification for input field, optionally with LABEL, DEFAULT_VALUE, and DISABLED"""
+def format_input_field(param_name, label=None, default_value=None, max_len=None, disabled=None, style=None, misc_attr=None):
+    """Returns HTML specification for input field, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all)"""
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
     debug.trace_expr(7, param_name, label, default_value, max_len, disabled, prefix="in format_input_field: ")
     if (label is None):
@@ -718,7 +719,8 @@ def format_input_field(param_name, label=None, default_value=None, max_len=None,
     max_len_spec = (f"maxlength={max_len} size={max_len}" if max_len else "")
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
-    result = f'<label>{label}&nbsp;<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {max_len_spec} {disabled_spec}></label>'
+    misc_spec = (misc_attr if misc_attr else "")
+    result = f'<label>{label}&nbsp;<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {max_len_spec} {disabled_spec} {misc_spec}></label>'
     debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
     return result
 
