@@ -715,7 +715,7 @@ class web_controller(object):
     @cherrypy.expose
     def stop(self, **kwargs):
         """Stops the web search server and saves cached data to disk.
-        Note: The command is ignored if not debugging."""
+        Note: The command is ignored if not debugging and on a production server."""
         debug.trace_fmtd(5, "wc.stop(s:{s}, kw:{kw})", s=self, kw=kwargs)
         # TODO: replace stooges with your real server nicknames
         if ((not debug.detailed_debugging()) and (os.environ.get("HOST_NICKNAME") in ["curly", "larry", "moe"])):
@@ -769,7 +769,7 @@ def start_web_controller(model_filename, nonblocking=False):
     ## # Note: the following call blocks
     ## cherrypy.engine.start()
     if nonblocking:
-        # Based on cherrypy/__init__.py (version 18.7.0):
+        # Based on quickstart in cherrypy/__init__.py (version 18.7.0), sans the block:
         cherrypy._global_conf_alias.update(conf)  # pylint: disable=protected-access
         cherrypy.tree.mount(textcat_controller, config=conf)
         cherrypy.engine.signals.subscribe()
