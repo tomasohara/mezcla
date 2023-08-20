@@ -135,7 +135,7 @@ class TestWrapper(unittest.TestCase):
     def setUpClass(cls):
         """Per-class initialization: make sure script_module set properly"""
         debug.trace_fmtd(5, "TestWrapper.setupClass(): cls={c}", c=cls)
-        super(TestWrapper, cls).setUpClass()
+        super().setUpClass()
         debug.trace_object(5, cls, "TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
         if cls.script_module:
@@ -318,7 +318,7 @@ class TestWrapper(unittest.TestCase):
                 gh.run("rm -rvf {dir}", dir=cls.temp_base)
             else:
                 gh.run("rm -vf {base}*", base=cls.temp_base)
-        super(TestWrapper, cls).tearDownClass()
+        super().tearDownClass()
         return
     
 #-------------------------------------------------------------------------------
