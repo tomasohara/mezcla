@@ -271,7 +271,9 @@ def set_param_dict(param_dict):
 
 def get_url_param(name, default_value=None, param_dict=None, escaped=False):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
-    Note: It can be ESCAPED for use in HTML."""
+    Note: It can be ESCAPED for use in HTML.
+    Different from get_url_parameter_value in possible returning list.
+    """
     # TODO3: default_value => default
     if default_value is None:
         default_value = ""
@@ -302,6 +304,7 @@ def get_url_text(name, param_dict=None):
 def get_url_param_checkbox_spec(name, default_value="", param_dict=None):
     """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT
     Note: the value is only specified/submitted if checked"""
+    # TODO3?: extend to handle case with multiple values (see get_url_parameter_value)
     # EX: get_url_param_checkbox_spec("param", param_dict={"param": "on"}) => "checked"
     # EX: get_url_param_checkbox_spec("param", param_dict={"param": "off"}) => ""
     # NOTE: 1 also treated as True
@@ -319,7 +322,10 @@ get_url_parameter_checkbox_spec = get_url_param_checkbox_spec
 
 
 def get_url_parameter_value(param, default_value=None, param_dict=None):
-    """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)"""
+    """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)
+    Note: different from get_url_parameter in just returning single value
+    """
+    # TODO3?: rename as get_last_url_parameter_value (to avoid confusion with get_url_parameter)
     param_dict = (get_param_dict(param_dict) or {})
     result = param_dict.get(param, default_value)
     if isinstance(result, list):
