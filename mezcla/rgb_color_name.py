@@ -39,10 +39,15 @@
 """Convert RGB tuples into color names
 
 Sample usage:
+   {script} --hex3 <<<"#eee"
+
    extcolors tests/resources/orange-gradient.png | {script} -
 
-   {script} --rgb-regex '#(.)(.)(.)' <<<"#eee"
+   green_wiki="https://en.wikipedia.org/wiki/Shades_of_green"
+   curl --silent "$green_wiki" | HTML=1 STDOUT-1 extract_document_text.py - | {script} --hex6 - | egrep '\|'
 """
+#
+## TODO3: modernize extract_document_text.py (e.g., --html --stdout)
 
 # Standard packages
 ## OLD: import re
@@ -63,12 +68,15 @@ from mezcla.my_regex import my_re
 ## TODO: REPLACEMENT = "regex-replacement"
 RGB_REGEX = "rgb-regex"
 HEX = "hex"
+HEX3 = "hex3"
+HEX6 = "hex6"
 SKIP_DIRECT = "skip-direct"
 SHOW_HEX = "show-hex"
+HEX_CH = "[0-9A-F]"
 
 class Script(Main):
     """Input processing class: convert RGB tuples to <RGB, label> pairs"""
-    rgb_regex = r"\((0?x?[0-9A-F]+), (0?x?[0-9A-F]+), (0?x?[0-9A-F]+)\)"
+    rgb_regex = rf"\((0?x?{HEX_CH}+), (0?x?{HEX_CH}+), (0?x?{HEX_CH}+)\)"
     ## TODO: replacement = r"<COLOR, \1>"
     space_color_db = None
     color_names = []
@@ -82,6 +90,10 @@ class Script(Main):
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
         # Extract argument values
         ## TODO: self.REPLACEMENT = self.get_parsed_option(REPLACEMENT, self.REPLACEMENT)
+        if self.get_parsed_option(HEX3):
+            self.rgb_regex = f"#({HEX_CH})({HEX_CH})({HEX_CH})"
+        if self.get_parsed_option(HEX6):
+            self.rgb_regex = f"#({HEX_CH}{HEX_CH})({HEX_CH}{HEX_CH})({HEX_CH}{HEX_CH})"
         self.rgb_regex = self.get_parsed_option(RGB_REGEX, self.rgb_regex)
         spec_regex = r"\([^\(\)]+\).*" * 3
         debug.assertion(my_re.search(spec_regex, self.rgb_regex, flags=my_re.IGNORECASE))
@@ -135,7 +147,8 @@ class Script(Main):
             # Determine whether RGB in hexadecimal or decimal
             rgb_base = 10
             if (self.hex or my_re.search("(0x)|[A-F]|(^#)", rgb, flags=my_re.IGNORECASE)):
-                debug.trace(4, f"Assuming hex at line {self.line_num}: {line}")
+                if not self.hex:
+                    debug.trace(4, f"FYI: Assuming hex at line {self.line_num}: {line}")
                 rgb_base = 16
             # Handle special case of #xyz => #xxyyzz
             if (my_re.search(r"^#...$", rgb)):
@@ -189,6 +202,8 @@ def main():
         # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
         boolean_options=[(HEX, "RGB triple specified in hex (not decimal)"),
                          (SHOW_HEX, "Show hex-style specification XXXXXX"),
+                         (HEX6, "RGB triples of format #xxxxxx"),
+                         (HEX3, "RGB triples of format #xxx--shortcut for #xxxxxx)"),
                          (SKIP_DIRECT, "Don't include direct match (for nearest neighbor test")],
         # Note: FILENAME is default argument unless skip_input
         text_options=[
