@@ -11,6 +11,8 @@ Support for parsing Bash into abstract syntax trees (ASTs) such as via bash lex
 
 Sample usage:
    {prog} - <<<'sum=$((2 + 2)); if [ $sum -eq 5 ]; then echo "WTH?"; fi'
+
+   IGNORE_ERRORS=1 {prog} - <<<'arr=(1 2 3); echo "${{arr[*]}}"'
 """
 ## TODO: {prog} <<<'if [[ $((2 + 2)) -eq 5 ]]; then echo "WTH?"; fi'
 
@@ -30,7 +32,8 @@ from mezcla import system
 
 # Constants
 TL = debug.TL
-
+IGNORE_ERRORS = system.getenv_bool("IGNORE_ERRORS", False,
+                                   "Ignore unsupported constructs")
 
 class BashAST:
     """Abstract syntax tree for Bash snippets
@@ -42,21 +45,23 @@ class BashAST:
     # note: Usage based on https://github.com/idank/bashlex
 
     def __init__(self, snippet=None):
-        self.snippet = None
         self.parts = None
         if snippet is not None:
             self.parse(snippet)
-        return
+        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
     def parse(self, snippet):
         """Parse SNIPPET into AST"""
-        self.snippet = snippet
+        debug.trace(4, f"BashAST.parse({snippet!r})")
+        kw_args = {}
+        if IGNORE_ERRORS:
+            kw_args["proceedonerror"] = True
         try:
-            self.parts = bashlex.parse(snippet)
+            self.parts = bashlex.parse(snippet, **kw_args)
         except:
             system.print_exception_info("BashAST.parse")
         result = self.parts
-        debug.trace(6, f"BashAST.parse({snippet!r}) => {result!r}")
+        debug.trace(6, f"BashAST.parse() => {result!r}")
         return result
 
     def dump(self):

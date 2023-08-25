@@ -37,15 +37,16 @@ TEST_PERCENT = system.getenv_value("TEST_PERCENT", None,
 def usage():
     """Show command-line usage"""
     # TODO: remove path from script filename
+    # TODO2: use stdout (as with argparse-based usage)
     script = (__file__ or "n/a")
-    system.print_stderr("Usage: {scr} training-file model-file [testing]".format(scr=script))
-    system.print_stderr("")
-    system.print_stderr("Notes:")
-    system.print_stderr("- Use - to indicate the file is not needed (e.g., existing training model).")
-    system.print_stderr("- You need to supply either training file or model file.")
-    system.print_stderr("- The testing file is optional when training.")
-    system.print_stderr("- Currently, only tab-separated value format is accepted:")
-    system.print_stderr("    <label>\t<text>")
+    print("Usage: {scr} training-file model-file [testing]".format(scr=script))
+    print("")
+    print("Notes:")
+    print("- Use - to indicate the file is not needed (e.g., existing training model).")
+    print("- You need to supply either training file or model file.")
+    print("- The testing file is optional when training.")
+    print("- Currently, only tab-separated value (TSV) format is accepted:")
+    print("    <label>\t<text>")
     return
 
 
@@ -84,7 +85,9 @@ def main(args=None):
         
         # Split the training file into training proper and test
         # note: the tail --lines=+2 option ignores the header line
-        training_filename = app.temp_base + "train.tsv"
+        training_filename = app.temp_base + "-train.tsv"
+        debug.assertion(not testing_filename)
+        testing_filename = app.temp_base + "-test.tsv"
         gh.issue(f"head --lines=1 < {full_training_filename} > {training_filename}")
         gh.issue(f"tail --lines=+2 < {full_training_filename} | head --lines={num_training_lines} >> {training_filename}")
         testing_filename = app.temp_base + "test.tsv"

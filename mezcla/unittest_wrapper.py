@@ -14,6 +14,8 @@
 # TODO:
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 # - Clarify that this can co-exist with pytest-based tests (see tests/test_main.py).
+# TODO2:
+# - Clean up script_file usage (and unncessary settings in test scripts).
 #
 #-------------------------------------------------------------------------------
 # Sample test (streamlined version of test_simple_main_example.py):
@@ -84,6 +86,25 @@ def get_temp_dir(keep=False):
     debug.trace(5, "get_temp_dir() => {dir_path}")
     return dir_path
 
+
+def trap_exception(function):
+    """Decorator to trap exception during function execution
+    Note:
+    - Only intended for use in tests (e.g., fix for maldito pytest).
+    - Issues assertion so that test fails.
+    - Should be inside any pytest.mark.xfail decorators.
+    """
+    def wrapper(*args):
+        try:
+            function(*args)
+        except AssertionError as err:
+            raise
+        except:
+            system.print_exception_info(function)
+            assert(False)
+    return wrapper
+
+
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition"""
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
@@ -114,7 +135,7 @@ class TestWrapper(unittest.TestCase):
     def setUpClass(cls):
         """Per-class initialization: make sure script_module set properly"""
         debug.trace_fmtd(5, "TestWrapper.setupClass(): cls={c}", c=cls)
-        super(TestWrapper, cls).setUpClass()
+        super().setUpClass()
         debug.trace_object(5, cls, "TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
         if cls.script_module:
@@ -196,7 +217,7 @@ class TestWrapper(unittest.TestCase):
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
         # The temp file is an extension of temp-base file by default.
-        # Opitonally, if can be a file in temp-base subdrectory.
+        # Optionally, if can be a file in temp-base subdrectory.
         if self.use_temp_base_dir:
             default_temp_file = gh.form_path(self.temp_base, "test-")
         else:
@@ -210,10 +231,12 @@ class TestWrapper(unittest.TestCase):
         return
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
-                   out_file=None, env_options=None, uses_stdin=False):
+                   out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None):
+                   ## OLD: out_file=None, env_options=None, uses_stdin=False):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
-        not specifed, they  are derived from self.temp_file.
+        not specifed, they  are derived from self.temp_file. The optional POST_OPTIONS
+        go after the data file.
         Notes:
         - issues warning if script invocation leads to error
         - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)"""
@@ -225,11 +248,15 @@ class TestWrapper(unittest.TestCase):
             options = ""
         if env_options is None:
             env_options = ""
+        if post_options is None:
+            post_options = ""
 
         # Derive the full paths for data file and log, and then invoke script.
         # TODO: derive from temp base and data file name?;
-        # TODO1: derive default for uses_stdin based use of filename argment (e.g., from usage)
-        data_path = ("" if uses_stdin else "-")
+        # TODO1: derive default for uses_stdin based on use of filename argment (e.g., from usage)
+        ## OLD: data_path = ("" if uses_stdin else "-")
+        uses_stdin_false = ((uses_stdin is not None) and not bool(uses_stdin))
+        data_path = ("" if uses_stdin_false else "-")
         if data_file is not None:
             data_path = (gh.resolve_path(data_file) if len(data_file) else data_file)
         if not log_file:
@@ -246,10 +273,12 @@ class TestWrapper(unittest.TestCase):
             coverage_spec = 'coverage run'
         else:
             debug.assertion(not self.script_module.endswith(".py"))
+        amp_spec = "&" if background else ""
 
-        gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path} 1> {out} 2> {log}",
+        # Run the command
+        gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path}  {post} 1> {out} 2> {log} {amp_spec}",
                  env=env_options, cov_spec=coverage_spec, module=self.script_module,
-                 opts=options, path=data_path, out=out_file, log=log_file)
+                 opts=options, path=data_path, out=out_file, log=log_file, post=post_options, amp_spec=amp_spec)
         output = system.read_file(out_file)
         # note; trailing newline removed as with shell output
         if output.endswith("\n"):
@@ -289,7 +318,7 @@ class TestWrapper(unittest.TestCase):
                 gh.run("rm -rvf {dir}", dir=cls.temp_base)
             else:
                 gh.run("rm -vf {base}*", base=cls.temp_base)
-        super(TestWrapper, cls).tearDownClass()
+        super().tearDownClass()
         return
     
 #-------------------------------------------------------------------------------

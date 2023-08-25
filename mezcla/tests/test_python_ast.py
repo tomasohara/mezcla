@@ -7,7 +7,7 @@
 # - TODO: If any of the setup/cleanup methods defined, make sure to invoke base
 #   (see examples below for setUp and tearDown).
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
-#   option shows tracing output normally suppressed by unittest_wrapper.py.
+#   option shows subprocess tracing output normally suppressed by unittest_wrapper.py.
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_python_ast.py
 #
@@ -37,7 +37,7 @@ class TestIt(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_data_file(self):
-        """Makes sure comparison converted uainf Compare nodes"""
+        """Makes sure comparison converted using Compare nodes"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
         data = ["2 + 2 == 4"]
         system.write_lines(self.temp_file, data)

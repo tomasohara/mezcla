@@ -27,7 +27,8 @@ import diskcache
 from flask import Flask, request
 import PIL
 import requests
-import gradio as gr
+## OLD: import gradio as gr
+gr = None
 
 # Local modules
 from mezcla import debug
@@ -45,7 +46,7 @@ NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
 GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
                                    "How much the image generation follows the prompt")
 SD_URL = system.getenv_value("SD_URL", None,
-                             "URL for SD TCP/restful serve--new via flask or remote")
+                             "URL for SD TCP/restful server--new via flask or remote")
 SD_PORT = system.getenv_int("SD_PORT", 9700,
                             "TCP port for SD server")
 SD_DEBUG = system.getenv_int("SD_DEBUG", False,
@@ -117,11 +118,14 @@ class StableDiffusion:
             # note: remote flask server (e.g., on GPU server)
             self.server_url = f"http://{self.server_url}"
             debug.trace(4, f"Added http protocol to URL: {self.server_url}")
-        if self.server_url and not my_re.search(r":\d+", self.server_url):
-            # TODO3: http://base-url/path => http://base-url:port/path
-            self.server_url += f":{server_port}"
+        if self.server_url:
+            if not my_re.search(r":\d+", self.server_url):
+                # TODO3: http://base-url/path => http://base-url:port/path
+                self.server_url += f":{server_port}"
+            else:
+                system.print_stderr(f"Warning: ignoring port {server_port} as already in URL {self.server_url}")
         else:
-            system.print_stderr(f"Warning: ignoring port {server_port} as already in URL {self.server_url}")
+            debug.trace(4,"Unexpected condition in {self.__class__.__name__}.__init__")
         if low_memory is None:
             low_memory = LOW_MEMORY
         self.low_memory = low_memory
@@ -156,9 +160,10 @@ class StableDiffusion:
 
 
     def infer(self, prompt=None, negative_prompt=None, scale=None, num_images=None,
-              skip_img_spec=False):
-        """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE
-        Returns list of NUM image specifications in base64 format (e.g., for use in HTML)
+              skip_img_spec=False, width=None, height=None):
+        """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE,
+        and targetting a WIDTHxHEIGHT image.
+        Returns list of NUM image specifications in base64 format (e.g., for use in HTML).
         Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag
         """
         ## OLD: debug.trace(4, f"{self.__class__.__name__}.infer{(prompt, negative_prompt, scale, num_images)}")
@@ -169,10 +174,11 @@ class StableDiffusion:
             scale = GUIDANCE_SCALE
         for prompt_filter in word_list:
             if my_re.search(rf"\b{prompt_filter}\b", prompt):
-                raise gr.Error("Unsafe content found. Please try again with different prompts.")
+                ## OLD: raise gr.Error("Unsafe content found. Please try again with different prompts.")
+                raise RuntimeError("Unsafe content found. Please try again with different prompts.")
     
         images = []
-        params = (prompt, negative_prompt, scale, num_images, skip_img_spec)
+        params = (prompt, negative_prompt, scale, num_images, skip_img_spec, width, height)
 
         if self.cache is not None:
             images = self.cache.get(params)
@@ -182,15 +188,17 @@ class StableDiffusion:
             ##                 p=params, r=images)
             debug.trace_fmt(5, "Using cached infer result: ({r})", r=images)
         else:
-            images = self.infer_non_cached(prompt, negative_prompt, scale, num_images, skip_img_spec)
+            images = self.infer_non_cached(*params)
             if self.cache is not None:
                 self.cache.set(params, images)
                 debug.trace_fmt(6, "Setting cached result (r={r})", r=images)
         return images
             
-    def infer_non_cached(self, prompt, negative_prompt, scale, num_images, skip_img_spec):
+    def infer_non_cached(self, prompt=None, negative_prompt=None, scale=None, num_images=None,
+                         skip_img_spec=False, width=None, height=None):
         """Non-cached version of infer"""
-        debug.trace(5, f"{self.__class__.__name__}.infer_non_cached{(prompt, negative_prompt, scale, num_images)}")
+        params = (prompt, negative_prompt, scale, num_images, skip_img_spec, width, height)
+        debug.trace(5, f"{self.__class__.__name__}.infer_non_cached{params}")
         images = []
         if self.use_hf_api:
             if DUMMY_RESULT:
@@ -202,7 +210,7 @@ class StableDiffusion:
                 self.pipe = self.init_pipeline()
             start_time = time.time()
             image_info = self.pipe(prompt, negative_prompt=negative_prompt, guidance_scale=scale,
-                                   num_images_per_prompt=num_images)
+                                   num_images_per_prompt=num_images, width=width, height=height)
             debug.trace_expr(4, image_info)
             debug.trace_object(5, image_info, "image_info")
             num_generated = 0
@@ -274,6 +282,7 @@ def infer(prompt=None, negative_prompt=None, scale=None, num_images=None, skip_i
 def run_ui():
     """Run user interface via gradio serving by default at localhost:7860
     Note: The environment variable GRADIO_SERVER_NAME can be used to serve via 0.0.0.0"""
+    import gradio as gr                 # pylint: disable=import-outside-toplevel, redefined-outer-name
     css = """
             .gradio-container {
                 font-family: 'IBM Plex Sans', sans-serif;

@@ -25,12 +25,12 @@
 ## BAD: tensorflow.set_random_seed(7919)
 ## tensorflow.random.set_seed(7919)
 
-# Standard packages
+# Standard moduless
 import re
 import sys
 from collections import OrderedDict
 
-# Installed packages
+# Installed moduless
 # TODO: install kera dynamically???
 ## TEST: sys.stderr.write("here\n")
 ## BAD:
@@ -61,10 +61,11 @@ from sklearn.preprocessing import LabelEncoder
 ## OLD: import tensorflow as tf
 ## TEST: tf = None
 
-# Local packages
+# Local moduless
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
+round3 = system.round3
 from mezcla import text_utils
 from mezcla.text_utils import getenv_ints
 
@@ -116,10 +117,6 @@ DEFAULT_HIDDEN_UNITS = getenv_ints("HIDDEN_UNITS", "20 30")
 
 #...............................................................................
 # Utility functions
-
-def round3(num):
-    """Round NUM using precision of 3"""
-    return system.round_num(num, 3)
 
 def non_negative(num):
     """Whether integer NUM > -1"""

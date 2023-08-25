@@ -24,7 +24,7 @@ import pytest
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
-from mezcla import glue_helpers as gh
+## TODO: from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
 
@@ -99,14 +99,14 @@ class TestIt(TestWrapper):
     ##
     ## def tearDown(self):
     ##     debug.trace(6, f"TestIt.tearDown(); self={self}")
-    ##     super(TestIt, cls).tearDownClass()
+    ##     super().tearDownClass()
     ##     ...
     ##     return
     ##
     ## @classmethod
     ## def tearDownClass(cls):
     ##     debug.trace(6, f"TestIt.tearDownClass(); cls={cls}")
-    ##     super(TestIt, self).tearDown()
+    ##     super().tearDown()
     ##     ...
     ##     return
 

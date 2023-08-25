@@ -26,6 +26,7 @@
 """Text categorization support"""
 
 # Standard packages
+import json
 from itertools import zip_longest
 import os
 import re
@@ -104,12 +105,15 @@ SGD_VERBOSE = system.getenv_bool("SGD_VERBOSE", False)
 
 # Options for Extreme Gradient Boost (XGBoost)
 USE_XGB = system.getenv_bool("USE_XGB", False)
+xgb = None
 if USE_XGB:
     # pylint: disable=import-outside-toplevel, import-error
     import xgboost as xgb
 XGB_BOOSTER = system.getenv_value("XGB_BOOSTER", None)
 XGB_USE_GPUS = system.getenv_bool("XGB_USE_GPUS", False)
 XGB_VERBOSITY = getenv_int("XGB_VERBOSITY", 0, "Degree of verbosity from 0 to 3")
+XGB_JSON = system.getenv_bool("XGB_USE_GPUS", False,
+                              "Use XGBoost model in JSON format")
 
 # Options for Logistic Regression (LR)
 # TODO: add regularization
@@ -136,7 +140,7 @@ TFIDF_STOPWORDS = not OMIT_STOPWORDS
 # TODO: Options for Naive Bayes (NB), the default
 all_use_settings = [USE_SVM, USE_SGD, USE_XGB, USE_LR]
 USE_NB = (not any(all_use_settings))
-debug.assertion(sum([int(use) for use in all_use_settings]) <= 1)
+debug.assertion(sum(int(use) for use in all_use_settings) <= 1)
 
 #................................................................................
 # Utility functions
@@ -227,7 +231,7 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         """Get parameter names for the estimator"""
         # TODO: drop method
         # Note: This is not class method as in BaseEstimator.
-        # pylint: disable=protected-access
+        # pylint: disable=protected-access,arguments-differ
         return self.classifier._get_param_names()
 
     def get_params(self, deep=True):
@@ -238,12 +242,12 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         """Delegates fit() invocation to classifier, after outputing CSV if desired"""
         if OUTPUT_CSV:
             self.output_csv(training_x, training_y, BASENAME)
+        fit_result = self.classifier.fit(training_x, training_y)
         if TRACE_IMPORTANCES:
             debug.trace_fmt(1, "Feature importances: {imp}",
                             imp=self.extract_feature_importance())
         ## DEBUG: debug.trace_object(6, self.tfidf_vectorizer)
-            
-        return self.classifier.fit(training_x, training_y)
+        return fit_result
 
     def predict(self, sample):
         """Return predicted class for each SAMPLE (returning vector)"""
@@ -318,9 +322,10 @@ class TextCategorizer(object):
     """Class for building text categorization"""
     # TODO: add cross-fold validation support; make TF/IDF weighting optional
 
-    def __init__(self, tfidf_max_terms=None, tfidf_min_ngram=None, tfidf_max_ngram=None, tfidf_min_df=None, tfidf_max_df=None, tfidf_stopwords=None, tfidf_char_ngrams=None):
+    def __init__(self, tfidf_max_terms=None, tfidf_min_ngram=None, tfidf_max_ngram=None, tfidf_min_df=None, tfidf_max_df=None, tfidf_stopwords=None, tfidf_char_ngrams=None,
+                 use_xgb=None, use_svm=None, use_sgd=None, use_lr=None):
         """Class constructor: initializes classifier and text categoriation pipeline"""
-        debug.trace_fmtd(4, "tc.__init__(); self=={s}", s=self)
+        debug.trace_fmtd(4, "tc.__init__(); self={s}", s=self)
         self.tfidf_max_terms = param_or_default(tfidf_max_terms, TFIDF_MAX_TERMS)
         self.tfidf_min_ngram = param_or_default(tfidf_min_ngram, TFIDF_MIN_NGRAM)
         self.tfidf_max_ngram = param_or_default(tfidf_max_ngram, TFIDF_MAX_NGRAM)
@@ -333,14 +338,22 @@ class TextCategorizer(object):
         self.keys = []
         self.classifier = None
         classifier = None
+        if use_xgb is None:
+            use_xgb = USE_XGB
+        if use_svm is None:
+            use_svm = USE_SVM
+        if use_sgd is None:
+            use_sgd = USE_SGD
+        if use_lr is None:
+            use_lr = USE_LR
 
         # Derive classifier based on user options
-        if USE_SVM:
+        if use_svm:
             classifier = SVC(kernel=SVM_KERNEL,
                              C=SVM_PENALTY,
                              max_iter=SVM_MAX_ITER,
                              verbose=SVM_VERBOSE)
-        elif USE_SGD:
+        elif use_sgd:
             classifier = SGDClassifier(loss=SGD_LOSS,
                                        penalty=SGD_PENALTY,
                                        alpha=SGD_ALPHA,
@@ -354,7 +367,7 @@ class TextCategorizer(object):
                 num_iter_attribute = "n_iter"
             debug.assertion(hasattr(classifier, num_iter_attribute))
             setattr(classifier, num_iter_attribute, SGD_MAX_ITER)
-        elif USE_XGB:
+        elif use_xgb:
             # TODO: rework to just define classifier here and then pipeline at end.
             # in order to eliminate redundant pipeline-specification code.
             # TODO: n_jobs=-1
@@ -366,7 +379,7 @@ class TextCategorizer(object):
                 misc_xgb_params.update({'gpu_id': GPU_DEVICE})
             debug.trace_fmt(4, 'misc_xgb_params={m}', m=misc_xgb_params)
             classifier = xgb.XGBClassifier(**misc_xgb_params)
-        elif USE_LR:
+        elif use_lr:
             classifier = LogisticRegression()
         else:
             debug.assertion(USE_NB)
@@ -441,17 +454,21 @@ class TextCategorizer(object):
                                  l=label, n=(i + 1))
 
         # Perform classification and determine accuracy
-        predicted_values = self.classifier.predict(values)
-        if ENCODE_CLASSES:
-            predicted_indices = predicted_values
-        else:
-            predicted_indices = [self.keys.index(label) for label in predicted_values]
-        debug.assertion(len(actual_indices) == len(predicted_indices))
-        debug.trace_values(6, actual_indices, "actual")
-        debug.trace_values(6, predicted_indices, "predicted")
-        ## TODO: predicted_labels = [self.keys[i] for i in predicted_indices]
-        num_ok = sum([(actual_indices[i] == predicted_indices[i]) for i in range(len(actual_indices))])
-        accuracy = float(num_ok) / len(values)
+        try:
+            predicted_values = self.classifier.predict(values)
+            if ENCODE_CLASSES:
+                predicted_indices = predicted_values
+            else:
+                predicted_indices = [self.keys.index(label) for label in predicted_values]
+            debug.assertion(len(actual_indices) == len(predicted_indices))
+            debug.trace_values(6, actual_indices, "actual")
+            debug.trace_values(6, predicted_indices, "predicted")
+            ## TODO: predicted_labels = [self.keys[i] for i in predicted_indices]
+            num_ok = sum((actual_indices[i] == predicted_indices[i]) for i in range(len(actual_indices)))
+            accuracy = float(num_ok) / len(values)
+        except:
+            accuracy = 0
+            system.print_exception_info("tc.test")
 
         # Output classification report
         if report:
@@ -463,10 +480,10 @@ class TextCategorizer(object):
                 ## TODO: complete conversion to using actual_index (here and below)
                 num_missed = 0
                 for (i, actual_index) in enumerate(actual_indices):
-                    debug.assertion(actual_index == actual_indices[i])
-                    if (actual_indices[i] != predicted_indices[i]):
+                    debug.assertion(actual_index == actual_indices[i])     # pylint: disable=unnecessary-list-index-lookup
+                    if (actual_index != predicted_indices[i]):
                         stream.write("{act}\t{pred}\n".
-                                     format(act=self.keys[actual_indices[i]],
+                                     format(act=self.keys[actual_index],
                                             pred=self.keys[predicted_indices[i]]))
                         num_missed += 1
                 if (num_missed == 0):
@@ -481,13 +498,13 @@ class TextCategorizer(object):
             bad_instances = "Actual\tBad\tText\n"
             # TODO: for (i, actual_index) in enumerate(actual_indices)
             for (i, actual_index) in enumerate(actual_indices):
-                debug.assertion(actual_index == actual_indices[i])
-                if (actual_indices[i] != predicted_indices[i]):
+                debug.assertion(actual_index == actual_indices[i])   # pylint: disable=unnecessary-list-index-lookup
+                if (actual_index != predicted_indices[i]):
                     text = values[i]
                     context = (text[:CONTEXT_LEN] + "...\n") if (len(text) > CONTEXT_LEN) else text
                     # TODO: why is pylint flagging the format string as invalid?
                     bad_instances += "{g}\t{b}\t{t}\n".format(
-                        g=self.keys[actual_indices[i]],
+                        g=self.keys[actual_index],
                         b=self.keys[predicted_indices[i]],
                         t=context)
             bad_filename = filename + ".bad"
@@ -499,8 +516,11 @@ class TextCategorizer(object):
         """Return category for TEXT"""
         debug.trace(4, "tc.categorize(_)")
         debug.trace_fmtd(6, "\ttext={t}", t=text)
-        index = self.classifier.predict([text])[0]
-        label = self.keys[index]
+        try:
+            index = self.classifier.predict([text])[0]
+            label = self.keys[index]
+        except:
+            system.print_exception_info("categorize")
         debug.trace_fmtd(6, "categorize() => {r}", r=label)
         return label
 
@@ -508,26 +528,47 @@ class TextCategorizer(object):
         """Return probability distribution for TEXT"""
         debug.trace(4, "tc.class_probabilities(_)")
         debug.trace_fmtd(6, "\ttext={t}", t=text)
-        class_names = self.keys
-        class_probs = self.classifier.predict_proba([text])[0]
-        debug.trace_object(7, self.classifier)
-        debug.trace_fmtd(6, "class_names: {cn}\nclass_probs: {cp}", cn=class_names, cp=class_probs)
-        sorted_scores = misc.sort_weighted_hash(dict(zip(class_names, class_probs)))
-        dist=" ".join([(k + ": " + system.round_as_str(s)) for (k, s) in sorted_scores])
+        dist = None
+        try:
+            class_names = self.keys
+            class_probs = self.classifier.predict_proba([text])[0]
+            debug.trace_object(7, self.classifier)
+            debug.trace_fmtd(6, "class_names: {cn}\nclass_probs: {cp}", cn=class_names, cp=class_probs)
+            sorted_scores = misc.sort_weighted_hash(dict(zip(class_names, class_probs)))
+            dist = " ".join([(k + ": " + system.round_as_str(s)) for (k, s) in sorted_scores])
+        except:
+             system.print_exception_info("class_probabilities")
         debug.trace_fmtd(5, "class_probabilities() => {r}", r=dist)
         return dist
 
     def save(self, filename):
-        """Save classifier to FILENAME"""
+        """Save classifier to FILENAME
+        Note: with XGB_JSON, the XGBoost JSON format is used (for better portability).
+        """
         debug.trace_fmtd(4, "tc.save({f})", f=filename)
-        system.save_object(filename, [self.keys, self.classifier])
+        try:
+            if XGB_JSON:
+                xgb.XGBModel.save_model(filename)
+                ## TODO: get xgboost to save the keys in the model JSON file
+                system.write_file(filename + ".keys", json.dumps(self.keys))
+            else:
+                system.save_object(filename, [self.keys, self.classifier])
+        except:
+            system.print_exception_info("tc.save")
         return
 
     def load(self, filename):
-        """Load classifier from FILENAME"""
+        """Load classifier from FILENAME
+        Note: with XGB_JSON, uses the XGBoost JSON format.
+        """
         debug.trace_fmtd(4, "tc.load({f})", f=filename)
         try:
-            (self.keys, self.classifier) = system.load_object(filename)
+            if XGB_JSON:
+                self.classifier = xgb.XGBModel.load_model(filename)
+                ## HACK: load keys separately
+                self.keys = json.loads(system.read_file(filename + ".keys"))
+            else:
+                (self.keys, self.classifier) = system.load_object(filename)
         except (TypeError, ValueError):
             system.print_stderr("Problem loading classifier from {f}: {exc}".
                                 format(f=filename, exc=sys.exc_info()))
@@ -604,25 +645,21 @@ def format_index_html(base_url=None):
                 <textarea id="textarea1" rows="10" cols="100" name="text"></textarea>
                 <br>
                 <input type="submit">
-            </form>
-            
-        </body>
-    </html>
+            </form>            
     """
-
     #
-    # TODO: define text area dimensions based on browser window size
     html_template += """
-            <!-- Form for entering text for categorization -->
+            <!-- Form for entering text for textcat probability distribution -->
             <hr>
             <form action="{base_url}/probs" method="get">
                 <label for="textarea1">Probabilities</label>
                 <br>
-                <textarea id="textarea1" rows="10" cols="100" name="text"></textarea>
+                <textarea id="textarea2" rows="10" cols="100" name="text"></textarea>
                 <br>
                 <input type="submit">
             </form>
-            
+    """
+    html_template += """          
         </body>
     </html>
     """
@@ -678,7 +715,7 @@ class web_controller(object):
     @cherrypy.expose
     def stop(self, **kwargs):
         """Stops the web search server and saves cached data to disk.
-        Note: The command is ignored if not debugging."""
+        Note: The command is ignored if not debugging and on a production server."""
         debug.trace_fmtd(5, "wc.stop(s:{s}, kw:{kw})", s=self, kw=kwargs)
         # TODO: replace stooges with your real server nicknames
         if ((not debug.detailed_debugging()) and (os.environ.get("HOST_NICKNAME") in ["curly", "larry", "moe"])):
@@ -696,9 +733,10 @@ class web_controller(object):
     # TODO: track down delay in python process termination
 
 
-def start_web_controller(model_filename):
+def start_web_controller(model_filename, nonblocking=False):
     """Start up the CherryPy controller for categorization via MODEL_FILENAME
-    Note: The function blocks until server is shutdown"""
+    Note:
+    - The function blocks until server is shutdown unless NONBLOCKING specified.    """
     debug.trace(5, "start_web_controller()")
 
     # Load in CherryPy configuration
@@ -726,9 +764,21 @@ def start_web_controller(model_filename):
     debug.trace_values(4, cherrypy.response.headers, "default response headers")
     textcat_controller = web_controller(model_filename)
     debug.trace_expr(4, textcat_controller.text_cat.keys)
-    cherrypy.quickstart(textcat_controller, config=conf)
-    # Note: the following call blocks
-    cherrypy.engine.start()
+    ## OLD:
+    ## cherrypy.quickstart(textcat_controller, config=conf)
+    ## # Note: the following call blocks
+    ## cherrypy.engine.start()
+    if nonblocking:
+        # Based on quickstart in cherrypy/__init__.py (version 18.7.0), sans the block:
+        cherrypy._global_conf_alias.update(conf)  # pylint: disable=protected-access
+        cherrypy.tree.mount(textcat_controller, config=conf)
+        cherrypy.engine.signals.subscribe()
+        debug.trace_expr(4, "starting cherrypy server")
+        cherrypy.engine.start()
+    else:
+        # Note: the following call blocks
+        debug.trace_expr(4, "quick-starting cherrypy server")
+        cherrypy.quickstart(textcat_controller, config=conf)
     return
 
 
@@ -739,10 +789,11 @@ def main(args):
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
     # HACK: ignore --tag label (n.b., used for killing via process regex)
-    if ((len(args) > 0) and (args[1] == "--tag")):
+    ## BAD: if ((len(args) > 0) and (args[1] == "--tag")):
+    if ((len(args) > 1) and (args[1] == "--tag")):
         args[1:] = args[3:]
     if ((len(args) != 2) or (args[1] == "--help")):
-        system.print_stderr("Usage: {p} model".format(p=args[0]))
+        print("Usage: {p} model".format(p=args[0]))
         return
     model = args[1]
     start_web_controller(model)

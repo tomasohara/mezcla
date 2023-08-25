@@ -25,6 +25,7 @@ beautifulsoup4==4.11.1
 bs4
 cachetools
 cherrypy
+diskcache
 extcolors>=1.0.0
 git+https://github.com/tehabstract/textract.git
 gradio
@@ -41,11 +42,9 @@ pytest
 requests
 scikit-learn==1.1.2
 scipy
-scispacy==0.5.0
 six
 stop_words==2018.7.23
 tensorflow_hub==0.12.0
-vaderSentiment==3.3.2
 webcolors
 wheel==0.38.4
 xgboost
@@ -81,10 +80,12 @@ xgboost
 #opt# more_itertools
 #opt# pylint
 #opt# pyyaml
+#opt# scispacy==0.5.0
 #opt# selenium
 #opt# spacy>=3.0.0
 #opt# torch
 #opt# transformers
+#opt# vaderSentiment==3.3.2
 #...............................................................................
 # "Fully optional" requirements
 # Note: these generally involve large or long installations.
