@@ -334,6 +334,17 @@ class Main(object):
                         s=self)
         return
 
+    def get_arguments(self, just_positional=False, just_optional=False):
+        """Return list of arguments, optional just positional"""
+        argument_specs = []
+        if not just_positional:
+            argument_specs += self.boolean_options + self.text_options + self.int_options + self.float_options
+        if not just_optional:
+            argument_specs += self.positional_options
+        arguments = [(spec[0] if list(spec[0]) else spec) for spec in argument_specs]
+        debug.trace(6, f"get_arguments([pos?={just_positional}, opt?={just_optional}] => {arguments}")
+        return arguments
+    
     def convert_option(self, option_spec, default_value=None, positional=False):
         """Convert OPTION_SPEC to (label, description, default) tuple. 
         Notes: The description and default of the specification are optional,
@@ -430,11 +441,12 @@ class Main(object):
             under_label = label.replace("-", "_")
             # Do sanity check for positional argument being checked by mistake
             # TODO: do automatic correction?
+            debug.trace_expr(5, label, opt_label, under_label, self.parsed_args)
             if opt_label != label:
                 debug.assertion(label not in self.parsed_args)
             elif under_label != label:
                 debug.assertion(under_label not in self.parsed_args,
-                                "potential option/argument mismatch")
+                                f"potential option/argument mismatch for {label}")
             debug.trace_expr(6, label, opt_label, under_label)
         # Return result, after tracing invocation
         tpo.debug_format("get_parsed_option({l}, [{d}], [{p}]) => {v}", 5,
@@ -446,7 +458,10 @@ class Main(object):
         tpo.debug_format("get_parsed_agument({l}, [{d}])", 6,
                          l=label, d=default)
         ## TODO2: debug.assertion(label in ((l[0] if isinstance(l, list) else l)) for l in self.positional_options)
-        return self.get_parsed_option(label, default, positional=True)
+        is_positional = (label in self.get_arguments(just_positional=True))
+        if not is_positional:
+            debug.trace(4, f"FYI: Use get_parsed_option for non-positional option {label}")
+        return self.get_parsed_option(label, default, positional=is_positional)
 
     def check_arguments(self, runtime_args):
         """Check command-line arguments
@@ -584,6 +599,7 @@ class Main(object):
 
         # Parse the command line and get result
         tpo.debug_format("parser={p}", 6, p=parser)
+        debug.trace_object(7, parser, max_depth=2)
         self.parser = parser
         # note: not trapped to allow for early exit
         self.parsed_args = vars(parser.parse_args(runtime_args))
