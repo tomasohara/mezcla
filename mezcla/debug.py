@@ -1042,7 +1042,8 @@ if __debug__:
         command_line = " ".join(sys.argv)
         assertion(command_line)
         if (command_line and (command_line != "-c") and (command_line != "-m")):
-            trace(USUAL, command_line)
+            if _getenv_bool("TRACE_INVOCATION", False):
+                trace(USUAL, command_line)
         trace_expr(DETAILED, sys.argv)
         open_debug_file()
 
