@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# This script builds a Docker image and runs a Github Actions workflow locally.
+# This script builds a Docker image and runs a Github Actions workflow locally:
+#   https://github.com/nektos/act
 #
 # Note:
 # - When running under a Mac M1 the architecture needs to be specified to x64_64 (amd).
