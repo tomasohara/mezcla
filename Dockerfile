@@ -19,6 +19,11 @@
 # 4. Remove the image:
 #   $ docker rmi mezcla-dev
 #
+# Warning:
+# - *** Changes need to be synchronized in 3 places: Dockerfile, tools/local-workflow.sh, and .github/workflows/*.yml!
+#
+# TODO3: keep in synch with ~/bin version (https://github.com/tomasohara/shell-scripts)
+#
 
 ## OLD
 ## FROM ubuntu:18.04
