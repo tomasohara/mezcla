@@ -24,7 +24,8 @@ from mezcla import system
 # Contants
 TL = debug.TL
 
-if __name__ == '__main__':
+def main():
+    """Entry point"""
     system.print_error(f"Warning: {__file__} is not intended as standalone.")
     file_path = system.real_path(gh.dirname(__file__))
     debug.trace(TL.USUAL, f"Version: {mezcla.__VERSION__}")
@@ -38,3 +39,6 @@ if __name__ == '__main__':
     if match:
         module = match.group(1)
     system.print_error(f"Likewise for the package (e.g., via 'python -m {module}')\n")
+
+if __name__ == '__main__':
+    main()
