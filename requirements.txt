@@ -10,8 +10,13 @@
 #      pip install --verbose $(perl -pe 's/^#opt#\s*//;' ~/python/Mezcla/requirements.txt | grep -v '^#')
 #   3. Full (i.e., including all optional):
 #      pip install --verbose $(perl -pe 's/^#full#\s*//;' ~/python/Mezcla/requirements.txt | grep -v '^#')
+#      # TODO2: --ignore-errors [maldito pip]
+#      perl -pe 's/^#full#\s*//;' ~/python/Mezcla/requirements.txt | grep -v '^#' | xargs -I '{}' pip install '{}'
 # - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
 # - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
+#
+# Installation:
+# - python -m nltk.downloader punkt averaged_perceptron_tagger
 #
 # TODO:
 # - check absl module ($ grep -r "absl" .)
@@ -65,6 +70,7 @@ xgboost
 #opt# SpeechRecognition
 #opt# accelerate
 #opt# bash_kernel
+#opt# colout
 #opt# coverage
 #opt# datasets
 #opt# diffusers
