@@ -94,6 +94,7 @@ IMAGE_ARG = "input-image"
 DENOISING_ARG = "denoising-factor"
 DUMMY_BASE64_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAMzMzP////8AAABGA1scAAAAJUlEQVR4nGNgAAFGQUEowRoa6sCABBZowAgsgBEIGUQCRALAPACMHAOQvR4HGwAAAABJRU5ErkJggg=="
 DUMMY_IMAGE_FILE = gh.resolve_path("dummy-image.png")
+HTTP_OK = 200
 
 # Conditional imports for HF/PyTorch
 torch = None
@@ -146,7 +147,7 @@ class StableDiffusion:
             else:
                 system.print_stderr(f"Warning: ignoring port {server_port} as already in URL {self.server_url}")
         else:
-            debug.trace(4,"Unexpected condition in {self.__class__.__name__}.__init__")
+            debug.trace(4,"Warning: Unexpected condition in {self.__class__.__name__}.__init__: no server_url")
         if low_memory is None:
             low_memory = LOW_MEMORY
         self.low_memory = low_memory
@@ -165,6 +166,7 @@ class StableDiffusion:
         """Initialize Stable Diffusion"""
         debug.trace(4, "init_pipeline()")
         debug.assertion(not (txt2img and img2img))
+        debug.assertion(not img2img)
         # pylint: disable=import-outside-toplevel
         from diffusers import StableDiffusionPipeline
         model_id = "CompVis/stable-diffusion-v1-4"
@@ -183,7 +185,7 @@ class StableDiffusion:
     def init_txt2img(self):
         """Initialize Stable Diffusion text-to-image support (i.e., txt2img)"""
         debug.trace(4, "init_txt2img()")
-        return self.init_pipeline()
+        return self.init_pipeline(txt2img=True)
 
     def init_img2img(self):
         """Initialize Stable Diffusion image-to-image support (i.e., img2img)"""
@@ -293,29 +295,29 @@ class StableDiffusion:
                     image_b64 = (f"data:image/png;base64,{image_b64}")
                 images.append(image_b64)
         result = images
-        debug.trace_fmt(5, "infer_non_cached() => {r}", r=result)        
+        debug.trace_fmt(5, "infer_non_cached() => {r!r}", r=result)
         return result
 
     def infer_img2img(self, image_b64=None, denoise=None,  prompt=None, negative_prompt=None, scale=None, num_images=None,
-                      skip_img_spec=False, width=None, height=None):
-        """Generate images from IMAGE_B64 using positive PROMPT and NEGATIVE one, along with guidance SCALE,
-        and targetting a WIDTHxHEIGHT image.
+                      skip_img_spec=False):
+        """Generate images from IMAGE_B64 using positive PROMPT and NEGATIVE one, along with guidance SCALE and NUM_IMAGES
         Returns list of NUM image specifications in base64 format (e.g., for use in HTML).
         Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag
         """
-        ## OLD: debug.trace(4, f"{self.__class__.__name__}.infer{(prompt, negative_prompt, scale, num_images)}")
-        debug.trace_expr(4, image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec, prefix=f"in {self.__class__.__name__}.infer:\n\t", delim="\n\t", max_len=1024)
+        debug.trace_expr(4, image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec, prefix=f"in {self.__class__.__name__}.infer_img2img:\n\t", delim="\n\t", max_len=1024)
         if num_images is None:
             num_images = NUM_IMAGES
         if scale is None:
             scale = GUIDANCE_SCALE
+        if denoise is None:
+            denoise = DENOISING_FACTOR
         for prompt_filter in word_list:
             if my_re.search(rf"\b{prompt_filter}\b", prompt):
                 ## OLD: raise gr.Error("Unsafe content found. Please try again with different prompts.")
                 raise RuntimeError("Unsafe content found. Please try again with different prompts.")
     
         images = []
-        params = (image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec, width, height)
+        params = (image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec)
 
         if self.cache is not None:
             images = self.cache.get(params)
@@ -332,10 +334,13 @@ class StableDiffusion:
         return images
 
     def infer_img2img_non_cached(self, image_b64=None, denoise=None,  prompt=None, negative_prompt=None, scale=None, num_images=None,
-                                 skip_img_spec=False, width=None, height=None):
+                                 skip_img_spec=False):
         """Non-cached version of infer_img2img"""
-        params = (image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec, width, height)
-        debug.trace(5, f"{self.__class__.__name__}.infer_img2img_non_cached{params}")
+        params = (image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec)
+        params_spec = params
+        if debug.detailed_debugging():
+            params_spec = tuple(map(gh.elide, params))
+        debug.trace(5, f"{self.__class__.__name__}.infer_img2img_non_cached{params_spec}")
         images = []
         if self.use_hf_api:
             if DUMMY_RESULT:
@@ -346,10 +351,10 @@ class StableDiffusion:
             if not self.pipe:
                 self.pipe = self.init_img2img()
             # Get input image
-            input_image = PIL.Image.open(BytesIO(base64.decodebytes(image_b64.encode())))
+            input_image = PIL.Image.open(BytesIO(base64.decodebytes(image_b64.encode()))).convert("RGB")
             # Generate derived output images(s)
             image_info = self.pipe(image=input_image, strength=denoise, prompt=prompt, negative_prompt=negative_prompt, guidance_scale=scale,
-                                   num_images_per_prompt=num_images, width=width, height=height)
+                                   num_images_per_prompt=num_images)
             debug.trace_expr(4, image_info)
             debug.trace_object(5, image_info, "image_info")
             start_time = time.time()
@@ -388,7 +393,7 @@ class StableDiffusion:
                     image_b64 = (f"data:image/png;base64,{image_b64}")
                 images.append(image_b64)
         result = images
-        debug.trace_fmt(5, "infer_img2img_non_cached() => {r}", r=result)
+        debug.trace_fmt(5, "infer_img2img_non_cached() => {r!r}", r=result)
         
         return result
 
@@ -405,7 +410,7 @@ def handle_infer():
     debug.trace_expr(5, params)
     images_spec = {"images": sd_instance.infer(**params)}
     # note: see https://stackoverflow.com/questions/45412228/sending-json-and-status-code-with-a-flask-response
-    result = (json.dumps(images_spec), 200)
+    result = (json.dumps(images_spec), HTTP_OK)
     debug.trace_object(7, result)
     debug.trace_fmt(7, "handle_infer() => {r}", r=result)
     return result
@@ -436,37 +441,67 @@ def handle_infer_img2img():
     debug.trace_expr(5, params)
     images_spec = {"images": sd_instance.infer_img2img(**params)}
     # note: see https://stackoverflow.com/questions/45412228/sending-json-and-status-code-with-a-flask-response
-    result = (json.dumps(images_spec), 200)
+    result = (json.dumps(images_spec), HTTP_OK)
     debug.trace_object(7, result)
-    debug.trace_fmt(7, "handle_infer() => {r}", r=result)
+    debug.trace_fmt(7, "handle_infer_img2img() => {r}", r=result)
     return result
 
 
-def infer_img2img(prompt=None, negative_prompt=None, scale=None, num_images=None, skip_img_spec=None):
+def infer_img2img(image_spec=None, denoise=None,  prompt=None, negative_prompt=None, scale=None, num_images=None, skip_img_spec=None):
     """Wrapper around StableDiffusion.infer_img2img()
     Note: intended just for the gradio UI"
     """
-    debug.trace(6, f"[sd_instance] infer{(prompt, negative_prompt, scale, skip_img_spec)}")
-    return sd_instance.infer_img2img(prompt=prompt, negative_prompt=negative_prompt, scale=scale, num_images=num_images, skip_img_spec=skip_img_spec)
+    image_b64 = None
+    if isinstance(image_spec, list):
+        debug.trace(5, "Warning: using first image in image_spec for infer_img2img")
+        image_spec = image_spec[0]
+    if ((image_spec is not None) and (not isinstance(image_spec, str))):
+        ## TODO?: image = PIL.Image.fromarray(image_spec, mode="RGB")
+        debug.trace_expr(7, image_spec)
+        image = PIL.Image.fromarray(image_spec)
+        image_b64 = encode_PIL_image(image)
+    debug.trace(6, f"[sd_instance] infer_img2img{(gh.elide(image_spec), denoise, prompt, negative_prompt, scale, skip_img_spec)}")
+    return sd_instance.infer_img2img(image_b64=image_b64, denoise=denoise, prompt=prompt, negative_prompt=negative_prompt, scale=scale, num_images=num_images, skip_img_spec=skip_img_spec)
 
 #--------------------------------------------------------------------------------
 # Utility functions
 
+def encode_image_data(image_bytes):
+    """Convert IMAGE_BYTES to base64 string"""
+    debug.assertion(isinstance(image_bytes, bytes))
+    result = base64.b64encode(image_bytes).decode()
+    debug.trace(6, f"encode_image_data({gh.elide(image_bytes)}) => {gh.elide(result)}")
+    return result
+
 def encode_image_file(filename):
-    """Encode image in FILENAME via Base64"""
-    result = base64.b64encode(system.read_binary_file(filename))
+    """Encode image in FILENAME via base64 string"""
+    binary_data = system.read_binary_file(filename)
+    result = encode_image_data(binary_data)
     debug.trace(6, f"encode_image_file({filename}) => {gh.elide(result)}")
+    return result
+
+def encode_PIL_image(image):
+    """Convert from PIL image into base64"""
+    debug.assertion(isinstance(image, PIL.Image.Image))
+    ## BAD: result = encode_image_data(image.tobytes())
+    ## note: all sorts of silly issues with PIL!
+    bytes_fh = BytesIO()
+    image.save(bytes_fh, format="PNG")
+    bytes_fh.seek(0)
+    result = encode_image_data(bytes_fh.read())
+    debug.trace(6, f"encode_PIL_image({gh.elide(image)}) => {gh.elide(result)}")
     return result
 
 #-------------------------------------------------------------------------------
 # User interface
 
-def upload_image(upload_control, input_img):
-    """Upload image data from UPLOAD_CONTROL to INPUT_IMG control"""
-    input_img.value = encode_image_file(upload_control.value)
+def upload_image(upload_control):
+    """Upload image data from UPLOAD_CONTROL returning base64 encoded image"""
+    debug.trace(6, f"upload_image({upload_control})")
+    encoded_image = encode_image_file(upload_control.value)
+    return encoded_image
 
-
-def run_ui():
+def run_ui(use_img2img=None):
     """Run user interface via gradio serving by default at localhost:7860
     Note: The environment variable GRADIO_SERVER_NAME can be used to serve via 0.0.0.0"""
     import gradio as gr                 # pylint: disable=import-outside-toplevel, redefined-outer-name
@@ -741,8 +776,8 @@ def run_ui():
                  num_control = gr.Slider(
                     label="Number of images", minimum=1, maximum=10, value=2, step=1
                  )
-                 use_img2img = gr.Checkbox(label="Use img2img?", value=USE_IMG2IMG)
-                 denoise_factor = gr.Slider(label="Denoising factor", minimum=0, maximum=1, value=DENOISING_FACTOR, step=0.05)
+                 img2img_control = gr.Checkbox(label="Use img2img?", value=use_img2img)
+                 denoise_control = gr.Slider(label="Denoising factor", minimum=0, maximum=1, value=DENOISING_FACTOR, step=0.05)
                  ## TODO?:
                  input_image_control = gr.Image(label="Input image")
                  upload_control = gr.UploadButton(label="Upload image", file_types=["image"])
@@ -759,9 +794,9 @@ def run_ui():
             output_controls = [gallery]
             infer_fn = infer
             examples = txt2img_examples
-            if use_img2img.value:
+            if img2img_control.value:
                 infer_fn = infer_img2img
-                input_controls = ([input_image_control, denoise_factor] + input_controls)
+                input_controls = ([input_image_control, denoise_control] + input_controls)
                 examples = img2img_examples
             ex = gr.Examples(examples=examples, fn=infer_fn,
                              inputs=input_controls,
@@ -770,16 +805,16 @@ def run_ui():
             negative_control.submit(infer_fn, inputs=input_controls, outputs=output_controls, postprocess=False)
             prompt_control.submit(infer_fn, inputs=input_controls, outputs=output_controls, postprocess=False)
             btn.click(infer_fn, inputs=input_controls, outputs=output_controls, postprocess=False)
-            upload_control.click(fn=upload_image, inputs=upload_control, outputs=[input_image_control])
+            upload_control.click(fn=upload_image, inputs=[upload_control], outputs=[input_image_control])
             #
             def change_examples():
-                """Change examples used in UI if use_img2img checked"""
+                """Change examples used in UI if img2img_control checked"""
                 debug.trace(4, "change_examples()")
-                ex.examples = (img2img_examples if use_img2img.value else txt2img_examples)
+                ex.examples = (img2img_examples if img2img_control.value else txt2img_examples)
             #
             # TODO2: use one listener
-            use_img2img.change(fn=change_examples)
-            use_img2img.select(fn=change_examples)
+            img2img_control.change(fn=change_examples)
+            img2img_control.select(fn=change_examples)
             
             #advanced_button.click(
             #    None,
@@ -877,7 +912,7 @@ def main():
     # Start UI
     else:
         debug.assertion(ui_mode)
-        run_ui()
+        run_ui(use_img2img=use_img2img)
 
 
 if __name__ == '__main__':
