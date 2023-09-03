@@ -275,16 +275,20 @@ def indent_lines(text, indentation=None, max_width=512):
 
 MAX_ELIDED_TEXT_LEN = tpo.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 #
-def elide(text: str, max_len=None):
-    """Returns TEXT elided to at most MAX_LEN characters (with '...' used to indicate remainder). Note: intended for tracing long string."""
+def elide(value, max_len=None):
+    """Returns VALUE converted to text and elided to at most MAX_LEN characters (with '...' used to indicate remainder). 
+    Note: intended for tracing long strings."""
     # EX: elide("=" * 80, max_len=8) => "========..."
     # EX: elide(None) => ""
     # NOTE: Make sure compatible with debug.format_value (TODO3: add equivalent to strict argument)
     # TODO2: add support for eliding at word-boundaries
     tpo.debug_print("elide(_, _)", 8)
-    debug.assertion(isinstance(text, (str, type(None))))
+    ## OLD: debug.assertion(isinstance(text, (str, type(None))))
+    text = value
     if text is None:
         text = ""
+    if (not isinstance(text, str)):
+        text = str(text)
     if max_len is None:
         max_len = MAX_ELIDED_TEXT_LEN
     result = text
