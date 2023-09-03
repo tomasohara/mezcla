@@ -78,7 +78,7 @@ DISK_CACHE = system.getenv_value("SD_DISK_CACHE", None,
                                  "Path to directory with disk cache")
 USE_IMG2IMG = system.getenv_bool("USE_IMG2IMG", False,
                                  "Use image-to-image instead of text-to-image")
-DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.75,
+DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.6,
                                        "How much of the input image to randomize")
 
 BATCH_ARG = "batch"
@@ -333,7 +333,7 @@ class StableDiffusion:
                 debug.trace_fmt(6, "Setting cached result (r={r})", r=images)
         return images
 
-    def infer_img2img_non_cached(self, image_b64=None, denoise=None,  prompt=None, negative_prompt=None, scale=None, num_images=None,
+    def infer_img2img_non_cached(self, image_b64=None, denoise=None, prompt=None, negative_prompt=None, scale=None, num_images=None,
                                  skip_img_spec=False):
         """Non-cached version of infer_img2img"""
         params = (image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec)
@@ -490,6 +490,12 @@ def encode_PIL_image(image):
     bytes_fh.seek(0)
     result = encode_image_data(bytes_fh.read())
     debug.trace(6, f"encode_PIL_image({gh.elide(image)}) => {gh.elide(result)}")
+    return result
+
+def decode_base64_image(image_encoding):
+    """Decode IMAGE_ENCODING from base64"""
+    result = base64.decodebytes(image_encoding.encode())
+    debug.trace(6, f"decode_base64_image({gh.elide(image_encoding)}) => {gh.elide(result)}")
     return result
 
 #-------------------------------------------------------------------------------
@@ -898,7 +904,7 @@ def main():
         # Save result to disk
         for i, image_encoding in enumerate(images):
             # note: "encodes" UTF-8 text of base-64 encoding as bytes object for str, and then decodes into image bytes
-            image_data = base64.decodebytes(image_encoding.encode())
+            image_data = decode_base64_image(image_encoding)
             system.write_binary_file(f"{BASENAME}-{i + 1}.png", image_data)
         # TODO2: get list of files via infer()
         file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))  
