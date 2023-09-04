@@ -78,7 +78,7 @@ DISK_CACHE = system.getenv_value("SD_DISK_CACHE", None,
                                  "Path to directory with disk cache")
 USE_IMG2IMG = system.getenv_bool("USE_IMG2IMG", False,
                                  "Use image-to-image instead of text-to-image")
-DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.6,
+DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.75,
                                        "How much of the input image to randomize")
 
 BATCH_ARG = "batch"
@@ -189,7 +189,7 @@ class StableDiffusion:
 
     def init_img2img(self):
         """Initialize Stable Diffusion image-to-image support (i.e., img2img)"""
-        debug.trace(4, "init_pipeline()")
+        debug.trace(4, "init_img2img()")
         # pylint: disable=import-outside-toplevel
         from diffusers import StableDiffusionImg2ImgPipeline
         # TODO2: v1-5
@@ -304,7 +304,7 @@ class StableDiffusion:
         Returns list of NUM image specifications in base64 format (e.g., for use in HTML).
         Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag
         """
-        debug.trace_expr(4, image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec, prefix=f"in {self.__class__.__name__}.infer_img2img:\n\t", delim="\n\t", max_len=1024)
+        debug.trace_expr(4, image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec, prefix=f"\nin {self.__class__.__name__}.infer_img2img: {{\n\t", delim="\n\t", suffix="}\n", max_len=1024)
         if num_images is None:
             num_images = NUM_IMAGES
         if scale is None:
@@ -313,7 +313,6 @@ class StableDiffusion:
             denoise = DENOISING_FACTOR
         for prompt_filter in word_list:
             if my_re.search(rf"\b{prompt_filter}\b", prompt):
-                ## OLD: raise gr.Error("Unsafe content found. Please try again with different prompts.")
                 raise RuntimeError("Unsafe content found. Please try again with different prompts.")
     
         images = []
