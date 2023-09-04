@@ -438,8 +438,8 @@ if __debug__:
 
 
     def trace_expr(level, *values, **kwargs):
-        """Trace each of the arguments (if at trace LEVEL or higher), using introspection
-        to derive label for each expression. By default, the following format is used:
+        """Trace each of the argument VALUES (if at trace LEVEL or higher), with KWARGS for options.
+        Introspection is used to derive label for each expression. By default, the following format is used:
            expr1=value1; ... exprN=valueN
         Notes:
         - Warning: introspection fails to resolve expressions if statement split across lines.
@@ -447,10 +447,11 @@ if __debug__:
         - Use DELIM to specify delimiter; otherwise '; ' used;
           if so, NO_EOL applies to intermediate values (EOL always used at end).
         - Use USE_REPR=False to use tracing via str instead of repr.
-        - Use _KW_ARG for KW_ARG in case of conflict, as in following:
+        - Use _KW_ARG for KW_ARG (i.e., '_' prefix in case of conflict), as in following:
           trace_expr(DETAILED, term, _term="; ")
         - Use MAX_LEN to specify maximum value length.
-        - Use PREFIX to specify initial trace output
+        - Use PREFIX to specify initial trace output (e.g., for function call tracing).
+        - Use SUFFIX to specify final value to be printed (e.g., for perlish para grep over multi-line trace).
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
         trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw}); debug_level={dl}",
                   l=level, args=values, kw=kwargs, dl=trace_level)
@@ -458,11 +459,12 @@ if __debug__:
         ## trace_fmt(1, "(global_trace_level:{g} < level:{l})={v}",
         ##           g=trace_level, l=level, v=(trace_level < level))
         if (trace_level < level):
-            # note: Short-circuits processing to avoid errors about known problem (e.g., under ipython)
+            # note: Short-circuits processing to avoid errors about known problems (e.g., under ipython)
             return
         # Note: checks alternative keyword first, so False ones not misintepretted
         sep = kwargs.get('_sep') or kwargs.get('sep')
         delim = kwargs.get('_delim') or kwargs.get('delim')
+        suffix = kwargs.get('_suffix') or kwargs.get('suffix')
         no_eol = kwargs.get('_no_eol') or kwargs.get('no_eol')
         in_no_eol = no_eol
         use_repr = kwargs.get('_use_repr') or kwargs.get('use_repr')
@@ -480,18 +482,17 @@ if __debug__:
             use_repr = True
         if prefix is None:
             prefix = ""
-        trace(9, f"sep={sep!r}, del={delim!r}, noe={no_eol}, rep={use_repr}, len={max_len}, pre={prefix}")
+        trace(9, f"sep={sep!r}, del={delim!r}, noe={no_eol}, rep={use_repr}, len={max_len}, pre={prefix!r} suf={suffix!r}")
+
         # Get symbolic expressions for the values
-        # TODO: handle cases split across lines
+        # TODO2: handle cases split across lines
         try:
-            # TODO: rework introspection following icecream (e.g., using abstract syntax tree)
+            # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
             caller = inspect.stack()[1]
-            ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
             (_frame, filename, line_number, _function, context, _index) = caller
             trace(9, f"filename={filename!r}, context={context!r}")
             statement = read_line(filename, line_number).strip()
             if statement == MISSING_LINE:
-                ## OLD: statement = str(context).replace(")\\n']", "")
                 statement = str(context).replace("\\n']", "")
             # Extract list of argument expressions (removing optional comment)
             statement = re.sub(r"#.*$", "", statement)
@@ -501,14 +502,17 @@ if __debug__:
             # Remove trailing comma (e.g., if split across lines)
             statement = re.sub(r",?\s*$", "", statement)
             # Skip first argument (level)
-            ## BAD: expressions = statement.split(sep)[1:]
             expressions = re.split(", +", statement)[1:]
             trace(9, f"expressions={expressions!r}\nvalues={values!r}")
         except:
-            trace_fmtd(ALWAYS, "Exception isolating expression in trace_vals: {exc}",
+            trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
                        exc=sys.exc_info())
             expressions = []
+
+        # Output initial text
         trace(level, prefix, no_eol=no_eol)
+
+        # Output each expression value
         for expression, value in zip_longest(expressions, values):
             try:
                 # Exclude kwarg params
@@ -521,11 +525,16 @@ if __debug__:
                                           max_len=max_len)
                 trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
             except:
-                trace_fmtd(ALWAYS, "Exception tracing values in trace_vals: {exc}",
-                       exc=sys.exc_info())            
-        ## OLD: if no_eol:
-        if (no_eol and (delim != "\n")):
+                trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
+                       exc=sys.exc_info())
+
+        # Output final text
+        if suffix:
+            trace(level, suffix, no_eol=False)
+        elif (no_eol and (delim != "\n")):
             trace(level, "", no_eol=False)
+        else:
+             trace(9, "No final text to output")
         return
 
     
@@ -732,9 +741,19 @@ else:
         # Note: implemented separately from non_debug_stub to ensure no return value
         return
     ##
-    ## OLD: assert val(1) is None, "non-debug val() should not return a non-Null value"
-    if val(1) is None:
-        system.print_error("Warning: non-debug val() should return Null")
+    def _safe_eval(expression, default=None):
+        """Returns evaluation of string EXPRESSION trapping for errors and if so returning DEFAULT"""
+        try:
+            result = eval(expression)   # pylint: disable=eval-used
+        except:
+            result = default
+        return result
+    ##
+    if (val(1) is not None):
+        # note: work around for maldito python not providing None-like default if __file__ n/a
+        sys.stderr.write(f"Warning: non-debug val() in {_safe_eval('__file__', 'debug.py')} should return Null\n")
+    ##
+    ## NOTE: much ado thanks to maldito Python (e.g., didn't learn enough from Perl)!
 
 # Aliases for terse functions
     
