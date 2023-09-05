@@ -117,7 +117,8 @@ class TestWrapper(unittest.TestCase):
     ## TEMP: initialize to unique value independent of temp_base
     ## OLD: temp_file = tempfile.NamedTemporaryFile().name
     temp_file = None
-    use_temp_base_dir = None
+    ## OLD: use_temp_base_dir = None
+    use_temp_base_dir = system.is_directory(temp_base)
     test_num = 1
     
     ## TEST:
