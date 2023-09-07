@@ -108,16 +108,14 @@ def trap_exception(function):
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition"""
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
-    script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usuually set via derive_tested_module_name)
+    script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usually set via derive_tested_module_name)
     temp_base = system.getenv_text("TEMP_BASE",
                                    tempfile.NamedTemporaryFile().name)
     check_coverage = system.getenv_bool("CHECK_COVERAGE", False,
                                         "Check coverage during unit testing")
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
-    ## OLD: temp_file = tempfile.NamedTemporaryFile().name
     temp_file = None
-    ## OLD: use_temp_base_dir = None
     use_temp_base_dir = system.is_directory(temp_base)
     test_num = 1
     
@@ -145,7 +143,6 @@ class TestWrapper(unittest.TestCase):
             debug.assertion("No module named" not in help_usage,
                             f"problem running via 'python -m {cls.script_module}'")
             # Warn about lack of usage statement unless "not intended for command-line" type warning issued
-            # OLD: (re.search(r"not intended.*(command|standalone)", help_usage))
             # TODO: standardize the not-intended wording
             if (not ((re.search(r"warning:.*not intended", help_usage,
                                 re.IGNORECASE))
@@ -233,7 +230,6 @@ class TestWrapper(unittest.TestCase):
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
                    out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None):
-                   ## OLD: out_file=None, env_options=None, uses_stdin=False):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
         not specifed, they  are derived from self.temp_file. The optional POST_OPTIONS
@@ -255,7 +251,6 @@ class TestWrapper(unittest.TestCase):
         # Derive the full paths for data file and log, and then invoke script.
         # TODO: derive from temp base and data file name?;
         # TODO1: derive default for uses_stdin based on use of filename argment (e.g., from usage)
-        ## OLD: data_path = ("" if uses_stdin else "-")
         uses_stdin_false = ((uses_stdin is not None) and not bool(uses_stdin))
         data_path = ("" if uses_stdin_false else "-")
         if data_file is not None:
