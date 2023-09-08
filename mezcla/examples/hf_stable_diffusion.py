@@ -458,7 +458,7 @@ def infer(prompt=None, negative_prompt=None, scale=None, num_images=None, skip_i
     """Wrapper around StableDiffusion.infer()
     Note: intended just for the gradio UI"
     """
-    debug.trace(6, f"[sd_instance] infer{(prompt, negative_prompt, scale, skip_img_spec)}")
+    debug.trace(5, f"[sd_instance] infer{(prompt, negative_prompt, scale, skip_img_spec)}")
     return sd_instance.infer(prompt=prompt, negative_prompt=negative_prompt, scale=scale, num_images=num_images, skip_img_spec=skip_img_spec)
 
 
@@ -489,10 +489,19 @@ def infer_img2img(image_spec=None, denoise=None,  prompt=None, negative_prompt=N
     if ((image_spec is not None) and (not isinstance(image_spec, str))):
         ## TODO?: image = PIL.Image.fromarray(image_spec, mode="RGB")
         debug.trace_expr(7, image_spec)
-        image = PIL.Image.fromarray(image_spec)
+        image = (image_spec)
         image_b64 = encode_PIL_image(image)
-    debug.trace(6, f"[sd_instance] infer_img2img{(gh.elide(image_spec), denoise, prompt, negative_prompt, scale, skip_img_spec)}")
+    debug.trace(5, f"[sd_instance] infer_img2img{(gh.elide(image_spec), denoise, prompt, negative_prompt, scale, skip_img_spec)}")
     return sd_instance.infer_img2img(image_b64=image_b64, denoise=denoise, prompt=prompt, negative_prompt=negative_prompt, scale=scale, num_images=num_images, skip_img_spec=skip_img_spec)
+
+
+def infer_img2txt(image_spec):
+    """Wrapper around StableDiffusion.infer_img2txt()
+    Note: intended just for the gradio UI"
+    """
+    debug.trace(5, f"[sd_instance] infer_img2txt({gh.elide(image_spec)})")
+    image_b64 = encode_PIL_image(image_spec)
+    return sd_instance.infer_img2txt(image_b64)
 
 #--------------------------------------------------------------------------------
 # Utility functions
@@ -540,9 +549,11 @@ def create_image(image_data):
 
 def upload_image(upload_control):
     """Upload image data from UPLOAD_CONTROL returning base64 encoded image"""
-    debug.trace(6, f"upload_image({upload_control})")
+    debug.trace(4, f"upload_image({upload_control})")
+    debug.trace_object(5, upload_control)
     encoded_image = encode_image_file(upload_control.value)
     return encoded_image
+
 
 def run_ui(use_img2img=None):
     """Run user interface via gradio serving by default at localhost:7860
@@ -819,11 +830,12 @@ def run_ui(use_img2img=None):
                  num_control = gr.Slider(
                     label="Number of images", minimum=1, maximum=10, value=2, step=1
                  )
-                 img2img_control = gr.Checkbox(label="Use img2img?", value=use_img2img)
+                 img2img_control = gr.Checkbox(label="Use img2img?", value=use_img2img, interactive=True)
                  denoise_control = gr.Slider(label="Denoising factor", minimum=0, maximum=1, value=DENOISING_FACTOR, step=0.05)
                  ## TODO?:
                  input_image_control = gr.Image(label="Input image")
                  upload_control = gr.UploadButton(label="Upload image", file_types=["image"])
+                 interrogate_control = gr.Button(label="CLIP Interrogatotr")
                  
             #    seed = gr.Slider(
             #        label="Seed",
@@ -837,7 +849,8 @@ def run_ui(use_img2img=None):
             output_controls = [gallery]
             infer_fn = infer
             examples = txt2img_examples
-            if img2img_control.value:
+            ## OLD: if img2img_control.value:
+            if use_img2img:
                 infer_fn = infer_img2img
                 input_controls = ([input_image_control, denoise_control] + input_controls)
                 examples = img2img_examples
@@ -848,16 +861,28 @@ def run_ui(use_img2img=None):
             negative_control.submit(infer_fn, inputs=input_controls, outputs=output_controls, postprocess=False)
             prompt_control.submit(infer_fn, inputs=input_controls, outputs=output_controls, postprocess=False)
             btn.click(infer_fn, inputs=input_controls, outputs=output_controls, postprocess=False)
+            # TODO1: fix
             upload_control.click(fn=upload_image, inputs=[upload_control], outputs=[input_image_control])
             #
             def change_examples():
                 """Change examples used in UI if img2img_control checked"""
                 debug.trace(4, "change_examples()")
+                debug.trace_object(5, img2img_control)
                 ex.examples = (img2img_examples if img2img_control.value else txt2img_examples)
             #
             # TODO2: use one listener
-            img2img_control.change(fn=change_examples)
-            img2img_control.select(fn=change_examples)
+            # TODO1: fix
+            img2img_control.change(fn=change_examples, inputs=[], outputs=[])
+            img2img_control.select(fn=change_examples, inputs=[], outputs=[])
+            #
+            def use_clip_for_prompt():
+                """Run CLIP interrogator over image and send result to prompt field"""
+                debug.trace(4, "use_clip_for_prompt()")
+                debug.trace_object(5, input_image_control)
+                prompt_control.value = infer_img2txt(input_image_control.value)
+            #
+            # TODO1: fix
+            interrogate_control.click(fn=use_clip_for_prompt, inputs=[], outputs=[])
             
             #advanced_button.click(
             #    None,
