@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 #
-# Illustrates how to use Stable Diffusion via Hugging Face diffuser package,
+# Illustrates how to use Stable Diffusion via Hugging Face (HF) diffusers package,
 # including gradio-based UI.
 #
 # via https://huggingface.co/spaces/stabilityai/stable-diffusion
@@ -10,6 +10,8 @@
 # This was designed originally for text-to-image (i.e., from prompt to image).
 # However, it has been adapted to support image-to-image as well, which includes an image
 # input along the prompt(s).
+#
+# Support is also included for clip interrogation, which is not yet part of a HF API
 #
 # Note:
 # - For tips on parameter settings, see
@@ -152,6 +154,7 @@ class StableDiffusion:
             low_memory = LOW_MEMORY
         self.low_memory = low_memory
         self.pipe = None
+        self.img2txt_engine = None
         self.cache = None
         if DISK_CACHE:
             self.cache = diskcache.Cache(
@@ -206,6 +209,12 @@ class StableDiffusion:
         show_gpu_usage()
         return pipe
 
+    def init_clip_interrogation(self):
+        """Initialize CLIP interrogation for use with Stable Diffusion"""
+        # pylint: disable=import-outside-toplevel
+        from clip_interrogator import Config, Interrogator
+        self.img2txt_engine = Interrogator(Config(clip_model_name="ViT-L-14/openai"))
+    
     def infer(self, prompt=None, negative_prompt=None, scale=None, num_images=None,
               skip_img_spec=False, width=None, height=None):
         """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE,
@@ -350,7 +359,7 @@ class StableDiffusion:
             if not self.pipe:
                 self.pipe = self.init_img2img()
             # Get input image
-            input_image = PIL.Image.open(BytesIO(base64.decodebytes(image_b64.encode()))).convert("RGB")
+            input_image = create_image(decode_base64_image(image_b64))
             # Generate derived output images(s)
             image_info = self.pipe(image=input_image, strength=denoise, prompt=prompt, negative_prompt=negative_prompt, guidance_scale=scale,
                                    num_images_per_prompt=num_images)
@@ -396,6 +405,29 @@ class StableDiffusion:
         
         return result
 
+    def infer_img2txt(self, image_b64=None):
+        """Return likely caption text for image_b64 in base64 encoding"""
+        debug.trace_fmt(4, "infer_img2txt({gh.elide(image_b64)})")
+        params = (image_b64)
+        description = ""
+        if self.cache is not None:
+            description = self.cache.get(params)
+        if not description:
+            description = self.infer_img2txt(image_b64)
+            if self.cache is not None:
+                self.cache.set(params, description)
+                debug.trace_fmt(6, "Setting cached result (r={r!r})", r=description)
+
+        return description
+    
+    def infer_img2txt_cached(self, image_b64=None):
+        """Cached version of infer_img2txt"""
+        # Get input image and infer likely caption text
+        image = create_image(decode_base64_image(image_b64))
+        image_caption = self.img2txt_engine.interrogate(image)
+        debug.trace_fmt(5, "infer_img2txt_non_cached() => {r!r}", r=image_caption)
+        return image_caption
+    
 #-------------------------------------------------------------------------------
 # Middleware
 
@@ -495,6 +527,12 @@ def decode_base64_image(image_encoding):
     """Decode IMAGE_ENCODING from base64"""
     result = base64.decodebytes(image_encoding.encode())
     debug.trace(6, f"decode_base64_image({gh.elide(image_encoding)}) => {gh.elide(result)}")
+    return result
+
+def create_image(image_data):
+    """Create PIL image from IMAGE_DATA bytes"""
+    result = PIL.Image.open(BytesIO(image_data)).convert("RGB")
+    debug.trace(6, f"create_image({image_data!r}) => {result}")
     return result
 
 #-------------------------------------------------------------------------------
