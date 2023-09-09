@@ -54,8 +54,10 @@ PROMPT = system.getenv_text("PROMPT", "your favorite politician in a tutu",
                             "Textual prompt describing image")
 NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
                             "Negative tips for image")
+GUIDANCE_HELP = "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)--higher more"
 GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
-                                   "How much the image generation follows the prompt")
+                                   ## OLD: "How much the image generation follows the prompt")
+                                   description=GUIDANCE_HELP)
 SD_URL = system.getenv_value("SD_URL", None,
                              "URL for SD TCP/restful server--new via flask or remote")
 SD_PORT = system.getenv_int("SD_PORT", 9700,
@@ -81,7 +83,7 @@ DISK_CACHE = system.getenv_value("SD_DISK_CACHE", None,
 USE_IMG2IMG = system.getenv_bool("USE_IMG2IMG", False,
                                  "Use image-to-image instead of text-to-image")
 DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.75,
-                                       "How much of the input image to randomize")
+                                       "How much of the input image to randomize--higher more")
 
 BATCH_ARG = "batch"
 SERVER_ARG = "server"
@@ -148,6 +150,8 @@ class StableDiffusion:
                 self.server_url += f":{server_port}"
             else:
                 system.print_stderr(f"Warning: ignoring port {server_port} as already in URL {self.server_url}")
+        elif self.use_hf_api:
+            pass
         else:
             debug.trace(4,"Warning: Unexpected condition in {self.__class__.__name__}.__init__: no server_url")
         if low_memory is None:
@@ -555,6 +559,13 @@ def upload_image(upload_control):
     return encoded_image
 
 
+def upload_image_file(files):
+    """Return path for each of the FILES"""
+    debug.trace(4, f"upload_image_file({files})")
+    images = [encode_image_file(file.name) for file in files]
+    return images
+
+
 def run_ui(use_img2img=None):
     """Run user interface via gradio serving by default at localhost:7860
     Note: The environment variable GRADIO_SERVER_NAME can be used to serve via 0.0.0.0"""
@@ -825,7 +836,7 @@ def run_ui(use_img2img=None):
             #    samples = gr.Slider(label="Images", minimum=1, maximum=4, value=4, step=1)
             #    steps = gr.Slider(label="Steps", minimum=1, maximum=50, value=45, step=1)
                  guidance_control = gr.Slider(
-                    label="Guidance scale", minimum=0, maximum=31, value=GUIDANCE_SCALE, step=0.1
+                    label="Guidance scale", minimum=1, maximum=30, value=GUIDANCE_SCALE, step=0.1
                  )
                  num_control = gr.Slider(
                     label="Number of images", minimum=1, maximum=10, value=2, step=1
@@ -835,7 +846,7 @@ def run_ui(use_img2img=None):
                  ## TODO?:
                  input_image_control = gr.Image(label="Input image")
                  upload_control = gr.UploadButton(label="Upload image", file_types=["image"])
-                 interrogate_control = gr.Button(label="CLIP Interrogatotr")
+                 interrogate_control = gr.Button(label="CLIP Interrogator")
                  
             #    seed = gr.Slider(
             #        label="Seed",
@@ -862,7 +873,9 @@ def run_ui(use_img2img=None):
             prompt_control.submit(infer_fn, inputs=input_controls, outputs=output_controls, postprocess=False)
             btn.click(infer_fn, inputs=input_controls, outputs=output_controls, postprocess=False)
             # TODO1: fix
-            upload_control.click(fn=upload_image, inputs=[upload_control], outputs=[input_image_control])
+            ## OLD: upload_control.click(fn=upload_image, inputs=[upload_control], outputs=[input_image_control])
+            upload_control.upload(fn=upload_image_file, inputs=[upload_control], outputs=[input_image_control],
+                                  postprocess=False)
             #
             def change_examples():
                 """Change examples used in UI if img2img_control checked"""
@@ -933,7 +946,7 @@ def main():
                     text_options=[(PROMPT_ARG, "Positive prompt"),
                                   (NEGATIVE_ARG, "Negative prompt"),
                                   (IMAGE_ARG, "Filename for img2img input image")],
-                    int_options=[(GUIDANCE_ARG, "Degree of fidelity to prompt (0-to-31 w/ 7 suggested)")],
+                    int_options=[(GUIDANCE_ARG, GUIDANCE_HELP)],
                     float_options=[(DENOISING_ARG, "Denoising factor for img2img")])
     debug.trace_object(5, main_app)
     debug.assertion(main_app.parsed_args)
