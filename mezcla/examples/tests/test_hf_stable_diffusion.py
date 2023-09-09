@@ -29,6 +29,7 @@ try:
     import extcolors
 except:
     extcolors = None
+import PIL
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
@@ -79,9 +80,9 @@ class TestIt2:
     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
     
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
-    def test_pipeline(self):
+    def test_txt2img_pipeline(self):
         """Make sure valid SD pipeline created"""
-        debug.trace(4, f"TestIt2.test_pipeline(); self={self}")
+        debug.trace(4, f"TestIt2.test_txt2img_pipeline(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True)
         pipe = sd.init_pipeline()
         actual = my_re.split(r"\W+", str(pipe))
@@ -92,10 +93,56 @@ class TestIt2:
 
     
     @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
+    def test_txt2img_generation(self):
+        """Make sure text-to-image reasonable"""
+        debug.trace(4, f"TestIt2.test_txt2img_generation(); self={self}")
+        sd = THE_MODULE.StableDiffusion(use_hf_api=True)
+        NUM_IMAGES = 2
+        images = sd.infer(prompt="cute puppy", negative_prompt="pitbull", scale=20, num_images=NUM_IMAGES)
+        assert(len(images) == NUM_IMAGES)
+        assert(isinstance(images[0], PIL.Image.Image))
+        # TODO1: image recognition yields dog
+        return
+
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
+    def test_img2img_generation(self):
+        """Make sure image-to-image reasonable"""
+        debug.trace(4, f"TestIt2.test_img2img_generation(); self={self}")
+        sd = THE_MODULE.StableDiffusion(use_hf_api=True)
+        NUM_IMAGES = 2
+        PACMAC_LIKE_IMAGE = gh.resolve_path("dummy-image.png")
+        pacmac_like_base64 = THE_MODULE.encode_image_file(PACMAC_LIKE_IMAGE)
+        images = sd.infer_img2img(image_b64=pacmac_like_base64, prompt="cute puppy", negative_prompt="pitbull",
+                                  scale=20, num_images=NUM_IMAGES)
+        assert(len(images) == NUM_IMAGES)
+        assert(isinstance(images[0], PIL.Image.Image))
+        # TODO1: image recognition doesn't yield dog
+        return
+
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
+    def test_img2txt_generation(self):
+        """Make sure image-to-text reasonable"""
+        debug.trace(4, f"TestIt2.test_img2txt_generation(); self={self}")
+        # TODO2: use common setup method (e.g., via TestWrapper)
+        sd = THE_MODULE.StableDiffusion(use_hf_api=True)
+        PACMAC_LIKE_IMAGE = gh.resolve_path("dummy-image.png")
+        pacmac_like_base64 = THE_MODULE.encode_image_file(PACMAC_LIKE_IMAGE)
+        description = sd.infer_img2txt(image_b64=pacmac_like_base64)
+        # TODO4: assert(english-like-text(description))
+        assert(not my_re.search(r"canine|dog|puppy", description))
+        return
+
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
     @pytest.mark.skipif(not extcolors, reason="extcolors package missing")
-    def test_something_else(self):
+    def test_prompted_color(self):
         """Make sure prompted color is used"""
-        debug.trace(4, f"TestIt2.test_something_else(); self={self}")
+        debug.trace(4, f"TestIt2.test_prompted_color(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True, low_memory=True)
         images = sd.infer(prompt="a ripe orange", scale=30)
         # note: encodes image base-64 str data into bytes and then decodes into image bytes
