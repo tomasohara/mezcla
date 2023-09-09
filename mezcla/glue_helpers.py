@@ -165,23 +165,40 @@ def non_empty_file(filename):
     return non_empty
 
 
-def resolve_path(filename, base_dir=None):
-    """Resolves path for FILENAME relative to BASE_DIR if not in current directory. Note: this uses the script directory for the calling module if BASE_DIR not specified (i.e., as if os.path.dirname(__file__) passed)."""
+def resolve_path(filename, base_dir=None, heuristic=False):
+    """Resolves path for FILENAME relative to BASE_DIR if not in current directory. Note: this uses the script directory for the calling module if BASE_DIR not specified (i.e., as if os.path.dirname(__file__) passed).
+    If HEURISTIC, then also checks nearby directories such as parent for base_dir.
+    """
+    debug.trace(5, f"in resolve_path({filename})")
+    debug.trace_expr(6,  base_dir, heuristic)
     # TODO: give preference to script directory over current directory
     path = filename
     if not os.path.exists(path):
+        # Determine directly for calling module
         if not base_dir:
             frame = None
             try:
                 frame = inspect.currentframe().f_back
-                base_dir = os.path.dirname(frame.f_globals['__file__'])
+                calling_filename = frame.f_globals['__file__']
+                base_dir = os.path.dirname(calling_filename)
+                debug.trace_expr(4, calling_filename, base_dir)
             except (AttributeError, KeyError):
                 base_dir = ""
                 debug_print("Exception during resolve_path: " + str(sys.exc_info()), 5)
             finally:
                 if frame:
                     del frame
-        path = os.path.join(base_dir, path)
+        
+        # Check calling directory (TODO2: add more check dirs such as children)
+        dirs_to_check = [base_dir]
+        if heuristic:
+            dirs_to_check += [form_path(base_dir, ".."), form_path(".", "..")]
+        for check_dir in dirs_to_check:
+            check_path = os.path.join(check_dir, path)
+            if os.path.exists(check_path):
+                path = check_path
+                break
+            
     debug_format("resolve_path({f}) => {p}", 4, f=filename, p=path)
     return path
 
@@ -720,6 +737,7 @@ def get_directory_listing(dir_name, make_unicode=False):
 def getenv_filename(var, default="", description=None):
     """Returns text filename based on environment variable VAR (or string version of DEFAULT) 
     with optional DESCRIPTION. This includes a sanity check for file being non-empty."""
+    # EX: system.setenv("ETC", "/etc"); getenv_filename("ETC") => "/etc"
     # TODO4: explain motivation
     debug_format("getenv_filename({v}, {d}, {desc})", 6,
                  v=var, d=default, desc=description)
