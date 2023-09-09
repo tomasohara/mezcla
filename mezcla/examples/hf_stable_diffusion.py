@@ -844,7 +844,7 @@ def run_ui(use_img2img=None):
                  img2img_control = gr.Checkbox(label="Use img2img?", value=use_img2img, interactive=True)
                  denoise_control = gr.Slider(label="Denoising factor", minimum=0, maximum=1, value=DENOISING_FACTOR, step=0.05)
                  ## TODO?:
-                 input_image_control = gr.Image(label="Input image")
+                 input_image_control = gr.Image(label="Input image")  ## TODO?: type='pil'
                  upload_control = gr.UploadButton(label="Upload image", file_types=["image"])
                  interrogate_control = gr.Button(label="CLIP Interrogator")
                  
