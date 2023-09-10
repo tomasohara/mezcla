@@ -424,8 +424,8 @@ class StableDiffusion:
 
         return description
     
-    def infer_img2txt_cached(self, image_b64=None):
-        """Cached version of infer_img2txt"""
+    def infer_img2txt_non_cached(self, image_b64=None):
+        """Non-cached version of infer_img2txt"""
         # Get input image and infer likely caption text
         image = create_image(decode_base64_image(image_b64))
         image_caption = self.img2txt_engine.interrogate(image)
