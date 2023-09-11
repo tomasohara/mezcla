@@ -16,7 +16,7 @@
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, trap_exception
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
@@ -92,15 +92,6 @@ class TestTextCategorizerUtils(TestWrapper):
         """Ensure start_web_controller works as expected"""
         debug.trace(4, "test_start_web_controller()")
         assert(False)
-
-def trap_exception(function):
-    """Decorator to trap exception during function execution"""
-    def wrapper(*args):
-        try:
-            function(*args)
-        except:
-            system.print_exception_info(function)
-    return wrapper
 
 class TestTextCategorizerScript(TestWrapper):
     """Class for main testcase definition"""
