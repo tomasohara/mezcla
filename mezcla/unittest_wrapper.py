@@ -44,18 +44,17 @@
 
 """Unit test support class"""
 
-# Standard modules
-
+# Standard packages
+import inspect
 import os
 import re
 import tempfile
 import unittest
 
-# Installed modules
+# Installed packages
 ## TODO: import pytest
 
-# Local modules
-
+# Local packages
 import mezcla
 from mezcla import debug
 from mezcla import glue_helpers as gh
@@ -94,14 +93,42 @@ def trap_exception(function):
     - Issues assertion so that test fails.
     - Should be inside any pytest.mark.xfail decorators.
     """
+    debug.trace(8, f"trap_exception({gh.elide(function)}")
+    #
     def wrapper(*args):
+        """Wrapper around variable arity function f"""   ## TODO: {function.__name__}
+        debug.trace(7, f"in wrapper: args={args}")
+        result = None
         try:
-            function(*args)
-        except AssertionError as err:
+            result = function(*args)
+        except AssertionError:
             raise
         except:
             system.print_exception_info(function)
             assert(False)
+        return result
+    #
+    debug.trace(7, f"trap_exception() => {gh.elide(wrapper)}")
+    return wrapper
+
+
+def pytest_fixture_wrapper(function):
+    """Decorator for use with pytest fixtures like capsys
+    Usage:
+        @pytest_fixture_wrapper
+        @trap_exception
+        def test_it(capsys):
+            ...
+    """
+    # See https://stackoverflow.com/questions/19614658/how-do-i-make-pytest-fixtures-work-with-decorated-functions    
+    debug.trace(8, f"pytest_fixture_wrapper({gh.elide(function)}")
+    #
+    def wrapper(x):
+        """Wrapper around unary function f(x)"""   ## TODO: {function.__name__}
+        debug.trace(7, f"in wrapper: x={x}")
+        return function(x)
+    #
+    debug.trace(7, f"pytest_fixture_wrapper() => {gh.elide(wrapper)}")
     return wrapper
 
 
@@ -297,6 +324,26 @@ class TestWrapper(unittest.TestCase):
 
         return output
 
+    def do_assert(self, condition):
+        """Shows context for assertion failure with CONDITION and then issue assert
+        Note: work around for maldito pytest, which makes it hard to do simple things like pinpointing errors"""
+        if ((not condition) and debug.debugging()):
+            statement = filename = line_num = None
+            try:
+                # note: accounts for trap_exception and other decorators
+                for caller in inspect.stack():
+                    (_frame, filename, line_num, _function, context, _index) = caller
+                    statement = debug.read_line(filename, line_num).strip()
+                    if "do_assert" in statement:
+                        break
+                debug.trace(9, f"filename={filename!r}, context={context!r}")
+            except:
+                system.print_exception_info("do_assert")
+            debug.assertion(statement)
+            if statement:
+                debug.trace(1, f"Test assertion failed at {filename}:{line_num}:\n\t{statement}")
+        assert(condition)
+    
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         debug.trace(4, "TestWrapper.tearDown()")
