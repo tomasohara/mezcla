@@ -23,6 +23,7 @@ import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
+## TODO: from mezcla.unittest_wrapper import @trap_exception
 from mezcla import debug
 ## TODO: from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
@@ -87,6 +88,7 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
+    ## TODO: @trap_exception
     def test_something_else(self):
         """TODO: flesh out test for something else"""
         debug.trace(4, f"TestIt.test_something_else(); self={self}")
