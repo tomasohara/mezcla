@@ -704,15 +704,20 @@ def write_file(filename, text, skip_newline=False, append=False, binary=False):
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
     # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
-    debug.assertion(isinstance(text, str))
+    ## OLD: debug.assertion(isinstance(text, str))
+    text_type = (bytes if binary else str)
+    debug.assertion(isinstance(text, text_type))
     try:
-        if not isinstance(text, STRING_TYPES):
+        if (not isinstance(text, STRING_TYPES) and not binary):
             text = to_string(text)
         debug.assertion(not (binary and append))
-        mode = "wb" if binary else "a" if append else "w"
-        with open(filename, encoding="UTF-8", mode=mode) as f:
-            f.write(to_utf8(text))
-            if not text.endswith("\n"):
+        mode = ("wb" if binary else "a" if append else "w")
+        enc = (None if binary else "UTF-8")
+        debug.trace_expr(5, mode, enc)
+        with open(filename, encoding=enc, mode=mode) as f:
+            ## OLD: f.write(to_utf8(text))
+            f.write(text)
+            if not (binary or text.endswith("\n")):
                 if not skip_newline:
                     f.write("\n")
     except (AttributeError, IOError, ValueError):
@@ -721,6 +726,7 @@ def write_file(filename, text, skip_newline=False, append=False, binary=False):
     return
 #
 # EX: write_file(f, "new", append=True); read_file(f) => "itnew\n"
+# EX: write_file(f, bytes("new", "UTF-8"), binary=True); read_file(f) => "new"
 
 
 def write_binary_file(filename, data):
