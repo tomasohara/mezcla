@@ -411,13 +411,13 @@ class StableDiffusion:
 
     def infer_img2txt(self, image_b64=None):
         """Return likely caption text for image_b64 in base64 encoding"""
-        debug.trace_fmt(4, "infer_img2txt({gh.elide(image_b64)})")
+        debug.trace_fmt(4, f"infer_img2txt({gh.elide(image_b64)})")
         params = (image_b64)
         description = ""
         if self.cache is not None:
             description = self.cache.get(params)
         if not description:
-            description = self.infer_img2txt(image_b64)
+            description = self.infer_img2txt_non_cached(image_b64)
             if self.cache is not None:
                 self.cache.set(params, description)
                 debug.trace_fmt(6, "Setting cached result (r={r!r})", r=description)
@@ -428,6 +428,8 @@ class StableDiffusion:
         """Non-cached version of infer_img2txt"""
         # Get input image and infer likely caption text
         image = create_image(decode_base64_image(image_b64))
+        if not self.img2txt_engine:
+            self.init_clip_interrogation()
         image_caption = self.img2txt_engine.interrogate(image)
         debug.trace_fmt(5, "infer_img2txt_non_cached() => {r!r}", r=image_caption)
         return image_caption
@@ -537,7 +539,8 @@ def encode_PIL_image(image):
     return result
 
 def decode_base64_image(image_encoding):
-    """Decode IMAGE_ENCODING from base64"""
+    """Decode IMAGE_ENCODING from base64 returning bytes"""
+    # note: "encodes" UTF-8 text of base-64 encoding as bytes object for str, and then decodes into image bytes
     result = base64.decodebytes(image_encoding.encode())
     debug.trace(6, f"decode_base64_image({gh.elide(image_encoding)}) => {gh.elide(result)}")
     return result
@@ -547,6 +550,11 @@ def create_image(image_data):
     result = PIL.Image.open(BytesIO(image_data)).convert("RGB")
     debug.trace(6, f"create_image({image_data!r}) => {result}")
     return result
+
+def write_image_file(filename, image_spec):
+    """Write to FILENAME the base64 data in IMAGE_SPEC"""
+    debug.trace(5, f"write_image_file({filename}, {image_spec})")
+    system.write_binary_file(filename, decode_base64_image(image_spec))
 
 #-------------------------------------------------------------------------------
 # User interface
@@ -978,9 +986,7 @@ def main():
                   else infer_img2img(b64_image_encoding, denoising_factor, prompt, negative_prompt, guidance, skip_img_spec=True))
         # Save result to disk
         for i, image_encoding in enumerate(images):
-            # note: "encodes" UTF-8 text of base-64 encoding as bytes object for str, and then decodes into image bytes
-            image_data = decode_base64_image(image_encoding)
-            system.write_binary_file(f"{BASENAME}-{i + 1}.png", image_data)
+            write_image_file(f"{BASENAME}-{i + 1}.png", image_encoding)
         # TODO2: get list of files via infer()
         file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))  
         print(f"See {file_spec} for output image(s).")
