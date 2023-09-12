@@ -17,7 +17,7 @@
 """Tests for hf_stable_diffusion module"""
 
 # Standard packages
-import base64
+## OLD: import base64
 
 # Installed packages
 import pytest
@@ -32,7 +32,7 @@ except:
 import PIL
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, trap_exception
 from mezcla import debug
 from mezcla import system
 from mezcla import glue_helpers as gh
@@ -42,6 +42,7 @@ from mezcla.my_regex import my_re
 #    THE_MODULE:                  global module object
 #    TestTemplate.script_module:  path to file
 import mezcla.examples.hf_stable_diffusion as THE_MODULE
+hfsd = THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(__file__, r"\btemplate.py$"):
@@ -50,34 +51,56 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    # -or- non-mezcla: script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    #
     use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
+    def check_images(self, image_spec, label=None):
+        """Make sure each of the IMAGE_SPECS are valid and return PIL image"""
+        label_spec = ("" if label is None else f"-{label}")
+        images = []
+        for i, spec in enumerate(image_spec):
+            image = None
+            try:
+                # Make sure valid image
+                image_bytes = hfsd.decode_base64_image(spec)
+                image = hfsd.create_image(image_bytes)
+                self.do_assert(isinstance(image, PIL.Image.Image))
+            except:
+                self.do_assert(False, "Problem decoding image spec")
+            if image:
+                images.append(image)
+            # Save to disk if debuggiung
+            if debug.debugging():
+                temp_image_file = f"{self.temp_file}{label_spec}-{i + 1}.png"
+                debug.trace_expr(4, temp_image_file)
+                hfsd.write_image_file(temp_image_file, spec)
+        return images
+
+    
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
     def test_simple_generation(self):
         """Makes sure simple image generation works as expected"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
         # ex: See sd-app-image-1.png
-        output = self.run_script(
+        script_output = self.run_script(
             options="--batch --prompt 'orange ball' --negative 'green blue red yellow purple pink brown'",
             env_options=f"BASENAME='{self.temp_base}' LOW_MEMORY=1", uses_stdin=True)
-        debug.trace_expr(5, output)
-        assert (my_re.search(r"See (\S+.png) for output image\(s\).", output.strip()))
+        debug.trace_expr(5, script_output)
+        self.do_assert(my_re.search(r"See (\S+.png) for output image\(s\).", script_output.strip()))
         image_file = my_re.group(1)
         # ex: sd-app-image-3.png: PNG image data, 512 x 512, 8-bit/color RGB, non-interlaced
         file_info = gh.run(f"file {image_file}")
         debug.trace_expr(5, file_info)
-        assert (my_re.search("PNG image data, 512 x 512, 8-bit/color RGB", file_info))
+        self.do_assert(my_re.search("PNG image data, 512 x 512, 8-bit/color RGB", file_info))
         # TODO2: orange in rgb-color profile for image
         return
 
-#...............................................................................
-
-class TestIt2:
-    """Another class for testcase definition
-    Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
+    ## TODO?
+    ## #...............................................................................
+    ##
+    ## class TestIt2:
+    ##    """Another class for testcase definition
+    ##    Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
     
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
     def test_txt2img_pipeline(self):
@@ -88,9 +111,8 @@ class TestIt2:
         actual = my_re.split(r"\W+", str(pipe))
         expect = "CLIPImageProcessor CLIPTextModel StableDiffusionSafetyChecker text_encoder".split()
         debug.trace_expr(5, actual, expect, delim="\n")
-        assert (len(system.intersection(actual, expect)) > 2)
+        self.do_assert(len(system.intersection(actual, expect)) > 2)
         return
-
     
     @pytest.mark.xfail                   # TODO: remove xfail
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
@@ -98,64 +120,75 @@ class TestIt2:
         """Make sure text-to-image reasonable"""
         debug.trace(4, f"TestIt2.test_txt2img_generation(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True)
-        NUM_IMAGES = 2
-        images = sd.infer(prompt="cute puppy", negative_prompt="pitbull", scale=20, num_images=NUM_IMAGES)
-        assert(len(images) == NUM_IMAGES)
-        assert(isinstance(images[0], PIL.Image.Image))
-        # TODO1: image recognition yields dog
+        ## TODO: NUM_IMAGES = 2
+        NUM_IMAGES = 1
+        # note: generate image with high adherence guidance for prompt
+        image_specs = sd.infer(prompt="cute puppy", negative_prompt="pitbull", scale=20, num_images=NUM_IMAGES, skip_img_spec=True)
+        images = self.check_images(image_specs, label="txt2img")
+        self.do_assert(len(images) == NUM_IMAGES)
+        description = sd.infer_img2txt(image_b64=image_specs[0])
+        self.do_assert(my_re.search(r"canine|dog|puppy", description))
         return
 
-    
     @pytest.mark.xfail                   # TODO: remove xfail
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
+    @trap_exception
     def test_img2img_generation(self):
         """Make sure image-to-image reasonable"""
         debug.trace(4, f"TestIt2.test_img2img_generation(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True)
-        NUM_IMAGES = 2
-        PACMAC_LIKE_IMAGE = gh.resolve_path("dummy-image.png")
+        ## TODO: NUM_IMAGES = 2
+        NUM_IMAGES = 1
+        # TODO2: use larger image
+        PACMAC_LIKE_IMAGE = gh.resolve_path("dummy-image.png", heuristic=True)
         pacmac_like_base64 = THE_MODULE.encode_image_file(PACMAC_LIKE_IMAGE)
-        images = sd.infer_img2img(image_b64=pacmac_like_base64, prompt="cute puppy", negative_prompt="pitbull",
-                                  scale=20, num_images=NUM_IMAGES)
-        assert(len(images) == NUM_IMAGES)
-        assert(isinstance(images[0], PIL.Image.Image))
+        # note: generate derived image with high fidelity to original and low adherence guidance to prompt
+        image_specs = sd.infer_img2img(image_b64=pacmac_like_base64, denoise=0.25, prompt="cute puppy", negative_prompt="pitbull",
+                                       scale=3.5, num_images=NUM_IMAGES, skip_img_spec=True)
+        self.do_assert(len(image_specs) == NUM_IMAGES)
+        ## BAD: self.do_assert(isinstance(images[0], PIL.Image.Image))
         # TODO1: image recognition doesn't yield dog
+        images = self.check_images(image_specs, label="img2img")
+        self.do_assert(len(images) == NUM_IMAGES)
+        description = sd.infer_img2txt(image_b64=image_specs[0])
+        self.do_assert(not my_re.search(r"canine|dog|puppy", description))
         return
 
-    
     @pytest.mark.xfail                   # TODO: remove xfail
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
+    @trap_exception
     def test_img2txt_generation(self):
         """Make sure image-to-text reasonable"""
         debug.trace(4, f"TestIt2.test_img2txt_generation(); self={self}")
         # TODO2: use common setup method (e.g., via TestWrapper)
         sd = THE_MODULE.StableDiffusion(use_hf_api=True)
-        PACMAC_LIKE_IMAGE = gh.resolve_path("dummy-image.png")
+        PACMAC_LIKE_IMAGE = gh.resolve_path("dummy-image.png", heuristic=True)
         pacmac_like_base64 = THE_MODULE.encode_image_file(PACMAC_LIKE_IMAGE)
         description = sd.infer_img2txt(image_b64=pacmac_like_base64)
         # TODO4: assert(english-like-text(description))
-        assert(not my_re.search(r"canine|dog|puppy", description))
+        self.do_assert(not my_re.search(r"canine|dog|puppy", description))
         return
 
-    
     @pytest.mark.xfail                   # TODO: remove xfail
     @pytest.mark.skipif(not extcolors, reason="extcolors package missing")
+    @trap_exception
     def test_prompted_color(self):
         """Make sure prompted color is used"""
         debug.trace(4, f"TestIt2.test_prompted_color(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True, low_memory=True)
-        images = sd.infer(prompt="a ripe orange", scale=30)
+        images = sd.infer(prompt="a ripe orange", scale=30, skip_img_spec=True)
         # note: encodes image base-64 str data into bytes and then decodes into image bytes
-        image_data = (base64.decodebytes(images[0].encode()))
+        ## OLD: image_data = (base64.decodebytes(images[0].encode()))
+        image_data = hfsd.decode_base64_image(images[0])
         image_path = gh.create_temp_file(image_data, binary=True)
         # note: use of rgb_color_name.py allows for fudge factor
         # $ extcolors sd-app-image-1.png | rgb_color_name.py - | grep orange
         # <(255, 92, 0), orangered>   :  47.07% (123388)
         # <(255, 153, 0), orange>  :   6.13% (16074)
-        output = gh.run(f"extcolors '{image_path}' | rgb_color_name.py - 2> /dev/null")
-        debug.trace_expr(4, output)
-        assert ("orange" in output)
-        assert (len(images) == 1)
+        color_output = gh.run(f"extcolors '{image_path}' | rgb_color_name.py - 2> /dev/null")
+        debug.trace_expr(4, color_output)
+        self.do_assert("orange" in color_output)
+        self.do_assert(len(images) == 1)
         return
 
 #------------------------------------------------------------------------
