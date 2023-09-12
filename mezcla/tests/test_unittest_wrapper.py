@@ -55,6 +55,7 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 class TestIt2:
     """Class for API usage"""
 
+    @pytest.mark.skipif(not debug.debugging(1), reason="Must be debugging")
     ## TODO:
     ## @pytest_fixture_wrapper
     ## @trap_exception
@@ -68,13 +69,22 @@ class TestIt2:
         #
         sti = SubTestIt()        
         captured_trace = ""
+        message = "Good math"
         try:
-            sti.do_assert(False)
+            sti.do_assert(2 + 2 == 5, message)    # Orwell's condition
         except AssertionError:
             pass
         captured_trace = capsys.readouterr().err
         debug.trace_expr(5, captured_trace)
-        assert(my_re.search(r"\bdo_assert\b", captured_trace))
+        
+        #  The condition and message should be displayed
+        assert("2 + 2 == 5" in captured_trace)
+        assert(message in captured_trace)
+        
+        # Make sure stuff properly stripped (i.e., message arg and comment)
+        assert(not "message" in captured_trace)
+        assert(not "Orwell" in captured_trace)
+        assert(not my_re.search(r"\bdo_assert\b", captured_trace))
         return
 
 #------------------------------------------------------------------------
