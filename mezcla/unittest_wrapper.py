@@ -47,7 +47,6 @@
 # Standard packages
 import inspect
 import os
-import re
 import tempfile
 import unittest
 
@@ -58,6 +57,7 @@ import unittest
 import mezcla
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 from mezcla import system
 
 # Constants (e.g., environment options)
@@ -171,8 +171,8 @@ class TestWrapper(unittest.TestCase):
                             f"problem running via 'python -m {cls.script_module}'")
             # Warn about lack of usage statement unless "not intended for command-line" type warning issued
             # TODO: standardize the not-intended wording
-            if (not ((re.search(r"warning:.*not intended", help_usage,
-                                re.IGNORECASE))
+            if (not ((my_re.search(r"warning:.*not intended", help_usage,
+                                   flags=my_re.IGNORECASE))
                      or ("usage:" in help_usage.lower()))):
                 system.print_stderr("Warning: script should implement --help")
 
@@ -195,8 +195,8 @@ class TestWrapper(unittest.TestCase):
         """
         debug.trace(3, "Warning: in deprecrated derive_tested_module_name")
         module = os.path.split(test_filename)[-1]
-        module = re.sub(r".py[oc]?$", "", module)
-        module = re.sub(r"^test_", "", module)
+        module = my_re.sub(r".py[oc]?$", "", module)
+        module = my_re.sub(r"^test_", "", module)
         debug.trace_fmtd(5, "derive_tested_module_name({f}) => {m}",
                          f=test_filename, m=module)
         return (module)
@@ -209,8 +209,8 @@ class TestWrapper(unittest.TestCase):
         """
         # Note: Used to resolve module name given THE_MODULE (see template).
         module_name = os.path.split(test_filename)[-1]
-        module_name = re.sub(r".py[oc]?$", "", module_name)
-        module_name = re.sub(r"^test_", "", module_name)
+        module_name = my_re.sub(r".py[oc]?$", "", module_name)
+        module_name = my_re.sub(r"^test_", "", module_name)
         package_name = THIS_PACKAGE
         if module_object is not None:
            package_name = getattr(module_object, "__package__", "")
@@ -227,7 +227,7 @@ class TestWrapper(unittest.TestCase):
     def get_module_file_path(test_filename):
         """Return absolute path of module being tested"""
         result = system.absolute_path(test_filename)
-        result = re.sub(r'tests\/test_(.*\.py)', r'\1', result)
+        result = my_re.sub(r'tests\/test_(.*\.py)', r'\1', result)
         debug.assertion(result.endswith(".py"))
         debug.trace(7, f'get_module_file_path({test_filename}) => {result}')
         return result
@@ -312,36 +312,57 @@ class TestWrapper(unittest.TestCase):
         # Make sure no python or bash errors. For example,
         #   "SyntaxError: invalid syntax" and "bash: python: command not found"
         log_contents = system.read_file(log_file)
-        error_found = re.search(r"(\S+error:)|(no module)|(command not found)",
-                                log_contents.lower())
+        error_found = my_re.search(r"(\S+error:)|(no module)|(command not found)",
+                                   log_contents.lower())
         debug.assertion(not error_found)
         debug.trace_fmt(trace_level + 1, "log contents: {{\n{log}\n}}",
                         log=gh.indent_lines(log_contents))
 
         # Do sanity check for python exceptions
-        traceback_found = re.search("Traceback.*most recent call", log_contents)
+        traceback_found = my_re.search("Traceback.*most recent call", log_contents)
         debug.assertion(not traceback_found)
 
         return output
 
-    def do_assert(self, condition):
+    def do_assert(self, condition, message=None):
         """Shows context for assertion failure with CONDITION and then issue assert
-        Note: work around for maldito pytest, which makes it hard to do simple things like pinpointing errors"""
+        If MESSAGE specified, included in assertion error
+        Note:
+        - Works around for maldito pytest, which makes it hard to do simple things like pinpointing errors.
+        - Formatted similar to debug.assertion:
+             Test assertion failed: <expr> (at <f><n>): <msg>
+        """
         if ((not condition) and debug.debugging()):
             statement = filename = line_num = None
             try:
                 # note: accounts for trap_exception and other decorators
                 for caller in inspect.stack():
+                    debug.trace_expr(8, caller)
                     (_frame, filename, line_num, _function, context, _index) = caller
                     statement = debug.read_line(filename, line_num).strip()
                     if "do_assert" in statement:
                         break
-                debug.trace(9, f"filename={filename!r}, context={context!r}")
+                debug.trace(7, f"filename={filename!r}, context={context!r}")
             except:
                 system.print_exception_info("do_assert")
             debug.assertion(statement)
             if statement:
-                debug.trace(1, f"Test assertion failed at {filename}:{line_num}:\n\t{statement}")
+                # TODO3: use abstract syntax tree (AST) based extraction
+                # ex: self.do_assert(not my_re.search(r"cat|dog", description))  # no pets
+                # Isolate condition
+                cond = my_re.sub(r"^\s*\S+\.do_assert\((.*)\)", r"\1", statement)
+                # Get expression proper, removing optional comments and semicolon 
+                expr = my_re.sub(r";?\s*#.*$", "", cond)
+                # Strip optional message
+                qual = ""
+                if message is not None:
+                    expr = my_re.sub(r", *([\'\"]).*\1\s*$", "", expr)   # string arg
+                    expr = my_re.sub(r", *[a-z0-9_]+$", "", expr,        # variable arg
+                                     flags=my_re.IGNORECASE)
+                    qual = f": {message}"
+                # Format assertion error with optional qualification (i.e., user message)
+                debug.trace(1, f"Test assertion failed: {expr} (at {filename}:{line_num}){qual}")
+                debug.trace(5, f"\t{statement}")
         assert(condition)
     
     def tearDown(self):
