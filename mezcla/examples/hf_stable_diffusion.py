@@ -36,7 +36,9 @@ import time
 # Installed modules
 import diskcache
 from flask import Flask, request
-import PIL
+## OLD: import PIL
+## TODO: see why following needed (i.e., plain PIL import yields intermittent errors)
+import PIL.Image
 import requests
 ## OLD: import gradio as gr
 gr = None
@@ -82,6 +84,8 @@ DISK_CACHE = system.getenv_value("SD_DISK_CACHE", None,
                                  "Path to directory with disk cache")
 USE_IMG2IMG = system.getenv_bool("USE_IMG2IMG", False,
                                  "Use image-to-image instead of text-to-image")
+USE_IMG2TXT = system.getenv_bool("USE_IMG2TXT", False,
+                                 "Use image-to-text instead of image generation")
 DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.75,
                                        "How much of the input image to randomize--higher more")
 
@@ -94,6 +98,7 @@ NEGATIVE_ARG = "negative"
 GUIDANCE_ARG = "guidance"
 ## TODO?: TXT2IMG_ARG = "txt2img"
 IMG2IMG_ARG = "img2img"
+IMG2TXT_ARG = "img2txt"
 IMAGE_ARG = "input-image"
 DENOISING_ARG = "denoising-factor"
 DUMMY_BASE64_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAMzMzP////8AAABGA1scAAAAJUlEQVR4nGNgAAFGQUEowRoa6sCABBZowAgsgBEIGUQCRALAPACMHAOQvR4HGwAAAABJRU5ErkJggg=="
@@ -216,6 +221,7 @@ class StableDiffusion:
     def init_clip_interrogation(self):
         """Initialize CLIP interrogation for use with Stable Diffusion"""
         # pylint: disable=import-outside-toplevel
+        debug.trace(4, "init_clip_interrogation()")
         from clip_interrogator import Config, Interrogator
         self.img2txt_engine = Interrogator(Config(clip_model_name="ViT-L-14/openai"))
     
@@ -274,17 +280,20 @@ class StableDiffusion:
             debug.trace_expr(4, image_info)
             debug.trace_object(5, image_info, "image_info")
             num_generated = 0
-            for i, image in enumerate(image_info.images):
+            for _i, image in enumerate(image_info.images):
                 debug.trace_expr(4, image)
                 debug.trace_object(5, image, "image")
                 b64_encoding = image
                 debug.assertion(isinstance(image, PIL.Image.Image))
                 try:
-                    image_path = f"{BASENAME}-{i + 1}.png"
-                    image.save(image_path)
+                    ## OLD:
+                    ## image_path = f"{BASENAME}-{i + 1}.png"
+                    ## image.save(image_path)
                     num_generated += 1
-                    # note: "decodes" base-64 encoded bytes object into UTF-8 string
-                    b64_encoding = (base64.b64encode(system.read_binary_file(image_path))).decode()
+                    ## OLD:
+                    ## # note: "decodes" base-64 encoded bytes object into UTF-8 string
+                    ## b64_encoding = (base64.b64encode(system.read_binary_file(image_path))).decode()
+                    b64_encoding = encode_PIL_image(image)
                     if not skip_img_spec:
                         b64_encoding = (f"data:image/png;base64,{b64_encoding}")
                 except:
@@ -371,17 +380,20 @@ class StableDiffusion:
             debug.trace_object(5, image_info, "image_info")
             start_time = time.time()
             num_generated = 0
-            for i, image in enumerate(image_info.images):
+            for _i, image in enumerate(image_info.images):
                 debug.trace_expr(4, image)
                 debug.trace_object(5, image, "image")
                 b64_encoding = image
                 debug.assertion(isinstance(image, PIL.Image.Image))
                 try:
-                    image_path = f"{BASENAME}-{i + 1}.png"
-                    image.save(image_path)
+                    ## OLD:
+                    ## image_path = f"{BASENAME}-{i + 1}.png"
+                    ## image.save(image_path)
                     num_generated += 1
-                    # note: "decodes" base-64 encoded bytes object into UTF-8 string
-                    b64_encoding = (base64.b64encode(system.read_binary_file(image_path))).decode()
+                    ## OLD:
+                    ## # note: "decodes" base-64 encoded bytes object into UTF-8 string
+                    ## b64_encoding = (base64.b64encode(system.read_binary_file(image_path))).decode()
+                    b64_encoding = encode_PIL_image(image)
                     if not skip_img_spec:
                         b64_encoding = (f"data:image/png;base64,{b64_encoding}")
                 except:
@@ -394,7 +406,7 @@ class StableDiffusion:
         else:
             debug.assertion(self.server_url)
             url = self.server_url
-            payload = {'input_image': input_image, 'strength': denoise, 'prompt': prompt, 'negative_prompt': negative_prompt, 'scale': scale,
+            payload = {'image_b64': image_b64, 'strength': denoise, 'prompt': prompt, 'negative_prompt': negative_prompt, 'scale': scale,
                        'num_images': num_images}
             images_request = requests.post(url, json=payload, timeout=(5 * 60))
             debug.trace_object(6, images_request)
@@ -426,25 +438,47 @@ class StableDiffusion:
     
     def infer_img2txt_non_cached(self, image_b64=None):
         """Non-cached version of infer_img2txt"""
-        # Get input image and infer likely caption text
-        image = create_image(decode_base64_image(image_b64))
-        if not self.img2txt_engine:
-            self.init_clip_interrogation()
-        image_caption = self.img2txt_engine.interrogate(image)
+        image_caption = ""
+        if (self.use_hf_api):
+            # Get input image and infer likely caption text
+            image = create_image(decode_base64_image(image_b64))
+            if not self.img2txt_engine:
+                self.init_clip_interrogation()
+            image_caption = self.img2txt_engine.interrogate(image)
+        else:
+            debug.assertion(self.server_url)
+            url = self.server_url
+            payload = {'image_b64': image_b64}
+            request_result = requests.post(url, json=payload, timeout=(5 * 60))
+            debug.trace_object(6, request_result)
+            debug.trace_expr(5, payload, request_result, request_result.json(), delim="\n")
+            image_caption = request_result.json()["caption"]
+            
         debug.trace_fmt(5, "infer_img2txt_non_cached() => {r!r}", r=image_caption)
         return image_caption
     
 #-------------------------------------------------------------------------------
 # Middleware
 
+def init_stable_diffusion(use_hf_api=None):
+    """Initialize stable diffusion usage, locally if USE_HF_API"""
+    debug.trace(4, "init_stable_diffusion({use_hf_api})")
+    global sd_instance
+    sd_instance = StableDiffusion(use_hf_api=use_hf_api)
+    debug.trace_expr(5, sd_instance)
+
+
 @flask_app.route('/', methods=['GET', 'POST'])
 def handle_infer():
     """Process request to do inference to generate image from text"""
+    # Note: result return via hash with images key
     debug.trace(6, "[flask_app /] handle_infer()")
     # TODO3: request => flask_request
     debug.trace_object(5, request)
     params = request.get_json()
     debug.trace_expr(5, params)
+    if not sd_instance:
+        init_stable_diffusion()
     images_spec = {"images": sd_instance.infer(**params)}
     # note: see https://stackoverflow.com/questions/45412228/sending-json-and-status-code-with-a-flask-response
     result = (json.dumps(images_spec), HTTP_OK)
@@ -455,7 +489,7 @@ def handle_infer():
 
 @flask_app.route('/txt2img', methods=['GET', 'POST'])
 def handle_infer_txt2img():
-    """Process request to do inference to generate image from text"""
+    """[Alias] Process request to do inference to generate image from text"""
     debug.trace(6, "[flask_app /] handle_infer_txt2img()")
     return handle_infer()
     
@@ -471,6 +505,7 @@ def infer(prompt=None, negative_prompt=None, scale=None, num_images=None, skip_i
 @flask_app.route('/img2img', methods=['GET', 'POST'])
 def handle_infer_img2img():
     """Process request to do inference to generate similar image from existing image"""
+    # Note: result return via hash with images key
     debug.trace(6, "[flask_app /] handle_infer_img2img()")
     # TODO3: request => flask_request
     debug.trace_object(5, request)
@@ -488,7 +523,7 @@ def infer_img2img(image_spec=None, denoise=None,  prompt=None, negative_prompt=N
     """Wrapper around StableDiffusion.infer_img2img()
     Note: intended just for the gradio UI"
     """
-    image_b64 = None
+    debug.trace(5, f"[sd_instance] infer_img2img{(gh.elide(image_spec), denoise, prompt, negative_prompt, scale, skip_img_spec)}")
     if isinstance(image_spec, list):
         debug.trace(5, "Warning: using first image in image_spec for infer_img2img")
         image_spec = image_spec[0]
@@ -496,9 +531,19 @@ def infer_img2img(image_spec=None, denoise=None,  prompt=None, negative_prompt=N
         ## TODO?: image = PIL.Image.fromarray(image_spec, mode="RGB")
         debug.trace_expr(7, image_spec)
         image = (image_spec)
-        image_b64 = encode_PIL_image(image)
-    debug.trace(5, f"[sd_instance] infer_img2img{(gh.elide(image_spec), denoise, prompt, negative_prompt, scale, skip_img_spec)}")
+        image_spec = encode_PIL_image(image)
+    image_b64 = image_spec        
+    if not sd_instance:
+        init_stable_diffusion()
     return sd_instance.infer_img2img(image_b64=image_b64, denoise=denoise, prompt=prompt, negative_prompt=negative_prompt, scale=scale, num_images=num_images, skip_img_spec=skip_img_spec)
+
+
+@flask_app.route('/img2txt', methods=['GET', 'POST'])
+def handle_infer_img2txt():
+    """Process request to do inference to generate text description of image"""
+    # Note: result return via hash with caption key
+    ## TODO: {"caption": sd_instance.infer_img2txt(**params)}
+    raise NotImplementedError()
 
 
 def infer_img2txt(image_spec):
@@ -506,7 +551,12 @@ def infer_img2txt(image_spec):
     Note: intended just for the gradio UI"
     """
     debug.trace(5, f"[sd_instance] infer_img2txt({gh.elide(image_spec)})")
-    image_b64 = encode_PIL_image(image_spec)
+    image_b64 = image_spec
+    ## TEMP:
+    if isinstance(image_b64, PIL.Image.Image):
+        image_b64 = encode_PIL_image(image_b64)
+    if not sd_instance:
+        init_stable_diffusion()
     return sd_instance.infer_img2txt(image_b64)
 
 #--------------------------------------------------------------------------------
@@ -545,7 +595,7 @@ def decode_base64_image(image_encoding):
     debug.trace(6, f"decode_base64_image({gh.elide(image_encoding)}) => {gh.elide(result)}")
     return result
 
-def create_image(image_data):
+def create_image(image_data):           # TODO1: create_PIL_image
     """Create PIL image from IMAGE_DATA bytes"""
     result = PIL.Image.open(BytesIO(image_data)).convert("RGB")
     debug.trace(6, f"create_image({image_data!r}) => {result}")
@@ -553,7 +603,7 @@ def create_image(image_data):
 
 def write_image_file(filename, image_spec):
     """Write to FILENAME the base64 data in IMAGE_SPEC"""
-    debug.trace(5, f"write_image_file({filename}, {image_spec})")
+    debug.trace(5, f"write_image_file({filename}, {gh.elide(image_spec)})")
     system.write_binary_file(filename, decode_base64_image(image_spec))
 
 #-------------------------------------------------------------------------------
@@ -950,7 +1000,8 @@ def main():
                                      (SERVER_ARG, "Run flask server"),
                                      (UI_ARG, "Show user interface"),
                                      ## TODO?: (TXT2IMG_ARG, "Run text-to-image"),
-                                     (IMG2IMG_ARG, "Run image-to-image")],
+                                     (IMG2IMG_ARG, "Run image-to-image"),
+                                     (IMG2TXT_ARG, "Run image-to-text: clip interrogator")],
                     text_options=[(PROMPT_ARG, "Positive prompt"),
                                   (NEGATIVE_ARG, "Negative prompt"),
                                   (IMAGE_ARG, "Filename for img2img input image")],
@@ -967,29 +1018,33 @@ def main():
     guidance = main_app.get_parsed_option(GUIDANCE_ARG, GUIDANCE_SCALE)
     ## TODO?: use_txt2img = main_app.get_parsed_option(TXT2IMG_ARG, USE_TXT2IMG)
     use_img2img = main_app.get_parsed_option(IMG2IMG_ARG, USE_IMG2IMG)
+    use_img2txt = main_app.get_parsed_option(IMG2TXT_ARG, USE_IMG2TXT)
     input_image_file = main_app.get_parsed_option(IMAGE_ARG)
     denoising_factor = main_app.get_parsed_option(DENOISING_ARG)
     ## TODO?: debug.assertion(use_txt2img ^ use_img2img)
-    # TODO2: BASENAME and NUM_IMAGES
+    # TODO2: BASENAME and NUM_IMAGES (options)
     ## TODO: x_mode = main_app.get_parsed_option(X_ARG)
     debug.assertion(not (batch_mode and server_mode))
 
     # Invoke UI via HTTP unless in batch mode
-    global sd_instance
-    sd_instance = StableDiffusion(use_hf_api=server_mode)
+    init_stable_diffusion()
     if batch_mode:
         # Optionally convert input image into base64
-        b64_image_encoding = (encode_image_file(input_image_file) if use_img2img else None)
+        b64_image_encoding = (encode_image_file(input_image_file) if (use_img2img or use_img2txt) else None)
 
-        # Run generation
-        images = (infer(prompt, negative_prompt, guidance, skip_img_spec=True) if (not use_img2img)
-                  else infer_img2img(b64_image_encoding, denoising_factor, prompt, negative_prompt, guidance, skip_img_spec=True))
-        # Save result to disk
-        for i, image_encoding in enumerate(images):
-            write_image_file(f"{BASENAME}-{i + 1}.png", image_encoding)
-        # TODO2: get list of files via infer()
-        file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))  
-        print(f"See {file_spec} for output image(s).")
+        # Run image generation (or text from image)
+        if use_img2txt:
+            description = infer_img2txt(b64_image_encoding)
+            print(description)
+        else:
+            images = (infer(prompt, negative_prompt, guidance, skip_img_spec=True) if (not use_img2img)
+                      else infer_img2img(b64_image_encoding, denoising_factor, prompt, negative_prompt, guidance, skip_img_spec=True))
+            # Save result to disk
+            for i, image_encoding in enumerate(images):
+                write_image_file(f"{BASENAME}-{i + 1}.png", image_encoding)
+            # TODO2: get list of files via infer()
+            file_spec = " ".join(gh.get_matching_files(f"{BASENAME}*png"))  
+            print(f"See {file_spec} for output image(s).")
     # Start restful server
     elif server_mode:
         debug.assertion(SD_URL)
