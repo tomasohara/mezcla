@@ -81,18 +81,23 @@ class TestIt(TestWrapper):
     def test_simple_generation(self):
         """Makes sure simple image generation works as expected"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
-        # ex: See sd-app-image-1.png
+        
+        # Run script to generate orange ball and get image filename.
+        # ex: "See sd-app-image-1.png for output image(s)."
         script_output = self.run_script(
             options="--batch --prompt 'orange ball' --negative 'green blue red yellow purple pink brown'",
             env_options=f"BASENAME='{self.temp_base}' LOW_MEMORY=1", uses_stdin=True)
         debug.trace_expr(5, script_output)
         self.do_assert(my_re.search(r"See (\S+.png) for output image\(s\).", script_output.strip()))
         image_file = my_re.group(1)
+
+        # Make sure expected dimension and  imagetype
         # ex: sd-app-image-3.png: PNG image data, 512 x 512, 8-bit/color RGB, non-interlaced
         file_info = gh.run(f"file {image_file}")
         debug.trace_expr(5, file_info)
         self.do_assert(my_re.search("PNG image data, 512 x 512, 8-bit/color RGB", file_info))
         # TODO2: orange in rgb-color profile for image
+        # TODO3: clip interrogator mentions "ball"
         return
 
     ## TODO?
