@@ -569,12 +569,14 @@ def encode_image_data(image_bytes):
     debug.trace(6, f"encode_image_data({gh.elide(image_bytes)}) => {gh.elide(result)}")
     return result
 
+
 def encode_image_file(filename):
     """Encode image in FILENAME via base64 string"""
     binary_data = system.read_binary_file(filename)
     result = encode_image_data(binary_data)
     debug.trace(6, f"encode_image_file({filename}) => {gh.elide(result)}")
     return result
+
 
 def encode_PIL_image(image):
     """Convert from PIL image into base64"""
@@ -588,6 +590,7 @@ def encode_PIL_image(image):
     debug.trace(6, f"encode_PIL_image({gh.elide(image)}) => {gh.elide(result)}")
     return result
 
+
 def decode_base64_image(image_encoding):
     """Decode IMAGE_ENCODING from base64 returning bytes"""
     # note: "encodes" UTF-8 text of base-64 encoding as bytes object for str, and then decodes into image bytes
@@ -597,6 +600,7 @@ def decode_base64_image(image_encoding):
 
 def create_image(image_data):           # TODO1: create_PIL_image
     """Create PIL image from IMAGE_DATA bytes"""
+    ## TODO4?: create_PIL_image
     result = PIL.Image.open(BytesIO(image_data)).convert("RGB")
     debug.trace(6, f"create_image({image_data!r}) => {result}")
     return result
