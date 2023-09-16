@@ -3,11 +3,6 @@
 # Test(s) for Hugging Face (HF) Stable Diffulion (SD) module: ../hf_stable_diffusion.py
 #
 # Notes:
-# - Fill out TODO's below. Use numbered tests to order (e.g., test_1_usage).
-# - TODO: If any of the setup/cleanup methods defined, make sure to invoke base
-#   (see examples below for setUp and tearDown).
-# - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
-#   option shows tracing output normally suppressed by  unittest_wrapper.py.
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_hf_stable_diffusion.py
 #
@@ -43,10 +38,7 @@ from mezcla.my_regex import my_re
 #    TestTemplate.script_module:  path to file
 import mezcla.examples.hf_stable_diffusion as THE_MODULE
 hfsd = THE_MODULE
-#
-# Note: sanity test for customization (TODO: remove if desired)
-if not my_re.search(__file__, r"\btemplate.py$"):
-    debug.assertion("mezcla.template" not in str(THE_MODULE))
+
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
@@ -54,11 +46,12 @@ class TestIt(TestWrapper):
     use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
-    def check_images(self, image_spec, label=None):
+    def check_images(self, image_specs, label=None):
         """Make sure each of the IMAGE_SPECS are valid and return PIL image"""
+        debug.trace(4, f"check_images({gh.elide(image_specs)}, {label})")
         label_spec = ("" if label is None else f"-{label}")
         images = []
-        for i, spec in enumerate(image_spec):
+        for i, spec in enumerate(image_specs):
             image = None
             try:
                 # Make sure valid image
@@ -69,7 +62,7 @@ class TestIt(TestWrapper):
                 self.do_assert(False, "Problem decoding image spec")
             if image:
                 images.append(image)
-            # Save to disk if debuggiung
+            # Save to disk if debugging
             if debug.debugging():
                 temp_image_file = f"{self.temp_file}{label_spec}-{i + 1}.png"
                 debug.trace_expr(4, temp_image_file)
@@ -79,7 +72,7 @@ class TestIt(TestWrapper):
     
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
     def test_simple_generation(self):
-        """Makes sure simple image generation works as expected"""
+        """Makes sure simple image generation (txt2img) works as expected"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
         
         # Run script to generate orange ball and get image filename.
