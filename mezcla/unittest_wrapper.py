@@ -342,7 +342,7 @@ class TestWrapper(unittest.TestCase):
                     statement = debug.read_line(filename, line_num).strip()
                     if "do_assert" in statement:
                         break
-                debug.trace(7, f"filename={filename!r}, context={context!r}")
+                debug.trace_expr(7, filename, line_num, context, prefix="do_assert: ")
             except:
                 system.print_exception_info("do_assert")
             debug.assertion(statement)
