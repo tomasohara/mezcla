@@ -55,25 +55,33 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 class TestIt2:
     """Class for API usage"""
 
-    @pytest.mark.skipif(not debug.debugging(1), reason="Must be debugging")
+    @pytest.mark.skipif(not __debug__, reason="Must be under __debug__")
     ## TODO:
     ## @pytest_fixture_wrapper
     ## @trap_exception
     def test_do_assert(self, capsys):
         """Ensure do_assert identifies failing line"""
         debug.trace(4, f"TestIt.test_do_assert({capsys}); self={self}")
-        #
+
+        # Get instance for test class
+        # TODO3: use TestWrapper() instead of SubTestIt()
         class SubTestIt(TestWrapper):
             """Embedded test suite"""
             pass
         #
-        sti = SubTestIt()        
+        sti = SubTestIt()
+
+        # Make assertion, ensuring debugging level set at minimum required (2)
         captured_trace = ""
         message = "Good math"
+        old_debug_level = debug.get_level()
         try:
+            debug.set_level(debug.TL.DEFAULT)
             sti.do_assert(2 + 2 == 5, message)    # Orwell's condition
         except AssertionError:
             pass
+        finally:
+            debug.set_level(old_debug_level)
         captured_trace = capsys.readouterr().err
         debug.trace_expr(5, captured_trace)
         
