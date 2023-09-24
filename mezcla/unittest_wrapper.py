@@ -332,7 +332,7 @@ class TestWrapper(unittest.TestCase):
         - Formatted similar to debug.assertion:
              Test assertion failed: <expr> (at <f><n>): <msg>
         """
-        if ((not condition) and debug.debugging()):
+        if ((not condition) and debug.debugging(debug.TL.DEFAULT)):
             statement = filename = line_num = None
             try:
                 # note: accounts for trap_exception and other decorators
@@ -363,6 +363,8 @@ class TestWrapper(unittest.TestCase):
                 # Format assertion error with optional qualification (i.e., user message)
                 debug.trace(1, f"Test assertion failed: {expr} (at {filename}:{line_num}){qual}")
                 debug.trace(5, f"\t{statement}")
+            else:
+                system.print_error("Warning: unexpected condition in do_assert")
         assert(condition)
     
     def tearDown(self):
