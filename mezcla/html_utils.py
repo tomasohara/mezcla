@@ -678,8 +678,8 @@ def format_checkbox(param_name, label=None, default_value=False, disabled=False,
     ## This requires use of fix_url_parameters to give preference to final value specified (see results.mako).
     ## See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox for hidden field tip.
     ## Also see https://stackoverflow.com/questions/155291/can-html-checkboxes-be-set-to-readonly
-    ## EX: format_checkbox("disable-touch") => '<label>Disable touch? <input id="disable-touch" type="checkbox" name="disable-touch" ></label>&nbsp;"'
-    ## EX: format_checkbox("disable-touch", disabled=True) => '<label>Disable touch? <input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>&nbsp;"'
+    ## EX: format_checkbox("disable-touch") => '<label>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" ></label>&nbsp;"'
+    ## EX: format_checkbox("disable-touch", disabled=True) => '<label>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>&nbsp;"'
     debug.trace_expr(7, param_name, label, default_value, disabled, prefix="in format_checkbox: ")
     checkbox_spec = get_url_param_checkbox_spec(param_name, default_value)
     disabled_spec = ("disabled" if disabled else "")
@@ -692,7 +692,7 @@ def format_checkbox(param_name, label=None, default_value=False, disabled=False,
     ## TODO: use hidden only if (default_value in ["1", "on", True])???
     result = f"<input type='hidden' name='{param_name}' value='off'>"
     ## OLD: result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {status_spec}></label>&nbsp;"
-    result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
+    result += f"<label>{label}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
 
