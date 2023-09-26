@@ -74,6 +74,7 @@ class TestIt2:
         # Make assertion, ensuring debugging level set at minimum required (2)
         captured_trace = ""
         message = "Good math"
+        # TODO3: use pytest patch support (monkey?)
         old_debug_level = debug.get_level()
         try:
             debug.set_level(debug.TL.DEFAULT)
