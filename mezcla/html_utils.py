@@ -455,6 +455,8 @@ def old_download_web_document(url, filename=None, download_dir=None, meta_hash=N
         url = "http://" + url
     if download_dir is None:
         download_dir = "downloads"
+    if (not system.file_exists(download_dir)):
+        gh.full_mkdir(download_dir)
     local_filename = gh.form_path(download_dir, filename)
     headers = ""
     status_code = DEFAULT_STATUS_CODE
