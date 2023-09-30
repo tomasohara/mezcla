@@ -27,7 +27,16 @@ import mezcla.bing_search as THE_MODULE
 class TestBingSearch:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_data_file(self):
+        """Makes sure TODO works as expected"""
+        debug.trace(4, f"TestIt.test_data_file(); self={self}")
+        data = ["TODO1", "TODO2"]
+        system.write_lines(self.temp_file, data)
+        ## TODO: add use_stdin=True to following if no file argument
+        output = self.run_script(options="", data_file=self.temp_file)
+        assert my_re.search(r"TODO-pattern", output.strip())
+        return
 
 
 if __name__ == '__main__':
