@@ -265,9 +265,9 @@ class TestWrapper(unittest.TestCase):
         - issues warning if script invocation leads to error
         - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)"""
         debug.trace_fmtd(trace_level + 1,
-                         "TestWrapper.run_script({env}, {opts}, {df}, {lf}, {of}",
-                         opts=options, df=data_file, lf=log_file, 
-                         of=out_file, env=env_options)
+                         "TestWrapper.run_script(opts={opts}, data={df}, log={lf}, lvl={lvl}, out={of}, env={env}, stdin={stdin}, post={post}, back={back})",
+                         opts=options, df=data_file, lf=log_file, lvl=trace_level, of=out_file,
+                         env=env_options, stdin=uses_stdin, post=post_options, back=background)
         if options is None:
             options = ""
         if env_options is None:
@@ -315,8 +315,7 @@ class TestWrapper(unittest.TestCase):
         error_found = my_re.search(r"(\S+error:)|(no module)|(command not found)",
                                    log_contents.lower())
         debug.assertion(not error_found)
-        debug.trace_fmt(trace_level + 1, "log contents: {{\n{log}\n}}",
-                        log=gh.indent_lines(log_contents))
+        debug.trace_expr(trace_level + 1, log_contents, max_len=2048)
 
         # Do sanity check for python exceptions
         traceback_found = my_re.search("Traceback.*most recent call", log_contents)
