@@ -333,7 +333,7 @@ def disable_subcommand_tracing():
     default_subtrace_level = 0
 
 
-def run(command, trace_level=4, subtrace_level=None, just_issue=False, output=False, **namespace):
+def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=False, **namespace):
     """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
    Notes:
    - The result includes stderr, so direct if not desired (see issue):
@@ -357,6 +357,9 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, output=Fa
     if subtrace_level != trace_level:
         debug_level_env = os.getenv("DEBUG_LEVEL")
         setenv("DEBUG_LEVEL", str(subtrace_level))
+    in_just_issue = just_issue
+    if just_issue is None:
+        just_issue = False
     save_temp_base = TEMP_BASE
     if TEMP_BASE:
          setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
@@ -371,18 +374,22 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, output=Fa
     debug_print("issuing: %s" % command_line, trace_level)
     # Run the command
     # TODO: check for errors (e.g., "sh: filter_file.py: not found"); make wait explicit
-    wait = not command.endswith("&")
-    debug.assertion(wait or not just_issue)
+    in_background = command.strip().endswith("&")
+    foreground_wait = not in_background
+    ## OLD: debug.assertion(wait or not just_issue)
+    debug.trace_expr(5, in_background, in_just_issue)
+    debug.assertion(not (in_background and (in_just_issue == False)))
     # Note: Unix supports the '>|' pipe operator (i.e., output with overwrite); but,
     # it is not supported under Windows. To avoid unexpected porting issues, clients
     # should replace 'run("... >| f")' usages with 'delete_file(f); run(...)'.
     # note: TestWrapper.setUp handles the deletion automatically
     debug.assertion(">|" not in command_line)
     result = None
-    ## TODO: if (just_issue or not wait): ... else: ...
-    ## OLD: result = getoutput(command_line) if wait else str(os.system(command_line))
-    wait_for_command = (not wait or not just_issue)
-    debug.trace_expr(5, wait, just_issue, wait_for_command)
+    ## TODO: if (just_issue or not foreground_wait): ... else: ...
+    ## OLD: result = getoutput(command_line) if foreground_wait else str(os.system(command_line))
+    ## OLD: wait_for_command = (not foreground_wait or not just_issue)
+    wait_for_command = (foreground_wait and not just_issue)
+    debug.trace_expr(5, foreground_wait, just_issue, wait_for_command)
     result = getoutput(command_line) if wait_for_command else str(os.system(command_line))
     if output:
         print(result)
