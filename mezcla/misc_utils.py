@@ -16,6 +16,7 @@ import math
 import random
 import re
 import sys
+import time
 
 # Installed packages
 import more_itertools
@@ -317,6 +318,15 @@ def random_int(min=None, max=None):
     result = random.randint(min, max)
     debug.trace(6, f"random_int() => {result}")
     return result
+
+def time_function(func, *args, **kwargs):
+    """Time invocation of FUNC, optionally supplied with ARGS and KWARGS"""
+    ## EX: is_close(time_function(time.sleep, 5), 5000, epsilon=1)
+    start = time.time()
+    func(*args, **kwargs)
+    end = time.time()
+    ms = round(1000.0 * (end - start), 3)
+    return ms
 
 init()
 
