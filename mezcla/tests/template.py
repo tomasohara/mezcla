@@ -32,9 +32,10 @@ from mezcla import system
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                  global module object
 #    TestTemplate.script_module:  path to file
-## TODO (vvv): change template to new name; *** use commented out template below ***
-THE_MODULE = None           ## TODO: remove this line (n.b., used just to avoid syntax problems with <module> in following)
-## TODO (^^^): import mezcla.<module> as THE_MODULE
+## TODO (vvv): insert new module name in commented out template teo lines below
+THE_MODULE = None         ## TODO: remove this line: avoids <module> syntax error in next)
+## import mezcla.<module> as THE_MODULE   ## TODO: uncomment this line (<<<)
+## TODO (^^^): use modified line above
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(__file__, r"\btemplate.py$"):
@@ -48,6 +49,7 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 ## FUBAR = system.getenv_bool("FUBAR", False,
 ##                            description="Fouled Up Beyond All Recognition processing")
 
+#------------------------------------------------------------------------
 
 class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
