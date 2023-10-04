@@ -27,6 +27,7 @@ USE_INTERFACE=1 {script} -
 # Local modules
 from mezcla import debug
 from mezcla.main import Main
+from mezcla import misc_utils
 from mezcla import system
 from mezcla import glue_helpers as gh
 
@@ -55,7 +56,10 @@ MT_TASK = f"translation_{SOURCE_LANG}_to_{TARGET_LANG}"
 DEFAULT_MODEL = f"Helsinki-NLP/opus-mt-{SOURCE_LANG}-{TARGET_LANG}"
 MT_MODEL = system.getenv_text("MT_MODEL", DEFAULT_MODEL,
                               "Hugging Face model for MT")
+SHOW_ELAPSED = system.getenv_bool("SHOW_ELAPSED", False,
+                                  "Show elapsed time")
 TEXT_ARG = "text"
+## TODO: ELAPSED_ARG = "elapsed-time"
 
 #-------------------------------------------------------------------------------
 
@@ -78,6 +82,7 @@ def main():
     ## OLD: dummy_app = Main(description=__doc__, skip_input=False, manual_input=False)
     dummy_app = Main(description=__doc__.format(script=__file__),
                      skip_input=False, manual_input=True,
+                     ## TODO: bool_options=[(ELAPSED_ARG, "Show elapsed time")],
                      text_options=[(TEXT_ARG, "Text to translate")])
     debug.trace_object(5, dummy_app)
     debug.assertion(dummy_app.parsed_args)
@@ -126,4 +131,7 @@ def main():
 #-------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    main()
+    ## OLD: main()
+    elapsed = misc_utils.time_function(main)
+    if SHOW_ELAPSED:
+       print(f"Elapsed time: {system.round_as_str(elapsed)}ms")
