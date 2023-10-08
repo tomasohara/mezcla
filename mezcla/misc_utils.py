@@ -24,6 +24,7 @@ import more_itertools
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla import text_utils
 
@@ -304,20 +305,92 @@ def get_date_ddmmmyy(date=None):
     debug.trace(6, f"get_date_ddmmmyy({in_date}) => {result}")
     return result
 
+
+def parse_timestamp(ts: str, truncate=None, utc=None) -> datetime.datetime:
+    """Parse timestamp in ISO 8601 format (e.g., 2023-10-06T04:03:27.1271706Z)
+    Note: The timestamp is truncated to micrososeconds unless TRUNCATE is false; and, it is optionally converted to UTC
+    """
+    # EX: parse_timestamp("2023-10-06T04:03:27.1271706Z") => datetime.datetime(2023, 10, 6, 4, 3, 27, 127170, tzinfo=datetime.timezone.utc)
+    # Note: See https://stackoverflow.com/questions/6207365/working-with-high-precision-timestamps-in-python
+    # Code based on ChatGPT suggestion
+
+    # Truncate to microsecond precision
+    in_ts = ts
+    if truncate is None:
+        truncate = (len(ts.split(".")[-1]) > 7)
+    if truncate:
+        ts = ts[:26] + 'Z'
+
+    # Convert result and change to UTC if desired
+    result = datetime.datetime.strptime(ts, '%Y-%m-%dT%H:%M:%S.%fZ')
+    if utc:
+        result = result.replace(tzinfo=datetime.timezone.utc)
+    debug.trace(7, f"parse_timestamp({in_ts}, [{truncate}]) =>  {result}")
+    
+    return result
+
+
+def add_timestamp_diff(in_filename, out_filename, prefix=False):
+    """Add timestamp difference to each occurrence from IN_FILENAME based on previous occurrence, saving to OUT_FILENAME
+    If PREFIX, then the difference is added to start of line, otherwise after timestamp
+    """
+    # TODO3: isolate as separate utility?
+    new_lines = []
+    last_time = None
+    for line in system.read_lines(in_filename):
+        # Check for ISO 8601 timestamp (e.g., 2023-10-06T04:02:36.5228822Z)
+        new_line = line
+        if my_re.search(r"(\d{4}-\d{1,2}-\d{1,2}T\d{2}:\d{2}:\d{2}\.\d{6,}Z)", line):
+            timestamp = my_re.group(1)
+            try:
+                new_time = parse_timestamp(timestamp)
+            except:
+                new_time = last_time
+
+            # Compute delta in microsseconds
+            time_diff = "0"
+            microsec = "\u00B5" + "s"        # U+00B5 (µ)
+            if last_time:
+                time_diff = "+" + str((new_time - last_time).total_seconds() * 1e6) + microsec
+            if prefix:
+                new_line = time_diff + "\t" + line
+            else:
+                new_line = line.replace(timestamp, f"{timestamp} [{time_diff}]")
+            last_time = new_time
+        new_lines.append(new_line)
+
+    # Output revised lines
+    system.write_lines(out_filename, new_lines)
+
+
+def random_int(min_value=None, max_value=None):
+    """Returns random integer in range [MIN_VALUE, MAX_VALUE]
+    Note: defaults to [0, sys.maxsize]
+    """
+    if min_value is None:
+        min_value = 0
+    if max_value is None:
+        max_value = sys.maxsize
+    result = random.randint(min_value, max_value)
+    debug.trace(6, f"random_int() => {result}")
+    return result
+
+
+def time_function(func, *args, **kwargs):
+    """Time invocation of FUNC, optionally supplied with ARGS and KWARGS"""
+    ## EX: is_close(time_function(time.sleep, 5), 5000, epsilon=1)
+    start = time.time()
+    func(*args, **kwargs)
+    end = time.time()
+    ms = round(1000.0 * (end - start), 3)
+    return ms
+
+
 def init():
     """MOdule initialization"""
     if RANDOM_SEED:
         random.seed(RANDOM_SEED)
 
-def random_int(min=None, max=None):
-    """Returns random integer in range [MIN, MAX]"""
-    if min is None:
-        min = sys.minint
-    if max is None:
-        max = sys.minint
-    result = random.randint(min, max)
-    debug.trace(6, f"random_int() => {result}")
-    return result
 
 def time_function(func, *args, **kwargs):
     """Time invocation of FUNC, optionally supplied with ARGS and KWARGS"""
