@@ -25,8 +25,8 @@ Sample usage:
 # TODO: def mezcla_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
 from mezcla import debug
 from mezcla.main import Main
-from mezcla import system
 from mezcla.my_regex import my_re
+from mezcla import system
 ## TODO:
 ## from mezcla import glue_helpers as gh
 ## from mezcla import data_utils as du
@@ -106,10 +106,11 @@ class Script(Main):
     ##     debug.trace_fmtd(5, "Script.run_main_step(): self={s}", s=self)
     ##
 
-    ## TODO: def wrap_up(self):
-    ##           """Do final processing"""
-    ##           debug.trace(6, f"Script.wrap_up(); self={self}")
-    ##           # ...
+    ## TODO:
+    ## def wrap_up(self):
+    ##     """Do final processing"""
+    ##     debug.trace(6, f"Script.wrap_up(); self={self}")
+    ##     # ...
 
 def main():
     """Entry point"""
