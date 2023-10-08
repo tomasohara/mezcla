@@ -125,6 +125,8 @@ NEGATIVE_BOOL_ARGS = system.getenv_bool("NEGATIVE_BOOL_ARGS", False,
                                         "Add negation option for each boolean option")
 SHORT_OPTIONS = system.getenv_bool("SHORT_OPTIONS", False,
                                    "Automatically derive short options")
+ENV_OPTION_PREFIX = system.getenv_value("ENV_OPTION_PREFIX", None,
+                                        "Environment variable prefix to check for default")
 ## TEST
 ## TEMP_BASE = system.getenv_value("TEMP_BASE", None,
 ##                                 "Override for temporary file basename")
@@ -262,6 +264,7 @@ class Main(object):
             if system.is_regular_file(self.temp_base):
                 gh.delete_file(self.temp_base)
             gh.run("mkdir -p {dir}", dir=self.temp_base)
+            ## TODO3: main-temp.txt???
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
             default_temp_file = self.temp_base
@@ -437,6 +440,11 @@ class Main(object):
         value = self.parsed_args.get(opt_label)
         # Override null value with default
         if value is None:
+            if ((default is None) and ENV_OPTION_PREFIX):
+                env_var = f"{ENV_OPTION_PREFIX}_{opt_label}".upper()
+                default = system.getenv(env_var)
+                if default:
+                    debug.trace(4, f"FYI: Using option {label} from env ({opt_label}: {default!r})")
             value = default
             under_label = label.replace("-", "_")
             # Do sanity check for positional argument being checked by mistake
@@ -599,7 +607,7 @@ class Main(object):
 
         # Parse the command line and get result
         tpo.debug_format("parser={p}", 6, p=parser)
-        debug.trace_object(7, parser, max_depth=2)
+        debug.trace_object(8, parser, max_depth=2)
         self.parser = parser
         # note: not trapped to allow for early exit
         self.parsed_args = vars(parser.parse_args(runtime_args))
