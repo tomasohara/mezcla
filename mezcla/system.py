@@ -704,7 +704,6 @@ def write_file(filename, text, skip_newline=False, append=False, binary=False):
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
     # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
-    ## OLD: debug.assertion(isinstance(text, str))
     text_type = (bytes if binary else str)
     debug.assertion(isinstance(text, text_type))
     try:
@@ -715,7 +714,6 @@ def write_file(filename, text, skip_newline=False, append=False, binary=False):
         enc = (None if binary else "UTF-8")
         debug.trace_expr(5, mode, enc)
         with open(filename, encoding=enc, mode=mode) as f:
-            ## OLD: f.write(to_utf8(text))
             f.write(text)
             if not (binary or text.endswith("\n")):
                 if not skip_newline:
