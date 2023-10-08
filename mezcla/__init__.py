@@ -56,7 +56,7 @@ from mezcla import system
 TL = debug.TL
 
 # Expose commonly used modules
-__all__ = ["debug", "gh", "my_re", "system", "TL", __VERSION__]
+__all__ = ["debug", "gh", "my_re", "system", "TL", "__VERSION__"]
 
 ## OLD:
 ## if __name__ == '__main__':
