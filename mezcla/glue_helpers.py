@@ -64,7 +64,8 @@ NTF_ARGS = {'prefix': TEMP_PREFIX,
             }
 TEMP_BASE = system.getenv_value("TEMP_BASE", None,
                                 "Override for temporary file basename")
-TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and system.is_directory(TEMP_BASE))
+TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and
+                         (system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")))
 USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
                                        "Whether TEMP_BASE should be a dir instead of prefix")
 # note: see init() for initialization
@@ -810,11 +811,13 @@ else:
         return
 
 def init():
-    """Work around for Pythion quirk"""
+    """Work around for Python quirk"""
     # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
     debug.trace(5, "gh.init()")
     global TEMP_FILE
     temp_filename = "temp-file.list"
+    if USE_TEMP_BASE_DIR and TEMP_BASE:
+        full_mkdir(TEMP_BASE)
     temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
     TEMP_FILE = system.getenv_value("TEMP_FILE", temp_file_default,
                                     "Override for temporary filename")
