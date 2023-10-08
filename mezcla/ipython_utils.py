@@ -8,17 +8,21 @@
 # - To faciliate importing functions and variables for testing purposes (e.g., EX tests),
 #   use import_module_globals as illustrated in second example below.
 #
-# Simple usage:
-#    from mezcla.ipython_utils import *
-#
-# Advanced usage:
-#    reload(mezcla.ipython_utils); import_module = mezcla.ipython_utils.import_module_globals
-#    import_module_globals("mezcla.misc_utils", globals_dict=builtins.globals());
-#    (TYPICAL_EPSILON, VALUE_EPSILON)
-#
 
 """
-Adhoc stuff for ipython
+Adhoc stuff for ipython.
+
+Simple usage:
+    from mezcla.ipython_utils import *
+
+Advanced usage:
+    import mezcla.ipython_utils
+    reload(mezcla.ipython_utils)
+    import_module_globals = mezcla.ipython_utils.import_module_globals
+    import_module_globals("mezcla.misc_utils", globals_dict=builtins.globals());
+    (TYPICAL_EPSILON, VALUE_EPSILON)
+    >>>
+    (1e-06, 0.001)
 """
 
 # pylint: disable=unused-import
@@ -124,7 +128,8 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
 
         # Import the value
         if include:
-            import_desc = (f"importing value of {module_name}'s {var}")
+            ## OLD: import_desc = (f"importing value of {module_name}'s {var}")
+            import_desc = (f"importing {var} from {module_name}")
             debug.trace(5, import_desc)
             try:
                 globals_dict[var] = eval(f"{module_name}.{var}")
