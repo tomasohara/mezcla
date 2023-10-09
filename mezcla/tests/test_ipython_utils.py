@@ -45,6 +45,7 @@ class TestIt(TestWrapper):
         THE_MODULE.import_module_globals(self.script_module, globals_dict=globals_dict)
         assert ("TL" in globals_dict)
         #
+        # note: following fails because the module argument needs to be text
         globals_dict = {}
         THE_MODULE.import_module_globals(THE_MODULE, globals_dict=globals_dict, ignore_errors=True)
         assert (not globals_dict)
