@@ -714,9 +714,11 @@ def format_url_param(name, default=None):
 # EX: format_url_param("r", "R") => "R"
 
 
-def format_input_field(param_name, label=None, default_value=None, max_len=None, disabled=None, style=None, misc_attr=None):
+def format_input_field(param_name, label=None, default_value=None, max_len=None, disabled=None, style=None, misc_attr=None, tooltip=None):
     """Returns HTML specification for input field, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all)"""
+    # TODO2: doscument tooltip usage & add option for css classes involved (better if done via class-based interface).
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
+    # For tooltip support, see https://stackoverflow.com/questions/65854934/is-a-css-only-inline-tooltip-with-html-content-inside-eg-images-possible.
     debug.trace_expr(7, param_name, label, default_value, max_len, disabled, prefix="in format_input_field: ")
     if (label is None):
         label = param_name.replace("-", " ").capitalize()
@@ -728,7 +730,11 @@ def format_input_field(param_name, label=None, default_value=None, max_len=None,
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
-    result = f'<label>{label}&nbsp;<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {max_len_spec} {disabled_spec} {misc_spec}></label>'
+    tooltip_start_spec = tooltip_end_spec = ""
+    if tooltip:
+        tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
+        tooltip_end_spec = "</span>"
+    result = f'<label>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {max_len_spec} {disabled_spec} {misc_spec}></label>'
     debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
     return result
 
