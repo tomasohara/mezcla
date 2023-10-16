@@ -76,13 +76,15 @@ TODO_MODULE = "TODO MODULE"
 THIS_PACKAGE = getattr(mezcla.debug, "__package__", None)
 debug.assertion(THIS_PACKAGE == "mezcla")
 
-def get_temp_dir(keep=False):
+
+def get_temp_dir(keep=None):
     """Get temporary directory, omitting later deletion if KEEP"""
+    # NOTE: Unused function
     if keep is None:
         keep = KEEP_TEMP
     dir_path = tempfile.NamedTemporaryFile(delete=(not keep)).name
     gh.full_mkdir(dir_path)
-    debug.trace(5, "get_temp_dir() => {dir_path}")
+    debug.trace(5, f"get_temp_dir() => {dir_path}")
     return dir_path
 
 
@@ -204,7 +206,7 @@ class TestWrapper(unittest.TestCase):
     @staticmethod
     def get_testing_module_name(test_filename, module_object=None):
         """Derive the name of the module being tested from TEST_FILENAME and MODULE_OBJECT
-        Note: used as follows (see tests/test_template.py):
+        Note: used as follows (see tests/template.py):
             script_module = TestWrapper.get_testing_module_name(__file__)
         """
         # Note: Used to resolve module name given THE_MODULE (see template).
@@ -290,24 +292,28 @@ class TestWrapper(unittest.TestCase):
 
         # Set converage script path and command spec
         coverage_spec = ''
+        script_module = self.script_module
         if self.check_coverage:
             debug.assertion(self.script_file)
-            self.script_module = self.script_file
+            ## BAD: self.script_module = self.script_file
+            script_module = self.script_file
             coverage_spec = 'coverage run'
-        else:
-            debug.assertion(not self.script_module.endswith(".py"))
+        ## OLD:
+        ## else:
+        ##     debug.assertion(not self.script_module.endswith(".py"))
+        debug.assertion(not script_module.endswith(".py"))
         amp_spec = "&" if background else ""
 
         # Run the command
         gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path}  {post} 1> {out} 2> {log} {amp_spec}",
-                 env=env_options, cov_spec=coverage_spec, module=self.script_module,
+                 env=env_options, cov_spec=coverage_spec, module=script_module,
                  opts=options, path=data_path, out=out_file, log=log_file, post=post_options, amp_spec=amp_spec)
         output = system.read_file(out_file)
         # note; trailing newline removed as with shell output
         if output.endswith("\n"):
             output = output[:-1]
         debug.trace_fmtd(trace_level, "output: {{\n{out}\n}}",
-                         out=gh.indent_lines(output))
+                         out=gh.indent_lines(output), max_len=2048)
 
         # Make sure no python or bash errors. For example,
         #   "SyntaxError: invalid syntax" and "bash: python: command not found"
@@ -331,6 +337,7 @@ class TestWrapper(unittest.TestCase):
         - Formatted similar to debug.assertion:
              Test assertion failed: <expr> (at <f><n>): <msg>
         """
+        debug.trace(7, f"do_assert({condition}, msg={message})")
         if ((not condition) and debug.debugging(debug.TL.DEFAULT)):
             statement = filename = line_num = None
             try:
@@ -364,7 +371,15 @@ class TestWrapper(unittest.TestCase):
                 debug.trace(5, f"\t{statement}")
             else:
                 system.print_error("Warning: unexpected condition in do_assert")
-        assert(condition)
+        assert condition, message
+    #
+    ## TODO:
+    ## assert = do_assert
+    ##
+    ## TEST:
+    ## def assert(self, *args, **kwargs):
+    ##     """Wrapper around do_assert (q.v.)"""
+    ##     self.do_assert(*args, **kwargs)
     
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
@@ -385,7 +400,9 @@ class TestWrapper(unittest.TestCase):
                 gh.run("rm -vf {base}*", base=cls.temp_base)
         super().tearDownClass()
         return
-    
+
+## TODO: TestWrapper.assert = TestWrapper.do_assert
+
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
