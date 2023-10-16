@@ -23,6 +23,7 @@ import pytest
 from mezcla import debug
 from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -55,24 +56,28 @@ class TestMain(TestWrapper):
         class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
+            skip_args = True
             ## TODO: rename as TestMain?
 
         # note: format is ("option", "description", "default"), or just "option"
         app = Test(text_options=[("name", "Full name", "John Doe")],
                    boolean_options=[("verbose", "testing verbose option", True)],
+                   runtime_args=[],
                    )
         #
-        assert app.parsed_args.get("name") == "John Doe"
-        assert app.parsed_args.get("verbose")
+        self.do_assert(app.parsed_args.get("name") == "John Doe")
+        self.do_assert(app.parsed_args.get("verbose"))
+        debug.trace(5, f"out test_script_options")
 
     @pytest.mark.xfail
+    @trap_exception
     def test_script_without_input(self):
         """Makes sure script class without input doesn't process input and that
         the main step gets invoked"""
         debug.trace(4, f"in test_script_without_input(); self={self}")
-
-        # This avoids flaky stderr due to other tests
-        tpo.restore_stderr()
+        ## OLD
+        ## # This avoids flaky stderr due to other tests
+        ## tpo.restore_stderr()
 
         # Create scriptlet checking for input and processing main step
         # TODO: rework with external script as argparse exits upon failure
@@ -82,7 +87,7 @@ class TestMain(TestWrapper):
 
             def setup(self):
                 """Post-argument parsing processing: just displays context"""
-                tpo.debug_format("in setup(): self={s}", 5, s=self)
+                tpo.debug_format("in Test.setup(): self={s}", 5, s=self)
                 TestMain.process_line_count = 0
                 tpo.trace_current_context(label="Test.setup", 
                                           level=tpo.QUITE_DETAILED)
@@ -103,36 +108,41 @@ class TestMain(TestWrapper):
                 TestMain.main_step_invoked = True
 
         # Test scriptlet with test script as input w/ and w/o input enabled
+        debug.trace_expr(6, "app1")
         TestMain.input_processed = None
         app1 = Test(skip_input=False, runtime_args=[__file__])
         try:
             app1.run()
         except:
-            tpo.print_stderr("Exception during run method: {exc}",
+            tpo.print_stderr("Exception during app1.run: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        assert TestMain.input_processed
+        self.do_assert(TestMain.input_processed)
         #
         TestMain.input_processed = None
+        debug.trace_expr(6, "app2")
         app2 = Test(skip_input=True, runtime_args=[__file__])
         try:
             app2.run()
         except:
-            tpo.print_stderr("Exception during run method: {exc}",
+            tpo.print_stderr("Exception during app2.run: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        assert not TestMain.input_processed
+        self.do_assert(not TestMain.input_processed)
 
         # Test scriptlet w/ input disabled and wihout arguments
         # note: auto_help disabled so that no arguments needed
         TestMain.main_step_invoked = None
+        debug.trace_expr(6, "app3")
         app3 = Test(skip_input=True, manual_input=True, auto_help=False, runtime_args=[])
         try:
             app3.run()
         except:
-            tpo.print_stderr("Exception during run method: {exc}",
+            tpo.print_stderr("Exception during app3.run: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
-        assert TestMain.main_step_invoked
+        self.do_assert(TestMain.main_step_invoked)
+        debug.trace(5, f"out test_script_without_input")
 
     @pytest.mark.xfail
+    @trap_exception
     def test_perl_arg(self):
         """Make sure perl-style arg can be parsed"""
         # TODO: create generic app-creation helper
@@ -140,22 +150,24 @@ class TestMain(TestWrapper):
         class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
+            skip_args = True
 
         # Test with and without Perl support
         app = Test(boolean_options=[("verbose", "testing verbose option")],
-                   perl_switch_parsing=True)
+                   runtime_args=[], perl_switch_parsing=True)
         #
-        assert app.parsed_args.get("verbose") == 0
+        self.do_assert(app.parsed_args.get("verbose") == 0)
         #
         app = Test(boolean_options=[("verbose", "testing verbose option")],
-                   perl_switch_parsing=False)
+                   runtime_args=[], perl_switch_parsing=False)
         # NOTE: this ensures that is None and not 0
-        assert app.parsed_args.get("verbose") is None
+        self.do_assert(app.parsed_args.get("verbose") is None)
+        debug.trace(5, f"out test_perl_arg")
 
 
 class TestMain2:
     """Another class for testcase definition
-    Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
+    Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper (e.g., capsys)"""
 
     def test_input_modes(self, capsys, monkeypatch):
         """Make sure input processed OK with respect to line/para/file mode"""
@@ -169,7 +181,7 @@ class TestMain2:
         main.run()
         captured = capsys.readouterr()
         ## TODO: assert(TestMain.process_line_count == num_lines)
-        assert num_lines == len(captured.out.split("\n"))
+        assert(num_lines == len(captured.out.split("\n")))
         debug.trace_expr(5, main, num_lines)
         # paragraph input
         monkeypatch.setattr('sys.stdin', io.StringIO(contents))
@@ -187,6 +199,7 @@ class TestMain2:
         ## TODO: assert(TestMain.process_line_count == 1)
         assert(num_lines == len(captured.out.split("\n")))
         debug.trace_expr(5, main, num_lines, pre_captured)
+        debug.trace(5, f"out test_input_modes")
 
     def test_missing_newline(self, capsys, monkeypatch):
         """Make sure file with missing newline at end processed OK"""
@@ -199,10 +212,11 @@ class TestMain2:
         main.run()
         captured = capsys.readouterr()
         # note: 1 extra line ('') and 1 extra character (final newline)
-        assert (1 + num_lines) == len(captured.out.split("\n"))
-        assert (1 + len(contents)) == len(captured.out)
-        ## TODO: assert TestMain.process_line_count == 3
+        assert((1 + num_lines) == len(captured.out.split("\n")))
+        assert((1 + len(contents)) == len(captured.out))
+        ## TODO: self.do_assert(TestMain.process_line_count == 3)
         debug.trace_expr(5, main, num_lines)
+        debug.trace(5, f"out test_missing_newline")
 
     def test_has_parsed_option_hack(self):
         """Make sure (temporarily hacked) has_parsed_option differs from has_parsed_option_old"""
@@ -211,8 +225,9 @@ class TestMain2:
         missing_arg = "missing"
         main = THE_MODULE.Main(skip_args=True, auto_help=False)
         main.parsed_args = {ok_arg: True}
-        assert main.has_parsed_option_old(ok_arg) == main.has_parsed_option(ok_arg)
-        assert main.has_parsed_option_old(missing_arg) != main.has_parsed_option(missing_arg)
+        assert(main.has_parsed_option_old(ok_arg) == main.has_parsed_option(ok_arg))
+        assert(main.has_parsed_option_old(missing_arg) != main.has_parsed_option(missing_arg))
+        debug.trace(5, f"out test_has_parsed_option_hack")
 
 #------------------------------------------------------------------------
 
