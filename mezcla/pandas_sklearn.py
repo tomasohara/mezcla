@@ -393,6 +393,7 @@ def main():
         debug.trace_fmt(4, 'misc_xgb_params={m}', m=misc_xgb_params)
         models.append((XGB_CLASSIFIER, xgb.XGBClassifier(**misc_xgb_params)))
     if INCLUDE_KERAS:
+        # pylint: disable=unnecessary-lambda-assignment
         create_model_fn = lambda: create_keras_model(num_input_features=num_features,
                                                      num_classes=num_classes)
         models.append((KERAS_CLASSIFIER,
