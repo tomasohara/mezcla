@@ -36,7 +36,7 @@
 # - Add option to invoke extcolors automatically.
 #
 
-"""Convert RGB tuples into color names
+r"""Convert RGB tuples into color names
 
 Sample usage:
    {script} --hex3 <<<"#eee"
