@@ -3,6 +3,24 @@
 #
 # Test(s) for ../convert_emoticons.py
 #
+# Sample input and output (see script):
+#
+# - input:
+#
+#   # Example Input:
+#   Nothing to do 😴
+#
+#   # Example output:
+#   Nothing to do [sleeping face]
+#
+# - output:
+#
+#   # Example Input:
+#   Nothing to do [sleeping face]
+#
+#   # Example output:
+#   Nothing to do [sleeping face]
+#
 
 """Tests for convert_emoticons module"""
 
@@ -14,6 +32,7 @@ import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
@@ -36,50 +55,61 @@ class TestIt(TestWrapper):
     script_file = my_re.sub(rf"{D}tests{D}test_", f"{D}", __file__)
 
     @pytest.mark.xfail
+    @trap_exception
     def test_over_script(self):
         """Makes sure works as expected over script itself"""
         debug.trace(4, f"TestIt.test_over_script(); self={self}")
         output = self.run_script(options="", data_file=self.script_file)
         # the example usage should have input emoticon changed to match output
-        assert not my_re.search(r"(\[sleeping face\]).*\1", script_contents)
-        assert my_re.search(r"(\[sleeping face\]).*\1", output)
+        script_contents = system.read_file(self.script_file)
+        debug.trace_expr(6, script_contents)
+        # ex (see above): "# Input:\n#   Nothing to do 😴\n# Output:\n#   Nothing to do [sleeping face]"
+        self.do_assert(not my_re.search(r"(\[sleeping face\]).*\1", script_contents, flags=my_re.DOTALL))
+        # ex (see above): "# Input:\n#   Nothing to do [sleeping face]\n#\n# Output:\n#   Nothing to do [sleeping face]"
+        self.do_assert(my_re.search(r"(\[sleeping face\]).*\1", output, flags=my_re.DOTALL))
 
-        # Make sure no emoticon byte sequences in UTF-8 sequences for script and output
-        # note: uses broader UTF8-based tests than Unicdoe character DB used in script
+        # Make sure no emoticon byte sequences in UTF-8 sequences for output, although in script.
+        # Note: Uses broader UTF8-based tests than Unicode character DB used in script.
+        # Also, regex is done over byte sequences to account for misformed input.
         loose_emoticon_regex = br"[\xE0-\xFF][\x80-\xFF]{1,3}"
-        assert (not my_re.search(loose_emoticon_regex, script_contents.encode()))
-        assert (my_re.search(loose_emoticon_regex, output.encode()))
+        # ex: "# EX: convert_emoticons("天気") => "天気"   # Japanese for weather"
+        self.do_assert(my_re.search(loose_emoticon_regex, script_contents.encode()))
+        output_san_Japanese_example = my_re.sub(r"^.*Japanese.*$", "", output, flags=my_re.MULTILINE)
+        # ex: [same as above because CJK preserved]
+        self.do_assert(not my_re.search(loose_emoticon_regex, output_san_Japanese_example.encode()))
         return
 
+    @trap_exception
     def test_over_script_sans_comments(self):
         """Makes sure works as expected over script itself"""
         debug.trace(4, f"TestIt.test_over_script_sans_comments(); self={self}")
-        D = system.path_separator()
 
         # Strip comments from script and run conversion over it
         script_contents = system.read_file(__file__)
-        script_contents = my_re.sub("#.*\n", "\n", script_contents)
-        system.write_file(self.temp_file, script_contents)
+        script_contents_sans_comments = my_re.sub("#.*\n", "\n", script_contents)
+        debug.trace_expr(6, script_contents_sans_comments)
+        system.write_file(self.temp_file, script_contents_sans_comments)
         output = self.run_script(options="", data_file=self.temp_file)
 
         # There should be no extended ascii bytes
-        assert not my_re.search(b"[\x80-\xFF]", script_contents.encode())
-        assert not my_re.search(b"[\x80-\xFF]", output.encode())
+        self.do_assert(not my_re.search(b"[\x80-\xFF]", script_contents_sans_comments.encode()))
+        self.do_assert(not my_re.search(b"[\x80-\xFF]", output.encode()))
         return
 
-class TestIt2:
-    """Another class for testcase definition
-    Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
+    ## OLD:
+    ## class TestIt2:
+    ##     """Another class for testcase definition
+    ##     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper    ## """
     
     def test_misc(self):
         """Test direct calls for conversion"""
         debug.trace(4, f"TestIt2.test_whatever(); self={self}")
         convert_emoticons = THE_MODULE.convert_emoticons
         cool_smile = "\U0001F60E"        # 😎
-        assert (convert_emoticons(cool_smile) == "[smiling face with sunglasses]")
-        assert (convert_emoticons(cool_smile, strip=True) == "")
+        self.do_assert(convert_emoticons(cool_smile) == "[smiling face with sunglasses]")
+        self.do_assert(convert_emoticons(cool_smile, strip=True) == "")
         chinese_age = "\uF9A8"           # 令 ("age" in Chinese)
-        assert (convert_emoticons(chinese_age) == chinese_age)         
+        self.do_assert(convert_emoticons(chinese_age) == chinese_age)
         return
 
 
