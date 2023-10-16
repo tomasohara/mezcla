@@ -150,7 +150,7 @@ class ngram_tfidf_analysis(object):
             ## if ((not allow_numeric_ngrams) and all([tpo.is_numeric(token) for token in ngram.split()])):
             ##     debug.trace_fmt(5, "Omitting numeric ngram '{ng}'", ng=ngram)
             ##     continue
-            if ((not allow_numeric_ngrams) and any([tpo.is_numeric(token) for token in ngram.split()])):
+            if ((not allow_numeric_ngrams) and any(tpo.is_numeric(token) for token in ngram.split())):
                 debug.trace_fmt(5, "Omitting ngram with numerics '{ng}'", ng=ngram)
                 continue
             
