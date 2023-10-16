@@ -52,14 +52,19 @@ SOURCE_LANG = system.getenv_text("SOURCE_LANG", FROM,
 TARGET_LANG = system.getenv_text("TARGET_LANG", TO,
                                  "Target language")
 debug.assertion(SOURCE_LANG != TARGET_LANG)
-MT_TASK = f"translation_{SOURCE_LANG}_to_{TARGET_LANG}"
-DEFAULT_MODEL = f"Helsinki-NLP/opus-mt-{SOURCE_LANG}-{TARGET_LANG}"
-MT_MODEL = system.getenv_text("MT_MODEL", DEFAULT_MODEL,
-                              "Hugging Face model for MT")
+## OLD:
+## MT_TASK = f"translation_{SOURCE_LANG}_to_{TARGET_LANG}"
+## DEFAULT_MODEL = f"Helsinki-NLP/opus-mt-{SOURCE_LANG}-{TARGET_LANG}"
+MT_MODEL = system.getenv_value("MT_MODEL", None,
+                               "Hugging Face model for MT")
 SHOW_ELAPSED = system.getenv_bool("SHOW_ELAPSED", False,
                                   "Show elapsed time")
 TEXT_ARG = "text"
+FROM_ARG = "from"
+TO_ARG = "to"
 ## TODO: ELAPSED_ARG = "elapsed-time"
+TASK_ARG = "task"
+MODEL_ARG = "model"
 
 #-------------------------------------------------------------------------------
 
@@ -83,10 +88,22 @@ def main():
     dummy_app = Main(description=__doc__.format(script=__file__),
                      skip_input=False, manual_input=True,
                      ## TODO: bool_options=[(ELAPSED_ARG, "Show elapsed time")],
-                     text_options=[(TEXT_ARG, "Text to translate")])
+                     text_options=[
+                         (FROM_ARG, "Source language code"),
+                         (TO_ARG, "Target language code"),
+                         (TASK_ARG, "Translation task"),
+                         (MODEL_ARG, "Model for translation")
+                         (TEXT_ARG, "Text to translate")])
     debug.trace_object(5, dummy_app)
     debug.assertion(dummy_app.parsed_args)
     text = dummy_app.get_parsed_option(TEXT_ARG)
+    source_lang = dummy_app.get_parsed_option(FROM_ARG, SOURCE_LANG)
+    target_lang = dummy_app.get_parsed_option(FROM_ARG, TARGET_LANG)
+    #
+    MT_TASK = f"translation_{source_lang}_to_{target_lang}"
+    MT_MODEL = f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"
+    mt_task = dummy_app.get_parsed_option(TASK_ARG, MT_TASK)
+    mt_model = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL)
 
     # Get input file
     text_file = TEXT_FILE
@@ -101,7 +118,7 @@ def main():
     ## TEMP:
     ## pylint: disable=import-outside-toplevel
     from transformers import pipeline
-    model = pipeline(task=MT_TASK, model=MT_MODEL)
+    model = pipeline(task=mt_task, model=mt_model)
 
     if USE_INTERFACE:
         # TODO2: add language controls
