@@ -379,7 +379,7 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
     foreground_wait = not in_background
     ## OLD: debug.assertion(wait or not just_issue)
     debug.trace_expr(5, in_background, in_just_issue)
-    debug.assertion(not (in_background and (in_just_issue == False)))
+    debug.assertion(not (in_background and (in_just_issue is False)))
     # Note: Unix supports the '>|' pipe operator (i.e., output with overwrite); but,
     # it is not supported under Windows. To avoid unexpected porting issues, clients
     # should replace 'run("... >| f")' usages with 'delete_file(f); run(...)'.
