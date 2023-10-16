@@ -60,13 +60,15 @@ USE_CACHE = system.getenv_bool("USE_CACHE", False)
 
 #...............................................................................
 
-def bing_search(query, key=None, use_json=False, search_type=None, topn=None, non_phrasal=False):
-    """Issue QUERY bing using API KEY returning result, optionally using JSON format or with alternative SEARCH_TYPE (e.g., image) or limited to TOPN results. The query is quoted unless NON_PHRASAL.
+def bing_search(query, key=None, use_json=None, search_type=None, topn=None, non_phrasal=False):
+    """Issue QUERY bing using API KEY returning result, optionally using JSON format by default or with alternative SEARCH_TYPE (e.g., image) or limited to TOPN results. The query is quoted unless NON_PHRASAL.
     Note: SEARCH_TYPE in {search, images, videos, news, SpellCheck}."""
     ## TODO: see if old search types RelatedSearch and Composite still supported
     tpo.debug_print("bing_search(%s, %s, %s, %s, %s)" % (query, key, use_json, search_type, topn), 4)
     if search_type is None:
         search_type = SEARCH_TYPE
+    if use_json is None:
+        use_json = True
     debug.assertion(search_type in VALID_SEARCH_TYPES)
     if key is None:
         key = BING_KEY
@@ -137,6 +139,8 @@ def bing_search(query, key=None, use_json=False, search_type=None, topn=None, no
         result_list = response_data
         ## TODO: xml_result = xml.dom.minidom.parseString(response_data)
         ## TODO: result_list = xml_result.toprettyxml()
+    ## TODO2:" result_list => result_hash
+    debug.trace_expr(5, result_list, max_len=4096)
     return result_list
 
 #...............................................................................
