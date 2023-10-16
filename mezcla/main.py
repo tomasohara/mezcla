@@ -152,7 +152,7 @@ class Main(object):
     ## temp_base, temp_file
     verbose = False
 
-    def __init__(self, runtime_args=None, description=None, skip_args=False,
+    def __init__(self, runtime_args=None, description=None, skip_args=None,
                  # TODO: Either rename xyz_optiom to match python type name 
                  # or rename them without abbreviations.
                  # TODO: explain difference between positional_options and positional_arguments
@@ -235,6 +235,9 @@ class Main(object):
             track_pages = TRACK_PAGES
         self.track_pages = track_pages
         self.short_options = (short_options if (short_options is not None) else SHORT_OPTIONS)
+        if skip_args is None:
+            # note: skip_args useful for testing scripts to avoid argument parsine
+            skip_args = False
 
         # Check miscellaneous options
         BINARY_INPUT_OPTION = "binary_input"
@@ -274,6 +277,8 @@ class Main(object):
         # to avoid inadvertent script processing.
         #
         if ((runtime_args is None) and (not skip_args)):
+            # note: there is a quirk when using this with pytest
+            debug.assertion(sys.argv[1:] != "pytest")
             runtime_args = sys.argv[1:]
             debug.trace(4, f"Using sys.argv[1:] for runtime args: {runtime_args}")
             if self.auto_help and not runtime_args:
@@ -288,7 +293,7 @@ class Main(object):
         if self.perl_switch_parsing and runtime_args:
             debug.trace(4, "FYI: Enabling Perl-style options")
             debug.assertion(not re.search(r"--\w+", " ".join(runtime_args)),
-                            "Shouldn't use Python arguments with PERL_SWITCH_PARSING")
+                            "Shouldn't use Python arguments with PERL_SWITCH_PARSING (e.g., mixing types as in -fu --bar)")
             for i, arg in enumerate(runtime_args):
                 if arg in ["-", "--"]:
                     break
@@ -310,7 +315,7 @@ class Main(object):
         boolean_options_proper = [t for t in self.boolean_options if isinstance(t, str)]
         boolean_options_proper += [t[0] for t in self.boolean_options if isinstance(t, (list, tuple))]
         if (VERBOSE_ARG not in boolean_options_proper):
-            debug.trace(6, f"Adding {VERBOSE_ARG} to {self.boolean_options}")
+            debug.trace(6, f"Adding --{VERBOSE_ARG} to boolean options {self.boolean_options}")
             self.boolean_options += [(VERBOSE_ARG, "Verbose output mode")]
         if text_options:
             self.text_options = text_options
@@ -642,7 +647,7 @@ class Main(object):
         # TODO: clarify stripped newline vs. no newline at end of file
         debug.trace_fmt(5, "Main.process_line({l})", l=line)
         if not self.process_line_warning:
-            tpo.print_stderr("Warning: specialize process_line")
+            tpo.print_stderr("Warning: need to specialize process_line (i.e., stub called)")
             self.process_line_warning = True
         print(line)
         return
