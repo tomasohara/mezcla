@@ -564,6 +564,7 @@ class TextCategorizer(object):
         debug.trace_fmtd(4, "tc.load({f})", f=filename)
         try:
             if XGB_JSON:
+                ## TODO2: fix assignment
                 self.classifier = xgb.XGBModel.load_model(filename)
                 ## HACK: load keys separately
                 self.keys = json.loads(system.read_file(filename + ".keys"))
