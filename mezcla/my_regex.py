@@ -27,7 +27,7 @@ import re
 ## TODO: from re import *
 
 # Installed packages
-import six
+## OLD: import six
 
 # Local packages
 from mezcla import debug
@@ -138,7 +138,7 @@ class regex_wrapper():
         debug.trace_fmtd((1 + base_trace_level), "my_regex.search({r!r}, {t!r}, {f}): self={s}",
                          r=regex, t=text, f=flags, s=self)
         ## OLD: debug.assertion(isinstance(text, six.string_types))
-        debug.assertion(isinstance(text, (str, bytes)) and (type(regex) == type(text)))
+        debug.assertion(isinstance(text, (str, bytes)) and (isinstance(regex, type(text))))
         self.check_pattern(regex)
         self.match_result = re.search(regex, text, flags)
         if self.match_result:
