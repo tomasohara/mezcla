@@ -867,7 +867,7 @@ def xor(value1, value2):
     return result
 
 
-def xor3(value1, value2, value3):
+def xor3(value1:bool, value2:bool, value3:bool) -> bool:
     """Whether one and only one of VALUE1, VALUE2, and VALUE3 are true"""
     ## result = (xor(value1, xor(value2m value3))
     ##           and not (bool(value1) and bool(value2) and bool(value3)))
