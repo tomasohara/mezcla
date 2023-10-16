@@ -392,15 +392,6 @@ def init():
         random.seed(RANDOM_SEED)
 
 
-def time_function(func, *args, **kwargs):
-    """Time invocation of FUNC, optionally supplied with ARGS and KWARGS"""
-    ## EX: is_close(time_function(time.sleep, 5), 5000, epsilon=1)
-    start = time.time()
-    func(*args, **kwargs)
-    end = time.time()
-    ms = round(1000.0 * (end - start), 3)
-    return ms
-
 init()
 
 #-------------------------------------------------------------------------------
