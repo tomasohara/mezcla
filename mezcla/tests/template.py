@@ -15,13 +15,13 @@
 
 """TODO: Tests for <module> module"""
 
-# Standard packages
+# Standard modules
 ## TODO: from collections import defaultdict
 
-# Installed packages
+# Installed modules
 import pytest
 
-# Local packages
+# Local modules
 from mezcla.unittest_wrapper import TestWrapper
 ## TODO: from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
@@ -67,6 +67,7 @@ class TestIt(TestWrapper):
     ##     # note: should do parent processing first
     ##     super().setUpClass()
     ##     ...
+    ##     debug.trace_object(5, cls, label=f"{cls.__class__.__name__} instance")
     ##     return
     ##
     ## def setUp(self):
@@ -86,7 +87,7 @@ class TestIt(TestWrapper):
         system.write_lines(self.temp_file, data)
         ## TODO: add use_stdin=True to following if no file argument
         output = self.run_script(options="", data_file=self.temp_file)
-        assert my_re.search(r"TODO-pattern", output.strip())
+        self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -94,8 +95,8 @@ class TestIt(TestWrapper):
     def test_something_else(self):
         """TODO: flesh out test for something_else"""
         debug.trace(4, f"TestIt.test_something_else(); self={self}")
-        assert False
-        ## ex: assert (THE_MODULE.TODO_function() == TODO_value)
+        self.do_assert(False)
+        ## ex: self.do_assert(THE_MODULE.TODO_function() == TODO_value)
         return
 
 
@@ -119,13 +120,13 @@ class TestIt(TestWrapper):
 ##
 ## class TestIt2:
 ##     """Class for API-based testcase definition
-##     Note: Separate class avoids error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
+##     Note: Separate class avoids error with pytest due to inheritance with unittest.TestCase via TestWrapper (e.g., capsys support)"""
 ##
 ##     def test_whatever(self):
 ##         """TODO: flesh out test for whatever"""
 ##         debug.trace(4, f"TestIt2.test_whatever(); self={self}")
-##         assert False, "TODO: code test"
-##         ## ex: assert THE_MODULE.fast_sort() == THE_MODULE.slow_sort()
+##         assert(False, "TODO: code test")
+##         ## ex: assert(THE_MODULE.fast_sort() == THE_MODULE.slow_sort())
 ##         return
 ##
 
