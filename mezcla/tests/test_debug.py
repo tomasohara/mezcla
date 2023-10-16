@@ -29,13 +29,24 @@ import pytest
 ##   import os; os.environ["SKIP_ATEXIT"] = os.environ.get("SKIP_ATEXIT", "1")
 from mezcla import debug
 from mezcla.my_regex import my_re
+from mezcla import system
+from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.debug as THE_MODULE # pylint: disable=reimported
 
+# Environment options
+# Note: These are just intended for internal options, not for end users.
+# It also allows for enabling options in one place.
+#
+TEST_TBD = system.getenv_bool("TEST_TBD", False,
+                              description="Test features to be designed: TBD")
+
+
 class TestDebug:
     """Class for test case definitions"""
+    # Note: TestWrapper not used due to conflict with capsys
     stdout_text = None
     stderr_text = None
     expected_stdout_trace = None
@@ -157,6 +168,7 @@ class TestDebug:
         assert "var1=3;var2=6" in my_re.sub(r"\s+", "", captured.err)
 
     @pytest.mark.xfail
+    @pytest.mark.skipif(not TEST_TBD, reason="Ignoring feature to be designed")
     def test_trace_expr_expression(self, capsys):
         """Make sure trace_expr expression resolved when split across lines"""
         var1 = 3
@@ -196,6 +208,7 @@ class TestDebug:
         assert "(2 + 2) == 5" in captured.err
 
     @pytest.mark.xfail
+    @pytest.mark.skipif(not TEST_TBD, reason="Ignoring feature to be designed")
     def test_assertion_expression(self, capsys):
         """Make sure assertion expression split across lines resolved"""
         debug.trace(4, f"test_assertion_expression(): self={self}")
@@ -402,6 +415,17 @@ class TestDebug:
         assert captured.out == self.expected_stdout_trace
         assert captured.err == self.expected_stderr_trace
         THE_MODULE.trace_expr(6, pre_captured, captured)
+
+
+class TestDebug2(TestWrapper):
+    """Another Class for test case definitions"""
+    
+    def test_xor3_again(self):
+        """Test xor3 again"""
+        debug.trace(4, f"test_xor3_again(): self={self}")
+        self.do_assert(debug.xor3(True, False, False))
+        self.do_assert(not debug.xor3(True, True, True))
+        self.do_assert(not debug.xor3(False, False, False))
 
 
 #------------------------------------------------------------------------
