@@ -673,8 +673,9 @@ def extract_html_link(html, url=None, base_url=None):
     return links
 
 
-def format_checkbox(param_name, label=None, default_value=False, disabled=False, style=None, misc_attr=None):
-    """Returns HTML specification for input checkbox, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all)
+def format_checkbox(param_name, label=None, default_value=False, disabled=False, style=None, misc_attr=None, tooltip=None):
+    """Returns HTML specification for input checkbox, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all).
+    Note: param_name + "-id" is used for the field ID.
     Warning: includes separate hidden field for explicit off state"""
     ## Note: Checkbox valuee are only submitted if checked, so a hidden field is used to provide explicit off.
     ## This requires use of fix_url_parameters to give preference to final value specified (see results.mako).
@@ -694,7 +695,11 @@ def format_checkbox(param_name, label=None, default_value=False, disabled=False,
     ## TODO: use hidden only if (default_value in ["1", "on", True])???
     result = f"<input type='hidden' name='{param_name}' value='off'>"
     ## OLD: result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {status_spec}></label>&nbsp;"
-    result += f"<label>{label}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
+    tooltip_start_spec = tooltip_end_spec = ""
+    if tooltip:
+        tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
+        tooltip_end_spec = "</span>"
+    result += f"<label>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
 
@@ -715,7 +720,9 @@ def format_url_param(name, default=None):
 
 
 def format_input_field(param_name, label=None, default_value=None, max_len=None, disabled=None, style=None, misc_attr=None, tooltip=None):
-    """Returns HTML specification for input field, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all)"""
+    """Returns HTML specification for input field, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all).
+    Note: param_name + "-id" is used for the field ID.
+    """
     # TODO2: doscument tooltip usage & add option for css classes involved (better if done via class-based interface).
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
     # For tooltip support, see https://stackoverflow.com/questions/65854934/is-a-css-only-inline-tooltip-with-html-content-inside-eg-images-possible.
