@@ -24,11 +24,11 @@ Sample usage:
 # Local modules
 # TODO: def mezcla_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla.main import Main
 from mezcla.my_regex import my_re
 from mezcla import system
 ## TODO:
-## from mezcla import glue_helpers as gh
 ## from mezcla import data_utils as du
 ##
 ## Optional:
@@ -115,7 +115,7 @@ class Script(Main):
 def main():
     """Entry point"""
     app = Script(
-        description=__doc__.format(script=__file__),
+        description=__doc__.format(script=gh.basename(__file__)),
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
         # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
         skip_input=False,
