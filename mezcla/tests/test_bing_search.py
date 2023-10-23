@@ -26,11 +26,14 @@ from mezcla.my_regex import my_re
 #    THE_MODULE:	    global module object
 import mezcla.bing_search as THE_MODULE
 
+MISSING_API_KEY = (not THE_MODULE.BING_KEY.strip())
+MISSING_REASON = "BING_KEY not defined"
+
 class TestBingSearch(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(MISSING_API_KEY, reason=MISSING_REASON)
     def test_simple_query(self):
         """Makes sure simple query works as expected"""
         debug.trace(4, f"TestIt.test_simple_query(); self={self}")
@@ -39,7 +42,7 @@ class TestBingSearch(TestWrapper):
             self.do_assert(my_re.search(fr"\b{keyword}\b", output.strip()), f"Expected keyword {keyword}")
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(MISSING_API_KEY, reason=MISSING_REASON)
     def test_direct_query(self):
         """Makes sure query API works as expected"""
         debug.trace(4, f"TestIt.test_direct_query(); self={self}")
