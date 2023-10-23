@@ -85,6 +85,10 @@ TAGS
 .coverage
 .coverage.*
 .hypothesis**
+*-intellij
+.mypy_cache
+.vscode
+.idea
 
 # OS-specific directories
 linux
