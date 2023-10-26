@@ -55,8 +55,9 @@ debug.assertion(SOURCE_LANG != TARGET_LANG)
 ## OLD:
 ## MT_TASK = f"translation_{SOURCE_LANG}_to_{TARGET_LANG}"
 ## DEFAULT_MODEL = f"Helsinki-NLP/opus-mt-{SOURCE_LANG}-{TARGET_LANG}"
-MT_MODEL = system.getenv_value("MT_MODEL", None,
-                               "Hugging Face model for MT")
+## OLD:
+## MT_MODEL = system.getenv_value("MT_MODEL", None,
+##                                "Hugging Face model for MT")
 SHOW_ELAPSED = system.getenv_bool("SHOW_ELAPSED", False,
                                   "Show elapsed time")
 TEXT_ARG = "text"
@@ -85,14 +86,14 @@ def main():
 
     # Show simple usage if --help given
     ## OLD: dummy_app = Main(description=__doc__, skip_input=False, manual_input=False)
-    dummy_app = Main(description=__doc__.format(script=__file__),
+    dummy_app = Main(description=__doc__.format(script=gh.basename(__file__)),
                      skip_input=False, manual_input=True,
                      ## TODO: bool_options=[(ELAPSED_ARG, "Show elapsed time")],
                      text_options=[
                          (FROM_ARG, "Source language code"),
                          (TO_ARG, "Target language code"),
                          (TASK_ARG, "Translation task"),
-                         (MODEL_ARG, "Model for translation")
+                         (MODEL_ARG, "Model for translation"),
                          (TEXT_ARG, "Text to translate")])
     debug.trace_object(5, dummy_app)
     debug.assertion(dummy_app.parsed_args)
