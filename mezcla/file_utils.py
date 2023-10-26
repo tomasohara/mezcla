@@ -208,6 +208,7 @@ def json_to_jsonl(in_path, out_path):
         system.write_lines(out_path, output_lines)
     return
 
+
 def jsonl_to_json(in_path, out_path):
     """Convert JSONL-encoded file at IN_PATH to JSON and save as OUT_PATH"""
     # Read each line and validate
@@ -227,14 +228,19 @@ def jsonl_to_json(in_path, out_path):
     system.write_lines(out_path, ["["] + output_lines + ["]"])
     return
 
+
+def write_json(filename, obj, indent=None):
+    """Create FILENAME using JSON representation of OBJ"""
+    if indent is None:
+        indent = 2
+    system.write_file(filename, json.dumps(obj, indent=indent))
+
 #--------------------------------------------------------------------------------
 
 def main():
     """Entry point for script"""
-    system.print_stderr("Error: Not intended to being invoked directly")
+    system.print_stderr("Error: Not intended to be invoked directly")
     return
 
 if __name__ == '__main__':
     main()
-
-
