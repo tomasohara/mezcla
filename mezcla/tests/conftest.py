@@ -51,4 +51,4 @@ if ENABLE_PYTEST_RAISE:
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    system.print_stderr("Error: Not intended to being invoked directly")
+    system.print_stderr("Error: Not intended to be invoked directly")
