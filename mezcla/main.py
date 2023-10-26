@@ -168,17 +168,13 @@ class Main(object):
         """Class constructor: parses RUNTIME_ARGS (or command line), with specifications
         for BOOLEAN_OPTIONS, TEXT_OPTIONS, INT_OPTIONS, FLOAT_OPTIONS, and POSITIONAL_OPTIONS
         (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args). Also allows for SHORT_OPTIONS"""
-        tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts},"
-                         + " i={ints}, f={floats}, po={posns}, pa={pargs}, si={skip}, m={mi}, ah={auto}, bu={usage},"
-                         + " pm={para}, tp={page}, fim={file}, nl={nl}, prog={prog}, sa={skip_args},"
-                         + " mult={mf}, temp_base={utbd} notes={us} short={so} kw={kw})", 5,
-                         args=runtime_args, desc=description, bools=boolean_options,
-                         texts=text_options, ints=int_options, floats=float_options,
-                         mf=multiple_files, utbd=use_temp_base_dir,
-                         posns=positional_options, pargs=positional_arguments, skip=skip_input, mi=manual_input,
-                         auto=auto_help, usage=brief_usage, us=usage_notes,
-                         para=paragraph_mode, page=track_pages, file=file_input_mode, nl=newlines,
-                         prog=program, ha=HELP_ARG, skip_args=skip_args, so=short_options, kw=kwargs)
+        #
+        def trace_args(level:int, label:str):
+            """Trace out input arguments, each on separate line to simplify diff"""
+            debug.trace_expr(level, runtime_args, description, skip_args, multiple_files, use_temp_base_dir, usage_notes, program, paragraph_mode, track_pages, file_input_mode, newlines, boolean_options, text_options, int_options, float_options, positional_options, positional_arguments, skip_input, manual_input, auto_help, brief_usage, short_options, kwargs, prefix=f"{label}: {{", delim="\n\t", suffix="}")
+        #
+        debug.trace(4, f"Main.__init__(): self={self}")
+        trace_args(5, "input")
         self.description = "TODO: what the script does"   # *** DONT'T MODIFY: default TODO note for client
         self.boolean_options = []
         self.text_options = []
@@ -197,6 +193,13 @@ class Main(object):
         self.line_num = -1
         self.char_offset = -1
         self.raw_line = None
+        if (auto_help is None):
+            ## TODO?: if (all(map(lambda v: v is None, [auto_help, skip_input, manual_input]))):
+            ## TEST: auto_help = ((skip_input is None) and (manual_input is None)))
+            # Note: auto-help is enabled by default unless no input
+            auto_help = ((not skip_input) or manual_input)
+            debug.trace(7, f"inferred auto_help: {auto_help}")
+        self.auto_help = auto_help      # adds --help to command line if no arguments
         # Note: manual_input was introduced after skip_input to allow for input processing
         # in bulk (e.g., via read_input generator). By default, neither is specified
         # (see template.py), and both should be assumed false.
@@ -215,12 +218,13 @@ class Main(object):
         if brief_usage is None:
             brief_usage = BRIEF_USAGE
         self.brief_usage = brief_usage  # show brief usage instead of full --help
-        if auto_help is None:
-            ## TODO: rework to be default if none specified for both skip_input and manual_input
-            ## OLD: auto_help = self.skip_input
-            auto_help = self.skip_input or not self.manual_input
-            debug.trace(7, f"inferred auto_help: {auto_help}")
-        self.auto_help = auto_help      # adds --help to command line if no arguments
+        ## OLD:
+        ## if auto_help is None:
+        ##     ## TODO: rework to be default if none specified for both skip_input and manual_input
+        ##     ## OLD: auto_help = self.skip_input
+        ##     auto_help = self.skip_input or not self.manual_input
+        ##     debug.trace(7, f"inferred auto_help: {auto_help}")
+        ## self.auto_help = auto_help      # adds --help to command line if no arguments
         if usage_notes is None:
             usage_notes = ""
         self.notes = usage_notes
@@ -238,6 +242,7 @@ class Main(object):
         if skip_args is None:
             # note: skip_args useful for testing scripts to avoid argument parsine
             skip_args = False
+        trace_args(6, "redux")
 
         # Check miscellaneous options
         BINARY_INPUT_OPTION = "binary_input"
@@ -435,6 +440,23 @@ class Main(object):
                          l=label, r=option_value)
         return option_value
 
+    ## TEMP
+    def convert_option_value(self, label, value):
+        """Convert the option LABEL's text VALUE into its type
+        Note: boolean options account for symbolic ones like False and off."""
+        ## TODO2: encode type in tuple associated with each option
+        typed_value = value
+        for option_info, option_type in [(self.boolean_options, bool),
+                                         (self.int_options, int),
+                                         (self.float_options, float)]:
+            for option_tuple in option_info:
+                option_name = (option_tuple[0] if (not isinstance(option_tuple, str)) else option_tuple)
+                if label == option_name:
+                    typed_value = (system.to_bool(value) if option_type is bool else int(value) if option_type is int else float(value))
+                    break
+        debug.trace(5, f"convert_option_value({label}, {value!r}) => {typed_value!r}")
+        return typed_value
+    
     def get_parsed_option(self, label, default=None, positional=False):
         """Get value for option LABEL, with dashes converted to underscores. 
         If POSITIONAL specified, DEFAULT value is used if omitted"""
@@ -449,7 +471,8 @@ class Main(object):
                 env_var = f"{ENV_OPTION_PREFIX}_{opt_label}".upper()
                 default = system.getenv(env_var)
                 if default:
-                    debug.trace(4, f"FYI: Using option {label} from env ({opt_label}: {default!r})")
+                    default = self.convert_option_value(label, default)
+                    debug.trace(4, f"FYI: Using option {label} from env ({env_var}: {default!r})")
             value = default
             under_label = label.replace("-", "_")
             # Do sanity check for positional argument being checked by mistake
