@@ -27,6 +27,7 @@ from mezcla.text_utils import version_to_number as version_as_float
 # Constants
 # Note: Delim defaults to None so that dialect inference can be used.
 # This is a quirk with Pandas compared to the cvs module.
+## TODO3: rename to CVS_DELIM to avoid conflict with other usage
 DELIM = system.getenv_value("DELIM", None,
                             "Delimiter for input and output tables")
 COMMENT = 'comment'
@@ -46,7 +47,7 @@ if (version_as_float(pd.__version__) < version_as_float(MIN_PANDAS_VERSION)):
 
 def read_csv(filename, **in_kw):
     """Wrapper around pandas read_csv
-    Note: delimiter SEP defaults to DELIM env. var, dtype to str, and both error_bad_lines & keep_default_na to False. (Override these via keyword paramsters.)
+    Note: delimiter SEP defaults to DELIM env. var (n.b., uses sniffing if unset), dtype to str, and both error_bad_lines & keep_default_na to False. (Override these via keyword parameters.)
     """
     # EX: tf = read_csv("examples/iris.csv"); tf.shape => (150, 5)
     ## TODO: clarify dtype usage
@@ -115,7 +116,7 @@ def lookup_df_value(data_frame, return_field, lookup_field, lookup_value):
 
 def main():
     """Entry point for script"""
-    system.print_stderr("Error: Not intended to being invoked directly")
+    system.print_stderr("Error: Not intended to be invoked directly")
     return
 
 #-------------------------------------------------------------------------------
