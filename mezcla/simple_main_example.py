@@ -7,7 +7,7 @@
 """Simple illustration of Main class
 
 Sample usage:
-   echo $'foobar\nfubar' | {script} --check-fubar -
+   echo $'foobar\\nfubar' | {script} --check-fubar -
 """
 
 # Standard packages
@@ -51,8 +51,8 @@ class Script(Main):
         debug.trace_fmtd(TL.DETAILED, "Script.setup(): self={s}", s=self)
         regex = self.get_parsed_option(REGEX_ARG, "")
         check_fubar = self.get_parsed_option(FUBAR_ARG, not regex)
-        slurp_mode = self.get_parsed_option(ENTIRE_ARG, False)
-        para_mode = self.get_parsed_option(PARA_ARG, False)
+        slurp_mode = self.get_parsed_option(ENTIRE_ARG)
+        para_mode = self.get_parsed_option(PARA_ARG)
         debug.assertion(bool(regex) ^ bool(check_fubar))
         if check_fubar:
             regex = "fubar"
