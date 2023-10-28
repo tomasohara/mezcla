@@ -889,12 +889,27 @@ def extract_html_images(document_data=None, url=None, filename=None):
 def main(args):
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
-    user = system.getenv_text("USER")
-    system.print_stderr("Warning, {u}: this is not intended for direct invocation".format(u=user))
+    ## OLD:
+    ## user = system.getenv_text("USER")
+    ## system.print_stderr("Warning, {u}: this is not intended for direct invocation".format(u=user))
 
+    # HACK: Strip --help to show usage
+    if (args[1:] == ["--help"]):
+        args = args[0]
+
+    # HACK: Convert local html document to text
+    if (len(args) > 1) and (not my_re.search("www|http", args[1])):
+        doc_filename = args[1]
+        document_data = system.read_file(doc_filename)
+        document_text = html_to_text(document_data)
+        system.write_file(doc_filename + ".list", document_text)
+        print(f"See {doc_filename}.list")
+    
     # HACK: Do simple test of inner-HTML support
     # TODO: Do simpler test of download_web_document
-    if (len(args) > 1):
+    # TODO1: add explicit argument for inner-html support
+    ## OLD: if (len(args) > 1):
+    elif (len(args) > 1):
         # Get web page text
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
         url = args[1]
@@ -921,8 +936,13 @@ def main(args):
             debug.trace_fmt(5, "type(rendered_text): {t}", t=rendered_text)
             write_temp_file("post-" + filename + ".txt", rendered_text)
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
+
+    # Not sure what to do
     else:
-        print("Specify a URL as argument 1 for a simple test of inner access")
+        ## OLD: print("Specify a URL as argument 1 for a simple test of inner access")
+        print("Usage:")
+        print("- Specify a local HTML file to save as text.")
+        print("- Otherwise, specify a URL for a simple test of inner access (n.b., via stdout)")
     return
 
 if __name__ == '__main__':
