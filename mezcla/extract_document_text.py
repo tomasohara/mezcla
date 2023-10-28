@@ -137,6 +137,10 @@ def main():
             system.write_file(filename, system.read_all_stdin())
             use_stdout = True
 
+        # Warning that HTML not well supported
+        if (not HTML and filename.endswith(".html")):
+            system.print_error("Warning: HTML not well supported; use html_utils.html_to_text instead")
+            
         # Read in file contents
         text = document_to_text(filename)
 
