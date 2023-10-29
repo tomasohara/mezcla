@@ -363,11 +363,13 @@ class Main(object):
         Notes: The description and default of the specification are optional,
         and the parentheses can be omitted if just the label is given. For example,
              ("--num-eggs", "Number of eggs", 2)
-        If POSITIONAL, the option prefix (--) is omitted and the option_SPEC
+        If POSITIONAL, the option prefix (--) is omitted and OPTION_SPEC
         includes an optional nargs component, such as"
              ("other-files", "Other file names", ["f1", "f2", "f3"], "+")
         """
         # EX: label, _desc, _default = Main.convert_option("--mucho-backflips"); label => "--mucho-backflips"
+        ## TODO2: add short option support as in ("--num-eggs/-#", "Number of eggs", 2)
+        ## TODO3: make the component representation structured (e.g., namedtuple)
         ## TEST: result = ["", "", ""]
         opt_label = None
         opt_desc = None
