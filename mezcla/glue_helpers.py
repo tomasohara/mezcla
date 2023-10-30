@@ -560,6 +560,10 @@ def extract_matches_from_text(pattern, text, fields=1, multiple=None, re_flags=0
     return extract_matches(pattern, text.split("\n"), fields, multiple, re_flags, para_mode)
 
 
+def extract_pattern(pattern, text, **kwargs):
+    """Yet another wrapper around extract_match for text input"""
+    return extract_match(pattern, text.split("\n"), **kwargs)
+
 def count_it(pattern, text, field=1, multiple=None):
     """Counts how often PATTERN's FIELD occurs in TEXT, returning hash.
     Note: By default MULTIPLE matches are tabulated"""
