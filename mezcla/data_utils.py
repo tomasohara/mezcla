@@ -11,6 +11,9 @@
 #
 # TODO:
 # - Add simple wrapper class for commonly used idioms, such as len(df.columns) for number of columns.
+# TODO2:
+# - * Add wrappers for common tasks that are awkward and/or unintuitive in pandas (e.g., arbitrary cell access)!
+# - Similarly, add a simple cheatsheet.
 #
 
 """Utility functions for work with data (e.g., pandas wrappers)"""
