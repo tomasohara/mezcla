@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# This script builds a Docker image and runs a Github Actions workflow locally:
+# This script uses GitHub local actions via act:
 #   https://github.com/nektos/act
+# It builds a Docker image and runs a Github Actions workflow locally.
 #
 # Note:
 # - When running under a Mac M1 the architecture needs to be specified to x64_64 (amd).
@@ -35,7 +36,7 @@ if [ "${RUN_WORKFLOW:-1}" = "1" ]; then
 fi
 
 # Run via docker directly
-if [ "${RUN_DOCKER:-1}" = "1" ]; then
+if [ "${RUN_DOCKER:-0}" = "1" ]; then
    echo "Running Tests via Docker"
    docker run -it --env DEBUG_LEVEL="$DEBUG_LEVEL" --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
 fi
