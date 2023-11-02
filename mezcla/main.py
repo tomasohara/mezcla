@@ -118,6 +118,12 @@ INDENT = system.getenv_text("INDENT", "    ",
                             "Indentation for system output")
 BRIEF_USAGE = system.getenv_bool("BRIEF_USAGE", False,
                                  "Show brief usage with autohelp")
+DURING_ALIAS = system.getenv_bool(
+    "DURING_ALIAS", False,
+    description="Alias for QUIET_MODE used to support alias in shell-scripts repo")
+QUIET_MODE = system.getenv_bool(
+    "QUIET_MODE", DURING_ALIAS,
+    description="Script should trace less such as stdin processing")
 PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
                                          "Preprocess args to expand Perl-style -var[=[val=1]] to --var=val")
 ## HACK: This is needed if boolean options default to true based on run-time initialization
@@ -726,7 +732,8 @@ class Main(object):
             # Otherwise have client process input line by line
             else:
                 # TODO: Trace status only if script blocks waiting for user
-                debug.trace(2, "Processing input")
+                if not QUIET_MODE:
+                    debug.trace(2, "Processing input")
                 self.process_input()
         except BrokenPipeError:
             ## TODO: exit gracefully (e.g., after wrap_up)
@@ -763,7 +770,8 @@ class Main(object):
         """
         debug.trace(5, "Main.read_entire_input()")
         self.init_input()
-        debug.trace(2, "Processing entire input")
+        if not QUIET_MODE:
+            debug.trace(2, "Processing entire input")
         debug.trace_object(4, self.input_stream)
         input_text = self.input_stream.read()
         debug.trace_expr(6, input_text)
