@@ -135,7 +135,11 @@ def pytest_fixture_wrapper(function):
 
 
 class TestWrapper(unittest.TestCase):
-    """Class for testcase definition"""
+    """Class for testcase definition
+    Note:
+    - script_module should be overriden to specify the module instance, such as via get_testing_module_name (see test/template.py)
+    - set it to None to avoid command-line invocation checks
+    """
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usually set via derive_tested_module_name)
     temp_base = system.getenv_text("TEMP_BASE",
@@ -166,7 +170,7 @@ class TestWrapper(unittest.TestCase):
         super().setUpClass()
         debug.trace_object(5, cls, "TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
-        if cls.script_module:
+        if (cls.script_module is not None):
             # Try to pull up usage via python -m mezcla.xyz --help
             help_usage = gh.run("python -m '{mod}' --help", mod=cls.script_module)
             debug.assertion("No module named" not in help_usage,
