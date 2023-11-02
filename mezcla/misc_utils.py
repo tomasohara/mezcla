@@ -376,6 +376,20 @@ def random_int(min_value=None, max_value=None):
     return result
 
 
+def random_float(min_value=None, upper_bound=None):
+    """Returns random float in range [min_value, upper_bound)
+    Note: defaults to [0, 1).
+    """
+    if min_value is None:
+        min_value = 0
+    if upper_bound is None:
+        upper_bound = 1
+    result = (min_value + (random.random() * (upper_bound - min_value)))
+    debug.assertion(result < upper_bound)
+    debug.trace(6, f"random_float() => {result}")
+    return result
+
+
 def time_function(func, *args, **kwargs):
     """Time invocation of FUNC, optionally supplied with ARGS and KWARGS"""
     ## EX: is_close(time_function(time.sleep, 5), 5000, epsilon=1)
