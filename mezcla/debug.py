@@ -1061,8 +1061,10 @@ if __debug__:
         command_line = " ".join(sys.argv)
         assertion(command_line)
         if (command_line and (command_line != "-c") and (command_line != "-m")):
+            # TODO2: simplify misc. trace suppression options (n.b., check shellscript repo)
             if _getenv_bool("TRACE_INVOCATION", False):
-                trace(USUAL, command_line)
+                if not (_getenv_bool("QUIET_MODE", False) or _getenv_bool("DURING_ALIAS", False)):
+                    trace(USUAL, command_line)
         trace_expr(DETAILED, sys.argv)
         open_debug_file()
 
