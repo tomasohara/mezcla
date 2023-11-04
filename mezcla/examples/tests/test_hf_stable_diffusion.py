@@ -96,8 +96,8 @@ class TestIt(TestWrapper):
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
     def test_01_simple_generation(self):
         """Makes sure simple image generation (txt2img) works as expected"""
-        debug.trace(4, f"TestIt.test_01_simple_generation(); self={self}")
-        
+        debug.trace(4, f"test_01_simple_generation(); self={self}")
+
         # Run script to generate orange ball and get image filename.
         # ex: "See sd-app-image-1.png for output image(s)."
         script_output = self.run_script(
@@ -126,7 +126,7 @@ class TestIt(TestWrapper):
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
     def test_02_txt2img_pipeline(self):
         """Make sure valid SD pipeline created"""
-        debug.trace(4, f"TestIt2.test_02_txt2img_pipeline(); self={self}")
+        debug.trace(4, f"test_02_txt2img_pipeline(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True)
         pipe = sd.init_pipeline()
         actual = my_re.split(r"\W+", str(pipe))
@@ -139,7 +139,7 @@ class TestIt(TestWrapper):
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
     def test_03_txt2img_generation(self):
         """Make sure text-to-image reasonable"""
-        debug.trace(4, f"TestIt2.test_03_txt2img_generation(); self={self}")
+        debug.trace(4, f"test_03_txt2img_generation(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True)
         ## TODO: NUM_IMAGES = 2
         NUM_IMAGES = 1
@@ -156,7 +156,7 @@ class TestIt(TestWrapper):
     @trap_exception
     def test_04_img2img_generation(self):
         """Make sure image-to-image reasonable"""
-        debug.trace(4, f"TestIt2.test_04_img2img_generation(); self={self}")
+        debug.trace(4, f"test_04_img2img_generation(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True)
         ## TODO: NUM_IMAGES = 2
         NUM_IMAGES = 1
@@ -180,7 +180,7 @@ class TestIt(TestWrapper):
     @trap_exception
     def test_05_img2txt_generation(self):
         """Make sure image-to-text reasonable"""
-        debug.trace(4, f"TestIt2.test_05_img2txt_generation(); self={self}")
+        debug.trace(4, f"test_05_img2txt_generation(); self={self}")
         # TODO2: use common setup method (e.g., via TestWrapper)
         sd = THE_MODULE.StableDiffusion(use_hf_api=True)
         PACMAC_LIKE_IMAGE = gh.resolve_path("sd-spooky-pacman.png", heuristic=True)
@@ -195,7 +195,7 @@ class TestIt(TestWrapper):
     @trap_exception
     def test_06_prompted_color(self):
         """Make sure prompted color is used"""
-        debug.trace(4, f"TestIt2.test_06_prompted_color(); self={self}")
+        debug.trace(4, f"test_06_prompted_color(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True, low_memory=True)
         images = sd.infer(prompt="a ripe orange", scale=30, skip_img_spec=True)
         # note: encodes image base-64 str data into bytes and then decodes into image bytes
