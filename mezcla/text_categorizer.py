@@ -785,8 +785,7 @@ def start_web_controller(model_filename, nonblocking=False):
         # Note: the following call blocks
         debug.trace_expr(4, "quick-starting cherrypy server")
         cherrypy.quickstart(textcat_controller, config=conf)
-    return
-
+    return textcat_controller
 
 #------------------------------------------------------------------------
 # Entry point
