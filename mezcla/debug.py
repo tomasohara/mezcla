@@ -66,9 +66,10 @@ import sys
 import time
 
 # Local packages
-# note: The following redefines sys.version_info to be python3 compatible;
-# this is used in _to_utf8, which should be reworked via six-based wrappers.
-import mezcla.sys_version_info_hack      # pylint: disable=unused-import
+## OLD:
+## # note: The following redefines sys.version_info to be python3 compatible;
+## # this is used in _to_utf8, which should be reworked via six-based wrappers.
+## import mezcla.sys_version_info_hack      # pylint: disable=unused-import
 
 
 # Constants for pre-defined tracing levels
@@ -1057,6 +1058,7 @@ if __debug__:
         """Debug-only initialization"""
         time_start = time.time()
         trace(DETAILED, f"in debug_init(); {timestamp()}")
+        ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
         # note: shows command invocation unless invoked via "python -c ..."
         command_line = " ".join(sys.argv)
         assertion(command_line)
