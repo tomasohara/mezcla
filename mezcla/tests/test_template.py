@@ -12,6 +12,7 @@
 
 # Standard packages
 import re
+import subprocess
 
 # Installed packages
 import pytest
@@ -36,6 +37,10 @@ class TestTemplate(TestWrapper):
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
 
+    @pytest.fixture(autouse=True)
+    def capfd(self, capfd):
+        self.capfd = capfd
+
     def test_data_file(self):
         """Makes sure to-do grep works as expected"""
         debug.trace(4, "TestTemplate.test_data_file()")
@@ -50,6 +55,18 @@ class TestTemplate(TestWrapper):
         debug.trace(4, "test_something_else()")
         assert "todo" in THE_MODULE.TODO_ARG.lower()
         return
+
+    def test_captured_input_line(self):
+        """Ensure that lines are correctly processed and 
+        irrelevant lines are effectively ignored"""
+        data = "hey"
+        cmd = f"echo {data} | DEBUG_LEVEL=4 python -m mezcla.template - 2>&1"
+        result = subprocess.run(cmd, shell=True, text=True)
+        assert result.returncode == 0
+        out, err = self.capfd.readouterr()
+        assert f"Ignoring line (1): {data}" in out
+        assert err == ""
+
 
 #------------------------------------------------------------------------
 
