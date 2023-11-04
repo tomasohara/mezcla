@@ -105,22 +105,41 @@ DUMMY_BASE64_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAM
 DUMMY_IMAGE_FILE = gh.resolve_path("dummy-image.png")
 HTTP_OK = 200
 
-# Conditional imports for HF/PyTorch
+#--------------------------------------------------------------------------------
+# Globals
+# note: includes support for conditional imports for HF/PyTorch
+
 torch = None
 load_dataset = None
-if USE_HF_API:
-    # pylint: disable=import-outside-toplevel, import-error
-    from datasets import load_dataset
-    import torch
 
 word_list = []
-if CHECK_UNSAFE:
-    word_list_dataset = load_dataset("stabilityai/word-list", data_files="list.txt", use_auth_token=True)
-    word_list = word_list_dataset["train"]['text']
-    debug.trace_expr(5, word_list)
 
 sd_instance = None
 flask_app = Flask(__name__)
+
+
+#--------------------------------------------------------------------------------
+# Utility function (TODO2: put with others)
+
+def init():
+    """Initialize Hugging face for Stable Diffusion"""
+    # TODO2: merge with init_stable_diffusion
+    debug.trace(4, "in hf_stable_diffusion.init")
+
+    # Load Hugging Face and PyTorch
+    global load_dataset, torch
+    if USE_HF_API:
+        # pylint: disable=import-outside-toplevel, import-error, redefined-outer-name
+        from datasets import load_dataset
+        import torch
+
+    # Load blacklist for prompt terms
+    global word_list
+    if CHECK_UNSAFE:
+        word_list_dataset = load_dataset("stabilityai/word-list", data_files="list.txt", use_auth_token=True)
+        word_list = word_list_dataset["train"]['text']
+        debug.trace_expr(5, word_list)
+    debug.trace(5, "out hf_stable_diffusion.init")
 
 
 def show_gpu_usage(level=TL.DETAILED):
@@ -463,6 +482,7 @@ class StableDiffusion:
 def init_stable_diffusion(use_hf_api=None):
     """Initialize stable diffusion usage, locally if USE_HF_API"""
     debug.trace(4, "init_stable_diffusion({use_hf_api})")
+    init()
     global sd_instance
     sd_instance = StableDiffusion(use_hf_api=use_hf_api)
     debug.trace_expr(5, sd_instance)
