@@ -91,7 +91,12 @@ class TestTextCategorizerUtils(TestWrapper):
     def test_start_web_controller(self):
         """Ensure start_web_controller works as expected"""
         debug.trace(4, "test_start_web_controller()")
-        assert(False)
+        TODO_MODEL = "todo.model"
+        wc = THE_MODULE.start_web_controller(TODO_MODEL, nonblocking=True)
+        html_listing = wc.index()
+        assert("</html>" in html_listing)
+        ## TODO2: wc.stop()
+        debug.trace(4, "out test_start_web_controller")
 
 class TestTextCategorizerScript(TestWrapper):
     """Class for main testcase definition"""
@@ -114,7 +119,11 @@ class TestTextCategorizerScript(TestWrapper):
         """Make sure accuracy 0 if untrained (TODO: trap stderr)"""
         debug.trace(4, "test_test_untrained()")
         tc = THE_MODULE.TextCategorizer()
-        accuracy = tc.test(__file__)
+        ## OLD: accuracy = tc.test(__file__)
+        test_data = ["cat1\ta b c d e",
+                     "cat2\tf g h i j"]
+        gh.write_lines(self.temp_file, test_data)
+        accuracy = tc.test(self.temp_file)
         assert(accuracy == 0)
 
     @trap_exception
