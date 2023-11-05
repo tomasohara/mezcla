@@ -28,13 +28,9 @@ from mezcla import misc_utils
 system.setenv("USE_XGB", "1")
 import mezcla.text_categorizer as THE_MODULE
 
-## TODO:
-## # Environment options
-## # Note: These are just intended for internal options, not for end users.
-## # It also allows for enabling options in one place.
-## #
-## FUBAR = system.getenv_bool("FUBAR", False,
-##                            description="Fouled Up Beyond All Recognition processing")
+# Environment options
+TEST_TBD = system.getenv_bool("TEST_TBD", False,
+                              description="Test features to be designed: TBD")
 
 
 class TestTextCategorizerUtils(TestWrapper):
@@ -87,9 +83,11 @@ class TestTextCategorizerUtils(TestWrapper):
         debug.trace(4, "test_format_index_html()")
         assert(False)
 
+    @pytest.mark.skipif(not TEST_TBD, reason="Ignoring feature to be designed")
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_start_web_controller(self):
         """Ensure start_web_controller works as expected"""
+        # Note: pytest has a quirk leading to a logging exception during cherrypy cleanup
         debug.trace(4, "test_start_web_controller()")
         TODO_MODEL = "todo.model"
         wc = THE_MODULE.start_web_controller(TODO_MODEL, nonblocking=True)
