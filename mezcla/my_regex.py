@@ -32,6 +32,7 @@ import re
 # Local packages
 from mezcla import debug
 from mezcla import system
+## DEBUG: debug.trace(4, "my_regex: {__file__}")
 
 # Expose public symbols from re package, plus the wrapper class and global instance
 ## OLD:
@@ -122,7 +123,7 @@ class regex_wrapper():
         Note: Added to account for potential f-string confusion"""
         # TODO: Add way to disable check
         debug.reference_var(self)
-        check_regex = r"[^{]\{[^0-9][A-Fa-f0-9]*[^{}]+\}[^}]"
+        check_regex = r"([^{]|^)\{[^0-9][A-Fa-f0-9]*[^{}]+\}([^}]|$)"
         if isinstance(regex, bytes):
             check_regex = check_regex.encode()
         if debug.debugging(1):
