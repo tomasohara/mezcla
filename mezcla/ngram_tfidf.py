@@ -23,8 +23,6 @@
 ## TODO: fix description (e.g., add pointer to VDS code)
 
 # Standard packages
-## import math
-## import os
 import re
 import sys
 
@@ -59,7 +57,6 @@ ALLOW_NGRAM_SUBSUMPTION = system.getenv_boolean("ALLOW_NGRAM_SUBSUMPTION", False
 ALLOW_NGRAM_OVERLAP = system.getenv_boolean("ALLOW_NGRAM_OVERLAP", False,
                                             "Allows ngrams to overlap--token boundariese")
 ALLOW_NUMERIC_NGRAMS = system.getenv_boolean("ALLOW_NUMERIC_NGRAMS", False)
-## OLD: DEFAULT_USE_CORPUS_COUNTER = (not tfidf_preprocessor.USE_SKLEARN_COUNTER)
 DEFAULT_USE_CORPUS_COUNTER = (not tfidf_preprocess.USE_SKLEARN_COUNTER)
 USE_CORPUS_COUNTER = system.getenv_boolean("USE_CORPUS_COUNTER", DEFAULT_USE_CORPUS_COUNTER,
                                            "Use slow tfidf package ngram tabulation")
@@ -144,14 +141,10 @@ class ngram_tfidf_analysis(object):
         for (i, (ngram, score)) in enumerate(temp_top_term_info):
             
             if (not ngram.strip()):
-                debug.trace_fmt(5, "Omitting invalid ngram '{ng}'", ng=ngram)
+                debug.trace_fmt(6, "Omitting invalid ngram '{ng}'", ng=ngram)
                 continue
-            ## OLD:
-            ## if ((not allow_numeric_ngrams) and all([tpo.is_numeric(token) for token in ngram.split()])):
-            ##     debug.trace_fmt(5, "Omitting numeric ngram '{ng}'", ng=ngram)
-            ##     continue
             if ((not allow_numeric_ngrams) and any(tpo.is_numeric(token) for token in ngram.split())):
-                debug.trace_fmt(5, "Omitting ngram with numerics '{ng}'", ng=ngram)
+                debug.trace_fmt(6, "Omitting ngram with numerics '{ng}'", ng=ngram)
                 continue
             
             # Check for subsumption (e.g., "new york" in "new york city") and overlap (e.g. "new york" and "york city")
@@ -167,7 +160,7 @@ class ngram_tfidf_analysis(object):
                     if ((i > j) and (is_subsumed or has_overlap)):
                         include = False
                         label = ("in subsumption" if is_subsumed else "overlapping")
-                        debug.trace_fmt(5, "Omitting lower-weigted ngram '{ng2}' {lbl} with '{ng1}'",
+                        debug.trace_fmt(6, "Omitting lower-weigted ngram '{ng2}' {lbl} with '{ng1}'",
                                         ng1=other_spaced_ngram, ng2=spaced_ngrams[i], lbl=label)
                         break
             if not include:
@@ -180,7 +173,7 @@ class ngram_tfidf_analysis(object):
         # Sanity check on number of terms displayed
         num_terms = len(top_term_info)
         if (num_terms < limit):
-            debug.trace_fmt(3, "Warning: only {n} terms shown (of {m} max)",
+            debug.trace_fmt(4, "Warning: only {n} terms shown (of {m} max)",
                             n=num_terms, m=limit)
         debug.trace_fmtd(6, "top_term_info={tti}", tti=top_term_info)
         return top_term_info
@@ -188,14 +181,12 @@ class ngram_tfidf_analysis(object):
     def old_get_ngrams(self, text):
         """Returns generator with ngrams in TEXT"""
         ## NOTE: Now returns the ngrams
-        ## BAD return self.pp.yield_keywords(text)
         ngrams = []
         gen = self.pp.yield_keywords(text)
         more = True
         while (more):
             ## DEBUG: debug.trace_fmtd(6, ".")
             try:
-                ## OLD: ngrams.append(gen.next().text)
                 ngrams.append(next(gen).text)
             except StopIteration:
                 more = False
@@ -206,11 +197,9 @@ class ngram_tfidf_analysis(object):
     def get_ngrams(self, text):
         """Returns ngrams in TEXT (from size MIN_NGRAM_SIZE to MAX_NGRAM_SIZE)"""
         # Based on https://stackoverflow.com/questions/13423919/computing-n-grams-using-python.
-        ## OLD: vectorizer = CountVectorizer(ngram_range=(MIN_NGRAM_SIZE, MAX_NGRAM_SIZE))
         if USE_CORPUS_COUNTER:
             return self.old_get_ngrams(text)
         if self.corpus:
-            ## OLD: debug.trace(2, "Warning: not using tfidf corpus object")
             debug.trace(6, "Note: not using tfidf corpus object")
         vectorizer = CountVectorizer(ngram_range=(self.min_ngram_size, self.max_ngram_size))
         analyzer = vectorizer.build_analyzer()
@@ -228,7 +217,6 @@ def main():
     # Tabulate ngram occurrences
     ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=2, max_ngram_size=3)
     all_text = system.read_entire_file(__file__)
-    ## OLD: all_ngrams = ngram_analyzer.old_get_ngrams(all_text)
     all_ngrams = ngram_analyzer.get_ngrams(all_text)
     # pylint: disable=unnecessary-comprehension
     reversed_all_text = " ".join(list(reversed([token for token in all_text.split()])))
