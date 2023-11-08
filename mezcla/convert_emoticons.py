@@ -36,40 +36,49 @@ from mezcla import system
 TL = debug.TL
 STRIP_OPT = "strip"
 
-## TODO:
-## # Environment options
-## # Notes:
-## # - These are just intended for internal options, not for end users.
-## # - They also allow for enabling options in one place rather than four
-## #   when using main.Main (e.g., [Main member] initialization, run-time
-## #   value, and argument spec., along with string constant definition).
-## #
-## ENABLE_FUBAR = system.getenv_bool("ENABLE_FUBAR", False,
-##                                   description="Enable fouled up beyond all recognition processing")
+# Environment options
+REPLACEMENT_TEXT = system.getenv_value("REPLACEMENT_TEXT", None,
+                                       description="Override for empty replacement text")
+STRIP_EMOTICONS = system.getenv_value("STRIP_EMOTICONS", False,
+                                       description="Make emoticon removal default instead of rename")
+
 
 #-------------------------------------------------------------------------------
 
 OTHER_SYMBOL = 'So'
 #
-def convert_emoticons(text, replace=None, strip=None):
-    """Either REPLACE emotions with Unicode name or STRIP them entirely"""
-    # EX: convert_emoticons("✅  Success") => "[checkmark] Success"
-    # EX: convert_emoticons("¿Hablas español?") => "¿Hablas español?" # Spanish for "Do you speak Spanish"
-    # EX: convert_emoticons("天気") => "天気"   # Japanese for weather
+def convert_emoticons(text, replace=None, strip=None, replacement=None):
+    """Either REPLACE emotions with Unicode name or STRIP them entirely
+    Note: REPLACEMENT can be used for subsituted text (e.g., instead of "")
+    """
+    # EX: convert_emoticons("✅ Success") => "[checkmark] Success"
+    # EX: convert_emoticons("año") => "año"       # ignore diacritic; Spanish for year
     debug.trace(6, f"convert_emoticons(_, [r={replace}], [s={strip}])")
     debug.assertion(not (replace and strip))
+    if strip is None:
+        strip = STRIP_EMOTICONS
     if replace is None:
         replace = not strip
+    if replacement is None:
+        replacement = REPLACEMENT_TEXT
     in_text = text
+    #
     chars = []
     for ch in text:
         if unicodedata.category(ch) == OTHER_SYMBOL:
-            ch = f"[{unicodedata.name(ch).lower()}]" if replace else ""
+            ch = f"[{unicodedata.name(ch).lower()}]" if replace else replacement
         chars.append(ch)
     text = "".join(chars)
+    #
     level = (4 if (text != in_text) else 6)
-    debug.trace(level, f"convert_emoticons({in_text}) => {text}")
+    debug.trace(level, f"convert_emoticons({in_text!r}) => {text!r}")
     return text
+#
+# EX: convert_emoticons("✅ Success", strip=True) => " Success"
+# EX: convert_emoticons("✅ Success", strip=True, ) => " Success"
+# note: ignores common language characters (e.g., CJK and ISO-8859)
+# EX: convert_emoticons("天気") => "天気"   # Japanese for weather
+# EX: convert_emoticons("¿Hablas español?") => "¿Hablas español?"  # Spanish for "Do you speak Spanish"
 
 
 def main():
