@@ -122,7 +122,8 @@ def pytest_fixture_wrapper(function):
         def test_it(capsys):
             ...
     """
-    # See https://stackoverflow.com/questions/19614658/how-do-i-make-pytest-fixtures-work-with-decorated-functions    
+    # See https://stackoverflow.com/questions/19614658/how-do-i-make-pytest-fixtures-work-with-decorated-functions
+    # Note: This is currently usused. It was previously used with trap_exception.
     debug.trace(8, f"pytest_fixture_wrapper({gh.elide(function)}")
     #
     def wrapper(x):
@@ -265,7 +266,7 @@ class TestWrapper(unittest.TestCase):
                    out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
-        not specifed, they  are derived from self.temp_file. The optional POST_OPTIONS
+        not specified, they  are derived from self.temp_file. The optional POST_OPTIONS
         go after the data file.
         Notes:
         - issues warning if script invocation leads to error
