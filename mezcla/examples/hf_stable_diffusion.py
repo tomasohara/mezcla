@@ -56,7 +56,7 @@ PROMPT = system.getenv_text("PROMPT", "your favorite politician in a tutu",
                             "Textual prompt describing image")
 NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
                             "Negative tips for image")
-GUIDANCE_HELP = "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)--higher more"
+GUIDANCE_HELP = "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)--higher for more"
 GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
                                    ## OLD: "How much the image generation follows the prompt")
                                    description=GUIDANCE_HELP)
@@ -87,7 +87,7 @@ USE_IMG2IMG = system.getenv_bool("USE_IMG2IMG", False,
 USE_IMG2TXT = system.getenv_bool("USE_IMG2TXT", False,
                                  "Use image-to-text instead of image generation")
 DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.75,
-                                       "How much of the input image to randomize--higher more")
+                                       "How much of the input image to randomize--higher for more")
 
 BATCH_ARG = "batch"
 SERVER_ARG = "server"
