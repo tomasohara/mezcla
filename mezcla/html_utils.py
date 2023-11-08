@@ -744,6 +744,8 @@ def format_input_field(param_name, label=None, default_value=None, max_len=None,
     result = f'<label>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {max_len_spec} {disabled_spec} {misc_spec}></label>'
     debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
     return result
+#
+# EX: format_input_field("num-id", label="Num", max_len=3) => '<label>Num&nbsp;<input id="num-id-id" value="" name="num-id"  maxlength=3 size=3  ></label>'
 
 #-------------------------------------------------------------------------------
 # TEMP: Code previously in other modules
