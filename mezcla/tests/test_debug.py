@@ -104,15 +104,17 @@ class TestDebug:
 
         THE_MODULE.output_timestamps = False
 
+    @pytest.mark.xfail
     def test_trace_fmtd(self):
         """Ensure trace_fmtd works as expected"""
         debug.trace(4, f"test_trace_fmtd(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail
     def test_trace_object(self):
         """Ensure trace_object works as expected"""
         debug.trace(4, f"test_trace_object(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_trace_values(self, capsys):
         """Ensure trace_values works as expected"""
@@ -179,20 +181,23 @@ class TestDebug:
         captured = capsys.readouterr()
         assert "var1=3.*var2=6" in my_re.sub(r"\s+", "", captured.err)
         
+    @pytest.mark.xfail
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail
     def test_trace_exception(self):
         """Ensure trace_exception works as expected"""
         debug.trace(4, f"test_trace_exception(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail
     def test_raise_exception(self):
         """Ensure raise_exception works as expected"""
         debug.trace(4, f"test_raise_exception(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_assertion(self, capsys):
         """Ensure assertion works as expected"""
@@ -246,15 +251,17 @@ class TestDebug:
         THE_MODULE.set_level(save_trace_level)
         assert(count == 0)
 
+    @pytest.mark.xfail
     def test_debug_print(self):
         """Ensure debug_print works as expected"""
         debug.trace(4, f"test_debug_print(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail
     def test_timestamp(self):
         """Ensure timestamp works as expected"""
         debug.trace(4, f"test_timestamp(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_debugging(self):
         """Ensure debugging works as expected"""
@@ -344,20 +351,23 @@ class TestDebug:
         captured = capsys.readouterr()
         assert "xor3" in captured.err
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_init_logging(self):
         """Ensure init_logging works as expected"""
         debug.trace(4, f"test_init_logging(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_profile_function(self):
         """Ensure profile_function works as expected"""
         debug.trace(4, f"test_profile_function(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_reference_var(self):
         """Ensure reference_var works as expected"""
         debug.trace(4, f"test_reference_var(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_clip_value(self):
         """Ensure clip_value works as expected"""
@@ -365,20 +375,23 @@ class TestDebug:
         assert THE_MODULE.clip_value('helloworld', 5) == 'hello...'
         assert THE_MODULE.clip_value('12345678910111213141516', 7) == '1234567...'
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_read_line(self):
         """Ensure read_line works as expected"""
         debug.trace(4, f"test_read_line(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_debug_init(self):
         """Ensure debug_init works as expected"""
         debug.trace(4, f"test_debug_init(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_display_ending_time_etc(self):
         """Ensure display_ending_time_etc works as expected"""
         debug.trace(4, f"test_display_ending_time_etc(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_visible_simple_trace(self, capsys):
         """Make sure level-1 trace outputs to stderr"""
