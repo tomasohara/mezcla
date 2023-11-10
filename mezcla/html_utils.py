@@ -673,8 +673,8 @@ def extract_html_link(html, url=None, base_url=None):
     return links
 
 
-def format_checkbox(param_name, label=None, default_value=False, disabled=False, style=None, misc_attr=None, tooltip=None):
-    """Returns HTML specification for input checkbox, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all).
+def format_checkbox(param_name, label=None, skip_capitalize=None, default_value=False, disabled=False, style=None, misc_attr=None, tooltip=None):
+    """Returns HTML specification for input checkbox, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, CSS STYLE and MISC_ATTR (catch all).
     Note: param_name + "-id" is used for the field ID.
     Warning: includes separate hidden field for explicit off state"""
     ## Note: Checkbox valuee are only submitted if checked, so a hidden field is used to provide explicit off.
@@ -690,7 +690,10 @@ def format_checkbox(param_name, label=None, default_value=False, disabled=False,
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
     if (label is None):
-        label = (param_name.replace("-", " ").capitalize() + "?")
+        ## OLD: label = (param_name.replace("-", " ").capitalize() + "?")
+        label = (param_name.replace("-", " ") + "?")
+        if not skip_capitalize:
+            label = label.capitalize()
     ## OLD: result = ""
     ## TODO: use hidden only if (default_value in ["1", "on", True])???
     result = f"<input type='hidden' name='{param_name}' value='off'>"
@@ -719,8 +722,8 @@ def format_url_param(name, default=None):
 # EX: format_url_param("r", "R") => "R"
 
 
-def format_input_field(param_name, label=None, default_value=None, max_len=None, disabled=None, style=None, misc_attr=None, tooltip=None):
-    """Returns HTML specification for input field, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all).
+def format_input_field(param_name, label=None, skip_capitalize=None, default_value=None, max_len=None, disabled=None, style=None, misc_attr=None, tooltip=None, text_area=None, num_rows=None):
+    """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, CSS STYLE, MISC_ATTR (catch all), and NUM_ROWS.    
     Note: param_name + "-id" is used for the field ID.
     """
     # TODO2: doscument tooltip usage & add option for css classes involved (better if done via class-based interface).
@@ -728,12 +731,15 @@ def format_input_field(param_name, label=None, default_value=None, max_len=None,
     # For tooltip support, see https://stackoverflow.com/questions/65854934/is-a-css-only-inline-tooltip-with-html-content-inside-eg-images-possible.
     debug.trace_expr(7, param_name, label, default_value, max_len, disabled, prefix="in format_input_field: ")
     if (label is None):
-        label = param_name.replace("-", " ").capitalize()
+        label = param_name.replace("-", " ")
+        if not skip_capitalize:
+            label = label.capitalize()
     if (default_value is None):
         default_value = ""
+    if (num_rows is None):
+        num_rows = 1
     ## OLD: value_spec = (f"{default_value}" if default_value else "")
     value_spec = (get_url_param(param_name) or default_value)
-    max_len_spec = (f"maxlength={max_len} size={max_len}" if max_len else "")
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
@@ -741,7 +747,16 @@ def format_input_field(param_name, label=None, default_value=None, max_len=None,
     if tooltip:
         tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
         tooltip_end_spec = "</span>"
-    result = f'<label>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {max_len_spec} {disabled_spec} {misc_spec}></label>'
+    result = f'<label>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;'
+    if text_area:
+        max_len_spec = (f"maxlength={max_len}" if max_len else "")
+        value_spec = format_url_param(param_name)
+        result += f'<textarea id="{param_name}-id" name="{param_name}" rows={num_rows} {style_spec} {max_len_spec} {disabled_spec} {misc_spec}>{value_spec}</textarea>'
+    else:
+        max_len_spec = (f"maxlength={max_len} size={max_len}" if max_len else "")
+        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}"{style_spec} {max_len_spec} {disabled_spec} {misc_spec}>'
+    result += "</label>"
+        
     debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
     return result
 #
