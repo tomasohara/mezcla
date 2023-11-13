@@ -244,7 +244,7 @@ def write_json(filename, obj, indent=None):
     """
     if indent is None:
         indent = 2
-    system.write_file(filename, yaml.dumps(obj, indent=indent))
+    system.write_file(filename, json.dumps(obj, indent=indent))
 
 
 def read_yaml(filename):
