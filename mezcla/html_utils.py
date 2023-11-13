@@ -722,7 +722,7 @@ def format_url_param(name, default=None):
 # EX: format_url_param("r", "R") => "R"
 
 
-def format_input_field(param_name, label=None, skip_capitalize=None, default_value=None, max_len=None, disabled=None, style=None, misc_attr=None, tooltip=None, text_area=None, num_rows=None):
+def format_input_field(param_name, label=None, skip_capitalize=None, default_value=None, max_len=None, size=None, disabled=None, style=None, misc_attr=None, tooltip=None, text_area=None, num_rows=None):
     """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, CSS STYLE, MISC_ATTR (catch all), and NUM_ROWS.    
     Note: param_name + "-id" is used for the field ID.
     """
@@ -753,8 +753,13 @@ def format_input_field(param_name, label=None, skip_capitalize=None, default_val
         value_spec = format_url_param(param_name)
         result += f'<textarea id="{param_name}-id" name="{param_name}" rows={num_rows} {style_spec} {max_len_spec} {disabled_spec} {misc_spec}>{value_spec}</textarea>'
     else:
-        max_len_spec = (f"maxlength={max_len} size={max_len}" if max_len else "")
-        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}"{style_spec} {max_len_spec} {disabled_spec} {misc_spec}>'
+        ## OLD: max_len_spec = (f"maxlength={max_len} size={max_len}" if max_len else "")
+        len_spec = ""
+        if max_len:
+            len_spec += f" maxlength={max_len}"
+        if size:
+            len_spec += f" size={size}"
+        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}"{style_spec} {len_spec} {disabled_spec} {misc_spec}>'
     result += "</label>"
         
     debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
