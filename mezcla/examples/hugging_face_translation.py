@@ -27,6 +27,8 @@ USE_INTERFACE=1 {script} -
 # Local modules
 from mezcla import debug
 from mezcla.main import Main
+# TODO2: add new mezcla.hugging_face module for common stuff
+from mezcla.examples.hugging_face_speechrec import TORCH_DEVICE
 from mezcla import misc_utils
 from mezcla import system
 from mezcla import glue_helpers as gh
@@ -60,6 +62,10 @@ debug.assertion(SOURCE_LANG != TARGET_LANG)
 ##                                "Hugging Face model for MT")
 SHOW_ELAPSED = system.getenv_bool("SHOW_ELAPSED", False,
                                   "Show elapsed time")
+MAX_LENGTH = system.getenv_value(
+    "MAX_LENGTH", None,
+    description="Optional maximum length of tokens")
+
 TEXT_ARG = "text"
 FROM_ARG = "from"
 TO_ARG = "to"
@@ -118,8 +124,12 @@ def main():
 
     ## TEMP:
     ## pylint: disable=import-outside-toplevel
+    import torch
     from transformers import pipeline
-    model = pipeline(task=mt_task, model=mt_model)
+    ## OLD: model = pipeline(task=mt_task, model=mt_model)
+    device = torch.device(TORCH_DEVICE)
+    debug.trace_expr(5, device)
+    model = pipeline(task=mt_task, model=mt_model, device=device)
 
     if USE_INTERFACE:
         # TODO2: add language controls
@@ -137,12 +147,14 @@ def main():
         TRANSLATION_TEXT = "translation_text"
         try:
             translation = model(text)
+            ## TODO3: max_length = (system.to_int(MAX_LENGTH) if MAX_LENGTH else min(len(text.split()) * 0.75, MODEL_MAX_LENGTH))
+            ## BAD: translation = model(text, max_length=MAX_LENGTH)
             debug.assertion(isinstance(translation, list)
                             and (TRANSLATION_TEXT in translation[0]))
             print(translation[0].get(TRANSLATION_TEXT) or "")
         except:
             system.print_exception_info("translation")
-    debug.code(4, lambda: debug.trace(1, gh.run("nvidia-smi")))
+    debug.code(5, lambda: debug.trace(1, gh.run("nvidia-smi")))
 
     return
 
