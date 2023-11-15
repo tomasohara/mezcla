@@ -209,7 +209,10 @@ DEFAULT_GETENV_BOOL = False
 #
 def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, update=None):
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
-    Note: "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)"""
+    Note:
+    - "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)
+    - In general, it is best to use False as default instead of True, because getenv_bool is meant for environment overrides, not defaults.
+    """
     # EX: getenv_bool("bad env var", None) => False
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
@@ -658,12 +661,14 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
     return hash_table
 
 
-def create_boolean_lookup_table(filename, delim=None, retain_case=False, **kwargs):
+def create_boolean_lookup_table(filename, delim=None, retain_case=False, ignore_comments=None,
+                                **kwargs):
     """Create lookup hash table from string keys to boolean occurrence indicator.
     Notes:
     - The key is first field, based on DELIM (tab by default): other values ignored.
     - The key is made lowercase, unless RETAIN_CASE.
     - The hash is of type defaultdict(bool).
+    - If IGNORE_COMMENTS, then comments of the form '[#;] text' are stripped
     """
     if delim is None:
         delim = "\t"
@@ -675,6 +680,8 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, **kwarg
         with open_file(filename, **kwargs) as f:
             for line in f:
                 key = line.strip()
+                if ignore_comments:
+                    key = my_re.replace("[;#].*$", "", key)
                 if not retain_case:
                     key = key.lower()
                 if delim in key:
