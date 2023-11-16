@@ -574,12 +574,16 @@ def read_entire_file(filename, **kwargs):
 read_file = read_entire_file
 
 
-def read_lines(filename):
-    """Return lines in FILENAME as list (each without newline)"""
+def read_lines(filename, ignore_comments=None):
+    """Return lines in FILENAME as list (each without newline)
+    Note: If IGNORE_COMMENTS, then comments of the form '[#;] text' are stripped
+    """
     # TODO: add support for open() keyword args (e.g., via read_entire_file)
     # EX: read_lines("/tmp/fu123.list") => ["1", "2", "3"]
     # note: The final newline is ignored, s[TODO ...]
     contents = read_entire_file(filename)
+    if ignore_comments:
+        contents = re.sub(r"[;#].*$", "", contents, flags=re.MULTILINE)
     lines = contents.split("\n")
     if ((lines[-1] == "") and contents.endswith("\n")):
         lines = lines[:-1]
@@ -627,9 +631,12 @@ def get_directory_filenames(directory, just_regular_files=False):
     return files
     
 
-def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False):
+def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False, ignore_comments=None):
     """Reads FILENAME and returns as hash lookup, optionally SKIP[ing]_HEADER and using DELIM (tab by default).
-    Note: Input is made lowercase unless RETAIN_CASE."""
+    Note:
+    - Input is made lowercase unless RETAIN_CASE.
+    - If IGNORE_COMMENTS, then comments of the form '[#;] text' are stripped
+    """
     # Note: the hash lookup uses defaultdict
     debug.trace_fmt(4, "read_lookup_table({f}, [skip_header={sh}, delim={d}, retain_case={rc}])", 
                     f=filename, sh=skip_header, d=delim, rc=retain_case)
@@ -644,6 +651,8 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
                 line_num += 1
                 if (skip_header and (line_num == 1)):
                     continue
+                if ignore_comments:
+                    line = re.sub(r"[;#].*$", "", line)
                 line = from_utf8(line.rstrip("\n"))
                 if not retain_case:
                     line = line.lower()
@@ -681,7 +690,7 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, ignore_
             for line in f:
                 key = line.strip()
                 if ignore_comments:
-                    key = my_re.replace("[;#].*$", "", key)
+                    key = re.sub(r"[;#].*$", "", key)
                 if not retain_case:
                     key = key.lower()
                 if delim in key:
