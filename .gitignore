@@ -42,10 +42,11 @@
 **/old
 **/archive
 
-# Output or log-file directories
+# Output, log-file directories, etc.
 **/log-files
 **/output-files
 **/downloads
+**/cache
 
 # Top level distribution dir and related
 # Note: tox support PyPi packaging
