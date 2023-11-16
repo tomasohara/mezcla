@@ -723,8 +723,10 @@ def format_url_param(name, default=None):
 
 
 def format_input_field(param_name, label=None, skip_capitalize=None, default_value=None, max_len=None, size=None, disabled=None, style=None, misc_attr=None, tooltip=None, text_area=None, num_rows=None):
-    """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, CSS STYLE, MISC_ATTR (catch all), and NUM_ROWS.    
-    Note: param_name + "-id" is used for the field ID.
+    """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, DISABLED, CSS STYLE, MISC_ATTR (catch all), and NUM_ROWS.    
+    Note:
+    - param_name + "-id" is used for the field ID.
+    - SIZE should be specified if not same as MAX_LEN.
     """
     # TODO2: doscument tooltip usage & add option for css classes involved (better if done via class-based interface).
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
@@ -738,6 +740,8 @@ def format_input_field(param_name, label=None, skip_capitalize=None, default_val
         default_value = ""
     if (num_rows is None):
         num_rows = 1
+    if (size is None):
+        size = max_len
     ## OLD: value_spec = (f"{default_value}" if default_value else "")
     value_spec = (get_url_param(param_name) or default_value)
     disabled_spec = ("disabled" if disabled else "")
