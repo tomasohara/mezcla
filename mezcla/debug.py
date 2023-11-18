@@ -124,7 +124,7 @@ if __debug__:
     use_logging = False                 # traces via logging (and stderr)
     debug_file = None                   # file for log output
     debug_file_hack = False             # work around concurrent writes by reopening after each trace
-    para_mode_tracing = False           # multiline tracing adds blank line (e.g., for para-mode grep)
+    para_mode_tracing = False           # multiline tracing functions add blank lines (e.g., for para-mode grep)
     #
     try:
         trace_level_text = os.environ.get(DEBUG_LEVEL_LABEL, "")
@@ -222,6 +222,7 @@ if __debug__:
             # Prefix trace with timestamp w/o date
             if output_timestamps:
                 # Get time-proper from timestamp (TODO: find standard way to do this)
+                # Note: shows diff/delta from last call if detailed tracing (TODO3: make explicit)
                 timestamp_time = re.sub(r"^\d+-\d+-\d+\s*", "", timestamp())
                 if detailed_debugging():
                     global last_trace_time
@@ -1010,6 +1011,7 @@ def main(args):
     trace_expr(ERROR, n+i, n, n+i)
     return
 
+
 # Do debug-only processing (n.b., for when PYTHONOPTIMIZE not set)
 # Note: wrapped in function to keep things clean
 
@@ -1143,9 +1145,13 @@ if __debug__:
 
 #-------------------------------------------------------------------------------
 
-trace_expr(MOST_VERBOSE, 888)
+# Call main if invoked from commmand-line: illustrates tracing
+# Note: The tracing below was for tracking down issue due to python path.
+## DEBUG: trace_expr(MOST_VERBOSE, 888)
 #
 if __name__ == '__main__':
     main(sys.argv)
 else:
-    trace_expr(MOST_VERBOSE, 999)
+    ## DEBUG: trace_expr(MOST_VERBOSE, 999)
+    pass
+
