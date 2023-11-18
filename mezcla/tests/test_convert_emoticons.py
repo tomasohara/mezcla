@@ -54,7 +54,6 @@ class TestIt(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     script_file = my_re.sub(rf"{D}tests{D}test_", f"{D}", __file__)
 
-    @pytest.mark.xfail
     @trap_exception
     def test_over_script(self):
         """Makes sure works as expected over script itself"""
@@ -101,6 +100,7 @@ class TestIt(TestWrapper):
     ##     """Another class for testcase definition
     ##     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper    ## """
     
+    @trap_exception
     def test_misc(self):
         """Test direct calls for conversion"""
         debug.trace(4, f"TestIt2.test_whatever(); self={self}")
