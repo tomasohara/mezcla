@@ -60,7 +60,7 @@ def convert_emoticons(text, replace=None, strip=None, replacement=None):
     if replace is None:
         replace = not strip
     if replacement is None:
-        replacement = REPLACEMENT_TEXT
+        replacement = (REPLACEMENT_TEXT or "")
     in_text = text
     #
     chars = []
