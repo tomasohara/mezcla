@@ -382,49 +382,53 @@ class Houndify(SpeechRecognition):
 class HuggingFace(SpeechRecognition):
     """HuggingFace Speech Recognition class"""
 
-    # HuggingFace class requires an audio model and a pipeline(task, model)
-    # TODO: Use gradio for UI support
+    # SpeechRecognition in HuggingFace requires two core components: asr_model, asr_task
+    # A model is created using pipeline method: model = pipeline(asr_model, asr_task)
+    # PATH to audio file is provided as: result = model(PATH)
+    # result returns a dictionary: {"text": "text_after_audio_recognition"}
+    # NOTE[1]: Inspired by mezcla/examples/hugging_face_speechrec.py
+    # NOTE[2]: Excluded the use of gradio for UI support
+    # TODO: Add more exceptions
 
     # Global state
     _IDENTIFIER = "huggingface"
 
-    def particular_check_audio(self, path):
+    def particular_check_audio(self, path) -> bool:
         """Check if audio in PATH is valid"""
         result = False
         for extension in AUDIO_FORMATS:
             if f".{extension}" in path:
                 result = True
-            break
+                break
         debug.trace(7, f"HuggingFace.particular_check_audio({path}) => {result}")
         return result
 
-    def particular_speech_to_text(self, path):
+    def particular_speech_to_text(self, path) -> str:
         """Transcribe speech from audio in PATH"""
-        asr_model = "facebook/wav2vec2-base"
+        asr_model = "jonatasgrosman/wav2vec2-large-xlsr-53-english"
         asr_task = "automatic-speech-recognition"
-        is_valid_audio = self.particular_check_audio(path=path)
+        is_valid_audio = self.particular_check_audio(path)
         result = ""
 
         try:
-            model = pipeline(task=asr_task, model=asr_model)
-            result = model(path)
+            if is_valid_audio:
+                model = pipeline(task=asr_task, model=asr_model)
+                result = model(path)["text"]
+            else:
+                print(f"Error: Unable to find SOUND_FILE '{path}'")
         except ImportError as e:
             print(f"{e}: PyTorch, TensorFlow >= 2.0, or Flax not found")
-        except (is_valid_audio, False) as e:
-            print(f"Error: Unable to find SOUND_FILE '{path}'")
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
         debug.trace(7, f"HuggingFace.particular_speech_to_text({path}) => {result}")
         return result
-
-# End of HuggingFace Class 
+    
 
 class Audio:
     """
     This is a wraper interface for audio processing.
     """
-
 
     # Global state
     SPEECH_ENGINES = [CMUSphinx(),
