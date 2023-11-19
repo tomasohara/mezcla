@@ -55,6 +55,7 @@ requests
 ## OLD: scikit-learn==1.1.2
 scikit-learn
 scipy
+sentencepiece
 six
 ## OLD:
 ## stop_words==2018.7.23
@@ -114,6 +115,5 @@ xgboost
 #full# kenlm
 ## OLD: #full# lucene
 #full# sacremoses
-#full# sentencepiece
 #full# tensorflow
 #full# tensorflow_hub
