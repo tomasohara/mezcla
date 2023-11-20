@@ -61,7 +61,8 @@ six
 ## stop_words==2018.7.23
 ## tensorflow_hub==0.12.0
 stop_words
-transformers
+tensorrt				# for HF
+transformers				# Hugging Face (HF)
 torch
 webcolors
 ## OLD: wheel==0.38.4
