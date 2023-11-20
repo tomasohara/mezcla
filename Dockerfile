@@ -44,6 +44,16 @@ WORKDIR $WORKDIR
 ## TEST:
 ARG PYTHON_VERSION=3.8.12
 
+# Set default debug level (n.b., use docker build --build-arg "arg1=v1" to override)
+# Also optionally set the regex of tests to run.
+# Note: maldito act/nektos/docker not overriding properly
+## TODO2: fixme (see tools/run_tests.bash for workaround).
+## TODO: ARG DEBUG_LEVEL=2
+ARG DEBUG_LEVEL=4
+## DEBUG: ARG DEBUG_LEVEL=5
+ARG TEST_REGEX=""
+## DEBUG: ARG TEST_REGEX="simple_main_example"
+
 # Install Python
 # See https://stackoverflow.com/a/70866416 [How to install python specific version on docker?]
 #
@@ -113,4 +123,4 @@ RUN apt install rcs
 
 # Run the test, normally pytest over mezcla/tests
 # Note: the status code (i.e., $?) determines whether docker run succeeds (e.h., OK if 0)
-ENTRYPOINT './tools/run_tests.bash'
+ENTRYPOINT DEBUG_LEVEL=$DEBUG_LEVEL TEST_REGEX="$TEST_REGEX" './tools/run_tests.bash'
