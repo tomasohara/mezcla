@@ -51,6 +51,7 @@ jobs:
 
       - name: Run Python Tests under Docker
         run: |
+          # note: command format: docker run [OPTIONS] IMAGE [COMMAND] [ARG...]
           docker run --env "DEBUG_LEVEL=5" --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
         env:
           DEBUG_LEVEL: 5
