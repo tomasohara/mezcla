@@ -26,7 +26,7 @@ function trace-vars {
 # - USER_ENV is of form "ENV1=val1 ENV2=val2 ...".
 # - act pull is not required (n.b., misleading error message due to permissions, etc.).
 IMAGE_NAME="local/test-act:latest"
-ACT_WORKFLOW="ubuntu-latest=local/test-act"
+## BAD: ACT_WORKFLOW="ubuntu-latest=local/test-act"
 ACT_PULL="false"
 DEBUG_LEVEL="${DEBUG_LEVEL:-2}"
 USER_ENV="${USER_ENV:-}"
@@ -61,7 +61,8 @@ if [ "${RUN_WORKFLOW:-1}" = "1" ]; then
     # Note: Unfortunately, the environment setting is not affecting the docker
     # invocation. A workaround is to modify the 'Run tests' steps in the
     # workflow configuration file (e.g., .github/workflows/debug.yml).
-    act --verbose --env "DEBUG_LEVEL=$DEBUG_LEVEL $USER_ENV" --container-architecture linux/amd64 --pull="$ACT_PULL" -P "$ACT_WORKFLOW" -W ./.github/workflows/"$file"
+    ## OLD: act --verbose --env "DEBUG_LEVEL=$DEBUG_LEVEL $USER_ENV" --container-architecture linux/amd64 --pull="$ACT_PULL" -P "$ACT_WORKFLOW" -W ./.github/workflows/"$file"
+    act --verbose --env "DEBUG_LEVEL=$DEBUG_LEVEL $USER_ENV" --container-architecture linux/amd64 --pull="$ACT_PULL" -W ./.github/workflows/"$file"
 fi
 
 # Run via docker directly
