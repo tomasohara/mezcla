@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Run unitests and pytest files
+# Run unit tests and pytest files
 # and generate coverage report
 #
 # Note:
