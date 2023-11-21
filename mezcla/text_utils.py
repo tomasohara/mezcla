@@ -43,6 +43,7 @@ import sys
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla import html_utils
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.system import to_int
@@ -94,25 +95,10 @@ def extract_soup_text_with_breaks(soup):
 
 
 def html_to_text(document_data):
-    """Returns text version of html DATA"""
-    # EX: html_to_text("<html><body><!-- a cautionary tale -->\nMy <b>fat</b> dog has fleas</body></html>") => "My fat dog has fleas"
-    # Note: stripping javascript and style sections based on following:
-    #   https://stackoverflow.com/questions/22799990/beatifulsoup4-get-text-still-has-javascript
-    # TODO: move into html_utils.py
-    debug.trace_fmtd(7, "html_to_text(_):\n\tdata={d}", d=document_data)
-    ## OLD: soup = BeautifulSoup(document_data)
-    init_BeautifulSoup()
-    soup = BeautifulSoup(document_data, "lxml")
-    # Remove all script and style elements
-    for script in soup(["script", "style"]):
-        # *** TODO: soup = soup.extract(script)
-        # -or- Note the in-place change (i.e., destructive).
-        script.extract()
-    # Get the text
-    ## OLD: text = soup.get_text()
-    text = soup.get_text(separator=" ")
-    debug.trace_fmtd(6, "html_to_text() => {t}", t=gh.elide(text))
-    return text
+    """Returns text version of html DATA
+    Warning: deprecated function; import from html_utils instead
+    """
+    return html_utils.html_to_text(document_data)
 
 
 def init_textract():
@@ -139,61 +125,11 @@ def document_to_text(doc_filename):
     return text
 
 
-def extract_html_images(document_data, url):
-    """Returns list of all images in HTML DOC from URL (n.b., URL used to determine base URL)"""
-    debug.trace_fmtd(8, "extract_html_images(_):\n\tdata={d}", d=document_data)
-    # TODO: add example; return dimensions
-    # TODO: have URL default to current directory
-    # TODO: put in html_utils
-
-    # Parse HTML, extract base URL if given and get website from URL.
-    init_BeautifulSoup()
-    soup = BeautifulSoup(document_data, 'html.parser')
-    web_site_url = re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
-    debug.trace_fmtd(6, "wsu1={wsu}", wsu=web_site_url)
-    if not web_site_url.endswith("/"):
-        web_site_url += "/"
-        debug.trace_fmtd(6, "wsu2={wsu}", wsu=web_site_url)
-    base_url_info = soup.find("base")
-    base_url = base_url_info.get("href") if base_url_info else None
-    debug.trace_fmtd(6, "bu1={bu}", bu=base_url)
-    if not base_url:
-        # Remove parts of the URLafter the final slash
-        # TODO: comment and example
-        base_url = re.sub(r"(^.*/[^\/]+/)[^\/]+$", r"\1", url)
-        debug.trace_fmtd(6, "bu2={bu}", bu=base_url)
-    if not base_url:
-        base_url = web_site_url
-        debug.trace_fmtd(6, "bu3={bu}", bu=base_url)
-    if not base_url.endswith("/"):
-        base_url += "/"
-        debug.trace_fmtd(6, "bu4={bu}", bu=base_url)
-
-    # Get images and resolve to full URL (TODO: see if utility for this)
-    # TODO: include CSS background images
-    # TODO: use DATA-SRC if SRC not valid URL (e.g., src="data:image/gif;base64,R0lGODl...")
-    images = []
-    all_images = soup.find_all('img')
-    for image in all_images:
-        debug.trace_fmtd(6, "image={inf}; style={sty}", inf=image, sty=image.attrs.get('style'))
-        ## TEST: if (image.has_attr('attrs') and (image.attrs.get['style'] in ["display:none", "visibility:hidden"])):
-        if (image.attrs.get('style') in ["display:none", "visibility:hidden"]):
-            debug.trace_fmt(5, "Ignoring hidden image: {img}", img=image)
-            continue
-        image_src = image.get("src", "")
-        if not image_src:
-            debug.trace_fmt(5, "Ignoring image without src: {img}", img=image)
-            continue
-        if image_src.startswith("/"):
-            image_src = web_site_url + image_src
-        elif not image_src.startswith("http"):
-            image_src = base_url + "/" + image_src
-        ## TEMP: fixup for trailing newline (TODO: handle upstream)
-        image_src = image_src.strip()
-        if image_src not in images:
-            images.append(image_src)
-    debug.trace_fmtd(6, "extract_html_images() => {i}", i=images)
-    return images
+def extract_html_images(document_data=None, url=None, filename=None):
+    """Returns list of all images in HTML DOC from URL (n.b., URL used to determine base URL)
+    Warning: deprecated function; import from html_utils instead
+    """
+    return html_utils.extract_html_images(document_data, url, filename)
 
 
 def version_to_number(version, max_padding=3):

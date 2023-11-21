@@ -244,7 +244,7 @@ class Corpus(object):
         ## if (num_occurrences == 1) and PENALIZE_SINGLETONS:
         ##     num_occurrences = len(self.__documents)
         idf = math.log(float(len(self)) / num_occurrences)
-        debug.trace_fmt(7, "idf_basic({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
+        debug.trace_fmt(8, "idf_basic({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
                         ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf={idf})
         return idf
 
@@ -255,7 +255,7 @@ class Corpus(object):
             raise Exception(ngram)
         num_occurrences = self.count_doc_occurrences(ngram)
         idf = 1 / num_occurrences
-        debug.trace_fmt(7, "idf_freq({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
+        debug.trace_fmt(8, "idf_freq({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
                         ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf={idf})
         return idf
 
@@ -263,7 +263,7 @@ class Corpus(object):
         """Returns IDF using simple smoothing with add-1 relative frequency (prior to log)"""
         debug.assertion(self.count_doc_occurrences(ngram) >= 1)
         idf = math.log(1 + (float(len(self)) / self.count_doc_occurrences(ngram)))
-        debug.trace_fmt(7, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
+        debug.trace_fmt(8, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
                         ng=ngram, l=len(self), do=self.count_doc_occurrences(ngram), idf={idf})
         return idf
 
@@ -272,7 +272,7 @@ class Corpus(object):
         """Use maximum ngram TF in place of N and also perform add-1 smoothing"""
         debug.assertion(self.count_doc_occurrences(ngram) >= 1)
         idf = math.log(1 + self.max_raw_frequency / self.count_doc_occurrences(ngram))
-        debug.trace_fmt(7, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
+        debug.trace_fmt(8, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
                         ng=ngram, l=len(self), do=self.count_doc_occurrences(ngram), idf={idf})
         return idf
 
@@ -282,7 +282,7 @@ class Corpus(object):
         ## TODO: shouldn't this be (float(len(self) / num_doc_occurrences))
         num_doc_occurrences = self.count_doc_occurrences(ngram)
         idf = math.log(float(len(self) - num_doc_occurrences) / num_doc_occurrences)
-        debug.trace_fmt(7, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
+        debug.trace_fmt(8, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
                         ng=ngram, l=len(self), do=num_doc_occurrences, idf={idf})
         return idf
 

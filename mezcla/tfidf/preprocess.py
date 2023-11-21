@@ -3,6 +3,7 @@
 # TODO:
 # - Fix env-spec above and put coding on same line.
 # - Verify the fixup for PEP-0479 didn't break anything in Python 2 (e.g., for regression testing).
+# - *** Remove Python2-specific code!
 #
 
 """Pre-processing step for text.
@@ -24,12 +25,13 @@ from collections import namedtuple
 import re
 import sys  # python2 support
 from threading import RLock
+import html
 
 # Installed modules
 ## TODO: find better documented memoization package
 from cachetools import LRUCache, cached  # python2 support
 from nltk.stem import SnowballStemmer
-from six.moves.html_parser import HTMLParser  # python2 support
+## OLD: from six.moves.html_parser import HTMLParser  # python2 support
 from sklearn.feature_extraction.text import CountVectorizer
 from stop_words import get_stop_words
 
@@ -38,7 +40,9 @@ from mezcla import debug
 from mezcla import system
 from mezcla.tfidf.dockeyword import DocKeyword
 
-unescape = HTMLParser().unescape
+## OLD: unescape = HTMLParser().unescape
+unescape = html.unescape
+
 
 # TPO: Allow word splitting pattern to be overwritten.
 # TODO: Get WORD_REGEX from environment.
@@ -58,7 +62,7 @@ USE_SKLEARN_COUNTER = system.getenv_bool("USE_SKLEARN_COUNTER", False,
 
 
 if SPLIT_WORDS:
-    debug.trace(1, "Splitting by word token (not whitespace)\n")
+    debug.trace(2, "FYI: Splitting by word token (not whitespace)\n")
     ## BAD: True
 WORD_REGEX = r'\w+' if SPLIT_WORDS else r'\S+'
 
@@ -122,7 +126,7 @@ def clean_text(raw_text):
         regex_subs = ['\t', '\n', '\r', r'\s+', '&']
         for regex_sub in regex_subs:
             text = re.sub(regex_sub, ' ', text)
-    debug.trace(7, "clean_text({raw_text}) => {text}")
+    debug.trace(8, "clean_text({raw_text}) => {text}")
     return text
 
 
@@ -134,7 +138,7 @@ def create_stemmer(language):
     def stem_wordform(wordform):
         """Returned root of WORDFORM"""
         root = stemmer.stem(wordform)
-        debug.trace_fmt(8, "stem_wordform({wf}) => {r}", wf=wordform, r=root)
+        debug.trace_fmt(9, "stem_wordform({wf}) => {r}", wf=wordform, r=root)
         return root
 
     # Do sanity check
@@ -215,7 +219,7 @@ class Preprocessor(object):
         if stemmer:
             self.__stemmer = stemmer
         if not self.__stemmer:
-            debug.trace(3, "Warning: defining no-op stemmer in Preprocessor")
+            debug.trace(4, "Warning: defining no-op stemmer in Preprocessor")
             self.__stemmer = lambda x: x  # no change to word
         debug.assertion(not (gramsize and max_ngram_size))
         debug.assertion(not (all_ngrams and min_ngram_size))
@@ -327,7 +331,7 @@ class Preprocessor(object):
         if not gramlist:
             gramlist = [self.gramsize]
         ## DEBUG: sys.stderr.write("gramlist={gl}\n".format(gl=gramlist))
-        debug.trace_fmt(7, "gramlist={gl}\n", gl=gramlist)
+        debug.trace_fmt(8, "gramlist={gl}\n", gl=gramlist)
 
         for sentence in positional_splitter(self.negative_gram_breaks, raw_text):
             words = positional_splitter(WORD_REGEX, sentence.text)
@@ -402,5 +406,5 @@ def main():
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
-    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone. A simple test willl be run.")
+    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone. A simple test will be run.")
     main()

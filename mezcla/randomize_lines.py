@@ -178,7 +178,7 @@ def main():
             break
     num_output_lines = line_num
     tpo.debug_print("%s input and %d output lines" % (num_input_lines, num_output_lines), 4)
-    gh.assertion((num_input_lines == num_output_lines) or IO_error)
+    debug.assertion((num_input_lines == num_output_lines) or IO_error)
     temp_output_handle.close()
 
     # Cleanup (e.g., removing temporary files)

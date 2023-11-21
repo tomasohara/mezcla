@@ -47,12 +47,28 @@ default_subtrace_level = SUB_DEBUG_LEVEL
 ALLOW_SUBCOMMAND_TRACING = tpo.getenv_boolean("ALLOW_SUBCOMMAND_TRACING",
                                               (SUB_DEBUG_LEVEL > DEFAULT_SUB_DEBUG_LEVEL),
                                               "Whether sub-commands have tracing above TL.USUAL")
-## OLD: default_subtrace_level = min(tpo.USUAL, debug.get_level())
 if ALLOW_SUBCOMMAND_TRACING:
     # TODO: work out intuitive default if both SUB_DEBUG_LEVEL and ALLOW_SUBCOMMAND_TRACING specified
     default_subtrace_level = max(debug.get_level(), SUB_DEBUG_LEVEL)
 
 INDENT = "    "                          # default indentation
+
+# 
+# note: See main.py for similar support as part of Main scipt class
+FILE_BASE = system.getenv_text("FILE_BASE", "_temp",
+                               "Basename for output files including dir")
+TEMP_PREFIX = (FILE_BASE + "-")
+NTF_ARGS = {'prefix': TEMP_PREFIX,
+            'delete': not debug.detailed_debugging(),
+            ## TODO: 'suffix': "-"
+            }
+TEMP_BASE = system.getenv_value("TEMP_BASE", None,
+                                "Override for temporary file basename")
+TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and system.is_directory(TEMP_BASE))
+USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
+                                       "Whether TEMP_BASE should be a dir instead of prefix")
+# note: see init() for initialization
+TEMP_FILE = None
 
 #------------------------------------------------------------------------
 
@@ -62,23 +78,22 @@ def get_temp_file(delete=None):
     # TODO: allow for overriding other options to NamedTemporaryFile
     if ((delete is None) and tpo.detailed_debugging()):
         delete = False
-    temp_file_name = tempfile.NamedTemporaryFile(delete=delete).name
-    # HACK: get rid of double backslashes in Win32 filenames
-    # ex: r'c:\\temp\\fubar' => r'c:\temp\fubar' 
-    ## if os.pathsep == r'\\':
-    ##     double_pathspec = os.pathsep + os.pathsep
-    ##     temp_file_name = temp_file_name.replace(double_pathspec, os.pathsep)
+    temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
+    debug.assertion(not delete, "Support for delete not implemented")
     debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
     return temp_file_name
 #
-## OLD:
-## TEMP_LOG_FILE = tpo.getenv_text(
-##     # "Log file for stderr (e.g., for issue function)"
-##     "TEMP_LOG_FILE", get_temp_file())
 TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file() + "-log",
                                 "Log file for stderr such as for issue function")
 TEMP_SCRIPT_FILE = tpo.getenv_text("TEMP_SCRIPT_FILE", get_temp_file() + "-script",
                                    "File for command invocation")
+
+def create_temp_file(contents, binary=False):
+    """Create temporary file with CONTENTS and return full path"""
+    temp_filename = get_temp_file()
+    system.write_file(temp_filename, contents, binary=binary)
+    debug.trace(6, "create_temp_file({contents!r}) => {temp_filename}")
+    return temp_filename
 
 
 def basename(filename, extension=None):
@@ -87,8 +102,6 @@ def basename(filename, extension=None):
     # EX: basename("fubar.py", "py") => "fubar."
     # EX: basename("/tmp/solr-4888.log", ".log") => "solr-4888"
     base = os.path.basename(filename)
-    ## OLD: if extension != None:
-    ## BAD: if extension is None:
     if extension is not None:
         pos = base.find(extension)
         if pos > -1:
@@ -174,7 +187,12 @@ def resolve_path(filename, base_dir=None):
 
 
 def form_path(*filenames):
-    """Wrapper around os.path.join over FILENAMEs (with tracing)"""
+    """Wrapper around os.path.join over FILENAMEs (with tracing)
+    Note: includes sanity check about absolute filenames except for first
+    Warning: This will be deprecated: uses system.form_path instead.
+    """
+    ## TODO3: return system.form_path(*filenames)
+    debug.assertion(not any(f.startswith(system.path_separator()) for f in filenames[1:]))
     path = os.path.join(*filenames)
     debug_format("form_path{f} => {p}", 6, f=tuple(filenames), p=path)
     return path
@@ -187,9 +205,19 @@ def is_directory(path):
     return is_dir
 
 
+## TODO2: add decorator for flagging obsolete functions
+##   def obsolete():
+##      """Flag fucntion as obsolete in docstring and issue warning if called"""
+##      warning = f"Warning {func} obsolete use version in system.py instead"
+##      func.docstring += warning
+##      func.body = f'debug.trace(3, "{warning}")' + func.body
+
+
 def create_directory(path):
-    """Wrapper around os.mkdir over PATH (with tracing)"""
-    ## Note: obsolete use version in system.py instead
+    """Wrapper around os.mkdir over PATH (with tracing)
+    Warning: obsolete
+    """
+    debug.trace(3, "Warning: create_directory obsolete use version in system.py instead")
     if not os.path.exists(path):
         os.mkdir(path)
         debug_format("os.mkdir({p})", 6, p=path)
@@ -218,23 +246,27 @@ def real_path(path):
     return result
 
 
-def indent(text, indentation=INDENT, max_width=512):
+def indent(text, indentation=None, max_width=512):
     """Indent TEXT with INDENTATION at beginning of each line, returning string ending in a newline unless empty and with resulting lines longer than max_width characters wrapped. Text is treated as a single paragraph."""
+    if indentation is None:
+        indentation = INDENT
     # Note: an empty text is returned without trailing newline
     tw = textwrap.TextWrapper(width=max_width, initial_indent=indentation, subsequent_indent=indentation)
     wrapped_text = "\n".join(tw.wrap(text))
-    if wrapped_text:
+    if wrapped_text and text.endswith("\n"):
         wrapped_text += "\n"
     return wrapped_text
 
 
-def indent_lines(text, indentation=INDENT, max_width=512):
+def indent_lines(text, indentation=None, max_width=512):
     """Like indent, except that each line is indented separately. That is, the text is not treated as a single paragraph."""
     # Sample usage: print("log contents: {{\n{log}\n}}".format(log=indent_lines(lines)))
     # TODO: add support to simplify above idiom (e.g., indent_lines_bracketed); rename to avoid possible confusion that input is array (as wih write_lines)
+    if indentation is None:
+        indentation = INDENT
     result = ""
-    for line in text.split("\n"):
-        indented_line = indent(line, indentation, max_width)
+    for line in text.splitlines():
+        indented_line = indent(line + "\n", indentation, max_width)
         if not indented_line:
             indented_line = "\n"
         result += indented_line
@@ -246,9 +278,13 @@ MAX_ELIDED_TEXT_LEN = tpo.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 def elide(text: str, max_len=None):
     """Returns TEXT elided to at most MAX_LEN characters (with '...' used to indicate remainder). Note: intended for tracing long string."""
     # EX: elide("=" * 80, max_len=8) => "========..."
-    # TODO: add support for eliding at word-boundaries
+    # EX: elide(None) => ""
+    # NOTE: Make sure compatible with debug.format_value (TODO3: add equivalent to strict argument)
+    # TODO2: add support for eliding at word-boundaries
     tpo.debug_print("elide(_, _)", 8)
-    debug.assertion(isinstance(text, str))
+    debug.assertion(isinstance(text, (str, type(None))))
+    if text is None:
+        text = ""
     if max_len is None:
         max_len = MAX_ELIDED_TEXT_LEN
     result = text
@@ -257,7 +293,7 @@ def elide(text: str, max_len=None):
     tpo.debug_print("elide({%s}, [{%s}]) => {%s}" % (text, max_len, result), 9)
     return result
 #
-# EX: gh.elide(None, 10) => None
+# EX: elide(None, 10) => ''
 
 def elide_values(values: list, **kwargs):
     """List version of elide [q.v.]"""
@@ -276,20 +312,22 @@ def disable_subcommand_tracing():
     default_subtrace_level = 0
 
 
-def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespace):
+def run(command, trace_level=4, subtrace_level=None, just_issue=False, output=False, **namespace):
     """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
    Notes:
-   - The result includes stderr, so direct if not desired:
-         gh.run("ls /tmp/fubar 2> /dev/null")
+   - The result includes stderr, so direct if not desired (see issue):
+         run("ls /tmp/fubar 2> /dev/null")
    - This is only intended for running simple commands. It would be better to create a subprocess for any complex interactions.
    - This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed.
+   - If TEMP_FILE or TEMP_BASE defined, these are modified to be unique to avoid conflicts across processeses.
+    - If OUTPUT, the result will be printed.
    """
     # TODO: add automatic log file support as in run_script from unittest_wrapper.py
     # TODO: make sure no template markers left in command text (e.g., "tar cvfz {tar_file}")
     # EX: "root" in run("ls /")
     # Note: Script tracing controlled DEBUG_LEVEL environment variable.
     debug.assertion(isinstance(trace_level, int))
-    debug_print("run(%s, [trace_level=%s], [subtrace_level=%s])" % (command, trace_level, subtrace_level), (trace_level + 2))
+    debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output}")
     global default_subtrace_level
     # Keep track of current debug level setting
     debug_level_env = None
@@ -298,6 +336,12 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     if subtrace_level != trace_level:
         debug_level_env = os.getenv("DEBUG_LEVEL")
         setenv("DEBUG_LEVEL", str(subtrace_level))
+    save_temp_base = TEMP_BASE
+    if TEMP_BASE:
+         setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
+    save_temp_file = TEMP_FILE
+    if TEMP_FILE:
+        setenv("TEMP_FILE", TEMP_FILE + "_subprocess_")
     # Expand the command template
     # TODO: make this optional
     command_line = command
@@ -315,32 +359,44 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, **namespa
     debug.assertion(">|" not in command_line)
     result = None
     ## TODO: if (just_issue or not wait): ... else: ...
-    result = getoutput(command_line) if wait else str(os.system(command_line))
+    ## OLD: result = getoutput(command_line) if wait else str(os.system(command_line))
+    wait_for_command = (not wait or not just_issue)
+    debug.trace_expr(5, wait, just_issue, wait_for_command)
+    result = getoutput(command_line) if wait_for_command else str(os.system(command_line))
+    if output:
+        print(result)
     # Restore debug level setting in environment
     if debug_level_env:
         setenv("DEBUG_LEVEL", debug_level_env)
+    if save_temp_base:
+        setenv("TEMP_BASE", save_temp_base)
+    if save_temp_file:
+        setenv("TEMP_FILE", save_temp_file)
     debug_print("run(_) => {\n%s\n}" % indent_lines(result), (trace_level + 1))
     return result
 
 
 def run_via_bash(command, trace_level=4, subtrace_level=None, init_file=None,
+                 enable_aliases=False,
                  **namespace):
     """Version of run that runs COMMAND with aliases defined
     Notes:
     - This can be slow due to alias definition overhead
     - INIT_FILE is file to source before running the command
     - TRACE_LEVEL and SUBTRACE_LEVEL control tracing for COMMAND and any subcommands, respectively
+    - Used in bash to python translation; see
+         https://github.com/tomasohara/shell-scripts/blob/main/bash2python.py
     """
     debug_print("issuing: %s" % command, trace_level)
     commands_to_run = ""
+    if enable_aliases:
+        commands_to_run += "shopt -s expand_aliases\n"
     if init_file:
         commands_to_run += system.read_file(init_file) + "\n"
     commands_to_run += command
     system.write_file(TEMP_SCRIPT_FILE, commands_to_run)
     
-    ## HACK: make sure tomohara-aliases don't output anything
-    command_line = f"BATCH_MODE=1 bash -i -f {TEMP_SCRIPT_FILE}"
-    ## TODO: command_line = f"bash -i -f {TEMP_SCRIPT_FILE}"
+    command_line = f"bash -f {TEMP_SCRIPT_FILE}"
     return run(command_line, trace_level=(trace_level + 1), subtrace_level=subtrace_level, just_issue=False, **namespace)
 
 
@@ -411,8 +467,7 @@ def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0, para_m
     ## if re_flags is None:
     ##     re_flags = re.DOTALL
     debug.trace_values(6, lines, "lines")
-    ## assert type(lines) == list
-    assert isinstance(lines, list)
+    debug.assertion(isinstance(lines, list))
     if pattern.find("(") == -1:
         pattern = "(" + pattern + ")"
     if (re_flags and (re_flags & re.DOTALL)):
@@ -542,17 +597,23 @@ def write_lines(filename, text_lines, append=False):
 
 def read_file(filename, make_unicode=False):
     """Returns text from FILENAME (single string), including newline(s).
-    Note: optionally returned as unicde."""
+    Note: optionally returned as unicde.
+    Warning: deprecated function--use system.read_file instead
+    """
     debug_print("read_file(%s)" % filename, 7)
+    debug_print("Warning: Deprecated (glue_helpers.read_file): use version in system", 3)
     text = "\n".join(read_lines(filename, make_unicode=make_unicode))
     return (text + "\n") if text else ""
 
 
 def write_file(filename, text, append=False):
-    """Writes FILENAME using contents in TEXT, adding trailing newline and optionally for APPEND"""
+    """Writes FILENAME using contents in TEXT, adding trailing newline and optionally for APPEND
+    Warning: deprecated function--use system.write_file instead
+    """
     ## TEST: debug_print(u"write_file(%s, %s)" % (filename, text), 7)
     ## TEST: debug_print(u"write_file(%s, %s)" % (filename, tpo.normalize_unicode(text)), 7)
     debug_print("write_file(%s, %s)" % (tpo.normalize_unicode(filename), tpo.normalize_unicode(text)), 7)
+    debug_print("Warning: Deprecated (glue_helpers.write_file): use version in system", 3)
     text_lines = text.rstrip("\n").split("\n")
     return write_lines(filename, text_lines, append)
 
@@ -565,7 +626,6 @@ def copy_file(source, target):
     debug_print("copy_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
     debug.assertion(non_empty_file(source))
     shutil.copy(source, target)
-    ## OLD: debug.assertion(non_empty_file(target))
     target_file = (target if system.is_regular_file(target) else form_path(target, basename(source)))
     ## TODO: debug.assertion(file_size(source) == file_size(target_file))
     debug.assertion(non_empty_file(target_file))
@@ -656,6 +716,7 @@ def get_directory_listing(dir_name, make_unicode=False):
 def getenv_filename(var, default="", description=None):
     """Returns text filename based on environment variable VAR (or string version of DEFAULT) 
     with optional DESCRIPTION. This includes a sanity check for file being non-empty."""
+    # TODO4: explain motivation
     debug_format("getenv_filename({v}, {d}, {desc})", 6,
                  v=var, d=default, desc=description)
     filename = tpo.getenv_text(var, default, description)
@@ -673,7 +734,7 @@ if __debug__:
         Note: deprecated function--use debug.assertion instead"""
         global assertion_deprecation_shown
         if not assertion_deprecation_shown:
-            debug.trace(4, "Warning: glue_helpers.assertion() is deprecated")
+            debug.trace(3, "Warning: glue_helpers.assertion() is deprecated")
             assertion_deprecation_shown = True
         # EX: assertion(2 + 2 != 5)
         # TODO: rename as soft_assertion???; add to tpo_common.py (along with run???)
@@ -718,6 +779,16 @@ else:
     def assertion(_condition):
         """Non-debug stub for assertion"""
         return
+
+def init():
+    """Work around for Pythion quirk"""
+    # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
+    debug.trace(5, "gh.init()")
+    global TEMP_FILE
+    temp_filename = "temp-file.list"
+    temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
+    TEMP_FILE = system.getenv_value("TEMP_FILE", temp_file_default,
+                                    "Override for temporary filename")
 
 #------------------------------------------------------------------------
 

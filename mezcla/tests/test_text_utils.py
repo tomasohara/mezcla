@@ -96,7 +96,7 @@ class TestTextUtils:
         """Ensure extract_html_images works as expected"""
         debug.trace(4, "test_extract_html_images()")
 
-        url = 'example.com/'
+        url = 'example.com'
         html = (
             '<!DOCTYPE html>\n'
             '<html>\n'

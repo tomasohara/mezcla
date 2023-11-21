@@ -13,6 +13,7 @@ import datetime
 from difflib import ndiff
 import inspect
 import math
+import random
 import re
 import sys
 
@@ -28,10 +29,12 @@ from mezcla import text_utils
 # Constants
 ELLIPSIS = "\u2026"                 # Horizontal Ellipsis
 TYPICAL_EPSILON = system.getenv_float("TYPICAL_EPSILON", 1e-6,
-                                      description="Traditional floating-point error factor")
+                                      description="Traditional floating-point negligible difference")
 VALUE_EPSILON = system.getenv_float("VALUE_EPSILON", 1e-3,
-                                    description="Epsilon for floating-point comparison")
+                                    description="Epsilon for informal floating-point comparison")
 debug.assertion(TYPICAL_EPSILON < VALUE_EPSILON)
+RANDOM_SEED = system.getenv_integer("RANDOM_SEED", 15485863,
+                                    "Integral seed for random number generation: 0 for default")
 
 
 def transitive_closure(edge_list):
@@ -61,7 +64,7 @@ def read_tabular_data(filename):
             line = system.from_utf8(line)
             items = line.split("\t")
             if len(items) == 2:
-                assert(items[0].lower() not in table)
+                debug.assertion(items[0].lower() not in table)
                 table[items[0].lower()] = items[1]
             else:
                 debug.trace_fmtd(4, "Ignoring item w/ unexpected format at line {num}",
@@ -101,7 +104,7 @@ def is_prime(num):
         return is_prime_num
 
     # Next, make sure not divisible by 2 or 3
-    elif ((num % 2 == 0) or (num % 3 == 0)):
+    if ((num % 2 == 0) or (num % 3 == 0)):
         debug.trace_fmt(4, "{n} not prime as divisible by 2 or 3.", n=num)
         return False
 
@@ -196,7 +199,7 @@ def eval_expression(expr_text, frame=None):
         result = eval(expr_text, frame.f_globals, frame.f_locals)
     except:
         debug.trace_fmt(5, "Exception during eval_expression({expr}): {exc}",
-                        exp=expr_text, exc=sys.exc_info())
+                        expr=expr_text, exc=sys.exc_info())
     debug.trace_fmt(7, "eval_expression({expr}) => {r}",
                     expr=expr_text, r=result)
     return result
@@ -299,6 +302,23 @@ def get_date_ddmmmyy(date=None):
         result = "???"
     debug.trace(6, f"get_date_ddmmmyy({in_date}) => {result}")
     return result
+
+def init():
+    """MOdule initialization"""
+    if RANDOM_SEED:
+        random.seed(RANDOM_SEED)
+
+def random_int(min=None, max=None):
+    """Returns random integer in range [MIN, MAX]"""
+    if min is None:
+        min = sys.minint
+    if max is None:
+        max = sys.minint
+    result = random.randint(min, max)
+    debug.trace(6, f"random_int() => {result}")
+    return result
+
+init()
 
 #-------------------------------------------------------------------------------
 

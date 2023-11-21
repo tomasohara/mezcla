@@ -649,7 +649,7 @@ def redirect_stderr(filename):
     """Redirects error output to FILENAME"""
     global stderr
     assert(stderr == sys.stderr)
-    stderr = open(filename, "w")
+    stderr = system.open_file(filename, "w")
     assert(stderr)
 
 
@@ -992,7 +992,7 @@ def load_object(filename):
     """Load object data from FILENAME in pickle format"""
     debug_print("Loading object from %s" % filename, 3)
     object_data = None
-    f = open(filename, 'rb')
+    f = system.open_file(filename, 'rb')
     if f:
         object_data = pickle.load(f)
         f.close()
@@ -1002,7 +1002,7 @@ def load_object(filename):
 def store_object(filename, object_data):
     """Store OBJECT_DATA in FILENAME using pickle format"""
     debug_print("Saving object to %s" % filename, 3)
-    f = open(filename, 'wb')
+    f = system.open_file(filename, 'wb')
     if f:
         pickle.dump(object_data, f)
         f.close()
@@ -1030,7 +1030,7 @@ def create_lookup_table(filename, use_linenum=False):
     lookup_hash = {} if (not use_linenum) else OrderedDict()
     f = None
     try:
-        f = open(filename)
+        f = system.open_file(filename)
         line_num = 0
         for line in f:
             line = line.strip("\n")
@@ -1065,7 +1065,7 @@ def create_boolean_lookup_table(filename):
     # TODO: allow for tab-delimited value to be ignored
     debug_print("create_boolean_lookup_table(%s)" % filename, 4)
     lookup_hash = {}
-    f = open(filename)
+    f = system.open_file(filename)
     for line in f:
         key = line.strip().lower()
         lookup_hash[key] = True

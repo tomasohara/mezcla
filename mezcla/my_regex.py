@@ -107,7 +107,8 @@ class regex_wrapper():
         # TODO: self.regex = ""
 
         # HACK: Import attributes from re class
-        # TODO: see if clean way to do this
+        # TODO3: see if clean way to do this
+        # TODO4: find way to disable pylint no-member warning
         try:
             for var in re.__all__:
                 if var not in dir(self):
@@ -121,7 +122,10 @@ class regex_wrapper():
         Note: Added to account for potential f-string confusion"""
         # TODO: Add way to disable check
         debug.reference_var(self)
-        if (debug.debugging(1) and re.search(r"[^{]\{[A-Fa-f0-9][^{}]+\}[^}]", regex)):
+        check_regex = r"[^{]\{[A-Fa-f0-9][^{}]+\}[^}]"
+        if isinstance(regex, bytes):
+            check_regex = check_regex.encode()
+        if (debug.debugging(1) and re.search(check_regex, regex)):
             system.print_error(f"Warning: potentially unresolved f-string in {regex}")
 
     def search(self, regex, text, flags=0, base_trace_level=None):
@@ -131,11 +135,12 @@ class regex_wrapper():
             base_trace_level = self.TRACE_LEVEL
         debug.trace_fmtd((1 + base_trace_level), "my_regex.search({r!r}, {t!r}, {f}): self={s}",
                          r=regex, t=text, f=flags, s=self)
-        debug.assertion(isinstance(text, six.string_types))
+        ## OLD: debug.assertion(isinstance(text, six.string_types))
+        debug.assertion(isinstance(text, (str, bytes)) and (type(regex) == type(text)))
         self.check_pattern(regex)
         self.match_result = re.search(regex, text, flags)
         if self.match_result:
-            debug.trace_fmt(base_trace_level, "match: {m!r}; regex: {r}", m=self.grouping(), r=regex)
+            debug.trace_fmt(base_trace_level, "match: {m!r}; regex: {r!r}", m=self.grouping(), r=regex)
         return self.match_result
 
     def match(self, regex, text, flags=0, base_trace_level=None):
@@ -154,7 +159,7 @@ class regex_wrapper():
     def get_match(self):
         """Return match result object for last search or match"""
         result = self.match_result
-        debug.trace_fmtd(self.TRACE_LEVEL, "my_regex.get_match() => {r}: self={s}",
+        debug.trace_fmtd(self.TRACE_LEVEL, "my_regex.get_match() => {r!r}: self={s}",
                          r=result, s=self)
         return result
 
@@ -162,7 +167,7 @@ class regex_wrapper():
         """Return group NUM from match result from last search"""
         debug.assertion(self.match_result)
         result = self.match_result and self.match_result.group(num)
-        debug.trace_fmtd(self.TRACE_LEVEL, "my_regex.group({n}) => {r}: self={s}",
+        debug.trace_fmtd(self.TRACE_LEVEL, "my_regex.group({n}) => {r!r}: self={s}",
                          n=num, r=result, s=self)
         return result
 
@@ -170,7 +175,7 @@ class regex_wrapper():
         """Return all groups in match result from last search"""
         debug.assertion(self.match_result)
         result = self.match_result and self.match_result.groups()
-        debug.trace_fmt(self.TRACE_LEVEL, "my_regex.groups() => {r}: self={s}",
+        debug.trace_fmt(self.TRACE_LEVEL, "my_regex.groups() => {r!r}: self={s}",
                         r=result, s=self)
         return result
 
@@ -178,19 +183,19 @@ class regex_wrapper():
         """Return groups for match result or entire matching string if no groups defined"""
         # Note: this is intended to facilitate debug tracing; see example in search method above
         result = self.match_result and (self.match_result.groups() or self.match_result.group(0))
-        debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.grouping() => {r}: self={s}", r=result, s=self)
+        debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.grouping() => {r!r}: self={s}", r=result, s=self)
         return result
 
     def start(self, group=0):
         """Start index for GROUP"""
         result = self.match_result and self.match_result.start(group)
-        debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.start({g}) => {r}: self={s}", r=result, s=self, g=group)
+        debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.start({g}) => {r!r}: self={s}", r=result, s=self, g=group)
         return result
 
     def end(self, group=0):
         """End index for GROUP"""
         result = self.match_result and self.match_result.end(group)
-        debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.end({g}) => {r}: self={s}", r=result, s=self, g=group)
+        debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.end({g}) => {r!r}: self={s}", r=result, s=self, g=group)
         return result
 
     def sub(self, pattern, replacement, string, *, count=0, flags=0):
@@ -209,15 +214,21 @@ class regex_wrapper():
     def split(self, pattern, string, maxsplit=0, flags=0):
         """Use PATTERN to split STRING, optionally up to MAXSPLIT with FLAGS"""
         result = re.split(pattern, string, maxsplit, flags)
-        debug.trace_fmt(self.TRACE_LEVEL, "split{args} => {r}",
+        debug.trace_fmt(self.TRACE_LEVEL, "split{args} => {r!r}",
                         args=tuple([pattern, string, maxsplit, flags]), r=result)
         return result
     
     def findall(self, pattern, string, flags=0):
         """Use PATTERN to split STRING, optionally with specified FLAGS"""
         result = re.findall(pattern, string, flags)
-        debug.trace_fmt(self.TRACE_LEVEL, "findall{args} => {r}",
+        debug.trace_fmt(self.TRACE_LEVEL, "findall{args} => {r!r}",
                         args=tuple([pattern, string, flags]), r=result)
+        return result
+
+    def escape(self, text):
+        """Escape special characters in TEXT"""
+        result = re.escape(text)
+        debug.trace(self.TRACE_LEVEL + 1, f"escape({text!r}) => {result!r}")
         return result
     
 #...............................................................................

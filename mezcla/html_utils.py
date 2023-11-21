@@ -242,16 +242,6 @@ def wait_until_ready(url:str, stable_download_check:bool=STABLE_DOWNLOAD_CHECK):
     return
     
 
-def escape_html_value(value):
-    """Escape VALUE for HTML embedding"""
-    return system.escape_html_text(value)
-
-
-def unescape_html_value(value):
-    """Undo escaped VALUE for HTML embedding"""
-    return system.unescape_html_text(value)
-
-
 def escape_hash_value(hash_table, key):
     """Wrapper around escape_html_value for HASH_TABLE[KEY] (or "" if missing).
     Note: newlines are converted into <br>'s."""
@@ -271,6 +261,7 @@ def get_param_dict(param_dict=None):
 
 def set_param_dict(param_dict):
     """Sets global user_parameters to value of PARAM_DICT"""
+    # EX: set_param_dict({"param1": "a+b+c", "param2": "a%2Bb%2Bc"}); len(user_parameters) => 2
     debug.trace(7, f"set_param_dict({param_dict})")
     global issued_param_dict_warning
     global user_parameters
@@ -284,7 +275,10 @@ def set_param_dict(param_dict):
 
 def get_url_param(name, default_value=None, param_dict=None, escaped=False):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
-    Note: It can be ESCAPED for use in HTML."""
+    Note: It can be ESCAPED for use in HTML.
+    Different from get_url_parameter_value in possible returning list.
+    """
+    # TODO3: default_value => default
     if default_value is None:
         default_value = ""
     param_dict = (get_param_dict(param_dict) or {})
@@ -292,16 +286,31 @@ def get_url_param(name, default_value=None, param_dict=None, escaped=False):
     value = system.to_unicode(value)
     if escaped:
         value = escape_html_value(value)
-    debug.trace_fmtd(4, "get_url_param({n}, [{d}]) => {v})",
-                     n=name, d=default_value, v=value)
+    debug.trace_fmt(5, "get_url_param({n}, [{d}]) => {v})",
+                    n=name, d=default_value, v=value)
     return value
 #
 get_url_parameter = get_url_param
 
 
+def get_url_text(name, param_dict=None):
+    """Get TEXT value for URL encoded parameter, using current PARAM_DICT"""
+    # EX: get_url_text("param1") => "a b c"
+    encoded_vaue = get_url_parameter(name, param_dict)
+    value = unescape_html_value(system.unquote_url_text(encoded_vaue))
+    debug.trace_fmt(6, "get_url_text({n}, [d={d}]) => {v})",
+                    n=name, d=param_dict, v=value)
+    return value
+#
+# EX: get_url_text("param2") => "a b c"
+   
+
 def get_url_param_checkbox_spec(name, default_value="", param_dict=None):
     """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT
     Note: the value is only specified/submitted if checked"""
+    # TODO3?: extend to handle case with multiple values (see get_url_parameter_value)
+    # EX: get_url_param_checkbox_spec("param", param_dict={"param": "on"}) => "checked"
+    # EX: get_url_param_checkbox_spec("param", param_dict={"param": "off"}) => ""
     # NOTE: 1 also treated as True
     # TODO: implement in terms of get_url_param
     param_dict = (get_param_dict(param_dict) or {})
@@ -317,7 +326,10 @@ get_url_parameter_checkbox_spec = get_url_param_checkbox_spec
 
 
 def get_url_parameter_value(param, default_value=None, param_dict=None):
-    """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)"""
+    """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)
+    Note: different from get_url_parameter in just returning single value
+    """
+    # TODO3?: rename as get_last_url_parameter_value (to avoid confusion with get_url_parameter)
     param_dict = (get_param_dict(param_dict) or {})
     result = param_dict.get(param, default_value)
     if isinstance(result, list):
@@ -361,11 +373,25 @@ def get_url_parameter_int(param, default_value=0, param_dict=None):
 get_url_param_int = get_url_parameter_int
 
 
+def get_url_parameter_float(param, default_value=0.0, param_dict=None):
+    """Get floating-point value for PARAM from PARAM_DICT.
+    Note: the hash defaults to user_parameters, and the default value is 0.0"""
+    result = system.to_float(get_url_parameter_value(param, default_value, param_dict))
+    debug.trace_fmtd(4, "get_url_parameter_float({p}, {dft}, _) => {r}",
+                     p=param, dft=default_value, r=result)
+    return result
+#
+get_url_param_float = get_url_parameter_float
+
+
 def fix_url_parameters(url_parameters):
     """Uses the last values for any user parameter with multiple values
-    and ensures dashes are used instead of underscores in the keys"""
+    and ensures dashes are used instead of embedded underscores in the keys"""
     # EX: fix_url_parameters({'w_v':[7, 8], 'h_v':10}) => {'w-v':8, 'h-v':10}
-    new_url_parameters = {p.replace("_", "-"):v for  (p, v) in url_parameters.items()}
+    # EX: fix_url_parameters({'_':'_'}) => {'_':'_'}
+    ## OLD: new_url_parameters = {p.replace("_", "-"):v for  (p, v) in url_parameters.items()}
+    new_url_parameters = {my_re.sub(r"([a-z0-9])_", r"\1-", p):v
+                          for  (p, v) in url_parameters.items()}
     new_url_parameters = {p:(v[-1] if isinstance(v, list) else v) for (p, v) in new_url_parameters.items()}
     debug.trace_fmt(6, "fix_url_parameters({up}) => {new}",
                     up=url_parameters, new=new_url_parameters)
@@ -647,6 +673,205 @@ def extract_html_link(html, url=None, base_url=None):
         links.append(link_src)
     debug.trace_fmtd(6, "extract_html_links() => {i}", i=links)
     return links
+
+
+def format_checkbox(param_name, label=None, default_value=False, disabled=False, style=None, misc_attr=None):
+    """Returns HTML specification for input checkbox, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all)
+    Warning: includes separate hidden field for explicit off state"""
+    ## Note: Checkbox valuee are only submitted if checked, so a hidden field is used to provide explicit off.
+    ## This requires use of fix_url_parameters to give preference to final value specified (see results.mako).
+    ## See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox for hidden field tip.
+    ## Also see https://stackoverflow.com/questions/155291/can-html-checkboxes-be-set-to-readonly
+    ## EX: format_checkbox("disable-touch") => '<label>Disable touch? <input id="disable-touch" type="checkbox" name="disable-touch" ></label>&nbsp;"'
+    ## EX: format_checkbox("disable-touch", disabled=True) => '<label>Disable touch? <input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>&nbsp;"'
+    debug.trace_expr(7, param_name, label, default_value, disabled, prefix="in format_checkbox: ")
+    checkbox_spec = get_url_param_checkbox_spec(param_name, default_value)
+    disabled_spec = ("disabled" if disabled else "")
+    status_spec = f"{checkbox_spec} {disabled_spec}".strip()
+    style_spec = (f"style='{style}'" if style else "")
+    misc_spec = (misc_attr if misc_attr else "")
+    if (label is None):
+        label = (param_name.replace("-", " ").capitalize() + "?")
+    ## OLD: result = ""
+    ## TODO: use hidden only if (default_value in ["1", "on", True])???
+    result = f"<input type='hidden' name='{param_name}' value='off'>"
+    ## OLD: result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {status_spec}></label>&nbsp;"
+    result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
+    debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
+    return result
+
+
+def format_url_param(name, default=None):
+    """Return URL parameter NAME formatted for an HTML form (e.g., escaped)"""
+    # EX: set_param_dict({"q": '"hot dog"'}); format_url_param("q") => '&quot;hot dog&quot;'
+    if default is None:
+        default = ""
+    value_spec = (get_url_param(name) or default)
+    if value_spec:
+        value_spec = escape_html_text(value_spec)
+    debug.trace(5, f"format_url_param({name}) => {value_spec!r}")
+    return value_spec
+#
+# EX: format_url_param("r") => ""
+# EX: format_url_param("r", "R") => "R"
+
+
+def format_input_field(param_name, label=None, default_value=None, max_len=None, disabled=None, style=None, misc_attr=None):
+    """Returns HTML specification for input field, optionally with LABEL, DEFAULT_VALUE, DISABLED, STYLE and MISC_ATTR (catch all)"""
+    # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
+    debug.trace_expr(7, param_name, label, default_value, max_len, disabled, prefix="in format_input_field: ")
+    if (label is None):
+        label = param_name.replace("-", " ").capitalize()
+    if (default_value is None):
+        default_value = ""
+    ## OLD: value_spec = (f"{default_value}" if default_value else "")
+    value_spec = (get_url_param(param_name) or default_value)
+    max_len_spec = (f"maxlength={max_len} size={max_len}" if max_len else "")
+    disabled_spec = ("disabled" if disabled else "")
+    style_spec = (f"style='{style}'" if style else "")
+    misc_spec = (misc_attr if misc_attr else "")
+    result = f'<label>{label}&nbsp;<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {max_len_spec} {disabled_spec} {misc_spec}></label>'
+    debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
+    return result
+
+#-------------------------------------------------------------------------------
+# TEMP: Code previously in other modules
+# TODO3: move above according to some logical grouping
+
+def escape_html_text(text):
+    """Add entity encoding to TEXT to make suitable for HTML"""
+    # Note: This is wrapper around html.escape and just handles '&', '<', '>', "'", and '"'.
+    # EX: escape_html_text("<2/") => "&lt;2/"
+    # EX: escape_html_text("Joe's hat") => "Joe&#x27;s hat"
+    debug.trace_fmtd(8, "in escape_html_text({t})", t=text)
+    result = ""
+    if (sys.version_info.major > 2):
+        # TODO: move import to top
+        import html                    # pylint: disable=import-outside-toplevel, import-error
+        result = html.escape(text)     # pylint: disable=deprecated-method, no-member
+    else:
+        import cgi                     # pylint: disable=import-outside-toplevel, import-error
+        result = cgi.escape(text, quote=True)    # pylint: disable=deprecated-method, no-member
+    debug.trace_fmtd(7, "out escape_html_text({t}) => {r}", t=text, r=result)
+    return result
+#
+escape_html_value = escape_html_text
+
+def unescape_html_text(text):
+    """Remove entity encoding, etc. from TEXT (i.e., undo)"""
+    # Note: This is wrapper around html.unescape (Python 3+) or
+    # HTMLParser.unescape (Python 2).
+    # See https://stackoverflow.com/questions/21342549/unescaping-html-with-special-characters-in-python-2-7-3-raspberry-pi.
+    # EX: unescape_html_text("&lt;2/") => "<2/"
+    # EX: unescape_html_text("Joe&#x27;s hat") => "Joe's hat"
+    debug.trace_fmtd(8, "in unescape_html_text({t})", t=text)
+    result = ""
+    if (sys.version_info.major > 2):
+        # TODO: see if six.py supports html-vs-cgi:unescape
+        import html                   # pylint: disable=import-outside-toplevel, import-error
+        result = html.unescape(text)
+    else:
+        import HTMLParser             # pylint: disable=import-outside-toplevel, import-error
+        html_parser = HTMLParser.HTMLParser()
+        result = html_parser.unescape(text)
+    debug.trace_fmtd(7, "out unescape_html_text({t}) => {r}", t=text, r=result)
+    return result
+#
+unescape_html_value = unescape_html_text
+
+def html_to_text(document_data):
+    """Returns text version of html DATA"""
+    # EX: html_to_text("<html><body><!-- a cautionary tale -->\nMy <b>fat</b> dog has fleas</body></html>") => "My fat dog has fleas"
+    # Note: stripping javascript and style sections based on following:
+    #   https://stackoverflow.com/questions/22799990/beatifulsoup4-get-text-still-has-javascript
+    debug.trace_fmtd(7, "html_to_text(_):\n\tdata={d}", d=document_data)
+    ## OLD: soup = BeautifulSoup(document_data)
+    init_BeautifulSoup()
+    soup = BeautifulSoup(document_data, "lxml")
+    # Remove all script and style elements
+    for script in soup(["script", "style"]):
+        # *** TODO: soup = soup.extract(script)
+        # -or- Note the in-place change (i.e., destructive).
+        script.extract()
+    # Get the text
+    ## OLD: text = soup.get_text()
+    text = soup.get_text(separator=" ")
+    debug.trace_fmtd(6, "html_to_text() => {t}", t=gh.elide(text))
+    return text
+
+
+def extract_html_images(document_data=None, url=None, filename=None):
+    """Returns list of all images in HTML DOC from URL (n.b., URL used to determine base URL)"""
+    debug.trace(6, f"extract_html_images(_, {url}, fn={filename})")
+    debug.trace_fmtd(8, "\tdata={d}", d=document_data)
+    # TODO: add example; return dimensions
+    # TODO: have URL default to current directory
+    debug.assertion(document_data or url or filename)
+    if (document_data is None):
+        if (filename is not None):
+            document_data = system.read_file(filename)
+        elif (url is not None):
+            document_data = download_web_document(url)
+        else:
+            system.print_error("Error in extract_html_images: unable to get data without URL or filename")
+
+    # Parse HTML, extract base URL if given and get website from URL.
+    init_BeautifulSoup()
+    soup = BeautifulSoup(document_data, 'html.parser')
+    web_site_url = re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
+    debug.trace_fmtd(6, "wsu1={wsu}", wsu=web_site_url)
+    if not web_site_url.endswith("/"):
+        web_site_url += "/"
+        debug.trace_fmtd(6, "wsu2={wsu}", wsu=web_site_url)
+    base_url_info = soup.find("base")
+    base_url = base_url_info.get("href") if base_url_info else None
+    debug.trace_fmtd(6, "bu1={bu}", bu=base_url)
+    ## BAD:
+    ## if not base_url:
+    ##     # Remove parts of the URL after the final slash
+    ##     # TODO: comment and example
+    ##     base_url = re.sub(r"(^.*/[^\/]+/)[^\/]+$", r"\1", url)
+    ##     debug.trace_fmtd(6, "bu2={bu}", bu=base_url)
+    if not base_url:
+        base_url = web_site_url
+        debug.trace_fmtd(6, "bu3={bu}", bu=base_url)
+    if not base_url.endswith("/"):
+        base_url += "/"
+        debug.trace_fmtd(6, "bu4={bu}", bu=base_url)
+
+    # Get images and resolve to full URL (TODO: see if utility for this)
+    # TODO: include CSS background images
+    # TODO: use DATA-SRC if SRC not valid URL (e.g., src="data:image/gif;base64,R0lGODl...")
+    images = []
+    all_images = soup.find_all('img')
+    for image in all_images:
+        debug.trace_fmtd(6, "image={inf}; style={sty}", inf=image, sty=image.attrs.get('style'))
+        ## TEST: if (image.has_attr('attrs') and (image.attrs.get['style'] in ["display:none", "visibility:hidden"])):
+        if (image.attrs.get('style') in ["display:none", "visibility:hidden"]):
+            debug.trace_fmt(5, "Ignoring hidden image: {img}", img=image)
+            continue
+        image_src = image.get("src", "")
+        if not image_src:
+            debug.trace_fmt(5, "Ignoring image without src: {img}", img=image)
+            continue
+        ## OLD:
+        ## if image_src.startswith("/"):
+        ##     image_src = web_site_url + image_src
+        ## elif not image_src.startswith("http"):
+        if image_src.startswith("//"):
+            url_proto = (my_re.search(r"^(\w+):", url) and my_re.group(1))
+            image_src = f"{url_proto}:{image_src}"
+        elif not my_re.search(r"^(http)|(data:)", image_src):
+            image_src = base_url + image_src.lstrip("/")
+        else:
+            debug.trace(7, f"Using image src as is: {image_src}")
+        ## TEMP: fixup for trailing newline (TODO: handle upstream)
+        image_src = image_src.strip()
+        if image_src not in images:
+            images.append(image_src)
+    debug.trace_fmtd(6, "extract_html_images() => {i}", i=images)
+    return images
+
 
 #-------------------------------------------------------------------------------
 

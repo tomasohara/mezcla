@@ -7,6 +7,10 @@
 #     https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 #     https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 # - Based initially on version from https://github.com/LimaBD/batspp.
+# - Running Github Actions with Docker: https://stackoverflow.com/a/64373702
+# - Docker documentation:
+#   https://docs.docker.com/engine/reference/commandline/cli/
+#   https://docs.docker.com/storage/bind-mounts
 #
 
 name: tests
@@ -15,28 +19,15 @@ on: [push, pull_request]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        ## TODO: python-version: ["3.8", "3.9", "3.10"]
-        python-version: ["3.8", "3.10"]
-
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        # Specific requirement for SoundFile
-        sudo apt-get install libsndfile1
 
-        # Mezcla requirements
-        pip install --verbose $(perl -00 -pe 's/^#opt#\s*//gm;' ./requirements.txt | grep -v '^#')
-    - name: Test with pytest
+    - name: Build docker image
       run: |
-        PYTHONPATH="$(dirname $(realpath -s $0))/mezcla/:$PYTHONPATH" coverage run -m pytest ./mezcla/tests/
-        coverage xml
+        docker build -t mezcla-dev -f- . <Dockerfile
+
+    - name: Run tests
+      run: |
+        ## TODO???: put repo under /mnt/local-mezcla and installed version under /home/mezcla
+        docker run --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev

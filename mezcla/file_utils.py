@@ -1,14 +1,14 @@
 #! /usr/bin/env python
 #
-# Filesystem related functions
+# Filesystem related functions, as well as file format conversion.
 #
 
 
 """Filesystem related functions"""
 
-
 # Standard packages
 from datetime import datetime
+import json
 import os
 import sys
 
@@ -18,6 +18,8 @@ from mezcla import debug
 from mezcla import system
 from mezcla import glue_helpers as gh
 
+#-------------------------------------------------------------------------------
+# File system
 
 def path_exist(path):
     """Returns indication that PATH exists"""
@@ -123,6 +125,7 @@ def get_information(path, readable=False, return_string=False):
         get_file_size('somefile.txt')                     -> ('-rwxrwxr-x', 3, 'peter', 'admins',  4096, 'oct 25 01:42', 'somefile.txt')
         get_file_size('somefile.txt', return_string=True) -> "-rwxrwxr-x\t3\tpeter\tadmins\t4096\toct 25 01:42\tsomefile.txt"
     """
+    debug.assertion(not readable)
 
     if not path_exist(path):
         return f'cannot access "{path}" No such file or directory'
@@ -182,3 +185,56 @@ def get_permissions(path):
 def get_modification_date(path, strftime='%b %-d %H:%M'):
     """Get last modification date of file"""
     return datetime.fromtimestamp(os.path.getmtime(path)).strftime(strftime).lower() if path_exist(path) else 'error'
+
+
+#-------------------------------------------------------------------------------
+# File conversion
+
+def json_to_jsonl(in_path, out_path):
+    """Convert JSON-encoded file at IN_PATH to JSONL and save as OUT_PATH"""
+    # Read data and validate
+    data = None
+    try:
+        data = json.loads(system.read_file(in_path))
+    except:
+        system.print_exception_info(f"Error: reading {in_path}")
+    if not isinstance(data, list):
+        outer_type = type(data)
+        system.print_error(f"Error: outer data must be a list instead of {outer_type}: {in_path}")
+
+    # Save each item on separate line
+    if data is not None:
+        output_lines = [json.dumps(item) for item in data]
+        system.write_lines(out_path, output_lines)
+    return
+
+def jsonl_to_json(in_path, out_path):
+    """Convert JSONL-encoded file at IN_PATH to JSON and save as OUT_PATH"""
+    # Read each line and validate
+    output_lines = []
+    for i, line in enumerate(system.read_lines(in_path)):
+        try:
+            data = json.loads(line)
+            debug.assertion(data)
+        except:
+            system.print_exception_info(f"Error: converting line {i + 1} in {in_path}")
+            break
+        output_lines.append(line + ",")
+
+    # Save to output file
+    if output_lines:
+        output_lines[-1] = output_lines[-1][0:-1]
+    system.write_lines(out_path, ["["] + output_lines + ["]"])
+    return
+
+#--------------------------------------------------------------------------------
+
+def main():
+    """Entry point for script"""
+    system.print_stderr("Error: Not intended to being invoked directly")
+    return
+
+if __name__ == '__main__':
+    main()
+
+

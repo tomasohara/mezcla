@@ -104,8 +104,8 @@ class AudioArgumentProcessing(Main):
 
         # Check the command-line options
         source       = self.get_parsed_argument(SOURCE, "")
-        self.output  = self.get_parsed_argument(OUTPUT, self.output)
-        self.speech  = self.get_parsed_argument(SPEECH, self.speech)
+        self.output  = self.get_parsed_option(OUTPUT, self.output)
+        self.speech  = self.get_parsed_option(SPEECH, self.speech)
         self.verbose = self.get_parsed_option(VERBOSE)
 
         # Process source
@@ -289,7 +289,7 @@ class SpeechRecognition(SpeechEngine):
         with sr.AudioFile(path) as source:
             audio = self.get_instance().record(source)
 
-        debug.trace(7, f'SpeechEngine.read_audio()')
+        debug.trace(7, 'SpeechEngine.read_audio()')
         return audio
 
 
@@ -326,7 +326,7 @@ class CMUSphinx(SpeechRecognition):
         except sr.UnknownValueError:
             print(f'Sphinx could not understand {path}')
         except sr.RequestError as error:
-            print('Sphinx error; {0}'.format(error))
+            print(f'Sphinx error; {error}')
 
         debug.trace(7, f'CMUSphinx.speech_to_text({path}) => {result}')
         return result

@@ -27,8 +27,19 @@ import mezcla.plot_utils as THE_MODULE
 class TestPlotUtils:
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    @pytest.mark.skip
+    def test_something(self):
+        """TODO: flesh out test for something"""
+        debug.trace(4, "TestIt.test_something()")
+        assert False
+        return
 
+    @pytest.mark.xfail
+    def test_something_else(self):
+        """TODO: flesh out test for something else"""
+        debug.trace(4, "TestIt.test_something_else()")
+        assert False
+        return
 
 if __name__ == '__main__':
     debug.trace_current_context()

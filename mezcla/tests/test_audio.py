@@ -3,6 +3,7 @@
 # Tests for Audio.py
 #
 # Notes:
+# - *** All the tests are skipped if the audio packages not installed.
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_audio.py
 # - some tests will take a while.
@@ -16,7 +17,12 @@
 ## NOTE: this is empty for now
 
 # Installed packages
+# note: The audio library packages are not installed by default, so tests skipped if not found.
 import pytest
+try:
+    import librosa
+except:
+    librosa = None
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
@@ -25,7 +31,11 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.audio as THE_MODULE
+if librosa:
+    import mezcla.audio as THE_MODULE
+else:
+    debug.trace(3, "Unable to import librosa, so tests will be disabled")
+    THE_MODULE = None
 
 # Constants
 AUDIOFILE = 'samples/test_audiofile.wav'
@@ -36,6 +46,8 @@ class TestAudio(TestWrapper):
     use_temp_base_dir = True
     maxDiff           = None
 
+    ## TODO2: rework skip's as xfail
+    
     @pytest.mark.skip(reason="this will take a while and this require a valid audio path in AUDIOFILE")
     def test_sphinx_engine(self):
         """Test CMUSphinx speech recognition engine class"""
@@ -46,6 +58,7 @@ class TestAudio(TestWrapper):
         assert isinstance(result_speech, str)
         assert result_speech
 
+    @pytest.mark.skipif(not librosa, reason="librosa missing")
     def test_audio_path(self):
         """Test for audio.path"""
         debug.trace(debug.DETAILED, f"TestAudio.test_audio_path({self})")

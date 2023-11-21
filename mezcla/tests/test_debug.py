@@ -5,13 +5,13 @@
 #
 # Notes:
 # - This can be run as follows:
-#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_debug.py
+#   $ SKIP_ATEXIT=1 PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_debug.py
 # - For tests that capture standard error, see
 #       https://docs.pytest.org/en/6.2.x/capture.html
 # - This uses capsys fixture mentioned in above link.
 #................................................................................
 # TODO:
-# - make sure trace_fmt traps all exceptiona
+# - make sure trace_fmt traps all exceptions
 #   debug.trace_fmt(1, "fu={fu}", fuu=1)
 #                           ^^    ^^^
 #
@@ -25,7 +25,10 @@ import sys
 import pytest
 
 # Local packages
+## TODO: make sure atexit support disabled unless explcitly requested
+##   import os; os.environ["SKIP_ATEXIT"] = os.environ.get("SKIP_ATEXIT", "1")
 from mezcla import debug
+from mezcla.my_regex import my_re
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -145,11 +148,25 @@ class TestDebug:
         captured = capsys.readouterr()
         assert 'Person("Kiran")' in captured.err
 
-    def test_trace_expr(self):
-        """Ensure trace_expr works as expected"""
-        debug.trace(4, f"test_trace_expr(): self={self}")
-        ## TODO: WORK-IN-PROGRESS
+    def test_trace_expr(self, capsys):
+        """Make sure trace_expr shows 'expr1=value1; expr2=value2'"""
+        var1 = 3
+        var2 = 6
+        THE_MODULE.trace_expr(debug.get_level(), var1, var2)
+        captured = capsys.readouterr()
+        assert "var1=3;var2=6" in my_re.sub(r"\s+", "", captured.err)
 
+    @pytest.mark.xfail
+    def test_trace_expr_expression(self, capsys):
+        """Make sure trace_expr expression resolved when split across lines"""
+        var1 = 3
+        var2 = 6
+        THE_MODULE.trace_expr(debug.get_level(),
+                              var1,
+                              var2)
+        captured = capsys.readouterr()
+        assert "var1=3.*var2=6" in my_re.sub(r"\s+", "", captured.err)
+        
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
@@ -177,6 +194,16 @@ class TestDebug:
         captured = capsys.readouterr()
         assert "failed" in captured.err
         assert "(2 + 2) == 5" in captured.err
+
+    @pytest.mark.xfail
+    def test_assertion_expression(self, capsys):
+        """Make sure assertion expression split across lines resolved"""
+        debug.trace(4, f"test_assertion_expression(): self={self}")
+        THE_MODULE.assertion(2 +
+                             2 ==
+                             5)
+        captured = capsys.readouterr()
+        assert "2+2==5" in my_re.sub(r"\s+", "", captured.err)
 
     def test_val(self):
         """Ensure val works as expected"""
@@ -247,7 +274,32 @@ class TestDebug:
     def test_format_value(self):
         """Ensure format_value works as expected"""
         debug.trace(4, f"test_format_value(): self={self}")
-        assert THE_MODULE.format_value("    \n\n\n\n", 6) == "    \\n\\n..."
+        assert(THE_MODULE.format_value("\n    ", max_len=5) == "\\n   ...")
+        assert(THE_MODULE.format_value("123456", max_len=7) == "123456")
+        assert(THE_MODULE.format_value("123456", max_len=6) == "123456")
+        assert(THE_MODULE.format_value("123456", max_len=5) == "12345...")
+        assert(THE_MODULE.format_value("123456", max_len=4) == "1234...")
+        assert(THE_MODULE.format_value("123456", max_len=3) == "123...")
+        assert(THE_MODULE.format_value("123456", max_len=2) == "12...")
+        assert(THE_MODULE.format_value("123456", max_len=1) == "1...")
+        assert(THE_MODULE.format_value("123456", max_len=0) == "...")
+
+    def test_format_value_strict(self):
+        """Ensure format_value w/ strict works as expected"""
+        debug.trace(4, f"test_format_value(): self={self}")
+        def format_value_strict(value, max_len):
+            """Invokes debug.format_value with strict option"""
+            return THE_MODULE.format_value(value, max_len=max_len,
+                                    strict=True)
+        assert(format_value_strict("\n    ", max_len=5) == "\\n...")
+        assert(format_value_strict("123456", max_len=7) == "123456")
+        assert(format_value_strict("123456", max_len=6) == "123456")
+        assert(format_value_strict("123456", max_len=5) == "12...")
+        assert(format_value_strict("123456", max_len=4) == "1...")
+        assert(format_value_strict("123456", max_len=3) == "...")
+        assert(format_value_strict("123456", max_len=2) == "..")
+        assert(format_value_strict("123456", max_len=1) == ".")
+        assert(format_value_strict("123456", max_len=0) == "")
 
     def test_xor(self, capsys):
         """Ensure xor works as expected"""

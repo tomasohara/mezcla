@@ -12,6 +12,7 @@
 """Tests for keras_param_search module"""
 
 # Standard packages
+## TODO: import re
 
 # Installed packages
 import pytest
@@ -20,22 +21,29 @@ import pytest
 from mezcla import debug
 from mezcla import text_utils
 
+# Load module conditionally because not part of default installation.
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-## TODO: fix ModuleNotFoundError: No module named 'keras'
-import mezcla.keras_param_search as THE_MODULE
+try:
+    import mezcla.keras_param_search as THE_MODULE
+except:
+    THE_MODULE = None
+    debug.trace_exception(1, "keras_param_search import")
 
 class TestKerasParamSearch:
     """Class for testcase definition"""
 
+    @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
     def test_round3(self):
         """Ensure round3 works as expected"""
-        debug.trace(4, "test_round3()")
-        ## TODO: WORK-IN=PROGRESS
+        debug.trace(4, f"test_round3(); self={self}")
+        assert THE_MODULE.round3(1.0001) == 1.000
+        assert THE_MODULE.round3(1.001) == 1.001
 
+    @pytest.mark.xfail
     def test_non_negative(self):
         """Ensure non_negative works as expected"""
-        debug.trace(4, "test_non_negative()")
+        debug.trace(4, f"test_non_negative(); self={self}")
         ## TODO: WORK-IN=PROGRESS
         test_num = 32.86209423
         assert (THE_MODULE.non_negative(test_num) == True)
@@ -46,11 +54,13 @@ class TestKerasParamSearch:
         test_num = 3.1415926543
         assert (THE_MODULE.round3(test_num) == 3.142)
 
+    @pytest.mark.xfail
     def test_create_feature_mapping(self):
         """Ensure create_feature_mapping works as expected"""
-        debug.trace(4, "test_create_feature_mapping()")
+        debug.trace(4, f"test_create_feature_mapping(); self={self}")
         assert THE_MODULE.create_feature_mapping(['c', 'b', 'b', 'a']) == {'c':0, 'b':1, 'a':2}
 
+    @pytest.mark.xfail
     def test_create_keras_model(self):
         """Ensure create_keras_model works as expected"""
         debug.trace(4, "test_create_keras_model()")

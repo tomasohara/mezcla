@@ -1,0 +1,24 @@
+# Miscelleaneous tests for use with BatsPP
+
+# merge_notes.py should not pull in control charctars
+$ echo $'\x00' > _test-notes.txt; consolidate-notes.bash -; perl-grep -c '\x00' _master-note-info.list 
+0
+
+#-------------------------------------------------------------------------------
+# cut.py tests
+
+# cut.py doesn't quote fields if tab-delimited
+$ echo $'1\t2\t3\t4' | cut.py --fields="3,4" -
+3	4
+
+# However, it does for CSV.
+# TODO: but why?
+$ echo $'1,2,3,4' | cut.py --csv --fields="3,4" -
+"3","4"
+
+# Need to specify Excel output style
+$ echo $'1,2,3,4' | cut.py --csv --fields="3,4" --output-dialect excel -
+3,4
+
+$ echo $'1,2,3,4' | cut.py --csv --fields="3,4" --output-tsv -
+3	4

@@ -17,15 +17,42 @@ import pytest
 
 # Local modules
 from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
+from mezcla import system
+from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Rreference are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.train_text_categorizer as THE_MODULE
 
-class TestTrainTextCategorizer:
+class TestTrainTextCategorizer(TestWrapper):
     """Class for testcase definition"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    resources = gh.resolve_path("resources")
 
+    def test_usage(self):
+        """Test usage statement"""
+        # Current usage:
+        #    Usage: ./train_text_categorizer.py training-file model-file [testing]
+        #    ...
+        #    - Currently, only tab-separated value (TSV) format is accepted:
+        usage = self.run_script(options="--help")
+        assert "model" in usage
+        assert "TSV" in usage
     
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_data_file(self):
+        """Makes sure TODO works as expected"""
+        debug.trace(4, f"TestIt.test_data_file(); self={self}")
+        data_file = gh.form_path(self.resources, "random-10pct-tweet-emotions.tsv")
+        ## TODO: add use_stdin=True to following if no file argument
+        output = self.run_script(options="", env_options="TEST_PERCENT=10 USE_XGB=1", data_file=data_file, post_options="-")
+        assert my_re.search(r"Accuracy over.*: (\S+)", output.strip())
+        accuracy = system.to_float(my_re.group(1))
+        debug.trace_expr(5, accuracy)
+        assert (accuracy > 0.20)
+        return
 
 
 if __name__ == '__main__':
