@@ -155,7 +155,10 @@ class StableDiffusion:
     """Class providing Stable Diffusion generative AI (e.g., text-to-image)"""
 
     def __init__(self, use_hf_api=None, server_url=None, server_port=None, low_memory=None):
-        debug.trace(4, f"{self.__class__.__name__}.__init__{(use_hf_api, server_url, server_port)}")
+        ## BAD: debug.trace(4, f"{self.__class__.__name__}.__init__{(use_hf_api, server_url, server_port)}")
+        ## TODO2: derive class name from call stack
+        class_name = "StableDiffusion"
+        debug.trace(4, f"{class_name}.__init__{(use_hf_api, server_url, server_port)}")
         if use_hf_api is None:
             use_hf_api = USE_HF_API
         self.use_hf_api = use_hf_api
@@ -177,7 +180,7 @@ class StableDiffusion:
         elif self.use_hf_api:
             pass
         else:
-            debug.trace(4,"Warning: Unexpected condition in {self.__class__.__name__}.__init__: no server_url")
+            debug.trace(4,"Warning: Unexpected condition in {class_name}.__init__: no server_url")
         if low_memory is None:
             low_memory = LOW_MEMORY
         self.low_memory = low_memory
@@ -191,7 +194,7 @@ class StableDiffusion:
                 disk_compress_level=0,        # no compression
                 cull_limit=0)                 # no automatic pruning
         debug.assertion(bool(self.use_hf_api) != bool(self.server_url))
-        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+        debug.trace_object(5, self, label=f"{class_name} instance")
     
     def init_pipeline(self, txt2img=None, img2img=None):
         """Initialize Stable Diffusion"""
@@ -245,14 +248,15 @@ class StableDiffusion:
         self.img2txt_engine = Interrogator(Config(clip_model_name="ViT-L-14/openai"))
     
     def infer(self, prompt=None, negative_prompt=None, scale=None, num_images=None,
-              skip_img_spec=False, width=None, height=None):
+              skip_img_spec=False, width=None, height=None, skip_cache=False):
         """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE,
         and targetting a WIDTHxHEIGHT image.
         Returns list of NUM image specifications in base64 format (e.g., for use in HTML).
-        Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag
+        Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag.
+        If SKIP_CACHE, then new results are always generated.
         """
         ## OLD: debug.trace(4, f"{self.__class__.__name__}.infer{(prompt, negative_prompt, scale, num_images)}")
-        debug.trace_expr(4, prompt, negative_prompt, scale, num_images, skip_img_spec, prefix=f"\nin {self.__class__.__name__}.infer:\n\t", delim="\n\t",  suffix="}\n", max_len=1024)
+        debug.trace_expr(4, prompt, negative_prompt, scale, num_images, skip_img_spec, skip_cache, prefix=f"\nin {self.__class__.__name__}.infer:\n\t", delim="\n\t",  suffix="}\n", max_len=1024)
         if num_images is None:
             num_images = NUM_IMAGES
         if scale is None:
@@ -265,7 +269,7 @@ class StableDiffusion:
         images = []
         params = (prompt, negative_prompt, scale, num_images, skip_img_spec, width, height)
 
-        if self.cache is not None:
+        if ((self.cache is not None) and (not skip_cache)):
             images = self.cache.get(params)
         if images and len(images) > 0:
             ## TEST:
@@ -340,12 +344,13 @@ class StableDiffusion:
         return result
 
     def infer_img2img(self, image_b64=None, denoise=None,  prompt=None, negative_prompt=None, scale=None, num_images=None,
-                      skip_img_spec=False):
+                      skip_img_spec=False, skip_cache=False):
         """Generate images from IMAGE_B64 using positive PROMPT and NEGATIVE one, along with guidance SCALE and NUM_IMAGES
         Returns list of NUM image specifications in base64 format (e.g., for use in HTML).
-        Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag
+        Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag.
+        If SKIP_CACHE, then new results are always generated.
         """
-        debug.trace_expr(4, image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec, prefix=f"\nin {self.__class__.__name__}.infer_img2img: {{\n\t", delim="\n\t", suffix="}\n", max_len=1024)
+        debug.trace_expr(4, image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec, skip_cache, prefix=f"\nin {self.__class__.__name__}.infer_img2img: {{\n\t", delim="\n\t", suffix="}\n", max_len=1024)
         if num_images is None:
             num_images = NUM_IMAGES
         if scale is None:
@@ -359,7 +364,7 @@ class StableDiffusion:
         images = []
         params = (image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec)
 
-        if self.cache is not None:
+        if ((self.cache is not None) and (not skip_cache)):
             images = self.cache.get(params)
         if images and len(images) > 0:
             ## TEST:
@@ -440,12 +445,14 @@ class StableDiffusion:
         
         return result
 
-    def infer_img2txt(self, image_b64=None):
-        """Return likely caption text for image_b64 in base64 encoding"""
-        debug.trace_fmt(4, f"infer_img2txt({gh.elide(image_b64)})")
+    def infer_img2txt(self, image_b64=None, skip_cache=False):
+        """Return likely caption text for image_b64 in base64 encoding
+        Note: If SKIP_CACHE, then new results are always generated.
+        """
+        debug.trace_fmt(4, f"infer_img2txt({gh.elide(image_b64)}, sk={skip_cache})")
         params = (image_b64)
         description = ""
-        if self.cache is not None:
+        if ((self.cache is not None) and (not skip_cache)):
             description = self.cache.get(params)
         if not description:
             description = self.infer_img2txt_non_cached(image_b64)
