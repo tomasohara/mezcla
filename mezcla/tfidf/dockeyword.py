@@ -9,11 +9,12 @@ This class allows you to have stemmed keywords, but still see the original text.
 from __future__ import absolute_import
 from collections import namedtuple
 
-# Installed modules
+# Local modules
+from mezcla.tfidf.config import BASE_DEBUG_LEVEL as BDL
 from mezcla import debug
 from mezcla import system
 
-
+# Constants
 Location = namedtuple('Location', ['document', 'start', 'end'])
 
 
@@ -26,8 +27,8 @@ class DocKeyword(object):
         self.text = text
         if (start is not None) and (end is not None):
             self.locations.add(Location(document, start, end))
-        ## TODO: debug.trace_object(9, self, "DocKeyword instance", show_all=False)
-        debug.trace_object(8, self, "DocKeyword instance", show_all=False)
+        ## TODO: debug.trace_object(BDL + 3, self, "DocKeyword instance", show_all=False)
+        debug.trace_object(BDL + 2, self, "DocKeyword instance", show_all=False)
 
     def update_locations(self, locations):
         """Add LOCATIONS to other locations"""
@@ -66,10 +67,10 @@ class DocKeyword(object):
         return loc.document.text[loc.start:loc.end]
 
     def __str__(self):
-        return u'Stem:%s, Instances:%s, Count:%d' % (self.text, str(self.original_texts), len(self))
+        return 'Stem:%s, Instances:%s, Count:%d' % (self.text, str(self.original_texts), len(self))
 
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone")
-    debug.trace_object(4, DocKeyword("monkeys"))
+    debug.trace_object(BDL + -2, DocKeyword("monkeys"))
