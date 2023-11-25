@@ -57,21 +57,8 @@ from mezcla import misc_utils
 ## # See https://stackoverflow.com/questions/16981921/relative-imports-in-python-3.
 ## sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-## OLD
-## # TPO: environment option for weight singleton occurrences low
-## import os
-## import sys
-## PENALIZE_SINGLETONS = os.environ.get("PENALIZE_SINGLETONS", "False")
-## gif str(PENALIZE_SINGLETONS).upper() in ["TRUE", "1"]:
-##     sys.stderr.write("Penalizing singleton ngrams\n")
-##     PENALIZE_SINGLETONS = True
-## import sys
-
 # Local modules
-
-## OLD:
-## from .document import Document
-## from .preprocess import Preprocessor, clean_text
+from mezcla.tfidf.config import BASE_DEBUG_LEVEL as BDL
 from mezcla.tfidf.document import Document, PENALIZE_SINGLETONS
 from mezcla.tfidf.preprocess import Preprocessor, clean_text
 
@@ -132,7 +119,6 @@ class Corpus(object):
         debug.assertion(not (all_ngrams and min_ngram_size))
         self.__documents = {}
         self.__document_occurrences = {}
-        ## OLD: self.__gramsize = gramsize
         self.__gramsize = (max_ngram_size or gramsize)
         self.__max_raw_frequency = None
         self.__max_rel_doc_frequency = None
@@ -175,9 +161,8 @@ class Corpus(object):
     def max_raw_frequency(self):
         """Highest frequency across all Documents in the Corpus."""
         ## TPO: caches value
-        ## OLD: return max([_.max_raw_frequency for _ in self.__documents.values()])
         if self.__max_raw_frequency is None:
-            self.__max_raw_frequency = max([_.max_raw_frequency for _ in self.__documents.values()])
+            self.__max_raw_frequency = max(_.max_raw_frequency for _ in self.__documents.values())
         return self.__max_raw_frequency
 
     @lru_cache()
@@ -187,8 +172,7 @@ class Corpus(object):
         if ngram in self.__document_occurrences:
             count = self.__document_occurrences[ngram]
         else:
-            ## OLD: count = sum([1 if ngram in doc else 0 for doc in self.__documents.values()])
-            count = sum([(1 + NGRAM_EPSILON) if ngram in doc else 0 for doc in self.__documents.values()])
+            count = sum((1 + NGRAM_EPSILON) if ngram in doc else 0 for doc in self.__documents.values())
         if ((count == 1) and PENALIZE_SINGLETONS):
             count = 0
         if (count == 0):
@@ -200,8 +184,7 @@ class Corpus(object):
     def max_rel_doc_frequency(self):
         """"Highest relative document frequency for all ngrams in the corpus"""
         if self.__max_rel_doc_frequency is None:
-            ## BAD: max_doc_frequency = max([self.count_doc_occurrences(ngram) for ngram in self.__documents.values()])
-            max_doc_frequency = max([self.count_doc_occurrences(ngram) for doc in self.__documents.values() for ngram in doc.keywordset])
+            max_doc_frequency = max(self.count_doc_occurrences(ngram) for doc in self.__documents.values() for ngram in doc.keywordset)
             self.__max_rel_doc_frequency = max_doc_frequency / float(len(self))
         return self.__max_rel_doc_frequency
     
@@ -210,7 +193,7 @@ class Corpus(object):
     def max_doc_frequency(self):
         """"Highest relative document frequency for all ngrams in the corpus"""
         if self.__max_doc_frequency is None:
-            max_doc_frequency = max([self.count_doc_occurrences(ngram) for doc in self.__documents.values() for ngram in doc.keywordset])
+            max_doc_frequency = max(self.count_doc_occurrences(ngram) for doc in self.__documents.values() for ngram in doc.keywordset)
             self.__max_doc_frequency = max_doc_frequency
         return self.__max_doc_frequency
     
@@ -218,7 +201,6 @@ class Corpus(object):
         """Return document frequency (DF) count for NGRAM"""
         return self.count_doc_occurrences(ngram)
 
-    ## OLD: def df_norm(self, ngram, normalize_term=True):
     def df_norm(self, ngram, normalize_term=None):
         """Return DF in range [epsilon, 1] for NGRAM, with NORMALIZE_TERM by default.
         Note: The denominator is the max doc frequency rather than number of documents,
@@ -229,7 +211,6 @@ class Corpus(object):
             ngram = self.preprocessor.normalize_term(ngram)
         rel_doc_freq = 0
         if self.max_rel_doc_frequency > 0:
-            ## BAD: rel_doc_freq = (self.df_freq(ngram) / self.max_rel_doc_frequency)
             rel_doc_freq = (self.df_freq(ngram) / self.max_doc_frequency)
         return rel_doc_freq
 
@@ -244,7 +225,7 @@ class Corpus(object):
         ## if (num_occurrences == 1) and PENALIZE_SINGLETONS:
         ##     num_occurrences = len(self.__documents)
         idf = math.log(float(len(self)) / num_occurrences)
-        debug.trace_fmt(8, "idf_basic({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
+        debug.trace_fmt(BDL + 2, "idf_basic({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
                         ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf={idf})
         return idf
 
@@ -255,7 +236,7 @@ class Corpus(object):
             raise Exception(ngram)
         num_occurrences = self.count_doc_occurrences(ngram)
         idf = 1 / num_occurrences
-        debug.trace_fmt(8, "idf_freq({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
+        debug.trace_fmt(BDL + 2, "idf_freq({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
                         ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf={idf})
         return idf
 
@@ -263,7 +244,7 @@ class Corpus(object):
         """Returns IDF using simple smoothing with add-1 relative frequency (prior to log)"""
         debug.assertion(self.count_doc_occurrences(ngram) >= 1)
         idf = math.log(1 + (float(len(self)) / self.count_doc_occurrences(ngram)))
-        debug.trace_fmt(8, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
+        debug.trace_fmt(BDL + 2, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
                         ng=ngram, l=len(self), do=self.count_doc_occurrences(ngram), idf={idf})
         return idf
 
@@ -272,7 +253,7 @@ class Corpus(object):
         """Use maximum ngram TF in place of N and also perform add-1 smoothing"""
         debug.assertion(self.count_doc_occurrences(ngram) >= 1)
         idf = math.log(1 + self.max_raw_frequency / self.count_doc_occurrences(ngram))
-        debug.trace_fmt(8, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
+        debug.trace_fmt(BDL + 2, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
                         ng=ngram, l=len(self), do=self.count_doc_occurrences(ngram), idf={idf})
         return idf
 
@@ -282,21 +263,12 @@ class Corpus(object):
         ## TODO: shouldn't this be (float(len(self) / num_doc_occurrences))
         num_doc_occurrences = self.count_doc_occurrences(ngram)
         idf = math.log(float(len(self) - num_doc_occurrences) / num_doc_occurrences)
-        debug.trace_fmt(8, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
+        debug.trace_fmt(BDL + 2, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
                         ng=ngram, l=len(self), do=num_doc_occurrences, idf={idf})
         return idf
 
     def idf(self, ngram, idf_weight='basic'):
         """Inverse document frequency (IDF) indicates ngram common-ness across the Corpus."""
-        ## OLD: return w/ elif
-        ## if idf_weight == 'smooth':
-        ##     return self.idf_smooth(ngram)
-        ## elif idf_weight == 'basic':
-        ##     return self.idf_basic(ngram)
-        ## elif idf_weight == 'max':
-        ##     return self.idf_max(ngram)
-        ## elif idf_weight == 'prob':
-        ##     return self.idf_probabilistic(ngram)
         if idf_weight == 'freq':
             return self.idf_freq(ngram)
         if idf_weight == 'smooth':
@@ -313,7 +285,6 @@ class Corpus(object):
         raise ValueError("Invalid idf_weight: " + idf_weight)
 
     def tf_idf(self, term, document_id=None, text=None, idf_weight='basic', tf_weight='basic',
-               ## OLD: normalize_term=True):
                normalize_term=None):
         """TF-IDF score. Must specify a document id (within corpus) or pass text body."""
         assert document_id or text
@@ -336,11 +307,14 @@ class Corpus(object):
     def get_keywords(self, document_id=None, text=None, idf_weight='basic',
                      tf_weight='basic', limit=100):
         """Return a list of keywords with TF-IDF scores. Defaults to the top 100."""
+        debug.trace(BDL + 2, f"in get_keywords(); self={self}")
+        debug.trace_expr(BDL + 2, document_id, text, idf_weight, tf_weight, limit)
         assert document_id or text
         document = None
         if document_id:
             document = self[document_id]
         if text:
+            debug.assertion(document is None)
             text = clean_text(text)
             document = Document(text, self.preprocessor)
         out = []
@@ -349,8 +323,11 @@ class Corpus(object):
                 self.idf(ngram, idf_weight=idf_weight)
             out.append(CorpusKeyword(kw, ngram, score))
         out.sort(key=lambda x: x.score, reverse=True)
-        return out[:limit]
+        result = out[:limit]
+        debug.trace(BDL + 3, f"get_keywords() => {result}")
+        return result
 
+#--------------------------------------------------------------------------------
 
 def new_main():
     """New entry point for script: counts ngrams in input file (one line per document)"""
@@ -361,7 +338,11 @@ def new_main():
     input_file = sys.argv[1]
 
     # Create corpus from line documents in file
-    corp = Corpus(min_ngram_size=2, max_ngram_size=4)
+    MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", 2,
+                                       description="Minimum size of grams")
+    MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 4,
+                                       description="Maxium size of grams")
+    corp = Corpus(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE)
     doc_IDs = []
     for i, doc_text in enumerate(system.read_lines(input_file)):
         doc_IDs.append(f"line-doc{i + 1}")
@@ -388,7 +369,7 @@ def main():
         return
 
     # Create simple corpus with two documents
-    c = Corpus(min_ngram_size=2, max_ngram_size=2)
+    c = Corpus(min_ngram_size=2, max_ngram_size=4)
     doc_text = ["abc  def  ghi  jkl  mno         ",
                 "abc  def       jkl  mno         ",
                 "abc  def                pdq  rst"]
@@ -396,22 +377,22 @@ def main():
     for i in range(len(doc_text)):
         doc_id = ("doc" + str(i + 1))
         c[doc_id] = doc_text[i]
-        debug.trace_fmt(1, "{id}:\t{doc_text}", id=doc_id, doc_text=doc_text[i])
+        print("{id}:\t{doc_text}".format(id=doc_id, doc_text=doc_text[i]))
         words = doc_text[i].split()
         debug.assertion(len(words) > 1)
         ngrams.update({(words[i] + " " + words[i + 1]) for i in range(len(words) - 1)})
     all_ngrams = sorted(ngrams)
 
     # Show combined set of ngrams
-    debug.trace_fmt(1, "ngrams:\t{spec}", spec="\t".join(ng.replace(" ", "_") for ng in sorted(all_ngrams)))
+    print("ngrams:\t{spec}".format(spec="\t".join(ng.replace(" ", "_") for ng in sorted(all_ngrams))))
 
     # Show per-document TF for each ngram
     for docid in sorted(c.keys()):
-        debug.trace_fmt(1, "{id}TF:\t{spec}", id=docid,
-                        spec="\t".join([str(c[docid].tf_freq(ng)) for ng in all_ngrams]))
+        print("{id}TF:\t{spec}".format(id=docid,
+                                       spec="\t".join([str(c[docid].tf_freq(ng)) for ng in all_ngrams])))
 
     # Show IDF, and TF-IDF for each ngram
-    debug.trace_fmt(1, "IDF:   \t{spec}", spec="\t".join([system.round_as_str(c.idf(ng), 3) for ng in all_ngrams]))
+    print("IDF:   \t{spec}".format(spec="\t".join([system.round_as_str(c.idf(ng), 3) for ng in all_ngrams])))
     debug.assertion(misc_utils.is_close(c.idf("abc def"), 0))
     debug.assertion(c.idf("jkl mno") < c.idf("pdq rst"))
     debug.assertion(c.idf("def ghi") == c.idf("ghi jkl") == c.idf("pdq rst"))
