@@ -85,7 +85,7 @@ True
 #................................................................................
 # glue_helpers.py
 #
-# note: shameless hack used below (effing dostests rigidity)
+# note: shameless hack used below (dostests rigidity)
 #
 
 >>> gh.full_mkdir(temp_temp_dir)

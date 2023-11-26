@@ -260,7 +260,7 @@ def main():
 
     # Output the top terms per document with scores
     # TODO: change the IDF weighting
-    for doc_id in corpus.keys():
+    for doc_id in corpus.keys():        # pylint: disable=consider-using-dict-items
         print("{id} [{filename}]".format(id=doc_id, filename=doc_filenames[doc_id]))
         if TAB_FORMAT:
             print("\t".join(headers))

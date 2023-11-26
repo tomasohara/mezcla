@@ -43,6 +43,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+## TEMP
+# pylint: disable=import-error, no-name-in-module, no-member, abstract-method, no-value-for-parameter, simplifiable-if-expression
+
 import collections
 import csv
 import os
@@ -247,7 +250,7 @@ class DataProcessor(object):
   @classmethod
   def _read_tsv(cls, input_file, quotechar=None):
     """Reads a tab separated value file."""
-    with tf.gfile.Open(input_file, "r") as f:
+    with tf.gfile.Open(input_file, "r", encoding="UTF-8") as f:
       reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
       lines = []
       for line in reader:
@@ -459,7 +462,7 @@ class MultiCatProcessor(DataProcessor):
     cats = ""
     # Read in category names as newline separated string list
     try:
-      with open(category_file, "r") as f:
+      with open(category_file, "r", encoding="UTF-8") as f:
         cats = f.read()
     except IOError:
       sys.stderr.write("Problem reading category file {fn}: {exc}\n",
@@ -903,6 +906,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
 
 
 def main(_):
+  """Entry point for script"""
   tf.logging.set_verbosity(tf.logging.INFO)
   ## TPO: TODO: use DEBUG if DEBUG_LEVEL >= 6; no logging.debug usages in albert nor tensorflow yet
   debug.trace_fmt(5, "in main({param}): args={a}", param=_, a=sys.argv)

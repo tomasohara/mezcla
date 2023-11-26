@@ -16,6 +16,11 @@
 # - Address the TODO's below.
 #
 
+# Special cases
+# TODO: see why excluded by the rules
+# Workflow files (e.g., .github/workflows/tests.yml).
+!.github/**
+
 # Log files and listings
 # TODO: figure out how to apply to subdirs
 **/*.log
@@ -29,11 +34,6 @@
 # Likewise for trailing _'s (e.g., master-dir-link_)
 **/*_
 
-# Special cases
-# TODO: see why excluded by the rules
-# Workflow files (e.g., .github/workflows/tests.yml).
-!.github/**
-
 # Backup file
 **/*.bak
 **/backup/
@@ -42,10 +42,11 @@
 **/old
 **/archive
 
-# Output or log-file directories
+# Output, log-file directories, etc.
 **/log-files
 **/output-files
 **/downloads
+**/cache
 
 # Top level distribution dir and related
 # Note: tox support PyPi packaging
@@ -85,6 +86,10 @@ TAGS
 .coverage
 .coverage.*
 .hypothesis**
+*-intellij
+.mypy_cache
+.vscode
+.idea
 
 # OS-specific directories
 linux

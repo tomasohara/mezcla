@@ -19,6 +19,7 @@ import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
@@ -29,63 +30,90 @@ class TestMyRegex(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
     my_re = THE_MODULE.my_re
+    
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Gets capsys"""
+        self.capsys = capsys
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_search(self):
         """Ensure search() works as expected"""
         debug.trace(4, "test_search()")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_match(self):
         """Ensure match() works as expected"""
         debug.trace(4, "test_match()")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_match(self):
         """Ensure get_match() works as expected"""
         debug.trace(4, "test_get_match()")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_group(self):
         """Ensure group() works as expected"""
         debug.trace(4, "test_group()")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_groups(self):
         """Ensure groups() works as expected"""
         debug.trace(4, "test_groups()")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_grouping(self):
         """Ensure grouping() works as expected"""
         debug.trace(4, "test_grouping()")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_start(self):
         """Ensure start() works as expected"""
         debug.trace(4, "test_start()")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_end(self):
         """Ensure end() works as expected"""
         debug.trace(4, "test_end()")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_sub(self):
         """Ensure sub() works as expected"""
         debug.trace(4, "test_sub()")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_span(self):
         """Ensure span() works as expected"""
         debug.trace(4, "test_span()")
-        ## TODO: WORK-IN-PROGRESS
+        assert(False)
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    @trap_exception
+    def test_f_string(self):
+        """Ensure warning given about f-string like regex"""
+        debug.trace(4, "in test_f_string()")
+        self.my_re.search("{fubar}", "foobar")
+        # TODO2: change usages elsewhere to make godawful pytest default more intuitive
+        captured_stderr = self.capsys.readouterr().err
+        debug.trace_expr(4, captured_stderr, max_len=4096)
+        self.do_assert(self.my_re.search("Warning:.*f-string", captured_stderr))
+        debug.trace(5, "out test_f_string()")
 
     def test_simple_regex(self):
         """"Test regex search with capturing"""
         debug.trace(4, "test_simple_regex()")
         if not self.my_re.search(r"(\w+)\W+(\w+)", ">scrap ~!@\n#$ yard<",
                                  re.MULTILINE):
-            assert(False, "simple regex search failed")
+            assert False, "simple regex search failed"
         assert self.my_re.group(1) == "scrap"
         assert self.my_re.group(2) == "yard"
         return

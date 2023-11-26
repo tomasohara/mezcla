@@ -114,6 +114,7 @@ XGB_USE_GPUS = system.getenv_bool("XGB_USE_GPUS", False)
 XGB_VERBOSITY = getenv_int("XGB_VERBOSITY", 0, "Degree of verbosity from 0 to 3")
 XGB_JSON = system.getenv_bool("XGB_USE_GPUS", False,
                               "Use XGBoost model in JSON format")
+debug.assertion(not XGB_JSON, "JSON support is broke due to obscure manuals")
 
 # Options for Logistic Regression (LR)
 # TODO: add regularization
@@ -547,7 +548,9 @@ class TextCategorizer(object):
         """
         debug.trace_fmtd(4, "tc.save({f})", f=filename)
         try:
+            # pylint: disable=no-value-for-parameter, no-else-raise, unreachable
             if XGB_JSON:
+                raise NotImplementedError()
                 xgb.XGBModel.save_model(filename)
                 ## TODO: get xgboost to save the keys in the model JSON file
                 system.write_file(filename + ".keys", json.dumps(self.keys))
@@ -563,7 +566,10 @@ class TextCategorizer(object):
         """
         debug.trace_fmtd(4, "tc.load({f})", f=filename)
         try:
+            # pylint: disable=no-value-for-parameter, no-else-raise, unreachable, assignment-from-none
             if XGB_JSON:
+                raise NotImplementedError()
+                ## TODO2: fix assignment
                 self.classifier = xgb.XGBModel.load_model(filename)
                 ## HACK: load keys separately
                 self.keys = json.loads(system.read_file(filename + ".keys"))
@@ -779,8 +785,7 @@ def start_web_controller(model_filename, nonblocking=False):
         # Note: the following call blocks
         debug.trace_expr(4, "quick-starting cherrypy server")
         cherrypy.quickstart(textcat_controller, config=conf)
-    return
-
+    return textcat_controller
 
 #------------------------------------------------------------------------
 # Entry point

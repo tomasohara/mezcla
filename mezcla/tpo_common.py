@@ -714,8 +714,10 @@ def register_env_option(var, description, default):
 
 def get_registered_env_options():
     """Returns list of environment options registered via register_env_option"""
-    option_names = [k for k in env_options if (env_options[k] and env_options[k].strip())]
-    debug_format("get_registered_env_options() => {option_names}", 5)
+    ## OLD: option_names = [k for k in env_options if (env_options[k] and env_options[k].strip())]
+    option_names = [k for (k, v) in env_options.items() if (v and v.strip())]
+    ## OLD: debug_format("get_registered_env_options() => {option_names}", 5)
+    debug_print(f"get_registered_env_options() => {option_names}", 5)
     return option_names
 
 
@@ -740,7 +742,8 @@ def get_environment_option_descriptions(include_all=None, include_default=None, 
         default_spec = default_spec.replace("\n", "\\n")
         return (opt, desc_spec + indent + default_spec)
     #
-    option_descriptions = [_format_env_option(opt) for opt in env_options if (env_options[opt] or include_all)]
+    ## OLD: option_descriptions = [_format_env_option(opt) for opt in env_options if (env_options[opt] or include_all)]
+    option_descriptions = [_format_env_option(opt) for (opt, v) in env_options.items() if (v or include_all)]
     debug_format("get_environment_option_descriptions() => {od}", 5,
                  od=option_descriptions)
     return option_descriptions

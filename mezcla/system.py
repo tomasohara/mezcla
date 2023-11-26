@@ -209,7 +209,10 @@ DEFAULT_GETENV_BOOL = False
 #
 def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, update=None):
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
-    Note: "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)"""
+    Note:
+    - "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)
+    - In general, it is best to use False as default instead of True, because getenv_bool is meant for environment overrides, not defaults.
+    """
     # EX: getenv_bool("bad env var", None) => False
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
@@ -571,12 +574,16 @@ def read_entire_file(filename, **kwargs):
 read_file = read_entire_file
 
 
-def read_lines(filename):
-    """Return lines in FILENAME as list (each without newline)"""
+def read_lines(filename, ignore_comments=None):
+    """Return lines in FILENAME as list (each without newline)
+    Note: If IGNORE_COMMENTS, then comments of the form '[#;] text' are stripped
+    """
     # TODO: add support for open() keyword args (e.g., via read_entire_file)
     # EX: read_lines("/tmp/fu123.list") => ["1", "2", "3"]
     # note: The final newline is ignored, s[TODO ...]
     contents = read_entire_file(filename)
+    if ignore_comments:
+        contents = re.sub(r"[;#].*$", "", contents, flags=re.MULTILINE)
     lines = contents.split("\n")
     if ((lines[-1] == "") and contents.endswith("\n")):
         lines = lines[:-1]
@@ -624,9 +631,12 @@ def get_directory_filenames(directory, just_regular_files=False):
     return files
     
 
-def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False):
+def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False, ignore_comments=None):
     """Reads FILENAME and returns as hash lookup, optionally SKIP[ing]_HEADER and using DELIM (tab by default).
-    Note: Input is made lowercase unless RETAIN_CASE."""
+    Note:
+    - Input is made lowercase unless RETAIN_CASE.
+    - If IGNORE_COMMENTS, then comments of the form '[#;] text' are stripped
+    """
     # Note: the hash lookup uses defaultdict
     debug.trace_fmt(4, "read_lookup_table({f}, [skip_header={sh}, delim={d}, retain_case={rc}])", 
                     f=filename, sh=skip_header, d=delim, rc=retain_case)
@@ -641,6 +651,8 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
                 line_num += 1
                 if (skip_header and (line_num == 1)):
                     continue
+                if ignore_comments:
+                    line = re.sub(r"[;#].*$", "", line)
                 line = from_utf8(line.rstrip("\n"))
                 if not retain_case:
                     line = line.lower()
@@ -658,12 +670,14 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
     return hash_table
 
 
-def create_boolean_lookup_table(filename, delim=None, retain_case=False, **kwargs):
+def create_boolean_lookup_table(filename, delim=None, retain_case=False, ignore_comments=None,
+                                **kwargs):
     """Create lookup hash table from string keys to boolean occurrence indicator.
     Notes:
     - The key is first field, based on DELIM (tab by default): other values ignored.
     - The key is made lowercase, unless RETAIN_CASE.
     - The hash is of type defaultdict(bool).
+    - If IGNORE_COMMENTS, then comments of the form '[#;] text' are stripped
     """
     if delim is None:
         delim = "\t"
@@ -675,6 +689,8 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, **kwarg
         with open_file(filename, **kwargs) as f:
             for line in f:
                 key = line.strip()
+                if ignore_comments:
+                    key = re.sub(r"[;#].*$", "", key)
                 if not retain_case:
                     key = key.lower()
                 if delim in key:
@@ -704,15 +720,18 @@ def write_file(filename, text, skip_newline=False, append=False, binary=False):
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
     # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
-    debug.assertion(isinstance(text, str))
+    text_type = (bytes if binary else str)
+    debug.assertion(isinstance(text, text_type))
     try:
-        if not isinstance(text, STRING_TYPES):
+        if (not isinstance(text, STRING_TYPES) and not binary):
             text = to_string(text)
         debug.assertion(not (binary and append))
-        mode = "wb" if binary else "a" if append else "w"
-        with open(filename, encoding="UTF-8", mode=mode) as f:
-            f.write(to_utf8(text))
-            if not text.endswith("\n"):
+        mode = ("wb" if binary else "a" if append else "w")
+        enc = (None if binary else "UTF-8")
+        debug.trace_expr(5, mode, enc)
+        with open(filename, encoding=enc, mode=mode) as f:
+            f.write(text)
+            if not (binary or text.endswith("\n")):
                 if not skip_newline:
                     f.write("\n")
     except (AttributeError, IOError, ValueError):
@@ -721,6 +740,7 @@ def write_file(filename, text, skip_newline=False, append=False, binary=False):
     return
 #
 # EX: write_file(f, "new", append=True); read_file(f) => "itnew\n"
+# EX: write_file(f, bytes("new", "UTF-8"), binary=True); read_file(f) => "new"
 
 
 def write_binary_file(filename, data):
@@ -1162,7 +1182,7 @@ def to_float(text, default_value=0.0):
     try:
         result = float(text)
     except (TypeError, ValueError):
-        debug.trace_fmtd(6, "Exception in to_float: {exc}", exc=get_exception())
+        debug.trace_fmtd(7, "Exception in to_float: {exc}", exc=get_exception())
     debug.trace_fmtd(8, "to_float({v}) => {r}", v=text, r=result)
     return result
 #
@@ -1176,7 +1196,7 @@ def to_int(text, default_value=0, base=None):
     try:
         result = int(text, base) if (base and isinstance(text, str)) else int(text)
     except (TypeError, ValueError):
-        debug.trace_fmtd(6, "Exception in to_int: {exc}", exc=get_exception())
+        debug.trace_fmtd(7, "Exception in to_int: {exc}", exc=get_exception())
     debug.trace_fmtd(8, "to_int({v}) => {r}", v=text, r=result)
     return result
 #

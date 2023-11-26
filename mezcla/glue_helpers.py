@@ -64,7 +64,8 @@ NTF_ARGS = {'prefix': TEMP_PREFIX,
             }
 TEMP_BASE = system.getenv_value("TEMP_BASE", None,
                                 "Override for temporary file basename")
-TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and system.is_directory(TEMP_BASE))
+TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and
+                         (system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")))
 USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
                                        "Whether TEMP_BASE should be a dir instead of prefix")
 # note: see init() for initialization
@@ -165,23 +166,40 @@ def non_empty_file(filename):
     return non_empty
 
 
-def resolve_path(filename, base_dir=None):
-    """Resolves path for FILENAME relative to BASE_DIR if not in current directory. Note: this uses the script directory for the calling module if BASE_DIR not specified (i.e., as if os.path.dirname(__file__) passed)."""
+def resolve_path(filename, base_dir=None, heuristic=False):
+    """Resolves path for FILENAME relative to BASE_DIR if not in current directory. Note: this uses the script directory for the calling module if BASE_DIR not specified (i.e., as if os.path.dirname(__file__) passed).
+    If HEURISTIC, then also checks nearby directories such as parent for base_dir.
+    """
+    debug.trace(5, f"in resolve_path({filename})")
+    debug.trace_expr(6,  base_dir, heuristic)
     # TODO: give preference to script directory over current directory
     path = filename
     if not os.path.exists(path):
+        # Determine directly for calling module
         if not base_dir:
             frame = None
             try:
                 frame = inspect.currentframe().f_back
-                base_dir = os.path.dirname(frame.f_globals['__file__'])
+                calling_filename = frame.f_globals['__file__']
+                base_dir = os.path.dirname(calling_filename)
+                debug.trace_expr(4, calling_filename, base_dir)
             except (AttributeError, KeyError):
                 base_dir = ""
                 debug_print("Exception during resolve_path: " + str(sys.exc_info()), 5)
             finally:
                 if frame:
                     del frame
-        path = os.path.join(base_dir, path)
+        
+        # Check calling directory (TODO2: add more check dirs such as children)
+        dirs_to_check = [base_dir]
+        if heuristic:
+            dirs_to_check += [form_path(base_dir, ".."), form_path(".", "..")]
+        for check_dir in dirs_to_check:
+            check_path = os.path.join(check_dir, path)
+            if os.path.exists(check_path):
+                path = check_path
+                break
+            
     debug_format("resolve_path({f}) => {p}", 4, f=filename, p=path)
     return path
 
@@ -275,16 +293,20 @@ def indent_lines(text, indentation=None, max_width=512):
 
 MAX_ELIDED_TEXT_LEN = tpo.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 #
-def elide(text: str, max_len=None):
-    """Returns TEXT elided to at most MAX_LEN characters (with '...' used to indicate remainder). Note: intended for tracing long string."""
+def elide(value, max_len=None):
+    """Returns VALUE converted to text and elided to at most MAX_LEN characters (with '...' used to indicate remainder). 
+    Note: intended for tracing long strings."""
     # EX: elide("=" * 80, max_len=8) => "========..."
     # EX: elide(None) => ""
     # NOTE: Make sure compatible with debug.format_value (TODO3: add equivalent to strict argument)
     # TODO2: add support for eliding at word-boundaries
     tpo.debug_print("elide(_, _)", 8)
-    debug.assertion(isinstance(text, (str, type(None))))
+    ## OLD: debug.assertion(isinstance(text, (str, type(None))))
+    text = value
     if text is None:
         text = ""
+    if (not isinstance(text, str)):
+        text = str(text)
     if max_len is None:
         max_len = MAX_ELIDED_TEXT_LEN
     result = text
@@ -312,7 +334,7 @@ def disable_subcommand_tracing():
     default_subtrace_level = 0
 
 
-def run(command, trace_level=4, subtrace_level=None, just_issue=False, output=False, **namespace):
+def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=False, **namespace):
     """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
    Notes:
    - The result includes stderr, so direct if not desired (see issue):
@@ -336,6 +358,9 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, output=Fa
     if subtrace_level != trace_level:
         debug_level_env = os.getenv("DEBUG_LEVEL")
         setenv("DEBUG_LEVEL", str(subtrace_level))
+    in_just_issue = just_issue
+    if just_issue is None:
+        just_issue = False
     save_temp_base = TEMP_BASE
     if TEMP_BASE:
          setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
@@ -350,18 +375,22 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=False, output=Fa
     debug_print("issuing: %s" % command_line, trace_level)
     # Run the command
     # TODO: check for errors (e.g., "sh: filter_file.py: not found"); make wait explicit
-    wait = not command.endswith("&")
-    debug.assertion(wait or not just_issue)
+    in_background = command.strip().endswith("&")
+    foreground_wait = not in_background
+    ## OLD: debug.assertion(wait or not just_issue)
+    debug.trace_expr(5, in_background, in_just_issue)
+    debug.assertion(not (in_background and (in_just_issue is False)))
     # Note: Unix supports the '>|' pipe operator (i.e., output with overwrite); but,
     # it is not supported under Windows. To avoid unexpected porting issues, clients
     # should replace 'run("... >| f")' usages with 'delete_file(f); run(...)'.
     # note: TestWrapper.setUp handles the deletion automatically
     debug.assertion(">|" not in command_line)
     result = None
-    ## TODO: if (just_issue or not wait): ... else: ...
-    ## OLD: result = getoutput(command_line) if wait else str(os.system(command_line))
-    wait_for_command = (not wait or not just_issue)
-    debug.trace_expr(5, wait, just_issue, wait_for_command)
+    ## TODO: if (just_issue or not foreground_wait): ... else: ...
+    ## OLD: result = getoutput(command_line) if foreground_wait else str(os.system(command_line))
+    ## OLD: wait_for_command = (not foreground_wait or not just_issue)
+    wait_for_command = (foreground_wait and not just_issue)
+    debug.trace_expr(5, foreground_wait, just_issue, wait_for_command)
     result = getoutput(command_line) if wait_for_command else str(os.system(command_line))
     if output:
         print(result)
@@ -530,6 +559,10 @@ def extract_matches_from_text(pattern, text, fields=1, multiple=None, re_flags=0
     # TODO: make multiple True by default
     return extract_matches(pattern, text.split("\n"), fields, multiple, re_flags, para_mode)
 
+
+def extract_pattern(pattern, text, **kwargs):
+    """Yet another wrapper around extract_match for text input"""
+    return extract_match(pattern, text.split("\n"), **kwargs)
 
 def count_it(pattern, text, field=1, multiple=None):
     """Counts how often PATTERN's FIELD occurs in TEXT, returning hash.
@@ -716,6 +749,7 @@ def get_directory_listing(dir_name, make_unicode=False):
 def getenv_filename(var, default="", description=None):
     """Returns text filename based on environment variable VAR (or string version of DEFAULT) 
     with optional DESCRIPTION. This includes a sanity check for file being non-empty."""
+    # EX: system.setenv("ETC", "/etc"); getenv_filename("ETC") => "/etc"
     # TODO4: explain motivation
     debug_format("getenv_filename({v}, {d}, {desc})", 6,
                  v=var, d=default, desc=description)
@@ -781,11 +815,13 @@ else:
         return
 
 def init():
-    """Work around for Pythion quirk"""
+    """Work around for Python quirk"""
     # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
     debug.trace(5, "gh.init()")
     global TEMP_FILE
     temp_filename = "temp-file.list"
+    if USE_TEMP_BASE_DIR and TEMP_BASE:
+        full_mkdir(TEMP_BASE)
     temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
     TEMP_FILE = system.getenv_value("TEMP_FILE", temp_file_default,
                                     "Override for temporary filename")

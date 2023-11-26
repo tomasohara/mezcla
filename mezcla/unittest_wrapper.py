@@ -44,21 +44,20 @@
 
 """Unit test support class"""
 
-# Standard modules
-
+# Standard packages
+import inspect
 import os
-import re
 import tempfile
 import unittest
 
-# Installed modules
+# Installed packages
 ## TODO: import pytest
 
-# Local modules
-
+# Local packages
 import mezcla
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 from mezcla import system
 
 # Constants (e.g., environment options)
@@ -77,13 +76,15 @@ TODO_MODULE = "TODO MODULE"
 THIS_PACKAGE = getattr(mezcla.debug, "__package__", None)
 debug.assertion(THIS_PACKAGE == "mezcla")
 
-def get_temp_dir(keep=False):
+
+def get_temp_dir(keep=None):
     """Get temporary directory, omitting later deletion if KEEP"""
+    # NOTE: Unused function
     if keep is None:
         keep = KEEP_TEMP
     dir_path = tempfile.NamedTemporaryFile(delete=(not keep)).name
     gh.full_mkdir(dir_path)
-    debug.trace(5, "get_temp_dir() => {dir_path}")
+    debug.trace(5, f"get_temp_dir() => {dir_path}")
     return dir_path
 
 
@@ -94,30 +95,62 @@ def trap_exception(function):
     - Issues assertion so that test fails.
     - Should be inside any pytest.mark.xfail decorators.
     """
+    debug.trace(8, f"trap_exception({gh.elide(function)}")
+    #
     def wrapper(*args):
+        """Wrapper around variable arity function f"""   ## TODO: {function.__name__}
+        debug.trace(7, f"in wrapper: args={args}")
+        result = None
         try:
-            function(*args)
-        except AssertionError as err:
+            result = function(*args)
+        except AssertionError:
             raise
         except:
             system.print_exception_info(function)
             assert(False)
+        return result
+    #
+    debug.trace(7, f"trap_exception() => {gh.elide(wrapper)}")
+    return wrapper
+
+
+def pytest_fixture_wrapper(function):
+    """Decorator for use with pytest fixtures like capsys
+    Usage:
+        @pytest_fixture_wrapper
+        @trap_exception
+        def test_it(capsys):
+            ...
+    """
+    # See https://stackoverflow.com/questions/19614658/how-do-i-make-pytest-fixtures-work-with-decorated-functions
+    # Note: This is currently usused. It was previously used with trap_exception.
+    debug.trace(8, f"pytest_fixture_wrapper({gh.elide(function)}")
+    #
+    def wrapper(x):
+        """Wrapper around unary function f(x)"""   ## TODO: {function.__name__}
+        debug.trace(7, f"in wrapper: x={x}")
+        return function(x)
+    #
+    debug.trace(7, f"pytest_fixture_wrapper() => {gh.elide(wrapper)}")
     return wrapper
 
 
 class TestWrapper(unittest.TestCase):
-    """Class for testcase definition"""
+    """Class for testcase definition
+    Note:
+    - script_module should be overriden to specify the module instance, such as via get_testing_module_name (see test/template.py)
+    - set it to None to avoid command-line invocation checks
+    """
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
-    script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usuually set via derive_tested_module_name)
+    script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usually set via derive_tested_module_name)
     temp_base = system.getenv_text("TEMP_BASE",
                                    tempfile.NamedTemporaryFile().name)
     check_coverage = system.getenv_bool("CHECK_COVERAGE", False,
                                         "Check coverage during unit testing")
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
-    ## OLD: temp_file = tempfile.NamedTemporaryFile().name
     temp_file = None
-    use_temp_base_dir = None
+    use_temp_base_dir = system.is_directory(temp_base)
     test_num = 1
     
     ## TEST:
@@ -138,16 +171,15 @@ class TestWrapper(unittest.TestCase):
         super().setUpClass()
         debug.trace_object(5, cls, "TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
-        if cls.script_module:
+        if (cls.script_module is not None):
             # Try to pull up usage via python -m mezcla.xyz --help
             help_usage = gh.run("python -m '{mod}' --help", mod=cls.script_module)
             debug.assertion("No module named" not in help_usage,
                             f"problem running via 'python -m {cls.script_module}'")
             # Warn about lack of usage statement unless "not intended for command-line" type warning issued
-            # OLD: (re.search(r"not intended.*(command|standalone)", help_usage))
             # TODO: standardize the not-intended wording
-            if (not ((re.search(r"warning:.*not intended", help_usage,
-                                re.IGNORECASE))
+            if (not ((my_re.search(r"warning:.*not intended", help_usage,
+                                   flags=my_re.IGNORECASE))
                      or ("usage:" in help_usage.lower()))):
                 system.print_stderr("Warning: script should implement --help")
 
@@ -170,8 +202,8 @@ class TestWrapper(unittest.TestCase):
         """
         debug.trace(3, "Warning: in deprecrated derive_tested_module_name")
         module = os.path.split(test_filename)[-1]
-        module = re.sub(r".py[oc]?$", "", module)
-        module = re.sub(r"^test_", "", module)
+        module = my_re.sub(r".py[oc]?$", "", module)
+        module = my_re.sub(r"^test_", "", module)
         debug.trace_fmtd(5, "derive_tested_module_name({f}) => {m}",
                          f=test_filename, m=module)
         return (module)
@@ -179,13 +211,13 @@ class TestWrapper(unittest.TestCase):
     @staticmethod
     def get_testing_module_name(test_filename, module_object=None):
         """Derive the name of the module being tested from TEST_FILENAME and MODULE_OBJECT
-        Note: used as follows (see tests/test_template.py):
+        Note: used as follows (see tests/template.py):
             script_module = TestWrapper.get_testing_module_name(__file__)
         """
         # Note: Used to resolve module name given THE_MODULE (see template).
         module_name = os.path.split(test_filename)[-1]
-        module_name = re.sub(r".py[oc]?$", "", module_name)
-        module_name = re.sub(r"^test_", "", module_name)
+        module_name = my_re.sub(r".py[oc]?$", "", module_name)
+        module_name = my_re.sub(r"^test_", "", module_name)
         package_name = THIS_PACKAGE
         if module_object is not None:
            package_name = getattr(module_object, "__package__", "")
@@ -202,7 +234,7 @@ class TestWrapper(unittest.TestCase):
     def get_module_file_path(test_filename):
         """Return absolute path of module being tested"""
         result = system.absolute_path(test_filename)
-        result = re.sub(r'tests\/test_(.*\.py)', r'\1', result)
+        result = my_re.sub(r'tests\/test_(.*\.py)', r'\1', result)
         debug.assertion(result.endswith(".py"))
         debug.trace(7, f'get_module_file_path({test_filename}) => {result}')
         return result
@@ -232,18 +264,17 @@ class TestWrapper(unittest.TestCase):
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
                    out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None):
-                   ## OLD: out_file=None, env_options=None, uses_stdin=False):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
-        not specifed, they  are derived from self.temp_file. The optional POST_OPTIONS
+        not specified, they  are derived from self.temp_file. The optional POST_OPTIONS
         go after the data file.
         Notes:
         - issues warning if script invocation leads to error
         - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)"""
         debug.trace_fmtd(trace_level + 1,
-                         "TestWrapper.run_script({env}, {opts}, {df}, {lf}, {of}",
-                         opts=options, df=data_file, lf=log_file, 
-                         of=out_file, env=env_options)
+                         "TestWrapper.run_script(opts={opts}, data={df}, log={lf}, lvl={lvl}, out={of}, env={env}, stdin={stdin}, post={post}, back={back})",
+                         opts=options, df=data_file, lf=log_file, lvl=trace_level, of=out_file,
+                         env=env_options, stdin=uses_stdin, post=post_options, back=background)
         if options is None:
             options = ""
         if env_options is None:
@@ -254,7 +285,6 @@ class TestWrapper(unittest.TestCase):
         # Derive the full paths for data file and log, and then invoke script.
         # TODO: derive from temp base and data file name?;
         # TODO1: derive default for uses_stdin based on use of filename argment (e.g., from usage)
-        ## OLD: data_path = ("" if uses_stdin else "-")
         uses_stdin_false = ((uses_stdin is not None) and not bool(uses_stdin))
         data_path = ("" if uses_stdin_false else "-")
         if data_file is not None:
@@ -267,40 +297,95 @@ class TestWrapper(unittest.TestCase):
 
         # Set converage script path and command spec
         coverage_spec = ''
+        script_module = self.script_module
         if self.check_coverage:
             debug.assertion(self.script_file)
-            self.script_module = self.script_file
+            ## BAD: self.script_module = self.script_file
+            script_module = self.script_file
             coverage_spec = 'coverage run'
-        else:
-            debug.assertion(not self.script_module.endswith(".py"))
+        ## OLD:
+        ## else:
+        ##     debug.assertion(not self.script_module.endswith(".py"))
+        debug.assertion(not script_module.endswith(".py"))
         amp_spec = "&" if background else ""
 
         # Run the command
         gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path}  {post} 1> {out} 2> {log} {amp_spec}",
-                 env=env_options, cov_spec=coverage_spec, module=self.script_module,
+                 env=env_options, cov_spec=coverage_spec, module=script_module,
                  opts=options, path=data_path, out=out_file, log=log_file, post=post_options, amp_spec=amp_spec)
         output = system.read_file(out_file)
         # note; trailing newline removed as with shell output
         if output.endswith("\n"):
             output = output[:-1]
         debug.trace_fmtd(trace_level, "output: {{\n{out}\n}}",
-                         out=gh.indent_lines(output))
+                         out=gh.indent_lines(output), max_len=2048)
 
         # Make sure no python or bash errors. For example,
         #   "SyntaxError: invalid syntax" and "bash: python: command not found"
         log_contents = system.read_file(log_file)
-        error_found = re.search(r"(\S+error:)|(no module)|(command not found)",
-                                log_contents.lower())
+        error_found = my_re.search(r"(\S+error:)|(no module)|(command not found)",
+                                   log_contents.lower())
         debug.assertion(not error_found)
-        debug.trace_fmt(trace_level + 1, "log contents: {{\n{log}\n}}",
-                        log=gh.indent_lines(log_contents))
+        debug.trace_expr(trace_level + 1, log_contents, max_len=2048)
 
         # Do sanity check for python exceptions
-        traceback_found = re.search("Traceback.*most recent call", log_contents)
+        traceback_found = my_re.search("Traceback.*most recent call", log_contents)
         debug.assertion(not traceback_found)
 
         return output
 
+    def do_assert(self, condition, message=None):
+        """Shows context for assertion failure with CONDITION and then issue assert
+        If MESSAGE specified, included in assertion error
+        Note:
+        - Works around for maldito pytest, which makes it hard to do simple things like pinpointing errors.
+        - Formatted similar to debug.assertion:
+             Test assertion failed: <expr> (at <f><n>): <msg>
+        """
+        debug.trace(7, f"do_assert({condition}, msg={message})")
+        if ((not condition) and debug.debugging(debug.TL.DEFAULT)):
+            statement = filename = line_num = None
+            try:
+                # note: accounts for trap_exception and other decorators
+                for caller in inspect.stack():
+                    debug.trace_expr(8, caller)
+                    (_frame, filename, line_num, _function, context, _index) = caller
+                    statement = debug.read_line(filename, line_num).strip()
+                    if "do_assert" in statement:
+                        break
+                debug.trace_expr(7, filename, line_num, context, prefix="do_assert: ")
+            except:
+                system.print_exception_info("do_assert")
+            debug.assertion(statement)
+            if statement:
+                # TODO3: use abstract syntax tree (AST) based extraction
+                # ex: self.do_assert(not my_re.search(r"cat|dog", description))  # no pets
+                # Isolate condition
+                cond = my_re.sub(r"^\s*\S+\.do_assert\((.*)\)", r"\1", statement)
+                # Get expression proper, removing optional comments and semicolon 
+                expr = my_re.sub(r";?\s*#.*$", "", cond)
+                # Strip optional message
+                qual = ""
+                if message is not None:
+                    expr = my_re.sub(r", *([\'\"]).*\1\s*$", "", expr)   # string arg
+                    expr = my_re.sub(r", *[a-z0-9_]+$", "", expr,        # variable arg
+                                     flags=my_re.IGNORECASE)
+                    qual = f": {message}"
+                # Format assertion error with optional qualification (i.e., user message)
+                debug.trace(1, f"Test assertion failed: {expr} (at {filename}:{line_num}){qual}")
+                debug.trace(5, f"\t{statement}")
+            else:
+                system.print_error("Warning: unexpected condition in do_assert")
+        assert condition, message
+    #
+    ## TODO:
+    ## assert = do_assert
+    ##
+    ## TEST:
+    ## def assert(self, *args, **kwargs):
+    ##     """Wrapper around do_assert (q.v.)"""
+    ##     self.do_assert(*args, **kwargs)
+    
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         debug.trace(4, "TestWrapper.tearDown()")
@@ -320,7 +405,9 @@ class TestWrapper(unittest.TestCase):
                 gh.run("rm -vf {base}*", base=cls.temp_base)
         super().tearDownClass()
         return
-    
+
+## TODO: TestWrapper.assert = TestWrapper.do_assert
+
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':

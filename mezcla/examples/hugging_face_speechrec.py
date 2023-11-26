@@ -43,9 +43,17 @@ TL = debug.TL
 ASR_TASK = "automatic-speech-recognition"
 # TODO: WHISPER = getenv...("whisper-large"); DEFAULT_MODEL = ...
 DEFAULT_MODEL = "facebook/s2t-medium-librispeech-asr"
-ASR_MODEL = system.getenv_text("ASR_MODEL", DEFAULT_MODEL,
-                               "Hugging Face model for ASR")
-
+ASR_MODEL = system.getenv_text(
+    "ASR_MODEL", DEFAULT_MODEL,
+    description="Hugging Face model for ASR")
+USE_CPU = system.getenv_bool(
+    "USE_CPU", False,
+    description="Uses Torch on CPU if True")
+TORCH_DEVICE_DEFAULT = ("cpu" if USE_CPU else "cuda")
+TORCH_DEVICE = system.getenv_text(
+    "TORCH_DEVICE", TORCH_DEVICE_DEFAULT,
+    description="Torch device to use")
+                                  
 #-------------------------------------------------------------------------------
 
 SOUND_FILE = system.getenv_text("SOUND_FILE", "fuzzy-testing-1-2-3.wav",
@@ -81,7 +89,9 @@ def main():
     ## BAD:
     ## model = pipeline(task="automatic-speech-recognition",
     ##                  model="facebook/s2t-medium-librispeech-asr")
-    model = pipeline(task=ASR_TASK, model=ASR_MODEL)
+    ## OLD: model = pipeline(task=ASR_TASK, model=ASR_MODEL)
+    device = torch.device(TORCH_DEVICE)
+    model = pipeline(task=MT_TASK, model=ASR_MODEL, device=device)
 
     if USE_INTERFACE:
         pipeline_if = gr.Interface.from_pipeline(

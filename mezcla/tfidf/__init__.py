@@ -2,7 +2,7 @@
 """
 Package for Term Frequency (TF) Inversion Document Frequency (IDF): TF-IDF
 """
-__version__ = "1.4"
+__version__ = "1.5"
 
 ## TODO
 ## # HACK: For relative imports to work in Python 3.6

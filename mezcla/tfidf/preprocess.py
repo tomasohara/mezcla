@@ -31,16 +31,15 @@ import html
 ## TODO: find better documented memoization package
 from cachetools import LRUCache, cached  # python2 support
 from nltk.stem import SnowballStemmer
-## OLD: from six.moves.html_parser import HTMLParser  # python2 support
 from sklearn.feature_extraction.text import CountVectorizer
 from stop_words import get_stop_words
 
 # Local modules
 from mezcla import debug
 from mezcla import system
+from mezcla.tfidf.config import BASE_DEBUG_LEVEL as BDL
 from mezcla.tfidf.dockeyword import DocKeyword
 
-## OLD: unescape = HTMLParser().unescape
 unescape = html.unescape
 
 
@@ -54,16 +53,12 @@ BAD_WORD_PUNCT_REGEX = system.getenv_text("BAD_WORD_PUNCT_REGEX", r"[^a-zA-Z0-9_
                                           "Regex for punctuation not in words")
 SKIP_WORD_CLEANING = system.getenv_bool("SKIP_WORD_CLEANING", False,
                                         "Omit word punctuation cleanup")
-## OLD:
-## SKLEARN_TOKENIZER = system.getenv_bool("SKLEARN_TOKENIZER", False,
-##                                        "Use sklearn CountVectorizer for ngrams")
 USE_SKLEARN_COUNTER = system.getenv_bool("USE_SKLEARN_COUNTER", False,
                                          "Use sklearn CountVectorizer for ngrams")
 
 
 if SPLIT_WORDS:
     debug.trace(2, "FYI: Splitting by word token (not whitespace)\n")
-    ## BAD: True
 WORD_REGEX = r'\w+' if SPLIT_WORDS else r'\S+'
 
 def handle_unicode(text):
@@ -84,8 +79,8 @@ def handle_html_unquote(text):
 
 def handle_mac_quotes(text):
     """Handle the unfortunate non-ascii quotes OSX inserts."""
-    text = text.replace(u'“', u'"').replace(u'”', u'"')\
-        .replace(u'‘', u"'").replace(u'’', u"'")
+    text = text.replace('“', '"').replace('”', '"')\
+        .replace('‘', "'").replace('’', "'")
     return text
 
 
@@ -122,11 +117,10 @@ def clean_text(raw_text):
         text = handle_text_break_dash(text)
         text = text.lower()
 
-        ## BAD: regex_subs = ['\t', '\n', '\r', '\s+', '&']
         regex_subs = ['\t', '\n', '\r', r'\s+', '&']
         for regex_sub in regex_subs:
             text = re.sub(regex_sub, ' ', text)
-    debug.trace(8, "clean_text({raw_text}) => {text}")
+    debug.trace(BDL + 2, f"clean_text({raw_text!r}) => {text!r}")
     return text
 
 
@@ -138,7 +132,7 @@ def create_stemmer(language):
     def stem_wordform(wordform):
         """Returned root of WORDFORM"""
         root = stemmer.stem(wordform)
-        debug.trace_fmt(9, "stem_wordform({wf}) => {r}", wf=wordform, r=root)
+        debug.trace_fmt(BDL + 3, "stem_wordform({wf}) => {r}", wf=wordform, r=root)
         return root
 
     # Do sanity check
@@ -219,11 +213,10 @@ class Preprocessor(object):
         if stemmer:
             self.__stemmer = stemmer
         if not self.__stemmer:
-            debug.trace(4, "Warning: defining no-op stemmer in Preprocessor")
+            debug.trace(BDL + -2, "Warning: defining no-op stemmer in Preprocessor")
             self.__stemmer = lambda x: x  # no change to word
         debug.assertion(not (gramsize and max_ngram_size))
         debug.assertion(not (all_ngrams and min_ngram_size))
-        ## OLD: self.__gramsize = gramsize
         self.__gramsize = (max_ngram_size or gramsize)
         self.__all_ngrams = all_ngrams
         self.__min_ngram_size = (min_ngram_size or gramsize)
@@ -249,7 +242,7 @@ class Preprocessor(object):
         return self.__min_ngram_size
 
     def _load_stopwords(self, filename):
-        with open(filename) as f:
+        with system.open_file(filename) as f:
             words = []
             for line in f:
                 words.append(line.strip())
@@ -331,7 +324,7 @@ class Preprocessor(object):
         if not gramlist:
             gramlist = [self.gramsize]
         ## DEBUG: sys.stderr.write("gramlist={gl}\n".format(gl=gramlist))
-        debug.trace_fmt(8, "gramlist={gl}\n", gl=gramlist)
+        debug.trace_fmt(BDL + 2, "gramlist={gl}\n", gl=gramlist)
 
         for sentence in positional_splitter(self.negative_gram_breaks, raw_text):
             words = positional_splitter(WORD_REGEX, sentence.text)
@@ -396,8 +389,8 @@ def main():
     """Entry point for script: just runs a simple test"""
     text = "my man fran is not a man"
     p = Preprocessor(gramsize=2)
-    debug.trace_object(4, p)
-    ngrams = list([p.text for p in p.yield_keywords(text)])
+    debug.trace_object(BDL + -2, p)
+    ngrams = list(p.text for p in p.yield_keywords(text))
     debug.trace_expr(3, text, ngrams)
     debug.assertion("my man" in ngrams)
     debug.assertion("my man fran" not in ngrams)

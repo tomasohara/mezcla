@@ -155,7 +155,8 @@ def create_keras_model(num_input_features=None, num_classes=None, hidden_units=N
         # note: -1 needs to be specified in the estimator constructor in order for the grid search
         # variable to be recognized, therefore only non-negative counts are considered.
         hidden_unit_counts = [(kwargs.get(v) or -1) for v in HIDDEN_UNIT_VARS]
-        num_non_negative = sum([int(non_negative(n)) for n in hidden_unit_counts])
+        ## OLD: num_non_negative = sum([int(non_negative(n)) for n in hidden_unit_counts])
+        num_non_negative = sum(int(non_negative(n)) for n in hidden_unit_counts)
         debug.trace_fmt(5, "hidden_unit_counts={huc} num_non_negative={nnn}", huc=hidden_unit_counts, nnn=num_non_negative)
         if (num_non_negative > 0):
             hidden_units = hidden_unit_counts
@@ -280,6 +281,7 @@ def main():
 
     # Create initial model
     dummy_hidden_unit_params = {v:-1 for v in HIDDEN_UNIT_VARS}
+    # pylint: disable=unnecessary-lambda-assignment
     create_model_fn = lambda: create_keras_model(num_input_features=num_features,
                                                  num_classes=num_categories)
     ## OLD: model = KerasClassifier(build_fn=create_model_fn, verbose=VERBOSITY_LEVEL)
