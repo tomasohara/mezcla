@@ -88,6 +88,10 @@ USE_IMG2TXT = system.getenv_bool("USE_IMG2TXT", False,
                                  "Use image-to-text instead of image generation")
 DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.75,
                                        "How much of the input image to randomize--higher for more")
+HF_SD_MODEL = system.getenv_text(
+    "HF_SD_MODEL", "CompVis/stable-diffusion-v1-4",
+    description="Hugging Face model for Stable Diffusion")
+
 
 BATCH_ARG = "batch"
 SERVER_ARG = "server"
@@ -203,7 +207,7 @@ class StableDiffusion:
         debug.assertion(not img2img)
         # pylint: disable=import-outside-toplevel
         from diffusers import StableDiffusionPipeline
-        model_id = "CompVis/stable-diffusion-v1-4"
+        model_id = HF_SD_MODEL
         device = "cuda"
         # TODO2: automatically use LOW_MEMORY if GPU memory below 8gb
         dtype=(torch.float16 if self.low_memory else None)
@@ -227,7 +231,7 @@ class StableDiffusion:
         # pylint: disable=import-outside-toplevel
         from diffusers import StableDiffusionImg2ImgPipeline
         # TODO2: v1-5
-        model_id = "CompVis/stable-diffusion-v1-4"
+        model_id = HF_SD_MODEL
         device = "cuda"
         # TODO2: automatically use LOW_MEMORY if GPU memory below 8gb
         dtype=(torch.float16 if self.low_memory else None)
