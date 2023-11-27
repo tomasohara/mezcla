@@ -2,6 +2,9 @@
 #
 # Filesystem related functions, as well as file format conversion.
 #
+# Note:
+# - Some cases involve thin wrappers for tracing purposes.
+#
 
 
 """Filesystem related functions"""
@@ -11,6 +14,7 @@ from datetime import datetime
 import json
 import os
 import sys
+import yaml
 
 
 # Local packages
@@ -208,6 +212,7 @@ def json_to_jsonl(in_path, out_path):
         system.write_lines(out_path, output_lines)
     return
 
+
 def jsonl_to_json(in_path, out_path):
     """Convert JSONL-encoded file at IN_PATH to JSON and save as OUT_PATH"""
     # Read each line and validate
@@ -227,14 +232,39 @@ def jsonl_to_json(in_path, out_path):
     system.write_lines(out_path, ["["] + output_lines + ["]"])
     return
 
-#--------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# Miscellanous
+#
+
+
+def write_json(filename, obj, indent=None):
+    """Create FILENAME using JSON representation of OBJ
+    Note: Uses prettyprinting unless indent 0
+    """
+    if indent is None:
+        indent = 2
+    system.write_file(filename, json.dumps(obj, indent=indent))
+
+
+def read_yaml(filename):
+    """Create FILENAME using YAML representation of OBJ"""
+    result = yaml.safe_load(system.open_file(filename))
+    debug.trace(debug.VERBOSE, f'read_yaml({filename}) => {result}')
+    return result
+
+    
+def write_yaml(filename, obj):
+    """Create FILENAME using YAML representation of OBJ"""
+    system.write_file(filename, yaml.dump(obj))
+
+    
+#-------------------------------------------------------------------------------
 
 def main():
     """Entry point for script"""
-    system.print_stderr("Error: Not intended to being invoked directly")
+    system.print_stderr("Error: Not intended to be invoked directly")
     return
 
 if __name__ == '__main__':
     main()
-
-

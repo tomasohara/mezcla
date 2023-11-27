@@ -81,14 +81,23 @@ def document_to_text(doc_filename):
     debug.trace(4, f"document_to_text({doc_filename})")
     debug.trace_expr(4, IN_EXT)
     text = ""
+    OK = False
     try:
-        ## OLD: text = system.from_utf8(textract.process(doc_filename))
-        text = textract.process(doc_filename,
-                                extension=IN_EXT
-                                ).decode("UTF-8")
-    except:
-        debug.trace_fmtd(3, "Warning: problem converting document file {f}: {e}",
+        text = textract.process(doc_filename).decode("UTF-8")
+        OK = True
+    except ImportError:
+        debug.trace_fmtd(3, "FYI: import error converting file {f}: {e}",
                          f=doc_filename, e=sys.exc_info())
+
+    if not OK:
+        try:
+            ## OLD: text = system.from_utf8(textract.process(doc_filename))
+            text = textract.process(doc_filename,
+                                    extension=IN_EXT
+                                    ).decode("UTF-8")
+        except:
+            debug.trace_fmtd(3, "Warning: problem converting document file {f}: {e}",
+                             f=doc_filename, e=sys.exc_info())
     debug.trace(4, f"document_to_text() => {gh.elide(text)!r}")
     return text
 
@@ -128,6 +137,10 @@ def main():
             system.write_file(filename, system.read_all_stdin())
             use_stdout = True
 
+        # Warning that HTML not well supported
+        if (not HTML and filename.endswith(".html")):
+            system.print_error("Warning: HTML not well supported; use html_utils.html_to_text instead")
+            
         # Read in file contents
         text = document_to_text(filename)
 

@@ -39,11 +39,9 @@ import sys
 import argparse
 
 # Local packages
-## TODO: from mezcla import debug
-## OLD: from tpo_common import debug_print, trace_array, print_stderr
-from mezcla.tpo_common import debug_print, trace_array
+from mezcla import debug
 from mezcla.system import print_stderr
-## OLD: from glue_helpers import read_lines
+from mezcla import system
 from mezcla.glue_helpers import read_lines
 
 def main():
@@ -60,7 +58,7 @@ def main():
     parser.add_argument("--single-field", dest='single_field', action='store_true', default=False, help="Only show a single field per output line")
     parser.add_argument("filename", nargs='?', default='-')
     args = vars(parser.parse_args())
-    debug_print("args = %s" % args, 5)
+    debug.trace(5, "args = %s" % args)
     delim = "\t"
     elided_value = "."
     field_names = []
@@ -80,14 +78,14 @@ def main():
         ## OLD: field_names = [label.strip() for label in lines[0].split(delim)]
         header_reader = csv.reader(iter(lines), delimiter=delim, quotechar='"', dialect=csv_dialect)
         field_names = header_reader[0]
-        trace_array(field_names, 5, "field_names")
+        debug.trace_values(5, field_names, "field_names")
         if not single_field:
             field_data = [[] for i in range(len(field_names))]
-            trace_array(field_data, 5, "field_data")
+            debug.trace_values(5, field_data, "field_data")
         previous_value = [None] * len(field_names)
     input_stream = sys.stdin
     if (args['filename'] and (args['filename'] != "-")):
-        input_stream = open(args['filename'])
+        input_stream = system.open_file(args['filename'])
 
     # Transpose each line of the table
     num_lines = 0
@@ -97,22 +95,22 @@ def main():
         num_lines += 1
         ## OLD:
         ## line = line.strip("\n")
-        ## debug_print("L%d: %s" % (num_lines, line), 6)
+        ## debug.trace(6, "L%d: %s" % (num_lines, line))
         ## line_data = [field.strip() for field in line.split(delim)]
-        debug_print("R%d: %s" % (num_lines, line_data), 6)
-        trace_array(line_data, 5, "line_data")
+        debug.trace(6, "R%d: %s" % (num_lines, line_data))
+        debug.trace_values(5, line_data, "line_data")
 
         # Use first line as field names if not yet defined
         if (len(field_names) == 0):
             field_names = line_data
             if not single_field:
                 field_data = [[] for i in range(len(field_names))]
-                trace_array(field_data, 5, "field_data")
+                debug.trace_values(5, field_data, "field_data")
             previous_value = [None] * len(field_names)
             continue
         ## OLD: elif ((num_lines == 1) and (field_names == line_data)):
         if ((num_lines == 1) and (field_names == line_data)):
-            debug_print("Ignoring duplicate header", 5)
+            debug.trace(5, "Ignoring duplicate header")
             continue
 
         # Append each field to respective list (of seen values)
@@ -120,7 +118,7 @@ def main():
             print_stderr("Warning: Found %d fields but expected %d" % (len(line_data), len(field_names)))
             line_data += (['n/a'] * max(0, len(field_names) - len(line_data)))
         for i in range(len(field_names)):
-            debug_print("d[%d]: %s" % (i, line_data[i]), 7)
+            debug.trace(7, "d[%d]: %s" % (i, line_data[i]))
             new_value = line_data[i]
             if encode_newlines:
                 new_value = new_value.replace("\n", "<EOL>")
@@ -135,7 +133,7 @@ def main():
                 field_data[i].append(new_value)
                 previous_value[i] = line_data[i]
         if not single_field:
-            trace_array(field_data, 8, "field_data")
+            debug.trace_values(8, field_data, "field_data")
 
     # Output the transposed lines
     if not single_field:

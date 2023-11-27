@@ -129,7 +129,7 @@ class TestGlueHelpers:
         """Ensure elide works as expected"""
         debug.trace(4, "test_elide()")
         assert THE_MODULE.elide("=" * 80, max_len=8) == "========..."
-        assert THE_MODULE.elide(None, 10) is ""
+        assert THE_MODULE.elide(None, 10) == ""
 
     def test_elide_values(self):
         """Ensure elide_values works as expected"""
@@ -207,6 +207,17 @@ class TestGlueHelpers:
         assert not THE_MODULE.resolve_path(script) == path.join(path.dirname(__file__), test_script)
         assert THE_MODULE.resolve_path(test_script) == path.join(path.dirname(__file__), test_script)
 
+    @pytest.mark.xfail
+    def test_heuristic_resolve_path(self):
+        """Tests for heuristic version of resolve_path(filename)"""
+        requirements_filename = "requirements.txt"
+        # The requirements normally isn't resolved
+        assert(THE_MODULE.resolve_path(requirements_filename, heuristic=False)
+               == requirements_filename)
+        test_dir = path.dirname(__file__)
+        assert(gh.real_path(THE_MODULE.resolve_path(requirements_filename, heuristic=True))
+               == gh.real_path(gh.form_path(test_dir, "..", "..", requirements_filename)))
+
     def test_extract_match_from_text(self):
         """Ensure extract_match_from_text works as expected"""
         debug.trace(4, "test_extract_match_from_text()")
@@ -242,7 +253,7 @@ class TestGlueHelpers:
         ## assert 'stdin' in captured.err
 
         # Test invalid filename
-        assert THE_MODULE.read_lines(filename='bad_filename.txt') == []
+        assert(not THE_MODULE.read_lines(filename='bad_filename.txt'))
         if debug.debugging():
             captured = capsys.readouterr()
             assert 'Warning:' in captured.err
@@ -391,7 +402,7 @@ class TestGlueHelpers:
         assert test_filename in captured.err
 
         # Test non enviroment var
-        assert THE_MODULE.getenv_filename('BAD_ENV_VAR', default='altfile') == 'altfile'
+        assert THE_MODULE.getenv_filename('BAD_ENV_FILE_VAR', default='missing-file') == 'missing-file'
 
 
 if __name__ == '__main__':

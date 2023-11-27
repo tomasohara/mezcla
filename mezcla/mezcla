@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Note:
+# - Based on wrapper scripts from Anaconda (e.g., ~/anaconda3/envs/nlp-py-3-9/bin/python/pytest).
+# - This is currently just used to trace out path and version info.
+# - A warning is shown if invoked in non-debug mode.
+#
+
+"""Wrapper for mezcla module info display"""
+
+import re
+import sys
+from mezcla import debug
+from mezcla.__main__ import main as mezcla_main
+
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    skip_warnings = debug.debugging()
+    sys.exit(mezcla_main(omit_warnings=skip_warnings))

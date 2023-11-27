@@ -1,0 +1,71 @@
+# Workflow for debugging tests locally (e.g., via https://github.com/nektos/act)
+#
+# Note:
+# - Invoked via tools/local-workflows.sh:
+#     act --container-architecture linux/amd64 --pull="false" -P "ubuntu-latest=local/test-act" -W ./.github/workflows/debug.yml
+#
+# Warning:
+# - *** Changes need to be synchronized in 3 places: Dockerfile, local-workflow.sh, and .github/workflow/*.yml!
+# - The environment overrides are not working (e.g., DEBUG_LEVEL and TEST_REGEX);
+#   see tools/run_tests.bash for workaround
+#
+# - Usage:
+#     WORKFLOW_FILE=debug.yml local-workflow.sh ...
+
+name: Debug-Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Run Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        ## TODO: [3.8 ... 3.10]
+        python-version: ["3.9"]
+
+    container:
+      image: local/test-act
+      options: --user=root
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure Environment
+        run: |
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "PYTHONPATH=$PYTHONPATH:/usr/local/lib/python3.9/dist-packages" >> $GITHUB_ENV
+
+      - name: Run Python Tests Directly
+        run: |
+          PYTHONPATH="$(pwd):$PYTHONPATH" ./tools/run_tests.bash
+
+      - name: Run Python Tests under Docker
+        run: |
+          # note: command format: docker run [OPTIONS] IMAGE [COMMAND] [ARG...]
+          docker run --env "DEBUG_LEVEL=5" --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
+        env:
+          DEBUG_LEVEL: 5
+          # Note: to test a subset of notebook, define a regex pattern
+          # ex: TEST_REGEX: "(README|testing-tips)"
+          ## TODO: TEST_REGEX: pattern
+          ## DEBUG:
+          TEST_REGEX: README
+          ## TEMP: TEST_REGEX: entropy
+          ## TEST: TEST_REGEX: "$TEST_REGEX"
+          DUMMY_VAR: 1
+
+      ## TODO:
+      ## See https://github.com/tomasohara/shell-scripts/blob/main/tests/batspp_report.py
+      ## - name: Run Bats-PP Alias Tests
+      ##   run: |
+      ##     PYTHONPATH="$(pwd):$PYTHONPATH" bash tests/summary_stats.bash

@@ -6,21 +6,22 @@
 # - The results can be cached to a local file to avoid using up search quota when
 #   debugging with the same query. Multiple cached results are stored under temp dir.
 # - Requires a Bing Search API key, which can be obtained via Windows Azure Marketplace:
-#      https://datamarket.azure.com/account/keys
+#      https://azure.microsoft.com
 # - Currently only 1000 queries per month are allowed without fee. (Previously it was 5k!)
-# - Based on http://www.guguncube.com/2771/python-using-the-bing-search-api.
+# - Based originally on following tips:
+#      https://stackoverflow.com/questions/27606478/search-bing-via-azure-api-using-python
 # - Updgraded for Azure Cognitive Services:
 #      https://docs.microsoft.com/en-us/azure/cognitive-services/bing-web-search/quickstarts/python
 # - For the latest API as of Spring 2020, see
 #      https://docs.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference
+# - For operators that can be used, see
+#      https://support.microsoft.com/en-us/topic/advanced-search-keywords-ea595928-5d63-4a0b-9c6b-0b769865e78a
 #
 # TODO:
 # - *** Have option to just show hit count. ***
 # - Have option to just show results for misspelling (not Bing's replacement).
 # - Have option to specify user agent.
 # - Have option to download document for each result.
-# - Make note of new Azure URL:
-#   https://azure.microsoft.com/...
 #
 
 """Issues queries via Bing Search API (using MS Azure Cognitive Services)"""
@@ -60,13 +61,15 @@ USE_CACHE = system.getenv_bool("USE_CACHE", False)
 
 #...............................................................................
 
-def bing_search(query, key=None, use_json=False, search_type=None, topn=None, non_phrasal=False):
-    """Issue QUERY bing using API KEY returning result, optionally using JSON format or with alternative SEARCH_TYPE (e.g., image) or limited to TOPN results. The query is quoted unless NON_PHRASAL.
+def bing_search(query, key=None, use_json=None, search_type=None, topn=None, non_phrasal=False):
+    """Issue QUERY bing using API KEY returning result, optionally using JSON format by default or with alternative SEARCH_TYPE (e.g., image) or limited to TOPN results. The query is quoted unless NON_PHRASAL.
     Note: SEARCH_TYPE in {search, images, videos, news, SpellCheck}."""
     ## TODO: see if old search types RelatedSearch and Composite still supported
     tpo.debug_print("bing_search(%s, %s, %s, %s, %s)" % (query, key, use_json, search_type, topn), 4)
     if search_type is None:
         search_type = SEARCH_TYPE
+    if use_json is None:
+        use_json = True
     debug.assertion(search_type in VALID_SEARCH_TYPES)
     if key is None:
         key = BING_KEY
@@ -86,6 +89,7 @@ def bing_search(query, key=None, use_json=False, search_type=None, topn=None, no
     ## auth = "Basic %s" % encoded_colon_key
 
     # Format search URL with optional format and top-n specification
+    # TODO2: drop unused format_spec
     debug.assertion(use_json)
     format_spec = ""
     topn_spec = ("&count=%d" % topn) if topn else ""
@@ -137,6 +141,8 @@ def bing_search(query, key=None, use_json=False, search_type=None, topn=None, no
         result_list = response_data
         ## TODO: xml_result = xml.dom.minidom.parseString(response_data)
         ## TODO: result_list = xml_result.toprettyxml()
+    ## TODO2:" result_list => result_hash
+    debug.trace_expr(5, result_list, max_len=4096)
     return result_list
 
 #...............................................................................
@@ -164,10 +170,13 @@ def main():
         i += 1
     if (show_usage):
         print("Usage: %s [--json | --xml] [--image] [--type label] query_word ..." % sys.argv[0])
+        print("")
         print("Notes:")
-        print("- Set BING_KEY to key from https://datamarket.azure.com/account/keys")
+        print("- Set BING_KEY to key obtained via Microsoft Azure; see following:")
+        print("  https://learn.microsoft.com/en-us/azure/cognitive-services/bing-web-search")
         print("- Types: Web, Image, Video, News, SpellingSuggestion, RelatedSearch")
-        print("- For API details, see https://datamarket.azure.com/dataset/bing/search.")
+        print("- For API details, see following:")
+        print("  https://docs.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference")
         print("- The resuslt is XML file with <entry> tags for blurb info")
         sys.exit()
     debug.assertion(BING_KEY)
