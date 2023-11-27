@@ -24,17 +24,23 @@ from mezcla import system
 # Contants
 TL = debug.TL
 
-if __name__ == '__main__':
-    system.print_error(f"Warning: {__file__} is not intended as standalone.")
+def main(omit_warnings=False):
+    """Entry point: shows version info if debugging otherwise a warning"""
+    if not omit_warnings:
+        system.print_error(f"Warning: {__file__} is not intended as standalone.")
     file_path = system.real_path(gh.dirname(__file__))
     debug.trace(TL.USUAL, f"Version: {mezcla.__VERSION__}")
     debug.trace(TL.USUAL, f"Install path: {file_path}")
 
     # Derive module name
     # ex: /home/tomohara/python/Mezcla/mezcla/__main__.py => "mezcla"
-    module = "module"
+    module = "<module>"
     sep = my_re.escape(system.path_separator())
     match = my_re.search(fr"([^{sep}]*){sep}[^{sep}]*$", __file__)
     if match:
         module = match.group(1)
-    system.print_error(f"Likewise for the package (e.g., via 'python -m {module}')\n")
+    if not omit_warnings:
+        system.print_error(f"Likewise for the package (e.g., via 'python -m {module}')\n")
+
+if __name__ == '__main__':
+    main()

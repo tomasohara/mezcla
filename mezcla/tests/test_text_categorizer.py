@@ -16,7 +16,7 @@
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, trap_exception
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
@@ -28,13 +28,9 @@ from mezcla import misc_utils
 system.setenv("USE_XGB", "1")
 import mezcla.text_categorizer as THE_MODULE
 
-## TODO:
-## # Environment options
-## # Note: These are just intended for internal options, not for end users.
-## # It also allows for enabling options in one place.
-## #
-## FUBAR = system.getenv_bool("FUBAR", False,
-##                            description="Fouled Up Beyond All Recognition processing")
+# Environment options
+TEST_TBD = system.getenv_bool("TEST_TBD", False,
+                              description="Test features to be designed: TBD")
 
 
 class TestTextCategorizerUtils(TestWrapper):
@@ -87,20 +83,18 @@ class TestTextCategorizerUtils(TestWrapper):
         debug.trace(4, "test_format_index_html()")
         assert(False)
 
+    @pytest.mark.skipif(not TEST_TBD, reason="Ignoring feature to be designed")
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_start_web_controller(self):
         """Ensure start_web_controller works as expected"""
+        # Note: pytest has a quirk leading to a logging exception during cherrypy cleanup
         debug.trace(4, "test_start_web_controller()")
-        assert(False)
-
-def trap_exception(function):
-    """Decorator to trap exception during function execution"""
-    def wrapper(*args):
-        try:
-            function(*args)
-        except:
-            system.print_exception_info(function)
-    return wrapper
+        TODO_MODEL = "todo.model"
+        wc = THE_MODULE.start_web_controller(TODO_MODEL, nonblocking=True)
+        html_listing = wc.index()
+        assert("</html>" in html_listing)
+        ## TODO2: wc.stop()
+        debug.trace(4, "out test_start_web_controller")
 
 class TestTextCategorizerScript(TestWrapper):
     """Class for main testcase definition"""
@@ -123,7 +117,11 @@ class TestTextCategorizerScript(TestWrapper):
         """Make sure accuracy 0 if untrained (TODO: trap stderr)"""
         debug.trace(4, "test_test_untrained()")
         tc = THE_MODULE.TextCategorizer()
-        accuracy = tc.test(__file__)
+        ## OLD: accuracy = tc.test(__file__)
+        test_data = ["cat1\ta b c d e",
+                     "cat2\tf g h i j"]
+        gh.write_lines(self.temp_file, test_data)
+        accuracy = tc.test(self.temp_file)
         assert(accuracy == 0)
 
     @trap_exception

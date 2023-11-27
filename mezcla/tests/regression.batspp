@@ -1,0 +1,7 @@
+# BatsPP tests to check for misc. regression of errors
+
+# Make sure imort of gradio doesn't fail 
+# ImportError: cannot import name 'Undefined' from 'pydantic.fields' (/home/tomohara/anaconda3/envs/nlp-py-3-10/lib/python3.10/site-packages/pydantic/fields.py)
+#
+$ python -c 'import gradio' 2>&1 | grep -c Error
+0

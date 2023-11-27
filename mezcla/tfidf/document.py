@@ -24,16 +24,14 @@ from __future__ import absolute_import, division
 
 # Standard packages
 import math
-## OLD: import os
 import random
-## OLD: import sys
 
 # Installed packages
 from mezcla import debug
 from mezcla import system
 
 # Local packages
-## OLD: from .preprocess import clean_text
+from mezcla.tfidf.config import BASE_DEBUG_LEVEL as BDL
 from mezcla.tfidf.preprocess import clean_text, Preprocessor
 
 # TPO: environment option for weight singleton occurrences low
@@ -77,7 +75,7 @@ class Document(object):
         """The length of the document is the number of ngrams."""
         # TODO: rename to __size__??
         if not self.__length:
-            self.__length = sum([len(x) for x in self.keywordset])
+            self.__length = sum(len(x) for x in self.keywordset)
         return self.__length
 
     @property
@@ -97,9 +95,6 @@ class Document(object):
         """Important for fast check if ngram in document.
         Note: Converts self.keywordset hash to set proper.
         """
-        ## NOTE: 
-        ## OLD: return set([x for x in self.keywordset])
-        ## OLD: return {x for x in self.keywordset}
         return set(self.keywordset)
 
     @property
@@ -122,7 +117,7 @@ class Document(object):
         if (num_occurrences == 1) and PENALIZE_SINGLETONS:
             num_occurrences = 0
         tf_raw = float(num_occurrences) / len(self)
-        debug.trace_fmt(7, "tf_raw({ng}): num_occ={no} len(self)={l} result={r}",
+        debug.trace_fmt(BDL + 1, "tf_raw({ng}): num_occ={no} len(self)={l} result={r}",
                         ng=ngram, no=num_occurrences, l=len(self), r=tf_raw)
         return tf_raw
 
@@ -145,7 +140,7 @@ class Document(object):
     def tf_freq(self, ngram):
         """Returns frequency count for NGRAM"""
         num_occurrences = len(self[ngram]) if ngram in self else 0
-        debug.trace_fmt(7, "tf_freq({ng}): num_occ={no} len(self)={l} result={r}",
+        debug.trace_fmt(BDL + 1, "tf_freq({ng}): num_occ={no} len(self)={l} result={r}",
                         ng=ngram, no=num_occurrences, l=len(self), r=num_occurrences)
         return num_occurrences
     
@@ -158,20 +153,7 @@ class Document(object):
             tf_weight = 'basic'
         if normalize:
             ## TPO: fix referernce to normalize_term
-            ## BAD: ngram = self.normalize_term(ngram)
             ngram = self.preprocessor.normalize_term(ngram)
-        ## OLD
-        ## if tf_weight == 'log':
-        ##     return self.tf_log(ngram)
-        ## elif tf_weight == 'norm_50':
-        ##     return self.tf_norm_50(ngram)
-        ## elif tf_weight == 'binary':
-        ##     return self.tf_binary(ngram)
-        ## elif tf_weight == 'basic':
-        ##     return self.tf_raw(ngram)
-        ## # TPO: allow for raw frequency
-        ## elif tf_weight == 'freq':
-        ##     return self.tf_freq(ngram)
         if tf_weight == 'log':
             return self.tf_log(ngram)
         if tf_weight == 'norm_50':
@@ -210,7 +192,7 @@ def main():
     """Entry point for script: just runs a simple test"""
     text = "my man fran is not a man"
     d = Document(text, Preprocessor(gramsize=1, stemmer=lambda x: x))
-    debug.trace_expr(5, [d.tf_freq(t) for t in text.split()])
+    debug.trace_expr(BDL + -1, [d.tf_freq(t) for t in text.split()])
     debug.assertion(d.tf_freq("man") > d.tf_freq("fran"))
     
 #-------------------------------------------------------------------------------

@@ -32,6 +32,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+## TEMP
+# pylint: disable=no-member, no-value-for-parameter
+
 import collections
 import csv
 import os
@@ -56,7 +59,6 @@ from mezcla import system
 
 ## TEMP (TF-exception workaround related):
 ## debug.trace_expr(5, numpy, matplotlib)
-
 
 flags = tf.flags
 
@@ -231,7 +233,7 @@ class DataProcessor(object):
   @classmethod
   def _read_tsv(cls, input_file, quotechar=None):
     """Reads a tab separated value file."""
-    with tf.gfile.Open(input_file, "r") as f:
+    with tf.gfile.Open(input_file, "r", encoding="UTF-8") as f:
       reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
       lines = []
       for line in reader:
@@ -425,7 +427,7 @@ class MultiCatProcessor(DataProcessor):
     cats = ""
     # Read in category names as newline separated string list
     try:
-      with open(category_file, "r") as f:
+      with open(category_file, "r", encoding="UTF-8") as f:
         cats = f.read()
     except IOError:
       system.print_error_fmt("Problem reading category file {fn}: {exc}\n",

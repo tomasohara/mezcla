@@ -19,27 +19,33 @@
 #   import sys
 #   import random
 #   for line in sys.stdin:
-#       sys.stdout.write( "{0}|{1}".format( random.random(), line ) )
+#       sys.stdout.write("{0}|{1}".format(random.random(), line))
 #   
 # undecorate.py:
 #   
 #   import sys
 #   for line in sys.stdin:
-#       _, _, data= line.partition("|")
+#       _, _, data = line.partition("|")
 #       sys.stdout.write( line )
 #
 #------------------------------------------------------------------------
 # TODO:
-# - * Add support for paragraph-mode sorting (e.g., CR-encoding).
-# - Rework using main.py
 # - Add sanity check for disk space issues.
 # - Have streamlined version just using output from sort.
 #
 
-"""Randomize lines from stardard input"""
+## OLD: """Randomize lines from stardard input"""
+
+"""
+Randomize lines in a file (without reading entirely into memory).
+Note: The default seed is {seed}.
+
+Sample usage:
+    {script} --include-header --percent 10 ./examples/pima-indians-diabetes.csv
+"""
 
 # Standard modules
-import argparse
+## OLD: import argparse
 import os
 import random
 import sys
@@ -48,72 +54,71 @@ import sys
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
-from mezcla import tpo_common as tpo
 from mezcla import system
 
-RANDOM_SEED = tpo.getenv_integer("RANDOM_SEED", 15485863,
-                                 "Integral seed for random number generation (n.b., use ' ' for default [time of day based])")
-
-## TEMP:
-## pylint: disable=consider-using-f-string
+RANDOM_SEED = system.getenv_int(
+    "RANDOM_SEED", 15485863,
+    description="Integral seed for random number generation--use 0 for default based on time-of-day")
 
 class Dummy_Main(Main):
     """Class for reading input using Main"""
+    ## TODO2: Merge usage with that of regular Main class instance main_app below
+    manual_input = True
     
     def __init__(self, input_stream):
         super().__init__(runtime_args=[])
         self.input_stream = input_stream
-        self.all_lines = []
+        ## BAD: self.all_lines = []
 
-    def process_line(self, line):
-        self.all_lines.append(line)
-        return
+    ## OLD:
+    ## def process_line(self, line):
+    ##     self.all_lines.append(line)
+    ##     return
         
 
 def main():
     """Entry point for script"""
-    tpo.debug_print("main(): sys.argv=%s" % sys.argv, 4)
+    debug.trace(4, "main(): sys.argv=%s" % sys.argv)
     ## TODO: assert is_directory("/usr/bin"), "This requires Unix"
     if ("--ignore-case" not in gh.run("sort --help")):
-        tpo.print_stderr("Error: This requires a Unix-type version of sort (e.g., GNU).")
+        system.print_error("Error: This requires a Unix-type version of sort (e.g., GNU).")
         sys.exit()
 
     # Check command-line arguments
-    global RANDOM_SEED
-    ## OLD: parser = argparse.ArgumentParser(description="Randomize lines in a file (without reading entirely into memory).")
-    parser = argparse.ArgumentParser(description=f"Randomize lines in a file (without reading entirely into memory).The default seed is {RANDOM_SEED}.")
-    parser.add_argument("--include-header", default=False, action='store_true', help="Keep first line as headers")
-    ## OLD: parser.add_argument("--seed", type=int, default=None, help="random seed (e.g., 122949823, the seven-millionth prime)")
-    parser.add_argument("--seed", type=int, default=RANDOM_SEED, help="random seed (e.g., 122949823, the seven-millionth prime)")
-    parser.add_argument("filename", nargs='?', default='-', help="Input filename")
-    args = vars(parser.parse_args())
-    tpo.debug_print("args = %s" % args, 5)
-    filename = args['filename']
+    # TODO3: standardize name of instance (e.g., dummy_app vs app vs. script_app)
+    HEADER_OPT = "header"
+    SEED_OPT = "seed"
+    PERCENT_OPT = "percent"
+    main_app = Main(description=__doc__.format(script=gh.basename(__file__), seed=RANDOM_SEED),
+                    boolean_options=[(HEADER_OPT, "Keep first line for header columns")],
+                    int_options=[(SEED_OPT, "random seed if nonzero (e.g., 122949823, the seven-millionth prime)")],
+                    float_options=[(PERCENT_OPT, "Percent of lines to keep")],
+                    skip_input=False, manual_input=True)
+    debug.assertion(main_app.parsed_args)
+    #
     input_stream = sys.stdin
-    if (filename != "-"):
-        assert(os.path.exists(filename))
-        input_stream = system.open_file(filename)
+    if (main_app.filename != "-"):
+        assert(os.path.exists(main_app.filename))
+        input_stream = system.open_file(main_app.filename)
         assert(input_stream)
     else:
         debug.trace(5, "Re-opening stdin w/ UTF-8 support")
         ## TODO: figure out proper way to re-open stdin
         STDIN = 0
         input_stream = system.open_file(STDIN)
-    ## TODO: cleanup RANDOM_SEED access
-    ## OLD:
-    ## global RANDOM_SEED
-    ## if args['seed']:
-    debug.assertion(args['seed'])
-    if (args['seed'] is not None):
-        RANDOM_SEED = int(args['seed'])
-    include_header = args['include_header']
+    random_seed = main_app.get_parsed_option(SEED_OPT, RANDOM_SEED)
+    if random_seed:
+        random.seed(random_seed)
+    include_header = main_app.get_parsed_option(HEADER_OPT)
+    percent_lines = main_app.get_parsed_option(PERCENT_OPT, 100)
 
     # Initialize seed for optional random number generator
     if RANDOM_SEED:
         random.seed(RANDOM_SEED)
 
     # Add column with random number to temporary file
-    temp_base = tpo.getenv_text("TEMP_FILE", gh.get_temp_file())
+    ## OLD: temp_base = system.getenv_text("TEMP_FILE", gh.get_temp_file())
+    temp_base = main_app.temp_base
     temp_input_file = temp_base + ".input"
     temp_output_file = temp_base + ".output"
     ## OLD: temp_input_handle = open(temp_input_file, "w")
@@ -124,10 +129,11 @@ def main():
     line_num = 0
     # Note: uses main class to allow for reading pages and paragraphs
     main_app = Dummy_Main(input_stream)
-    main_app.process_input()
+    main_app.read_input()
     multi_line_mode = not main_app.is_line_mode()
     #
-    for line in main_app.all_lines:
+    ## BAD: for line in main_app.all_lines:
+    for line in main_app.read_input():
         line_num += 1
         line = line.strip("\n")
         if multi_line_mode:
@@ -160,30 +166,36 @@ def main():
     if include_header and header:
         print(header)
         line_num += 1
-        tpo.debug_print("HL%d: %s" % (line_num, header), 6)
+        debug.trace(6, "HL%d: %s" % (line_num, header))
+    last_line_num = (num_input_lines if (percent_lines >= 100) else (percent_lines / 100 * num_input_lines))
     for line in temp_output_handle:
         line_num += 1
+        if line_num > last_line_num:
+            debug.trace(4, f"Stopping after line# {last_line_num} for {percent_lines}% support")
+            break
         line = line.strip("\n")
         if multi_line_mode:
             line = line.replace("\\n", "\n")
-        tpo.debug_print("RL%d: %s" % (line_num, line), 6)
+        debug.trace(6, "RL%d: %s" % (line_num, line))
         if (include_header and (line == header)):
-            tpo.debug_print("Ignoring header at line %d" % (line_num), 5)
+            debug.trace(5, "Ignoring header at line %d" % (line_num))
             continue
         try:
             print(line)
         except:
             IO_error = True
-            tpo.debug_print("Exception printing line %d: %s" % (line_num, str(sys.exc_info())), 4)
+            debug.trace(4, "Exception printing line %d: %s" % (line_num, str(sys.exc_info())))
             break
     num_output_lines = line_num
-    tpo.debug_print("%s input and %d output lines" % (num_input_lines, num_output_lines), 4)
-    debug.assertion((num_input_lines == num_output_lines) or IO_error)
+    debug.trace(4, "%s input and %d output lines" % (num_input_lines, num_output_lines))
+    debug.assertion((last_line_num == num_output_lines) or IO_error)
     temp_output_handle.close()
 
-    # Cleanup (e.g., removing temporary files)
-    if not tpo.detailed_debugging():
-        gh.run("rm -vfr {base}*", base=temp_base)
+    ## OLD:
+    ## # Cleanup (e.g., removing temporary files)
+    ## if not tpo.detailed_debugging():
+    ##     gh.run("rm -vfr {base}*", base=temp_base)
+
     return
 
 #------------------------------------------------------------------------

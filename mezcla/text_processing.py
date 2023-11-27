@@ -156,7 +156,7 @@ def split_sentences(text):
     return sentences
 
 
-def split_word_tokens(text):
+def split_word_tokens(text, omit_punct=False):
     """Splits TEXT into word tokens (i.e., words, punctuation, etc.) Note: run split_sentences first (e.g., to allow for proper handling of periods).
     By default, this uses NLTK's PunktSentenceTokenizer."""
     # EX: split_word_tokens("How now, brown cow?") => ['How', 'now', ',', 'brown', 'cow', '?']
@@ -165,6 +165,8 @@ def split_word_tokens(text):
         tokens = [t.strip() for t in re.split(r"(\W+)", text) if (len(t.strip()) > 0)]
     else:
         tokens = nltk.word_tokenize(text)
+    if omit_punct:
+        tokens = [t for t in tokens if not is_punct(t)]
     tpo.debug_print("tokens: %s" % [(t, type(t)) for t in tokens], 7)
     return tokens
 

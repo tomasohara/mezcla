@@ -118,6 +118,12 @@ INDENT = system.getenv_text("INDENT", "    ",
                             "Indentation for system output")
 BRIEF_USAGE = system.getenv_bool("BRIEF_USAGE", False,
                                  "Show brief usage with autohelp")
+DURING_ALIAS = system.getenv_bool(
+    "DURING_ALIAS", False,
+    description="Alias for QUIET_MODE used to support alias in shell-scripts repo")
+QUIET_MODE = system.getenv_bool(
+    "QUIET_MODE", DURING_ALIAS,
+    description="Script should trace less such as stdin processing")
 PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
                                          "Preprocess args to expand Perl-style -var[=[val=1]] to --var=val")
 ## HACK: This is needed if boolean options default to true based on run-time initialization
@@ -125,6 +131,8 @@ NEGATIVE_BOOL_ARGS = system.getenv_bool("NEGATIVE_BOOL_ARGS", False,
                                         "Add negation option for each boolean option")
 SHORT_OPTIONS = system.getenv_bool("SHORT_OPTIONS", False,
                                    "Automatically derive short options")
+ENV_OPTION_PREFIX = system.getenv_value("ENV_OPTION_PREFIX", None,
+                                        "Environment variable prefix to check for default")
 ## TEST
 ## TEMP_BASE = system.getenv_value("TEMP_BASE", None,
 ##                                 "Override for temporary file basename")
@@ -150,7 +158,7 @@ class Main(object):
     ## temp_base, temp_file
     verbose = False
 
-    def __init__(self, runtime_args=None, description=None, skip_args=False,
+    def __init__(self, runtime_args=None, description=None, skip_args=None,
                  # TODO: Either rename xyz_optiom to match python type name 
                  # or rename them without abbreviations.
                  # TODO: explain difference between positional_options and positional_arguments
@@ -166,17 +174,13 @@ class Main(object):
         """Class constructor: parses RUNTIME_ARGS (or command line), with specifications
         for BOOLEAN_OPTIONS, TEXT_OPTIONS, INT_OPTIONS, FLOAT_OPTIONS, and POSITIONAL_OPTIONS
         (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args). Also allows for SHORT_OPTIONS"""
-        tpo.debug_format("Main.__init__({args}, d={desc}, b={bools}, t={texts},"
-                         + " i={ints}, f={floats}, po={posns}, pa={pargs}, si={skip}, m={mi}, ah={auto}, bu={usage},"
-                         + " pm={para}, tp={page}, fim={file}, nl={nl}, prog={prog}, sa={skip_args},"
-                         + " mult={mf}, temp_base={utbd} notes={us} short={so} kw={kw})", 5,
-                         args=runtime_args, desc=description, bools=boolean_options,
-                         texts=text_options, ints=int_options, floats=float_options,
-                         mf=multiple_files, utbd=use_temp_base_dir,
-                         posns=positional_options, pargs=positional_arguments, skip=skip_input, mi=manual_input,
-                         auto=auto_help, usage=brief_usage, us=usage_notes,
-                         para=paragraph_mode, page=track_pages, file=file_input_mode, nl=newlines,
-                         prog=program, ha=HELP_ARG, skip_args=skip_args, so=short_options, kw=kwargs)
+        #
+        def trace_args(level:int, label:str):
+            """Trace out input arguments, each on separate line to simplify diff"""
+            debug.trace_expr(level, runtime_args, description, skip_args, multiple_files, use_temp_base_dir, usage_notes, program, paragraph_mode, track_pages, file_input_mode, newlines, boolean_options, text_options, int_options, float_options, positional_options, positional_arguments, skip_input, manual_input, auto_help, brief_usage, short_options, kwargs, prefix=f"{label}: {{", delim="\n\t", suffix="}")
+        #
+        debug.trace(4, f"Main.__init__(): self={self}")
+        trace_args(5, "input")
         self.description = "TODO: what the script does"   # *** DONT'T MODIFY: default TODO note for client
         self.boolean_options = []
         self.text_options = []
@@ -195,6 +199,13 @@ class Main(object):
         self.line_num = -1
         self.char_offset = -1
         self.raw_line = None
+        if (auto_help is None):
+            ## TODO?: if (all(map(lambda v: v is None, [auto_help, skip_input, manual_input]))):
+            ## TEST: auto_help = ((skip_input is None) and (manual_input is None)))
+            # Note: auto-help is enabled by default unless no input
+            auto_help = ((not skip_input) or manual_input)
+            debug.trace(7, f"inferred auto_help: {auto_help}")
+        self.auto_help = auto_help      # adds --help to command line if no arguments
         # Note: manual_input was introduced after skip_input to allow for input processing
         # in bulk (e.g., via read_input generator). By default, neither is specified
         # (see template.py), and both should be assumed false.
@@ -213,12 +224,13 @@ class Main(object):
         if brief_usage is None:
             brief_usage = BRIEF_USAGE
         self.brief_usage = brief_usage  # show brief usage instead of full --help
-        if auto_help is None:
-            ## TODO: rework to be default if none specified for both skip_input and manual_input
-            ## OLD: auto_help = self.skip_input
-            auto_help = self.skip_input or not self.manual_input
-            debug.trace(7, f"inferred auto_help: {auto_help}")
-        self.auto_help = auto_help      # adds --help to command line if no arguments
+        ## OLD:
+        ## if auto_help is None:
+        ##     ## TODO: rework to be default if none specified for both skip_input and manual_input
+        ##     ## OLD: auto_help = self.skip_input
+        ##     auto_help = self.skip_input or not self.manual_input
+        ##     debug.trace(7, f"inferred auto_help: {auto_help}")
+        ## self.auto_help = auto_help      # adds --help to command line if no arguments
         if usage_notes is None:
             usage_notes = ""
         self.notes = usage_notes
@@ -233,6 +245,10 @@ class Main(object):
             track_pages = TRACK_PAGES
         self.track_pages = track_pages
         self.short_options = (short_options if (short_options is not None) else SHORT_OPTIONS)
+        if skip_args is None:
+            # note: skip_args useful for testing scripts to avoid argument parsine
+            skip_args = False
+        trace_args(6, "redux")
 
         # Check miscellaneous options
         BINARY_INPUT_OPTION = "binary_input"
@@ -262,6 +278,7 @@ class Main(object):
             if system.is_regular_file(self.temp_base):
                 gh.delete_file(self.temp_base)
             gh.run("mkdir -p {dir}", dir=self.temp_base)
+            ## TODO3: main-temp.txt???
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
             default_temp_file = self.temp_base
@@ -271,6 +288,8 @@ class Main(object):
         # to avoid inadvertent script processing.
         #
         if ((runtime_args is None) and (not skip_args)):
+            # note: there is a quirk when using this with pytest
+            debug.assertion(sys.argv[1:] != "pytest")
             runtime_args = sys.argv[1:]
             debug.trace(4, f"Using sys.argv[1:] for runtime args: {runtime_args}")
             if self.auto_help and not runtime_args:
@@ -285,7 +304,7 @@ class Main(object):
         if self.perl_switch_parsing and runtime_args:
             debug.trace(4, "FYI: Enabling Perl-style options")
             debug.assertion(not re.search(r"--\w+", " ".join(runtime_args)),
-                            "Shouldn't use Python arguments with PERL_SWITCH_PARSING")
+                            "Shouldn't use Python arguments with PERL_SWITCH_PARSING (e.g., mixing types as in -fu --bar)")
             for i, arg in enumerate(runtime_args):
                 if arg in ["-", "--"]:
                     break
@@ -307,7 +326,7 @@ class Main(object):
         boolean_options_proper = [t for t in self.boolean_options if isinstance(t, str)]
         boolean_options_proper += [t[0] for t in self.boolean_options if isinstance(t, (list, tuple))]
         if (VERBOSE_ARG not in boolean_options_proper):
-            debug.trace(6, f"Adding {VERBOSE_ARG} to {self.boolean_options}")
+            debug.trace(6, f"Adding --{VERBOSE_ARG} to boolean options {self.boolean_options}")
             self.boolean_options += [(VERBOSE_ARG, "Verbose output mode")]
         if text_options:
             self.text_options = text_options
@@ -334,16 +353,29 @@ class Main(object):
                         s=self)
         return
 
+    def get_arguments(self, just_positional=False, just_optional=False):
+        """Return list of arguments, optional just positional"""
+        argument_specs = []
+        if not just_positional:
+            argument_specs += self.boolean_options + self.text_options + self.int_options + self.float_options
+        if not just_optional:
+            argument_specs += self.positional_options
+        arguments = [(spec[0] if list(spec[0]) else spec) for spec in argument_specs]
+        debug.trace(6, f"get_arguments([pos?={just_positional}, opt?={just_optional}] => {arguments}")
+        return arguments
+    
     def convert_option(self, option_spec, default_value=None, positional=False):
         """Convert OPTION_SPEC to (label, description, default) tuple. 
         Notes: The description and default of the specification are optional,
         and the parentheses can be omitted if just the label is given. For example,
              ("--num-eggs", "Number of eggs", 2)
-        If POSITIONAL, the option prefix (--) is omitted and the option_SPEC
+        If POSITIONAL, the option prefix (--) is omitted and OPTION_SPEC
         includes an optional nargs component, such as"
              ("other-files", "Other file names", ["f1", "f2", "f3"], "+")
         """
         # EX: label, _desc, _default = Main.convert_option("--mucho-backflips"); label => "--mucho-backflips"
+        ## TODO2: add short option support as in ("--num-eggs/-#", "Number of eggs", 2)
+        ## TODO3: make the component representation structured (e.g., namedtuple)
         ## TEST: result = ["", "", ""]
         opt_label = None
         opt_desc = None
@@ -416,6 +448,23 @@ class Main(object):
                          l=label, r=option_value)
         return option_value
 
+    ## TEMP
+    def convert_option_value(self, label, value):
+        """Convert the option LABEL's text VALUE into its type
+        Note: boolean options account for symbolic ones like False and off."""
+        ## TODO2: encode type in tuple associated with each option
+        typed_value = value
+        for option_info, option_type in [(self.boolean_options, bool),
+                                         (self.int_options, int),
+                                         (self.float_options, float)]:
+            for option_tuple in option_info:
+                option_name = (option_tuple[0] if (not isinstance(option_tuple, str)) else option_tuple)
+                if label == option_name:
+                    typed_value = (system.to_bool(value) if option_type is bool else int(value) if option_type is int else float(value))
+                    break
+        debug.trace(5, f"convert_option_value({label}, {value!r}) => {typed_value!r}")
+        return typed_value
+    
     def get_parsed_option(self, label, default=None, positional=False):
         """Get value for option LABEL, with dashes converted to underscores. 
         If POSITIONAL specified, DEFAULT value is used if omitted"""
@@ -426,15 +475,22 @@ class Main(object):
         value = self.parsed_args.get(opt_label)
         # Override null value with default
         if value is None:
+            if ((default is None) and ENV_OPTION_PREFIX):
+                env_var = f"{ENV_OPTION_PREFIX}_{opt_label}".upper()
+                default = system.getenv(env_var)
+                if default:
+                    default = self.convert_option_value(label, default)
+                    debug.trace(4, f"FYI: Using option {label} from env ({env_var}: {default!r})")
             value = default
             under_label = label.replace("-", "_")
             # Do sanity check for positional argument being checked by mistake
             # TODO: do automatic correction?
+            debug.trace_expr(5, label, opt_label, under_label, self.parsed_args)
             if opt_label != label:
                 debug.assertion(label not in self.parsed_args)
             elif under_label != label:
                 debug.assertion(under_label not in self.parsed_args,
-                                "potential option/argument mismatch")
+                                f"potential option/argument mismatch for {label}")
             debug.trace_expr(6, label, opt_label, under_label)
         # Return result, after tracing invocation
         tpo.debug_format("get_parsed_option({l}, [{d}], [{p}]) => {v}", 5,
@@ -446,7 +502,10 @@ class Main(object):
         tpo.debug_format("get_parsed_agument({l}, [{d}])", 6,
                          l=label, d=default)
         ## TODO2: debug.assertion(label in ((l[0] if isinstance(l, list) else l)) for l in self.positional_options)
-        return self.get_parsed_option(label, default, positional=True)
+        is_positional = (label in self.get_arguments(just_positional=True))
+        if not is_positional:
+            debug.trace(4, f"FYI: Use get_parsed_option for non-positional option {label}")
+        return self.get_parsed_option(label, default, positional=is_positional)
 
     def check_arguments(self, runtime_args):
         """Check command-line arguments
@@ -584,6 +643,7 @@ class Main(object):
 
         # Parse the command line and get result
         tpo.debug_format("parser={p}", 6, p=parser)
+        debug.trace_object(8, parser, max_depth=2)
         self.parser = parser
         # note: not trapped to allow for early exit
         self.parsed_args = vars(parser.parse_args(runtime_args))
@@ -618,7 +678,7 @@ class Main(object):
         # TODO: clarify stripped newline vs. no newline at end of file
         debug.trace_fmt(5, "Main.process_line({l})", l=line)
         if not self.process_line_warning:
-            tpo.print_stderr("Warning: specialize process_line")
+            tpo.print_stderr("Warning: need to specialize process_line (i.e., stub called)")
             self.process_line_warning = True
         print(line)
         return
@@ -672,7 +732,8 @@ class Main(object):
             # Otherwise have client process input line by line
             else:
                 # TODO: Trace status only if script blocks waiting for user
-                debug.trace(2, "Processing input")
+                if not QUIET_MODE:
+                    debug.trace(2, "Processing input")
                 self.process_input()
         except BrokenPipeError:
             ## TODO: exit gracefully (e.g., after wrap_up)
@@ -709,7 +770,8 @@ class Main(object):
         """
         debug.trace(5, "Main.read_entire_input()")
         self.init_input()
-        debug.trace(2, "Processing entire input")
+        if not QUIET_MODE:
+            debug.trace(2, "Processing entire input")
         debug.trace_object(4, self.input_stream)
         input_text = self.input_stream.read()
         debug.trace_expr(6, input_text)
