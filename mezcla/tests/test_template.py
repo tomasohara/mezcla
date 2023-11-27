@@ -12,7 +12,6 @@
 
 # Standard packages
 import re
-import subprocess
 
 # Installed packages
 import pytest
@@ -59,14 +58,11 @@ class TestTemplate(TestWrapper):
     def test_captured_input_line(self):
         """Ensure that lines are correctly processed and 
         irrelevant lines are effectively ignored"""
+        debug.trace(4, "test_captured_input_line()")
         data = "hey"
-        cmd = f"echo {data} | DEBUG_LEVEL=4 python -m mezcla.template - 2>&1"
-        result = subprocess.run(cmd, shell=True, text=True)
-        assert result.returncode == 0
-        out, err = self.capfd.readouterr()
-        assert f"Ignoring line (1): {data}" in out
-        assert err == ""
-
+        self.run_script(env_options=f"echo {data} | DEBUG_LEVEL=4", log_file=self.temp_file)
+        assert f"Ignoring line (1): {data}" in gh.read_file(self.temp_file)
+        return
 
 #------------------------------------------------------------------------
 
