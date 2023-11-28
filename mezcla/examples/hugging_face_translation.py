@@ -26,7 +26,8 @@ USE_INTERFACE=1 {script} -
 from mezcla import debug
 from mezcla.main import Main
 # TODO2: add new mezcla.hugging_face module for common stuff
-from mezcla.examples.hugging_face_speechrec import TORCH_DEVICE, init_torch_etc, torch
+## BAD: from mezcla.examples.hugging_face_speechrec import TORCH_DEVICE, init_torch_etc, torch
+import mezcla.examples.hugging_face_speechrec as hf_speechrec
 from mezcla import misc_utils
 from mezcla import system
 from mezcla import glue_helpers as gh
@@ -114,13 +115,20 @@ def main():
         text = system.read_file(text_file)
 
     # Load "heavy" packages (delayed for sake of quicker usage)
-    init_torch_etc()
+    ## BAD: debug.trace_expr(4, torch)
+    ## BAD: torch = init_torch_etc()
+    torch = hf_speechrec.init_torch_etc()
+    debug.trace_expr(4, torch)
+    if torch is None:
+        import torch
+        debug.trace_expr(4, torch)
     ## TEMP:
     ## pylint: disable=import-outside-toplevel
     from transformers import pipeline
 
     # Load model
-    device = torch.device(TORCH_DEVICE)
+    ## BAD: device = torch.device(TORCH_DEVICE)
+    device = torch.device(hf_speechrec.TORCH_DEVICE)
     debug.trace_expr(5, device)
     model = pipeline(task=mt_task, model=mt_model, device=device)
 
