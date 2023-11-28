@@ -722,11 +722,12 @@ def format_url_param(name, default=None):
 # EX: format_url_param("r", "R") => "R"
 
 
-def format_input_field(param_name, label=None, skip_capitalize=None, default_value=None, max_len=None, size=None, disabled=None, style=None, misc_attr=None, tooltip=None, text_area=None, num_rows=None):
+def format_input_field(param_name, label=None, skip_capitalize=None, default_value=None, max_len=None, size=None, disabled=None, style=None, misc_attr=None, tooltip=None, text_area=None, num_rows=None, on_change=None):
     """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, DISABLED, CSS STYLE, MISC_ATTR (catch all), and NUM_ROWS.    
     Note:
     - param_name + "-id" is used for the field ID.
     - SIZE should be specified if not same as MAX_LEN.
+    - ON_CHANGE specifies JavaScript to execute when values changes.
     """
     # TODO2: doscument tooltip usage & add option for css classes involved (better if done via class-based interface).
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
@@ -747,6 +748,7 @@ def format_input_field(param_name, label=None, skip_capitalize=None, default_val
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
+    misc_spec += (f"onchange={on_change}" if on_change else "")
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
         tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
