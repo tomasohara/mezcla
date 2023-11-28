@@ -77,7 +77,9 @@ if USE_INTERFACE:
     import gradio as gr                 # pylint: disable=import-error
 
 def init_torch_etc():
-    """Load in supporting packages like torch"""
+    """Load in supporting packages like torch
+    note: returns torch module object for sake of clients
+    """
     # pylint: disable=redefined-outer-name, import-outside-toplevel
     debug.trace(4, "init_torch_etc()")
 
@@ -97,6 +99,7 @@ def init_torch_etc():
     TORCH_DEVICE = system.getenv_text(
         "TORCH_DEVICE", TORCH_DEVICE_DEFAULT,
         description="Torch device to use")
+    return torch
 
 def main():
     """Entry point"""
