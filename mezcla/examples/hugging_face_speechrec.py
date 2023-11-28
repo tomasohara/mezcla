@@ -85,15 +85,15 @@ def init_torch_etc():
     global torch
     import torch as _torch
     torch = _torch
-    NO_CUDA = torch.cuda.is_available()
-    debug.trace_expr(5, torch.__version__)
+    HAS_CUDA = torch.cuda.is_available()
+    debug.trace_expr(5, torch.__version__, HAS_CUDA)
 
     # Determine device to use, with fallack to CPU if no cuda
     global TORCH_DEVICE
     USE_CPU = system.getenv_bool(
         "USE_CPU", False,
         description="Uses Torch on CPU if True")
-    TORCH_DEVICE_DEFAULT = ("cpu" if (USE_CPU or NO_CUDA) else "cuda")
+    TORCH_DEVICE_DEFAULT = ("cpu" if (USE_CPU or not HAS_CUDA) else "cuda")
     TORCH_DEVICE = system.getenv_text(
         "TORCH_DEVICE", TORCH_DEVICE_DEFAULT,
         description="Torch device to use")
