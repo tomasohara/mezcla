@@ -21,12 +21,14 @@ tools="$(dirname "$(realpath -s "$0")")"
 base="$tools/.."
 mezcla="$base/mezcla"
 tests="$mezcla/tests"
+example_tests="$mezcla/examples/tests"
+# shellcheck disable=SC2010
 if [ "$TEST_REGEX" != "" ]; then
-    # shellcheck disable=SC2010
     tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX")
+    example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX")
 fi
 
-echo -e "Running tests on $tests\n"
+echo -e "Running tests on $tests; also running $example_tests\n"
 
 # Remove mezcla package if running under Docker (or act)
 # TODO2: check with Bruno whether still needed
@@ -42,9 +44,9 @@ if [ "$1" == "--coverage" ]; then
     export COVERAGE_RCFILE="$base/.coveragerc"
     export CHECK_COVERAGE='true'
     coverage erase
-    coverage run -m pytest $tests
+    coverage run -m pytest $tests $example_tests
     coverage combine
     coverage html
 else
-    pytest $tests
+    pytest $tests $example_tests
 fi
