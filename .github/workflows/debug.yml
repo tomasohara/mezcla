@@ -14,40 +14,62 @@
 
 name: Debug-Tests
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+on: [push, pull_request]
 
 jobs:
   build:
-    name: Run Tests
+    name: Build and Run Tests
     runs-on: ${{ matrix.os }}
+
     strategy:
       matrix:
         os: [ubuntu-latest]
         ## TODO: [3.8 ... 3.10]
         python-version: ["3.9"]
 
-    container:
-      image: local/test-act
-      options: --user=root
+    ## TEST:
+    ## NOTE: following is for docker images on the hub
+    ## container:
+    ##   image: local/test-act
+    ##   options: --user=root
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Build docker image
+        run: |
+          docker build --tag mezcla-dev -f- . <Dockerfile
+
       - name: Configure Environment
+        ## TODO2: clarify why used
+        ## See https://stackoverflow.com/questions/57968497/how-do-i-set-an-env-var-with-a-bash-expression-in-github-actions
         run: |
           echo "PATH=$PATH" >> $GITHUB_ENV
           echo "PYTHONPATH=$PYTHONPATH:/usr/local/lib/python3.9/dist-packages" >> $GITHUB_ENV
 
-      - name: Run Python Tests Directly
+      - name: Setup Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache Python Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-
+
+      - name: Install Dependencies
         run: |
-          PYTHONPATH="$(pwd):$PYTHONPATH" ./tools/run_tests.bash
+          pip install -r requirements.txt
+
+      ## TEST
+      ## - name: Run Python Tests Directly
+      ##   run: |
+      ##     PYTHONPATH="$(pwd):$PYTHONPATH" ./tools/run_tests.bash
 
       - name: Run Python Tests under Docker
         run: |
@@ -58,8 +80,7 @@ jobs:
           # Note: to test a subset of notebook, define a regex pattern
           # ex: TEST_REGEX: "(README|testing-tips)"
           ## TODO: TEST_REGEX: pattern
-          ## DEBUG:
-          TEST_REGEX: README
+          ## DEBUG: TEST_REGEX: README
           ## TEMP: TEST_REGEX: entropy
           ## TEST: TEST_REGEX: "$TEST_REGEX"
           DUMMY_VAR: 1
