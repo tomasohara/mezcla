@@ -1,5 +1,6 @@
 # This builds the base images that we can use for development testing. See
-#   .github/workflows/tests.yml
+#   .github/workflows/debug.yml
+# It is also used in main GitHub Actions workflow: see .github/workflows/github.yml).
 #
 # Notes:
 # - Mostly based initially on
@@ -39,10 +40,11 @@ ARG REQUIREMENTS=$WORKDIR/requirements.txt
 WORKDIR $WORKDIR
 
 # Set the Python version to install
+# NOTE: The workflow yaml files now handle this (e.g., via matrix support)
 ## TODO: keep in sync with .github/workflows
-## TODO: ARG PYTHON_VERSION=3.9.16
 ## TEST:
 ARG PYTHON_VERSION=3.8.12
+## TODO: ARG PYTHON_VERSION=""
 
 # Set default debug level (n.b., use docker build --build-arg "arg1=v1" to override)
 # Also optionally set the regex of tests to run.
@@ -78,19 +80,20 @@ ARG TEST_REGEX=""
 # - To find URL links, see https://github.com/actions/python-versions:
 #   ex: https://github.com/actions/python-versions/releases/download/3.8.12-117929/python-3.8.12-linux-20.04-x64.tar.gz
 # - Also see https://stackoverflow.com/questions/74673048/github-actions-setup-python-stopped-working.
-RUN wget -qO /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz \
-        "https://github.com/actions/python-versions/releases/download/${PYTHON_VERSION}-117929/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz" && \
-    mkdir -p /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 && \
-    tar -xzf /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz \
-        -C /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 --strip-components=1 && \
-    rm /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz
+RUN if [ "$PYTHON_VERSION" != "" ]; then                                                 \
+        wget -qO /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz "https://github.com/actions/python-versions/releases/download/${PYTHON_VERSION}-117929/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz" &&     \
+        mkdir -p /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 &&                    \
+        tar -xzf /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz                    \
+            -C /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 --strip-components=1 && \
+        rm /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz;                          \
+    fi
 
 ## TODO (use streamlined python installation):
 ## RUN apt-get update && \
 ##     apt-get install -y software-properties-common && \
 ##     add-apt-repository -y ppa:deadsnakes/ppa && \
 ##     apt-get update && \
-##     apt install -y python$PYTHON_MAJ_MIN
+##     apt-get install -y python$PYTHON_MAJ_MIN
 
 # Some programs require a "python" binary
 ## OLD: RUN ln -s $(which python3) /usr/local/bin/python
@@ -98,15 +101,25 @@ RUN wget -qO /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz \
 # Set the working directory visible
 ENV PYTHONPATH="${PYTHONPATH}:$WORKDIR"
 
-# Install pip for the specified Python version
-RUN wget -qO /tmp/get-pip.py "https://bootstrap.pypa.io/get-pip.py" && \
-    python3 /tmp/get-pip.py && \
-    rm /tmp/get-pip.py
+# Install pip for the specified Python version (TODO rm)
+RUN if [ "$PYTHON_VERSION" == "" ]; then                                                \
+        wget -qO /tmp/get-pip.py "https://bootstrap.pypa.io/get-pip.py" &&              \
+        python3 /tmp/get-pip.py;                                                        \
+        true || rm /tmp/get-pip.py;                                                     \
+    fi
+
+# Copy the project's requirements file to the container
+COPY ./requirements.txt $REQUIREMENTS
 
 # Install the package requirements
+# This is normally handled via workflow, but is needed if docker used standalone.
+# NOTE: The workflow only handles requirements for the runner VM, not the docker container.
 ## OLD: RUN python -m pip install --upgrade pip
-COPY ./requirements.txt $REQUIREMENTS
-RUN python -m pip install -r $REQUIREMENTS
+## OLD: RUN python -m pip install -r $REQUIREMENTS
+## TEST: RUN if [ "$PYTHON_VERSION" != "" ]; then                                                \
+RUN if [ "$(which nltk)" == "" ]; then                                                  \
+        pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;               \
+    fi
 ## TODO3: add option for optional requirements (likewise, for all via '#full#")
 ##   RUN python -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')
 
@@ -117,9 +130,11 @@ RUN python -m pip install -r $REQUIREMENTS
 ## OLD: RUN python -m nltk.downloader -d /usr/local/share/nltk_data all
 RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perceptron_tagger
 
-# Install required tools and libraries
+# Install required tools and libraries (TODO: why lsb-release?)
+# Note: cleans the apt-get cache
 RUN apt-get update -y && apt-get install -y lsb-release && apt-get clean all
-RUN apt install rcs
+# note: rcs needed for merge (TODO: place in required-packages.txt)
+RUN apt-get install rcs
 
 # Run the test, normally pytest over mezcla/tests
 # Note: the status code (i.e., $?) determines whether docker run succeeds (e.h., OK if 0)
