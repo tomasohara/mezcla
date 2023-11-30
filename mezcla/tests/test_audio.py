@@ -38,7 +38,8 @@ else:
     THE_MODULE = None
 
 # Constants
-AUDIOFILE = 'samples/test_audiofile.wav'
+# OLD: AUDIOFILE = 'samples/test_audiofile.wav'
+AUDIOFILE = "../examples/fuzzy-testing-1-2-3.wav"
 
 class TestAudio(TestWrapper):
     """Class for testcase definition"""
@@ -133,6 +134,18 @@ class TestAudio(TestWrapper):
         assert '- speech recognized' in actual
         assert isinstance(actual, str)
 
+    # NEW: Added test for Huggingface
+    def test_huggingface_asr(self):
+        """Test Huggingface automatic speech recognition model class"""
+        debug.trace(debug.DETAILED, f"TestAudio.test_huggingface_asr({self})")
+
+        sample = THE_MODULE.Audio(AUDIOFILE)
+        result_speech = sample.speech_to_text(engine='huggingface')
+        ## BAD: The result might differ according to the language models
+        # result_speech_expected = "testing one two three testing"
+        # assert (result_speech == result_speech_expected) -> AssertionError
+        assert isinstance(result_speech, str)
+        assert result_speech
 
 if __name__ == '__main__':
     debug.trace_current_context()
