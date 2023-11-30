@@ -11,6 +11,8 @@
 # - Docker documentation:
 #   https://docs.docker.com/engine/reference/commandline/cli/
 #   https://docs.docker.com/storage/bind-mounts
+# - Two separate sets of test environments are used. The GitHub Actions workflow runner VM is
+#   used for different python versions with the latest Ubuntu distribution
 #
 
 name: Github-Tests
@@ -18,23 +20,19 @@ name: Github-Tests
 on: [push, pull_request]
 
 jobs:
-  build:
-    name: Build and Run Tests
+  build-and-test-runner:
+    name: Build and Run Tests via Workflow Runner VM
     runs-on: ${{ matrix.os }}
     
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-latest]
         ## TODO: os: [ubuntu-20.04, ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10"]
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
-
-      - name: Build docker image
-        run: |
-          docker build --tag mezcla-dev -f- . <Dockerfile
 
       - name: Setup Python
         uses: actions/setup-python@v3
@@ -54,7 +52,21 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Run Python Tests under Runner
+        run: |
+          PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash
+          
+  build-and-test-docker:
+    name: Build and Run Tests via Docker
+    runs-on: [ubuntu-20.04]
+
+    steps:
+      - name: Build docker image
+        run: |
+          docker build --tag mezcla-dev -f- . <Dockerfile
+
       - name: Run Python Tests under Docker
         run: |
           ## TODO???: put repo under /mnt/local-mezcla and installed version under /home/mezcla
           docker run --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
+
