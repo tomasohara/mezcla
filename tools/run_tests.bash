@@ -29,6 +29,8 @@ if [ "$TEST_REGEX" != "" ]; then
 fi
 
 echo -e "Running tests on $tests; also running $example_tests\n"
+echo -n "via "
+python3 --version
 
 # Remove mezcla package if running under Docker (or act)
 # TODO2: check with Bruno whether still needed
