@@ -16,6 +16,9 @@
 #      https://docs.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference
 # - For operators that can be used, see
 #      https://support.microsoft.com/en-us/topic/advanced-search-keywords-ea595928-5d63-4a0b-9c6b-0b769865e78a
+# - New source for key and other info:
+#      https://portal.azure.com/#view/Microsoft_Bing_Api
+#      https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/quickstarts/rest/python
 #
 # TODO:
 # - *** Have option to just show hit count. ***
@@ -40,11 +43,10 @@ from mezcla import tpo_common as tpo
 from mezcla import debug
 from mezcla import system
 
-
 BING_KEY = (tpo.getenv_value("BING_KEY", None,
                              "API key (via Microsoft Azure)") or "")
 BING_BASE_URL = tpo.getenv_text("BING_BASE_URL",
-                                "https://api.cognitive.microsoft.com/bing/v7.0/")
+                                "https://api.bing.microsoft.com/v7.0/")
 SEARCH = "search"
 NEWS = "news/search"
 IMAGES = "images"
