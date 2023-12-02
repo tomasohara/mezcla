@@ -405,7 +405,7 @@ def open_file(filename, /, mode="r", *, encoding=None, errors=None, **kwargs):
         # pylint: disable=consider-using-with; note: bogus 'Bad option value' warning
         result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
     except IOError:
-        debug.trace_fmtd(3, "Unable to open {f}: {exc}", f=filename, exc=get_exception())
+        debug.trace_fmtd(3, "Unable to open {f!r}: {exc}", f=filename, exc=get_exception())
     debug.trace_fmt(5, "open({f}, [{enc}, {err}], kwargs={kw}) => {r}",
                     f=filename, enc=encoding, err=errors, kw=kwargs, r=result)
     return result
