@@ -47,6 +47,7 @@
 # - Standardize naming convention for URL parameter accessors (e.g., get_url_param vs. get_url_parameter).
 # - Create class for selenium support (e.g., get_browser ... wait_until_ready).
 # - * Use kawrgs to handle functions with common arguments (e.g., download_web_document, retrieve_web_document, and wrappers around them).
+# - Use thin spacing around controls (e.g., via U+202F Narrow No-Break Space or via CSS).
 # 
 
 """HTML utility functions"""
