@@ -17,6 +17,7 @@
 
 # Intalled module
 ## OLD: import gradio as gr
+import torch
 ## TODO:
 ## from transformers import pipeline
 
@@ -46,10 +47,11 @@ DEFAULT_MODEL = "facebook/s2t-medium-librispeech-asr"
 ASR_MODEL = system.getenv_text(
     "ASR_MODEL", DEFAULT_MODEL,
     description="Hugging Face model for ASR")
-USE_CPU = system.getenv_bool(
-    "USE_CPU", False,
-    description="Uses Torch on CPU if True")
-TORCH_DEVICE_DEFAULT = ("cpu" if USE_CPU else "cuda")
+# OLD: USE_CPU = system.getenv_bool("USE_CPU", False, description="Uses Torch on CPU if True")
+# OLD: TORCH_DEVICE_DEFAULT = ("cpu" if USE_CPU else "cuda")
+
+USE_GPU = system.getenv_bool("USE_GPU", False, description="Uses Torch on GPU if True")
+TORCH_DEVICE_DEFAULT = ("cuda" if USE_GPU else "cpu")
 TORCH_DEVICE = system.getenv_text(
     "TORCH_DEVICE", TORCH_DEVICE_DEFAULT,
     description="Torch device to use")
@@ -91,7 +93,7 @@ def main():
     ##                  model="facebook/s2t-medium-librispeech-asr")
     ## OLD: model = pipeline(task=ASR_TASK, model=ASR_MODEL)
     device = torch.device(TORCH_DEVICE)
-    model = pipeline(task=MT_TASK, model=ASR_MODEL, device=device)
+    model = pipeline(task=ASR_TASK, model=ASR_MODEL, device=device)
 
     if USE_INTERFACE:
         pipeline_if = gr.Interface.from_pipeline(
