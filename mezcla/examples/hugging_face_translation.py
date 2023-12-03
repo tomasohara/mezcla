@@ -20,9 +20,9 @@ USE_INTERFACE=1 {script} -
 # TODO: import re
 
 # Intalled module
-import transformers
+# import transformers
 import torch
-## OLD: from transformers import pipeline
+from transformers import pipeline
 
 # Local modules
 from mezcla import debug
@@ -125,8 +125,6 @@ def main():
 
     ## TEMP:
     ## pylint: disable=import-outside-toplevel
-    import torch
-    from transformers import pipeline
     ## OLD: model = pipeline(task=mt_task, model=mt_model)
     device = torch.device(TORCH_DEVICE)
     debug.trace_expr(5, device)
