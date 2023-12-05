@@ -38,8 +38,9 @@ diskcache
 extcolors>=1.0.0
 flask
 git+https://github.com/tehabstract/textract.git
-gradio              # NEW: For audio.py
-ibm-watson          # NEW: For audio.py
+gradio              # NEW: For audio.py (huggingface)
+kenlm               # NEW: For audio.py (huggingface)
+ibm-watson          # NEW: For audio.py (ibm-watson)
 librosa
 lxml
 mako
@@ -48,7 +49,9 @@ more_itertools
 nltk
 numpy>=1.18.5
 pandas>=1.3.0
+pocketsphinx        # NEW: For audio.py (CMUSphinx)
 pyaml
+pyctcdecode         # NEW: For audio.py (huggingface)
 pyenchant
 ## OLD: pysbd==0.3.4
 pysbd
