@@ -712,7 +712,7 @@ class Main(object):
                 self.input_stream = system.open_file(self.filename, mode=mode, error=INPUT_ERROR)
                 debug.assertion(self.input_stream)
         # Optionally reopen stream to change built-in settings
-        error_handling_change = (INPUT_ERROR != self.input_stream.errors)
+        error_handling_change = (INPUT_ERROR and (INPUT_ERROR != self.input_stream.errors))
         reopen_stream = (error_handling_change or self.newlines)
         if reopen_stream:
             if self.newlines:
