@@ -38,7 +38,9 @@ diskcache
 extcolors>=1.0.0
 flask
 git+https://github.com/tehabstract/textract.git
-gradio
+gradio              # NEW: For audio.py
+ibm-watson          # NEW: For audio.py
+librosa
 lxml
 mako
 matplotlib
@@ -60,6 +62,7 @@ six
 ## OLD:
 ## stop_words==2018.7.23
 ## tensorflow_hub==0.12.0
+SpeechRecognition       # NEW: For audio.py
 stop_words
 tensorrt				# for HF
 transformers				# Hugging Face (HF)
