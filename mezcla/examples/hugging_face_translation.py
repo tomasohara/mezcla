@@ -73,19 +73,23 @@ TASK_ARG = "task"
 MODEL_ARG = "model"
 
 #-------------------------------------------------------------------------------
-USE_CPU = system.getenv_bool("USE_CPU", True, "Uses Torch on CPU if True")
+# OLD: USE_CPU = system.getenv_bool("USE_CPU", True, "Uses Torch on CPU if True")
+# NEW: USE_GPU
+USE_GPU = system.getenv_bool("USE_GPU", False, "Uses Torch on GPU if True")
 MAX_LENGTH = system.getenv_int("MAX_LENGTH", 512, "Maximum Length of Tokens")
 TEXT_FILE = system.getenv_text("TEXT_FILE", "-",
                                "Text file to translate")
 USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
                                    "Use web-based interface via gradio")
 
-device = torch.device("cpu") if USE_CPU else torch.device("cuda")
+# OLD: device = torch.device("cpu") if USE_CPU else torch.device("cuda")
+# NEW: USE_GPU
+device = torch.device("cuda") if USE_GPU else torch.device("cpu")
+
 # Optionally load UI support
 gr = None
 if USE_INTERFACE:
     import gradio as gr                 # pylint: disable=import-error
-
 
 def main():
     """Entry point"""
