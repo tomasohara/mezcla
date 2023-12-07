@@ -3,7 +3,7 @@
 # Uses the Hugging Face API for machine translation (MT)
 #
 # Based on:
-# - https://stackoverflow.com/questions/71568142/how-can-i-extract-and-store-the-text-generated-from-an-automatic-speech-recognit
+# - https://stackoverflow.com/questions/71568142/how-can-i-extract-and-store-the-text-generated-from-an-automatic-speech-recognit #pylint: disable=line-too-long
 # - Hugging Face's NLP with Transformers text
 #
 
@@ -44,7 +44,7 @@ TL = debug.TL
 ## #   value, and argument spec., along with string constant definition).
 ## #
 ## ENABLE_FUBAR = system.getenv_bool("ENABLE_FUBAR", False,
-##                                   description="Enable fouled up beyond all recognition processing")
+##                                   description="Enable fouled up beyond all recognition processing") #pylint: disable=line-too-long
 
 FROM = system.getenv_text("FROM", "es")
 TO = system.getenv_text("TO", "en")
@@ -87,7 +87,7 @@ USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
 device = torch.device("cuda") if USE_GPU else torch.device("cpu")
 
 # Optionally load UI support
-gr = None
+gr = None                               # pylint: disable=invalid-name
 if USE_INTERFACE:
     import gradio as gr                 # pylint: disable=import-error
 
@@ -112,8 +112,8 @@ def main():
     source_lang = dummy_app.get_parsed_option(FROM_ARG, SOURCE_LANG)
     target_lang = dummy_app.get_parsed_option(FROM_ARG, TARGET_LANG)
     #
-    MT_TASK = f"translation_{source_lang}_to_{target_lang}"
-    MT_MODEL = f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"
+    MT_TASK = f"translation_{source_lang}_to_{target_lang}"                 # pylint: disable=invalid-name
+    MT_MODEL = f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"          # pylint: disable=invalid-name
     mt_task = dummy_app.get_parsed_option(TASK_ARG, MT_TASK)
     mt_model = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL)
 
@@ -121,7 +121,7 @@ def main():
     text_file = TEXT_FILE
     if ((text is not None) or USE_INTERFACE):
         pass
-    elif (text_file == "-"):
+    elif text_file == "-":
         text_file = dummy_app.temp_file
         text = dummy_app.read_entire_input()
     else:
@@ -130,9 +130,10 @@ def main():
     ## TEMP:
     ## pylint: disable=import-outside-toplevel
     ## OLD: model = pipeline(task=mt_task, model=mt_model)
-    device = torch.device(TORCH_DEVICE)
-    debug.trace_expr(5, device)
-    model = pipeline(task=mt_task, model=mt_model, device=device)
+    ## OLD (Redefining name 'device' from outer scope): device = torch.device(TORCH_DEVICE)
+    pipeline_device = torch.device(TORCH_DEVICE)
+    debug.trace_expr(5, pipeline_device)
+    model = pipeline(task=mt_task, model=mt_model, device=pipeline_device)
 
     if USE_INTERFACE:
         # TODO2: add language controls
@@ -147,7 +148,7 @@ def main():
             )
         pipeline_if.launch()
     else:
-        TRANSLATION_TEXT = "translation_text"
+        TRANSLATION_TEXT = "translation_text"                               # pylint: disable=invalid-name
         try:
             translation = model(text, max_length=MAX_LENGTH)
             debug.assertion(isinstance(translation, list)
@@ -157,7 +158,8 @@ def main():
             system.print_exception_info("translation")
     debug.code(5, lambda: debug.trace(1, gh.run("nvidia-smi")))
 
-    return
+    ## OLD (pylint: Useless return at end of function or method)
+    # return
 
 #-------------------------------------------------------------------------------
 
@@ -165,4 +167,4 @@ if __name__ == '__main__':
     ## OLD: main()
     elapsed = misc_utils.time_function(main)
     if SHOW_ELAPSED:
-       print(f"Elapsed time: {system.round_as_str(elapsed)}ms")
+        print(f"Elapsed time: {system.round_as_str(elapsed)}ms")
