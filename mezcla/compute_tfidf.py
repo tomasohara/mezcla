@@ -71,6 +71,7 @@ SHOW_SUBSCORES = "--show-subscores"
 SHOW_FREQUENCY = "--show-frequency"
 CSV = "--csv"
 TSV = "--tsv"
+TEXT = "--text"
 
 #...............................................................................
 
@@ -80,20 +81,20 @@ def show_usage_and_quit():
     usage = """
 Usage: {prog} [options] file1 [... fileN]
 
-Options: [--help] [{ngram_size_opt}=N] [{top_terms_opt}=N] [{subscores}] [{frequencies}] [{csv}]
+Options: [--help] [{ngram_size_opt}=N] [{top_terms_opt}=N] [{subscores}] [{frequencies}] [{csv} | {tsv} | {text}]
 
 Notes:
-- Derives TF-IDF for set of documents, using single word tokens (unigrams),
-  by default. 
+- Derives TF-IDF for set of documents, using single word tokens (unigrams), by default. 
 - By default, the document ID is the position of the file on the command line (e.g., N for fileN above). The document text is the entire file.
 - However, with {csv}, the document ID is taken from the first column, and the document text from the second columns (i.e., each row is a distinct document).
+- With {text}, the document ID is taken from the line number.
 - Use following environment options:
       DEFAULT_NUM_TOP_TERMS ({default_topn})
       MIN_NGRAM_SIZE ({min_ngram_size})
       MAX_NGRAM_SIZE ({max_ngram_size})
       TF_WEIGHTING ({tf_weighting}): {{log, norm_50, binary, basic, freq}}
       IDF_WEIGHTING ({idf_weighting}): {{smooth, max, prob, basic, freq}}
-""".format(prog=sys.argv[0], ngram_size_opt=NGRAM_SIZE_OPT, top_terms_opt=NUM_TOP_TERMS_OPT, subscores=SHOW_SUBSCORES, frequencies=SHOW_FREQUENCY, default_topn=DEFAULT_NUM_TOP_TERMS, min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE, tf_weighting=TF_WEIGHTING, idf_weighting=IDF_WEIGHTING, csv=CSV)
+""".format(prog=sys.argv[0], ngram_size_opt=NGRAM_SIZE_OPT, top_terms_opt=NUM_TOP_TERMS_OPT, subscores=SHOW_SUBSCORES, frequencies=SHOW_FREQUENCY, default_topn=DEFAULT_NUM_TOP_TERMS, min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE, tf_weighting=TF_WEIGHTING, idf_weighting=IDF_WEIGHTING, csv=CSV, tsv=TSV, text=TEXT)
     print(usage)
     sys.exit()
 
@@ -127,7 +128,7 @@ def terms_overlap(term1, term2):
     if system.intersection(subterms1, subterms2):
         # pylint: disable=arguments-out-of-order
         overlap = " ".join((get_suffix1_prefix2(subterms1, subterms2) or get_suffix1_prefix2(subterms2, subterms1)))
-    debug.trace_fmt(6, "terms_overlap({t1}, {t2}) => {o}", t1=term1, t2=term2, o=overlap)
+    debug.trace_fmt(6, "terms_overlap({t1}, {t2}) => {o}", t1=term1.strip(), t2=term2.strip(), o=overlap)
     return overlap
 
 
@@ -157,12 +158,14 @@ def main():
     debug.trace_fmtd(4, "os.environ={env}", env=os.environ)
 
     # Parse command-line arguments
+    # TODO2: rework via Main (see examples/template.py)
     i = 0
     max_ngram_size = MAX_NGRAM_SIZE
     num_top_terms = DEFAULT_NUM_TOP_TERMS
     show_subscores = False
     show_frequency = False
     csv_file = False
+    global DELIMITER
     while ((i < len(args)) and args[i].startswith("-")):
         option = args[i]
         debug.trace_fmtd(5, "arg[{i}]: {opt}", i=i, opt=option)
@@ -191,8 +194,10 @@ def main():
             csv_file = True 
         elif (option == TSV):
             csv_file = True
-            global DELIMITER
             DELIMITER = "\t"
+        elif (option == TEXT):
+            csv_file = True
+            DELIMITER = "\xFF"
         else:
             sys.stderr.write("Error: unknown option '{o}'\n".format(o=option))
             show_usage_and_quit()
@@ -217,15 +222,16 @@ def main():
     for i, filename in enumerate(args):
         # If CSS file, treat each row as separate document, using ID from first column and data from second
         if csv_file:
+            text_col = 0 if TEXT else 1
             with system.open_file(filename) as fh:
                 csv_reader = csv.reader(iter(fh.readlines()), delimiter=DELIMITER, quotechar='"')
                 # TODO: skip over the header line
                 line = 0
-                for row in csv_reader:
+                for r, row in enumerate(csv_reader):
                     debug.trace_fmt(6, "{l}: {r}", l=line, r=row)
-                    doc_id = row[0]
+                    doc_id = str(r + 1) if TEXT else row[0] 
                     try:
-                        doc_text = system.from_utf8(row[1])
+                        doc_text = system.from_utf8(row[text_col])
                     except:
                         debug.trace_fmt(5, "Exception processing line {l}", l=line)
                         doc_text = ""
@@ -235,9 +241,11 @@ def main():
                     else:
                         ## TODO: corpus[doc_id] += " "
                         corpus[doc_id] = (corpus[doc_id].text + " ")
+                    # Appends text to corpus document
                     ## TODO: corpus[doc_id] += doc_text
                     corpus[doc_id] = (corpus[doc_id].text + doc_text)
-                    doc_filenames[doc_id] = filename + ":" + str(i + 1)
+                    ## OLD: doc_filenames[doc_id] = filename + ":" + str(i + 1)
+                    doc_filenames[doc_id] = f"{filename}:{r + 1}"
                     line += 1
         # Otherwise, treat entire file as document and use command-line position as the document ID
         else:
