@@ -709,7 +709,7 @@ class Main(object):
                 debug.assertion(isinstance(self.filename, str))
                 debug.assertion(os.path.exists(self.filename))
                 mode = ("r" if (not self.binary_input) else "rb")
-                self.input_stream = system.open_file(self.filename, mode=mode, error=INPUT_ERROR)
+                self.input_stream = system.open_file(self.filename, mode=mode, errors=INPUT_ERROR)
                 debug.assertion(self.input_stream)
         # Optionally reopen stream to change built-in settings
         error_handling_change = (INPUT_ERROR and (INPUT_ERROR != self.input_stream.errors))
