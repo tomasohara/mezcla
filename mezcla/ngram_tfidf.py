@@ -13,6 +13,9 @@
 #   in applications like Visual Diff Search (VDS) that use text from external sources.
 # - See compute_tfidf.py for computing tfidf over files.
 #
+# TODO2:
+# - Find code that filters leading or trailing function words.
+#
 # TODO:
 # - Add filtering (e.g., subsumption, all numbers).
 # - Isolate ngram support into separate module.
@@ -161,7 +164,7 @@ class ngram_tfidf_analysis(object):
                         include = False
                         label = ("in subsumption" if is_subsumed else "overlapping")
                         debug.trace_fmt(6, "Omitting lower-weigted ngram '{ng2}' {lbl} with '{ng1}'",
-                                        ng1=other_spaced_ngram, ng2=spaced_ngrams[i], lbl=label)
+                                        ng1=other_spaced_ngram.strip(), ng2=spaced_ngrams[i].strip(), lbl=label)
                         break
             if not include:
                 continue
@@ -170,6 +173,13 @@ class ngram_tfidf_analysis(object):
             top_term_info.append((ngram, score))
             if (len(top_term_info) == limit):
                 break
+        # Move capitalized terms ahead of others with same weight
+        for (j, (ngram, score)) in enumerate(reversed(top_term_info)):
+            if ((j > 0) and top_term_info[j][0].istitle()
+                and (top_term_info[j][1] == temp_top_term_info[j - 1][1])):
+                top_term_info[j - 1], top_term_info[j] = top_term_info[j], top_term_info[j - 1]
+                debug.trace(5, f"moved capitalized ngram '{top_term_info[j - 1]}' up in list")
+       
         # Sanity check on number of terms displayed
         num_terms = len(top_term_info)
         if (num_terms < limit):
@@ -208,18 +218,14 @@ class ngram_tfidf_analysis(object):
                         t=text, s=self, nl=ngram_list)
         return ngram_list
 
-def main():
-    """Entry point for script"""
-    if ((len(sys.argv) == 1) or (sys.argv[1] == "--help")):
-        usage = "Usage: {prog} [--help] [-]".format(prog=sys.argv[0])
-        system.exit(usage)
-    
-    # Tabulate ngram occurrences
-    ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=2, max_ngram_size=3)
+def simple_main_test():
+    """Run test extracting ngrams from this source file"""
+        # Tabulate ngram occurrences
+    ## BAD: ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=2, max_ngram_size=3)
+    ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE)
     all_text = system.read_entire_file(__file__)
     all_ngrams = ngram_analyzer.get_ngrams(all_text)
-    # pylint: disable=unnecessary-comprehension
-    reversed_all_text = " ".join(list(reversed([token for token in all_text.split()])))
+    reversed_all_text = " ".join(list(reversed(token for token in all_text.split())))
     ngram_analyzer.add_doc(all_text, doc_id="doc1")
     ngram_analyzer.add_doc(reversed_all_text, doc_id="rev-doc1")
     top_ngrams = ngram_analyzer.get_top_terms("rev-doc1", allow_ngram_subsumption=False, allow_ngram_overlap=False)
@@ -250,7 +256,34 @@ def main():
                                        for (t, s) in top_ngrams[:SAMPLE_SIZE]])
     print(f"top ngrams in {__file__}:\n\t{init_top_ngram_spec}")
 
+
+def output_tfidf_analysis(filename):
+    """Output results for ngram TF/IDF analysis over FILENAME"""
+    ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE)
+    all_text = system.read_entire_file(filename)
+    num_docs = 0
+    for l, line in enumerate(all_text.splitlines()):
+        ngram_analyzer.add_doc(line, doc_id=(l + 1))
+        num_docs += 1
+
+    # Output ngram sample
+    SAMPLE_SIZE = 10
+    for l in range(num_docs):
+        top_ngrams = ngram_analyzer.get_top_terms(l + 1)
+        top_ngram_spec = "; ".join([f"{t}: {tpo.round_num(s, 3)}"
+                                    for (t, s) in top_ngrams[:SAMPLE_SIZE]])
+        print(f"{l}\t{top_ngram_spec}")
     
+def main():
+    """Entry point for script"""
+    if ((len(sys.argv) == 1) or (sys.argv[1] == "--help")):
+        usage = "Usage: {prog} [--help] [-]".format(prog=sys.argv[0])
+        system.exit(usage)
+    if (sys.argv[1] == "-"):
+        simple_main_test()
+    else:
+        output_tfidf_analysis(sys.argv[1])
+   
 #-------------------------------------------------------------------------------
 
 if __name__ == '__main__':
