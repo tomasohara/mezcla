@@ -55,6 +55,9 @@ SKIP_WORD_CLEANING = system.getenv_bool("SKIP_WORD_CLEANING", False,
                                         "Omit word punctuation cleanup")
 USE_SKLEARN_COUNTER = system.getenv_bool("USE_SKLEARN_COUNTER", False,
                                          "Use sklearn CountVectorizer for ngrams")
+TFIDF_PRESERVE_CASE = system.getenv_bool(
+    "TFIDF_PRESERVE_CASE", False,
+    description="Preserve case in TFIDF ngrams")
 
 
 if SPLIT_WORDS:
@@ -115,7 +118,8 @@ def clean_text(raw_text):
         text = handle_html_unquote(text)
         text = handle_mac_quotes(text)
         text = handle_text_break_dash(text)
-        text = text.lower()
+        if not TFIDF_PRESERVE_CASE:
+            text = text.lower()
 
         regex_subs = ['\t', '\n', '\r', r'\s+', '&']
         for regex_sub in regex_subs:
