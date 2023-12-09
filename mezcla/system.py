@@ -447,7 +447,7 @@ def load_object(file_name, ignore_error=False):
 
 
 def quote_url_text(text, unquote=False):
-    """(un)Quote TEXT to make suitable for use in URL. Note: This return the input if the text has encoded characters (i.e., %HH) where H is uppercase hex digit."""
+    """(un)Quote/encode TEXT to make suitable for use in URL. Note: This return the input if the text has encoded characters (i.e., %HH) where H is uppercase hex digit."""
     # Note: This is a wrapper around quote_plus and thus escapes slashes, along with spaces and other special characters (";?:@&=+$,\"'").
     # EX: quote_url_text("<2/") => "%3C2%2f"
     # EX: quote_url_text("Joe's hat") => "Joe%27s+hat"
@@ -478,7 +478,7 @@ def quote_url_text(text, unquote=False):
     return result
 #
 def unquote_url_text(text):
-    """Unquotes URL TEXT:
+    """Unquotes/decodes URL TEXT:
     Note: Wrapper around quote_url_text w/ UNQUOTE set"""
     return quote_url_text(text, unquote=True)
 
