@@ -26,6 +26,13 @@ from mezcla.unittest_wrapper import trap_exception
 from mezcla.my_regex import my_re
 from mezcla import system
 
+# Global settings
+# TODO2: only use for run_script test(s): expose API for use in other tests
+system.setenv("TFIDF_PRESERVE_CASE", 1)
+## TODO3: system.setenv("TFIDF_LANGUAGE", "")
+system.setenv("PREPROCESSOR_LANG", "")
+system.setenv("TFIDF_NGRAM_LEN_WEIGHT", "1.1")
+
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 ## TODO: fix type object 'Preprocessor' has no attribute 'USE_SKLEARN_COUNTER'
@@ -46,7 +53,7 @@ class TestNgramTfidf(TestWrapper):
         ##     "hound\tbeagle Irish wolfhound ",
         ##     "other\tlap dawg",
         ## ]
-        data = "beagle terrier Irish wolfhound lap dog lap dawg"
+        data = ["beagle terrier Irish wolfhound lap dog lap dawg"]
         system.write_lines(self.temp_file, data)
         output = self.run_script(options="--tsv", env_options="MIN_NGRAM_SIZE=2 MAX_NGRAM_SIZE=2",
                                  data_file=self.temp_file)
@@ -59,10 +66,10 @@ class TestNgramTfidf(TestWrapper):
     def test_simple_ngrams(self):
         """Adds small test with ngrams of size 2 to 4"""
         debug.trace(4, f"TestIt2.test_simple_ngrams(); self={self}")
-        tfidf = THE_MODULE.ngram_tfidf_analysis( min_ngram_size=2, max_ngram_size=4)
+        tfidf = THE_MODULE.ngram_tfidf_analysis(min_ngram_size=2, max_ngram_size=4)
         docs = [
-            "Jul 26, 2022 ... 17 Top-Rated Tourist Attractions in Argentina \u00b7 1. Iguaz\u00fa Falls \u00b7 2. Perito Moreno Glacier \u00b7 3. Recoleta, La Boca, and Tango in Buenos Aires \u00b7 4\u00a0...",
-            "Top Attractions in Argentina \u00b7 1. Teatro Colon \u00b7 2. Puerto Madero \u00b7 3. Recoleta \u00b7 4. Iguazu Falls \u00b7 5. Cementerio de la Recoleta \u00b7 6. Garganta del Diablo \u00b7 7."
+            "Jul 26, 2022 ... 17 Top-Rated Tourist Attractions in Argentina · 1. Iguazá Falls · 2. Perito Moreno Glacier · 3. Recoleta, La Boca, and Tango in Buenos Aires · 4 ...",
+            "Top Attractions in Argentina · 1. Teatro Colon · 2. Puerto Madero · 3. Recoleta · 4. Iguazu Falls · 5. Cementerio de la Recoleta · 6. Garganta del Diablo · 7.",
             ]
         top_terms = [
             ["Tango in Buenos Aires", "Perito Moreno Glacier"],
@@ -72,10 +79,10 @@ class TestNgramTfidf(TestWrapper):
             doc_id = (d + 1)
             tfidf.add_doc(doc, doc_id)
             self.do_assert(tfidf.get_doc(doc_id))
-            actual_top_terms = tfidf.get_top_terms(doc_id, limit=10)
+            actual_top_terms = [t for (t, _s) in tfidf.get_top_terms(doc_id, limit=10)]
             expected_top_terms = top_terms[d]
-            debug.trace_expr(5, d, actual_top_terms, expected_top_terms)
-            self.do_assert(system.intersection(actual_top_terms, expected_top_terms))
+            debug.trace_expr(5, actual_top_terms, expected_top_terms, delim="\n")
+            self.do_assert(not system.difference(expected_top_terms, actual_top_terms))
         return
 
 
