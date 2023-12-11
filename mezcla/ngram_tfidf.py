@@ -42,8 +42,10 @@ from mezcla.tfidf.corpus import Corpus as tfidf_corpus
 from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
 from mezcla.tfidf import preprocess as tfidf_preprocess
 
-PREPROCESSOR_LANG = system.getenv_text("PREPROCESSOR_LANG", "english",
-                                       "Language for ngram preprocessor")
+PREPROCESSOR_LANG = system.getenv_text(
+    ## TODO3: standardize wrt TFIDF_LANGUAGE and STEMMER_LANGUAGE
+    "PREPROCESSOR_LANG", "english",
+    description="Language for ngram preprocessor")
 # NOTE: MIN_NGRAM_SIZE (e.g., 2) is alternative to deprecated ALL_NGRAMS (implies 1)
 MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 4)
 # TODO: add descriptions to all getenv options
@@ -135,6 +137,7 @@ class ngram_tfidf_analysis(object):
         debug.trace_fmtd(7, "top_terms={tt}", tt=top_terms)
         # Skip empty tokens due to spacing and to punctuation removal (e.g, " ")
         temp_top_term_info = [(k.ngram, k.score) for k in top_terms if k.ngram.strip()]
+        debug.trace_values(6, temp_top_term_info, "top terms")
         # Put spaces around ngrams to aid in subsumption tests
         check_ngram_overlap = (not (allow_ngram_subsumption and allow_ngram_overlap))
         if check_ngram_overlap:
