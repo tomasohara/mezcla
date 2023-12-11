@@ -28,7 +28,10 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         ## TODO: os: [ubuntu-20.04, ubuntu-latest]
+        ## OLD:
         python-version: ["3.8", "3.9", "3.10"]
+        # Note: The Dockerfile uses 3.11 so try different versions for the runner VM
+        ## TODO: python-version: ["3.9", "3.10", "3.11"]
 
     steps:
       - name: Checkout Repository
