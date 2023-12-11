@@ -9,11 +9,12 @@
 """Pre-processing step for text.
 
 Example:
-    >>> from mezcla.tfidf.preprocess import Preprocessor
-    >>> p = Preprocessor(gramsize=2)
-    >>> sorted(list([k.text for k in p.yield_keywords("a b c")]))
-    ["a b", "b c"]
+    >>> import mezcla.tfidf.preprocess as mtp
+    >>> p = mtp.Preprocessor(gramsize=2)
+    >>> sorted(list([k.text for k in p.yield_keywords('a b c')]))
+    ['a b', 'b c']
 """
+# Note: uses import ... as for sake of reload
 # TPO: TODO: 
 # - add logging
 # - replace all_ngrams with min_ngram_size
@@ -58,7 +59,9 @@ USE_SKLEARN_COUNTER = system.getenv_bool("USE_SKLEARN_COUNTER", False,
 TFIDF_PRESERVE_CASE = system.getenv_bool(
     "TFIDF_PRESERVE_CASE", False,
     description="Preserve case in TFIDF ngrams")
-
+TFIDF_LANGUAGE = system.getenv_value(
+    "TFIDF_LANGUAGE", None,
+    description="Language for tetx preprocessing")
 
 if SPLIT_WORDS:
     debug.trace(2, "FYI: Splitting by word token (not whitespace)\n")
@@ -90,15 +93,15 @@ def handle_mac_quotes(text):
 def handle_text_break_dash(text):
     """Convert text break dashes into semicolons to simplify things.
 
-    Example:
+    For example,
         "She loved icecream- mint chip especially"
         "She loved icecream - mint chip especially"
-        both convert to
-        "She loved icecream; mint chip especially"
+    will both convert to
+        "She loved icecream; mint chip especially".
 
-        However,
+    However,
         "The 27-year-old could eat icecream any day"
-        will not be changed.
+    will not be changed.
     """
     return re.sub(r'\s+-\s*|\s*-\s+', ';', text)
 
@@ -158,9 +161,13 @@ class Preprocessor(object):
     If a stopwords file is provided, it will remove stopwords.
 
     Example:
-        >>> processor = Preprocessor('english_stopwords.txt')
-        >>> processor.clean('He was an interesting fellow.')
-        "was interesting fellow."
+        >>> import mezcla.tfidf.preprocess as mtp
+        >>> processor = mtp.Preprocessor(language='english')
+        >>> processor.handle_stopwords('She is an interesting gal.', clean=True)
+        'interesting gal.'
+        >>> sp_processor = mtp.Preprocessor(language='spanish')
+        >>> sp_processor.handle_stopwords('She is an interesting gal.', clean=True)
+        'she is an interesting gal.'
     """
 
     stopwords = set()
@@ -207,6 +214,8 @@ class Preprocessor(object):
             Note: deprecated (use min_ngram_size instead).
         """
         self.__stemmer = None
+        if language is None:
+            language = TFIDF_LANGUAGE
         if language:
             debug.assertion(language in self.supported_languages)
             if language in SnowballStemmer.languages:
@@ -221,9 +230,9 @@ class Preprocessor(object):
             self.__stemmer = lambda x: x  # no change to word
         debug.assertion(not (gramsize and max_ngram_size))
         debug.assertion(not (all_ngrams and min_ngram_size))
-        self.__gramsize = (max_ngram_size or gramsize)
+        self.__gramsize = (max_ngram_size or gramsize or 1)
         self.__all_ngrams = all_ngrams
-        self.__min_ngram_size = (min_ngram_size or gramsize)
+        self.__min_ngram_size = (min_ngram_size or gramsize or 1)
 
     @property
     def gramsize(self):
@@ -252,9 +261,12 @@ class Preprocessor(object):
                 words.append(line.strip())
         self.stopwords = set(words)
 
-    def handle_stopwords(self, text):
+    def handle_stopwords(self, text, clean=None):
         """Remove stop words from the text."""
         out = []
+        if clean:
+            text = clean_text(text)
+        ## TODO2: lower().split()
         for word in text.split(' '):
             # Remove common contractions for stopwords when checking list
             check_me = re.sub(self.contractions, '', word)
@@ -359,7 +371,7 @@ class Preprocessor(object):
         return
 
     def quick_yield_keywords(self, raw_text, document=None):
-        """Quick version for yielfing keywords, using sklearn for ngram generation
+        """Quick version for yielding keywords, using sklearn for ngram generation
         Note: the DocKeyword objects don't include offset information"""
         # TODO1: support BAD_WORD_PUNCT_REGEX
 
