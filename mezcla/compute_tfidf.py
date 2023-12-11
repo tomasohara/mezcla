@@ -165,6 +165,7 @@ def main():
     show_subscores = False
     show_frequency = False
     csv_file = False
+    is_text = False
     global DELIMITER
     while ((i < len(args)) and args[i].startswith("-")):
         option = args[i]
@@ -197,6 +198,7 @@ def main():
             DELIMITER = "\t"
         elif (option == TEXT):
             csv_file = True
+            is_text = True
             DELIMITER = "\xFF"
         else:
             sys.stderr.write("Error: unknown option '{o}'\n".format(o=option))
@@ -222,14 +224,14 @@ def main():
     for i, filename in enumerate(args):
         # If CSS file, treat each row as separate document, using ID from first column and data from second
         if csv_file:
-            text_col = 0 if TEXT else 1
+            text_col = 0 if is_text else 1
             with system.open_file(filename) as fh:
                 csv_reader = csv.reader(iter(fh.readlines()), delimiter=DELIMITER, quotechar='"')
                 # TODO: skip over the header line
                 line = 0
                 for r, row in enumerate(csv_reader):
                     debug.trace_fmt(6, "{l}: {r}", l=line, r=row)
-                    doc_id = str(r + 1) if TEXT else row[0] 
+                    doc_id = str(r + 1) if is_text else row[0]
                     try:
                         doc_text = system.from_utf8(row[text_col])
                     except:
