@@ -118,7 +118,7 @@ COPY ./requirements.txt $REQUIREMENTS
 ## OLD: RUN python -m pip install -r $REQUIREMENTS
 ## TEST: RUN if [ "$PYTHON_VERSION" != "" ]; then                                                \
 RUN if [ "$(which nltk)" == "" ]; then                                                  \
-        pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;               \
+        python -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;               \
     fi
 ## TODO3: add option for optional requirements (likewise, for all via '#full#")
 ##   RUN python -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')
