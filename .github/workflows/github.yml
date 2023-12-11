@@ -52,6 +52,10 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Download data
+        run: |
+          python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perceptron_tagger
+
       - name: Run Python Tests under Runner
         run: |
           PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash
