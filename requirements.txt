@@ -52,8 +52,8 @@ scipy
 sentencepiece
 six
 stop_words
-tensorrt				# for HF
-transformers				# Hugging Face (HF)
+#opt# tensorrt                          # for HF
+transformers                            # Hugging Face (HF)
 torch
 torchaudio
 webcolors
