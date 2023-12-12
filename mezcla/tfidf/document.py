@@ -3,26 +3,27 @@
 """A document object used for the "term frequency" (TF) in TF-IDF.
 
 Example:
-    >>> from mezcla.tfidf.document import Document
-    >>> from mezcla.tfidf.preprocess import Preprocessor
-    >>> input_text = '''Mary had a little lamb, his fur was white as snow
-            Everywhere the child went, the lamb, the lamb was sure to go'''
-    >>> d = Document(input_text, Preprocessor(stemmer=lambda x: x))
-    >>> d__gramsize 
+    >>> import mezcla.tfidf.document as mtd
+    >>> import mezcla.tfidf.preprocess as mtp
+    >>> input_text = 'Mary had a little lamb, his fur was white as snow. Everywhere the child went, the lamb, the lamb was sure to go'
+    >>> d = mtd.Document(input_text, mtp.Preprocessor(stemmer=lambda x: x))
+    >>> d.preprocessor.gramsize 
     1
-    >>> d.tf_freq('lamb')
+    >>> round(d.tf_freq('lamb'))
     3
-    >>> d.tf_raw('lamb')
-    0.04411764705882353
-
+    >>> round(d.tf_raw('lamb'), 3)
+    0.044
 """
 # HACK: Attempt at fixing up a very stale example!
 # TODO: Make sure the tf_raw calculation revision is correct.
 # TODO1: revise docstrings wrt preferred keywords (i.e., not deprecated)
+# TODO1: drop Preprocessor and put into constructor as default if None
+# NOTE: examples use import...as for sake of reload
 
 from __future__ import absolute_import, division
 
 # Standard packages
+from collections import defaultdict
 import math
 import random
 
@@ -48,7 +49,7 @@ class Document(object):
         text (list): cleaned text, set on init
     """
 
-    def __init__(self, raw_text, preprocessor):
+    def __init__(self, raw_text, preprocessor=None):
         """All you need is the text body and gramsize (number words in ngram).
 
         raw_text
@@ -56,11 +57,14 @@ class Document(object):
         preprocessor
             initalized instance of a preprocessor
         """
+        ## TODO2: fix gramsize reference (in preprocessor)
         self.id = None
         self.text = clean_text(raw_text)
         self.__keywordset = None
         self.__max_raw_frequency = None
         self.__length = None
+        if (preprocessor is None):
+            preprocessor = Preprocessor(stemmer=lambda x: x)
         self.preprocessor = preprocessor
 
     def __contains__(self, ngram):
@@ -101,7 +105,8 @@ class Document(object):
     def keywordset(self):
         """Return a set of keywords in the document with all their locations."""
         if not self.__keywordset:
-            self.__keywordset = {}
+            ## OLD: self.__keywordset = {}
+            self.__keywordset = defaultdict(str)
             for kw in self.keywords:
                 if kw.text not in self.__keywordset:
                     self.__keywordset[kw.text] = kw
@@ -154,18 +159,23 @@ class Document(object):
         if normalize:
             ## TPO: fix referernce to normalize_term
             ngram = self.preprocessor.normalize_term(ngram)
+        result = 0
         if tf_weight == 'log':
-            return self.tf_log(ngram)
-        if tf_weight == 'norm_50':
-            return self.tf_norm_50(ngram)
-        if tf_weight == 'binary':
-            return self.tf_binary(ngram)
-        if tf_weight == 'basic':
-            return self.tf_raw(ngram)
+            result = self.tf_log(ngram)
+        elif tf_weight == 'norm_50':
+            result = self.tf_norm_50(ngram)
+        elif tf_weight == 'binary':
+            result = self.tf_binary(ngram)
+        elif tf_weight == 'basic':
+            result = self.tf_raw(ngram)
         # TPO: allow for raw frequency
-        if tf_weight == 'freq':
-            return self.tf_freq(ngram)
-        raise ValueError("Invalid tf_weight: " + tf_weight)
+        elif tf_weight == 'freq':
+            result = self.tf_freq(ngram)
+        else:
+            raise ValueError("Invalid tf_weight: " + tf_weight)
+        debug.trace_fmt(BDL + 2, "tf({ng}, tfw={tfw}, norm={n}) => {r}\n",
+                        ng=ngram, tfw=tf_weight, n=normalize, r=result)
+        return result
 
     def randgram(self):
         """Return a random gram. Limited to first 100 ngrams."""

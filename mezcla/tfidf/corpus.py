@@ -66,8 +66,12 @@ CorpusKeyword = namedtuple('CorpusKeyword', ['term', 'ngram', 'score'])
 
 SKIP_NORMALIZATION = system.getenv_bool("SKIP_NORMALIZATION", False,
                                         "Skip term/ngram normalization")
-NGRAM_EPSILON = system.getenv_bool("NGRAM_EPSILON", 0.000001,
-                                   "Occurrence count for unknown ngrams")
+NGRAM_EPSILON = system.getenv_bool(
+    "NGRAM_EPSILON", 0.000001,
+    description="Occurrence count for unknown ngrams")
+TFIDF_NGRAM_LEN_WEIGHT = system.getenv_float(
+    "TFIDF_NGRAM_LEN_WEIGHT", 0,
+    description="Length factor for ngram token length")
 
 class Corpus(object):
     """A corpus is made up of Documents, and performs TF-IDF calculations on them.
@@ -76,19 +80,25 @@ class Corpus(object):
     strings with a document "key". These will generate Document objects.
 
     Example:
-        >>> from mezcla.tfidf.corpus import Corpus
-        >>> c = Corpus(gramsize=2)
+        >>> import mezcla.tfidf.corpus as mtc
+        >>> c = mtc.Corpus(gramsize=2)
         >>> c['doc1'] = 'Mary had a little lamb.'
         >>> c['doc2'] = 'Hannible is not a lamb.'
         >>> c['doc3'] = 'The shark sleeps a little.'
-        >>> c.df_freq('lamb')
+        >>> round(c.df_freq('lamb'))
         0
-        >>> c.df_freq('little lamb')
+        >>> round(c.df_freq('little lamb'))
         1
-        >>> c.df_freq('a little')
+        >>> round(c.df_freq('a little'))
         2
         >>> round(c.idf('a little'), 3)
         0.405
+        >>> round(c.tf_idf('a little', document_id='doc1').score, 3)
+        0.013
+        >>> round(c.tf_idf('a little', document_id='doc2').score, 3)
+        0.0
+        >>> round(c.tf_idf('little lamb', document_id='doc1').score, 3)
+        0.034
     """
 
     def __init__(self, min_ngram_size=None, max_ngram_size=None,
@@ -269,22 +279,27 @@ class Corpus(object):
 
     def idf(self, ngram, idf_weight='basic'):
         """Inverse document frequency (IDF) indicates ngram common-ness across the Corpus."""
+        result = 0
         if idf_weight == 'freq':
-            return self.idf_freq(ngram)
-        if idf_weight == 'smooth':
-            return self.idf_smooth(ngram)
-        if idf_weight == 'basic':
-            return self.idf_basic(ngram)
-        if idf_weight == 'max':
-            return self.idf_max(ngram)
-        if idf_weight == 'prob':
-            return self.idf_probabilistic(ngram)
+            result = self.idf_freq(ngram)
+        elif idf_weight == 'smooth':
+            result = self.idf_smooth(ngram)
+        elif idf_weight == 'basic':
+            result = self.idf_basic(ngram)
+        elif idf_weight == 'max':
+            result = self.idf_max(ngram)
+        elif idf_weight == 'prob':
+            result = self.idf_probabilistic(ngram)
         ## TODO: allow for raw frequency
-        if idf_weight == 'freq':
-            return self.idf_freq(ngram)
-        raise ValueError("Invalid idf_weight: " + idf_weight)
+        elif idf_weight == 'freq':
+            result = self.idf_freq(ngram)
+        else:
+            raise ValueError("Invalid idf_weight: " + idf_weight)
+        debug.trace_fmt(BDL + 2, "idf({ng}, idfw={idfw}) => {r}\n",
+                        ng=ngram, l=len(self), idfw=idf_weight, r=result)
+        return result
 
-    def tf_idf(self, term, document_id=None, text=None, idf_weight='basic', tf_weight='basic',
+    def tf_idf(self, ngram, document_id=None, text=None, idf_weight='basic', tf_weight='basic',
                normalize_term=None):
         """TF-IDF score. Must specify a document id (within corpus) or pass text body."""
         assert document_id or text
@@ -296,12 +311,16 @@ class Corpus(object):
         if text:
             text = clean_text(text)
             document = Document(text, self.preprocessor)
-        if normalize_term:
-            ngram = self.preprocessor.normalize_term(term)
-        else:
-            ngram = term
-        score = document.tf(ngram, tf_weight=tf_weight) * self.idf(ngram, idf_weight=idf_weight)
-        return CorpusKeyword(document[ngram], ngram, score)
+        norm_ngram = self.preprocessor.normalize_term(ngram) if normalize_term else ngram
+        score = document.tf(ngram, tf_weight=tf_weight) * self.idf(norm_ngram, idf_weight=idf_weight)
+        if TFIDF_NGRAM_LEN_WEIGHT:
+            len_weight = TFIDF_NGRAM_LEN_WEIGHT ** len(ngram.split())
+            debug.trace(BDL + 3, f"Factoring in ngram weight of {len_weight} for {ngram!r}")
+            score *= len_weight
+        result = CorpusKeyword(document[ngram], ngram, score)
+        debug.trace_fmt(BDL + 2, "tf_idf({ng}, id={id}, text={t} idfw={idfw}, tfw={tfw}, norm={n}) => {r}\n",
+                        ng=ngram, id=document_id, t=text, idfw=idf_weight, tfw=tf_weight, n=normalize_term, r=result)
+        return result
 
     @lru_cache()
     def get_keywords(self, document_id=None, text=None, idf_weight='basic',
@@ -319,8 +338,13 @@ class Corpus(object):
             document = Document(text, self.preprocessor)
         out = []
         for ngram, kw in document.keywordset.items():
+            ## TODO3: use tf_idf
             score = document.tf(ngram, tf_weight=tf_weight) * \
                 self.idf(ngram, idf_weight=idf_weight)
+            if TFIDF_NGRAM_LEN_WEIGHT:
+                len_weight = TFIDF_NGRAM_LEN_WEIGHT ** len(ngram.split())
+                debug.trace(6, f"Factoring in ngram weight of {len_weight} for {ngram!r}")
+                score *= len_weight
             out.append(CorpusKeyword(kw, ngram, score))
         out.sort(key=lambda x: x.score, reverse=True)
         result = out[:limit]
@@ -388,15 +412,18 @@ def main():
 
     # Show per-document TF for each ngram
     for docid in sorted(c.keys()):
-        print("{id}TF:\t{spec}".format(id=docid,
-                                       spec="\t".join([str(c[docid].tf_freq(ng)) for ng in all_ngrams])))
+        print("{id} TF:\t{spec}".
+              format(id=docid, spec="\t".join([str(c[docid].tf_freq(ng)) for ng in all_ngrams])))
 
     # Show IDF, and TF-IDF for each ngram
     print("IDF:   \t{spec}".format(spec="\t".join([system.round_as_str(c.idf(ng), 3) for ng in all_ngrams])))
     debug.assertion(misc_utils.is_close(c.idf("abc def"), 0))
     debug.assertion(c.idf("jkl mno") < c.idf("pdq rst"))
     debug.assertion(c.idf("def ghi") == c.idf("ghi jkl") == c.idf("pdq rst"))
-        
+    for docid in sorted(c.keys()):
+        print("{id} TF/IDF:   \t{spec}".          # TODO3: exclude CorpusKeyword info
+              format(id=docid, spec="\t".join([str(c.tf_idf(ng, docid)) for ng in all_ngrams])))
+
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':

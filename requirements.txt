@@ -24,10 +24,6 @@
 #...............................................................................
 # Regular requirements
 #
-## OLD
-## HTMLParser==0.0.2
-## absl_py==1.2.0
-## beautifulsoup4==4.11.1
 HTMLParser
 absl_py
 beautifulsoup4
@@ -48,24 +44,19 @@ numpy>=1.18.5
 pandas>=1.3.0
 pyaml
 pyenchant
-## OLD: pysbd==0.3.4
 pysbd
 pytest
 requests
-## OLD: scikit-learn==1.1.2
 scikit-learn
 scipy
 sentencepiece
 six
-## OLD:
-## stop_words==2018.7.23
-## tensorflow_hub==0.12.0
 stop_words
-tensorrt				# for HF
-transformers				# Hugging Face (HF)
+#opt# tensorrt                          # for HF
+transformers                            # Hugging Face (HF)
 torch
+torchaudio
 webcolors
-## OLD: wheel==0.38.4
 wheel
 xgboost
 #
@@ -92,18 +83,15 @@ xgboost
 #opt# flit
 #opt# gensim
 #opt# ibm-watson
-## OLD: #opt# ibm_cloud_sdk_core==3.15.3
 #opt# ibm_cloud_sdk_core
 #opt# ipython
 #opt# jupyter
 #opt# librosa
 #opt# pylint
 #opt# pyyaml
-## OLD: #opt# scispacy==0.5.0
 #opt# scispacy
 #opt# selenium
 #opt# spacy>=3.0.0
-## OLD: #opt# vaderSentiment==3.3.2
 #opt# vaderSentiment
 #...............................................................................
 # "Fully optional" requirements
@@ -114,7 +102,6 @@ xgboost
 #full# bert-tensorflow
 #full# keras
 #full# kenlm
-## OLD: #full# lucene
 #full# sacremoses
 #full# tensorflow
 #full# tensorflow_hub

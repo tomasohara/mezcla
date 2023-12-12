@@ -13,9 +13,11 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla.unittest_wrapper import trap_exception
 from mezcla.tfidf.corpus import Corpus
+from mezcla.tfidf.dockeyword import DocKeyword
 
 # Constants
 DOCUMENT_DATA = [
@@ -29,11 +31,21 @@ DOCUMENT_DATA = [
 TOP_BIGRAMS =  ["",  "1 2",  "2 4",  "3 4",  ""]
 TOP_UNIGRAMS = ["0",  "1",    "2",    "3",    ""]
 
+# Environment settings
+HOME = system.getenv_text(
+    "HOME", "~",
+    description="Home directory for user")
+USING_GITHUB_RUNNER = ("/home/runner" in HOME)
 
 class TestMisc(TestWrapper):
     """Class for test case definitions"""
     script_module= None
     use_temp_base_dir = True
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Gets capsys"""
+        self.capsys = capsys
 
     @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
@@ -45,10 +57,52 @@ class TestMisc(TestWrapper):
 
         # Add text to collections
         for d, doc_text in enumerate(DOCUMENT_DATA):
-            uni_corpus[d] = doc_text
-            bi_corpus[d] = doc_text
+            uni_corpus[d + 1] = doc_text
+            bi_corpus[d + 1] = doc_text
 
         # Make sure top term is expected (n.b., sorted in case of ties)
-        for d in uni_corpus.keys():
-            self.do_assert(TOP_UNIGRAMS[d] in uni_corpus.get_keywords(d)[0: 1])
-            self.do_assert(TOP_BIGRAMS[d] in bi_corpus.get_keywords(d)[0: 1])
+        debug.assertion(len(DOCUMENT_DATA) == len(uni_corpus.keys()))
+        for d, docid in enumerate(uni_corpus.keys()):
+            #
+            def is_top_term(top_term, corpus_info):
+                """Whether TOP_TERM is top for CORPUS_INFO document D"""
+                ## OLD: corpus_terms = [term for (term, _score) in list(corpus_info)]
+                corpus_terms = [keyword.ngram for keyword in list(corpus_info)]
+                ok = False
+                if not top_term:
+                    ok = not corpus_terms
+                else:
+                    ok = (top_term == sorted(corpus_terms)[0])
+                debug.trace_expr(5, top_term, corpus_terms)
+                return ok
+            #
+            self.do_assert(is_top_term(TOP_UNIGRAMS[d], uni_corpus.get_keywords(docid)))
+            self.do_assert(is_top_term(TOP_BIGRAMS[d], bi_corpus.get_keywords(docid)))
+        debug.trace(5, "out test_01_simple_tfidf()")
+
+    @pytest.mark.skipif(not USING_GITHUB_RUNNER,
+                        reason="The following is only for the Github runner VM")
+    def test_02_no_dockeyword_tracing(self):
+        """Make sure no debug calls in DocKeyword class
+           Note: This is intended as a sanity check to ensure the debug calls aren't
+           checked in by accident. That it, the '## DEBUG:' prefix should only be
+           removed in a local version."""
+        # Set the highest-possible debugging level
+        ## TODO2: use monkey patch
+        save_debug_level = debug.get_level()
+        debug.set_level(system.MAX_INT)
+        # note: make sure stderr empty by capturing it before initializer (DocKeyword)
+        pre_init_stderr_text = self.capsys.readouterr().err
+
+        # Perform the test proper
+        dummy_word = "dummy"
+        dk = DocKeyword(dummy_word)
+        init_stderr_text = self.capsys.readouterr().err
+        self.do_assert(not init_stderr_text)
+        self.do_assert(dk.text == dummy_word)
+
+        # Post-test sanity checks
+        debug.assertion(isinstance(pre_init_stderr_text, str))
+        debug.assertion(isinstance(init_stderr_text, str))
+        debug.set_level(save_debug_level)
+        debug.trace_expr(5, pre_init_stderr_text, init_stderr_text, dk)

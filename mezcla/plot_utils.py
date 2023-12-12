@@ -1,6 +1,10 @@
 #! /usr/bin/env python
 #
-## Miscellaneous mathplotlib utility functions
+# Miscellaneous mathplotlib utility functions
+#
+# TODO2:
+# - Add basic plotting wrapper.
+# - Add cheatsheet for common plot settings.
 #
 
 """Plotting utility functions"""

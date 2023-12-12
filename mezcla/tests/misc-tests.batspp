@@ -22,3 +22,14 @@ $ echo $'1,2,3,4' | cut.py --csv --fields="3,4" --output-dialect excel -
 
 $ echo $'1,2,3,4' | cut.py --csv --fields="3,4" --output-tsv -
 3	4
+
+#-------------------------------------------------------------------------------
+# rgb_color_name.py
+
+# Make sure --hex is default if --hex3 or --hex6 specified.
+# This is a regression test for the following error:
+# $ echo '"img2img_background_color": "#ffffff",' | rgb_color_name.py --hex6 - 2> /dev/null
+# "img2img_background_color": "#ffffff",
+
+$ echo '"img2img_background_color": "#ffffff",' | rgb_color_name.py --hex6 - 2> /dev/null
+"img2img_background_color": "<#ffffff", white>",

@@ -20,15 +20,14 @@ USE_INTERFACE=1 {script} -
 # TODO: import re
 
 # Intalled module
-## OLD: import gradio as gr
-## TODO: import transformers
-## OLD: from transformers import pipeline
+## TODO:
 
 # Local modules
 from mezcla import debug
 from mezcla.main import Main
 # TODO2: add new mezcla.hugging_face module for common stuff
-from mezcla.examples.hugging_face_speechrec import TORCH_DEVICE
+## BAD: from mezcla.examples.hugging_face_speechrec import TORCH_DEVICE, init_torch_etc, torch
+import mezcla.examples.hugging_face_speechrec as hf_speechrec
 from mezcla import misc_utils
 from mezcla import system
 from mezcla import glue_helpers as gh
@@ -54,12 +53,6 @@ SOURCE_LANG = system.getenv_text("SOURCE_LANG", FROM,
 TARGET_LANG = system.getenv_text("TARGET_LANG", TO,
                                  "Target language")
 debug.assertion(SOURCE_LANG != TARGET_LANG)
-## OLD:
-## MT_TASK = f"translation_{SOURCE_LANG}_to_{TARGET_LANG}"
-## DEFAULT_MODEL = f"Helsinki-NLP/opus-mt-{SOURCE_LANG}-{TARGET_LANG}"
-## OLD:
-## MT_MODEL = system.getenv_value("MT_MODEL", None,
-##                                "Hugging Face model for MT")
 SHOW_ELAPSED = system.getenv_bool("SHOW_ELAPSED", False,
                                   "Show elapsed time")
 MAX_LENGTH = system.getenv_value(
@@ -91,7 +84,6 @@ def main():
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
 
     # Show simple usage if --help given
-    ## OLD: dummy_app = Main(description=__doc__, skip_input=False, manual_input=False)
     dummy_app = Main(description=__doc__.format(script=gh.basename(__file__)),
                      skip_input=False, manual_input=True,
                      ## TODO: bool_options=[(ELAPSED_ARG, "Show elapsed time")],
@@ -122,23 +114,31 @@ def main():
     else:
         text = system.read_file(text_file)
 
+    # Load "heavy" packages (delayed for sake of quicker usage)
+    ## BAD: debug.trace_expr(4, torch)
+    ## BAD: torch = init_torch_etc()
+    torch = hf_speechrec.init_torch_etc()
+    debug.trace_expr(4, torch)
+    if torch is None:
+        import torch
+        debug.trace_expr(4, torch)
     ## TEMP:
     ## pylint: disable=import-outside-toplevel
-    import torch
     from transformers import pipeline
-    ## OLD: model = pipeline(task=mt_task, model=mt_model)
-    device = torch.device(TORCH_DEVICE)
+
+    # Load model
+    ## BAD: device = torch.device(TORCH_DEVICE)
+    device = torch.device(hf_speechrec.TORCH_DEVICE)
     debug.trace_expr(5, device)
     model = pipeline(task=mt_task, model=mt_model, device=device)
 
+    # Show UI or translate input file
     if USE_INTERFACE:
         # TODO2: add language controls
         pipeline_if = gr.Interface.from_pipeline(
             model,
             title="Machine translation (MT)",
             ## TODO2: subtitle=f"From: {FROM}; To: {TO}",
-            ## OLD:
-            ## description="Using pipeline with default",
             description=f"From: {FROM}; To: {TO}",
             ## examples=[text_file])
             )
@@ -161,7 +161,6 @@ def main():
 #-------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    ## OLD: main()
     elapsed = misc_utils.time_function(main)
     if SHOW_ELAPSED:
        print(f"Elapsed time: {system.round_as_str(elapsed)}ms")

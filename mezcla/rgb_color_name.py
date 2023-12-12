@@ -80,9 +80,9 @@ class Script(Main):
     ## TODO: replacement = r"<COLOR, \1>"
     space_color_db = None
     color_names = []
-    hex = False
+    hex = None
     skip_direct = False
-    show_hex = False
+    show_hex = None
     check_direct_match = None
 
     def setup(self):
@@ -92,8 +92,12 @@ class Script(Main):
         ## TODO: self.REPLACEMENT = self.get_parsed_option(REPLACEMENT, self.REPLACEMENT)
         if self.get_parsed_option(HEX3):
             self.rgb_regex = f"#({HEX_CH})({HEX_CH})({HEX_CH})"
+            debug.assertion(self.hex is None)
+            self.hex = True
         if self.get_parsed_option(HEX6):
             self.rgb_regex = f"#({HEX_CH}{HEX_CH})({HEX_CH}{HEX_CH})({HEX_CH}{HEX_CH})"
+            debug.assertion(self.hex is None)
+            self.hex = True
         self.rgb_regex = self.get_parsed_option(RGB_REGEX, self.rgb_regex)
         spec_regex = r"\([^\(\)]+\).*" * 3
         debug.assertion(my_re.search(spec_regex, self.rgb_regex, flags=my_re.IGNORECASE))
@@ -128,12 +132,13 @@ class Script(Main):
         # Extract RGB references and add color name label
         # ex: "(128, 128, 128):  72.98% (1888)" => "<Grey, (128, 128, 128)>:  72.98% (1888)
         ## OLD: MAX_TRIES = max(1, line.count("("))
-        MAX_TRIES = (1 + len(my_re.findall(self.rgb_regex, line)))
+        MAX_TRIES = (1 + len(my_re.findall(self.rgb_regex, line, flags=my_re.IGNORECASE)))
         debug.trace(5, f"len: {len(line)}; MAX_TRIES={MAX_TRIES}")
         num_tries = 0
         text = line
         processed_text = ""
-        while (my_re.search(self.rgb_regex, text) and (num_tries < MAX_TRIES)):
+        while (my_re.search(self.rgb_regex, text, flags=my_re.IGNORECASE)
+               and (num_tries < MAX_TRIES)):
             num_tries += 1
             # Extract RGB components
             rgb_original = my_re.group(0)
@@ -148,7 +153,7 @@ class Script(Main):
             rgb_base = 10
             if (self.hex or my_re.search("(0x)|[A-F]|(^#)", rgb, flags=my_re.IGNORECASE)):
                 if not self.hex:
-                    debug.trace(4, f"FYI: Assuming hex at line {self.line_num}: {line}")
+                    debug.trace(4, f"FYI: Assuming hex RGB spec '{rgb}' on line {self.line_num}")
                 rgb_base = 16
             # Handle special case of #xyz => #xxyyzz
             if (my_re.search(r"^#...$", rgb)):
@@ -203,7 +208,7 @@ def main():
         boolean_options=[(HEX, "RGB triple specified in hex (not decimal)"),
                          (SHOW_HEX, "Show hex-style specification XXXXXX"),
                          (HEX6, "RGB triples of format #xxxxxx"),
-                         (HEX3, "RGB triples of format #xxx--shortcut for #xxxxxx)"),
+                         (HEX3, "RGB triples of format #abc--shortcut for #aabbcc)"),
                          (SKIP_DIRECT, "Don't include direct match (for nearest neighbor test")],
         # Note: FILENAME is default argument unless skip_input
         text_options=[

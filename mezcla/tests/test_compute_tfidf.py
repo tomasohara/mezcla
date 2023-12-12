@@ -8,6 +8,83 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_compute_tfidf.py
 #
+#--------------------------------------------------------------------------------
+# Sample input and output
+#
+# - input:
+#   Jul 26, 2022 ... 17 Top-Rated Tourist Attractions in Argentina \u00b7 1. Iguaz\u00fa Falls \u00b7 2. Perito Moreno Glacier \u00b7 3. Recoleta, La Boca, and Tango in Buenos Aires \u00b7 4\u00a0...
+#   Oct 2, 2023 ... Discover Argentine Patagonia's top attractions, best hikes, and more. Visit the dramatic landscapes of one of Earth's popular trekking\u00a0...
+#   Jun 15, 2021 ... Top 10 Argentina Tourist Attractions You Have To See \u00b7 Recoleta Cemetery, Buenos Aires \u00b7 Caminito \u00b7 The Mosque-Cathedral of C\u00f3rdoba \u00b7 Quebrada\u00a0...
+#   Top Attractions in Argentina \u00b7 1. Teatro Colon \u00b7 2. Puerto Madero \u00b7 3. Recoleta \u00b7 4. Iguazu Falls \u00b7 5. Cementerio de la Recoleta \u00b7 6. Garganta del Diablo \u00b7 7.
+#   Argentina's best sights and local secrets from travel experts you can trust.
+#   Apr 13, 2022 ... View All Trips \u00b7 Front view of the Perito Moreno Glacier | \u00a9 pclvv/Flickr \u00b7 | \u00a9 Det-anan/Shutterstock \u00b7 Quebrada de Humahuaca | \u00a9 Randal\u00a0...
+#   Dec 8, 2017 ... Your trip to Salta is NOT complete without taking a leisurely stroll to Plaza 9 de Julio. This square is at the very heart of the city and is\u00a0...
+#   Mar 28, 2023 ... 7 places to visit in Argentina that will make you never want to leave \u00b7 1. The Patagonia region \u00b7 2. The town of El Calafate \u00b7 3. Los Glaciares\u00a0...
+#   Mar 27, 2022 ... 10 Things to do in Mendoza, Argentina.
+#   Nov 22, 2023 ... Take care on public transport and in tourist areas or crowded places. Thefts and robberies in Buenos Aires and other major cities are increasing\u00a0...
+#   
+# - output:
+#
+#   1 [tests/resources/argentinian-attraction-snippets.list:1]
+#   term                             TF-IDF   
+#   jul 26                           0.005    
+#   17 top-rated                     0.005    
+#   top-rated tourist                0.005    
+#   
+#   2 [tests/resources/argentinian-attraction-snippets.list:2]
+#   term                             TF-IDF   
+#   oct 2                            0.003    
+#   discover argentine               0.003    
+#   patagonia's top                  0.003    
+#   
+#   3 [tests/resources/argentinian-attraction-snippets.list:3]
+#   term                             TF-IDF   
+#   jun 15                           0.005    
+#   top 10                           0.005    
+#   argentina tourist                0.005    
+#   
+#   4 [tests/resources/argentinian-attraction-snippets.list:4]
+#   term                             TF-IDF   
+#   top attractions in               0.008    
+#   top attractions in argentina     0.008    
+#   teatro colon                     0.008    
+#   
+#   5 [tests/resources/argentinian-attraction-snippets.list:5]
+#   term                             TF-IDF   
+#   argentina's best                 0.005    
+#   sights and                       0.005    
+#   local secrets                    0.005    
+#   
+#   6 [tests/resources/argentinian-attraction-snippets.list:6]
+#   term                             TF-IDF   
+#   apr 13                           0.008    
+#   view all                         0.008    
+#   front view                       0.008    
+#   
+#   7 [tests/resources/argentinian-attraction-snippets.list:7]
+#   term                             TF-IDF   
+#   dec 8                            0.002    
+#   your trip                        0.002    
+#   to salta                         0.002    
+#   
+#   8 [tests/resources/argentinian-attraction-snippets.list:8]
+#   term                             TF-IDF   
+#   mar 28                           0.003    
+#   7 places                         0.003    
+#   to visit                         0.003    
+#   
+#   9 [tests/resources/argentinian-attraction-snippets.list:9]
+#   term                             TF-IDF   
+#   mar 27                           0.017    
+#   10 things                        0.017    
+#   to do                            0.017    
+#   
+#   10 [tests/resources/argentinian-attraction-snippets.list:10]
+#   term                             TF-IDF   
+#   nov 22                           0.002    
+#   take care                        0.002    
+#   on public                        0.002    
+#
 
 """Tests for compute_tfidf module"""
 
@@ -19,18 +96,23 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla.unittest_wrapper import TestWrapper
+from mezcla.my_regex import my_re
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.compute_tfidf as THE_MODULE
 
-class TestComputeTfidf:
+class TestComputeTfidf(TestWrapper):
     """Class for testcase definition"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_show_usage_and_quit(self):
         """Ensure show_usage_and_quit works as expected"""
         debug.trace(4, "test_show_usage_and_quit()")
-        ## TODO: WORK-IN=PROGRESS
+        output = self.run_script("--help")
+        self.do_assert("Derives TF-IDF" in output)
+        self.do_assert("MIN_NGRAM_SIZE" in output)
 
     def test_get_suffix1_prefix2(self):
         """Ensure get_suffix1_prefix2 works as expected"""
@@ -50,7 +132,22 @@ class TestComputeTfidf:
         assert THE_MODULE.is_subsumed("White House", ["The White House", "Congress", "Supreme Court"])
         assert THE_MODULE.is_subsumed("White House", ["White Houses"])
 
-    ## TODO: Add tests for main()
+    @pytest.mark.xfail                   # TODO: remove xfail
+    ## DEBUG: @trap_exception            # TODO: remove when debugged
+    def test_data_file(self):
+        """Tests run_script w/ data file"""
+        debug.trace(4, f"TestIt.test_data_file(); self={self}")
+        data_file = gh.resolve_path(gh.form_path("resources", "argentinian-attraction-snippets.txt"))
+        output = self.run_script(options="--text", env_options="MIN_NGRAM_SIZE=2 MAX_NGRAM_SIZE=4",
+                                 data_file=data_file)
+        self.do_assert(my_re.search(r"^4.*teatro colon\t0.008", output.strip(),
+                                    flags=my_re.MULTILINE|my_re.DOTALL))
+        self.do_assert(my_re.search(r"^5.*local secrets\t0.005", output.strip(),
+                                    flags=my_re.MULTILINE|my_re.DOTALL))
+        self.do_assert(my_re.search(r"^5.*local secrets\t0.005", output.strip(),
+                                    flags=my_re.MULTILINE|my_re.DOTALL))
+        return
+
 
 if __name__ == '__main__':
     debug.trace_current_context()

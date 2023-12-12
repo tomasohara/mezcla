@@ -81,6 +81,7 @@ class TestIt(TestWrapper):
     ##     return
 
     @pytest.mark.xfail                   # TODO: remove xfail
+    ## DEBUG: @trap_exception            # TODO: remove when debugged
     def test_data_file(self):
         """Tests run_script w/ data file"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
@@ -92,7 +93,7 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    ## TODO: @trap_exception
+    ## DEBUG: @trap_exception            # TODO: remove when debugged
     def test_something_else(self):
         """Test for something_else: TODO..."""
         debug.trace(4, f"TestIt.test_something_else(); self={self}")

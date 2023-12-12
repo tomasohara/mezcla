@@ -11,23 +11,71 @@
 # - Docker documentation:
 #   https://docs.docker.com/engine/reference/commandline/cli/
 #   https://docs.docker.com/storage/bind-mounts
+# - Two separate sets of test environments are used. The GitHub Actions workflow runner VM is
+#   used for different python versions with the latest Ubuntu distribution
 #
 
-name: tests
+name: Github-Tests
 
 on: [push, pull_request]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-and-test-runner:
+    name: Build and Run Tests via Workflow Runner VM
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        ## TODO: os: [ubuntu-20.04, ubuntu-latest]
+        ## OLD:
+        python-version: ["3.8", "3.9", "3.10"]
+        # Note: The Dockerfile uses 3.11 so try different versions for the runner VM
+        ## TODO: python-version: ["3.9", "3.10", "3.11"]
+
     steps:
-    - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Build docker image
-      run: |
-        docker build -t mezcla-dev -f- . <Dockerfile
+      - name: Setup Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: Run tests
-      run: |
-        ## TODO???: put repo under /mnt/local-mezcla and installed version under /home/mezcla
-        docker run --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
+      - name: Cache Python Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Download data
+        run: |
+          python -m nltk.downloader -d $HOME/nltk_data punkt averaged_perceptron_tagger
+
+      - name: Run Python Tests under Runner
+        run: |
+          PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash
+          
+  build-and-test-docker:
+    name: Build and Run Tests via Docker
+    runs-on: [ubuntu-20.04]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Build docker image
+        run: |
+          docker build --tag mezcla-dev -f- . <Dockerfile
+
+      - name: Run Python Tests under Docker
+        run: |
+          ## TODO???: put repo under /mnt/local-mezcla and installed version under /home/mezcla
+          docker run --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
