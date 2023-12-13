@@ -769,7 +769,7 @@ def format_input_field(param_name, label=None, skip_capitalize=None, default_val
             len_spec += f" maxlength={max_len}"
         if size:
             len_spec += f" size={size}"
-        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}"{style_spec} {len_spec} {disabled_spec} {misc_spec}>'
+        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {len_spec} {disabled_spec} {misc_spec}>'
     result += "</label>"
         
     debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
