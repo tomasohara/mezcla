@@ -17,7 +17,7 @@
 
 # Intalled module
 ## OLD: import gradio as gr
-import torch
+## BAD: import torch
 ## TODO:
 ## from transformers import pipeline
 
@@ -86,11 +86,12 @@ def main():
     ## TEMP:
     ## pylint: disable=import-outside-toplevel
     from transformers import pipeline
-
+    import torch
     ## BAD:
     ## model = pipeline(task="automatic-speech-recognition",
     ##                  model="facebook/s2t-medium-librispeech-asr")
     ## OLD: model = pipeline(task=ASR_TASK, model=ASR_MODEL)
+
     device = torch.device(TORCH_DEVICE)
     model = pipeline(task=ASR_TASK, model=ASR_MODEL, device=device)
 
@@ -103,7 +104,9 @@ def main():
             examples=[sound_file])
         pipeline_if.launch()
     else:
-        print(model(sound_file))
+        ## OLD: Prints dictionary {"text": "TRANSLATED_CONTENT"}
+        # print(model(sound_file))
+        print((model(sound_file))["text"])
     # return
 
 #-------------------------------------------------------------------------------
