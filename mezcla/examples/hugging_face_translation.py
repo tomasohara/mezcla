@@ -21,7 +21,7 @@ USE_INTERFACE=1 {script} -
 
 # Intalled module
 # import transformers
-import torch
+# BAD (NOT DYNAMIC): import torch
 # BAD (NOT DYNAMIC): from transformers import pipeline
 
 # Local modules
@@ -84,6 +84,7 @@ USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
 
 # OLD: device = torch.device("cpu") if USE_CPU else torch.device("cuda")
 # NEW: USE_GPU
+torch = None
 device = torch.device("cuda") if USE_GPU else torch.device("cpu")
 
 # Optionally load UI support
