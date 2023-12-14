@@ -1,0 +1,18 @@
+# The following packages are required. They can be installed as follows:
+#    sudo apt-get install $(grep -v ^# required-packages.txt)
+#
+# In addition, there are some optional packages, which be installed as follows:
+#    sudo apt-get install $(perl -pe 's/^#\s*opt#\s*//;' required-packages.txt | grep -v '^#')
+#
+# Note:
+# - The package names are based on Ubuntu, and should be compatible with other
+#   debian-based Linux distributions.
+# - See requirements.txt for Python package requirements.
+#
+rcs					$ for merge (see merge_file.py)
+python3-pip
+python3
+python-is-python3
+#-------------------------------------------------------------------------------
+# TODO: nvidia-utils-NNN		# for nvidia-smi
+#full# http://kheafield.com/code/kenlm

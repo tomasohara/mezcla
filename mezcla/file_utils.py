@@ -237,7 +237,6 @@ def jsonl_to_json(in_path, out_path):
 # Miscellanous
 #
 
-
 def write_json(filename, obj, indent=None):
     """Create FILENAME using JSON representation of OBJ
     Note: Uses prettyprinting unless indent 0
@@ -249,7 +248,12 @@ def write_json(filename, obj, indent=None):
 
 def read_yaml(filename):
     """Create FILENAME using YAML representation of OBJ"""
-    result = yaml.safe_load(system.open_file(filename))
+    result = None
+    try:
+        result = yaml.safe_load(system.open_file(filename))
+    except:
+        debug.raise_exception(6)
+        system.print_exception_info("read_yaml")
     debug.trace(debug.VERBOSE, f'read_yaml({filename}) => {result}')
     return result
 

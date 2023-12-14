@@ -147,6 +147,9 @@ USE_TEMP_BASE_DIR = gh.USE_TEMP_BASE_DIR
 TEMP_FILE = gh.TEMP_FILE
 KEEP_TEMP_FILES = system.getenv_bool("KEEP_TEMP_FILES", debug.detailed_debugging(),
                                      "Retain temporary files")
+INPUT_ERROR = system.getenv_value(
+    "INPUT_ERROR", None,
+    description="Override for strict input processing error handling")
 
 #-------------------------------------------------------------------------------
 
@@ -706,13 +709,17 @@ class Main(object):
                 debug.assertion(isinstance(self.filename, str))
                 debug.assertion(os.path.exists(self.filename))
                 mode = ("r" if (not self.binary_input) else "rb")
-                self.input_stream = system.open_file(self.filename, mode=mode)
+                self.input_stream = system.open_file(self.filename, mode=mode, errors=INPUT_ERROR)
                 debug.assertion(self.input_stream)
-        if self.newlines:
-            debug.trace(4, f"Changing input stream newlines from {self.input_stream.newlines!r} to {self.newlines!r}")
-            ## BAD: self.input_stream.newlines = self.newlines
-            ## BAD2: sys.stdin.reconfigure(newline=self.newlines)
-            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=self.input_stream.errors, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
+        # Optionally reopen stream to change built-in settings
+        error_handling_change = (INPUT_ERROR and (INPUT_ERROR != self.input_stream.errors))
+        reopen_stream = (error_handling_change or self.newlines)
+        if reopen_stream:
+            if self.newlines:
+                debug.trace(4, f"Changing input stream newlines from {self.input_stream.newlines!r} to {self.newlines!r}")
+            if error_handling_change:
+                debug.trace(4, f"Changing input stream error handling from {self.input_stream.errors!r} to {INPUT_ERROR!r}")
+            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=INPUT_ERROR, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
             debug.trace_object(4, self.input_stream)
     
     def run(self):

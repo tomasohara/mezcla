@@ -47,6 +47,7 @@
 # - Standardize naming convention for URL parameter accessors (e.g., get_url_param vs. get_url_parameter).
 # - Create class for selenium support (e.g., get_browser ... wait_until_ready).
 # - * Use kawrgs to handle functions with common arguments (e.g., download_web_document, retrieve_web_document, and wrappers around them).
+# - Use thin spacing around controls (e.g., via U+202F Narrow No-Break Space or via CSS).
 # 
 
 """HTML utility functions"""
@@ -680,6 +681,7 @@ def extract_html_link(html, url=None, base_url=None):
 def format_checkbox(param_name, label=None, skip_capitalize=None, default_value=False, disabled=False, style=None, misc_attr=None, tooltip=None):
     """Returns HTML specification for input checkbox, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, CSS STYLE and MISC_ATTR (catch all).
     Note: param_name + "-id" is used for the field ID.
+    The TOOLTIP requires CSS support (e.g., tooltip-control class).
     Warning: includes separate hidden field for explicit off state"""
     ## Note: Checkbox valuee are only submitted if checked, so a hidden field is used to provide explicit off.
     ## This requires use of fix_url_parameters to give preference to final value specified (see results.mako).
@@ -726,13 +728,16 @@ def format_url_param(name, default=None):
 # EX: format_url_param("r", "R") => "R"
 
 
-def format_input_field(param_name, label=None, skip_capitalize=None, default_value=None, max_len=None, size=None, disabled=None, style=None, misc_attr=None, tooltip=None, text_area=None, num_rows=None):
+def format_input_field(param_name, label=None, skip_capitalize=None, default_value=None, max_len=None, size=None, disabled=None, style=None, misc_attr=None, tooltip=None, text_area=None, num_rows=None, on_change=None):
     """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, DISABLED, CSS STYLE, MISC_ATTR (catch all), and NUM_ROWS.    
     Note:
     - param_name + "-id" is used for the field ID.
     - SIZE should be specified if not same as MAX_LEN.
+    - ON_CHANGE specifies JavaScript to execute when values changes.
+    - See format_checkbox for TOOLTIP notes.
     """
     # TODO2: doscument tooltip usage & add option for css classes involved (better if done via class-based interface).
+    # TODO3: max_len => maxlength
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
     # For tooltip support, see https://stackoverflow.com/questions/65854934/is-a-css-only-inline-tooltip-with-html-content-inside-eg-images-possible.
     debug.trace_expr(7, param_name, label, default_value, max_len, disabled, prefix="in format_input_field: ")
@@ -751,6 +756,7 @@ def format_input_field(param_name, label=None, skip_capitalize=None, default_val
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
+    misc_spec += (f"onchange={on_change}" if on_change else "")
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
         tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
