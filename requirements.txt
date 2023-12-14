@@ -39,8 +39,8 @@ extcolors>=1.0.0
 flask
 git+https://github.com/tehabstract/textract.git
 gradio              # NEW: For audio.py (huggingface)
-kenlm               # NEW: For audio.py (huggingface)
-ibm-watson          # NEW: For audio.py (ibm-watson)
+## OPTIONAL: kenlm               # NEW: For audio.py (huggingface)
+## OPTIONAL: ibm-watson          # NEW: For audio.py (ibm-watson)
 librosa>=0.10.0           
 lxml
 mako
@@ -49,7 +49,6 @@ more_itertools
 nltk
 numpy>=1.18.5
 pandas>=1.3.0
-pocketsphinx        # NEW: For audio.py (CMUSphinx)
 pyaml
 pyctcdecode         # NEW: For audio.py (huggingface)
 pyenchant
@@ -65,10 +64,8 @@ six
 ## OLD:
 ## stop_words==2018.7.23
 ## tensorflow_hub==0.12.0
-SpeechRecognition       # NEW: For audio.py
 stop_words
-tensorrt				# for HF
-transformers				# Hugging Face (HF)
+transformers				# NEW: Hugging Face (HF)
 torch
 webcolors
 ## OLD: wheel==0.38.4
@@ -103,6 +100,7 @@ xgboost
 #opt# ipython
 #opt# jupyter
 #opt# librosa
+#opt# pocketsphinx
 #opt# pylint
 #opt# pyyaml
 ## OLD: #opt# scispacy==0.5.0
@@ -124,3 +122,4 @@ xgboost
 #full# sacremoses
 #full# tensorflow
 #full# tensorflow_hub
+#full# tensorrt

@@ -22,7 +22,7 @@ USE_INTERFACE=1 {script} -
 # Intalled module
 # import transformers
 import torch
-from transformers import pipeline
+# BAD (NOT DYNAMIC): from transformers import pipeline
 
 # Local modules
 from mezcla import debug
@@ -131,9 +131,10 @@ def main():
     ## pylint: disable=import-outside-toplevel
     ## OLD: model = pipeline(task=mt_task, model=mt_model)
     ## OLD (Redefining name 'device' from outer scope): device = torch.device(TORCH_DEVICE)
-    pipeline_device = torch.device(TORCH_DEVICE)
-    debug.trace_expr(5, pipeline_device)
-    model = pipeline(task=mt_task, model=mt_model, device=pipeline_device)
+    from transformers import pipeline
+    device = torch.device(TORCH_DEVICE)
+    debug.trace_expr(5, device)
+    model = pipeline(task=mt_task, model=mt_model, device=device)
 
     if USE_INTERFACE:
         # TODO2: add language controls
