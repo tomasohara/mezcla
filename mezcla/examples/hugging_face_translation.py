@@ -28,10 +28,12 @@ USE_INTERFACE=1 {script} -
 from mezcla import debug
 from mezcla.main import Main
 # TODO2: add new mezcla.hugging_face module for common stuff
-from mezcla.examples.hugging_face_speechrec import TORCH_DEVICE
+# OLD: from mezcla.examples.hugging_face_speechrec import TORCH_DEVICE
+import mezcla.examples.hugging_face_speechrec as hf_speechrec
 from mezcla import misc_utils
 from mezcla import system
 from mezcla import glue_helpers as gh
+
 # Constants
 TL = debug.TL
 
@@ -75,7 +77,8 @@ MODEL_ARG = "model"
 #-------------------------------------------------------------------------------
 # OLD: USE_CPU = system.getenv_bool("USE_CPU", True, "Uses Torch on CPU if True")
 # NEW: USE_GPU
-USE_GPU = system.getenv_bool("USE_GPU", False, "Uses Torch on GPU if True")
+
+USE_GPU = system.getenv_bool("USE_GPU", True, "Uses Torch on GPU if True")
 MAX_LENGTH = system.getenv_int("MAX_LENGTH", 512, "Maximum Length of Tokens")
 TEXT_FILE = system.getenv_text("TEXT_FILE", "-",
                                "Text file to translate")
@@ -84,8 +87,10 @@ USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
 
 # OLD: device = torch.device("cpu") if USE_CPU else torch.device("cuda")
 # NEW: USE_GPU
-torch = None
-device = torch.device("cuda") if USE_GPU else torch.device("cpu")
+
+## OLD v2: After using init_torch_etc
+# torch = None
+# device = torch.device("cuda") if USE_GPU else torch.device("cpu")
 
 # Optionally load UI support
 gr = None                               # pylint: disable=invalid-name
@@ -132,8 +137,22 @@ def main():
     ## pylint: disable=import-outside-toplevel
     ## OLD: model = pipeline(task=mt_task, model=mt_model)
     ## OLD (Redefining name 'device' from outer scope): device = torch.device(TORCH_DEVICE)
+    
+    ## OLDv2: After using init_torch_etc()
+    # from transformers import pipeline
+    # device = torch.device(TORCH_DEVICE)
+    # debug.trace_expr(5, device)
+    # model = pipeline(task=mt_task, model=mt_model, device=device)
+
+    ## NEW:
+    torch = hf_speechrec.init_torch_etc()
+    debug.trace_expr(4, torch)
+    if torch is None:
+        import torch
+        debug.trace_expr(4, torch)
     from transformers import pipeline
-    device = torch.device(TORCH_DEVICE)
+    # Load Model
+    device = torch.device(hf_speechrec.TORCH_DEVICE)
     debug.trace_expr(5, device)
     model = pipeline(task=mt_task, model=mt_model, device=device)
 
