@@ -925,13 +925,28 @@ def main(args):
     ## user = system.getenv_text("USER")
     ## system.print_stderr("Warning, {u}: this is not intended for direct invocation".format(u=user))
 
-    # HACK: Strip --help to show usage
-    if (args[1:] == ["--help"]):
-        args = args[0]
+    # Parse command line arguments
+    # TODO2: use master.Main for arg parsing
+    skip_inner = False
+    show_usage = False
+    filename = None
+    for i, arg in enumerate(args[1:]):
+        if (arg == "--help"):
+            show_usage = True
+        elif (arg == "--regular"):
+            skip_inner = True
+        elif (not arg.startswith("-")):
+            filename = arg
+            break
+        else:
+            system.print_stderr(f"Error: unknown argument: {arg}")
+            show_usage = True
+            break
+        i += 1
 
     # HACK: Convert local html document to text
-    if (len(args) > 1) and (not my_re.search("www|http", args[1])):
-        doc_filename = args[1]
+    if (filename and (not my_re.search("www|http", filename) or skip_inner)):
+        doc_filename = filename
         document_data = system.read_file(doc_filename)
         document_text = html_to_text(document_data)
         system.write_file(doc_filename + ".list", document_text)
@@ -941,10 +956,10 @@ def main(args):
     # TODO: Do simpler test of download_web_document
     # TODO1: add explicit argument for inner-html support
     ## OLD: if (len(args) > 1):
-    elif (len(args) > 1):
+    elif (filename):
         # Get web page text
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
-        url = args[1]
+        url = filename
         debug.trace_expr(6, retrieve_web_document(url))
         html_data = download_web_document(url)
         filename = system.quote_url_text(url)
@@ -968,13 +983,17 @@ def main(args):
             debug.trace_fmt(5, "type(rendered_text): {t}", t=rendered_text)
             write_temp_file("post-" + filename + ".txt", rendered_text)
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
+    else:
+        show_usage = True
 
     # Not sure what to do
-    else:
+    ## OLD: else:
+    if show_usage:
         ## OLD: print("Specify a URL as argument 1 for a simple test of inner access")
-        print("Usage:")
+        print("Usage: {prog} [--help] [[--regular | --inner] [filename]]")
         print("- Specify a local HTML file to save as text.")
         print("- Otherwise, specify a URL for a simple test of inner access (n.b., via stdout)")
+        print("- Use --regular to bypass defaul inner processing")
     return
 
 if __name__ == '__main__':
