@@ -423,6 +423,7 @@ def expand_misc_param(misc_dict, param_name, param_dict=None):
 
 def _read_file(filename, as_binary):
     """Wrapper around read_entire_file or read_binary_file if AS_BINARY"""
+    ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_read_file({filename}, {as_binary})")
     read_fn = system.read_binary_file if as_binary else system.read_entire_file
     return read_fn(filename)
@@ -430,6 +431,7 @@ def _read_file(filename, as_binary):
 
 def _write_file(filename, data, as_binary):
     """Wrapper around write_file or write_binary_file if AS_BINARY"""
+    ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_write_file({filename}, _, {as_binary})")
     write_fn = system.write_binary_file if as_binary else system.write_file
     return write_fn(filename, data)
