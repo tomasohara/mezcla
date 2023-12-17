@@ -21,6 +21,7 @@
 # - convert additional open() calls to open_file()
 # - drop python 2 support
 #
+## Lorenzo: is there any reason not to be using f-strings? E.g. register_env_option, get_registered_env_options, etc
 
 """System-related functions"""
 
@@ -127,6 +128,7 @@ def get_environment_option_descriptions(include_all=None, include_default=None, 
     #
     ## TEMP
     # pylint: disable=consider-using-dict-items
+    ## Lorenzo: order of (env_options[opt] or include_all) could be inverted to optimize short circuiting in case of include_all=True, but change is minimal
     option_descriptions = [_format_env_option(opt) for opt in env_options if (env_options[opt] or include_all)]
     debug.trace_fmt(5, "get_environment_option_descriptions() => {od}",
                     od=option_descriptions)
