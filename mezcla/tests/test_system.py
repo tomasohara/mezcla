@@ -36,7 +36,9 @@ class TestSystem:
     def test_maxint(self):
         """Ensure maxint works as expected"""
         debug.trace(4, "test_maxint()")
-        ## TODO: WORK-IN=PROGRESS
+
+        assert THE_MODULE.maxint() is not None
+        assert THE_MODULE.maxint() == sys.maxsize
 
     def test_register_env_option(self):
         """Ensure register_env_option works as expected"""
@@ -226,6 +228,14 @@ class TestSystem:
         """Ensure open_file works as expected"""
         debug.trace(4, "test_open_file()")
         ## TODO: WORK-IN=PROGRESS
+
+        #test file exists and can be open
+        test_filename = gh.create_temp_file("open file")
+        file = THE_MODULE.open_file(test_filename)
+        read_file = file.read()
+
+        assert read_file
+        assert read_file == "open file"
 
     def test_save_object(self):
         """Ensure save_object works as expected"""
