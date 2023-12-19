@@ -922,6 +922,7 @@ def extract_html_images(document_data=None, url=None, filename=None):
 
 def main(args):
     """Supporting code for command-line processing"""
+    ## NOTE: This is work-in-progress from a debug-only utility
     debug.trace_fmtd(6, "main({a})", a=args)
     ## OLD:
     ## user = system.getenv_text("USER")
@@ -931,12 +932,20 @@ def main(args):
     # TODO2: use master.Main for arg parsing
     skip_inner = False
     show_usage = False
+    use_stdout = False
+    quiet = False
     filename = None
     for i, arg in enumerate(args[1:]):
         if (arg == "--help"):
             show_usage = True
         elif (arg == "--regular"):
             skip_inner = True
+        elif (arg == "--inner"):
+            pass
+        elif (arg == "--stdout"):
+            use_stdout = True
+        elif (arg == "--quiet"):
+            quiet = True
         elif (not arg.startswith("-")):
             filename = arg
             break
@@ -951,8 +960,11 @@ def main(args):
         doc_filename = filename
         document_data = system.read_file(doc_filename)
         document_text = html_to_text(document_data)
-        system.write_file(doc_filename + ".list", document_text)
-        print(f"See {doc_filename}.list")
+        if use_stdout:
+            print(document_text)
+        else:
+            system.write_file(doc_filename + ".list", document_text)
+            print(f"See {doc_filename}.list")
     
     # HACK: Do simple test of inner-HTML support
     # TODO: Do simpler test of download_web_document
@@ -976,10 +988,16 @@ def main(args):
         system.setenv("MOZ_HEADLESS",
                       str(int(system.getenv_bool("MOZ_HEADLESS", True))))
         rendered_html = get_inner_html(url)
-        if debug.debugging():
-            write_temp_file("post-" + filename, rendered_html)
-        print("Rendered html:")
-        print(system.to_utf8(rendered_html))
+        output_filename = "post-" + filename
+        if (not use_stdout) or debug.debugging():
+            write_temp_file(output_filename, rendered_html)
+        if use_stdout:
+            if not quiet:
+                print("Rendered html:")
+            print(system.to_utf8(rendered_html))            
+        else:
+            print(f"See {output_filename}")
+            
         if debug.debugging():
             rendered_text = get_inner_text(url)
             debug.trace_fmt(5, "type(rendered_text): {t}", t=rendered_text)
@@ -992,10 +1010,15 @@ def main(args):
     ## OLD: else:
     if show_usage:
         ## OLD: print("Specify a URL as argument 1 for a simple test of inner access")
-        print("Usage: {prog} [--help] [[--regular | --inner] [filename]]")
+        script = gh.basename(__file__)
+        print("Usage: {prog} [--help] [--stdout] [--quiet] [[--regular | --inner] [filename]]")
         print("- Specify a local HTML file to save as text.")
-        print("- Otherwise, specify a URL for a simple test of inner access (n.b., via stdout)")
-        print("- Use --regular to bypass defaul inner processing")
+        print("- Otherwise, specify a URL for a simple test of inner html access (n.b., via stdout).")
+        print("- Use --regular to bypass default inner processing.")
+        print()
+        print("Examples:")
+        print(f"- {script} --inner --stdout --quiet https://twitter.com/home > twitter-home.html")
+        print(f"- {script} --regular --stdout bootstrap-hello-world.html > bootstrap-hello-world.txt")
     return
 
 if __name__ == '__main__':
