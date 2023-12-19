@@ -17,10 +17,11 @@
 # $ python audio.py --speech sphinx path/to/audio.wav
 #
 #
-# The Audio wraper provides three engines to extract speech:
-# - CMUSphinx  (aka "sphinx")
-# - Houndify   (aka "houndify")
-# - IBM Watson (aka "watson")
+# The Audio wraper provides for now four (OLD: three) engines to extract speech:
+# - CMUSphinx     (aka "sphinx")
+# - Houndify      (aka "houndify")
+# - IBM Watson    (aka "watson")
+# - HuggingFace   (aka "huggingface") [NEW]
 #
 # You can find the UML diagram related to this module on:
 # - ./docs/audio_uml.svg
@@ -43,10 +44,11 @@ Example using the terminal:
 $ python audio.py path/to/folder
 $ python audio.py --speech sphinx path/to/audio.wav
 
-The Audio wraper provides for now three engines to extract speech:
-- CMUSphinx  (aka "sphinx")
-- Houndify   (aka "houndify")
-- IBM Watson (aka "watson")
+The Audio wraper provides for now four (OLD: three) engines to extract speech:
+- CMUSphinx     (aka "sphinx")
+- Houndify      (aka "houndify")
+- IBM Watson    (aka "watson")
+- HuggingFace   (aka "huggingface") [NEW]
 """
 
 
@@ -59,6 +61,7 @@ import librosa
 import speech_recognition as sr
 from ibm_watson import SpeechToTextV1
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+from transformers import pipeline
 
 
 # Local packages
@@ -376,17 +379,62 @@ class Houndify(SpeechRecognition):
         debug.trace(7, f'Houndify.speech_to_text({path}) => {result}')
         return result
 
+class HuggingFace(SpeechRecognition):
+    """HuggingFace Speech Recognition class"""
+
+    # SpeechRecognition in HuggingFace requires two core components: asr_model, asr_task
+    # A model is created using pipeline method: model = pipeline(asr_model, asr_task)
+    # PATH to audio file is provided as: result = model(PATH)
+    # result returns a dictionary: {"text": "text_after_audio_recognition"}
+    # NOTE[1]: Inspired by mezcla/examples/hugging_face_speechrec.py
+    # NOTE[2]: Excluded the use of gradio for UI support
+    # TODO: Add more exceptions
+
+    # Global state
+    _IDENTIFIER = "huggingface"
+
+    def particular_check_audio(self, path) -> bool:
+        """Check if audio in PATH is valid"""
+        result = False
+        for extension in AUDIO_FORMATS:
+            if f".{extension}" in path:
+                result = True
+                break
+        debug.trace(7, f"HuggingFace.particular_check_audio({path}) => {result}")
+        return result
+
+    def particular_speech_to_text(self, path) -> str:
+        """Transcribe speech from audio in PATH"""
+        asr_model = "jonatasgrosman/wav2vec2-large-xlsr-53-english"
+        asr_task = "automatic-speech-recognition"
+        is_valid_audio = self.particular_check_audio(path)
+        result = ""
+
+        try:
+            if is_valid_audio:
+                model = pipeline(task=asr_task, model=asr_model)
+                result = model(path)["text"]
+            else:
+                print(f"Error: Unable to find SOUND_FILE '{path}'")
+        except ImportError as e:
+            print(f"{e}: PyTorch, TensorFlow >= 2.0, or Flax not found")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+
+        debug.trace(7, f"HuggingFace.particular_speech_to_text({path}) => {result}")
+        return result
+    
 
 class Audio:
     """
     This is a wraper interface for audio processing.
     """
 
-
     # Global state
     SPEECH_ENGINES = [CMUSphinx(),
                       Houndify(client_id=HOUNDIFY_ID, client_key=HOUNDIFY_KEY),
-                      IBMWatson(api_key=IBM_WATSON_KEY, api_url=IBM_WATSON_URL)]
+                      IBMWatson(api_key=IBM_WATSON_KEY, api_url=IBM_WATSON_URL),
+                      HuggingFace()]
 
 
     def __init__(self, path=''):

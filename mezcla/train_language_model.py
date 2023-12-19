@@ -87,18 +87,18 @@ def main():
     if (output_basename == ""):
         output_dir = os.path.dirname(filename)
         output_basename = os.path.join(output_dir, gh.basename(filename, ".txt")) 
-        output_basename += tpo.format(".{NGRAM_EXT}")
+        output_basename += tpo.format(f".{NGRAM_EXT}")
 
     # Apply optional sentence and word tokenization
     if (tokenize):
-        gh.run("python  -m tpo_text_processing  --lowercase --just-tokenize {filename} >| {output_basename}.tokenized.txt 2>| {output_basename}.tokenized.log")
+        gh.run(f"python  -m tpo_text_processing  --lowercase --just-tokenize {filename} >| {output_basename}.tokenized.txt 2>| {output_basename}.tokenized.log")
         filename = output_basename + ".tokenized.txt"
 
     # Create the language model using 3-grams by default (via ~/programs/kenlm/bin/lmplz)
     lm_options = ""
     if args['interpolate_unigrams']:
         lm_options += " --interpolate_unigrams"
-    gh.run("lmplz --memory '50%' --order {MAX_NGRAM} {lm_options} < {filename} >| {output_basename}.arpa 2>| {output_basename}.arpa.log")
+    gh.run(f"lmplz --memory '50%' --order {MAX_NGRAM} {lm_options} < {filename} >| {output_basename}.arpa 2>| {output_basename}.arpa.log")
     if verbose:
         print(tpo.format("Text-based output is in {output_basename}.arpa"))
 
@@ -106,9 +106,9 @@ def main():
     # Note: Warns if using VirtualBox shared folder (see header comments).
     if output_mmap:
         gh.assertion("/media/sf" not in gh.run("df ."))
-        gh.run("build_binary  -w mmap  trie  {output_basename}.arpa  {output_basename}.mmap >| {output_basename}.mmap.log 2>&1")
+        gh.run(f"build_binary  -w mmap  trie  {output_basename}.arpa  {output_basename}.mmap >| {output_basename}.mmap.log 2>&1")
         if verbose:
-            print(tpo.format("Binary output is in {output_basename}.mmap"))
+            print(tpo.format(f"Binary output is in {output_basename}.mmap"))
     return
 
 #------------------------------------------------------------------------

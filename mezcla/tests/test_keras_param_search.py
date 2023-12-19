@@ -19,6 +19,7 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import text_utils
 
 # Load module conditionally because not part of default installation.
 # Note: Two references are used for the module to be tested:
@@ -44,7 +45,14 @@ class TestKerasParamSearch:
         """Ensure non_negative works as expected"""
         debug.trace(4, f"test_non_negative(); self={self}")
         ## TODO: WORK-IN=PROGRESS
-        assert(False)
+        test_num = 32.86209423
+        assert (THE_MODULE.non_negative(test_num) == True)
+
+    def test_round3(self):
+        """Ensure test_round3 works as expected"""
+        debug.trace(4, "test_non_negative()")
+        test_num = 3.1415926543
+        assert (THE_MODULE.round3(test_num) == 3.142)
 
     @pytest.mark.xfail
     def test_create_feature_mapping(self):
@@ -55,11 +63,20 @@ class TestKerasParamSearch:
     @pytest.mark.xfail
     def test_create_keras_model(self):
         """Ensure create_keras_model works as expected"""
-        debug.trace(4, f"test_create_keras_model(); self={self}")
-        ## TODO: WORK-IN=PROGRESS
-        assert(False)
+        debug.trace(4, "test_create_keras_model()")
+        # model = THE_MODULE.create_keras_model(
+        #     num_input_features = 100, 
+        #     num_classes = 2,
+        #     hidden_units = text_utils.getenv_ints("HIDDEN_UNITS", "20 30")  
+        #     )
+        # assert (model == )
+        ## TODO: Work-in-progress
 
     ## TODO: test MyKerasClassifier class
+    def test_MyKerasClassifier_check_params(self):
+        """Ensure MyKerasClassifier.check_params works as expected"""
+        debug.trace(4, "test_MyKerasClassifier_check_params()")
+        
     ## TODO: test main
 
 
