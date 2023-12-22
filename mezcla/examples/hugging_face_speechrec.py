@@ -3,7 +3,7 @@
 # Uses the Hugging Face API for automatic speech recognition (ASR).
 #
 # Based on following:
-#   https://stackoverflow.com/questions/71568142/how-can-i-extract-and-store-the-text-generated-from-an-automatic-speech-recognit
+# https://stackoverflow.com/questions/71568142/how-can-i-extract-and-store-the-text-generated-from-an-automatic-speech-recognit # pylint: disable=line-too-long
 #
 # TODO:
 # - Add chunking to handle large file:
@@ -23,6 +23,8 @@ USE_INTERFACE=1 {script} -
 # TODO: import re
 
 # Intalled module
+## OLD: import gradio as gr
+## BAD: import torch
 ## TODO:
 
 # Local modules
@@ -52,18 +54,14 @@ DEFAULT_MODEL = "facebook/s2t-medium-librispeech-asr"
 ASR_MODEL = system.getenv_text(
     "ASR_MODEL", DEFAULT_MODEL,
     description="Hugging Face model for ASR")
-## OLD:
-## USE_CPU = system.getenv_bool(
-##     "USE_CPU", False,
-##     description="Uses Torch on CPU if True")
-## TORCH_DEVICE_DEFAULT = ("cpu" if USE_CPU else "cuda")
-## TORCH_DEVICE = system.getenv_text(
-##     "TORCH_DEVICE", TORCH_DEVICE_DEFAULT,
-##     description="Torch device to use")
-USE_CPU = None
-TORCH_DEVICE = None
-torch = None
-                                  
+# OLD: USE_CPU = system.getenv_bool("USE_CPU", False, description="Uses Torch on CPU if True")
+# OLD: TORCH_DEVICE_DEFAULT = ("cpu" if USE_CPU else "cuda")
+USE_GPU = system.getenv_bool("USE_GPU", False, description="Uses Torch on GPU if True")
+TORCH_DEVICE_DEFAULT = ("cuda" if USE_GPU else "cpu")
+TORCH_DEVICE = system.getenv_text(
+    "TORCH_DEVICE", TORCH_DEVICE_DEFAULT,
+    description="Torch device to use")
+
 #-------------------------------------------------------------------------------
 
 SOUND_FILE = system.getenv_text("SOUND_FILE", "fuzzy-testing-1-2-3.wav",
@@ -72,7 +70,7 @@ USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
                                    "Use web-based interface via gradio")
 
 # Optionally load UI support
-gr = None
+gr = None   # pylint: disable=invalid-name
 if USE_INTERFACE:
     import gradio as gr                 # pylint: disable=import-error
 
@@ -140,9 +138,10 @@ def main():
             examples=[sound_file])
         pipeline_if.launch()
     else:
-        print(model(sound_file))
-
-    return
+        ## OLD: Prints dictionary {"text": "TRANSLATED_CONTENT"}
+        # print(model(sound_file))
+        print((model(sound_file))["text"])
+    # return
 
 #-------------------------------------------------------------------------------
 

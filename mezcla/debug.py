@@ -118,7 +118,7 @@ if __debug__:
     # Initialize debug tracing level
     # TODO: mark as "private" (e.g., trace_level => _trace_level)
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
-    trace_level = TL.DEFAULT            # typically same as TL.WARNING (2); TODO: global_trace_level
+    trace_level:int = TL.DEFAULT            # typically same as TL.WARNING (2); TODO: global_trace_level
     output_timestamps = False           # prefix output with timestamp
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
