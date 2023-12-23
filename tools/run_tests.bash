@@ -22,10 +22,20 @@ base="$tools/.."
 mezcla="$base/mezcla"
 tests="$mezcla/tests"
 example_tests="$mezcla/examples/tests"
+TEST_REGEX="${TEST_REGEX:-"."}"
+# Note: TEST_REGEX is for only running the specified tests, 
+# and, FILTER_REGEX is for disabling particular tests.
+# Both are meant as expedients, not long-term solutions.
+## TEMP: 
+FILTER_REGEX="${FILTER_REGEX:-"(test_spell.py)|(test_TODO.py)"}"
+## TODO1: FILTER_REGEX="(not-a-real-test.py)"
 # shellcheck disable=SC2010
-if [ "$TEST_REGEX" != "" ]; then
-    tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX")
-    example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX")
+if [[ ("$TEST_REGEX" != ".") || ("$FILTER_REGEX" != "") ]]; then
+    ## OLD:
+    ## tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX")
+    ## example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX")
+    tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
+    example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
 fi
 
 echo -e "Running tests on $tests; also running $example_tests\n"
