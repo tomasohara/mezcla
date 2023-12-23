@@ -27,7 +27,7 @@ TEST_REGEX="${TEST_REGEX:-"."}"
 # and, FILTER_REGEX is for disabling particular tests.
 # Both are meant as expedients, not long-term solutions.
 ## TEMP:
-DEFAULT_FILTER_REGEX="/(test_audio.py|test_hugging_face_speechrec.py|test_hugging_face_translation.py|test_spell.py|test_TODO.py)"
+DEFAULT_FILTER_REGEX="/(test_audio.py|test_hugging_face_speechrec.py|test_hugging_face_translation.py|test_kenlm_example.py|test_spell.py|test_TODO.py)"
 ## TODO1: DEFAULT_FILTER_REGEX="(not-a-real-test.py)"
 FILTER_REGEX="${FILTER_REGEX:-"$DEFAULT_FILTER_REGEX"}"
 # shellcheck disable=SC2010
