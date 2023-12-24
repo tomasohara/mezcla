@@ -19,6 +19,7 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import system
 from mezcla import text_utils
 
 # Load module conditionally because not part of default installation.
@@ -40,45 +41,54 @@ class TestKerasParamSearch:
         assert THE_MODULE.round3(1.0001) == 1.000
         assert THE_MODULE.round3(1.001) == 1.001
 
-    @pytest.mark.xfail
+    @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
     def test_non_negative(self):
         """Ensure non_negative works as expected"""
         debug.trace(4, f"test_non_negative(); self={self}")
-        ## TODO: WORK-IN=PROGRESS
         test_num = 32.86209423
-        assert (THE_MODULE.non_negative(test_num) == True)
+        assert THE_MODULE.non_negative(test_num)
 
-    def test_round3(self):
+    @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
+    def test_round3_too(self):
         """Ensure test_round3 works as expected"""
         debug.trace(4, "test_non_negative()")
         test_num = 3.1415926543
-        assert (THE_MODULE.round3(test_num) == 3.142)
+        assert THE_MODULE.round3(test_num) == 3.142
 
-    @pytest.mark.xfail
+    @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
     def test_create_feature_mapping(self):
         """Ensure create_feature_mapping works as expected"""
         debug.trace(4, f"test_create_feature_mapping(); self={self}")
         assert THE_MODULE.create_feature_mapping(['c', 'b', 'b', 'a']) == {'c':0, 'b':1, 'a':2}
 
+    @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
     @pytest.mark.xfail
     def test_create_keras_model(self):
         """Ensure create_keras_model works as expected"""
         debug.trace(4, "test_create_keras_model()")
-        # model = THE_MODULE.create_keras_model(
-        #     num_input_features = 100, 
-        #     num_classes = 2,
-        #     hidden_units = text_utils.getenv_ints("HIDDEN_UNITS", "20 30")  
-        #     )
-        # assert (model == )
-        ## TODO: Work-in-progress
+        model = THE_MODULE.create_keras_model(
+            num_input_features = 100, 
+            num_classes = 2,
+            hidden_units = text_utils.getenv_ints("HIDDEN_UNITS", "20 30"))
+        # Make sure model size makes sense
+        # example: [100, 20, 20, 30, 30, 1] for following
+        model_param_lens = [len(w) for w in model.get_weights()]
+        debug.trace_expr(5, model_param_lens)
+        assert system.intersection(model_param_lens, [100, 20, 30])
 
-    ## TODO: test MyKerasClassifier class
+    @pytest.mark.xfail
     def test_MyKerasClassifier_check_params(self):
         """Ensure MyKerasClassifier.check_params works as expected"""
         debug.trace(4, "test_MyKerasClassifier_check_params()")
+        ## TODO: test MyKerasClassifier class
+        assert False, "TODO: code test"
         
-    ## TODO: test main
-
+    @pytest.mark.xfail
+    def test_main(self):
+        """Check main routine"""
+        debug.trace(4, "test_main()")
+        ## TODO: test main
+        assert False, "TODO: code test"
 
 if __name__ == '__main__':
     debug.trace_current_context()
