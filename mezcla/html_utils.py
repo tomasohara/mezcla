@@ -427,6 +427,7 @@ def expand_misc_param(misc_dict, param_name, param_dict=None):
 
 def _read_file(filename, as_binary):
     """Wrapper around read_entire_file or read_binary_file if AS_BINARY"""
+    ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_read_file({filename}, {as_binary})")
     read_fn = system.read_binary_file if as_binary else system.read_entire_file
     return read_fn(filename)
@@ -434,6 +435,7 @@ def _read_file(filename, as_binary):
 
 def _write_file(filename, data, as_binary):
     """Wrapper around write_file or write_binary_file if AS_BINARY"""
+    ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_write_file({filename}, _, {as_binary})")
     write_fn = system.write_binary_file if as_binary else system.write_file
     return write_fn(filename, data)
@@ -773,7 +775,7 @@ def format_input_field(param_name, label=None, skip_capitalize=None, default_val
             len_spec += f" maxlength={max_len}"
         if size:
             len_spec += f" size={size}"
-        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}"{style_spec} {len_spec} {disabled_spec} {misc_spec}>'
+        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {len_spec} {disabled_spec} {misc_spec}>'
     result += "</label>"
         
     debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
@@ -924,31 +926,58 @@ def extract_html_images(document_data=None, url=None, filename=None):
 
 def main(args):
     """Supporting code for command-line processing"""
+    ## NOTE: This is work-in-progress from a debug-only utility
     debug.trace_fmtd(6, "main({a})", a=args)
     ## OLD:
     ## user = system.getenv_text("USER")
     ## system.print_stderr("Warning, {u}: this is not intended for direct invocation".format(u=user))
 
-    # HACK: Strip --help to show usage
-    if (args[1:] == ["--help"]):
-        args = args[0]
+    # Parse command line arguments
+    # TODO2: use master.Main for arg parsing
+    skip_inner = False
+    show_usage = False
+    use_stdout = False
+    quiet = False
+    filename = None
+    for i, arg in enumerate(args[1:]):
+        if (arg == "--help"):
+            show_usage = True
+        elif (arg == "--regular"):
+            skip_inner = True
+        elif (arg == "--inner"):
+            pass
+        elif (arg == "--stdout"):
+            use_stdout = True
+        elif (arg == "--quiet"):
+            quiet = True
+        elif (not arg.startswith("-")):
+            filename = arg
+            break
+        else:
+            system.print_stderr(f"Error: unknown argument: {arg}")
+            show_usage = True
+            break
+        i += 1
 
     # HACK: Convert local html document to text
-    if (len(args) > 1) and (not my_re.search("www|http", args[1])):
-        doc_filename = args[1]
+    if (filename and (not my_re.search("www|http", filename) or skip_inner)):
+        doc_filename = filename
         document_data = system.read_file(doc_filename)
         document_text = html_to_text(document_data)
-        system.write_file(doc_filename + ".list", document_text)
-        print(f"See {doc_filename}.list")
+        if use_stdout:
+            print(document_text)
+        else:
+            system.write_file(doc_filename + ".list", document_text)
+            print(f"See {doc_filename}.list")
     
     # HACK: Do simple test of inner-HTML support
     # TODO: Do simpler test of download_web_document
     # TODO1: add explicit argument for inner-html support
     ## OLD: if (len(args) > 1):
-    elif (len(args) > 1):
+    elif (filename):
         # Get web page text
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
-        url = args[1]
+        url = filename
         debug.trace_expr(6, retrieve_web_document(url))
         html_data = download_web_document(url)
         filename = system.quote_url_text(url)
@@ -963,22 +992,37 @@ def main(args):
         system.setenv("MOZ_HEADLESS",
                       str(int(system.getenv_bool("MOZ_HEADLESS", True))))
         rendered_html = get_inner_html(url)
-        if debug.debugging():
-            write_temp_file("post-" + filename, rendered_html)
-        print("Rendered html:")
-        print(system.to_utf8(rendered_html))
+        output_filename = "post-" + filename
+        if (not use_stdout) or debug.debugging():
+            write_temp_file(output_filename, rendered_html)
+        if use_stdout:
+            if not quiet:
+                print("Rendered html:")
+            print(system.to_utf8(rendered_html))            
+        else:
+            print(f"See {output_filename}")
+            
         if debug.debugging():
             rendered_text = get_inner_text(url)
             debug.trace_fmt(5, "type(rendered_text): {t}", t=rendered_text)
             write_temp_file("post-" + filename + ".txt", rendered_text)
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
+    else:
+        show_usage = True
 
     # Not sure what to do
-    else:
+    ## OLD: else:
+    if show_usage:
         ## OLD: print("Specify a URL as argument 1 for a simple test of inner access")
-        print("Usage:")
+        script = gh.basename(__file__)
+        print("Usage: {prog} [--help] [--stdout] [--quiet] [[--regular | --inner] [filename]]")
         print("- Specify a local HTML file to save as text.")
-        print("- Otherwise, specify a URL for a simple test of inner access (n.b., via stdout)")
+        print("- Otherwise, specify a URL for a simple test of inner html access (n.b., via stdout).")
+        print("- Use --regular to bypass default inner processing.")
+        print()
+        print("Examples:")
+        print(f"- {script} --inner --stdout --quiet https://twitter.com/home > twitter-home.html")
+        print(f"- {script} --regular --stdout bootstrap-hello-world.html > bootstrap-hello-world.txt")
     return
 
 if __name__ == '__main__':
