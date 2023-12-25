@@ -33,6 +33,7 @@ system.setenv("TFIDF_PRESERVE_CASE", 1)
 system.setenv("PREPROCESSOR_LANG", "")
 system.setenv("SKIP_TFIDF_PREPROCESSOR", "1")
 system.setenv("TFIDF_NGRAM_LEN_WEIGHT", "1.1")
+system.setenv("TFIDF_BOOST_CAPITALIZED", "1")
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -99,6 +100,7 @@ class TestNgramTfidf(TestWrapper):
             tfidf.add_doc(doc, doc_id)
         # Check for expected terms (n.b., all documents need to be added first)
         for d, doc in enumerate(docs):
+            doc_id = (d + 1)
             self.do_assert(tfidf.get_doc(doc_id))
             actual_top_terms = [t for (t, _s) in tfidf.get_top_terms(doc_id, limit=10)]
             expected_top_terms = top_terms[d]
