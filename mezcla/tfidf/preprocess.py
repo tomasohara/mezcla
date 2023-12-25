@@ -31,12 +31,14 @@ import html
 # Installed modules
 ## TODO: find better documented memoization package
 from cachetools import LRUCache, cached  # python2 support
+import nltk
 from nltk.stem import SnowballStemmer
 from sklearn.feature_extraction.text import CountVectorizer
 from stop_words import get_stop_words
 
 # Local modules
 from mezcla import debug
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.tfidf.config import BASE_DEBUG_LEVEL as BDL
 from mezcla.tfidf.dockeyword import DocKeyword
@@ -50,6 +52,13 @@ unescape = html.unescape
 # TODO: strip period to allow for ngrams with abbreviations (e.g., "Dr. Jones").
 SPLIT_WORDS = system.getenv_bool("SPLIT_WORDS", False,
                                  "Split by word token instead of whitespace")
+TFIDF_ALLOW_PUNCT = system.getenv_bool(
+    "TFIDF_ALLOW_PUNCT", False,
+    description="Allow ngrams to include words with punctuation")
+TFIDF_SENT_SPLITTER = system.getenv_bool(
+    "TFIDF_SENT_SPLITTER", False,
+    description="Use NLTK for splitting sentences for TF/IDF")
+USE_SIMPLE_SENT_SPLITTER = (not TFIDF_SENT_SPLITTER)
 BAD_WORD_PUNCT_REGEX = system.getenv_text("BAD_WORD_PUNCT_REGEX", r"[^a-zA-Z0-9_'$ -]",
                                           "Regex for punctuation not in words")
 SKIP_WORD_CLEANING = system.getenv_bool("SKIP_WORD_CLEANING", False,
@@ -65,6 +74,7 @@ TFIDF_LANGUAGE = system.getenv_value(
 
 if SPLIT_WORDS:
     debug.trace(2, "FYI: Splitting by word token (not whitespace)\n")
+    debug.assertion(not TFIDF_ALLOW_PUNCT)
 WORD_REGEX = r'\w+' if SPLIT_WORDS else r'\S+'
 
 def handle_unicode(text):
@@ -172,7 +182,8 @@ class Preprocessor(object):
 
     stopwords = set()
     contractions = r"(n't|'s|'re|'ll)$"
-    negative_gram_breaks = r'[^:;!^,\?\.\[|\]\(|\)"`]+'
+    ## OLD: negative_gram_breaks = r'[^:;!^,\?\.\[|\]\(|\)"`]+'
+    negative_gram_breaks = r'[^:;!^,\?\.\[|\]\(|\)"`]+' if not TFIDF_ALLOW_PUNCT else  r'[^:;!\?\.]+'
     supported_languages = (
         'danish', 'dutch', 'english', 'finnish', 'french', 'german', 'hungarian',
         'italian', 'kazakh', 'norwegian', 'porter', 'portuguese', 'romanian',
@@ -343,10 +354,12 @@ class Preprocessor(object):
             gramlist = range(self.min_ngram_size, self.gramsize + 1)
         if not gramlist:
             gramlist = [self.gramsize]
-        ## DEBUG: sys.stderr.write("gramlist={gl}\n".format(gl=gramlist))
-        debug.trace_fmt(BDL + 2, "gramlist={gl}\n", gl=gramlist)
+        debug.trace_fmt(BDL + 2, "gramlist={gl}", gl=gramlist)
 
-        for sentence in positional_splitter(self.negative_gram_breaks, raw_text):
+        sentence_split = (positional_splitter(self.negative_gram_breaks, raw_text)
+                          if USE_SIMPLE_SENT_SPLITTER else nltk_sent_splitter(raw_text))
+        for sentence in sentence_split:
+            debug.trace_expr(BDL + 2, sentence.text)
             words = positional_splitter(WORD_REGEX, sentence.text)
             # Remove all stopwords
             words_no_stopwords = []
@@ -355,6 +368,9 @@ class Preprocessor(object):
                 check_me = re.sub(self.contractions, '', w.text)
                 if check_me not in self.stopwords:
                     words_no_stopwords.append(w)
+            if debug.debugging(BDL + 2):
+                words_text_no_stopwords = [w.text for w in words_no_stopwords]
+                debug.trace_expr(BDL + 2, words_text_no_stopwords)
 
             # Make the ngrams
             # TODO: make sure stripped stopwords block ngram (e.g. "dog and cat" =/=> "dog cat")
@@ -368,10 +384,17 @@ class Preprocessor(object):
                                       if len(data[pos:pos + gramsize]) == gramsize]
                     for word_list in text_in_chunks:
                         word_text = ' '.join([self.stem_term(w.text) for w in word_list])
-                        if (SPLIT_WORDS or (not re.search(BAD_WORD_PUNCT_REGEX, word_text))):
+                        ## OLD: if (SPLIT_WORDS or (not re.search(BAD_WORD_PUNCT_REGEX, word_text))):
+                        exclude = my_re.search(BAD_WORD_PUNCT_REGEX, word_text)
+                        if TFIDF_ALLOW_PUNCT and exclude:
+                            # Include unless punctuation starts or ends the text
+                            exclude = ((my_re.start() == 0) or my_re.end() == len(word_text))
+                        if not exclude:
                             word_global_start = sentence.start + word_list[0].start
                             word_global_end = sentence.start + word_list[-1].end
                             yield DocKeyword(word_text, document=document, start=word_global_start, end=word_global_end)
+                        else:
+                            debug.trace(BDL + 3, f"Ignoring {gramsize}-gram {word_text!r}")
         return
 
     def quick_yield_keywords(self, raw_text, document=None):
@@ -396,12 +419,24 @@ def positional_splitter(regex, text):
         To split on whitespace, you match:
         r'\S+'  <-- "a chain of anything that's NOT whitespace"
     """
+    ## TODO2: treat -- as clausal punctuation if TFIDF_ALLOW_PUNCT
     for res in re.finditer(regex, text):
         ## TODO: drop try/except
         try:
             yield PositionalWord(res.group(0), res.start(), res.end())
         except StopIteration:
             pass
+    return
+
+
+def nltk_sent_splitter(text):
+    """Yield sentence chunks as well as their location."""
+    # Note: Similar to positional_splitter but uses NLTK instead of negative_gram_breaks regex
+    offset = 0
+    for sent in nltk.tokenize.sent_tokenize(text):
+        end = offset + (1 + len(sent))
+        yield PositionalWord(sent, offset, end)
+        offset = end
     return
 
 
