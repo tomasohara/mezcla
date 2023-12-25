@@ -31,6 +31,7 @@ from mezcla import system
 system.setenv("TFIDF_PRESERVE_CASE", 1)
 ## TODO3: system.setenv("TFIDF_LANGUAGE", "")
 system.setenv("PREPROCESSOR_LANG", "")
+system.setenv("SKIP_TFIDF_PREPROCESSOR", "1")
 system.setenv("TFIDF_NGRAM_LEN_WEIGHT", "1.1")
 
 # Note: Two references are used for the module to be tested:
@@ -53,11 +54,28 @@ class TestNgramTfidf(TestWrapper):
         ##     "hound\tbeagle Irish wolfhound ",
         ##     "other\tlap dawg",
         ## ]
-        data = ["beagle terrier Irish wolfhound lap dog lap dawg"]
+        ## BAD: data = ["beagle terrier Irish wolfhound lap dog lap dawg"]
+        data = ["lap dog", "lap dog", "lap dawg"]
         system.write_lines(self.temp_file, data)
-        output = self.run_script(options="--tsv", env_options="MIN_NGRAM_SIZE=2 MAX_NGRAM_SIZE=2",
+        actual = self.run_script(options="--regular", env_options="MIN_NGRAM_SIZE=2 MAX_NGRAM_SIZE=2",
                                  data_file=self.temp_file)
-        self.do_assert(my_re.search(r"0\tlap dawg: ", output.strip()))
+        debug.trace_expr(5, actual)
+        #
+        def get_score(doc_id, ngram, output):
+            """Get score for NGRAM for DOC_ID in OUTPUT or -1 if not found"""
+            # NOTE: Assumes just one ngram per output
+            # EX: get_score("2", "lap dawg", "2\tlap dawg: 0.137") => 0.137
+            score = -1
+            if  my_re.search(fr"{doc_id}\t{ngram}: ([0-9.]+)", output.strip()):
+                score = system.to_float(my_re.group(1))
+            debug.trace_expr(5, doc_id, ngram, score, prefix="get_score: ")
+            return score
+        #
+        lap_dog_score_doc1 = get_score("0", "lap dog", actual.strip())
+        lap_dog_score_doc2 = get_score("1", "lap dog", actual.strip())
+        lap_dawg_score_doc3 = get_score("2", "lap dawg", actual.strip())
+        self.do_assert(lap_dog_score_doc1 == lap_dog_score_doc2)
+        self.do_assert(lap_dog_score_doc1 < lap_dawg_score_doc3)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -75,9 +93,12 @@ class TestNgramTfidf(TestWrapper):
             ["Tango in Buenos Aires", "Perito Moreno Glacier"],
             ["Teatro Colon", "Cementerio de la Recoleta"],
             ]
+        # Populate corpus; done in advance of tests to ensure IDF well defined
         for d, doc in enumerate(docs):
             doc_id = (d + 1)
             tfidf.add_doc(doc, doc_id)
+        # Check for expected terms (n.b., all documents need to be added first)
+        for d, doc in enumerate(docs):
             self.do_assert(tfidf.get_doc(doc_id))
             actual_top_terms = [t for (t, _s) in tfidf.get_top_terms(doc_id, limit=10)]
             expected_top_terms = top_terms[d]
