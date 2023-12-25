@@ -119,7 +119,7 @@ class ngram_tfidf_analysis(object):
                                    language=pp_lang,
                                    preprocessor=self.pp)
         ## TODO2: add international stopwords (e.g., English plus frequent ones from common languages)
-        self.stop_words = (self.pp.stopwords or ENGLISH_STOPWORDS)
+        self.stopwords = (self.pp.stopwords or ENGLISH_STOPWORDS)
         super().__init__(*args, **kwargs)
 
     def add_doc(self, text, doc_id=None):
@@ -132,22 +132,24 @@ class ngram_tfidf_analysis(object):
         """Return document data for DOC_ID"""
         return self.corpus[doc_id]
 
-    def is_stop_word(self, word):
+    def is_stopword(self, word):
         """Whether WORD is a stop word for preprocessing language or English if none"""
-        # EX: self.is_stop_word("of")
-        # EX: ngram_tfidf_analysis(pp_lang="spanish").is_stop_word("de")
-        result = word if self.stop_words else ENGLISH_STOPWORDS
-        debug.trace(8, f"is_stop_word({word!r}) => {result}")
+        # EX: self.is_stopword("of")
+        # EX: ngram_tfidf_analysis(pp_lang="spanish").is_stopword("de")
+        result = word in self.stopwords
+        debug.trace(8, f"is_stopword({word!r}) => {result}")
         return result
 
     def capitalized_ngram(self, ngram):
         """Whethere NGRAM is capitalized, excepting internal stopwords"""
+        ## EX: self.capitalized_ngram("House of Cards")
+        ## EX: not self.capitalized_ngram("in New York")
         tokens = ngram.split()
         result = (tokens and tokens[0].istitle()
-                  and (len(tokens) == 1) or tokens[-1].istitle())
+                  and ((len(tokens) == 1) or tokens[-1].istitle()))
         if (result and (len(tokens) > 2)):
             for w in tokens[1: -1]:
-                if not (w.istitle() or self.is_stop_word(w)):
+                if not (w.istitle() or self.is_stopword(w)):
                     debug.trace(5, f"ngram with lower inner non-stop word {w!r}: {tokens!r}")
                     result = False
                     break
@@ -177,16 +179,27 @@ class ngram_tfidf_analysis(object):
                                              idf_weight=idf_weight,
                                              limit=(2 * limit))
         debug.trace_fmtd(7, "top_terms={tt}", tt=top_terms)
+
         # Skip empty tokens due to spacing and to punctuation removal (e.g, " ")
-        temp_top_term_info = [(k.ngram, k.score) for k in top_terms if k.ngram.strip()]
-        debug.trace_values(6, temp_top_term_info, "top terms")
+        top_term_info = [(k.ngram, k.score) for k in top_terms if k.ngram.strip()]
+        debug.trace_values(6, top_term_info, "init top terms")
+
+        # Move capitalized terms ahead of others with same weight
+        # Note: allows for inner non-capitalized only if functions words
+        for (j, (ngram, score)) in enumerate(reversed(top_term_info)):
+            if (TFIDF_BOOST_CAPITALIZED and (j > 0) and self.capitalized_ngram(top_term_info[j][0])
+                and (top_term_info[j][1] == top_term_info[j - 1][1])):
+                top_term_info[j - 1], top_term_info[j] = top_term_info[j], top_term_info[j - 1]
+                debug.trace(5, f"moved capitalized ngram '{top_term_info[j - 1]}' up in list from {j} to {j - 1}")
+        debug.trace_values(6, top_term_info, "interim top terms")
+        
         # Put spaces around ngrams to aid in subsumption tests
         check_ngram_overlap = (not (allow_ngram_subsumption and allow_ngram_overlap))
         if check_ngram_overlap:
-            spaced_ngrams = [(" " + ngram + " ") for (ngram, _score) in temp_top_term_info]
+            spaced_ngrams = [(" " + ngram + " ") for (ngram, _score) in top_term_info]
             debug.trace_fmtd(7, "spaced_ngrams={sn}", sn=spaced_ngrams)
-        top_term_info = []
-        for (i, (ngram, score)) in enumerate(temp_top_term_info):
+        final_top_term_info = []
+        for (i, (ngram, score)) in enumerate(top_term_info):
             
             if (not ngram.strip()):
                 debug.trace_fmt(6, "Omitting invalid ngram '{ng}'", ng=ngram)
@@ -210,31 +223,24 @@ class ngram_tfidf_analysis(object):
                         label = ("in subsumption" if is_subsumed else "overlapping")
                         debug.trace_fmt(6, "Omitting lower-weigted ngram '{ng2}' {lbl} with '{ng1}': {s1} <= {s2}",
                                         ng1=other_spaced_ngram.strip(), ng2=spaced_ngrams[i].strip(), lbl=label,
-                                        s1=system.round_num(temp_top_term_info[i][1]), s2=system.round_num(temp_top_term_info[j][1]))
+                                        s1=system.round_num(top_term_info[i][1]), s2=system.round_num(top_term_info[j][1]))
                         break
             if not include:
                 continue
 
             # OK
-            top_term_info.append((ngram, score))
-            if (len(top_term_info) == limit):
+            final_top_term_info.append((ngram, score))
+            if (len(final_top_term_info) == limit):
                 break
+        debug.trace_values(6, final_top_term_info, "final top terms")
 
-        # Move capitalized terms ahead of others with same weight
-        # Note: allows for inner non-capitalized only if functions words
-        for (j, (ngram, score)) in enumerate(reversed(top_term_info)):
-            if (TFIDF_BOOST_CAPITALIZED and (j > 0) and self.capitalized_ngram(top_term_info[j][0])
-                and (top_term_info[j][1] == temp_top_term_info[j - 1][1])):
-                top_term_info[j - 1], top_term_info[j] = top_term_info[j], top_term_info[j - 1]
-                debug.trace(5, f"moved capitalized ngram '{top_term_info[j - 1]}' up in list")
-       
         # Sanity check on number of terms displayed
-        num_terms = len(top_term_info)
+        num_terms = len(final_top_term_info)
         if (num_terms < limit):
             debug.trace_fmt(4, "Warning: only {n} terms shown (of {m} max)",
                             n=num_terms, m=limit)
-        debug.trace_fmtd(6, "top_term_info={tti}", tti=top_term_info)
-        return top_term_info
+        debug.trace_fmtd(6, "final_top_term_info={tti}", tti=final_top_term_info)
+        return final_top_term_info
 
     def old_get_ngrams(self, text):
         """Returns generator with ngrams in TEXT"""
