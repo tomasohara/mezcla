@@ -61,7 +61,7 @@ TFIDF_PRESERVE_CASE = system.getenv_bool(
     description="Preserve case in TFIDF ngrams")
 TFIDF_LANGUAGE = system.getenv_value(
     "TFIDF_LANGUAGE", None,
-    description="Language for tetx preprocessing")
+    description="Language for text preprocessing")
 
 if SPLIT_WORDS:
     debug.trace(2, "FYI: Splitting by word token (not whitespace)\n")
@@ -199,6 +199,8 @@ class Preprocessor(object):
         stopwords_file (filename):
             Provide a list of stopwords. If used in addition to "language", the
             provided stopwords file overrides the default.
+        language:
+            name of language from NLTK (n.b., use empty string or 'n/a' for none)
         stemmer (function):
             A function that takes in a single argument (str) and returns a string
             as the stemmed word. Overrides the default behavior if specified.
@@ -213,10 +215,12 @@ class Preprocessor(object):
             will be run.
             Note: deprecated (use min_ngram_size instead).
         """
+        # Note: stemmer is no-op if no language specified
         self.__stemmer = None
+        # Note: language can be empty string to block defaults
         if language is None:
             language = TFIDF_LANGUAGE
-        if language:
+        if (language and (language != "n/a")):
             debug.assertion(language in self.supported_languages)
             if language in SnowballStemmer.languages:
                 self.__stemmer = create_stemmer(language)
