@@ -74,7 +74,7 @@ import re                               # regular expressions
 # TODO
 
 # Local packages
-## TODO: from mezcla import debug
+from mezcla import debug
 from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla import tpo_common as tpo
@@ -470,6 +470,13 @@ def is_punct(token, POS=None):
 ## re.search("[^A-Za-z]", POS[0:1]))
 
 
+def init():
+    """Makes sure globasl defined"""
+
+    # Note: stop word check is done for side of effect of loading list
+    unexpected_stopword = is_stopword("movement")
+    debug.assertion(not unexpected_stopword)
+
 #------------------------------------------------------------------------
 
 def usage():
@@ -570,6 +577,8 @@ def main():
 
 #------------------------------------------------------------------------
 # Initialization
+
+init()
 
 if __name__ == "__main__":
     main()
