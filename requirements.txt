@@ -16,7 +16,7 @@
 # - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
 #
 # Installation:
-# - python -m nltk.downloader punkt averaged_perceptron_tagger
+# - python -m nltk.downloader punkt averaged_perceptron_tagger stopwords
 #
 # TODO:
 # - check absl module ($ grep -r "absl" .)
