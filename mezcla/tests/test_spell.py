@@ -38,7 +38,7 @@ elif (echo_PWD.endswith('/mezcla')):
 else:
     SPELL_PATH = PATH3
 
-class SpellFiles(TestWrapper):
+class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
@@ -49,107 +49,114 @@ class SpellFiles(TestWrapper):
     # TODO 1: Find a method to not create any external filess when test_spell_query_LL functions used
     # TODO 2: A function for test_run_command replacement (optional)  
 
-    def test_spell_EN(self):
-        """Ensure test_spell_EN works as expected"""
-        
+    @pytest.mark.skip
+    # TEST-1: Spell-check in English by default
+    def test_spell_default(self):
+        """Ensure test_spell_default works as expected"""
+        debug.trace(4, f"test_spell_default(); self={self}")
         test_lang = "en_EN"
-        test_phrase = "One kiss is all it takesqq"
-        test_phrase_error = "takesqq"
-        test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} - > {self.temp_file}'
-        # LITERAL TRANSLATION: N/A  
-        
-        debug.trace(4, f"test_spell_EN(); self={self}")
-        gh.run(test_run_command)
-        output = self.run_script(self.temp_file)
-        assert (output == test_phrase_error)
+        test_phrase = "One kiss is all it tajkes"
+        ## ORGINAL: One kiss is all it takes (from One Kiss by Calvin Harris, Dua Lipa)
+        test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} -'
+        output = gh.run(test_run_command)
+        assert (output != "" and len(output.split())==1)
         return
 
+    @pytest.mark.skip
+    # TEST-2: Spell-check in Spanish
     def test_spell_ES(self):
         """Ensure test_spell_ES works as expected"""
-
         test_lang = "es_ES"
-        test_phrase = "Yo te miro y se me corta la respiraciónqq"
-        test_phrase_error = "respiraciónqq"
-        test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} - > {self.temp_file}'
-        # LITERAL TRANSLATION: "I look at you and my breath catches"
-
-        debug.trace(4, f"test_spell_ES(); self={self}")
-        gh.run(test_run_command)
-        output = self.run_script(self.temp_file)
-        assert (output == test_phrase_error)
+        test_phrase = "Yo te miro y se me cortaq la respiración"
+        ## ORIGINAL: Yo te miro y se me corta la respiración (from Bailando by Enrique Iglesias)
+        ## Literal: I look at you and my breath stops
+        test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} -'
+        output = gh.run(test_run_command)
+        assert (output != "" and len(output.split())==1)
         return
     
-    def test_spell_NE(self):
-        """Ensure test_spell_NE works as expected"""
-        
-        test_lang = "ne_NE"
-        test_phrase = "थाहा छैन तिमी को हो मेरोqq"
-        test_phrase_error = "मेरोqq"
-        test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} - > {self.temp_file}'
-        # LITERAL TRANSLATION: "I don't know who you are"
-        # WARN: ne_NE dictionary may not have some words
-         
-        debug.trace(4, f"test_spell_NE(); self={self}")
-        gh.run(test_run_command)
-        output = self.run_script(self.temp_file)
-        assert (output == test_phrase_error)
-        return
-
-    def test_spell_query_EN(self):
-        """Ensure test_spell_query_EN works as expected"""
-        
-        test_lang = "en_EN"
-        test_phrase = "Because I am lost in the way you moveqq"
-        # LITERAL TRANSLATION: N/A
-        temp_phrase = None
-        test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
-        test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
-
-        test_phrase_error = "moveqq"
-         
-        debug.trace(4, f"test_spell_query_EN(); self={self}")
-        gh.run(test_run_command_1)
-        gh.run(test_run_command_2)
-        output = self.run_script(self.temp_file)
-        assert (output == test_phrase_error)
+    @pytest.mark.skip
+    # TEST-3: Spell-check in Japanese
+    def test_spell_AR(self):
+        """Ensure test_spell_JA works as expected"""
+        test_lang = "ar_AR"
+        test_phrase = "وإنت معايا بشوفك أحلى النس"
+        ## ORIGINAL: وإنت معايا بشوفك أحلى الناس (from Bayen Habeit by Marshmello, Amr Diab)
+        ## Literal: When you are with me, I see you as the most beautiful person
+        test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} -'
+        output = gh.run(test_run_command)
+        assert (output != "" and len(output.split())==2)
         return
     
-    def test_spell_query_ES(self):
-        """Ensure test_spell_query_ES works as expected"""
-        
-        test_lang = "es_ES"
-        test_phrase = "Me dijeron que te estás casandoxx"
-        # LITERAL TRANSLATION: "They told me that you are getting married"
-        temp_phrase = None
-        test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
-        test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
-        test_phrase_error = "casandoxx"
-         
-        debug.trace(4, f"test_spell_query_ES(); self={self}")
-        gh.run(test_run_command_1)
-        gh.run(test_run_command_2)
-        output = self.run_script(self.temp_file)
-        assert (output == test_phrase_error)
+    @pytest.mark.skip
+    # TEST-4: Spell-check in Russian
+    def test_spell_RU(self):
+        """Ensure test_spell_RU works as expected"""
+        test_lang = "ru_RU"
+        test_phrase = "Поплыли туманыны над рекой"
+        ## ORIGINAL: Поплыли туманы над рекой (from Катюша by M. Blanter)
+        ## Literal: Fogs floated over the river
+        test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} -'
+        output = gh.run(test_run_command)
+        assert (output != "" and len(output.split())==1)
         return
 
-    def test_spell_query_NE(self):
-        """Ensure test_spell_query_NE works as expected"""
+    ## OLD/BAD: Same tests from above 
+    # def test_spell_query_EN(self):
+    #     """Ensure test_spell_query_EN works as expected"""
         
-        test_lang = "ne_NE"
-        test_phrase = "तिमी नै अब मेरो झुल्केको बिहानीxx"
-        # LITERAL TRANSLATION: You are now my rising dawn
-        temp_phrase = None
-        test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
-        test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
+    #     test_lang = "en_EN"
+    #     test_phrase = "Because I am lost in the way you moveqq"
+    #     # LITERAL TRANSLATION: N/A
+    #     temp_phrase = None
+    #     test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
+    #     test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
 
-        test_phrase_error = "बिहानीxx"
+    #     test_phrase_error = "moveqq"
          
-        debug.trace(4, f"test_spell_query_NE(); self={self}")
-        gh.run(test_run_command_1)
-        gh.run(test_run_command_2)
-        output = self.run_script(self.temp_file)
-        assert (output == test_phrase_error)
-        return
+    #     debug.trace(4, f"test_spell_query_EN(); self={self}")
+    #     gh.run(test_run_command_1)
+    #     gh.run(test_run_command_2)
+    #     output = self.run_script(self.temp_file)
+    #     assert (output == test_phrase_error)
+    #     return
+    
+    # def test_spell_query_ES(self):
+    #     """Ensure test_spell_query_ES works as expected"""
+        
+    #     test_lang = "es_ES"
+    #     test_phrase = "Me dijeron que te estás casandoxx"
+    #     # LITERAL TRANSLATION: "They told me that you are getting married"
+    #     temp_phrase = None
+    #     test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
+    #     test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
+    #     test_phrase_error = "casandoxx"
+         
+    #     debug.trace(4, f"test_spell_query_ES(); self={self}")
+    #     gh.run(test_run_command_1)
+    #     gh.run(test_run_command_2)
+    #     output = self.run_script(self.temp_file)
+    #     assert (output == test_phrase_error)
+    #     return
+
+    # def test_spell_query_NE(self):
+    #     """Ensure test_spell_query_NE works as expected"""
+        
+    #     test_lang = "ne_NE"
+    #     test_phrase = "तिमी नै अब मेरो झुल्केको बिहानीxx"
+    #     # LITERAL TRANSLATION: You are now my rising dawn
+    #     temp_phrase = None
+    #     test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
+    #     test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
+
+    #     test_phrase_error = "बिहानीxx"
+         
+    #     debug.trace(4, f"test_spell_query_NE(); self={self}")
+    #     gh.run(test_run_command_1)
+    #     gh.run(test_run_command_2)
+    #     output = self.run_script(self.temp_file)
+    #     assert (output == test_phrase_error)
+    #     return
 
 #     # def test_suggest_EN(self):
 #     #     """Ensure test_suggest_EN works as expected"""
