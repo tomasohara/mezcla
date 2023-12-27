@@ -51,7 +51,7 @@ import tempfile
 import unittest
 
 # Installed packages
-## TODO: import pytest
+import pytest
 
 # Local packages
 import mezcla
@@ -385,7 +385,20 @@ class TestWrapper(unittest.TestCase):
     ## def assert(self, *args, **kwargs):
     ##     """Wrapper around do_assert (q.v.)"""
     ##     self.do_assert(*args, **kwargs)
-    
+
+    @pytest.fixture(autouse=True)
+    def capsys(self, capsys):
+        """Support for capture stdout and stderr"""
+        self.capsys = capsys
+
+    def get_stdout(self):
+        """Get currently captured standard output
+        Note: Clears both stdout and stderr captured
+        """
+        stdout, stderr = self.capsys.readouterr()
+        debug.trace_expr(5, stdout, stderr)
+        return stdout
+        
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         debug.trace(4, "TestWrapper.tearDown()")
