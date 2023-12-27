@@ -59,6 +59,19 @@ TL = debug.TL
 TODO_FUBAR = system.getenv_bool("TODO_FUBAR", False,
                                 description="TODO:Fouled Up Beyond All Recognition processing")
 
+## TODO: Use helper class for main logic
+## class Helper:
+## 
+##     def __init__(self, ...):
+##         """Initializer: ..."""
+##         debug.trace_fmtd(TL.VERBOSE, "Helper.__init__(): self={s}", s=self)
+##         self.TODO = None
+##         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+## 
+##     def process(self, ...):
+##         """TODO: ..."""
+##         # TODO: flesh out
+##
 
 class Script(Main):
     """Input processing class"""
