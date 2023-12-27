@@ -237,11 +237,12 @@ class Chunker(SpacyHelper):
 
     def noun_phrases(self, text):
         """Return list of noun chunks in text"""
+        chunks = []
         try:
             doc = self.nlp(text)
             chunks = [ch.text for ch in doc.noun_chunks]
         except:
-            system.print_exception_info("Problem chunking text")
+            system.print_exception_info("Chunker.noun_phrases")
         debug.trace(6, f"noun_phrases({text!r}) => {chunks}")
         return chunks
         
