@@ -35,6 +35,7 @@ from mezcla import glue_helpers as gh
 
 # Constants (e.g., for arguments)
 #
+TL = debug.TL
 VERBOSE = "verbose"
 RUN_NER = "run-ner"
 ANALYZE_SENTIMENT = "analyze-sentiment"
@@ -45,7 +46,6 @@ LANG_MODEL = "lang-model"
 USE_SCI_SPACY = "use-scispacy"
 DOWNLOAD_MODEL = "download-model"
 SHOW_REPRESENTATION = "show-representation"
-## TODO_ARG1 = "TODO-arg1"
 
 # Environment options
 COUNT_ENTITIES = system.getenv_bool("COUNT_ENTITIES", False,
@@ -56,6 +56,9 @@ USE_PYSBD = system.getenv_bool("USE_PYSBD", (SENT_TOKENIZER.lower() == "pysbd"),
                                "Use pySBD--pragmatic Sentence Boundary Disambiguation")
 USE_NLTK = system.getenv_bool("USE_NLTK", (SENT_TOKENIZER.lower() == "nltk"),
                               "Use NLTK--NL Toolkit")
+SPACY_MODEL = system.getenv_text(
+    "SPACY_MODEL", "en_core_web_lg",
+    description="Default Spacy model: see https://spacy.io/models")
 
 #...............................................................................
 
@@ -205,6 +208,44 @@ def nltk_sentence_boundaries(doc):
     return doc
 
 #...............................................................................
+# Note: work-in-progress towards standalone component (i.e., outside of Script class)
+
+class SpacyHelper:
+    """Base class for Spacy usage"""
+
+    def __init__(self, model=None):
+        """Initializer: ..."""
+        debug.trace_fmtd(TL.VERBOSE, "Helper.__init__(): self={s}", s=self)
+        self.nlp = None
+        if model is None:
+            model = SPACY_MODEL
+        self.model = model
+        try:
+            self.nlp = spacy.load(self.model)
+        except:
+            system.print_exception_info(f"Problem loading model {model}")
+        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+
+class Chunker(SpacyHelper):
+    """Class for chunking text into noun phrases"""
+
+    def __init__(self, model=None):
+        """Initializer: ..."""
+        debug.trace_fmtd(TL.VERBOSE, "Helper.__init__(): self={s}", s=self)
+        super().__init__(model)
+        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+
+    def noun_phrases(self, text):
+        """Return list of noun chunks in text"""
+        try:
+            doc = self.nlp(text)
+            chunks = [ch.text for ch in doc.noun_chunks]
+        except:
+            system.print_exception_info("Problem chunking text")
+        debug.trace(6, f"noun_phrases({text!r}) => {chunks}")
+        return chunks
+        
+#...............................................................................
 
 # Main class
 #
@@ -214,7 +255,7 @@ class Script(Main):
     type_prefix = ":"
     entity_delim = ", "
     entity_quote = '"'
-    spacy_model = "en_core_web_lg"
+    spacy_model = SPACY_MODEL
     analyze_sentiment = False
     run_ner = False
     show_representation = False
@@ -224,11 +265,11 @@ class Script(Main):
     use_sci_spacy = False
     download_model = False
     show_reprsentation = False
-    ## TODO_arg1 = False
     sent_num = 0
 
     def setup(self):
         """Check results of command line processing"""
+        ## TODO: rework using SpacyHelper
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
         self.spacy_model = self.get_parsed_option(LANG_MODEL, self.spacy_model)
         self.analyze_sentiment = self.get_parsed_option(ANALYZE_SENTIMENT, self.analyze_sentiment)
@@ -237,11 +278,9 @@ class Script(Main):
         default_use_sci_spacy = re.search(r"\bsci\b", self.spacy_model)
         self.use_sci_spacy = self.get_parsed_option(USE_SCI_SPACY, default_use_sci_spacy)
         self.download_model = self.get_parsed_option(DOWNLOAD_MODEL, self.download_model)
-        ## self.TODO_arg1 = self.get_parsed_option(TODO_ARG1, self.TODO_arg1)
         do_specific_task = (self.run_ner or self.analyze_sentiment)
-        ## TODO: self.show_representation = self.verbose or (not do_specific_task)
-        ## TEST: self.show_representation = (not (do_specific_task or TRACK_PAGES))
-        default_show_representation = (not (do_specific_task or TRACK_PAGES))
+        default_show_representation = ((not (do_specific_task or TRACK_PAGES))
+                                       or self.verbose)
         self.show_representation = self.get_parsed_option(SHOW_REPRESENTATION, default_show_representation)
         self.doc = None
 
@@ -302,7 +341,7 @@ class Script(Main):
             self.nlp.add_pipe("nltk_sentence_boundaries", before="parser")
         else:
             debug.assertion(SENT_TOKENIZER.lower() == "spacy")
-            # Note: senticize is implicitly used when parser enabled
+            # Note: senticizer is implicitly used when parser enabled
             self.nlp.add_pipe("sentencizer")
                 
         # Sanity checks
@@ -436,7 +475,6 @@ if __name__ == '__main__':
         boolean_options=[RUN_NER, ANALYZE_SENTIMENT, VERBOSE,
                          (DOWNLOAD_MODEL, "Download spaCy model"),
                          (SHOW_REPRESENTATION, "Show final representation (e.g., word & token attributes"),
-                         ## (TODO_ARG1, "TODO-desc"),
         ],
         text_options=[(LANG_MODEL, "Language model for NLP")])
     app.run()
