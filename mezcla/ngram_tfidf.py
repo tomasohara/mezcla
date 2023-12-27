@@ -11,13 +11,13 @@
 # Note:
 # - This provides the wrapper class ngram_tfidf_analysis around tfidf for use
 #   in applications like Visual Diff Search (VDS) that use text from external sources.
+# - This incorporates a few optional heuristics, such as filtering overlapping ngrams
+#   and boosting captialized ngrams.
 # - See compute_tfidf.py for computing tfidf over files.
 #
-# TODO2:
-# - Find code that filters leading or trailing function words.
-#
 # TODO:
-# - Add filtering (e.g., subsumption, all numbers).
+# - Add more optional heuristics: part-of-speech boosting, adjoining ngram fitlering,
+#   noun-phrase boosting, etc.
 # - Isolate ngram support into separate module.
 # - Reconcile with compute_tfidf.py (e.g., subsumption here with overlap there).
 #
@@ -42,7 +42,9 @@ from sklearn.feature_extraction.text import CountVectorizer
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
+from mezcla import spacy_nlp
 from mezcla import system
+from mezcla.system import round_num as rnd
 from mezcla import tpo_common as tpo
 from mezcla import tfidf
 from mezcla.compute_tfidf import terms_overlap
@@ -82,6 +84,9 @@ USE_CORPUS_COUNTER = system.getenv_boolean("USE_CORPUS_COUNTER", DEFAULT_USE_COR
 TFIDF_BOOST_CAPITALIZED = system.getenv_boolean(
     "TFIDF_BOOST_CAPITALIZED", False,
     description="Treat capitalized ngrams higher others of same weight; excludes inner function words")
+TFIDF_NP_BOOST = system.getenv_float(
+    "TFIDF_NP_BOOST", 0,
+    description="Boost factor for ngrams that are NP's")
 
 try:
     # Note major and minor revision values are assumed to be integral
@@ -118,6 +123,7 @@ class ngram_tfidf_analysis(object):
                                    all_ngrams=ALL_NGRAMS,
                                    language=pp_lang,
                                    preprocessor=self.pp)
+        self.chunker = (None if (not TFIDF_NP_BOOST) else spacy_nlp.Chunker())
         ## TODO2: add international stopwords (e.g., English plus frequent ones from common languages)
         self.stopwords = (self.pp.stopwords or ENGLISH_STOPWORDS)
         super().__init__(*args, **kwargs)
@@ -169,6 +175,8 @@ class ngram_tfidf_analysis(object):
         """
         # Get objects for top terms
         # ex: top_terms=[CorpusKeyword(term=<tfidf.dockeyword.DocKeyword object at 0x7f08b43bf550>, ngram=u'patuxent river', score=0.0015548719642054984), ... CorpusKeyword(term=<tfidf.dockeyword.DocKeyword object at 0x7f08b43cf110>, ngram=u'afognak native corporation', score=0.0009894639772216809)]
+        ## TODO3: decompose using helper methods
+        
         # Get twice as many top terms to display to account for filtering
         # TODO: keep track of how often too few terms shown
         debug.trace(6, (f"get_top_terms({doc_id}, tfw:{tf_weight}, idfw:{idf_weight}, lim={limit},"
@@ -184,6 +192,27 @@ class ngram_tfidf_analysis(object):
         top_term_info = [(k.ngram, k.score) for k in top_terms if k.ngram.strip()]
         debug.trace_values(6, top_term_info, "init top terms")
 
+        # Apply various boosting heuristics that affect the ranking
+        apply_reranking = TFIDF_NP_BOOST
+        if apply_reranking:
+            boosted = False
+            for (i, (ngram, score)) in enumerate(top_term_info):
+                ngram = top_term_info[i][0]
+                old_score = top_term_info[i][1]
+
+                # Apply boost if entire ngram is a noun phrase
+                if (TFIDF_NP_BOOST and self.chunker.noun_phrases(ngram) == [ngram]):
+                    score = old_score * TFIDF_NP_BOOST
+                    debug.trace(5, f"boosted NP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                # Update changed score
+                if old_score != score:
+                    top_term_info[i][1] = score
+                    boosted = True
+            # Re-rank if scores changed
+            if boosted:
+                top_term_info = sorted(top_term_info, key=lambda ng_sc: ng_sc[1], reverse=True)
+        debug.trace_values(6, top_term_info, "boosted top terms")
+        
         # Move capitalized terms ahead of others with same weight
         # Note: allows for inner non-capitalized only if functions words
         for (j, (ngram, score)) in enumerate(reversed(top_term_info)):
@@ -223,7 +252,7 @@ class ngram_tfidf_analysis(object):
                         label = ("in subsumption" if is_subsumed else "overlapping")
                         debug.trace_fmt(6, "Omitting lower-weigted ngram '{ng2}' {lbl} with '{ng1}': {s1} <= {s2}",
                                         ng1=other_spaced_ngram.strip(), ng2=spaced_ngrams[i].strip(), lbl=label,
-                                        s1=system.round_num(top_term_info[i][1]), s2=system.round_num(top_term_info[j][1]))
+                                        s1=rnd(top_term_info[i][1]), s2=rnd(top_term_info[j][1]))
                         break
             if not include:
                 continue
