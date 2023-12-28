@@ -57,7 +57,8 @@ USE_PYSBD = system.getenv_bool("USE_PYSBD", (SENT_TOKENIZER.lower() == "pysbd"),
 USE_NLTK = system.getenv_bool("USE_NLTK", (SENT_TOKENIZER.lower() == "nltk"),
                               "Use NLTK--NL Toolkit")
 SPACY_MODEL = system.getenv_text(
-    "SPACY_MODEL", "en_core_web_lg",
+    ## TODO2: "SPACY_MODEL", "en_core_web_lg",
+    "SPACY_MODEL", "en_core_web_md",
     description="Default Spacy model: see https://spacy.io/models")
 
 #...............................................................................
