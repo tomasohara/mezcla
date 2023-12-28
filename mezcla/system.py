@@ -612,7 +612,7 @@ def read_directory(directory):
     # Note simple wrapper around os.listdir with tracing
     # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
     files = os.listdir(directory)
-    debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files)
+    debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files, max_len=4096)
     return files
 
 
