@@ -66,6 +66,7 @@ class TestIt(TestWrapper):
     # TEST-2: Spell-check in Spanish
     def test_spell_ES(self):
         """Ensure test_spell_ES works as expected"""
+        debug.trace(4, f"test_spell_ES(); self={self}")
         test_lang = "es_ES"
         test_phrase = "Yo te miro y se me cortaq la respiración"
         ## ORIGINAL: Yo te miro y se me corta la respiración (from Bailando by Enrique Iglesias)
@@ -79,6 +80,7 @@ class TestIt(TestWrapper):
     # TEST-3: Spell-check in Japanese
     def test_spell_AR(self):
         """Ensure test_spell_JA works as expected"""
+        debug.trace(4, f"test_spell_AR(); self={self}")
         test_lang = "ar_AR"
         test_phrase = "وإنت معايا بشوفك أحلى النس"
         ## ORIGINAL: وإنت معايا بشوفك أحلى الناس (from Bayen Habeit by Marshmello, Amr Diab)
@@ -92,6 +94,7 @@ class TestIt(TestWrapper):
     # TEST-4: Spell-check in Russian
     def test_spell_RU(self):
         """Ensure test_spell_RU works as expected"""
+        debug.trace(4, f"test_spell_RU(); self={self}")
         test_lang = "ru_RU"
         test_phrase = "Поплыли туманыны над рекой"
         ## ORIGINAL: Поплыли туманы над рекой (from Катюша by M. Blanter)
@@ -100,78 +103,59 @@ class TestIt(TestWrapper):
         output = gh.run(test_run_command)
         assert (output != "" and len(output.split())==1)
         return
-
-    ## OLD/BAD: Same tests from above 
-    # def test_spell_query_EN(self):
-    #     """Ensure test_spell_query_EN works as expected"""
-        
-    #     test_lang = "en_EN"
-    #     test_phrase = "Because I am lost in the way you moveqq"
-    #     # LITERAL TRANSLATION: N/A
-    #     temp_phrase = None
-    #     test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
-    #     test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
-
-    #     test_phrase_error = "moveqq"
-         
-    #     debug.trace(4, f"test_spell_query_EN(); self={self}")
-    #     gh.run(test_run_command_1)
-    #     gh.run(test_run_command_2)
-    #     output = self.run_script(self.temp_file)
-    #     assert (output == test_phrase_error)
-    #     return
     
-    # def test_spell_query_ES(self):
-    #     """Ensure test_spell_query_ES works as expected"""
-        
-    #     test_lang = "es_ES"
-    #     test_phrase = "Me dijeron que te estás casandoxx"
-    #     # LITERAL TRANSLATION: "They told me that you are getting married"
-    #     temp_phrase = None
-    #     test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
-    #     test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
-    #     test_phrase_error = "casandoxx"
-         
-    #     debug.trace(4, f"test_spell_query_ES(); self={self}")
-    #     gh.run(test_run_command_1)
-    #     gh.run(test_run_command_2)
-    #     output = self.run_script(self.temp_file)
-    #     assert (output == test_phrase_error)
-    #     return
-
-    # def test_spell_query_NE(self):
-    #     """Ensure test_spell_query_NE works as expected"""
-        
-    #     test_lang = "ne_NE"
-    #     test_phrase = "तिमी नै अब मेरो झुल्केको बिहानीxx"
-    #     # LITERAL TRANSLATION: You are now my rising dawn
-    #     temp_phrase = None
-    #     test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
-    #     test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
-
-    #     test_phrase_error = "बिहानीxx"
-         
-    #     debug.trace(4, f"test_spell_query_NE(); self={self}")
-    #     gh.run(test_run_command_1)
-    #     gh.run(test_run_command_2)
-    #     output = self.run_script(self.temp_file)
-    #     assert (output == test_phrase_error)
-    #     return
-
-#     # def test_suggest_EN(self):
-#     #     """Ensure test_suggest_EN works as expected"""
-#     #     debug.trace(4, f"test_suggest_EN(); self={self}")
-#     #     assert(re.search)
+    @pytest.mark.skip
+    # TEST-5: Spell-check in batch for English
+    def test_spell_default_batch(self):
+        """Ensure test_spell_default_batch works as expected"""
+        debug.trace(4, f"test_spell_default_branch(); self={self}")
+        testfile_path = gh.resolve_path("./resources/spell-py-en.list")
+        test_run_command = f'python3 {SPELL_PATH} {testfile_path}'
+        output = gh.run(test_run_command).split("\n")
+        assert (output != "" and len(output)==10)    # Error Message contains large amount of characters
+        return
     
-#     # def test_spell_LANG(self):
-#     #     """Ensure test_spell_LANG works as expected"""
-#     #     debug.trace(4, f"test_spell_LANG(); self={self}")
-#     #     assert(re.search)
+    @pytest.mark.skip
+    # TEST-6: Spell-check in batch for Spanish
+    def test_spell_ES_batch(self):
+        """Ensure test_spell_ES_batch works as expected"""
+        debug.trace(4, f"test_spell_ES_batch(); self={self}")
+        test_lang = "es_ES"
+        testfile_path = gh.resolve_path("./resources/spell-py-es.list")
+        test_run_command = f'SPELL_LANG={test_lang} python3 {SPELL_PATH} {testfile_path}'
+        output = gh.run(test_run_command).split("\n")
+        assert (output != "" and len(output)==10)    # Error Message contains large amount of characters
+        return
+    
+    @pytest.mark.skip
+    # TEST-7: Spell-check in batch for Russian
+    def test_spell_RU_batch(self):
+        """Ensure test_spell_RU_batch works as expected"""
+        debug.trace(4, f"test_spell_RU_batch(); self={self}")
+        test_lang = "ru_RU"
+        testfile_path = gh.resolve_path("./resources/spell-py-ru.list")
+        test_run_command = f'SPELL_LANG={test_lang} python3 {SPELL_PATH} {testfile_path}'
+        output = gh.run(test_run_command).split("\n")
+        assert (output != "" and len(output)==5)    # Error Message contains large amount of characters
+        return
+    
+    @pytest.mark.skip
+    # TEST-8: Spell-check in batch for Arabic
+    def test_spell_AR_batch(self):
+        """Ensure test_spell_AR_batch works as expected"""
+        debug.trace(4, f"test_spell_AR_batch(); self={self}")
+        test_lang = "ar_AR"
+        testfile_path = gh.resolve_path("./resources/spell-py-ar.list")
+        test_run_command = f'SPELL_LANG={test_lang} python3 {SPELL_PATH} {testfile_path}'
+        output = gh.run(test_run_command).split("\n")
+        assert (output != "" and len(output)==17)    # Error Message contains large amount of characters
+        return
 
-#     # def test_suggest_LANG(self):
-#     #     """Ensure test_suggest_LANG works as expected"""
-#     #     debug.trace(4, f"test_suggest_LANG(); self={self}")
-#     #     assert(re.search)
+    ## TODO: Add suggestion for spell.py
+    ## def test_spell_LANG_suggest(self):
+    ##     """Ensure test_spell_LANG_suggest works as expected"""
+    ##     debug.trace(4, f"test_suggest_LANG(); self={self}")
+    ##     assert(re.search)
 
 
 if __name__ == '__main__':
