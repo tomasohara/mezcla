@@ -26,10 +26,10 @@
 **/*.log
 **/*.list
 
-# Any files with leading _, except specified cases (e.g., __xyz__.py)
+# Any files with leading underscore (_), except specified cases (e.g., __xyz__.py)
+# Warning: files in repo like _temp-user-docker.env ignored unless overridden (e.g., git add --force)
 # TODO2?: _xyz.py
 **/_*
-## OLD: !**/*__init__.py
 !**/*__*__.py
 # Likewise for trailing _'s (e.g., master-dir-link_)
 **/*_
