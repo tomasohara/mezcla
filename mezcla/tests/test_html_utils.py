@@ -44,10 +44,11 @@ class TestHtmlUtils(TestWrapper):
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_browser(self):
         """Ensure get_browser() works as expected"""
         debug.trace(4, "test_get_browser()")
-        ## TODO: WORK-IN-PROGRESS
+        assert False, "TODO: code test"
 
     def test_get_url_parameter_value(self):
         """Ensure get_url_parameter_value works as expected"""
@@ -104,10 +105,11 @@ class TestHtmlUtils(TestWrapper):
             rendered_html,
             )
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_document_ready(self):
         """Ensure document_ready() works as expected"""
         debug.trace(4, "test_document_ready()")
-        ## TODO: WORK-IN-PROGRESS
+        assert False, "TODO: code test"
 
     def test_escape_html_value(self):
         """Ensure escape_html_value() works as expected"""
@@ -168,10 +170,11 @@ class TestHtmlUtils(TestWrapper):
         assert THE_MODULE.get_url_param('bad-request-status', default_value='400') == '400'
         assert THE_MODULE.get_url_param('default-body', escaped=True) == 'Joe&#x27;s hat'
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_url_param_checkbox_spec(self):
         """Ensure get_url_param_checkbox_spec() works as expected"""
         debug.trace(4, "test_get_url_param_checkbox_spec()")
-        ## TODO: WORK-IN-PROGRESS
+        assert False, "TODO: code test"
 
     def test_get_url_parameter_bool(self):
         """Ensure get_url_parameter_bool() works as expected"""
@@ -179,10 +182,11 @@ class TestHtmlUtils(TestWrapper):
         assert THE_MODULE.get_url_parameter_bool("abc", False, { "abc": "on" })
         assert THE_MODULE.get_url_param_bool("abc", False, { "abc": "True" })
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_url_parameter_int(self):
         """Ensure get_url_parameter_int() works as expected"""
         debug.trace(4, "test_get_url_parameter_int()")
-        ## TODO: WORK-IN-PROGRESS
+        assert False, "TODO: code test"
 
     def test_fix_url_parameters(self):
         """Ensure fix_url_parameters() works as expected"""
@@ -206,18 +210,22 @@ class TestHtmlUtils(TestWrapper):
         }
         assert THE_MODULE.expand_misc_param(misc_dict, 'z') == expected
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test__read_file(self):
         """Ensure _read_file() works as expected"""
         debug.trace(4, "test__read_file()")
-        ## TODO: WORK-IN-PROGRESS
+        assert False, "TODO: code test"
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test__write_file(self):
         """Ensure _write_file() works as expected"""
         debug.trace(4, "test__write_file()")
-        ## TODO: WORK-IN-PROGRESS
-
+        assert False, "TODO: code test"
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_old_download_web_document(self):
         """Ensure old_download_web_document() works as expected"""
+        ## NOTE: Currently fails if UTF-8 error occurs
         debug.trace(4, "test_old_download_web_document()")
         assert "<!doctype html>" in THE_MODULE.old_download_web_document("https://www.google.com")
 
@@ -233,15 +241,17 @@ class TestHtmlUtils(TestWrapper):
         assert "Google" in THE_MODULE.test_download_html_document("www.google.com") 
         assert "Tomás" not in THE_MODULE.test_download_html_document("http://www.tomasohara.trade", encoding="big5")
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_html_document(self):
         """Ensure download_html_document() works as expected"""
         debug.trace(4, "test_download_html_document()")
-        ## TODO: WORK-IN-PROGRESS
+        assert False, "TODO: code test"
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_binary_file(self):
         """Ensure download_binary_file() works as expected"""
         debug.trace(4, "test_download_binary_file()")
-        ## TODO: WORK-IN-PROGRESS
+        assert False, "TODO: code test"
 
     def test_retrieve_web_document(self):
         """Ensure retrieve_web_document() works as expected"""

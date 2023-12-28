@@ -36,6 +36,10 @@ class TestTemplate(TestWrapper):
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
 
+    @pytest.fixture(autouse=True)
+    def capfd(self, capfd):
+        self.capfd = capfd
+
     def test_data_file(self):
         """Makes sure to-do grep works as expected"""
         debug.trace(4, "TestTemplate.test_data_file()")
@@ -49,6 +53,15 @@ class TestTemplate(TestWrapper):
         """Make sure arg value reflects to-do nature"""
         debug.trace(4, "test_something_else()")
         assert "todo" in THE_MODULE.TODO_ARG.lower()
+        return
+
+    def test_captured_input_line(self):
+        """Ensure that lines are correctly processed and 
+        irrelevant lines are effectively ignored"""
+        debug.trace(4, "test_captured_input_line()")
+        data = "hey"
+        self.run_script(env_options=f"echo {data} | DEBUG_LEVEL=4", log_file=self.temp_file)
+        assert f"Ignoring line (1): {data}" in gh.read_file(self.temp_file)
         return
 
 #------------------------------------------------------------------------
