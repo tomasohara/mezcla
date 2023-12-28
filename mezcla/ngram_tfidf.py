@@ -42,7 +42,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
-from mezcla import spacy_nlp
+## OLD: from mezcla import spacy_nlp
 from mezcla import system
 from mezcla.system import round_num as rnd
 from mezcla import tpo_common as tpo
@@ -88,6 +88,12 @@ TFIDF_NP_BOOST = system.getenv_float(
     "TFIDF_NP_BOOST", 0,
     description="Boost factor for ngrams that are NP's")
 
+# Dynamic loading
+spacy_nlp = None
+if TFIDF_NP_BOOST:
+    from mezcla import spacy_nlp
+
+# Do sanity check on TF/IDF package version
 try:
     # Note major and minor revision values are assumed to be integral
     major_minor = re.sub(r"^(\d+\.\d+).*", r"\1", tfidf.__version__)
