@@ -40,6 +40,9 @@
 # TODO1:
 # - Add sanity check to trace_fmt for when keyword in kaargs unused.
 #
+# TODO3:
+# - Fill in more defaults like max_len using @docstring_parameter
+#
 # TODO:
 # - * Add sanity checks for unused environment variables specified on command line (e.g., FUBAR=1 python script.py ...)!
 # - Rename as debug_utils so clear that non-standard package.
@@ -112,6 +115,20 @@ MISSING_LINE = "???"
 
 # Globals
 max_trace_value_len = 512
+
+#...............................................................................
+# Utility functions
+
+def docstring_parameter(**kwargs):
+    """Decorator to reformat docstring using specified KWARGS"""
+    # based on https://stackoverflow.com/questions/10307696/how-to-put-a-variable-into-python-docstring/71377925#71377925
+    def dec(obj):
+        obj.__doc__ = obj.__doc__.format(**kwargs)
+        return obj
+    return dec
+
+#...............................................................................
+
 
 if __debug__:    
 
@@ -245,8 +262,11 @@ if __debug__:
         return
 
 
+    @docstring_parameter(max_len=max_trace_value_len)
     def trace_fmtd(level, text, **kwargs):
-        """Print TEXT with formatting using optional format KWARGS if at trace LEVEL or higher, including newline"""
+        """Print TEXT with formatting using optional format KWARGS if at trace LEVEL or higher, including newline
+        Note: Use MAX_LEN keyword argument to override the maximum length ({max_len}) of traced text (see format_value).
+        """
         # Note: To avoid interpolated text as being interpreted as variable
         # references, this function does the formatting.
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
@@ -439,6 +459,7 @@ if __debug__:
         return
 
 
+    @docstring_parameter(max_len=max_trace_value_len)
     def trace_expr(level, *values, **kwargs):
         """Trace each of the argument VALUES (if at trace LEVEL or higher), with KWARGS for options.
         Introspection is used to derive label for each expression. By default, the following format is used:
@@ -451,7 +472,7 @@ if __debug__:
         - Use USE_REPR=False to use tracing via str instead of repr.
         - Use _KW_ARG for KW_ARG (i.e., '_' prefix in case of conflict), as in following:
           trace_expr(DETAILED, term, _term="; ")
-        - Use MAX_LEN to specify maximum value length.
+        - Use MAX_LEN to specify maximum value length ({max_len}).
         - Use PREFIX to specify initial trace output (e.g., for function call tracing).
         - Use SUFFIX to specify final value to be printed (e.g., for perlish para grep over multi-line trace).
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
@@ -820,9 +841,10 @@ def _getenv_int(name, default_value):
     return result
 
 
+@docstring_parameter(max_len=max_trace_value_len)
 def format_value(value, max_len=None, strict=None):
     """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines
-    Note: With STRICT, MAX_LEN is maximum length for returned string (i.e., including "...") unless OLD_MAX_SPEC
+    Note: With STRICT, MAX_LEN is maximum length ({max_len}) for returned string (i.e., including "...")
     """
     # EX: format_value("    \n\n\n\n", max_len=11) => "    \\n\\n..."
     # EX: format_value("fubar", max_len=3) => "fub..."
