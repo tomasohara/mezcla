@@ -10,7 +10,7 @@
 #
 # Warning:
 # - Maldito Spacy has some issues under Python 3.8 and 3.9, so the tests are
-#   currently marked xfail until it stablizes.
+#   currently marked xfail until it stabilizes.
 #
 #...............................................................................
 # Output from sample test:
