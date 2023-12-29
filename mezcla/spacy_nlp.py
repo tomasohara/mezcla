@@ -25,7 +25,7 @@
 import re
 
 # Installed packages
-import spacy
+## OLD: import spacy
 
 # Local packages
 from mezcla import debug
@@ -60,6 +60,12 @@ SPACY_MODEL = system.getenv_text(
     ## TODO2: "SPACY_MODEL", "en_core_web_lg",
     "SPACY_MODEL", "en_core_web_md",
     description="Default Spacy model: see https://spacy.io/models")
+
+## DEBUG:
+debug.trace(5, "pre-spacy import")
+import spacy
+debug.trace(5, "post-spacy import")
+
 
 #...............................................................................
 
