@@ -105,6 +105,7 @@ xgboost
 # See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.2.0
 spacy==3.2.6
 en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.2.0/en_core_web_md-3.2.0.tar.gz
+typing_extensions==4.7.0
 #
 #opt# textract
 #opt# vaderSentiment
