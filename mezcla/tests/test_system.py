@@ -17,6 +17,7 @@ from math import pi
 import time
 import sys
 import re
+from importlib.metadata import version
 
 # Installed packages
 import pytest
@@ -168,7 +169,12 @@ class TestSystem:
     def test_get_exception(self):
         """Ensure get_exception works as expected"""
         debug.trace(4, "test_get_exception()")
-        ## TODO: WORK-IN=PROGRESS
+        try:
+            raise Exception("testing")
+        except:
+            exception = THE_MODULE.get_exception() 
+        assert str(exception[1]) == "testing"
+
 
     def test_print_error(self, capsys):
         """Ensure print_error works as expected"""
@@ -209,10 +215,12 @@ class TestSystem:
         THE_MODULE.setenv('NEW_TEST_ENV_VAR', 'the gravity is 10, pi is 3')
         assert THE_MODULE.getenv('NEW_TEST_ENV_VAR') == 'the gravity is 10, pi is 3'
 
+    @pytest.mark.xfail
     def test_print_full_stack(self):
         """Ensure print_full_stack works as expected"""
         debug.trace(4, "test_print_full_stack()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False
+        #TODO: WORK-IN=PROGRESS
 
     def test_trace_stack(self):
         """Ensure trace_stack works as expected"""
@@ -225,17 +233,14 @@ class TestSystem:
         assert THE_MODULE.get_current_function_name() == "test_get_current_function_name"
 
     def test_open_file(self):
-        """Ensure open_file works as expected"""
+        """Ensure open_file works as expected with existent files"""
         debug.trace(4, "test_open_file()")
-        ## TODO: WORK-IN=PROGRESS
-
         #test file exists and can be open
         test_filename = gh.create_temp_file("open file")
-        file = THE_MODULE.open_file(test_filename)
-        read_file = file.read()
+        assert THE_MODULE.open_file(test_filename).read() == "open file\n"
 
-        assert read_file
-        assert read_file == "open file"
+        # assert opening a nonexistent file returns none
+        assert THE_MODULE.open_file("empty") is None
 
     def test_save_object(self):
         """Ensure save_object works as expected"""
@@ -580,7 +585,9 @@ class TestSystem:
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
         debug.trace(4, "test_create_directory()")
-        ## TODO: WORK-IN=PROGRESS
+        path = '/tmp/mezcla_test'
+        THE_MODULE.create_directory('/tmp/mezcla_test')
+        assert THE_MODULE.is_directory(path)
 
     @pytest.mark.xfail
     def test_get_current_directory(self):
@@ -591,7 +598,9 @@ class TestSystem:
     def test_set_current_directory(self):
         """Ensure set_current_directory works as expected"""
         debug.trace(4, "test_set_current_directory()")
-        ## TODO: WORK-IN=PROGRESS
+        past_dir = THE_MODULE.get_current_directory()
+        assert THE_MODULE.set_current_directory('/home') is None
+        assert THE_MODULE.get_current_directory() == '/home'
 
     def test_to_utf8(self):
         """Ensure to_utf8 works as expected"""
@@ -673,8 +682,8 @@ class TestSystem:
     def test_get_module_version(self):
         """Ensure get_module_version works as expected"""
         debug.trace(4, "test_get_module_version()")
-        ## TODO: WORK-IN=PROGRESS
-
+        assert THE_MODULE.get_module_version("pytest") is version('pytest')
+ 
     def test_intersection(self):
         """Ensure intersection works as expected"""
         debug.trace(4, "test_intersection()")
