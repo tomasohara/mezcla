@@ -87,11 +87,15 @@ TFIDF_BOOST_CAPITALIZED = system.getenv_boolean(
 TFIDF_NP_BOOST = system.getenv_float(
     "TFIDF_NP_BOOST", 0,
     description="Boost factor for ngrams that are NP's")
+TFIDF_NUMERIC_BOOST = system.getenv_float(
+    "TFIDF_NUMERIC_BOOST", 0,
+    description="Boost factor for ngrams that have numeric tokens")
 
 # Dynamic loading
 spacy_nlp = None
 if TFIDF_NP_BOOST:
     from mezcla import spacy_nlp
+    debug.trace_expr(5, spacy_nlp)
 
 # Do sanity check on TF/IDF package version
 try:
@@ -191,15 +195,21 @@ class ngram_tfidf_analysis(object):
         top_terms = self.corpus.get_keywords(document_id=doc_id,
                                              tf_weight=tf_weight,
                                              idf_weight=idf_weight,
-                                             limit=(2 * limit))
+                                             ## OLD: limit=(2 * limit)
+                                             )
         debug.trace_fmtd(7, "top_terms={tt}", tt=top_terms)
 
         # Skip empty tokens due to spacing and to punctuation removal (e.g, " ")
         top_term_info = [(k.ngram, k.score) for k in top_terms if k.ngram.strip()]
-        debug.trace_values(6, top_term_info, "init top terms")
+        #
+        def round_terms(term_info):
+            """Round scores for terms in TERM_INFO"""
+            return [(t, system.round_num(s)) for (t, s) in top_term_info]
+        #
+        debug.trace_values(6, round_terms(top_term_info), "init top terms")
 
         # Apply various boosting heuristics that affect the ranking
-        apply_reranking = TFIDF_NP_BOOST
+        apply_reranking = (TFIDF_NP_BOOST or TFIDF_NUMERIC_BOOST)
         if apply_reranking:
             boosted = False
             for (i, (ngram, score)) in enumerate(top_term_info):
@@ -210,14 +220,17 @@ class ngram_tfidf_analysis(object):
                 if (TFIDF_NP_BOOST and self.chunker.noun_phrases(ngram) == [ngram]):
                     score = old_score * TFIDF_NP_BOOST
                     debug.trace(5, f"boosted NP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                if (TFIDF_NUMERIC_BOOST and any(tpo.is_numeric(token) for token in ngram.split())):
+                    score = old_score * TFIDF_NUMERIC_BOOST
                 # Update changed score
                 if old_score != score:
-                    top_term_info[i][1] = score
+                    ## BAD: top_term_info[i][1] = score
+                    top_term_info[i] = (ngram, score)
                     boosted = True
             # Re-rank if scores changed
             if boosted:
                 top_term_info = sorted(top_term_info, key=lambda ng_sc: ng_sc[1], reverse=True)
-        debug.trace_values(6, top_term_info, "boosted top terms")
+        debug.trace_values(6, round_terms(top_term_info), "boosted top terms")
         
         # Move capitalized terms ahead of others with same weight
         # Note: allows for inner non-capitalized only if functions words
@@ -226,7 +239,7 @@ class ngram_tfidf_analysis(object):
                 and (top_term_info[j][1] == top_term_info[j - 1][1])):
                 top_term_info[j - 1], top_term_info[j] = top_term_info[j], top_term_info[j - 1]
                 debug.trace(5, f"moved capitalized ngram '{top_term_info[j - 1]}' up in list from {j} to {j - 1}")
-        debug.trace_values(6, top_term_info, "interim top terms")
+        debug.trace_values(6, round_terms(top_term_info), "interim top terms")
         
         # Put spaces around ngrams to aid in subsumption tests
         check_ngram_overlap = (not (allow_ngram_subsumption and allow_ngram_overlap))
@@ -256,7 +269,7 @@ class ngram_tfidf_analysis(object):
                     if ((i > j) and (is_subsumed or has_overlap)):
                         include = False
                         label = ("in subsumption" if is_subsumed else "overlapping")
-                        debug.trace_fmt(6, "Omitting lower-weigted ngram '{ng2}' {lbl} with '{ng1}': {s1} <= {s2}",
+                        debug.trace_fmt(6, "Omitting lower-weighted ngram '{ng2}' {lbl} with '{ng1}': {s1} <= {s2}",
                                         ng1=other_spaced_ngram.strip(), ng2=spaced_ngrams[i].strip(), lbl=label,
                                         s1=rnd(top_term_info[i][1]), s2=rnd(top_term_info[j][1]))
                         break
@@ -265,9 +278,10 @@ class ngram_tfidf_analysis(object):
 
             # OK
             final_top_term_info.append((ngram, score))
-            if (len(final_top_term_info) == limit):
-                break
-        debug.trace_values(6, final_top_term_info, "final top terms")
+            ## OLD:
+            ## if (len(final_top_term_info) == limit):
+            ##     break
+        debug.trace_values(6, round_terms(final_top_term_info), "final top terms")
 
         # Sanity check on number of terms displayed
         num_terms = len(final_top_term_info)
@@ -275,7 +289,8 @@ class ngram_tfidf_analysis(object):
             debug.trace_fmt(4, "Warning: only {n} terms shown (of {m} max)",
                             n=num_terms, m=limit)
         debug.trace_fmtd(6, "final_top_term_info={tti}", tti=final_top_term_info)
-        return final_top_term_info
+        result = final_top_term_info[:limit]
+        return result
 
     def old_get_ngrams(self, text):
         """Returns generator with ngrams in TEXT"""
@@ -309,7 +324,8 @@ class ngram_tfidf_analysis(object):
 
 def simple_main_test():
     """Run test extracting ngrams from this source file"""
-        # Tabulate ngram occurrences
+    debug.trace(4, "simple_main_test()")
+    # Tabulate ngram occurrences
     ## BAD: ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=2, max_ngram_size=3)
     ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE)
     all_text = system.read_entire_file(__file__)
@@ -348,6 +364,7 @@ def simple_main_test():
 
 def output_tfidf_analysis(main_app):
     """Output results for ngram TF/IDF analysis over input from MAIN_APP"""
+    debug.trace(4, f"output_tfidf_analysis({main_app})")
     ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE)
     all_text = main_app.read_entire_input()
     num_docs = 0
@@ -365,6 +382,7 @@ def output_tfidf_analysis(main_app):
     
 def main():
     """Entry point for script"""
+    debug.trace(4, "main()")
     SIMPLE_TEST_OPT = "simple-test"
     REGULAR_OPT = "regular"
     main_app = Main(description=__doc__.format(script=gh.basename(__file__),
