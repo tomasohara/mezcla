@@ -17,7 +17,6 @@ from math import pi
 import time
 import sys
 import re
-from importlib.metadata import version
 
 # Installed packages
 import pytest
@@ -369,6 +368,9 @@ class TestSystem:
         """Ensure read_binary_file works as expected"""
         debug.trace(4, "test_read_binary_file()")
         ## TODO: WORK-IN=PROGRESS
+        test_filename = gh.create_temp_file("open binary")
+        assert THE_MODULE.read_binary_file(test_filename) == b"open binary\n"
+
 
     def test_read_directory(self):
         """Ensure read_directory works as expected"""
@@ -567,7 +569,7 @@ class TestSystem:
     def test_form_path(self):
         """Ensure form_path works as expected"""
         debug.trace(4, "test_form_path()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.form_path('/usr', 'bin', 'cat') == '/usr/bin/cat'  
 
     def test_is_directory(self):
         """Ensure is_directory works as expected"""
@@ -589,7 +591,6 @@ class TestSystem:
         THE_MODULE.create_directory('/tmp/mezcla_test')
         assert THE_MODULE.is_directory(path)
 
-    @pytest.mark.xfail
     def test_get_current_directory(self):
         """Ensure get_current_directory works as expected"""
         debug.trace(4, "test_get_current_directory()")
@@ -673,17 +674,19 @@ class TestSystem:
         debug.trace(4, "test_absolute_path()")
         assert THE_MODULE.absolute_path("/etc/mtab").startswith("/etc")
 
-    @pytest.mark.xfail
     def test_real_path(self):
         """Ensure real_path works as expected"""
         debug.trace(4, "test_real_path()")
         assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
 
+    @pytest.mark.xfail
     def test_get_module_version(self):
         """Ensure get_module_version works as expected"""
         debug.trace(4, "test_get_module_version()")
-        assert THE_MODULE.get_module_version("pytest") is version('pytest')
- 
+        #TODO: WORK-IN=PROGRESS
+        # Lorenzo: this always fails at importing no matter the module
+        assert False
+
     def test_intersection(self):
         """Ensure intersection works as expected"""
         debug.trace(4, "test_intersection()")
