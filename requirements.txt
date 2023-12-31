@@ -32,6 +32,7 @@ cachetools
 cherrypy
 diskcache
 extcolors>=1.0.0
+flair
 flask
 git+https://github.com/tehabstract/textract.git
 gradio              # NEW: For audio.py (huggingface)
