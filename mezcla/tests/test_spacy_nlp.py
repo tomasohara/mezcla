@@ -49,8 +49,7 @@ from mezcla.misc_utils import is_close
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
-## DEBUG:
-from mezcla.unittest_wrapper import trap_exception
+## DEBUG: from mezcla.unittest_wrapper import trap_exception
 
 # Environment manpulation
 # note: needed to be done prior to loading Spacy (see THE_MODULE below)
