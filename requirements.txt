@@ -99,13 +99,15 @@ xgboost
 #
 ## OLD: #opt# spacy>=3.0.0
 ## TODO:
-## note: See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.7.1
-## spacy>=3.7.2
-## en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.1/en_core_web_md-3.7.1.tar.gz
-# See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.2.0
-spacy==3.2.6
-en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.2.0/en_core_web_md-3.2.0.tar.gz
-typing_extensions==4.7.0
+## note: See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.7.0
+spacy==3.7.0
+en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.0/en_core_web_md-3.7.0.tar.gz
+#
+## See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.2.0
+## OLD
+## spacy==3.2.6
+## en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.2.0/en_core_web_md-3.2.0.tar.gz
+## typing_extensions==4.7.0
 #
 #opt# textract
 #opt# vaderSentiment
