@@ -26,6 +26,7 @@ import re
 
 # Installed packages
 ## OLD: import spacy
+spacy = None
 
 # Local packages
 from mezcla import debug
@@ -61,11 +62,29 @@ SPACY_MODEL = system.getenv_text(
     "SPACY_MODEL", "en_core_web_md",
     description="Default Spacy model: see https://spacy.io/models")
 
-## DEBUG:
-debug.trace(5, "pre-spacy import")
-import spacy
-debug.trace(5, "post-spacy import")
+## OLD:
+## ## DEBUG:
+## debug.trace(5, "pre-spacy import")
+## import spacy
+## debug.trace(5, "post-spacy import")
 
+#...............................................................................
+
+def init():
+    """Load in Spacy module"""
+    global spacy
+    if spacy is None:
+        debug.trace(5, "pre-spacy import")
+        import spacy as local_spacy     # pylint: disable=import-outside-toplevel
+        spacy = local_spacy
+        debug.trace(5, "post-spacy import")
+        
+    # Register pipeline component
+    global pysbd_sentence_boundaries, nltk_sentence_boundaries
+    pysbd_sentence_boundaries = spacy.Language.component('pysbd_sentence_boundaries',
+                                                         pysbd_sentence_boundaries)
+    nltk_sentence_boundaries = spacy.Language.component('nltk_sentence_boundaries',
+                                                        nltk_sentence_boundaries)
 
 #...............................................................................
 
@@ -147,7 +166,7 @@ def get_char_span(doc, start, end):
     return span
 
 # Note: requires Spacy 3+
-@spacy.Language.component('pysbd_sentence_boundaries')
+## OLD: @spacy.Language.component('pysbd_sentence_boundaries')
 def pysbd_sentence_boundaries(doc):
     """Pragmatic sentence tokenizer component"""
     # Note: based on pySBD/examples/pysbd_as_spacy_component.py
@@ -182,7 +201,7 @@ if USE_NLTK:
     import nltk
     from pysbd.utils import TextSpan
 
-@spacy.Language.component('nltk_sentence_boundaries')
+## OLD: @spacy.Language.component('nltk_sentence_boundaries')
 def nltk_sentence_boundaries(doc):
     """NLTK sentence tokenizer component
        Note: omits the spacing between sentences (unlike spaCy and pySBD)."""
@@ -228,9 +247,10 @@ class SpacyHelper:
             model = SPACY_MODEL
         self.model = model
         try:
+            init()
             self.nlp = spacy.load(self.model)
         except:
-            system.print_exception_info(f"Problem loading model {model}")
+            system.print_exception_info(f"load of model {model}")
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
 class Chunker(SpacyHelper):
@@ -304,6 +324,7 @@ class Script(Main):
         # Load spaCy language model (normally large model for English)
         debug.trace_fmt(4, "loading spaCy model {m}", m=self.spacy_model)
         try:
+            init()
             self.nlp = spacy.load(self.spacy_model)
         except:
             system.print_stderr("Problem loading model {m} via spacy: {exc}",
