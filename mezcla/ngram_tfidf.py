@@ -48,7 +48,7 @@ from mezcla.system import round_num as rnd
 from mezcla import tpo_common as tpo
 from mezcla import tfidf
 from mezcla.compute_tfidf import terms_overlap
-from mezcla.text_processing import stopwords as ENGLISH_STOPWORDS
+from mezcla.text_processing import stopwords as ENGLISH_STOPWORDS, create_text_proc
 from mezcla.tfidf.corpus import Corpus as tfidf_corpus
 from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
 from mezcla.tfidf import preprocess as tfidf_preprocess
@@ -90,6 +90,9 @@ TFIDF_NP_BOOST = system.getenv_float(
 TFIDF_NUMERIC_BOOST = system.getenv_float(
     "TFIDF_NUMERIC_BOOST", 0,
     description="Boost factor for ngrams that have numeric tokens")
+TFIDF_TEXT_PROC = system.getenv_text(
+    "TFIDF_TEXT_PROC", "spacy",
+    description="name of text processor to use for chunking")
 
 # Dynamic loading
 spacy_nlp = None
@@ -133,7 +136,8 @@ class ngram_tfidf_analysis(object):
                                    all_ngrams=ALL_NGRAMS,
                                    language=pp_lang,
                                    preprocessor=self.pp)
-        self.chunker = (None if (not TFIDF_NP_BOOST) else spacy_nlp.Chunker())
+        ## OLD: self.chunker = (None if (not TFIDF_NP_BOOST) else spacy_nlp.Chunker())
+        self.text_proc = create_text_proc(TFIDF_TEXT_PROC)
         ## TODO2: add international stopwords (e.g., English plus frequent ones from common languages)
         self.stopwords = (self.pp.stopwords or ENGLISH_STOPWORDS)
         super().__init__(*args, **kwargs)
@@ -204,7 +208,7 @@ class ngram_tfidf_analysis(object):
         #
         def round_terms(term_info):
             """Round scores for terms in TERM_INFO"""
-            return [(t, system.round_num(s)) for (t, s) in top_term_info]
+            return [(t, system.round_num(s)) for (t, s) in term_info]
         #
         debug.trace_values(6, round_terms(top_term_info), "init top terms")
 
@@ -217,7 +221,7 @@ class ngram_tfidf_analysis(object):
                 old_score = top_term_info[i][1]
 
                 # Apply boost if entire ngram is a noun phrase
-                if (TFIDF_NP_BOOST and self.chunker.noun_phrases(ngram) == [ngram]):
+                if (TFIDF_NP_BOOST and self.text_proc.noun_phrases(ngram) == [ngram]):
                     score = old_score * TFIDF_NP_BOOST
                     debug.trace(5, f"boosted NP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                 if (TFIDF_NUMERIC_BOOST and any(tpo.is_numeric(token) for token in ngram.split())):
