@@ -160,7 +160,7 @@ class ngram_tfidf_analysis(object):
         """Whether WORD is a stop word for preprocessing language or English if none"""
         # EX: self.is_stopword("of")
         # EX: ngram_tfidf_analysis(pp_lang="spanish").is_stopword("de")
-        result = word in self.stopwords
+        result = word.lower() in self.stopwords
         debug.trace(8, f"is_stopword({word!r}) => {result}")
         return result
 
@@ -207,8 +207,11 @@ class ngram_tfidf_analysis(object):
                                              )
         debug.trace_fmtd(7, "top_terms={tt}", tt=top_terms)
 
-        # Skip empty tokens due to spacing and to punctuation removal (e.g, " ")
-        top_term_info = [(k.ngram, k.score) for k in top_terms if k.ngram.strip()]
+        # Skip empty tokens due to spacing and to punctuation removal (e.g, " ").
+        # Also skip stop words (e.g., unigram).
+        ## OLD: top_term_info = [(k.ngram, k.score) for k in top_terms if k.ngram.strip()]
+        top_term_info = [(k.ngram, k.score) for k in top_terms
+                         if k.ngram.strip() and not self.is_stopword(k.ngram)]
         #
         def round_terms(term_info):
             """Round scores for terms in TERM_INFO"""
