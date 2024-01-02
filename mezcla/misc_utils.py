@@ -410,7 +410,7 @@ def get_class_from_name(class_name, module_name=None):
     if module_name is None:
         module_name = __name__
     class_object = getattr(sys.modules[module_name], class_name, None)
-    debug.trace(6, f"get_class_from_name({class_name}, [module_name])) => {class_object}")
+    debug.trace(6, f"get_class_from_name({class_name}, [{module_name}])) => {class_object}")
     return class_object
 
 
