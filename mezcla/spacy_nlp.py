@@ -75,16 +75,25 @@ def init():
     global spacy
     if spacy is None:
         debug.trace(5, "pre-spacy import")
-        import spacy as local_spacy     # pylint: disable=import-outside-toplevel
-        spacy = local_spacy
+        ## OLD:
+        ## import spacy as local_spacy     # pylint: disable=import-outside-toplevel
+        ## spacy = local_spacy
+        import spacy as spacy           # pylint: disable=import-outside-toplevel
         debug.trace(5, "post-spacy import")
-        
+    
+    if USE_PYSBD or USE_NLTK:
+        global pysbd
+        # pylint: disable=import-outside-toplevel, import-error
+        import pysbd
+        ## TODO: from pysbd.utils import PySBDFactory
+        debug.assertion(re.search(r"^[3-9]", spacy.__version__), "spaCy 3+ is required for pysbd")
+
     # Register pipeline component
     global pysbd_sentence_boundaries, nltk_sentence_boundaries
     pysbd_sentence_boundaries = spacy.Language.component('pysbd_sentence_boundaries',
-                                                         pysbd_sentence_boundaries)
+                                                         func=pysbd_sentence_boundaries)
     nltk_sentence_boundaries = spacy.Language.component('nltk_sentence_boundaries',
-                                                        nltk_sentence_boundaries)
+                                                        func=nltk_sentence_boundaries)
 
 #...............................................................................
 
@@ -127,11 +136,12 @@ pysbd = None
 APPLY_SPAN_FIX = system.getenv_bool("APPLY_SPAN_FIX", True,
                                     "Apply pySBD contract-mode fix for char_span")
 
-if USE_PYSBD or USE_NLTK:
-    # pylint: disable=import-outside-toplevel, import-error
-    import pysbd
-    ## TODO: from pysbd.utils import PySBDFactory
-    debug.assertion(re.search(r"^[3-9]", spacy.__version__), "spaCy 3+ is required for pysbd")
+## OLD:
+## if USE_PYSBD or USE_NLTK:
+##     # pylint: disable=import-outside-toplevel, import-error
+##     import pysbd
+##     ## TODO: from pysbd.utils import PySBDFactory
+##     debug.assertion(re.search(r"^[3-9]", spacy.__version__), "spaCy 3+ is required for pysbd")
 
 def get_char_span(doc, start, end):
     """Return character span in DOC from START to END or thereabouts (e.g., END - 1)"""
@@ -507,3 +517,4 @@ if __name__ == '__main__':
         ],
         text_options=[(LANG_MODEL, "Language model for NLP")])
     app.run()
+    debug.trace_expr(5, pysbd)
