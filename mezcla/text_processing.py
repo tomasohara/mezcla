@@ -78,7 +78,7 @@ from flair.models import SequenceTagger
 
 # Local packages
 from mezcla import debug
-from mezcla import misc_utils
+## OLD: from mezcla import misc_utils
 from mezcla import spacy_nlp
 from mezcla import system
 from mezcla import glue_helpers as gh
@@ -506,6 +506,11 @@ class TextProc(metaclass=ABCMeta):
         """Return list of noun chunks in text"""
         raise NotImplementedError()
         
+    @abstractmethod
+    def verb_phrases(self, text):
+        """Return list of verb chunks in text"""
+        raise NotImplementedError()
+        
 class SpacyTextProc(TextProc):
     """TextProc via Spacy"""
     
@@ -516,6 +521,12 @@ class SpacyTextProc(TextProc):
 
     def noun_phrases(self, text):
         return self.spacy.noun_phrases(text)
+
+    def verb_phrases(self, text):
+        debug.trace(4, "FYI: Spacy doesn't support verb phrase chunking")
+        result = []
+        debug.trace(6, f"noun_phrases({text!r}) => {result!r}")
+        return result
 
 class FlairTextProc(TextProc):
     """TextProc via Flair"""
@@ -535,6 +546,14 @@ class FlairTextProc(TextProc):
         debug.trace(6, f"noun_phrases({text!r}) => {noun_phrases!r}")
         return noun_phrases
 
+    def verb_phrases(self, text):
+        # Based on https://huggingface.co/flair/chunk-english-fast
+        sentence = Sentence(text)
+        self.tagger.predict(sentence)
+        verb_phrases = [phr.text for phr in sentence.get_spans()  if (phr.tag == "VP")]
+        debug.trace(6, f"verb_phrases({text!r}) => {verb_phrases!r}")
+        return verb_phrases
+
 
 def create_text_proc(name, *args, **kwargs):
     """Return class to use for TextProc NAME
@@ -546,7 +565,8 @@ def create_text_proc(name, *args, **kwargs):
     try:
         ## BAD: class_object = misc_utils.get_class_from_name(name.capitalize())
         ## TODO: class_object = misc_utils.get_class_from_name(name.capitalize(), module_name=__name__)
-        class_object = (SpacyTextProc if (name == "spacy") else FlairTextProc if (name == "flair") else TextProc)
+        ## OLD: class_object = (SpacyTextProc if (name == "spacy") else FlairTextProc if (name == "flair") else TextProc)
+        class_object = (SpacyTextProc if (name == "spacy") else FlairTextProc if (name == "flair") else None)
         ## BAD:
         ## debug.assertion(class_object.__class__.__name__.endswith("TextProc"))
         ## class_instance = class_object.__new__(*args, **kwargs)
