@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 #
-# spaccy_ner.py: Runs spaCy for a variety of natural lanuage processing (NLP)
+# spacy_ner.py: Runs spaCy for a variety of natural lanuage processing (NLP)
 # tasks.
 #
 # Notes:
 # - This is a generalization of spacy_ner.py, which was just for named entity recognition (NER).
-# - Unforunately spaCy's document omits important detail that sentiment analysis is not built in!
+# - Unforunately Spacy's document omits important detail that sentiment analysis is not built in!
 # - To compensate, sentiment analyzer is based on vader:
 #      https://medium.com/swlh/simple-sentiment-analysis-for-nlp-beginners-and-everyone-else-using-vader-and-textblob-728da3dbe33d
 # TODO:
@@ -19,7 +19,7 @@
 #   ex: https://spacy.io/universe/project/spacy-textblob.
 # 
 
-"""Performs various natural lanuage processing (NLP) tasks via spaCy"""
+"""Performs various natural lanuage processing (NLP) tasks via Spacy (aka spaCy)"""
 
 # Standard packages
 import re
@@ -186,9 +186,9 @@ def pysbd_sentence_boundaries(doc):
     custom_sent_char_spans = seg.segment(doc.text)
     debug.trace_expr(5, custom_sent_char_spans)
 
-    # Reconcile with spaCy token character spans
+    # Reconcile with Spacy token character spans
     # Note: this runs into problems when word tokenization differs; see
-    #    https://github.com/explosion/spaCy/issues/4531
+    #    https://github.com/explosion/Spacy/issues/4531
     #    [char_span not returning spans in some cases #4531]
     ## BAD: char_spans = [doc.char_span(sent_span.start, sent_span.end) for sent_span in custom_sent_char_spans]
     #
@@ -214,7 +214,7 @@ if USE_NLTK:
 ## OLD: @spacy.Language.component('nltk_sentence_boundaries')
 def nltk_sentence_boundaries(doc):
     """NLTK sentence tokenizer component
-       Note: omits the spacing between sentences (unlike spaCy and pySBD)."""
+       Note: omits the spacing between sentences (unlike Spacy and pySBD)."""
     # Tokenize sentence and make note of starting/ending offsets
     # note: uses TextSpan from pySBD
     debug.trace(6, "nltk_sentence_boundaries(_)")
@@ -231,7 +231,7 @@ def nltk_sentence_boundaries(doc):
         current_end = new_end
     debug.trace_expr(5, custom_sent_char_spans)
     
-    # Reconcile with spaCy token character spans
+    # Reconcile with Spacy token character spans
     # Note: works around word tokenization differences as in pysbd_sentence_boundaries
     spacy_sent_char_spans = [get_char_span(doc, sent_span.start, sent_span.end) for sent_span in custom_sent_char_spans]
     debug.trace_values(5, spacy_sent_char_spans)
@@ -324,15 +324,15 @@ class Script(Main):
 
         # Download model from server
         if self.download_model:
-            print(f"Downloading spaCy model: {self.spacy_model}")
+            print(f"Downloading Spacy model: {self.spacy_model}")
             gh.run(f"python -m spacy download {self.spacy_model}")
         
-        # Load in external module for sentiment analysis (gotta hate spaCy!)
+        # Load in external module for sentiment analysis (gotta hate Spacy!)
         if self.analyze_sentiment:
             self.sentiment_analyzer = SentimentAnalyzer()
 
-        # Load spaCy language model (normally large model for English)
-        debug.trace_fmt(4, "loading spaCy model {m}", m=self.spacy_model)
+        # Load Spacy language model (normally large model for English)
+        debug.trace_fmt(4, "loading Spacy model {m}", m=self.spacy_model)
         try:
             init()
             self.nlp = spacy.load(self.spacy_model)
@@ -345,7 +345,7 @@ class Script(Main):
             #        =>
             #    import en_core_web_sm
             #    nlp = en_core_web_sm.load()
-            # TODO: Figure out step needed for proper spaCy bookkeeping after 
+            # TODO: Figure out step needed for proper Spacy bookkeeping after 
             # new package is added to python (e.g., en_core_web_sm under site-packages).
             try:
                 debug.trace(3, "Warning: Trying eval hack to load model")
@@ -512,7 +512,7 @@ if __name__ == '__main__':
         # Paragraph mode is required for proper sentence tokenization
         paragraph_mode=True,
         boolean_options=[RUN_NER, ANALYZE_SENTIMENT, VERBOSE,
-                         (DOWNLOAD_MODEL, "Download spaCy model"),
+                         (DOWNLOAD_MODEL, "Download Spacy model"),
                          (SHOW_REPRESENTATION, "Show final representation (e.g., word & token attributes"),
         ],
         text_options=[(LANG_MODEL, "Language model for NLP")])
