@@ -142,6 +142,15 @@ def pr_dir(obj):
     """Print dir listing for OBJ"""
     print(dir(obj))
 
+
+def set_xterm_title(title=None):
+    """Set xterm title via set_xterm_title.bash
+    Note: requires https://github.com/tomasohara/shell-scripts"""
+    # Sample result: "ipython: /home/tomohara/mezcla: Py3.10(base)"
+    if title is None:
+        title = "ipython $PWD"
+    gh.issue(f'set_xterm_title.bash "{title}"')
+    
 #-------------------------------------------------------------------------------
 # Helper class
 
