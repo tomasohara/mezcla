@@ -367,7 +367,6 @@ class TestSystem:
     def test_read_binary_file(self):
         """Ensure read_binary_file works as expected"""
         debug.trace(4, "test_read_binary_file()")
-        ## TODO: WORK-IN=PROGRESS
         test_filename = gh.create_temp_file("open binary")
         assert THE_MODULE.read_binary_file(test_filename) == b"open binary\n"
 
@@ -500,8 +499,11 @@ class TestSystem:
     def test_write_binary_file(self):
         """Ensure write_binary_file works as expected"""
         debug.trace(4, "test_write_binary_file()")
-        ## TODO: WORK-IN=PROGRESS
+        filename = gh.get_temp_file()
+        THE_MODULE.write_binary_file(filename, bytes("binary", "UTF-8"))
+        assert THE_MODULE.read_binary_file(filename) == b'binary'
 
+        
     def test_write_lines(self):
         """Ensure write_lines works as expected"""
         debug.trace(4, "test_write_lines()")
@@ -536,7 +538,21 @@ class TestSystem:
     def test_get_file_modification_time(self):
         """Ensure get_file_modification_time works as expected"""
         debug.trace(4, "test_get_file_modification_time()")
-        ## TODO: WORK-IN=PROGRESS
+
+        # create two temp files at the same time
+        filedir1 = gh.create_temp_file('test modified time')
+        filedir2 = gh.create_temp_file('test modified time2')
+        # get the modification time of said files
+        timestamp1 = THE_MODULE.get_file_modification_time(filedir1)
+        timestamp2 = THE_MODULE.get_file_modification_time(filedir2)
+        # get and format local time
+        timestampNow = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+        # test timestamps are equal 
+        assert timestamp1 == timestamp2
+        
+        # test timestamp is equal to actual time (ignoring miliseconds)
+        assert timestamp1[:19] == timestampNow
 
     def test_remove_extension(self):
         """Ensure remove_extension works as expected"""
@@ -602,6 +618,8 @@ class TestSystem:
         past_dir = THE_MODULE.get_current_directory()
         assert THE_MODULE.set_current_directory('/home') is None
         assert THE_MODULE.get_current_directory() == '/home'
+        assert THE_MODULE.get_current_directory() is not past_dir
+
 
     def test_to_utf8(self):
         """Ensure to_utf8 works as expected"""
@@ -618,19 +636,21 @@ class TestSystem:
     def test_from_utf8(self):
         """Ensure from_utf8 works as expected"""
         debug.trace(4, "test_from_utf8()")
-        ## TODO: WORK-IN=PROGRESS
-
+        assert THE_MODULE.from_utf8("\xBF") == "\u00BF"
+        # assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\ufeff"
+        # Lorenzo: can't convert "\ufeff" to BOM, but can convert "\xEF\xBB\xBF"
+    
     def test_to_unicode(self):
         """Ensure to_unicode works as expected"""
         debug.trace(4, "test_to_unicode()")
         assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\xEF\xBB\xBF"
         ## TODO: add tests for sys.version_info.major < 3
-        ## assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\ufeff"
+        # assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\ufeff"
 
     def test_from_unicode(self):
         """Ensure from_unicode works as expected"""
         debug.trace(4, "test_from_unicode()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.from_unicode("\u00BF") == "¿"
 
     def test_to_string(self):
         """Ensure to_string works as expected"""
