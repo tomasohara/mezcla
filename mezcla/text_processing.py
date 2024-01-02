@@ -122,6 +122,9 @@ FLAIR_MODEL = system.getenv_text(
     "FLAIR_MODEL", "flair/chunk-english-fast",
     description="Model for Flair: see https://huggingface.co/flair"
 )
+TEXT_PROC = system.getenv_text(
+    "TEXT_PROC", "spacy",
+    description="name of text processor to use for chunking")
 
 # List of stopwords (e.g., high-freqency function words)
 stopwords = None
@@ -541,9 +544,13 @@ def create_text_proc(name, *args, **kwargs):
     # TODO2: see if standard way to do class displatching
     class_instance = None
     try:
-        class_object = misc_utils.get_class_from_name(name.capitalize())
-        debug.assertion(class_object.__class__.__name__.endswith("TextProc"))
-        class_instance = class_object.__new__(*args, **kwargs)
+        ## BAD: class_object = misc_utils.get_class_from_name(name.capitalize())
+        ## TODO: class_object = misc_utils.get_class_from_name(name.capitalize(), module_name=__name__)
+        class_object = (SpacyTextProc if (name == "spacy") else FlairTextProc if (name == "flair") else TextProc)
+        ## BAD:
+        ## debug.assertion(class_object.__class__.__name__.endswith("TextProc"))
+        ## class_instance = class_object.__new__(*args, **kwargs)
+        class_instance = class_object(*args, **kwargs)
         debug.trace_expr(6, class_object, class_instance)
     except:
         system.print_exception_info("create_text_proc")
@@ -557,7 +564,7 @@ def usage():
 Usage: _SCRIPT_ [--help] [--just-tokenize] [--just-chunk] [--lowercase] file
 Example:
 
-echo "My dawg has fleas" | _SCRIPT_ -
+echo "My dawg has fleas." | _SCRIPT_ -
 
 Notes:
 - Intended more as a library module
@@ -622,11 +629,13 @@ def main():
                         tokenized_text = tokenized_text.lower()
                     print(tokenized_text)
             elif just_chunk:
-                text_proc = FlairTextProc()
+                ## OLD: text_proc = FlairTextProc()
+                text_proc = create_text_proc(TEXT_PROC)
                 if VERBOSE:
                     print(f"text: {text}")
                     print("NP chunks:")
-                print(OUTPUT_DELIM.join(text_proc.noun_phrases(text)))
+                ## TODO: print(OUTPUT_DELIM.join(text_proc.noun_phrases(text)))
+                print(text_proc.noun_phrases(text))
             else:
                 # Show complete pipeline step-by-step
                 taggings = tokenize_and_tag(text)
