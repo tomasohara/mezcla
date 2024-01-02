@@ -87,6 +87,9 @@ TFIDF_BOOST_CAPITALIZED = system.getenv_boolean(
 TFIDF_NP_BOOST = system.getenv_float(
     "TFIDF_NP_BOOST", 0,
     description="Boost factor for ngrams that are NP's")
+TFIDF_VP_BOOST = system.getenv_float(
+    "TFIDF_VP_BOOST", 0,
+    description="Boost factor for ngrams that are VP's")
 TFIDF_NUMERIC_BOOST = system.getenv_float(
     "TFIDF_NUMERIC_BOOST", 0,
     description="Boost factor for ngrams that have numeric tokens")
@@ -94,11 +97,12 @@ TFIDF_TEXT_PROC = system.getenv_text(
     "TFIDF_TEXT_PROC", "spacy",
     description="name of text processor to use for chunking")
 
-# Dynamic loading
-spacy_nlp = None
-if TFIDF_NP_BOOST:
-    from mezcla import spacy_nlp
-    debug.trace_expr(5, spacy_nlp)
+## OLD:
+## # Dynamic loading
+## spacy_nlp = None
+## if TFIDF_NP_BOOST:
+##     from mezcla import spacy_nlp
+##     debug.trace_expr(5, spacy_nlp)
 
 # Do sanity check on TF/IDF package version
 try:
@@ -213,17 +217,20 @@ class ngram_tfidf_analysis(object):
         debug.trace_values(6, round_terms(top_term_info), "init top terms")
 
         # Apply various boosting heuristics that affect the ranking
-        apply_reranking = (TFIDF_NP_BOOST or TFIDF_NUMERIC_BOOST)
+        apply_reranking = (TFIDF_NP_BOOST or TFIDF_VP_BOOST or TFIDF_NUMERIC_BOOST)
         if apply_reranking:
             boosted = False
             for (i, (ngram, score)) in enumerate(top_term_info):
                 ngram = top_term_info[i][0]
                 old_score = top_term_info[i][1]
 
-                # Apply boost if entire ngram is a noun phrase
+                # Apply boost if entire ngram is a noun phrase and likewise for verb phrase
                 if (TFIDF_NP_BOOST and self.text_proc.noun_phrases(ngram) == [ngram]):
                     score = old_score * TFIDF_NP_BOOST
                     debug.trace(5, f"boosted NP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                if (TFIDF_VP_BOOST and self.text_proc.verb_phrases(ngram) == [ngram]):
+                    score = old_score * TFIDF_VP_BOOST
+                    debug.trace(5, f"boosted VP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                 if (TFIDF_NUMERIC_BOOST and any(tpo.is_numeric(token) for token in ngram.split())):
                     score = old_score * TFIDF_NUMERIC_BOOST
                 # Update changed score
