@@ -532,7 +532,7 @@ class FlairTextProc(TextProc):
         sentence = Sentence(text)
         self.tagger.predict(sentence)
         noun_phrases = [phr.text for phr in sentence.get_spans()  if (phr.tag == "NP")]
-        debug.trace(5, f"noun_phrases({text!r}) => {noun_phrases!r}")
+        debug.trace(6, f"noun_phrases({text!r}) => {noun_phrases!r}")
         return noun_phrases
 
 
