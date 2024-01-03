@@ -387,10 +387,11 @@ class Preprocessor(object):
                         ## OLD: if (SPLIT_WORDS or (not re.search(BAD_WORD_PUNCT_REGEX, word_text))):
                         exclude = my_re.search(BAD_WORD_PUNCT_REGEX, word_text)
                         if TFIDF_ALLOW_PUNCT and exclude:
-                            # Include unless punctuation starts or ends the text
-                            ## BAD: exclude = ((my_re.start() == 0) or (my_re.end() == len(word_text)))
+                            # Include unless punctuation starts or ends the text or is after a space
+                            # TODO2: add BAD_NGRAM_PUNCT_REGEX (e.g., "[;!?]")
                             exclude = (my_re.search("^" + BAD_WORD_PUNCT_REGEX, word_text) or
-                                       my_re.search(BAD_WORD_PUNCT_REGEX + "$", word_text))
+                                       my_re.search(BAD_WORD_PUNCT_REGEX + "$", word_text) or
+                                       my_re.search(" " + BAD_WORD_PUNCT_REGEX, word_text))
                         if not exclude:
                             word_global_start = sentence.start + word_list[0].start
                             word_global_end = sentence.start + word_list[-1].end
