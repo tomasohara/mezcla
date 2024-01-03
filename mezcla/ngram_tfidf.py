@@ -141,7 +141,9 @@ class ngram_tfidf_analysis(object):
                                    language=pp_lang,
                                    preprocessor=self.pp)
         ## OLD: self.chunker = (None if (not TFIDF_NP_BOOST) else spacy_nlp.Chunker())
-        self.text_proc = create_text_proc(TFIDF_TEXT_PROC)
+        self.text_proc = None
+        if TFIDF_NP_BOOST or TFIDF_VP_BOOST:
+            self.text_proc = create_text_proc(TFIDF_TEXT_PROC)
         ## TODO2: add international stopwords (e.g., English plus frequent ones from common languages)
         self.stopwords = (self.pp.stopwords or ENGLISH_STOPWORDS)
         super().__init__(*args, **kwargs)
