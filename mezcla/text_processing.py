@@ -73,13 +73,16 @@ import re                               # regular expressions
 
 # Installed packages
 ## TODO: import flair
-from flair.data import Sentence
-from flair.models import SequenceTagger
+## OLD:
+## from flair.data import Sentence
+## from flair.models import SequenceTagger
+flair = None
 
 # Local packages
 from mezcla import debug
 ## OLD: from mezcla import misc_utils
-from mezcla import spacy_nlp
+## OLD: from mezcla import spacy_nlp
+spacy_nlp = None
 from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla import tpo_common as tpo
@@ -485,7 +488,7 @@ def is_punct(token, POS=None):
 
 
 def init():
-    """Makes sure globasl defined"""
+    """Makes sure globals defined"""
 
     # Note: stop word check is done for side of effect of loading list
     unexpected_stopword = is_stopword("movement")
@@ -516,6 +519,10 @@ class SpacyTextProc(TextProc):
     
     def __init__(self, model=None):
         super().__init__(model)
+        global spacy_nlp
+        if spacy_nlp is None:
+            # pylint: disable=import-outside-toplevel, disable=redefined-outer-name
+            from mezcla import spacy_nlp
         self.spacy = spacy_nlp.Chunker(model)
         debug.trace_object(5, self, label="SpacyTextProc instance")
 
@@ -535,12 +542,16 @@ class FlairTextProc(TextProc):
         super().__init__(model)
         if model is None:
             model = FLAIR_MODEL
-        self.tagger = SequenceTagger.load(model)
+        global flair
+        if flair is None:
+            # pylint: disable=import-outside-toplevel, disable=redefined-outer-name
+            import flair
+        self.tagger = flair.models.SequenceTagger.load(model)
         debug.trace_object(5, self, label="FlairTextProc instance")
     
     def noun_phrases(self, text):
         # Based on https://huggingface.co/flair/chunk-english-fast
-        sentence = Sentence(text)
+        sentence = flair.Sentence(text)
         self.tagger.predict(sentence)
         noun_phrases = [phr.text for phr in sentence.get_spans()  if (phr.tag == "NP")]
         debug.trace(6, f"noun_phrases({text!r}) => {noun_phrases!r}")
@@ -548,7 +559,7 @@ class FlairTextProc(TextProc):
 
     def verb_phrases(self, text):
         # Based on https://huggingface.co/flair/chunk-english-fast
-        sentence = Sentence(text)
+        sentence = flair.Sentence(text)
         self.tagger.predict(sentence)
         verb_phrases = [phr.text for phr in sentence.get_spans()  if (phr.tag == "VP")]
         debug.trace(6, f"verb_phrases({text!r}) => {verb_phrases!r}")
