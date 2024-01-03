@@ -218,12 +218,19 @@ class TestSystem:
     def test_print_full_stack(self):
         """Ensure print_full_stack works as expected"""
         debug.trace(4, "test_print_full_stack()")
-        assert False
-        #TODO: WORK-IN=PROGRESS
+        filename = gh.get_temp_file()
+        file = THE_MODULE.open_file(filename, mode='a+')
+        try:
+            raise RuntimeError('test')
+        except RuntimeError:
+            THE_MODULE.print_full_stack(file)
+        assert 'test' in file.read()
 
+    @pytest.mark.xfail
     def test_trace_stack(self):
         """Ensure trace_stack works as expected"""
         debug.trace(4, "test_trace_stack()")
+        assert False
         ## TODO: WORK-IN=PROGRESS
 
     def test_get_current_function_name(self):
@@ -374,7 +381,9 @@ class TestSystem:
     def test_read_directory(self):
         """Ensure read_directory works as expected"""
         debug.trace(4, "test_read_directory()")
-        ## TODO: WORK-IN=PROGRESS
+        pwd = THE_MODULE.get_current_directory()
+        filename = __file__.split('/')[-1]
+        assert filename in THE_MODULE.read_directory(pwd) 
 
     def test_get_directory_filenames(self):
         """Ensure get_directory_filenames works as expected"""
@@ -542,7 +551,7 @@ class TestSystem:
         # create two temp files at the same time
         filedir1 = gh.create_temp_file('test modified time')
         filedir2 = gh.create_temp_file('test modified time2')
-        # get the modification time of said files
+        # get the modification time of the files
         timestamp1 = THE_MODULE.get_file_modification_time(filedir1)
         timestamp2 = THE_MODULE.get_file_modification_time(filedir2)
         # get and format local time
@@ -550,7 +559,7 @@ class TestSystem:
 
         # test timestamps are equal 
         assert timestamp1 == timestamp2
-        
+
         # test timestamp is equal to actual time (ignoring miliseconds)
         assert timestamp1[:19] == timestampNow
 
