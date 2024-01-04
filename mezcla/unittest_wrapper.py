@@ -106,7 +106,7 @@ def trap_exception(function):
         except AssertionError:
             raise
         except:
-            system.print_exception_info(function)
+            system.print_exception_info(function.__name__)
             assert(False)
         return result
     #
