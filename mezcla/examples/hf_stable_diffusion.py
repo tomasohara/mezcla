@@ -450,19 +450,24 @@ class StableDiffusion:
         return result
 
     def infer_img2txt(self, image_b64=None, skip_cache=False):
-        """Return likely caption text for image_b64 in base64 encoding
+        """Return likely caption text for IMAGE_B64 in base64 encoding
         Note: If SKIP_CACHE, then new results are always generated.
         """
         debug.trace_fmt(4, f"infer_img2txt({gh.elide(image_b64)}, sk={skip_cache})")
         params = (image_b64)
-        description = ""
+        description = None
         if ((self.cache is not None) and (not skip_cache)):
             description = self.cache.get(params)
-        if not description:
+        if (description is not None):
+            debug.trace_fmt(5, "Using cached infer_img2txt result: ({r!r})", r=description)
+        else:
             description = self.infer_img2txt_non_cached(image_b64)
             if self.cache is not None:
                 self.cache.set(params, description)
                 debug.trace_fmt(6, "Setting cached result (r={r!r})", r=description)
+        # Make sure a string
+        if (description is None):
+            description = ""
 
         return description
     
