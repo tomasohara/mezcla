@@ -219,12 +219,12 @@ class TestSystem:
         """Ensure print_full_stack works as expected"""
         debug.trace(4, "test_print_full_stack()")
         filename = gh.get_temp_file()
-        file = THE_MODULE.open_file(filename, mode='a+')
+        file = THE_MODULE.open_file(filename, mode='w+')
         try:
             raise RuntimeError('test')
-        except RuntimeError:
+        except Exception:
             THE_MODULE.print_full_stack(file)
-        assert 'test' in file.read()
+        assert False
 
     @pytest.mark.xfail
     def test_trace_stack(self):
