@@ -59,10 +59,9 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      ## TEST
-      ## - name: Run Python Tests Directly
-      ##   run: |
-      ##     PYTHONPATH="$(pwd):$PYTHONPATH" ./tools/run_tests.bash
+      - name: Run Python Tests Directly
+        run: |
+          PYTHONPATH="$(pwd):$PYTHONPATH" ./tools/run_tests.bash
 
       ## TODO:
       ## See https://github.com/tomasohara/shell-scripts/blob/main/tests/batspp_report.py
@@ -90,8 +89,9 @@ jobs:
 
       - name: Run Python Tests under Docker
         run: |
-          # note: command format: docker run [OPTIONS] IMAGE [COMMAND] [ARG...]
-          docker run --env "DEBUG_LEVEL=5" --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
+          # note: command format: docker run [OPTIONS] IMAGE [COMMAND] [ARG...];
+          # The environment file normally has no entries (i.e., just comments).
+          docker run --env "DEBUG_LEVEL=5" --env-file _temp-user-docker.env --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
         env:
           DEBUG_LEVEL: 5
           # Note: to test a subset of notebook, define a regex pattern
