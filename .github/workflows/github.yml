@@ -20,6 +20,7 @@ name: Github-Tests
 on: [push, pull_request]
 
 jobs:
+
   build-and-test-runner:
     name: Build and Run Tests via Workflow Runner VM
     runs-on: ${{ matrix.os }}
@@ -57,7 +58,7 @@ jobs:
 
       - name: Download data
         run: |
-          python -m nltk.downloader -d $HOME/nltk_data punkt averaged_perceptron_tagger stopwords
+          python -m nltk.downloader -d "$HOME/nltk_data" punkt averaged_perceptron_tagger stopwords
 
       - name: Run Python Tests under Runner
         run: |
