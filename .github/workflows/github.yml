@@ -79,4 +79,5 @@ jobs:
       - name: Run Python Tests under Docker
         run: |
           ## TODO???: put repo under /mnt/local-mezcla and installed version under /home/mezcla
+          # note: no --env-file used (unlike act.yml)
           docker run --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev
