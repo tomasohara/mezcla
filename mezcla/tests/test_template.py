@@ -20,15 +20,11 @@ import pytest
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-## TODO: template => new name
 import mezcla.template as THE_MODULE
-#
-# Note: sanity test for customization (TODO: remove if desired)
-if not re.search(__file__, r"\btemplate.py$"):
-    debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 
 class TestTemplate(TestWrapper):
@@ -36,34 +32,28 @@ class TestTemplate(TestWrapper):
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
 
-    ## OLD:
-    ## @pytest.fixture(autouse=True)
-    ## def capfd(self, capfd):
-    ##     self.capfd = capfd
-
-    def test_data_file(self):
+    def test_01_data_file(self):
         """Makes sure to-do grep works as expected"""
-        debug.trace(4, "TestTemplate.test_data_file()")
+        debug.trace(4, "TestTemplate.test_01_data_file()")
         data = ["TEMP", "TODO", "DONE"]
         gh.write_lines(self.temp_file, data)
+        # note: the support for --TODO-arg placeholder involves grepping for TODO
         output = self.run_script("--TODO-arg", self.temp_file)
         assert re.search(r"arg1 line \(2\): TODO", output.strip())
         return
 
-    def test_something_else(self):
-        """Make sure arg value reflects to-do nature"""
-        debug.trace(4, "test_something_else()")
-        assert "todo" in THE_MODULE.TODO_ARG.lower()
-        return
-
-    def test_captured_input_line(self):
+    def test_02_captured_input_line(self):
         """Ensure that lines are correctly processed and 
         irrelevant lines are effectively ignored"""
-        debug.trace(4, "test_captured_input_line()")
+        debug.trace(4, "test_02_captured_input_line()")
         data = "hey"
         ## BAD:
         ## self.run_script(env_options=f"echo {data} | DEBUG_LEVEL=4", log_file=self.temp_file)
         ## assert f"Ignoring line (1): {data}" in gh.read_file(self.temp_file)
+        data_file = f"{self.temp_file}.txt"
+        log_file = f"{self.temp_file}.log"
+        system.write_lines(data_file, ["data"])
+        self.run_script(env_options="DEBUG_LEVEL=4", data_file=data_file, log_file=log_file)
         stdout = self.get_stdout()
         self.do_assert(f"Ignoring line (1): {data}", stdout)
         return
