@@ -278,11 +278,11 @@ def tokenize_and_tag(text):
     text = tpo.ensure_unicode(text)
     text_taggings = []
     for sentence in split_sentences(text):
-        tpo.debug_print("sentence: %s" % sentence.strip(), 3)
+        tpo.debug_print("sentence: %s" % sentence.strip(), 4)
         tokens = split_word_tokens(sentence)
-        tpo.debug_print("tokens: %s" % tokens, 3)
+        tpo.debug_print("tokens: %s" % tokens, 4)
         taggings = tag_part_of_speech(tokens)
-        tpo.debug_print("taggings: %s" % taggings, 3)
+        tpo.debug_print("taggings: %s" % taggings, 4)
         text_taggings += taggings
     return text_taggings
 
@@ -292,7 +292,7 @@ def tokenize_text(text):
     tokenized_lines = []
     for sentence in split_sentences(text):
         sent_tokens = split_word_tokens(sentence)
-        tpo.debug_print("sent_tokens: %s" % sent_tokens, 3)
+        tpo.debug_print("sent_tokens: %s" % sent_tokens, 4)
         tokenized_lines.append(sent_tokens)
     return tokenized_lines
 
@@ -644,6 +644,7 @@ def main():
         # Input the entire text from the file (or stdin if - specified)
         filename = sys.argv[i]
         input_handle = system.open_file(filename) if (filename != "-") else sys.stdin
+        debug.trace_expr(5, filename, input_handle)
 
         # Analyze the text
         while True:
