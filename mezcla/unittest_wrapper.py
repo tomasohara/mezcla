@@ -310,6 +310,7 @@ class TestWrapper(unittest.TestCase):
         amp_spec = "&" if background else ""
 
         # Run the command
+        ## TODO3: allow for stdin_command (e.g., "echo hey" | ...)
         gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path}  {post} 1> {out} 2> {log} {amp_spec}",
                  env=env_options, cov_spec=coverage_spec, module=script_module,
                  opts=options, path=data_path, out=out_file, log=log_file, post=post_options, amp_spec=amp_spec)
