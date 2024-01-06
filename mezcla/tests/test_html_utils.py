@@ -29,12 +29,8 @@ from mezcla import glue_helpers as gh
 #    THE_MODULE:	    global module object
 ## TODO: template => new name
 import mezcla.html_utils as THE_MODULE
-#
-# Note: sanity test for customization (TODO: remove if desired)
-if not re.search(__file__, r"\btemplate.py$"):
-    debug.assertion("mezcla.template" not in str(THE_MODULE))
 
-# 
+# Environment options
 TEST_SELENIUM = system.getenv_bool("TEST_SELENIUM", False,
                                    "Include tests requiring selenium")
 

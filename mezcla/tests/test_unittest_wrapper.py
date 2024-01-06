@@ -24,10 +24,6 @@ from mezcla.my_regex import my_re
 #    THE_MODULE:                  global module object
 #    TestTemplate.script_module:  path to file
 import mezcla.unittest_wrapper as THE_MODULE
-#
-# Note: sanity test for customization (TODO: remove if desired)
-if not my_re.search(__file__, r"\btemplate.py$"):
-    debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 
 ## TODO (use TestWrapper directly):

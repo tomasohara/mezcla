@@ -41,12 +41,8 @@ from mezcla import system
 #    THE_MODULE:                  global module object
 #    TestTemplate.script_module:  path to file
 import mezcla.convert_emoticons as THE_MODULE
-#
-# Note: sanity test for customization (TODO: remove if desired)
-if not my_re.search(__file__, r"\btemplate.py$"):
-    debug.assertion("mezcla.template" not in str(THE_MODULE))
 
-
+# Constants
 D = system.path_separator()
 
 class TestIt(TestWrapper):

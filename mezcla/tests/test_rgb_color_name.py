@@ -26,26 +26,11 @@ from mezcla import glue_helpers as gh
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.rgb_color_name as THE_MODULE
-#
-# Note: sanity test for customization (TODO: remove if desired)
-if not re.search(__file__, r"\btemplate.py$"):
-    debug.assertion("mezcla.template" not in str(THE_MODULE))
-
-## TODO:
-## # Environment options
-## # Note: These are just intended for internal options, not for end users.
-## # It also allows for enabling options in one place.
-## #
-## FUBAR = system.getenv_bool("FUBAR", False,
-##                            description="Fouled Up Beyond All Recognition processing")
-
 
 class TestRgbColorName(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
-    # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
-    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
     def test_data_file(self):
         """Makes sure colors annotated as expected"""
