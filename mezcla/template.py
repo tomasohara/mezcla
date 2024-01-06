@@ -139,7 +139,7 @@ def main():
         ## -or-: # Disable inference of --help argument
         ## auto_help=False,
         ## TODO: specify options and (required) arguments
-        boolean_options=[(TODO_ARG, "TODO-desc")],
+        boolean_options=[(TODO_ARG, "TODO-desc--currently greps for TODO")],
         ## TODO
         ## Note: FILENAME is default argument unless skip_input
         ## positional_arguments=[ALT_FILENAME], 
