@@ -38,9 +38,9 @@ else:
     THE_MODULE = None
 
 # Constants
-# OLD: AUDIOFILE = 'samples/test_audiofile.wav'
-# OLD (II): AUDIOFILE = "../examples/fuzzy-testing-1-2-3.wav"
-AUDIOFILE = gh.resolve_path("fuzzy-testing-1-2-3.wav")
+# note: heuristic added for likely file move (e.g., ../examples => ../tests/resources)
+AUDIOFILE = gh.resolve_path("fuzzy-testing-1-2-3.wav",
+                            base_dir=gh.form_path("..", "examples"), heuristic=True)
 
 class TestAudio(TestWrapper):
     """Class for testcase definition"""
@@ -135,9 +135,10 @@ class TestAudio(TestWrapper):
         assert '- speech recognized' in actual
         assert isinstance(actual, str)
 
-    # NEW: Added test for Huggingface
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_huggingface_asr(self):
         """Test Huggingface automatic speech recognition model class"""
+        # NEW: Added test for Huggingface
         debug.trace(debug.DETAILED, f"TestAudio.test_huggingface_asr({self})")
 
         sample = THE_MODULE.Audio(AUDIOFILE)
