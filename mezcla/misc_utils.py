@@ -400,6 +400,20 @@ def time_function(func, *args, **kwargs):
     return ms
 
 
+def get_class_from_name(class_name, module_name=None):
+    """Return class with CLASS_NAME
+    Optionally specifies MODULE_NAME containing the class, if not __name__
+    """
+    # EX: "noun_phrases" in dir(get_class_from_name("TextProc", module_name="mezcla.text_processing"))
+    # EX: not  get_class_from_name("TextProc")
+    # See https://stackoverflow.com/questions/1176136/convert-string-to-python-class-object
+    if module_name is None:
+        module_name = __name__
+    class_object = getattr(sys.modules[module_name], class_name, None)
+    debug.trace(6, f"get_class_from_name({class_name}, [{module_name}])) => {class_object}")
+    return class_object
+
+
 def init():
     """MOdule initialization"""
     if RANDOM_SEED:

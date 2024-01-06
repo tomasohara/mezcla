@@ -670,6 +670,7 @@ def rename_file(source, target):
     # TODO: have option to skip if target exists
     debug_print("rename_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
     debug.assertion(non_empty_file(source))
+    debug.assertion(source != target)
     os.rename(source, target)
     debug.assertion(non_empty_file(target))
     return

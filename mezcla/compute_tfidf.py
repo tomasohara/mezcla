@@ -214,7 +214,7 @@ def main():
 
     # Initialize Tf-IDF module
     debug.assertion(not re.search(r"^en(_\w+)?$", LANGUAGE, re.IGNORECASE))
-    # Note: disables stemming
+    # Note: disables stemming via no-op lambda by default
     stemmer_fn = None if INCLUDE_STEMMING else (lambda x: x)
     my_pp = tfidf_preprocessor(language=LANGUAGE, gramsize=max_ngram_size, min_ngram_size=MIN_NGRAM_SIZE, all_ngrams=False, stemmer=stemmer_fn)
     corpus = tfidf_corpus(gramsize=max_ngram_size, min_ngram_size=MIN_NGRAM_SIZE, all_ngrams=False, preprocessor=my_pp)

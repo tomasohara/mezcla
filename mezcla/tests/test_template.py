@@ -36,9 +36,10 @@ class TestTemplate(TestWrapper):
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
 
-    @pytest.fixture(autouse=True)
-    def capfd(self, capfd):
-        self.capfd = capfd
+    ## OLD:
+    ## @pytest.fixture(autouse=True)
+    ## def capfd(self, capfd):
+    ##     self.capfd = capfd
 
     def test_data_file(self):
         """Makes sure to-do grep works as expected"""
@@ -60,8 +61,11 @@ class TestTemplate(TestWrapper):
         irrelevant lines are effectively ignored"""
         debug.trace(4, "test_captured_input_line()")
         data = "hey"
-        self.run_script(env_options=f"echo {data} | DEBUG_LEVEL=4", log_file=self.temp_file)
-        assert f"Ignoring line (1): {data}" in gh.read_file(self.temp_file)
+        ## BAD:
+        ## self.run_script(env_options=f"echo {data} | DEBUG_LEVEL=4", log_file=self.temp_file)
+        ## assert f"Ignoring line (1): {data}" in gh.read_file(self.temp_file)
+        stdout = self.get_stdout()
+        self.do_assert(f"Ignoring line (1): {data}", stdout)
         return
 
 #------------------------------------------------------------------------

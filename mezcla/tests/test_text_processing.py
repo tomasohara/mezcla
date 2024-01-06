@@ -20,11 +20,12 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla import system
+from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.text_processing as THE_MODULE
-from mezcla.unittest_wrapper import TestWrapper
 
 # Constants
 RESOURCES = f'{gh.dir_path(__file__)}/resources'
@@ -165,7 +166,7 @@ class TestTextProcessing:
 class TestTextProcessingScript(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module =TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_all(self):
         """Ensure text_processing without argument works as expected"""
@@ -183,6 +184,25 @@ class TestTextProcessingScript(TestWrapper):
         debug.trace(4, "test_make_lowercase()")
         ## TODO: WORK-IN-PROGRESS
 
+
+class TestTextProc(TestWrapper):
+    """Test TextProc classes"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    ## DEBUG: @trap_exception            # TODO: remove when debugged
+    def test_chunk_noun_phrases(self):
+        """Make sure sentences split into NPs properly"""
+        sentence = "The cat is on the mat by the door"
+        expected = ["The cat", "the mat", "the door"]
+        min_overlap = 2
+        stp = THE_MODULE.SpacyTextProc()
+        stp_nps = stp.noun_phrases(sentence)
+        self.do_assert(len(system.intersection(stp_nps, expected)) >= min_overlap)
+        ftp = THE_MODULE.FlairTextProc()
+        ftp_nps = ftp.noun_phrases(sentence)
+        self.do_assert(len(system.intersection(stp_nps, ftp_nps)) >= min_overlap)
+    
 
 if __name__ == '__main__':
     debug.trace_current_context()
