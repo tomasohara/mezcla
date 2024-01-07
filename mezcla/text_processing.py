@@ -85,7 +85,7 @@ from mezcla import debug
 spacy_nlp = None
 from mezcla import system
 from mezcla import glue_helpers as gh
-from mezcla import tpo_common as tpo
+## OLD: from mezcla import tpo_common as tpo
 
 # Constants
 TL = debug.TL
@@ -96,29 +96,29 @@ TL = debug.TL
 # Object for spell checking via enchant
 speller = None
 word_freq_hash = None
-WORD_FREQ_FILE = tpo.getenv_text("WORD_FREQ_FILE", "word.freq")
+WORD_FREQ_FILE = system.getenv_text("WORD_FREQ_FILE", "word.freq")
 
 # Hash for returning most common part of speech for a word (or token)
 word_POS_hash = None
-WORD_POS_FREQ_FILE = tpo.getenv_text("WORD_POS_FREQ_FILE", "word-POS.freq")
+WORD_POS_FREQ_FILE = system.getenv_text("WORD_POS_FREQ_FILE", "word-POS.freq")
 
 # Misc. options
-LINE_MODE = tpo.getenv_boolean("LINE_MODE", False, "Process text line by line (not all all once)")
-JUST_TAGS = tpo.getenv_boolean("JUST_TAGS", False, "Just show part of speech tags (not word/POS pair)")
-OUTPUT_DELIM = tpo.getenv_text("OUTPUT_DELIM", " ", "Delimiter (separator) for output lists")
-INCLUDE_MISSPELLINGS = tpo.getenv_boolean("INCLUDE_MISSPELLINGS", False, "Include spell checking")
-SKIP_MISSPELLINGS = tpo.getenv_boolean("SKIP_MISSPELLINGS", not INCLUDE_MISSPELLINGS, "Skip spell checking")
+LINE_MODE = system.getenv_boolean("LINE_MODE", False, "Process text line by line (not all all once)")
+JUST_TAGS = system.getenv_boolean("JUST_TAGS", False, "Just show part of speech tags (not word/POS pair)")
+OUTPUT_DELIM = system.getenv_text("OUTPUT_DELIM", " ", "Delimiter (separator) for output lists")
+INCLUDE_MISSPELLINGS = system.getenv_boolean("INCLUDE_MISSPELLINGS", False, "Include spell checking")
+SKIP_MISSPELLINGS = system.getenv_boolean("SKIP_MISSPELLINGS", not INCLUDE_MISSPELLINGS, "Skip spell checking")
 SHOW_MISSPELLINGS = not SKIP_MISSPELLINGS
-USE_CLASS_TAGS = tpo.getenv_boolean("USE_CLASS_TAGS", False, "Use class-based tags (e.g., Noun for NNP)")
+USE_CLASS_TAGS = system.getenv_boolean("USE_CLASS_TAGS", False, "Use class-based tags (e.g., Noun for NNP)")
 SKIP_CLASS_TAGS = not USE_CLASS_TAGS
-KEEP_PUNCT = tpo.getenv_boolean("KEEP_PUNCT", False, "Use punctuation symbol as part-of-speech label")
-TERSE_OUTPUT = tpo.getenv_boolean("TERSE_OUTPUT", JUST_TAGS, "Terse output mode")
+KEEP_PUNCT = system.getenv_boolean("KEEP_PUNCT", False, "Use punctuation symbol as part-of-speech label")
+TERSE_OUTPUT = system.getenv_boolean("TERSE_OUTPUT", JUST_TAGS, "Terse output mode")
 VERBOSE = not TERSE_OUTPUT
 
 # Skip use of NLTK and/or ENCHANT packages (using simple versions of functions)
 # TODO: make misspellings optional (add --classic mode???)
-SKIP_NLTK = tpo.getenv_boolean("SKIP_NLTK", False, "Omit usage of Natural Language Toolkit (NLTK)")
-SKIP_ENCHANT = tpo.getenv_boolean("SKIP_ENCHANT", SKIP_MISSPELLINGS, "Omit usage of Enchant package for spell checking")
+SKIP_NLTK = system.getenv_boolean("SKIP_NLTK", False, "Omit usage of Natural Language Toolkit (NLTK)")
+SKIP_ENCHANT = system.getenv_boolean("SKIP_ENCHANT", SKIP_MISSPELLINGS, "Omit usage of Enchant package for spell checking")
 DOWNLOAD_DATA = system.getenv_bool("DOWNLOAD_DATA", False,
                                    "Download data from NLTK")
 FLAIR_MODEL = system.getenv_text(
@@ -178,14 +178,14 @@ def split_word_tokens(text, omit_punct=False):
     """Splits TEXT into word tokens (i.e., words, punctuation, etc.) Note: run split_sentences first (e.g., to allow for proper handling of periods).
     By default, this uses NLTK's PunktSentenceTokenizer."""
     # EX: split_word_tokens("How now, brown cow?") => ['How', 'now', ',', 'brown', 'cow', '?']
-    tpo.debug_print("split_word_tokens(%s); type=%s" % (text, type(text)), 7)
+    debug.trace(7, "split_word_tokens(%s); type=%s" % (text, type(text)))
     if SKIP_NLTK:
         tokens = [t.strip() for t in re.split(r"(\W+)", text) if (len(t.strip()) > 0)]
     else:
         tokens = nltk.word_tokenize(text)
     if omit_punct:
         tokens = [t for t in tokens if not is_punct(t)]
-    tpo.debug_print("tokens: %s" % [(t, type(t)) for t in tokens], 7)
+    debug.trace(7, "tokens: %s" % [(t, type(t)) for t in tokens])
     return tokens
 
 
@@ -194,7 +194,7 @@ def label_for_tag(POS, word=None):
     label = POS
     if KEEP_PUNCT and word and re.match(r"\W", word[0]):
         label = word
-        tpo.debug_format("label_for_tag({t}, {w}) => {l}", 5, t=POS, w=word, l=label)
+        debug.trace_fmtd(5, "label_for_tag({t}, {w}) => {l}", t=POS, w=word, l=label)
     return label
 
 
@@ -248,7 +248,7 @@ def class_for_tag(POS, word=None, previous=None):
         tag_class = "pronoun"
     else:
         tag_class = fallback_POS_class.get(POS, tag_class)
-    tpo.debug_format("class_for_tag({t}, {p}) => {c}", 5, t=POS, p=previous, c=tag_class)
+    debug.trace_fmtd(5, "class_for_tag({t}, {p}) => {c}", t=POS, p=previous, c=tag_class)
     return tag_class
 
 
@@ -261,28 +261,28 @@ def tag_part_of_speech(tokens):
         part_of_speech_taggings = []
         previous = None
         raw_part_of_speech_taggings = nltk.pos_tag(tokens)
-        tpo.debug_print("raw tags: %s" % [t for (_w, t) in raw_part_of_speech_taggings], 3)
+        debug.trace(3, "raw tags: %s" % [t for (_w, t) in raw_part_of_speech_taggings])
         for (word, POS) in raw_part_of_speech_taggings:
             tag = label_for_tag(POS, word) if SKIP_CLASS_TAGS else class_for_tag(POS, word, previous)
             part_of_speech_taggings.append((word, tag))
             previous = POS
-    tpo.debug_format("tag_part_of_speech({tokens}) => {tags}", 6, 
-                     tokens=tokens, tags=part_of_speech_taggings)
+    debug.trace_fmt(6, "tag_part_of_speech({tokens}) => {tags}", 
+                    tokens=tokens, tags=part_of_speech_taggings)
     return part_of_speech_taggings
 
 
 def tokenize_and_tag(text):
     """Run sentence(s) and word tokenization over text and then part-of-speech tag it"""
     # TODO: return one list per sentence not just one combined list
-    tpo.debug_print("tokenize_and_tag(%s)" % text, 7)
-    text = tpo.ensure_unicode(text)
+    debug.trace(7, "tokenize_and_tag(%s)" % text)
+    ## OLD: text = tpo.ensure_unicode(text)
     text_taggings = []
     for sentence in split_sentences(text):
-        tpo.debug_print("sentence: %s" % sentence.strip(), 4)
+        debug.trace(4, "sentence: %s" % sentence.strip())
         tokens = split_word_tokens(sentence)
-        tpo.debug_print("tokens: %s" % tokens, 4)
+        debug.trace(4, "tokens: %s" % tokens)
         taggings = tag_part_of_speech(tokens)
-        tpo.debug_print("taggings: %s" % taggings, 4)
+        debug.trace(4, "taggings: %s" % taggings)
         text_taggings += taggings
     return text_taggings
 
@@ -292,12 +292,12 @@ def tokenize_text(text):
     tokenized_lines = []
     for sentence in split_sentences(text):
         sent_tokens = split_word_tokens(sentence)
-        tpo.debug_print("sent_tokens: %s" % sent_tokens, 4)
+        debug.trace(4, "sent_tokens: %s" % sent_tokens)
         tokenized_lines.append(sent_tokens)
     return tokenized_lines
 
 
-@tpo.memodict
+@system.memodict
 def is_stopword(word):
     """Indicates whether WORD should generally be excluded from analysis (e.g., function word)"""
     # note: Intended as a quick filter for excluding non-content words.
@@ -307,11 +307,11 @@ def is_stopword(word):
             stopwords = ['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', 'should', 'now']
         else:
             stopwords = nltk.corpus.stopwords.words('english')
-        tpo.debug_print("stopwords: %s" % stopwords, 4)
+        debug.trace(4, "stopwords: %s" % stopwords)
     return (word.lower() in stopwords)
 
 
-@tpo.memodict
+@system.memodict
 def has_spelling_mistake(term):
     """Indicates whether TERM represents a spelling mistake"""
     # TODO: rework in terms of a class-based interface
@@ -330,7 +330,7 @@ def has_spelling_mistake(term):
                 speller = enchant.Dict("en_US")
             has_mistake = not speller.check(term)
     except:
-        tpo.debug_print("Warning: exception during spell checking of '%s': %s" % (term, str(sys.exc_info())))
+        system.print_exception_info(f"spell checking of {term}")
     return has_mistake
 
 
@@ -343,7 +343,7 @@ def read_freq_data(filename):
     #   is  99390
     #   and 95920
     #   a   76679
-    tpo.debug_print("read_freq_data(%s)" % filename, 3)
+    debug.trace(3, "read_freq_data(%s)" % filename)
     freq_hash = {}
 
     # Process each line of the file
@@ -359,7 +359,7 @@ def read_freq_data(filename):
         # Extract the four fields and warn if not defined
         fields = line.split("\t")
         if (len(fields) != 2):
-            tpo.debug_print("Ignoring line %d of %s: %s" % (line_num, filename, line), 3)
+            debug.trace(3, "Ignoring line %d of %s: %s" % (line_num, filename, line))
             continue
         (key, freq) = fields
         key = key.strip().lower()
@@ -368,8 +368,8 @@ def read_freq_data(filename):
         if key not in freq_hash:
             freq_hash[key] = freq
         else:
-            tpo.debug_print("Ignoring alternative freq for key %s: %s (using %s)" 
-                        % (key, freq, freq_hash[key]), 6)
+            debug.trace(6, "Ignoring alternative freq for key %s: %s (using %s)" 
+                        % (key, freq, freq_hash[key]))
         
     return (freq_hash)
 
@@ -384,7 +384,7 @@ def read_word_POS_data(filename):
     #   .           .       372550
     #   the         DT      158317
     #   to          TO      122189
-    tpo.debug_print("read_word_POS_freq(%s)" % filename, 3)
+    debug.trace(3, "read_word_POS_freq(%s)" % filename)
     global word_POS_hash
     word_POS_hash = {}
 
@@ -401,7 +401,7 @@ def read_word_POS_data(filename):
         # Extract the four fields and warn if not defined
         fields = line.split("\t")
         if (len(fields) != 3):
-            tpo.debug_print("Ignoring line %d of %s: %s" % (line_num, filename, line), 3)
+            debug.trace(3, "Ignoring line %d of %s: %s" % (line_num, filename, line))
             continue
         (word, POS, _freq) = fields
         word = word.strip().lower()
@@ -410,8 +410,8 @@ def read_word_POS_data(filename):
         if word not in word_POS_hash:
             word_POS_hash[word] = POS
         else:
-            tpo.debug_print("Ignoring alternative POS for word %s: %s (using %s)" 
-                        % (word, POS, word_POS_hash[word]), 6)
+            debug.trace(6, "Ignoring alternative POS for word %s: %s (using %s)" 
+                            % (word, POS, word_POS_hash[word]))
         
     return (word_POS_hash)
 
@@ -604,7 +604,7 @@ Notes:
 - Set SKIP_NLTK environment variable to 1 to disable NLTK usage.
 """
     # TODO: __file__ => sys.argv[1]???
-    tpo.print_stderr(usage_note.replace("_SCRIPT_", __file__))
+    system.print_stderr(usage_note.replace("_SCRIPT_", __file__))
     return
 
 def main():
@@ -614,7 +614,7 @@ def main():
     Note: Used to avoid conflicts with globals (e.g., if this were done at end of script).
     """
     # Initialize
-    tpo.debug_print("main(): sys.argv=%s" % sys.argv, 4)
+    debug.trace(4, "main(): sys.argv=%s" % sys.argv)
 
     # Show usage statement if no arguments or if --help specified
     just_tokenize = False
@@ -632,7 +632,7 @@ def main():
         elif sys.argv[arg_num] == "-":
             break
         else:
-            tpo.print_stderr("Invalid argument: %s" % sys.argv[arg_num])
+            system.print_stderr("Invalid argument: %s" % sys.argv[arg_num])
             show_usage = True
         arg_num += 1
     if (show_usage):
@@ -694,7 +694,7 @@ def main():
                     print("")
 
     # Cleanup
-    tpo.debug_print("stop %s: %s" % (__file__, tpo.debug_timestamp()), 3)
+    debug.trace(4, "stop %s: %s" % (__file__, debug.timestamp()))
     return
 
 #------------------------------------------------------------------------
