@@ -1289,6 +1289,33 @@ def get_args():
     debug.trace_fmtd(6, "get_args() => {r}", r=result)
     return result
 
+#-------------------------------------------------------------------------------
+# Memomization support (i.e., functiona result caching), based on 
+#     See http://code.activestate.com/recipes/578231-probably-the-fastest-memoization-decorator-in-the-. [world!]
+# This is implemented transparently via Python decorators. See
+#     http://stackoverflow.com/questions/739654/understanding-python-decorators
+#
+# usage example:
+#
+#    @memodict
+#    def fubar(word):
+#        result = ...
+#        return result
+#
+
+def memodict(f):
+    """Memoization decorator for a function taking a single argument"""
+    class _memodict(dict):
+        """Internal class for implementing memoization"""
+        #
+        def __missing__(self, key):
+            """Invokes function to produce value if arg not in hash"""
+            ret = self[key] = f(key)
+            return ret
+    #
+    return _memodict().__getitem__
+
+#-------------------------------------------------------------------------------
 
 def init():
     """Performs module initilization"""
