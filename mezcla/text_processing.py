@@ -551,7 +551,7 @@ class FlairTextProc(TextProc):
     
     def noun_phrases(self, text):
         # Based on https://huggingface.co/flair/chunk-english-fast
-        sentence = flair.Sentence(text)
+        sentence = flair.data.Sentence(text)
         self.tagger.predict(sentence)
         noun_phrases = [phr.text for phr in sentence.get_spans()  if (phr.tag == "NP")]
         debug.trace(6, f"noun_phrases({text!r}) => {noun_phrases!r}")
