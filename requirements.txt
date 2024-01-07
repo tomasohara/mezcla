@@ -16,7 +16,7 @@
 # - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
 #
 # Installation:
-# - python -m nltk.downloader punkt averaged_perceptron_tagger
+# - python -m nltk.downloader punkt averaged_perceptron_tagger stopwords
 #
 # TODO:
 # - check absl module ($ grep -r "absl" .)
@@ -32,9 +32,13 @@ cachetools
 cherrypy
 diskcache
 extcolors>=1.0.0
+flair
 flask
 git+https://github.com/tehabstract/textract.git
-gradio
+gradio              # NEW: For audio.py (huggingface)
+## OPTIONAL: kenlm               # NEW: For audio.py (huggingface)
+## OPTIONAL: ibm-watson          # NEW: For audio.py (ibm-watson)
+librosa>=0.10.0           
 lxml
 mako
 matplotlib
@@ -43,6 +47,7 @@ nltk
 numpy>=1.18.5
 pandas>=1.3.0
 pyaml
+pyctcdecode         # NEW: For audio.py (huggingface)
 pyenchant
 pysbd
 pytest
@@ -87,11 +92,25 @@ xgboost
 #opt# ipython
 #opt# jupyter
 #opt# librosa
+#opt# pocketsphinx
 #opt# pylint
 #opt# pyyaml
 #opt# scispacy
 #opt# selenium
-#opt# spacy>=3.0.0
+#
+## OLD: #opt# spacy>=3.0.0
+## TODO:
+## note: See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.7.0
+spacy==3.7.0
+en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.0/en_core_web_md-3.7.0.tar.gz
+#
+## See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.2.0
+## OLD
+## spacy==3.2.6
+## en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.2.0/en_core_web_md-3.2.0.tar.gz
+## typing_extensions==4.7.0
+#
+#opt# textract
 #opt# vaderSentiment
 #...............................................................................
 # "Fully optional" requirements
@@ -105,3 +124,4 @@ xgboost
 #full# sacremoses
 #full# tensorflow
 #full# tensorflow_hub
+#full# tensorrt

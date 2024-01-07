@@ -111,7 +111,7 @@ RUN if [ "$(which nltk)" == "" ]; then                                          
 ## COPY . $WORKDIR/mezcla
 
 # Download the NLTK required data
-RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perceptron_tagger
+RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perceptron_tagger stopwords
 
 # Install required tools and libraries (TODO: why lsb-release?)
 # Note: cleans the apt-get cache

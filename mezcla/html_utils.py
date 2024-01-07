@@ -58,6 +58,7 @@ import sys
 import time
 import urllib
 from urllib.error import HTTPError, URLError
+from typing import Dict
 
 # Installed packages
 # Note: selenium import now optional; BeautifulSoup also optional
@@ -82,7 +83,7 @@ POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("POST_DOWNLOAD_SLEEP_SECONDS
                                                     "Courtesy delay after URL access--prior to download")
 SKIP_BROWSER_CACHE = system.getenv_boolean("SKIP_BROWSER_CACHE", False,
                                            "Don't use cached webdriver browsers")
-USE_BROWSER_CACHE = (not SKIP_BROWSER_CACHE)
+USE_BROWSER_CACHE = not SKIP_BROWSER_CACHE
 DOWNLOAD_VIA_URLLIB = system.getenv_bool("DOWNLOAD_VIA_URLLIB", False,
                                          "Use old-style download via urllib instead of requests")
 DOWNLOAD_VIA_REQUESTS = (not DOWNLOAD_VIA_URLLIB)
@@ -92,13 +93,15 @@ HEADLESS_WEBDRIVER = system.getenv_bool("HEADLESS_WEBDRIVER", True,
                                         "Whether Selenium webdriver is hidden")
 STABLE_DOWNLOAD_CHECK = system.getenv_bool("STABLE_DOWNLOAD_CHECK", False,
                                            "Wait until download size stablizes--for dynamic content")
+EXCLUDE_IMPORTS = system.getenv_bool("EXCLUDE_IMPORTS", False,
+                                     "Sets --follow-imports=silent; no import files are checked")
 HEADERS = "headers"
 FILENAME = "filename"
 
 # Globals
 # note: for convenience in Mako template code
-user_parameters = {}
-issued_param_dict_warning = False
+user_parameters:Dict[str, str] = {}
+issued_param_dict_warning:bool = False
 
 # Placeholders for dynamically loaded modules
 BeautifulSoup = None
@@ -106,7 +109,7 @@ BeautifulSoup = None
 #-------------------------------------------------------------------------------
 # HTML utility functions
 
-browser_cache = {}
+browser_cache:Dict[str, str] = {}
 ##
 def get_browser(url):
     """Get existing browser for URL or create new one
@@ -116,7 +119,8 @@ def get_browser(url):
     """
     browser = None
     global browser_cache
-    debug.assertion(USE_BROWSER_CACHE, "Note: Browser automation without cache not well tested!")
+    debug.assertion(USE_BROWSER_CACHE, 
+                    "Note: Browser automation without cache not well tested!")
 
     # Check for cached version of browser. If none, create one and access page.
     browser = browser_cache.get(url) if USE_BROWSER_CACHE else None
@@ -150,7 +154,7 @@ def get_browser(url):
     return browser
 
 
-def get_inner_html(url):
+def get_inner_html(url:str):
     """Return the fully-rendered version of the URL HTML source (e.g., after JavaScript DOM manipulation)
     Note:
     - requires selenium webdriver (browser specific)
@@ -166,7 +170,7 @@ def get_inner_html(url):
         wait_until_ready(url)
         # Extract fully-rendered HTML
         ## OLD: inner_html = browser.execute_script("return document.body.innerHTML")
-        inner_html = browser.page_source
+        inner_html:str = browser.page_source
     except:
         inner_html = ""
         system.print_exception_info("get_inner_html")
@@ -174,7 +178,7 @@ def get_inner_html(url):
     return inner_html
 
 
-def get_inner_text(url):
+def get_inner_text(url:str):
     """Get text of URL (i.e., without HTML tags) after JavaScript processing (via selenium)"""
     debug.trace_fmt(5, "get_inner_text({u})", u=url)
     # See https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText
@@ -184,25 +188,25 @@ def get_inner_text(url):
         # Wait for Javascript to finish processing
         wait_until_ready(url)
         # Extract fully-rendered text
-        inner_text = browser.execute_script("return document.body.innerText")
+        inner_text:str = browser.execute_script("return document.body.innerText")
     except:
         system.print_exception_info("get_inner_text")
     debug.trace_fmt(7, "get_inner_text({u}) => {it}", u=url, it=inner_text)
     return inner_text
 
 
-def document_ready(url):
+def document_ready(url:str):
     """Determine whether document for URL has completed loading (via selenium)"""
     # See https://developer.mozilla.org/en-US/docs/Web/API/Document/readyState
     browser = get_browser(url)
     ready_state = browser.execute_script("return document.readyState")
-    is_ready = (ready_state == "complete")
+    is_ready:bool = (ready_state == "complete")
     debug.trace_fmt(6, "document_ready({u}) => {r}; state={s}",
                     u=url, r=is_ready, s=ready_state)
     return is_ready
 
 
-def wait_until_ready(url, stable_download_check=STABLE_DOWNLOAD_CHECK):
+def wait_until_ready(url:str, stable_download_check:bool=STABLE_DOWNLOAD_CHECK):
     """Wait for document_ready (q.v.) and pause to allow loading to finish (via selenium)
     Note: If STABLE_DOWNLOAD_CHECK, the wait incoporates check for download size differences"""
     # TODO: make sure the sleep is proper way to pause
@@ -423,6 +427,7 @@ def expand_misc_param(misc_dict, param_name, param_dict=None):
 
 def _read_file(filename, as_binary):
     """Wrapper around read_entire_file or read_binary_file if AS_BINARY"""
+    ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_read_file({filename}, {as_binary})")
     read_fn = system.read_binary_file if as_binary else system.read_entire_file
     return read_fn(filename)
@@ -430,6 +435,7 @@ def _read_file(filename, as_binary):
 
 def _write_file(filename, data, as_binary):
     """Wrapper around write_file or write_binary_file if AS_BINARY"""
+    ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_write_file({filename}, _, {as_binary})")
     write_fn = system.write_binary_file if as_binary else system.write_file
     return write_fn(filename, data)
@@ -769,7 +775,7 @@ def format_input_field(param_name, label=None, skip_capitalize=None, default_val
             len_spec += f" maxlength={max_len}"
         if size:
             len_spec += f" size={size}"
-        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}"{style_spec} {len_spec} {disabled_spec} {misc_spec}>'
+        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {len_spec} {disabled_spec} {misc_spec}>'
     result += "</label>"
         
     debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
@@ -920,37 +926,64 @@ def extract_html_images(document_data=None, url=None, filename=None):
 
 def main(args):
     """Supporting code for command-line processing"""
+    ## NOTE: This is work-in-progress from a debug-only utility
     debug.trace_fmtd(6, "main({a})", a=args)
     ## OLD:
     ## user = system.getenv_text("USER")
     ## system.print_stderr("Warning, {u}: this is not intended for direct invocation".format(u=user))
 
-    # HACK: Strip --help to show usage
-    if (args[1:] == ["--help"]):
-        args = args[0]
+    # Parse command line arguments
+    # TODO2: use master.Main for arg parsing
+    skip_inner = False
+    show_usage = False
+    use_stdout = False
+    quiet = False
+    filename = None
+    for i, arg in enumerate(args[1:]):
+        if (arg == "--help"):
+            show_usage = True
+        elif (arg == "--regular"):
+            skip_inner = True
+        elif (arg == "--inner"):
+            pass
+        elif (arg == "--stdout"):
+            use_stdout = True
+        elif (arg == "--quiet"):
+            quiet = True
+        elif (not arg.startswith("-")):
+            filename = arg
+            break
+        else:
+            system.print_stderr(f"Error: unknown argument: {arg}")
+            show_usage = True
+            break
+        i += 1
 
     # HACK: Convert local html document to text
-    if (len(args) > 1) and (not my_re.search("www|http", args[1])):
-        doc_filename = args[1]
+    if (filename and (not my_re.search("www|http", filename) or skip_inner)):
+        doc_filename = filename
         document_data = system.read_file(doc_filename)
         document_text = html_to_text(document_data)
-        system.write_file(doc_filename + ".list", document_text)
-        print(f"See {doc_filename}.list")
+        if use_stdout:
+            print(document_text)
+        else:
+            system.write_file(doc_filename + ".list", document_text)
+            print(f"See {doc_filename}.list")
     
     # HACK: Do simple test of inner-HTML support
     # TODO: Do simpler test of download_web_document
     # TODO1: add explicit argument for inner-html support
     ## OLD: if (len(args) > 1):
-    elif (len(args) > 1):
+    elif (filename):
         # Get web page text
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
-        url = args[1]
+        url = filename
         debug.trace_expr(6, retrieve_web_document(url))
         html_data = download_web_document(url)
         filename = system.quote_url_text(url)
         if debug.debugging():
             write_temp_file("pre-" + filename, html_data)
-
+        
         # Show inner/outer HTML
         # Note: The browser is hidden unless MOZ_HEADLESS false
         # TODO: Support Chrome
@@ -959,22 +992,37 @@ def main(args):
         system.setenv("MOZ_HEADLESS",
                       str(int(system.getenv_bool("MOZ_HEADLESS", True))))
         rendered_html = get_inner_html(url)
-        if debug.debugging():
-            write_temp_file("post-" + filename, rendered_html)
-        print("Rendered html:")
-        print(system.to_utf8(rendered_html))
+        output_filename = "post-" + filename
+        if (not use_stdout) or debug.debugging():
+            write_temp_file(output_filename, rendered_html)
+        if use_stdout:
+            if not quiet:
+                print("Rendered html:")
+            print(system.to_utf8(rendered_html))            
+        else:
+            print(f"See {output_filename}")
+            
         if debug.debugging():
             rendered_text = get_inner_text(url)
             debug.trace_fmt(5, "type(rendered_text): {t}", t=rendered_text)
             write_temp_file("post-" + filename + ".txt", rendered_text)
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
+    else:
+        show_usage = True
 
     # Not sure what to do
-    else:
+    ## OLD: else:
+    if show_usage:
         ## OLD: print("Specify a URL as argument 1 for a simple test of inner access")
-        print("Usage:")
+        script = gh.basename(__file__)
+        print("Usage: {prog} [--help] [--stdout] [--quiet] [[--regular | --inner] [filename]]")
         print("- Specify a local HTML file to save as text.")
-        print("- Otherwise, specify a URL for a simple test of inner access (n.b., via stdout)")
+        print("- Otherwise, specify a URL for a simple test of inner html access (n.b., via stdout).")
+        print("- Use --regular to bypass default inner processing.")
+        print()
+        print("Examples:")
+        print(f"- {script} --inner --stdout --quiet https://twitter.com/home > twitter-home.html")
+        print(f"- {script} --regular --stdout bootstrap-hello-world.html > bootstrap-hello-world.txt")
     return
 
 if __name__ == '__main__':

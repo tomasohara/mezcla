@@ -315,7 +315,7 @@ class Corpus(object):
         score = document.tf(ngram, tf_weight=tf_weight) * self.idf(norm_ngram, idf_weight=idf_weight)
         if TFIDF_NGRAM_LEN_WEIGHT:
             len_weight = TFIDF_NGRAM_LEN_WEIGHT ** len(ngram.split())
-            debug.trace(BDL + 3, f"Factoring in ngram weight of {len_weight} for {ngram!r}")
+            debug.trace(BDL + 3, f"Factoring in ngram weight of {round(len_weight, 3)} into score {round(score, 3)} for {ngram!r}")
             score *= len_weight
         result = CorpusKeyword(document[ngram], ngram, score)
         debug.trace_fmt(BDL + 2, "tf_idf({ng}, id={id}, text={t} idfw={idfw}, tfw={tfw}, norm={n}) => {r}\n",
@@ -343,7 +343,7 @@ class Corpus(object):
                 self.idf(ngram, idf_weight=idf_weight)
             if TFIDF_NGRAM_LEN_WEIGHT:
                 len_weight = TFIDF_NGRAM_LEN_WEIGHT ** len(ngram.split())
-                debug.trace(6, f"Factoring in ngram weight of {len_weight} for {ngram!r}")
+                debug.trace(BDL + 3, f"Factoring in ngram weight of {round(len_weight, 3)} into score {round(score, 3)} for {ngram!r}")
                 score *= len_weight
             out.append(CorpusKeyword(kw, ngram, score))
         out.sort(key=lambda x: x.score, reverse=True)

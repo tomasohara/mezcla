@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 #
-# spaccy_ner.py: Runs spaCy for a variety of natural lanuage processing (NLP)
+# spacy_ner.py: Runs spaCy for a variety of natural lanuage processing (NLP)
 # tasks.
 #
 # Notes:
 # - This is a generalization of spacy_ner.py, which was just for named entity recognition (NER).
-# - Unforunately spaCy's document omits important detail that sentiment analysis is not built in!
+# - Unforunately Spacy's document omits important detail that sentiment analysis is not built in!
 # - To compensate, sentiment analyzer is based on vader:
 #      https://medium.com/swlh/simple-sentiment-analysis-for-nlp-beginners-and-everyone-else-using-vader-and-textblob-728da3dbe33d
 # TODO:
@@ -19,13 +19,14 @@
 #   ex: https://spacy.io/universe/project/spacy-textblob.
 # 
 
-"""Performs various natural lanuage processing (NLP) tasks via spaCy"""
+"""Performs various natural lanuage processing (NLP) tasks via Spacy (aka spaCy)"""
 
 # Standard packages
 import re
 
 # Installed packages
-import spacy
+## OLD: import spacy
+spacy = None
 
 # Local packages
 from mezcla import debug
@@ -35,6 +36,7 @@ from mezcla import glue_helpers as gh
 
 # Constants (e.g., for arguments)
 #
+TL = debug.TL
 VERBOSE = "verbose"
 RUN_NER = "run-ner"
 ANALYZE_SENTIMENT = "analyze-sentiment"
@@ -45,7 +47,6 @@ LANG_MODEL = "lang-model"
 USE_SCI_SPACY = "use-scispacy"
 DOWNLOAD_MODEL = "download-model"
 SHOW_REPRESENTATION = "show-representation"
-## TODO_ARG1 = "TODO-arg1"
 
 # Environment options
 COUNT_ENTITIES = system.getenv_bool("COUNT_ENTITIES", False,
@@ -56,6 +57,43 @@ USE_PYSBD = system.getenv_bool("USE_PYSBD", (SENT_TOKENIZER.lower() == "pysbd"),
                                "Use pySBD--pragmatic Sentence Boundary Disambiguation")
 USE_NLTK = system.getenv_bool("USE_NLTK", (SENT_TOKENIZER.lower() == "nltk"),
                               "Use NLTK--NL Toolkit")
+SPACY_MODEL = system.getenv_text(
+    ## TODO2: "SPACY_MODEL", "en_core_web_lg",
+    "SPACY_MODEL", "en_core_web_md",
+    description="Default Spacy model: see https://spacy.io/models")
+
+## OLD:
+## ## DEBUG:
+## debug.trace(5, "pre-spacy import")
+## import spacy
+## debug.trace(5, "post-spacy import")
+
+#...............................................................................
+
+def init():
+    """Load in Spacy module"""
+    global spacy
+    if spacy is None:
+        debug.trace(5, "pre-spacy import")
+        ## OLD:
+        ## import spacy as local_spacy     # pylint: disable=import-outside-toplevel
+        ## spacy = local_spacy
+        import spacy as spacy           # pylint: disable=import-outside-toplevel
+        debug.trace(5, "post-spacy import")
+    
+    if USE_PYSBD or USE_NLTK:
+        global pysbd
+        # pylint: disable=import-outside-toplevel, import-error
+        import pysbd
+        ## TODO: from pysbd.utils import PySBDFactory
+        debug.assertion(re.search(r"^[3-9]", spacy.__version__), "spaCy 3+ is required for pysbd")
+
+    # Register pipeline component
+    global pysbd_sentence_boundaries, nltk_sentence_boundaries
+    pysbd_sentence_boundaries = spacy.Language.component('pysbd_sentence_boundaries',
+                                                         func=pysbd_sentence_boundaries)
+    nltk_sentence_boundaries = spacy.Language.component('nltk_sentence_boundaries',
+                                                        func=nltk_sentence_boundaries)
 
 #...............................................................................
 
@@ -98,11 +136,12 @@ pysbd = None
 APPLY_SPAN_FIX = system.getenv_bool("APPLY_SPAN_FIX", True,
                                     "Apply pySBD contract-mode fix for char_span")
 
-if USE_PYSBD or USE_NLTK:
-    # pylint: disable=import-outside-toplevel, import-error
-    import pysbd
-    ## TODO: from pysbd.utils import PySBDFactory
-    debug.assertion(re.search(r"^[3-9]", spacy.__version__), "spaCy 3+ is required for pysbd")
+## OLD:
+## if USE_PYSBD or USE_NLTK:
+##     # pylint: disable=import-outside-toplevel, import-error
+##     import pysbd
+##     ## TODO: from pysbd.utils import PySBDFactory
+##     debug.assertion(re.search(r"^[3-9]", spacy.__version__), "spaCy 3+ is required for pysbd")
 
 def get_char_span(doc, start, end):
     """Return character span in DOC from START to END or thereabouts (e.g., END - 1)"""
@@ -137,7 +176,7 @@ def get_char_span(doc, start, end):
     return span
 
 # Note: requires Spacy 3+
-@spacy.Language.component('pysbd_sentence_boundaries')
+## OLD: @spacy.Language.component('pysbd_sentence_boundaries')
 def pysbd_sentence_boundaries(doc):
     """Pragmatic sentence tokenizer component"""
     # Note: based on pySBD/examples/pysbd_as_spacy_component.py
@@ -147,9 +186,9 @@ def pysbd_sentence_boundaries(doc):
     custom_sent_char_spans = seg.segment(doc.text)
     debug.trace_expr(5, custom_sent_char_spans)
 
-    # Reconcile with spaCy token character spans
+    # Reconcile with Spacy token character spans
     # Note: this runs into problems when word tokenization differs; see
-    #    https://github.com/explosion/spaCy/issues/4531
+    #    https://github.com/explosion/Spacy/issues/4531
     #    [char_span not returning spans in some cases #4531]
     ## BAD: char_spans = [doc.char_span(sent_span.start, sent_span.end) for sent_span in custom_sent_char_spans]
     #
@@ -172,10 +211,10 @@ if USE_NLTK:
     import nltk
     from pysbd.utils import TextSpan
 
-@spacy.Language.component('nltk_sentence_boundaries')
+## OLD: @spacy.Language.component('nltk_sentence_boundaries')
 def nltk_sentence_boundaries(doc):
     """NLTK sentence tokenizer component
-       Note: omits the spacing between sentences (unlike spaCy and pySBD)."""
+       Note: omits the spacing between sentences (unlike Spacy and pySBD)."""
     # Tokenize sentence and make note of starting/ending offsets
     # note: uses TextSpan from pySBD
     debug.trace(6, "nltk_sentence_boundaries(_)")
@@ -192,7 +231,7 @@ def nltk_sentence_boundaries(doc):
         current_end = new_end
     debug.trace_expr(5, custom_sent_char_spans)
     
-    # Reconcile with spaCy token character spans
+    # Reconcile with Spacy token character spans
     # Note: works around word tokenization differences as in pysbd_sentence_boundaries
     spacy_sent_char_spans = [get_char_span(doc, sent_span.start, sent_span.end) for sent_span in custom_sent_char_spans]
     debug.trace_values(5, spacy_sent_char_spans)
@@ -205,6 +244,46 @@ def nltk_sentence_boundaries(doc):
     return doc
 
 #...............................................................................
+# Note: work-in-progress towards standalone component (i.e., outside of Script class)
+
+class SpacyHelper:
+    """Base class for Spacy usage"""
+
+    def __init__(self, model=None):
+        """Initializer: ..."""
+        debug.trace_fmtd(TL.VERBOSE, "Helper.__init__(): self={s}", s=self)
+        self.nlp = None
+        if model is None:
+            model = SPACY_MODEL
+        self.model = model
+        try:
+            init()
+            self.nlp = spacy.load(self.model)
+        except:
+            system.print_exception_info(f"load of model {model}")
+        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+
+class Chunker(SpacyHelper):
+    """Class for chunking text into noun phrases"""
+
+    def __init__(self, model=None):
+        """Initializer: ..."""
+        debug.trace_fmtd(TL.VERBOSE, "Helper.__init__(): self={s}", s=self)
+        super().__init__(model)
+        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+
+    def noun_phrases(self, text):
+        """Return list of noun chunks in text"""
+        chunks = []
+        try:
+            doc = self.nlp(text)
+            chunks = [ch.text for ch in doc.noun_chunks]
+        except:
+            system.print_exception_info("Chunker.noun_phrases")
+        debug.trace(6, f"noun_phrases({text!r}) => {chunks}")
+        return chunks
+        
+#...............................................................................
 
 # Main class
 #
@@ -214,7 +293,7 @@ class Script(Main):
     type_prefix = ":"
     entity_delim = ", "
     entity_quote = '"'
-    spacy_model = "en_core_web_lg"
+    spacy_model = SPACY_MODEL
     analyze_sentiment = False
     run_ner = False
     show_representation = False
@@ -224,11 +303,11 @@ class Script(Main):
     use_sci_spacy = False
     download_model = False
     show_reprsentation = False
-    ## TODO_arg1 = False
     sent_num = 0
 
     def setup(self):
         """Check results of command line processing"""
+        ## TODO: rework using SpacyHelper
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
         self.spacy_model = self.get_parsed_option(LANG_MODEL, self.spacy_model)
         self.analyze_sentiment = self.get_parsed_option(ANALYZE_SENTIMENT, self.analyze_sentiment)
@@ -237,26 +316,25 @@ class Script(Main):
         default_use_sci_spacy = re.search(r"\bsci\b", self.spacy_model)
         self.use_sci_spacy = self.get_parsed_option(USE_SCI_SPACY, default_use_sci_spacy)
         self.download_model = self.get_parsed_option(DOWNLOAD_MODEL, self.download_model)
-        ## self.TODO_arg1 = self.get_parsed_option(TODO_ARG1, self.TODO_arg1)
         do_specific_task = (self.run_ner or self.analyze_sentiment)
-        ## TODO: self.show_representation = self.verbose or (not do_specific_task)
-        ## TEST: self.show_representation = (not (do_specific_task or TRACK_PAGES))
-        default_show_representation = (not (do_specific_task or TRACK_PAGES))
+        default_show_representation = ((not (do_specific_task or TRACK_PAGES))
+                                       or self.verbose)
         self.show_representation = self.get_parsed_option(SHOW_REPRESENTATION, default_show_representation)
         self.doc = None
 
         # Download model from server
         if self.download_model:
-            print(f"Downloading spaCy model: {self.spacy_model}")
+            print(f"Downloading Spacy model: {self.spacy_model}")
             gh.run(f"python -m spacy download {self.spacy_model}")
         
-        # Load in external module for sentiment analysis (gotta hate spaCy!)
+        # Load in external module for sentiment analysis (gotta hate Spacy!)
         if self.analyze_sentiment:
             self.sentiment_analyzer = SentimentAnalyzer()
 
-        # Load spaCy language model (normally large model for English)
-        debug.trace_fmt(4, "loading spaCy model {m}", m=self.spacy_model)
+        # Load Spacy language model (normally large model for English)
+        debug.trace_fmt(4, "loading Spacy model {m}", m=self.spacy_model)
         try:
+            init()
             self.nlp = spacy.load(self.spacy_model)
         except:
             system.print_stderr("Problem loading model {m} via spacy: {exc}",
@@ -267,7 +345,7 @@ class Script(Main):
             #        =>
             #    import en_core_web_sm
             #    nlp = en_core_web_sm.load()
-            # TODO: Figure out step needed for proper spaCy bookkeeping after 
+            # TODO: Figure out step needed for proper Spacy bookkeeping after 
             # new package is added to python (e.g., en_core_web_sm under site-packages).
             try:
                 debug.trace(3, "Warning: Trying eval hack to load model")
@@ -302,7 +380,7 @@ class Script(Main):
             self.nlp.add_pipe("nltk_sentence_boundaries", before="parser")
         else:
             debug.assertion(SENT_TOKENIZER.lower() == "spacy")
-            # Note: senticize is implicitly used when parser enabled
+            # Note: senticizer is implicitly used when parser enabled
             self.nlp.add_pipe("sentencizer")
                 
         # Sanity checks
@@ -434,9 +512,9 @@ if __name__ == '__main__':
         # Paragraph mode is required for proper sentence tokenization
         paragraph_mode=True,
         boolean_options=[RUN_NER, ANALYZE_SENTIMENT, VERBOSE,
-                         (DOWNLOAD_MODEL, "Download spaCy model"),
+                         (DOWNLOAD_MODEL, "Download Spacy model"),
                          (SHOW_REPRESENTATION, "Show final representation (e.g., word & token attributes"),
-                         ## (TODO_ARG1, "TODO-desc"),
         ],
         text_options=[(LANG_MODEL, "Language model for NLP")])
     app.run()
+    debug.trace_expr(5, pysbd)

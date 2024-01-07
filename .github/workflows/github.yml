@@ -20,6 +20,7 @@ name: Github-Tests
 on: [push, pull_request]
 
 jobs:
+
   build-and-test-runner:
     name: Build and Run Tests via Workflow Runner VM
     runs-on: ${{ matrix.os }}
@@ -57,7 +58,7 @@ jobs:
 
       - name: Download data
         run: |
-          python -m nltk.downloader -d $HOME/nltk_data punkt averaged_perceptron_tagger
+          python -m nltk.downloader -d "$HOME/nltk_data" punkt averaged_perceptron_tagger stopwords
 
       - name: Run Python Tests under Runner
         run: |
@@ -78,4 +79,5 @@ jobs:
       - name: Run Python Tests under Docker
         run: |
           ## TODO???: put repo under /mnt/local-mezcla and installed version under /home/mezcla
+          # note: no --env-file used (unlike act.yml)
           docker run --rm --mount type=bind,source="$(pwd)",target=/home/mezcla mezcla-dev

@@ -67,17 +67,28 @@
 """Performs text processing (e.g., tokenization via NLTK)"""
 
 # Standard packages
+from abc import ABCMeta, abstractmethod
 import sys                              # system interface (e.g., command line)
 import re                               # regular expressions
 
 # Installed packages
-# TODO
+## TODO: import flair
+## OLD:
+## from flair.data import Sentence
+## from flair.models import SequenceTagger
+flair = None
 
 # Local packages
-## TODO: from mezcla import debug
+from mezcla import debug
+## OLD: from mezcla import misc_utils
+## OLD: from mezcla import spacy_nlp
+spacy_nlp = None
 from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla import tpo_common as tpo
+
+# Constants
+TL = debug.TL
 
 #------------------------------------------------------------------------
 # Globals
@@ -110,6 +121,13 @@ SKIP_NLTK = tpo.getenv_boolean("SKIP_NLTK", False, "Omit usage of Natural Langua
 SKIP_ENCHANT = tpo.getenv_boolean("SKIP_ENCHANT", SKIP_MISSPELLINGS, "Omit usage of Enchant package for spell checking")
 DOWNLOAD_DATA = system.getenv_bool("DOWNLOAD_DATA", False,
                                    "Download data from NLTK")
+FLAIR_MODEL = system.getenv_text(
+    "FLAIR_MODEL", "flair/chunk-english-fast",
+    description="Model for Flair: see https://huggingface.co/flair"
+)
+TEXT_PROC = system.getenv_text(
+    "TEXT_PROC", "spacy",
+    description="name of text processor to use for chunking")
 
 # List of stopwords (e.g., high-freqency function words)
 stopwords = None
@@ -265,7 +283,6 @@ def tokenize_and_tag(text):
         tpo.debug_print("tokens: %s" % tokens, 3)
         taggings = tag_part_of_speech(tokens)
         tpo.debug_print("taggings: %s" % taggings, 3)
-        # TODO: use append
         text_taggings += taggings
     return text_taggings
 
@@ -470,15 +487,115 @@ def is_punct(token, POS=None):
 ## re.search("[^A-Za-z]", POS[0:1]))
 
 
-#------------------------------------------------------------------------
+def init():
+    """Makes sure globals defined"""
+
+    # Note: stop word check is done for side of effect of loading list
+    unexpected_stopword = is_stopword("movement")
+    debug.assertion(not unexpected_stopword)
+
+#-------------------------------------------------------------------------------
+
+class TextProc(metaclass=ABCMeta):
+    """Base class for text processing, such as via NLTK, Spacy or Flair"""
+
+    def __init__(self, model=None):
+        """Initializer: with provider-specific MODEL"""
+        debug.trace(TL.VERBOSE, f"TextProc.__init__({model}): self={self}")
+        debug.trace_object(5, self, label="TextProc instance")
+
+    @abstractmethod
+    def noun_phrases(self, text):
+        """Return list of noun chunks in text"""
+        raise NotImplementedError()
+        
+    @abstractmethod
+    def verb_phrases(self, text):
+        """Return list of verb chunks in text"""
+        raise NotImplementedError()
+        
+class SpacyTextProc(TextProc):
+    """TextProc via Spacy"""
+    
+    def __init__(self, model=None):
+        super().__init__(model)
+        global spacy_nlp
+        if spacy_nlp is None:
+            # pylint: disable=import-outside-toplevel, disable=redefined-outer-name
+            from mezcla import spacy_nlp
+        self.spacy = spacy_nlp.Chunker(model)
+        debug.trace_object(5, self, label="SpacyTextProc instance")
+
+    def noun_phrases(self, text):
+        return self.spacy.noun_phrases(text)
+
+    def verb_phrases(self, text):
+        debug.trace(4, "FYI: Spacy doesn't support verb phrase chunking")
+        result = []
+        debug.trace(6, f"noun_phrases({text!r}) => {result!r}")
+        return result
+
+class FlairTextProc(TextProc):
+    """TextProc via Flair"""
+
+    def __init__(self, model=None):
+        super().__init__(model)
+        if model is None:
+            model = FLAIR_MODEL
+        global flair
+        if flair is None:
+            # pylint: disable=import-outside-toplevel, disable=redefined-outer-name
+            import flair
+        self.tagger = flair.models.SequenceTagger.load(model)
+        debug.trace_object(5, self, label="FlairTextProc instance")
+    
+    def noun_phrases(self, text):
+        # Based on https://huggingface.co/flair/chunk-english-fast
+        sentence = flair.Sentence(text)
+        self.tagger.predict(sentence)
+        noun_phrases = [phr.text for phr in sentence.get_spans()  if (phr.tag == "NP")]
+        debug.trace(6, f"noun_phrases({text!r}) => {noun_phrases!r}")
+        return noun_phrases
+
+    def verb_phrases(self, text):
+        # Based on https://huggingface.co/flair/chunk-english-fast
+        sentence = flair.Sentence(text)
+        self.tagger.predict(sentence)
+        verb_phrases = [phr.text for phr in sentence.get_spans()  if (phr.tag == "VP")]
+        debug.trace(6, f"verb_phrases({text!r}) => {verb_phrases!r}")
+        return verb_phrases
+
+
+def create_text_proc(name, *args, **kwargs):
+    """Return class to use for TextProc NAME
+    Note: Passes along optional ARGS and KWARGS to constructor
+    """
+    # EX: (create_text_proc("flair").__class__ == FlairTextProc().__class__)
+    # TODO2: see if standard way to do class displatching
+    class_instance = None
+    try:
+        ## BAD: class_object = misc_utils.get_class_from_name(name.capitalize())
+        ## TODO: class_object = misc_utils.get_class_from_name(name.capitalize(), module_name=__name__)
+        ## OLD: class_object = (SpacyTextProc if (name == "spacy") else FlairTextProc if (name == "flair") else TextProc)
+        class_object = (SpacyTextProc if (name == "spacy") else FlairTextProc if (name == "flair") else None)
+        ## BAD:
+        ## debug.assertion(class_object.__class__.__name__.endswith("TextProc"))
+        ## class_instance = class_object.__new__(*args, **kwargs)
+        class_instance = class_object(*args, **kwargs)
+        debug.trace_expr(6, class_object, class_instance)
+    except:
+        system.print_exception_info("create_text_proc")
+    return class_instance
+
+#-------------------------------------------------------------------------------
 
 def usage():
     """Displays command-line usage"""
     usage_note = """
-Usage: _SCRIPT_ [--help] [--just-tokenize] [--lowercase] file
+Usage: _SCRIPT_ [--help] [--just-tokenize] [--just-chunk] [--lowercase] file
 Example:
 
-echo "My dawg has fleas" | _SCRIPT_ -
+echo "My dawg has fleas." | _SCRIPT_ -
 
 Notes:
 - Intended more as a library module
@@ -502,6 +619,7 @@ def main():
     # Show usage statement if no arguments or if --help specified
     just_tokenize = False
     make_lowercase = False
+    just_chunk = False
     show_usage = ((len(sys.argv) == 1) or (sys.argv[1] == "--help"))
     arg_num = 1
     while ((not show_usage) and arg_num < len(sys.argv) and (sys.argv[arg_num][0] == "-")):
@@ -509,6 +627,8 @@ def main():
             just_tokenize = True
         elif (sys.argv[arg_num] == "--lowercase"):
             make_lowercase = True
+        elif (sys.argv[arg_num] == "--just-chunk"):
+            just_chunk = True
         elif sys.argv[arg_num] == "-":
             break
         else:
@@ -539,6 +659,14 @@ def main():
                     if make_lowercase:
                         tokenized_text = tokenized_text.lower()
                     print(tokenized_text)
+            elif just_chunk:
+                ## OLD: text_proc = FlairTextProc()
+                text_proc = create_text_proc(TEXT_PROC)
+                if VERBOSE:
+                    print(f"text: {text}")
+                    print("NP chunks:")
+                ## TODO: print(OUTPUT_DELIM.join(text_proc.noun_phrases(text)))
+                print(text_proc.noun_phrases(text))
             else:
                 # Show complete pipeline step-by-step
                 taggings = tokenize_and_tag(text)
@@ -570,6 +698,8 @@ def main():
 
 #------------------------------------------------------------------------
 # Initialization
+
+init()
 
 if __name__ == "__main__":
     main()

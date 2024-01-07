@@ -48,7 +48,7 @@ class TestRgbColorName(TestWrapper):
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
     def test_data_file(self):
-        """Makes sure TODO works as expected"""
+        """Makes sure colors annotated as expected"""
         debug.trace(4, "TestRgbColorName.test_data_file()")
 
         content = (
@@ -65,18 +65,18 @@ class TestRgbColorName(TestWrapper):
         #   <(0, 255, 0), lime>    :  33.33% (1)
         #   <(0, 0, 255), blue>    :  33.33% (1)        
         output = self.run_script("", self.temp_file)
-        assert re.search(
-            r"<\(0, 255, 0\), lime>",
-            output,
-            )
+        self.do_assert(re.search(r"<\(0, 255, 0\), lime>", output))
         return
 
-    @pytest.mark.skip(reason="TODO: test not yet implemented")
-    def test_something_else(self):
-        """TODO: flesh out test for something else"""
-        debug.trace(4, "test_something_else()")
-        assert(False, "TODO: code test")
-        ## ex: assert THE_MODULE.TODO_function() == TODO_value
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_rgb_regex(self):
+        """Test the regex for RGB specification"""
+        debug.trace(4, "test_rgb_regex()")
+        script = THE_MODULE.Script(skip_args=True)
+        self.do_assert(script.rgb_regex == r'\((0?x?[0-9A-F]+), (0?x?[0-9A-F]+), (0?x?[0-9A-F]+)\)')
+        line = "(39, 39, 39)   :  24.35% (630)"
+        script.process_line(line)
+        self.do_assert("<(39, 39, 39), darkslategray>" in self.get_stdout())
         return
 
 #------------------------------------------------------------------------
