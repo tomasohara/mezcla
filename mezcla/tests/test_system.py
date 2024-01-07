@@ -23,6 +23,7 @@ import pytest
 import pickle
 
 # Local packages
+from mezcla.unittest_wrapper import TestWrapper
 from mezcla import glue_helpers as gh
 from mezcla import debug
 
@@ -30,8 +31,11 @@ from mezcla import debug
 #    THE_MODULE:	    global module object
 import mezcla.system as THE_MODULE
 
-class TestSystem:
+class TestSystem(TestWrapper):
     """Class for test case definitions"""
+
+    script_file = TestWrapper.get_module_file_path(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__)
 
     def test_maxint(self):
         """Ensure maxint works as expected"""
@@ -218,8 +222,7 @@ class TestSystem:
     def test_print_full_stack(self):
         """Ensure print_full_stack works as expected"""
         debug.trace(4, "test_print_full_stack()")
-        filename = gh.get_temp_file()
-        file = THE_MODULE.open_file(filename, mode='w+')
+        file = THE_MODULE.open_file(self.temp_file, mode='w+')
         try:
             raise RuntimeError('test')
         except Exception:
@@ -708,13 +711,13 @@ class TestSystem:
         debug.trace(4, "test_real_path()")
         assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
 
-    @pytest.mark.xfail
     def test_get_module_version(self):
         """Ensure get_module_version works as expected"""
         debug.trace(4, "test_get_module_version()")
         #TODO: WORK-IN=PROGRESS
         # Lorenzo: this always fails at importing no matter the module
-        assert False
+        version = THE_MODULE.get_module_version('pytest')
+        assert version == pytest.__version__
 
     def test_intersection(self):
         """Ensure intersection works as expected"""

@@ -41,6 +41,7 @@ import six
 # Local packages
 from mezcla import debug
 from mezcla.debug import UTF8
+from importlib import import_module
 
 # Constants
 STRING_TYPES = six.string_types
@@ -1055,7 +1056,9 @@ def get_module_version(module_name):
     # Try to load the module with given name
     # TODO: eliminate eval and just import directly
     try:
-        eval("import {m}".format(m=module_name))             # pylint: disable=eval-used
+        ## BAD: eval("import {m}".format(m=module_name)) # pylint: disable=eval-used
+        # exec("import {m}".format(m=module_name)) # pylint: disable=eval-used
+        module = import_module(f"{module_name}")
     except:
         debug.trace_fmtd(6, "Exception importing module '{m}': {exc}",
                          m=module_name, exc=get_exception())
@@ -1066,7 +1069,8 @@ def get_module_version(module_name):
     # TODO: try other conventions besides module.__version__ member variable
     version = "?.?.?"
     try:
-        version = eval("module_name.__version__")            # pylint: disable=eval-used
+        ## BAD: version = eval("module_name.__version__") # pylint: disable=eval-used
+        version = eval(f"{module_name}.__version__") # pylint: disable=eval-used
     except:
         debug.trace_fmtd(6, "Exception evaluating '{m}.__version__': {exc}",
                          m=module_name, exc=get_exception())
