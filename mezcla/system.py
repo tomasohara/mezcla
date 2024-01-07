@@ -372,10 +372,10 @@ def print_full_stack(stream=sys.stderr):
     return
 
 
-def trace_stack(level=debug.VERBOSE):
+def trace_stack(level=debug.VERBOSE, stream=sys.stderr):
     """Output stack trace to stderr (if at trace LEVEL or higher)"""
     if debug.debugging(level):
-        print_full_stack()
+        print_full_stack(stream)
     return
 
     
@@ -1057,8 +1057,7 @@ def get_module_version(module_name):
     # TODO: eliminate eval and just import directly
     try:
         ## BAD: eval("import {m}".format(m=module_name)) # pylint: disable=eval-used
-        # exec("import {m}".format(m=module_name)) # pylint: disable=eval-used
-        module = import_module(f"{module_name}")
+        exec("import {m}".format(m=module_name)) # pylint: disable=eval-used
     except:
         debug.trace_fmtd(6, "Exception importing module '{m}': {exc}",
                          m=module_name, exc=get_exception())

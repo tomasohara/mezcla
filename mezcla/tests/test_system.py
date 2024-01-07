@@ -31,11 +31,8 @@ from mezcla import debug
 #    THE_MODULE:	    global module object
 import mezcla.system as THE_MODULE
 
-class TestSystem(TestWrapper):
+class TestSystem:
     """Class for test case definitions"""
-
-    script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
 
     def test_maxint(self):
         """Ensure maxint works as expected"""
@@ -218,23 +215,29 @@ class TestSystem(TestWrapper):
         THE_MODULE.setenv('NEW_TEST_ENV_VAR', 'the gravity is 10, pi is 3')
         assert THE_MODULE.getenv('NEW_TEST_ENV_VAR') == 'the gravity is 10, pi is 3'
 
-    @pytest.mark.xfail
-    def test_print_full_stack(self):
+    def test_print_full_stack(self,capsys):
         """Ensure print_full_stack works as expected"""
         debug.trace(4, "test_print_full_stack()")
-        file = THE_MODULE.open_file(self.temp_file, mode='w+')
-        try:
+        def raiseException():
             raise RuntimeError('test')
+        try:
+            raiseException()
         except Exception:
-            THE_MODULE.print_full_stack(file)
-        assert False
+            THE_MODULE.print_full_stack(sys.stderr)
+        capturedError = capsys.readouterr()[1]
+        assert 'RuntimeError' in capturedError
 
-    @pytest.mark.xfail
-    def test_trace_stack(self):
+    def test_trace_stack(self, capsys):
         """Ensure trace_stack works as expected"""
         debug.trace(4, "test_trace_stack()")
-        assert False
-        ## TODO: WORK-IN=PROGRESS
+        def raiseException():
+            raise RuntimeError('test')
+        try:
+            raiseException()
+        except Exception:
+            THE_MODULE.trace_stack(1, sys.stderr)
+        capturedError = capsys.readouterr()[1]
+        assert 'RuntimeError' in capturedError
 
     def test_get_current_function_name(self):
         """Ensure get_current_function_name works as expected"""
@@ -714,7 +717,6 @@ class TestSystem(TestWrapper):
     def test_get_module_version(self):
         """Ensure get_module_version works as expected"""
         debug.trace(4, "test_get_module_version()")
-        #TODO: WORK-IN=PROGRESS
         # Lorenzo: this always fails at importing no matter the module
         version = THE_MODULE.get_module_version('pytest')
         assert version == pytest.__version__
