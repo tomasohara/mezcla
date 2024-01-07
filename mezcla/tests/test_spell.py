@@ -170,7 +170,8 @@ class SpellFiles(TestWrapper):
         test_lang = "en_EN"
         test_phrase = "Because I am lost in the way you moveqq"
         # LITERAL TRANSLATION: N/A
-        temp_phrase = None
+        ## BAD: temp_phrase = None
+        temp_phrase = f"{self.temp_file}.phrase"
         test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
         test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
 
@@ -190,7 +191,8 @@ class SpellFiles(TestWrapper):
         test_lang = "es_ES"
         test_phrase = "Me dijeron que te estás casandoxx"
         # LITERAL TRANSLATION: "They told me that you are getting married"
-        temp_phrase = None
+        ## BAD: temp_phrase = None
+        temp_phrase = f"{self.temp_file}.phrase"
         test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
         test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
         test_phrase_error = "casandoxx"
@@ -209,7 +211,8 @@ class SpellFiles(TestWrapper):
         test_lang = "ne_NE"
         test_phrase = "तिमी नै अब मेरो झुल्केको बिहानीxx"
         # LITERAL TRANSLATION: You are now my rising dawn
-        temp_phrase = None
+        ## BAD: temp_phrase = None
+        temp_phrase = f"{self.temp_file}.phrase"
         test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
         test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
 
