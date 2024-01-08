@@ -10,8 +10,28 @@
 # - Alternatively, this can be run as:
 #       export LM=./lm/test.arpa
 #       ./tests/test_kenlm_example.py
+#
+#-------------------------------------------------------------------------------
+# Sample test and output:
+#
+#   $ ROUNDING_PRECISION=4 LM=tests/resources/test.arpa python -m  mezcla.kenlm_example  A quick brown fox jumps over a lazy dog.
+#   Loading the LM will be faster if you build a binary file.
+#   Reading /home/tomohara/Mezcla/mezcla/tests/resources/test.arpa
+#   ----5---10---15---20---25---30---35---40---45---50---55---60---65---70---75---80---85---90---95--100
+#   ****************************************************************************************************
+#   5-gram model
+#   sentence: A quick brown fox jumps over a lazy dog.
+#   model score: -149.4206
+#   normalized score: -16.6023
+
 
 """Tests for kenlm_example module"""
+
+## TODO1: revise tests following revision for test_kenlm_example_round below;
+## also see recent to revisions bad tests circa Jan 2024.
+##
+## TODO2: review tests/template.py carefully
+## TODO3: check for common patterns from test scripts (i.e., as a whole)
 
 ## TODO (IMPORTANT): Rework on the tests (uses old paths for test.arpa and bad code quality)
 ## TEMP: Run the test script using LM environment variable
@@ -21,32 +41,39 @@
 import ast
 
 # Installed packages
-import re
+## OLD: import re
 import pytest
 
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla import system
+## OLD: from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
-## TODO: solve import issue in kenlm_example
+#    THE_MODULE:                        global module object
+#    TestIt.script_module:              path to file
 import mezcla.kenlm_example as THE_MODULE
 
 ## NEW: Added path for test.arpa (or Language Model)
-lm_path = gh.resolve_path("./resources/test.arpa")
-kenlm_example_path = gh.resolve_path("../kenlm_example.py")
+## TODO2: follow tests/template.py better
+lm_path = gh.resolve_path("./resources/test.arpa", heuristic=True)
+## TODO2: replace kenlm_example_path w/ run_script as in test_kenlm_example_round
+kenlm_example_path = gh.resolve_path("kenlm_example.py", heuristic=True)
+
+## TODO3? Make sure utilities from KenLM installed
+## NOTE: lmplz might just be needed for train_language_model.py
+HAS_KENLM_UTILS = gh.run("which lmplz")
+
 
 class TestKenlmExample(TestWrapper):
-    script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
-    use_temp_base_dir = True    # treat TEMP_BASE as directory
-
     """Class for testcase definition"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    use_temp_base_dir = True    # treat TEMP_BASE as directory
     
-    @pytest.mark.skip
+    @pytest.mark.xfail                   # TODO: remove xfail
+    @trap_exception                      # TODO: remove when debugged
     def test_summed_constituent_score(self):
         """Ensures that summed_constituent_score works properly"""
         debug.trace(4, "test_summed_constituent_score()")
@@ -55,7 +82,8 @@ class TestKenlmExample(TestWrapper):
         assert (abs(sentence_score) - abs(THE_MODULE.model.score(sentence)) < 1e-3)
         return
     
-    @pytest.mark.skip
+    @pytest.mark.xfail                   # TODO: remove xfail
+    @trap_exception                      # TODO: remove when debugged
     def test_kenlm_example_default(self):
         """Ensures that kenlm_example_default works properly"""
         debug.trace(4, f"test_kenlm_example_default(); self={self}")
@@ -71,7 +99,7 @@ class TestKenlmExample(TestWrapper):
         assert(test1 and test2 and test3)
         return
 
-    @pytest.mark.skip
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_kenlm_example_round(self):
         """Ensures that kenlm_example_round works properly"""
         debug.trace(4, f"test_kenlm_example_round(); self={self}")
@@ -86,22 +114,34 @@ class TestKenlmExample(TestWrapper):
 
         sentence = "A quick brown fox jumps over a lazy dog."
         round_val = 4
-        command = f"ROUNDING_PRECISION={round_val} LM={lm_path} python3 {kenlm_example_path} {sentence} 2> /dev/null"
-        output = gh.run(command).split("\n")     
+        ## BAD:
+        ## command = f"ROUNDING_PRECISION={round_val} LM={lm_path} python3 {kenlm_example_path} {sentence} 2> /dev/null"
+        ## command = f"ROUNDING_PRECISION={round_val} LM={lm_path} python3 {kenlm_example_path} {sentence} 2> /dev/null"
+        ## output = gh.run(command).split("\n")
+        output = self.run_script(env_options=f"ROUNDING_PRECISION={round_val} LM={lm_path}", options=sentence,
+                                 uses_stdin=False)
+        output = output.split("\n")
 
         test_model_order = 5
         test_model_score = -149.4206
         test_normalized_score = -16.6023
 
-        test0 = str(test_model_order) in output[0] # n-gram model
-        test1 = sentence in output[1]
-        test2 = (str(test_model_score) in output[2]) and (-150 <= test_model_score <= -149)
-        test3 = (str(test_normalized_score) in output[3]) and (-17 <= test_normalized_score <= -16)
+        ## OLD:
+        ## test0 = str(test_model_order) in output[0] # n-gram model
+        ## test1 = sentence in output[1]
+        ## test2 = (str(test_model_score) in output[2]) and (-150 <= test_model_score <= -149)
+        ## test3 = (str(test_normalized_score) in output[3]) and (-17 <= test_normalized_score <= -16)
+        ##
+        ## assert all([test0, test1, test2, test3])
+        
+        self.do_assert(str(test_model_order) in output[0])  # n-gram model
+        self.do_assert(sentence in output[1])
+        self.do_assert((str(test_model_score) in output[2]) and (-150 <= test_model_score <= -149))
+        self.do_assert((str(test_normalized_score) in output[3]) and (-17 <= test_normalized_score <= -16))
 
-        assert all([test0, test1, test2, test3])
         return
 
-    @pytest.mark.skip
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_kenlm_example_verbose(self):
         """Ensures that kenlm_example_verbose works properly"""
         debug.trace(4, f"test_kenlm_example_VERBOSE(); self={self}")
@@ -133,7 +173,7 @@ class TestKenlmExample(TestWrapper):
         return 
 
 
-    @pytest.mark.skip
+    @pytest.mark.xfail
     def test_kenlm_example_outofvocab(self):
         """Ensures that kenlm_example_outofvocab works properly"""
         debug.trace(4, f"test_kenlm_example_outofvocab(); self={self}")
@@ -186,7 +226,7 @@ class TestKenlmExample(TestWrapper):
         unseen_vocab = list(set(sentence.split(" ")) - set(out_of_vocab_arr))[0]
         assert(unseen_vocab == known_seen_character)
 
-    @pytest.mark.skip
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_kenlm_example_precision(self):
         """Ensures that kenlm_example_precision works properly"""
         debug.trace(4, f"test_kenlm_example_precision(); self={self}")
@@ -209,11 +249,20 @@ class TestKenlmExample(TestWrapper):
         
         def count_precision(num_string):
             before_decimal, after_decimal = num_string.split(".")
+            debug.trace_expr(5, num_string, before_decimal, after_decimal)
             return len(after_decimal)
 
         assert (count_precision(normalized_score) == PRECISION_VALUE)
         return
 
+    @pytest.mark.xfail
+    @pytest.mark.skipif(not HAS_KENLM_UTILS, reason="KenLM utilities needed")
+    def test_kenlm_utils(self):
+        """Make sure KenLM utilities installed (e.g., lmplz)"""
+        lmplz_usage = gh.run("lmplz")
+        self.do_assert("Builds unpruned language models" in lmplz_usage)
+        self.do_assert("Kenneth Heafield" in lmplz_usage)
+    
 if __name__ == '__main__':
     debug.trace_current_context()
     pytest.main([__file__])
