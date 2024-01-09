@@ -35,9 +35,8 @@ extcolors>=1.0.0
 flair
 flask
 git+https://github.com/tehabstract/textract.git
-gradio              # NEW: For audio.py (huggingface)
-## OPTIONAL: kenlm               # NEW: For audio.py (huggingface)
-## OPTIONAL: ibm-watson          # NEW: For audio.py (ibm-watson)
+gradio                        # UI support (e.g., huggingface-based apps)
+kenlm                         # language model supp
 librosa>=0.10.0           
 lxml
 mako
@@ -47,7 +46,7 @@ nltk
 numpy>=1.18.5
 pandas>=1.3.0
 pyaml
-pyctcdecode         # NEW: For audio.py (huggingface)
+pyctcdecode                   # CTC beam search decoder for speech recognition
 pyenchant
 pysbd
 pytest
@@ -57,8 +56,8 @@ scipy
 sentencepiece
 six
 stop_words
-#opt# tensorrt                          # for HF
-transformers                            # Hugging Face (HF)
+#opt# tensorrt                # for HF
+transformers                  # Hugging Face (HF)
 torch
 torchaudio
 webcolors
