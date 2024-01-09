@@ -392,13 +392,23 @@ class TestWrapper(unittest.TestCase):
         """Support for capture stdout and stderr"""
         self.capsys = capsys
 
-    def get_stdout(self):
-        """Get currently captured standard output
+    def get_stdout_stderr(self):
+        """Get currently captured standard output and error
         Note: Clears both stdout and stderr captured
         """
         stdout, stderr = self.capsys.readouterr()
-        debug.trace_expr(5, stdout, stderr)
+        debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n")
+        return stdout, stderr
+        
+    def get_stdout(self):
+        """Get currently captured standard output (see get_stdout_stderr)"""
+        stdout, _stderr = self.get_stdout_stderr()
         return stdout
+        
+    def get_stderr(self):
+        """Get currently captured standard error (see get_stdout_stderr)"""
+        _stdout, stderr = self.get_stdout_stderr()
+        return stderr
         
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
