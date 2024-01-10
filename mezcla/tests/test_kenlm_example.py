@@ -47,14 +47,18 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
-## OLD: from mezcla import system
+from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
-import mezcla.kenlm_example as THE_MODULE
+try:
+    import mezcla.kenlm_example as THE_MODULE
+except:
+    system.print_exception_info("kenlm_example import")
+    THE_MODULE = None
 
 ## NEW: Added path for test.arpa (or Language Model)
 ## TODO2: follow tests/template.py better
@@ -67,6 +71,7 @@ kenlm_example_path = gh.resolve_path("kenlm_example.py", heuristic=True)
 HAS_KENLM_UTILS = gh.run("which lmplz")
 
 
+@pytest.mark.skipif(not THE_MODULE, reason="Problem loading kenlm_example.py: check requirements")
 class TestKenlmExample(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
