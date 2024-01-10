@@ -12,7 +12,10 @@ on: [push, pull_request]
 jobs:
   
   build-and-test-runner:
-    name: Run Tests
+    name: Build and Run Tests via Runner
+    # skip during local actions testing (see https://github.com/nektos/act#skipping-jobs)
+    if: ${{ !github.event.act }}        
+
     runs-on: ${{ matrix.os }}
     strategy:
       # Note: The matrix is only for the GitHub runner VM. Separate support is needed
@@ -50,7 +53,11 @@ jobs:
           pip install -r requirements.txt
           pip install -r non-binary-requirements.txt
 
-      - name: Run Python Tests Directly
+      - name: Download data
+        run: |
+          python -m nltk.downloader -d "$HOME/nltk_data" punkt averaged_perceptron_tagger stopwords
+
+      - name: Run Python Tests via Runner
         run: |
           PYTHONPATH="$(pwd):$PYTHONPATH" ./tools/run_tests.bash
 
@@ -62,6 +69,8 @@ jobs:
 
   build-and-test-docker:
     name: Build and Run Tests via Docker
+    # include unless skip-docker set (see skip-docker.json)
+    if: ${{ !github.event.skip-docker }}
     runs-on: [ubuntu-20.04]
 
     ## TEST:
