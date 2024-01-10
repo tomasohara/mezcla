@@ -199,6 +199,11 @@ def resolve_path(filename, base_dir=None, heuristic=False):
             if os.path.exists(check_path):
                 path = check_path
                 break
+    # Fall back to using find command
+    if (not os.path.exists(path)) and heuristic:
+        debug.trace(4, "FYI: resolve_path falling back to find")
+        debug.assertion(" " not in path)
+        path = run(f"find {base_dir} -name '{path}'")
             
     debug_format("resolve_path({f}) => {p}", 4, f=filename, p=path)
     return path
