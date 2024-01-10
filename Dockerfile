@@ -117,7 +117,7 @@ RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perce
 # Note: cleans the apt-get cache
 RUN apt-get update -y && apt-get install -y lsb-release && apt-get clean all
 # note: rcs needed for merge (TODO: place in required-packages.txt)
-RUN apt-get install rcs
+RUN apt-get install enchant-2 rcs
 
 # Run the test, normally pytest over mezcla/tests
 # Note: the status code (i.e., $?) determines whether docker run succeeds (e.g., OK if 0)
