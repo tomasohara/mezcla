@@ -55,6 +55,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
+          pip install -r non-binary-requirements.txt
 
       - name: Download data
         run: |
