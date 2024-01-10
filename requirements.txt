@@ -36,7 +36,7 @@ flair
 flask
 git+https://github.com/tehabstract/textract.git
 gradio                        # UI support (e.g., huggingface-based apps)
-kenlm                         # language model supp
+#opt# kenlm                   # language model support (NOTE: problem with wheel)
 librosa>=0.10.0           
 lxml
 mako
@@ -119,7 +119,6 @@ en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_co
 #full# albert==1.3.1
 #full# bert-tensorflow
 #full# keras
-#full# kenlm
 #full# sacremoses
 #full# tensorflow
 #full# tensorflow_hub
