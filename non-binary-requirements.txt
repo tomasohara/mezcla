@@ -1,0 +1,14 @@
+# Requirements for main scripts with non-binary installation
+#
+# Note:
+# - This is used for packages having problems creating wheel packages
+# - https://stackoverflow.com/questions/54194962/how-to-write-the-requirements-txt-file-with-no-binary
+#
+# Usage:
+#    pip install -r non-binary-requirements.txt
+#...............................................................................
+# Options 
+--no-binary :all:
+#
+# Packages
+kenlm
