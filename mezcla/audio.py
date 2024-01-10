@@ -51,7 +51,10 @@ The Audio wraper provides for now four (OLD: three) engines to extract speech:
 - IBM Watson    (aka "watson")
 - HuggingFace   (aka "huggingface") [NEW]
 """
-
+#
+# TODO2: reduce redundancy in header comments and docstring
+# TODO3: format code example using IPython example syntax (i.e., '>>>')
+# TODO4: make docstring concise (as per template.py tip)
 
 # Standard packages
 from abc import ABCMeta, abstractmethod
