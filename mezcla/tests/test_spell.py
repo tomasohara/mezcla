@@ -37,7 +37,11 @@ from mezcla.unittest_wrapper import trap_exception
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 #    TestIt.script_module:              path to file
-import mezcla.spell as THE_MODULE 
+try:
+    # note: requires enchant-2 library package under Ubuntu (besides pyenchant)
+    import mezcla.spell as THE_MODULE
+except:
+    THE_MODULE = None
 
 # Since importing doesn't work properly, a temporary fix is specifying the path
 # import mezcla.spell as THE_MODULE
@@ -59,6 +63,7 @@ import mezcla.spell as THE_MODULE
 ## TODO1: use run_script as in the template (and in most other tests elsewhere)!
 SPELL_PATH = gh.resolve_path("spell.py")
 
+@pytest.mark.skipif(not THE_MODULE, reason="Problem loading spell.py: check requirements")
 class SpellFiles(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
