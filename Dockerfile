@@ -114,9 +114,9 @@ RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perce
 
 # Install required tools and libraries (TODO: why lsb-release?)
 # Note: cleans the apt-get cache
-RUN apt-get update -y && apt-get install -y lsb-release && apt-get clean all
+RUN apt-get update -y && apt-get install --yes lsb-release && apt-get clean all
 # note: rcs needed for merge (TODO: place in required-packages.txt)
-RUN apt-get install enchant-2 rcs
+RUN apt-get install --yes enchant-2 rcs
 
 # Show disk usage when debugging
 RUN if [ "$DEBUG_LEVEL" -ge 5 ]; then                           \
