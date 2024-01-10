@@ -52,7 +52,20 @@ LM = getenv_text("LM", DEFAULT_LM_FILE)
 SENT_DELIM = getenv_text("SENT_DELIM", "\n", "Delimiter for sentence splitting")
 VERBOSE = getenv_boolean("VERBOSE", False, "Verbose output")
 
+# Globals
+## TEMP: Need to rework tests/test_kenkm_example.py
+model = None
+normalized_score = None
+
 #-------------------------------------------------------------------------------
+
+def summed_constituent_score(s):
+    """Return sum of scores for ngrams for sentence S
+    note: helper function used when checking that total full score equals direct score
+    """
+    global model
+    return sum(prob for (prob, _len, _oov) in model.full_scores(s))
+    
 
 def main():
     """Entry point"""
@@ -82,14 +95,9 @@ def main():
         system.exit()
     
     # Load model from ARPA-format file
+    global model
     model = kenlm.LanguageModel(LM)
     print('{0}-gram model'.format(model.order))
-    
-    # Define helper function used when checking that total full score equals direct score
-    def summed_constituent_score(s):
-        """Return sum of scores for ngrams for sentence S"""
-        ## OLD: return sum(prob for (prob, _) in model.full_scores(s))
-        return sum(prob for (prob, _len, _oov) in model.full_scores(s))
     
     # Read input
     sentences = 'language modeling is fun .'
@@ -105,9 +113,10 @@ def main():
             continue
         print("sentence: %s" % sentence)
         print("model score: %s" % tpo.round_num(model.score(sentence)))
-        normaized_score = (model.score(sentence) / len(sentence.split()))
-        print("normalized score: %s" % tpo.round_num(normaized_score))
-        ## TODO: gh.assertion(abs(summed_constituent_score(sentence) - model.score(sentence)) < 1e-3)
+        global normalized_score
+        normalized_score = (model.score(sentence) / len(sentence.split()))
+        print("normalized score: %s" % tpo.round_num(normalized_score))
+        gh.assertion(abs(summed_constituent_score(sentence) - model.score(sentence)) < 1e-3)
     
         # Print diagnostics in verbose mode
         if VERBOSE:
