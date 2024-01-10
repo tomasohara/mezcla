@@ -3,8 +3,12 @@
 # spell.py: simple spell checker (e.g., via Enchant module)
 #
 # Note:
+# - Requires enchant library package to be installed:
+#     apt-get install enchant-2
+#   See https://pyenchant.github.io/pyenchant/install.html.
 # - New languages can be added as follows:
-#       sudo apt-get install myspell-ID
+#     ID=es
+#     sudo apt-get install myspell-$ID
 #   See https://stackoverflow.com/questions/32712557/pyenchant-italian-and-spanish-languages.
 #
 # TODO:
