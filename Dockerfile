@@ -98,9 +98,8 @@ RUN if [ "$PYTHON_VERSION" == "" ]; then                                        
 COPY ./requirements.txt $REQUIREMENTS
 
 # Install the package requirements
-# This is normally handled via workflow, but is needed if docker used standalone.
-# NOTE: The workflow only handles requirements for the runner VM, not the docker container.
-## TEST: RUN if [ "$PYTHON_VERSION" != "" ]; then                                                \
+# NOTE: The workflow only handles requirements for the runner VM, not the docker container;
+# Also, the results aren't cached to save space in the image.
 RUN if [ "$(which nltk)" == "" ]; then                                                  \
         python -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;     \
     fi
@@ -118,6 +117,12 @@ RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perce
 RUN apt-get update -y && apt-get install -y lsb-release && apt-get clean all
 # note: rcs needed for merge (TODO: place in required-packages.txt)
 RUN apt-get install enchant-2 rcs
+
+# Show disk usage when debugging
+RUN if [ "$DEBUG_LEVEL" -ge 5 ]; then                           \
+    echo "Top directories by disk usage:";                      \
+    du --block-size=1K / 2>&1 | sort -rn | head -20;         	\
+fi
 
 # Run the test, normally pytest over mezcla/tests
 # Note: the status code (i.e., $?) determines whether docker run succeeds (e.g., OK if 0)
