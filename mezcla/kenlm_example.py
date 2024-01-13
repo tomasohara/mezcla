@@ -1,6 +1,7 @@
 #! /usr/bin/env python
+#
 # Example for using the KenLM language modeling utility (based on sample):
-#     http://kheafield.com/code/kenlm
+#     http://kheafield.com/code/kenlm [./python/example.py]
 # This assumes the language model has already been created via lmplz
 #
 #--------------------------------------------------------------------------------
