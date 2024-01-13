@@ -797,12 +797,27 @@ def get_file_modification_time(filename, as_float=False):
     return mod_time
 
 
+def split_path(path):
+    """Split file PATH into directory and filename
+    Note: wrapper around os.path.split with tracing and sanity checks
+    """
+    # EX: split_path("/etc/passwd") => ["etc", "passwd"]
+    dir_name, filename = os.path.split(path)
+    result = dir_name, filename
+    debug.assertion(dir_name or filename)
+    if dir_name and debug.active() and file_exists(path):
+        debug.assertion(directory_exists(dir_name))
+    debug.trace(6, f"split_path({path}) => {result}")
+    return result
+    
 def filename_proper(path):
-    """Return PATH sans directories"""
+    """Return PATH sans directories
+    Note: unlike os.path.split, this always returns filename component
+    """
     # EX: filename_proper("/tmp/document.pdf") => "document.pdf")
     # EX: filename_proper("/tmp") => "tmp")
     # EX: filename_proper("/") => "/")
-    (directory, filename) = os.path.split(path)
+    (directory, filename) = split_path(path)
     if not filename:
         filename = directory
     debug.trace(6, f"filename_proper({path}) => {filename}")
