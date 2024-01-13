@@ -970,7 +970,7 @@ debug.trace_current_context(8, "main.py context")
 
 if __name__ == "__main__":
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone\n")
-    # note: Follwing used for argument parsing
+    # note: Following used for argument parsing
     main = Main(description=__doc__)
     main.run()
 
