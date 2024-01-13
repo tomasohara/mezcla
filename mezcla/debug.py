@@ -721,16 +721,15 @@ else:
         # Note: no return value assumed by debug.expr
         return
 
-
     def get_level():
         """Returns tracing level (i.e., 0)"""
         return trace_level
-
 
     def get_output_timestamps():
         """Non-debug stub"""
         return False
 
+    set_level = non_debug_stub
 
     set_output_timestamps = non_debug_stub
 
@@ -807,6 +806,19 @@ def debugging(level=USUAL):
     ## TODO: use level=WARNING (i.e., 2)
     return (get_level() >= level)
 
+def active():
+    """Whether debugging is active (i.e., trace level 1 or higher)
+    Note: Use enabled to check whether debugging is supported
+    """
+    return debugging(level=1)
+
+def enabled():
+    """Whether debug code is being executed (i.e., __debug__ nonzero)
+    Note: Use active to check whether conditional debugging in effect
+    """
+    result = __debug__
+    assertion((not result) or active())
+    return result
 
 def detailed_debugging():
     """Whether debugging with trace level DETAILED (4) or higher"""
@@ -1176,4 +1188,3 @@ if __name__ == '__main__':
 else:
     ## DEBUG: trace_expr(MOST_VERBOSE, 999)
     pass
-
