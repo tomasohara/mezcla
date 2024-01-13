@@ -21,12 +21,12 @@
 # - convert additional open() calls to open_file()
 # - drop python 2 support
 #
-## Lorenzo: is there any reason not to be using f-strings? E.g. register_env_option, get_registered_env_options, etc
 
 """System-related functions"""
 
 # Standard packages
 from collections import defaultdict, OrderedDict
+import importlib_metadata
 import datetime
 import inspect
 import os
@@ -41,7 +41,6 @@ import six
 # Local packages
 from mezcla import debug
 from mezcla.debug import UTF8
-from importlib import import_module
 
 # Constants
 STRING_TYPES = six.string_types
@@ -129,7 +128,6 @@ def get_environment_option_descriptions(include_all=None, include_default=None, 
     #
     ## TEMP
     # pylint: disable=consider-using-dict-items
-    ## Lorenzo: order of (env_options[opt] or include_all) could be inverted to optimize short circuiting in case of include_all=True, but change is minimal
     option_descriptions = [_format_env_option(opt) for opt in env_options if (env_options[opt] or include_all)]
     debug.trace_fmt(5, "get_environment_option_descriptions() => {od}",
                     od=option_descriptions)
@@ -615,7 +613,7 @@ def read_directory(directory):
     # Note simple wrapper around os.listdir with tracing
     # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
     files = os.listdir(directory)
-    debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files, max_len=4096)
+    debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files)
     return files
 
 
@@ -1053,26 +1051,22 @@ def get_module_version(module_name):
     # note: used in bash function (alias):
     #     python-module-version() = { python -c "print(get_module_version('$1))"; }'
 
-    # Try to load the module with given name
-    # TODO: eliminate eval and just import directly
-    try:
-        ## BAD: eval("import {m}".format(m=module_name)) # pylint: disable=eval-used
-        exec("import {m}".format(m=module_name)) # pylint: disable=eval-used
-    except:
-        debug.trace_fmtd(6, "Exception importing module '{m}': {exc}",
-                         m=module_name, exc=get_exception())
-        return "-1.-1.-1"
+    ## OLD: 
+    # try:
+    #     ## BAD: eval("import {m}".format(m=module_name)) # pylint: disable=eval-used
+    #     exec("import {m}".format(m=module_name)) # pylint: disable=eval-used
+    # except:
+    #     debug.trace_fmtd(6, "Exception importing module '{m}': {exc}",
+    #                      m=module_name, exc=get_exception())
+    #     return "-1.-1.-1"
 
     # Try to get the version number for the module
-    # TODO: eliminate eval and use getattr()
-    # TODO: try other conventions besides module.__version__ member variable
     version = "?.?.?"
     try:
-        ## BAD: version = eval("module_name.__version__") # pylint: disable=eval-used
-        version = eval(f"{module_name}.__version__") # pylint: disable=eval-used
+        ## OLD: version = eval(f"{module_name}.__version__") # pylint: disable=eval-used
+        version = importlib_metadata.version(module_name)
     except:
-        debug.trace_fmtd(6, "Exception evaluating '{m}.__version__': {exc}",
-                         m=module_name, exc=get_exception())
+        debug.trace_fmtd(6, f"Exception evaluating metadada from {module_name}: {get_exception()}")
         ## TODO: version = "0.0.0"
     return version
 
