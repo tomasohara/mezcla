@@ -6,6 +6,9 @@
 # - Mostly based initially on
 #     https://stackoverflow.com/a/70866416 [How to install python specific version on docker?]
 # - For Docker docs, see https://docs.docker.com/get-started.
+# - The avoid linux continuation characters (i.e., \<newline), <<END-style heredocs are used: See
+#      https://www.docker.com/blog/introduction-to-heredocs-in-dockerfiles
+#   This allows for commenting out code (e.g., inline comment within heredoc group).
 #
 # Usage:
 # 1. Build the image:
@@ -100,9 +103,14 @@ COPY ./requirements.txt $REQUIREMENTS
 # Install the package requirements
 # NOTE: The workflow only handles requirements for the runner VM, not the docker container;
 # Also, the results aren't cached to save space in the image.
-RUN if [ "$(which nltk)" == "" ]; then                                                  \
-        python -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;     \
-    fi
+RUN <<END_RUN
+  if [ "$(which nltk)" == "" ];
+       python -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
+       ## TODO?
+       ## # note: makes a second pass for failed installations, doing non-binary
+       ## python -m pip install --verbose --no-cache-dir --ignore-installed --no-binary --requirement $REQUIREMENTS;
+  fi
+END_RUN
 ## TODO3: add option for optional requirements (likewise, for all via '#full#")
 ##   RUN python -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')
 
@@ -119,10 +127,12 @@ RUN apt-get update -y && apt-get install --yes lsb-release && apt-get clean all
 RUN apt-get install --yes enchant-2 rcs
 
 # Show disk usage when debugging
-RUN if [ "$DEBUG_LEVEL" -ge 5 ]; then                           \
-    echo "Top directories by disk usage:";                      \
-    du --block-size=1K / 2>&1 | sort -rn | head -20;         	\
-fi
+RUN <<END_RUN
+  if [ "$DEBUG_LEVEL" -ge 5 ]; then
+      echo "Top directories by disk usage:";
+      du --block-size=1K / 2>&1 | sort -rn | head -20;
+  fi
+END_RUN
 
 # Run the test, normally pytest over mezcla/tests
 # Note: the status code (i.e., $?) determines whether docker run succeeds (e.g., OK if 0)
