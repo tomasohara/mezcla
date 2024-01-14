@@ -806,7 +806,7 @@ def split_path(path):
     result = dir_name, filename
     debug.assertion(dir_name or filename)
     if dir_name and debug.active() and file_exists(path):
-        debug.assertion(directory_exists(dir_name))
+        debug.assertion(file_exists(dir_name))
     debug.trace(6, f"split_path({path}) => {result}")
     return result
     
