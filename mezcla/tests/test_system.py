@@ -118,58 +118,52 @@ class TestSystem(TestWrapper):
         )
         assert THE_MODULE.formatted_environment_option_descriptions(indent=' + ') == expected
 
-    @pytest.mark.xfail
-    def test_getenv(self, monkeypatch):
+    def test_getenv(self):
         """Ensure getenv works as expected"""
         debug.trace(4, "test_getenv()")
-        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        self.set_env('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv('TEST_ENV_VAR') == 'some value'
         assert THE_MODULE.getenv('INT_ENV_VAR', default_value=5) == 5
 
-    @pytest.mark.xfail
-    def test_getenv_text(self, monkeypatch):
+    def test_getenv_text(self):
         """Ensure getenv_text works as expected"""
         debug.trace(4, "test_getenv_text()")
-        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        self.set_env('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv_text('TEST_ENV_VAR') == 'some value'
         assert not THE_MODULE.getenv_text("REALLY FUBAR?", False)
 
-    @pytest.mark.xfail
-    def test_getenv_value(self, monkeypatch):
+    def test_getenv_value(self):
         """Ensure getenv_value works as expected"""
         debug.trace(4, "test_getenv_value()")
         set_test_env_var()
-        monkeypatch.setenv('NEW_ENV_VAR', 'some value', prepend=False)
+        self.set_env('NEW_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv_value('NEW_ENV_VAR', default='empty', description='another test env var') == 'some value'
         assert THE_MODULE.env_defaults['NEW_ENV_VAR'] == 'empty'
         assert THE_MODULE.env_options['NEW_ENV_VAR'] == 'another test env var'
 
-    @pytest.mark.xfail
-    def test_getenv_bool(self, monkeypatch):
+    def test_getenv_bool(self):
         """Ensure getenv_bool works as expected"""
         debug.trace(4, "test_getenv_bool()")
         # note: whitespaces is not a typo, is to test strip condition
-        monkeypatch.setenv('TEST_BOOL', 'FALSE', prepend=False)
+        self.set_env('TEST_BOOL', 'FALSE', prepend=False)
         assert not THE_MODULE.getenv_bool('TEST_BOOL', None)
-        monkeypatch.setenv('TEST_BOOL', '  true   ', prepend=False)
+        self.set_env('TEST_BOOL', '  true   ', prepend=False)
         assert THE_MODULE.getenv_bool('TEST_BOOL', None)
         assert isinstance(THE_MODULE.getenv_bool('TEST_BOOL', None), bool)
 
-    @pytest.mark.xfail
-    def test_getenv_number(self, monkeypatch):
+    def test_getenv_number(self):
         """Ensure getenv_number works as expected"""
         debug.trace(4, "test_getenv_number()")
         # note: whitespaces is not a typo, is to test strip condition
-        monkeypatch.setenv('TEST_NUMBER', ' 9.81    ', prepend=False)
+        self.set_env('TEST_NUMBER', ' 9.81    ', prepend=False)
         assert THE_MODULE.getenv_number('TEST_NUMBER', default=10) == 9.81
         assert THE_MODULE.getenv_number('BAD_TEST_NUMBER', default=10) == 10
         ## TODO: test helper argument
 
-    @pytest.mark.xfail
-    def test_getenv_int(self, monkeypatch):
+    def test_getenv_int(self):
         """Ensure getenv_int works as expected"""
         debug.trace(4, "test_getenv_int()")
-        monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
+        self.set_env('TEST_NUMBER', '9.81', prepend=False)
         assert THE_MODULE.getenv_int('TEST_NUMBER', default=20) == 9
         assert THE_MODULE.getenv_int("REALLY FUBAR", 123) == 123
 
@@ -205,12 +199,12 @@ class TestSystem(TestWrapper):
         assert "Foobar" in captured
 
     @pytest.mark.xfail
-    def test_exit(self, monkeypatch):
+    def test_exit(self):
         """Ensure exit works as expected"""
         debug.trace(4, "test_exit()")
         def sys_exit_mock():
             return 'exit'
-        monkeypatch.setattr(sys, "exit", sys_exit_mock)
+        self.set_attr(sys, "exit", sys_exit_mock)
         assert THE_MODULE.exit('test exit {method}', method='method') == 'exit'
         # Exit is mocked, ignore code editor hidding
         captured = self.get_stderr()
@@ -344,21 +338,19 @@ class TestSystem(TestWrapper):
 
         ## TODO: test with sys.version_info.major < 2
 
-    @pytest.mark.xfail
-    def test_stdin_reader(self, monkeypatch):
+    def test_stdin_reader(self):
         """Ensure stdin_reader works as expected"""
         debug.trace(4, "test_stdin_reader()")
-        monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line\n'))
+        self.set_attr('sys.stdin', io.StringIO('my input\nsome line\n'))
         test_iter = THE_MODULE.stdin_reader()
         assert next(test_iter) == 'my\tinput'
         assert next(test_iter) == 'some\tline'
         assert next(test_iter) == ''
 
-    @pytest.mark.xfail
-    def test_read_all_stdin(self, monkeypatch):
+    def test_read_all_stdin(self):
         """Ensure read_all_stdin works as expected"""
         debug.trace(4, "test_read_all_stdin()")
-        monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line'))
+        self.set_attr('sys.stdin', io.StringIO('my input\nsome line'))
         assert THE_MODULE.read_all_stdin() == 'my input\nsome line'
 
     def test_read_entire_file(self):
@@ -847,24 +839,22 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.round_as_str(3.15914, 3) == "3.159"
         assert isinstance(THE_MODULE.round_as_str(3.15914, 3), str)
 
-    @pytest.mark.xfail
-    def test_sleep(self, monkeypatch):
+    def test_sleep(self):
         """Ensure sleep works as expected"""
         debug.trace(4, "test_sleep()")
         def sleep_mock(secs):
             return f'sleeping {secs}'
-        monkeypatch.setattr(time, "sleep", sleep_mock)
+        self.set_attr(time, "sleep", sleep_mock)
         THE_MODULE.sleep(123123, trace_level=-1)
         captured = self.get_stderr()
         assert '123123' in captured
 
-    @pytest.mark.xfail
-    def test_current_time(self, monkeypatch):
+    def test_current_time(self):
         """Ensure current_time works as expected"""
         debug.trace(4, "test_current_time()")
         def time_mock():
             return 12345.6789
-        monkeypatch.setattr(time, "time", time_mock)
+        self.set_attr(time, "time", time_mock)
         assert THE_MODULE.current_time() == 12345.6789
         assert THE_MODULE.current_time(integral=True) == 12346
 
@@ -879,8 +869,7 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_python_maj_min_version()")
         assert re.search(r'\d+\.\d+', str(THE_MODULE.python_maj_min_version()))
 
-    @pytest.mark.xfail
-    def test_get_args(self, monkeypatch):
+    def test_get_args(self):
         """Ensure get_args works as expected"""
         debug.trace(4, "test_get_args()")
         args = [
@@ -888,7 +877,7 @@ class TestSystem(TestWrapper):
             "--name",
             "logfilename.log",
         ]
-        monkeypatch.setattr("sys.argv", args)
+        self.set_attr("sys.argv", args)
         assert THE_MODULE.get_args() == args
 
     def test_main(self):

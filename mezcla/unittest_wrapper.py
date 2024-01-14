@@ -49,9 +49,11 @@ import inspect
 import os
 import tempfile
 import unittest
+from typing import overload
 
 # Installed packages
 import pytest
+from _pytest.monkeypatch import Notset
 
 # Local packages
 import mezcla
@@ -391,6 +393,29 @@ class TestWrapper(unittest.TestCase):
     def capsys(self, capsys):
         """Support for capture stdout and stderr"""
         self.capsys = capsys
+
+    @pytest.fixture(autouse=True)
+    def monkeypatch(self, monkeypatch):
+        self.monkeypatch = monkeypatch
+
+    def set_env(self, name, value, prepend = None):
+        """Set environment variable name to value"""
+        debug.trace_expr(5, name, value, prepend, prefix="set_env:\n", delim="\n")
+        self.monkeypatch.setenv(name,value,prepend) 
+        return
+
+    @overload
+    def set_attr(self, target: object, name: str, value: object, raising: bool = True ):
+        """Set attribute value on target, memorizing the old value"""
+        debug.trace_expr(5,target, name, value, raising, prefix="set_attr:\n", delim="\n")
+        self.monkeypatch.setattr(target, name, value, raising)
+        return
+
+    def set_attr(self, target: str, name: object, value: Notset = Notset(), raising: bool = True):
+        """Set attribute value on target, memorizing the old value"""
+        debug.trace_expr(5,target, name, value, raising, prefix="set_attr:\n", delim="\n")
+        self.monkeypatch.setattr(target, name, value, raising)
+        return
 
     def get_stdout_stderr(self):
         """Get currently captured standard output and error
