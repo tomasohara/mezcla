@@ -38,6 +38,7 @@ git+https://github.com/tehabstract/textract.git
 gradio              # NEW: For audio.py (huggingface)
 ## OPTIONAL: kenlm               # NEW: For audio.py (huggingface)
 ## OPTIONAL: ibm-watson          # NEW: For audio.py (ibm-watson)
+importlib_metadata
 librosa>=0.10.0           
 lxml
 mako
