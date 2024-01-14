@@ -392,8 +392,15 @@ class TestWrapper(unittest.TestCase):
     ##     self.do_assert(*args, **kwargs)
 
     @pytest.fixture(autouse=True)
+    def monkeypatch(self, monkeypatch):
+        """Support for using pytest monkeypatch"""
+        # See https://docs.pytest.org/en/latest/how-to/monkeypatch.html
+        self.monkeypatch = monkeypatch
+
+    @pytest.fixture(autouse=True)
     def capsys(self, capsys):
-        """Support for capture stdout and stderr"""
+        """Support for capturing stdout and stderr"""
+        # See https://docs.pytest.org/en/latest/how-to/capture-stdout-stderr.html
         self.capsys = capsys
 
     def get_stdout_stderr(self):
@@ -413,7 +420,7 @@ class TestWrapper(unittest.TestCase):
         """Get currently captured standard error (see get_stdout_stderr)"""
         _stdout, stderr = self.get_stdout_stderr()
         return stderr
-        
+
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         debug.trace(6, "TestWrapper.tearDown()")
