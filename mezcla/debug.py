@@ -478,6 +478,8 @@ if __debug__:
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
         trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw}); debug_level={dl}",
                   l=level, args=values, kw=kwargs, dl=trace_level)
+        ## TODO1: check for unknown keywords, which could be cut-n-paste error
+        ## EX (from convert_emoticons.py): debug.trace_expr(7, replace=None, strip=None, replacement=None, text=None, prefix="in ConvertEmoticons.__init__: ")
         ## DEBUG:
         ## trace_fmt(1, "(global_trace_level:{g} < level:{l})={v}",
         ##           g=trace_level, l=level, v=(trace_level < level))
@@ -1141,7 +1143,7 @@ if __debug__:
         trace_fmt(DETAILED, "{pre}environment: {{\n\t{env}\n}}{post}",
                   env="\n\t".join([(k + ': ' + format_value(os.environ[k]))
                                    for k in sorted(dict(os.environ))]),
-                  pre=pre, post=post)
+                  pre=pre, post=post, max_len=4096)
 
         # Likewise show additional information during verbose debug tracing
         # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
