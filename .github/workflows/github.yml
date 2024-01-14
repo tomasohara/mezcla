@@ -22,7 +22,7 @@ on: [push, pull_request]
 jobs:
 
   build-and-test-runner:
-    name: Build and Run Tests via Workflow Runner VM
+    name: Build and Run Tests via Runner VM
     runs-on: ${{ matrix.os }}
     
     strategy:
