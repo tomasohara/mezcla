@@ -568,8 +568,8 @@ class TestSystem(TestWrapper):
         filedir1 = gh.create_temp_file('test modified time')
         filedir2 = gh.create_temp_file('test modified time2')
         # get the modification time of the files
-        timestamp1 = THE_MODULE.get_file_modification_time(filedir1)
-        timestamp2 = THE_MODULE.get_file_modification_time(filedir2)
+        timestamp1 = THE_MODULE.get_file_modification_time(filedir1)[:19]
+        timestamp2 = THE_MODULE.get_file_modification_time(filedir2)[:19]
         # get and format local time
         timestampNow = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
@@ -577,7 +577,7 @@ class TestSystem(TestWrapper):
         assert timestamp1 == timestamp2
 
         # test timestamp is equal to actual time (ignoring miliseconds)
-        assert timestamp1[:19] == timestampNow
+        assert timestamp1 == timestampNow
 
     def test_remove_extension(self):
         """Ensure remove_extension works as expected"""
