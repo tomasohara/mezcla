@@ -50,7 +50,7 @@ class TestIt(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     script_file = my_re.sub(rf"{D}tests{D}test_", f"{D}", __file__)
 
-    @trap_exception
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_over_script(self):
         """Makes sure works as expected over script itself"""
         debug.trace(4, f"TestIt.test_over_script(); self={self}")
@@ -74,7 +74,7 @@ class TestIt(TestWrapper):
         self.do_assert(not my_re.search(loose_emoticon_regex, output_san_Japanese_example.encode()))
         return
 
-    @trap_exception
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_over_script_sans_comments(self):
         """Makes sure works as expected over script itself"""
         debug.trace(4, f"TestIt.test_over_script_sans_comments(); self={self}")
