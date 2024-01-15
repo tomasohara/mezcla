@@ -19,7 +19,8 @@ import sys
 import time
 
 # Installed packages
-import more_itertools
+## NOTE: made dynamic due to import issue during shell-script repo tests
+## TODO3: import more_itertools
 
 # Local packages
 from mezcla import debug
@@ -232,6 +233,8 @@ def trace_named_objects(level, list_text):
 
 def exactly1(items):
     """Whether one and only one if ITEMS is true"""
+    ## TEMP: does import here to avoid problem with mezcla package install
+    import more_itertools               # pylint: disable=import-outside-toplevel
     ok = more_itertools.exactly_n(items, 1)
     debug.trace(4, f"exactly1({items}) => {ok}")
     return ok 
