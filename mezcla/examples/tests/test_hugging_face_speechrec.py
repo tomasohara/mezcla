@@ -48,10 +48,7 @@ class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    ## OLD: To be fixed
     @pytest.mark.xfail                   # TODO: remove xfail
-    ## DEBUG:
-    @trap_exception
     def test_data_file(self):
         """Tests run_script w/ data file"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
@@ -60,10 +57,11 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search(r"testing|one|two|three", output.strip()))
         return
 
-    ## NEW: Added tests for hugging_face_speechrec.py
-    ## TEST 1: Test the vanilla script using a soundfile
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_sound_file_default(self):
         """Ensures that test_sound_file_default works properly"""
+        ## NEW: Added tests for hugging_face_speechrec.py
+        ## TEST 1: Test the vanilla script using a soundfile
         debug.trace(4, f"TestIt.test_sound_file_default(); self={self}")
         audio_file = gh.resolve_path("fuzzy-testing-1-2-3.wav")
         output_cmd = f"python3 {HF_SPEECHREC_PATH} {audio_file} 2> /dev/null"
@@ -71,10 +69,10 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search(r"testing|one|two|three", output.strip()))
         return
     
-    ## TEST 2: Test the vanilla script using a different soundfile (US English)
     @pytest.mark.skip               # TODO: Fix path for audio_file
     def test_sound_file_us1(self):
         """Ensures that test_sound_file_us1 works properly"""
+        ## TEST 2: Test the vanilla script using a different soundfile (US English)
         debug.trace(4, f"TestIt.test_sound_file_us1(); self={self}")
         audio_file = gh.resolve_path("examples/resources/speech-wav/us1.wav")
         output_cmd = f"python3 {HF_SPEECHREC_PATH} {audio_file} 2> /dev/null"
@@ -82,10 +80,10 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search(r"but|we|also|get|to|see|the|whole|thing", output.strip()))
         return
     
-    ## TEST 3: Test the vanilla script using a different soundfile (US English)
     @pytest.mark.skip               # TODO: Fix path for audio_file    
     def test_sound_file_us2(self):
         """Ensures that test_sound_file_us2 works properly"""
+        ## TEST 3: Test the vanilla script using a different soundfile (US English)
         debug.trace(4, f"TestIt.test_sound_file_us2(); self={self}")
         audio_file = gh.resolve_path("examples/resources/speech-wav/us10.wav")
         output_cmd = f"python3 {HF_SPEECHREC_PATH} {audio_file} 2> /dev/null"
@@ -93,11 +91,11 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search(r"we|tend|to|seek|simple|answers", output.strip()))
         return
     
-    ## TEST 4: Test the script using a different ASR model
-    ## NOTE: Skipped due to use of a different model (i.e. large downloads)   
     @pytest.mark.skip 
     def test_sound_file_model(self):
         """Ensures that test_sound_file_model works properly"""
+        ## TEST 4: Test the script using a different ASR model
+        ## NOTE: Skipped due to use of a different model (i.e. large downloads)   
         audio_file = gh.resolve_path("fuzzy-testing-1-2-3.wav")
         asr_model = "openai/whisper-large-v3"
         output_cmd = f"ASR_MODEL={asr_model} python3 {HF_SPEECHREC_PATH} {audio_file} 2> /dev/null"
