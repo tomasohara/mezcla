@@ -104,7 +104,7 @@ COPY ./requirements.txt $REQUIREMENTS
 # NOTE: The workflow only handles requirements for the runner VM, not the docker container;
 # Also, the results aren't cached to save space in the image.
 RUN <<END_RUN
-  if [ "$(which nltk)" == "" ];
+  if [ "$(which nltk)" == "" ]; then
        python -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
        ## TODO?
        ## # note: makes a second pass for failed installations, doing non-binary
