@@ -28,6 +28,7 @@ except:
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import glue_helpers as gh
 from mezcla import debug
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -38,9 +39,16 @@ else:
     THE_MODULE = None
 
 # Constants
-# OLD: AUDIOFILE = 'samples/test_audiofile.wav'
-# OLD (II): AUDIOFILE = "../examples/fuzzy-testing-1-2-3.wav"
-AUDIOFILE = gh.resolve_path("fuzzy-testing-1-2-3.wav")
+# note: heuristic added for likely file move (e.g., ../examples => ../tests/resources)
+RUN_SLOW_TESTS = system.getenv_bool(
+    "RUN_SLOW_TESTS", False,
+    ## TODO2: enable if running Github runner
+    description="Run tests that can a while to run")
+AUDIO_FILENAME = "fuzzy-testing-1-2-3.wav"
+AUDIOFILE = gh.resolve_path(AUDIO_FILENAME,
+                            base_dir=gh.form_path("..", "examples"))
+if system.file_exists(AUDIOFILE):
+    AUDIOFILE = gh.resolve_path(AUDIO_FILENAME, "..", heuristic=True)
 
 class TestAudio(TestWrapper):
     """Class for testcase definition"""
@@ -48,9 +56,7 @@ class TestAudio(TestWrapper):
     use_temp_base_dir = True
     maxDiff           = None
 
-    ## TODO2: rework skip's as xfail
-    
-    @pytest.mark.skip(reason="this will take a while and this require a valid audio path in AUDIOFILE")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="this will take a while and this require a valid audio path in AUDIOFILE")
     def test_sphinx_engine(self):
         """Test CMUSphinx speech recognition engine class"""
         debug.trace(debug.DETAILED, f"TestAudio.test_sphinx_engine({self})")
@@ -64,7 +70,7 @@ class TestAudio(TestWrapper):
     def test_audio_path(self):
         """Test for audio.path"""
         debug.trace(debug.DETAILED, f"TestAudio.test_audio_path({self})")
-
+        ## TODO2: fixme
         path = 'some/path'
 
         sample = THE_MODULE.Audio(path)
@@ -75,7 +81,7 @@ class TestAudio(TestWrapper):
         sample.set_path(path)
         assert sample.get_path(), path
 
-    @pytest.mark.skip(reason='TODO: tests command-line using batspp style')
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_source_single_audio(self):
         """End to end test sourcing a single audio file"""
         debug.trace(debug.DETAILED, f"TestAudio.test_source_single_audio({self})")
@@ -87,7 +93,7 @@ class TestAudio(TestWrapper):
         expected = f'Audio: {audio}'
         assert gh.run(command) == expected
 
-    @pytest.mark.skip(reason='TODO: tests command-line using batspp style')
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_source_list(self):
         """End to end test sourcing a list of audio files"""
         debug.trace(debug.DETAILED, f"TestAudio.test_source_list({self})")
@@ -108,7 +114,7 @@ class TestAudio(TestWrapper):
                     'Audio: audioN.wav')
         assert gh.run(command) == expected
 
-    @pytest.mark.skip(reason='TODO: tests command-line using batspp style')
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_source_folder(self):
         """End to end test sourcing a folder and discover audiofiles"""
         debug.trace(debug.DETAILED, f"TestAudio.test_source_folder({self})")
@@ -125,7 +131,7 @@ class TestAudio(TestWrapper):
         for filename in filenames:
             assert filename in actual
 
-    @pytest.mark.skip(reason="this will take a while and this require a valid audio path in AUDIOFILE")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="this will take a while and this require a valid audio path in AUDIOFILE")
     def test_extract_speech(self):
         """End to end test extracting speech using CMUSphinx engine"""
         debug.trace(debug.DETAILED, f"TestAudio.test_extract_speech({self})")
@@ -135,9 +141,10 @@ class TestAudio(TestWrapper):
         assert '- speech recognized' in actual
         assert isinstance(actual, str)
 
-    # NEW: Added test for Huggingface
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_huggingface_asr(self):
         """Test Huggingface automatic speech recognition model class"""
+        # NEW: Added test for Huggingface
         debug.trace(debug.DETAILED, f"TestAudio.test_huggingface_asr({self})")
 
         sample = THE_MODULE.Audio(AUDIOFILE)

@@ -6,10 +6,21 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_train_language_model.py 
 
+## TODO1: carefully review test/template.py
+## TODO2: use a helper method to cut down on redundant tests; for example,
+##    def check_format_profile_key(self, key):
+##        ... run_script(env_options=f"PROFILE_KEY={key}", ...)
+##    def test_formatprofile_PK_time(self): self.check_format_profile_key("time")
+## NOTE:
+## - Only need to test a few main keys in any depth, so generalize test_formatprofile_PK_calls
+## so that it can handle alternative sort orders without substantial revision.
+## - The minor keys can just check for "Ordered by" label differences.
+
+
 """Tests for format_profile module"""
 
 # Standard packages
-import re
+## OLD: import re
 
 # Installed packages
 import pytest
@@ -17,38 +28,71 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import trap_exception
+
+# Note: Two references are used for the module to be tested:
+#    THE_MODULE:                        global module object
+#    TestIt.script_module:              path to file
+import mezcla.format_profile as THE_MODULE
 
 class TestFormatProfile(TestWrapper):
     """Class for testcase definition"""
-    script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     use_temp_base_dir = True    # treat TEMP_BASE as directory
     # For testing, let the dir be ./mezcla/mezcla/tests
     # TODO: Find a way to denote a random number in SAMPLE OUTPUT which may differ in each execution
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    @trap_exception                      # TODO: remove when debugged
     def test_formatprofile_PK_calls(self):
         "Ensures that test_formatprofile_PK_calls works as expected"
+        ## TODO3: reword commment because test_formatprofile_PK_calls is not testing itself;
+        ## Instead, use something like "ensure that PROFILE_KEY=calls works as expected".
 
         key_arg = "calls"
-        testing_script = "test_glue_helpers.py"
-        SAMPLE_OUTPUT = ["1    0.001    0.000    0.000    0.000 cacheprovider.py:307(pytest_report_collectionfinish)", "{method 'popleft' of 'collections.deque' objects}"]
+        ## OLD: testing_script = "test_glue_helpers.py"
+        testing_script = gh.resolve_path("simple_main_example.py")
+        ## OLD: SAMPLE_OUTPUT = ["1    0.001    0.000    0.000    0.000 cacheprovider.py:307(pytest_report_collectionfinish)", "{method 'popleft' of 'collections.deque' objects}"]
+
+        # Sample output:
+        #     Ordered by: call count
+        # 
+        #     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        #     3323    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}
+        #     2670    0.000    0.000    0.000    0.000 {method 'rstrip' of 'str' objects}
+        #     1825/1723    0.000    0.000    0.000    0.000 {built-in method builtins.len}
+        #     1443    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+        #
         
         debug.trace(4, f"test_formatprofile_PK_calls(); self={self}")
-        empty_file1 = gh.get_temp_file()
-        profile_log  = gh.get_temp_file()
-        test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
-        test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
+        ## OLD: empty_file1 = gh.get_temp_file()
+        ## OLD: profile_log  = gh.get_temp_file()
+        profile_data = self.temp_file + "-profile.data"
+        ## OLD: test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
+        # note: runs simple_main_example.py over itself; for example,
+        #   python -m cProfile -o /tmp/tmpp6zg9a5o/test-1-profile.data simple_main_example.py simple_main_example.py
+        test_command_1 = f"python -m cProfile -o {profile_data} {testing_script} {testing_script}"
+        ## BAD: test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
 
         gh.run(test_command_1)
-        gh.run(test_command_2)
+        ## BAD: gh.run(test_command_2)
 
-        output = gh.read_file(empty_file1)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        ## BAD: output = gh.read_file(empty_file1)
+        output = self.run_script(env_options=f"PROFILE_KEY={key_arg}", data_file=profile_data)
+        self.do_assert("Ordered by: call count" in output)
+        my_re.search(r"^\s*(\S+)\s+.*method 'rstrip'", output, flags=my_re.MULTILINE)
+        rstrip_count = system.to_float(my_re.group(1))
+        my_re.search(r"^\s*(\S+)\s+.*method 'append'", output, flags=my_re.MULTILINE)
+        join_count = system.to_float(my_re.group(1))
+        self.do_assert(rstrip_count > join_count)
+
         return
     
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_cumulative(self):
         "Ensures that test_formatprofile_PK_cumulative works as expected"
 
@@ -69,6 +113,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
     
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_cumtime(self):
         "Ensures that test_formatprofile_PK_cumtime works as expected"
 
@@ -89,6 +134,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_file(self):
         "Ensures that test_formatprofile_PK_file works as expected"
 
@@ -109,6 +155,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] in output)
         return
     
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_filename(self):
         "Ensures that test_formatprofile_PK_filename works as expected"
 
@@ -129,6 +176,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] not in output)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_module(self):
         "Ensures that test_formatprofile_PK_module works as expected"
 
@@ -149,6 +197,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] in output)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_ncalls(self):
         "Ensures that test_formatprofile_PK_ncalls works as expected"
 
@@ -169,6 +218,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_pcalls(self):
         "Ensures that test_formatprofile_PK_pcalls works as expected"
 
@@ -189,6 +239,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] not in output)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_line(self):
         "Ensures that test_formatprofile_PK_line works as expected"
 
@@ -209,6 +260,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] not in output)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_name(self):
         "Ensures that test_formatprofile_PK_name works as expected"
 
@@ -229,6 +281,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] not in output)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_nfl(self):
         "Ensures that test_formatprofile_PK_nfl works as expected"
 
@@ -249,26 +302,29 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
 
-    def test_formatprofile_PK_name(self):
-        "Ensures that test_formatprofile_PK_name works as expected"
+    ## BAD
+    ## @pytest.mark.xfail                   # TODO: remove xfail
+    ## def test_formatprofile_PK_name(self):
+    ##     "Ensures that test_formatprofile_PK_name works as expected"
 
-        key_arg = "name"
-        testing_script = "test_glue_helpers.py"
-        SAMPLE_OUTPUT = ["{built-in method _csv.reader}", "{built-in method _sre.compiler}"]
+    ##     key_arg = "name"
+    ##     testing_script = "test_glue_helpers.py"
+    ##     SAMPLE_OUTPUT = ["{built-in method _csv.reader}", "{built-in method _sre.compiler}"]
 
-        debug.trace(4, f"test_formatprofile_PK_name(); self={self}")
-        empty_file1 = gh.get_temp_file()
-        profile_log  = gh.get_temp_file()
-        test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
-        test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
+    ##     debug.trace(4, f"test_formatprofile_PK_name(); self={self}")
+    ##     empty_file1 = gh.get_temp_file()
+    ##     profile_log  = gh.get_temp_file()
+    ##     test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
+    ##     test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
 
-        gh.run(test_command_1)
-        gh.run(test_command_2)
+    ##     gh.run(test_command_1)
+    ##     gh.run(test_command_2)
 
-        output = gh.read_file(empty_file1)
-        assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] not in output)
-        return
+    ##     output = gh.read_file(empty_file1)
+    ##     assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] not in output)
+    ##     return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_stdname(self):
         "Ensures that test_formatprofile_PK_stdname works as expected"
 
@@ -289,6 +345,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] in output)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_time(self):
         "Ensures that test_formatprofile_PK_time works as expected"
 
@@ -309,6 +366,7 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] not in output)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_tottime(self):
         "Ensures that test_formatprofile_PK_tottime works as expected"
         

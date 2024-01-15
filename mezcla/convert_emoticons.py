@@ -9,6 +9,10 @@
 # Example output:
 #   Nothing to do [sleeping face]
 #
+# TODO2:
+# - Handle variational selectors as in "‼️" (e.g., U+FE0F). See
+#   https://stackoverflow.com/questions/38100329/what-does-u-ufe0f-in-an-emoji-mean-is-it-the-same-if-i-delete-it
+#
 
 """
 Replace emoticons with name (or remove entirely)
@@ -37,11 +41,15 @@ TL = debug.TL
 STRIP_OPT = "strip"
 
 # Environment options
-REPLACEMENT_TEXT = system.getenv_value("REPLACEMENT_TEXT", None,
-                                       description="Override for empty replacement text")
-STRIP_EMOTICONS = system.getenv_value("STRIP_EMOTICONS", False,
-                                       description="Make emoticon removal default instead of rename")
-
+REPLACEMENT_TEXT = system.getenv_value(
+    "REPLACEMENT_TEXT", None,
+    description="Override for empty replacement text")
+STRIP_EMOTICONS = system.getenv_bool(
+    "STRIP_EMOTICONS", False,
+    description="Make emoticon removal default instead of rename/removal")
+AUGMENT_EMOTICONS = system.getenv_bool(
+    "AUGMENT_EMOTICONS", False,
+    description="Make emoticon augmentation default instead of rename/removal")
 
 #-------------------------------------------------------------------------------
 
@@ -49,49 +57,61 @@ class ConvertEmoticons:
     """Support for stripping those pesky emoticons from text (or replacing with description)"""
     OTHER_SYMBOL = 'So'
 
-    def __init__(self, replace=None, strip=None, replacement=None):
+    def __init__(self, replace=None, strip=None, replacement=None, augment=None):
         """Initializer: sets defaults for convert method
         Note: see convert() for argument descriptions
         """
         # TODO3: rework to remove non-standard functional interface for class
-        debug.trace_expr(7, replace=None, strip=None, replacement=None, text=None, prefix="in ConvertEmoticons.__init__: ")
+        debug.trace_expr(7, replace, strip, replacement, augment, prefix="in ConvertEmoticons.__init__: ")
         if strip is None:
             strip = STRIP_EMOTICONS
         if replace is None:
             replace = not strip
         if replacement is None:
-            replacement = (REPLACEMENT_TEXT or "")        
+            replacement = (REPLACEMENT_TEXT or "")
+        if augment is None:
+            augment = AUGMENT_EMOTICONS
         self.replace = replace
         self.strip = strip
         self.replacement = replacement
+        self.augment = augment
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
     #
     # EX: ce = ConvertEmoticons(); (ce.strip != cs.replace) => True
     # EX: ce.convert()("❌ Failure") => "[cross mark] Failure"
 
-    def convert(self, text=None, replace=None, strip=None, replacement=None):
-        """Either REPLACE emotions in TEXT with Unicode name or STRIP them entirely
-        Note: REPLACEMENT can be used for subsituted text (e.g., instead of "")
+    def convert(self, text=None, replace=None, strip=None, replacement=None, augment=None):
+        """Either REPLACE emotions in TEXT with Unicode name, STRIP them entirely, or AUGMENT
+        Note:
+        - REPLACEMENT can be used for subsituted text (e.g., instead of "").
+        - with AUGMENT the emoticon is still included (a la REPLACE plus STRIP).
         """
         # EX: ce.convert("✅ Success") => "[checkmark] Success"
+        # EX: ce.convert("✅ Success", augment=True) => "✅ [checkmark] Success"
         # EX: ce.convert("año") => "año"       # ignore diacritic; Spanish for year
-        debug.trace(6, f"ce.convert(_, [r={replace}], [s={strip}])")
+        debug.trace_expr(6, replace, strip, replacement, augment, prefix=f"in ce.convert: text=_; ")
         debug.assertion(text is not None)
         debug.assertion(not (replace and strip))
+        debug.assertion(not (augment and strip))
         if strip is None:
             strip = self.strip
         if replace is None:
             replace = self.replace
         if replacement is None:
             replacement = self.replacement
+        if augment is None:
+            augment = self.augment
+        debug.trace_expr(5, replace, strip, replacement, augment, prefix=f"ce.convert: text=_; ")
         in_text = text
         text = (text or "")
         #
         chars = []
         for ch in text:
+            new_ch = ch
             if unicodedata.category(ch) == self.OTHER_SYMBOL:
-                ch = f"[{unicodedata.name(ch).lower()}]" if replace else replacement
-            chars.append(ch)
+                new_ch = (f"{ch} " if augment else "")
+                new_ch += f"[{unicodedata.name(ch).lower()}]" if replace else replacement
+            chars.append(new_ch)
         text = "".join(chars)
         #
         level = (4 if (text != in_text) else 6)
@@ -105,7 +125,7 @@ class ConvertEmoticons:
     # EX: ce.convert("¿Hablas español?") => "¿Hablas español?"  # Spanish for "Do you speak Spanish"
 
 #-------------------------------------------------------------------------------
-    
+
 def convert_emoticons(text, **kwargs):
     """Convenience wrapper around ConvertEmoticons().convert(TEXT): see argument description there"""
     result = ConvertEmoticons(**kwargs).convert(text)
@@ -121,7 +141,7 @@ def main():
     # TODO: manual_input=True; short_options=True
     main_app = Main(description=__doc__.format(script=gh.basename(__file__)),
                     boolean_options=[(STRIP_OPT, "Strip emoticon entirely, instead of replacing with name")],
-                    skip_input=False)
+                    skip_input=False, input_error='ignore')
     debug.assertion(main_app.parsed_args)
     strip_entirely = main_app.get_parsed_option(STRIP_OPT)
     ce = ConvertEmoticons(strip=strip_entirely)

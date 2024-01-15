@@ -157,19 +157,19 @@ class TestWrapper(unittest.TestCase):
     ## NOTE: leads to pytest warning. See
     ##   https://stackoverflow.com/questions/62460557/cannot-collect-test-class-testmain-because-it-has-a-init-constructor-from
     ## def __init__(self, *args, **kwargs):
-    ##     debug.trace_fmtd(5, "TestWrapper.__init__({a}): keywords={kw}; self={s}",
+    ##     debug.trace_fmtd(6, "TestWrapper.__init__({a}): keywords={kw}; self={s}",
     ##                      a=",".join(args), kw=kwargs, s=self)
     ##     super().__init__(*args, **kwargs)
-    ##    debug.trace_object(5, self, label="TestWrapper instance")
+    ##     debug.trace_object(7, self, label="TestWrapper instance")
     ##
     ## __test__ = False                 # make sure not assumed test
         
     @classmethod
     def setUpClass(cls):
         """Per-class initialization: make sure script_module set properly"""
-        debug.trace_fmtd(5, "TestWrapper.setupClass(): cls={c}", c=cls)
+        debug.trace_fmtd(6, "TestWrapper.setupClass(): cls={c}", c=cls)
         super().setUpClass()
-        debug.trace_object(5, cls, "TestWrapper class")
+        debug.trace_object(7, cls, "TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
         if (cls.script_module is not None):
             # Try to pull up usage via python -m mezcla.xyz --help
@@ -245,7 +245,7 @@ class TestWrapper(unittest.TestCase):
         - Disables tracing scripts invoked via run() unless ALLOW_SUBCOMMAND_TRACING
         - Initializes temp file name (With override from environment)."""
         # Note: By default, each test gets its own temp file.
-        debug.trace(4, "TestWrapper.setUp()")
+        debug.trace(6, "TestWrapper.setUp()")
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
         # The temp file is an extension of temp-base file by default.
@@ -259,7 +259,7 @@ class TestWrapper(unittest.TestCase):
         gh.delete_existing_file(self.temp_file)
         TestWrapper.test_num += 1
 
-        debug.trace_object(5, self, "TestWrapper instance")
+        debug.trace_object(6, self, "TestWrapper instance")
         return
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
@@ -269,10 +269,11 @@ class TestWrapper(unittest.TestCase):
         not specified, they  are derived from self.temp_file. The optional POST_OPTIONS
         go after the data file.
         Notes:
+        - OPTIONS uses quotes around shell special characters used (e.g., '<', '>', '|')
         - issues warning if script invocation leads to error
         - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)"""
         debug.trace_fmtd(trace_level + 1,
-                         "TestWrapper.run_script(opts={opts}, data={df}, log={lf}, lvl={lvl}, out={of}, env={env}, stdin={stdin}, post={post}, back={back})",
+                         "TestWrapper.run_script(opts={opts!r}, data={df}, log={lf}, lvl={lvl}, out={of}, env={env}, stdin={stdin}, post={post}, back={back})",
                          opts=options, df=data_file, lf=log_file, lvl=trace_level, of=out_file,
                          env=env_options, stdin=uses_stdin, post=post_options, back=background)
         if options is None:
@@ -310,11 +311,15 @@ class TestWrapper(unittest.TestCase):
         amp_spec = "&" if background else ""
 
         # Run the command
+        ## TODO3: allow for stdin_command (e.g., "echo hey" | ...)
+        ## TODO2: add sanity check for special shell characters
+        ##   shell_tokens = ['<', '>', '|']
+        ##   debug.assertion(not system.intersection(options.split(), shell_tokens))
         gh.issue("{env} python -m {cov_spec} {module}  {opts}  {path}  {post} 1> {out} 2> {log} {amp_spec}",
                  env=env_options, cov_spec=coverage_spec, module=script_module,
                  opts=options, path=data_path, out=out_file, log=log_file, post=post_options, amp_spec=amp_spec)
         output = system.read_file(out_file)
-        # note; trailing newline removed as with shell output
+        # note: trailing newline removed as with shell output
         if output.endswith("\n"):
             output = output[:-1]
         debug.trace_fmtd(trace_level, "output: {{\n{out}\n}}",
@@ -387,21 +392,38 @@ class TestWrapper(unittest.TestCase):
     ##     self.do_assert(*args, **kwargs)
 
     @pytest.fixture(autouse=True)
+    def monkeypatch(self, monkeypatch):
+        """Support for using pytest monkeypatch"""
+        # See https://docs.pytest.org/en/latest/how-to/monkeypatch.html
+        self.monkeypatch = monkeypatch
+
+    @pytest.fixture(autouse=True)
     def capsys(self, capsys):
-        """Support for capture stdout and stderr"""
+        """Support for capturing stdout and stderr"""
+        # See https://docs.pytest.org/en/latest/how-to/capture-stdout-stderr.html
         self.capsys = capsys
 
-    def get_stdout(self):
-        """Get currently captured standard output
+    def get_stdout_stderr(self):
+        """Get currently captured standard output and error
         Note: Clears both stdout and stderr captured
         """
         stdout, stderr = self.capsys.readouterr()
-        debug.trace_expr(5, stdout, stderr)
+        debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n")
+        return stdout, stderr
+        
+    def get_stdout(self):
+        """Get currently captured standard output (see get_stdout_stderr)"""
+        stdout, _stderr = self.get_stdout_stderr()
         return stdout
         
+    def get_stderr(self):
+        """Get currently captured standard error (see get_stdout_stderr)"""
+        _stdout, stderr = self.get_stdout_stderr()
+        return stderr
+
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
-        debug.trace(4, "TestWrapper.tearDown()")
+        debug.trace(6, "TestWrapper.tearDown()")
         if not KEEP_TEMP:
             gh.run("rm -vf {file}*", file=self.temp_file)
         return
@@ -409,7 +431,7 @@ class TestWrapper(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Per-class cleanup: stub for tracing purposes"""
-        debug.trace_fmtd(5, "TestWrapper.tearDownClass(); cls={c}", c=cls)
+        debug.trace_fmtd(6, "TestWrapper.tearDownClass(); cls={c}", c=cls)
         if not KEEP_TEMP:
             ## TODO: use shutil
             if cls.use_temp_base_dir:

@@ -33,7 +33,8 @@ from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:                        global module object
+#    TestIt.script_module:              path to file
 import mezcla.debug as THE_MODULE # pylint: disable=reimported
 
 # Environment options
@@ -432,6 +433,7 @@ class TestDebug:
 
 class TestDebug2(TestWrapper):
     """Another Class for test case definitions"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     
     def test_xor3_again(self):
         """Test xor3 again"""
@@ -440,6 +442,14 @@ class TestDebug2(TestWrapper):
         self.do_assert(not debug.xor3(True, True, True))
         self.do_assert(not debug.xor3(False, False, False))
 
+    @pytest.mark.xfail
+    def test_level(self):
+        """"Make sure set_level honored (provided __debug__)"""
+        old_level = debug.get_level()
+        new_level = old_level + 1
+        debug.set_level(new_level)
+        expected_level = (new_level if __debug__ else old_level)
+        self.do_assert(debug.get_level() == expected_level)
 
 #------------------------------------------------------------------------
 

@@ -25,6 +25,14 @@ from mezcla import debug
 #    THE_MODULE:	    global module object
 import mezcla.misc_utils as THE_MODULE
 
+# Make sure more_itertools available
+has_more_itertools = True
+try:
+    import more_itertools
+except:
+    system.print_exception_info("more_itertools import")
+    has_more_itertools = False
+
 class TestMiscUtils:
     """Class for test case definitions"""
 
@@ -142,6 +150,7 @@ class TestMiscUtils:
         assert "len(sys.argv)" in captured.err
         assert "sys.argv" in captured.err
 
+    @pytest.mark.skipif(not has_more_itertools, reason="Unable to load more_itertools")
     def test_exactly1(self):
         """Ensure exactly1 works as expected"""
         debug.trace(4, "test_exactly1()")

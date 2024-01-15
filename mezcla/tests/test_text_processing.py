@@ -22,6 +22,7 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -47,10 +48,11 @@ class TestTextProcessing:
         debug.trace(4, "test_split_word_tokens()")
         assert THE_MODULE.split_word_tokens("How now, brown cow?") == ['How', 'now', ',', 'brown', 'cow', '?']
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_label_for_tag(self):
         """Ensure label_for_tag works as expected"""
         debug.trace(4, "test_label_for_tag()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
     def test_class_for_tag(self):
         """Ensure class_for_tag works as expected"""
@@ -69,35 +71,41 @@ class TestTextProcessing:
         #   Related: https://stackoverflow.com/a/30823202
         assert THE_MODULE.tag_part_of_speech(['How', 'now', ',', 'brown', 'cow', '?']) == [('How', 'WRB'), ('now', 'RB'), (',', ','), ('brown', 'IN'), ('cow', 'NN'), ('?', '.')]
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_tokenize_and_tag(self):
         """Ensure tokenize_and_tag works as expected"""
         debug.trace(4, "test_tokenize_and_tag()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_tokenize_text(self):
         """Ensure tokenize_text works as expected"""
         debug.trace(4, "test_tokenize_text()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_is_stopword(self):
         """Ensure is_stopword works as expected"""
         debug.trace(4, "test_is_stopword()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_has_spelling_mistake(self):
         """Ensure has_spelling_mistake works as expected"""
         debug.trace(4, "test_has_spelling_mistake()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_read_freq_data(self):
         """Ensure read_freq_data works as expected"""
         debug.trace(4, "test_read_freq_data()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_read_word_POS_data(self): # pylint: disable=invalid-name
         """Ensure read_word_POS_data works as expected"""
         debug.trace(4, "test_read_word_POS_data()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
     def test_get_most_common_POS(self): # pylint: disable=invalid-name
         """Ensure get_most_common_POS works as expected"""
@@ -157,10 +165,11 @@ class TestTextProcessing:
         assert THE_MODULE.is_punct('$', '$')
         assert not THE_MODULE.is_punct('can', 'MD')
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_usage(self):
         """Ensure usage works as expected"""
         debug.trace(4, "test_usage()")
-        ## TODO: WORK-IN=PROGRESS
+        assert False, "TODO: code test"
 
 
 class TestTextProcessingScript(TestWrapper):
@@ -174,15 +183,17 @@ class TestTextProcessingScript(TestWrapper):
         output = self.run_script(data_file=TEXT_EXAMPLE)
         assert output == gh.read_file(TEXT_EXAMPLE_TAGS)[:-1]
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_just_tokenize(self):
         """Ensure just_tokenize argument works as expected"""
         debug.trace(4, "test_just_tokenize()")
-        ## TODO: WORK-IN-PROGRESS
+        self.do_assert(False, "TODO: code test")
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_make_lowercase(self):
         """Ensure make_lowercase argument works as expected"""
         debug.trace(4, "test_make_lowercase()")
-        ## TODO: WORK-IN-PROGRESS
+        self.do_assert(False, "TODO: code test")
 
 
 class TestTextProc(TestWrapper):
@@ -190,7 +201,8 @@ class TestTextProc(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    ## DEBUG: @trap_exception            # TODO: remove when debugged
+    ## DEBUG:
+    @trap_exception            # TODO: remove when debugged
     def test_chunk_noun_phrases(self):
         """Make sure sentences split into NPs properly"""
         sentence = "The cat is on the mat by the door"

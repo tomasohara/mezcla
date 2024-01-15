@@ -77,6 +77,7 @@ TODO_FUBAR = system.getenv_bool("TODO_FUBAR", False,
 h = {'a': 1, 'b': 2, 'c': 3}
 l = [1, 2, 3]
 t = "some text"
+text = t
     
 #-------------------------------------------------------------------------------
 # Helper functions
@@ -144,8 +145,11 @@ def pr_dir(obj):
 
 
 def set_xterm_title(title=None):
-    """Set xterm title via set_xterm_title.bash
-    Note: requires https://github.com/tomasohara/shell-scripts"""
+    """Set xterm TITLE via set_xterm_title.bash
+    Note:
+    - Uses set_xterm_title.bash from https://github.com/tomasohara/shell-scripts.
+    - The TITLE can use environment variables (e.g., "ipython [$CONDA_PREFIX]").
+    """
     # Sample result: "ipython: /home/tomohara/mezcla: Py3.10(base)"
     if title is None:
         title = "ipython $PWD"

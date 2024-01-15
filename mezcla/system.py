@@ -797,12 +797,27 @@ def get_file_modification_time(filename, as_float=False):
     return mod_time
 
 
+def split_path(path):
+    """Split file PATH into directory and filename
+    Note: wrapper around os.path.split with tracing and sanity checks
+    """
+    # EX: split_path("/etc/passwd") => ["etc", "passwd"]
+    dir_name, filename = os.path.split(path)
+    result = dir_name, filename
+    debug.assertion(dir_name or filename)
+    if dir_name and debug.active() and file_exists(path):
+        debug.assertion(file_exists(dir_name))
+    debug.trace(6, f"split_path({path}) => {result}")
+    return result
+    
 def filename_proper(path):
-    """Return PATH sans directories"""
+    """Return PATH sans directories
+    Note: unlike os.path.split, this always returns filename component
+    """
     # EX: filename_proper("/tmp/document.pdf") => "document.pdf")
     # EX: filename_proper("/tmp") => "tmp")
     # EX: filename_proper("/") => "/")
-    (directory, filename) = os.path.split(path)
+    (directory, filename) = split_path(path)
     if not filename:
         filename = directory
     debug.trace(6, f"filename_proper({path}) => {filename}")
@@ -1289,6 +1304,33 @@ def get_args():
     debug.trace_fmtd(6, "get_args() => {r}", r=result)
     return result
 
+#-------------------------------------------------------------------------------
+# Memomization support (i.e., functiona result caching), based on 
+#     See http://code.activestate.com/recipes/578231-probably-the-fastest-memoization-decorator-in-the-. [world!]
+# This is implemented transparently via Python decorators. See
+#     http://stackoverflow.com/questions/739654/understanding-python-decorators
+#
+# usage example:
+#
+#    @memodict
+#    def fubar(word):
+#        result = ...
+#        return result
+#
+
+def memodict(f):
+    """Memoization decorator for a function taking a single argument"""
+    class _memodict(dict):
+        """Internal class for implementing memoization"""
+        #
+        def __missing__(self, key):
+            """Invokes function to produce value if arg not in hash"""
+            ret = self[key] = f(key)
+            return ret
+    #
+    return _memodict().__getitem__
+
+#-------------------------------------------------------------------------------
 
 def init():
     """Performs module initilization"""

@@ -4,7 +4,7 @@
 #
 # usage example:
 #    python -u -m cProfile -o fubar.profile fubar.py
-#    format-profile.py fubar.profile >| fubar.profile.list
+#    format-profile.py fubar.profile > fubar.profile.list
 #------------------------------------------------------------------------
 # Notes:
 # via http://docs.python.org/3/library/profile.html:
@@ -83,8 +83,8 @@ Notes:
 - see http://docs.python.org/3/library/profile.html
 
 Example (assumes bash):
-    $ python -m cProfile -o profile.log fubar.py
-    $ PROFILE_KEY=calls {program} profile.log
+    $ python -m cProfile -o profile.data fubar.py
+    $ PROFILE_KEY=calls {program} profile.data
 
 """.format(program=sys.argv[0]))
     return

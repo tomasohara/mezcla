@@ -147,8 +147,9 @@ USE_TEMP_BASE_DIR = gh.USE_TEMP_BASE_DIR
 TEMP_FILE = gh.TEMP_FILE
 KEEP_TEMP_FILES = system.getenv_bool("KEEP_TEMP_FILES", debug.detailed_debugging(),
                                      "Retain temporary files")
+INPUT_ERROR_OPTION = "input_error"
 INPUT_ERROR = system.getenv_value(
-    "INPUT_ERROR", None,
+    INPUT_ERROR_OPTION.upper(), None,
     description="Override for strict input processing error handling")
 
 #-------------------------------------------------------------------------------
@@ -256,9 +257,10 @@ class Main(object):
         # Check miscellaneous options
         BINARY_INPUT_OPTION = "binary_input"
         PERL_SWITCH_PARSING_OPTION = "perl_switch_parsing"
-        bad_options = system.difference(kwargs.keys(), [BINARY_INPUT_OPTION, PERL_SWITCH_PARSING_OPTION])
+        bad_options = system.difference(kwargs.keys(), [BINARY_INPUT_OPTION, PERL_SWITCH_PARSING_OPTION, INPUT_ERROR_OPTION])
         debug.assertion(not bad_options, f"Extraneous kwargs: {bad_options}")
         self.binary_input = kwargs.get(BINARY_INPUT_OPTION, False)
+        self.input_error = kwargs.get(INPUT_ERROR_OPTION, INPUT_ERROR)
 
         # Setup temporary file and/or base directory
         # Note: Uses NamedTemporaryFile (hence ntf_args)
@@ -709,17 +711,17 @@ class Main(object):
                 debug.assertion(isinstance(self.filename, str))
                 debug.assertion(os.path.exists(self.filename))
                 mode = ("r" if (not self.binary_input) else "rb")
-                self.input_stream = system.open_file(self.filename, mode=mode, errors=INPUT_ERROR)
+                self.input_stream = system.open_file(self.filename, mode=mode, errors=self.input_error)
                 debug.assertion(self.input_stream)
         # Optionally reopen stream to change built-in settings
-        error_handling_change = (INPUT_ERROR and (INPUT_ERROR != self.input_stream.errors))
+        error_handling_change = (self.input_error and (self.input_error != self.input_stream.errors))
         reopen_stream = (error_handling_change or self.newlines)
         if reopen_stream:
             if self.newlines:
                 debug.trace(4, f"Changing input stream newlines from {self.input_stream.newlines!r} to {self.newlines!r}")
             if error_handling_change:
-                debug.trace(4, f"Changing input stream error handling from {self.input_stream.errors!r} to {INPUT_ERROR!r}")
-            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=INPUT_ERROR, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
+                debug.trace(4, f"Changing input stream error handling from {self.input_stream.errors!r} to {self.input_error!r}")
+            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=self.input_error, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
             debug.trace_object(4, self.input_stream)
     
     def run(self):
@@ -970,7 +972,7 @@ debug.trace_current_context(8, "main.py context")
 
 if __name__ == "__main__":
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone\n")
-    # note: Follwing used for argument parsing
+    # note: Following used for argument parsing
     main = Main(description=__doc__)
     main.run()
 
