@@ -13,7 +13,12 @@
 # - Add functions to facilitate functional programming (e.g., to simply debugging traces).
 #
 
-"""Helpers gluing scripts together"""
+"""Helpers gluing scripts together
+
+Usage example:
+
+   cat {script} | python -c 'from mezcla import glue_helpers, system; print("\\n".join(glue_helpers.elide_values(system.read_lines("{script}"))))'
+"""
 
 # Standard packages
 from collections import defaultdict
@@ -33,41 +38,60 @@ import textwrap
 from mezcla import debug
 from mezcla import system
 from mezcla import tpo_common as tpo
-from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
+## OLD: from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
+from mezcla.tpo_common import debug_format, debug_print
 
+# Constants
+TL = debug.TL
+
+# Environment options
+#
 # note:
 # - ALLOW_SUBCOMMAND_TRACING should be interepreted in terms of detailed
 # tracing. Now, basic tracing is still done unless disable_subcommand_tracing()
 # invoked. (This way, the subscript start/end time is still shown by default)
 # - SUB_DEBUG_LEVEL added to make sub-script trace level explicit
 DEFAULT_SUB_DEBUG_LEVEL = int(min(debug.TL.USUAL, debug.get_level()))
-SUB_DEBUG_LEVEL = system.getenv_int("SUB_DEBUG_LEVEL", DEFAULT_SUB_DEBUG_LEVEL,
-                                    "Tracing level for sub-command scripts invoked")
+SUB_DEBUG_LEVEL = system.getenv_int(
+    "SUB_DEBUG_LEVEL", DEFAULT_SUB_DEBUG_LEVEL,
+    description="Tracing level for sub-command scripts invoked")
 default_subtrace_level = SUB_DEBUG_LEVEL
-ALLOW_SUBCOMMAND_TRACING = tpo.getenv_boolean("ALLOW_SUBCOMMAND_TRACING",
-                                              (SUB_DEBUG_LEVEL > DEFAULT_SUB_DEBUG_LEVEL),
-                                              "Whether sub-commands have tracing above TL.USUAL")
+ALLOW_SUBCOMMAND_TRACING = system.getenv_boolean(
+    "ALLOW_SUBCOMMAND_TRACING",
+    (SUB_DEBUG_LEVEL > DEFAULT_SUB_DEBUG_LEVEL),
+    description="Whether sub-commands have tracing above TL.USUAL")
 if ALLOW_SUBCOMMAND_TRACING:
     # TODO: work out intuitive default if both SUB_DEBUG_LEVEL and ALLOW_SUBCOMMAND_TRACING specified
     default_subtrace_level = max(debug.get_level(), SUB_DEBUG_LEVEL)
 
-INDENT = "    "                          # default indentation
-
+INDENT = system.getenv_text(
+    "INDENT_TEXT", "    ",
+    description="Default indentation")
 # 
 # note: See main.py for similar support as part of Main scipt class
-FILE_BASE = system.getenv_text("FILE_BASE", "_temp",
-                               "Basename for output files including dir")
-TEMP_PREFIX = (FILE_BASE + "-")
+FILE_BASE = system.getenv_text(
+    "FILE_BASE", "_temp",
+    description="Basename for output files including dir")
+TEMP_PREFIX = system.getenv_text(
+    "TEMP_PREFIX", FILE_BASE + "-",
+    description="Prefix to use for temp files")
+TEMP_SUFFIX = system.getenv_text(
+    "TEMP_SUFFIX", "-",
+    description="Suffix to use for temp files")
+TEMP_SUFFIX = ("-")
 NTF_ARGS = {'prefix': TEMP_PREFIX,
             'delete': not debug.detailed_debugging(),
-            ## TODO: 'suffix': "-"
-            }
-TEMP_BASE = system.getenv_value("TEMP_BASE", None,
-                                "Override for temporary file basename")
+            'suffix': TEMP_SUFFIX}
+TEMP_BASE = system.getenv_value(
+    "TEMP_BASE", None,
+    description="Override for temporary file basename")
 TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and
                          (system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")))
-USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
-                                       "Whether TEMP_BASE should be a dir instead of prefix")
+USE_TEMP_BASE_DIR = system.getenv_bool(
+    "USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
+    description="Whether TEMP_BASE should be a dir instead of prefix")
+
+# Globals
 # note: see init() for initialization
 TEMP_FILE = None
 
@@ -77,16 +101,16 @@ def get_temp_file(delete=None):
     """Return name of unique temporary file, optionally with DELETE"""
     # Note: delete defaults to False if detailed debugging
     # TODO: allow for overriding other options to NamedTemporaryFile
-    if ((delete is None) and tpo.detailed_debugging()):
+    if ((delete is None) and debug.detailed_debugging()):
         delete = False
     temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
     debug.assertion(not delete, "Support for delete not implemented")
     debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
     return temp_file_name
 #
-TEMP_LOG_FILE = tpo.getenv_text("TEMP_LOG_FILE", get_temp_file() + "-log",
+TEMP_LOG_FILE = system.getenv_text("TEMP_LOG_FILE", get_temp_file() + "-log",
                                 "Log file for stderr such as for issue function")
-TEMP_SCRIPT_FILE = tpo.getenv_text("TEMP_SCRIPT_FILE", get_temp_file() + "-script",
+TEMP_SCRIPT_FILE = system.getenv_text("TEMP_SCRIPT_FILE", get_temp_file() + "-script",
                                    "File for command invocation")
 
 def create_temp_file(contents, binary=False):
@@ -199,6 +223,11 @@ def resolve_path(filename, base_dir=None, heuristic=False):
             if os.path.exists(check_path):
                 path = check_path
                 break
+    # Fall back to using find command
+    if (not os.path.exists(path)) and heuristic:
+        debug.trace(4, "FYI: resolve_path falling back to find")
+        debug.assertion(" " not in path)
+        path = run(f"find {base_dir} -name '{path}'")
             
     debug_format("resolve_path({f}) => {p}", 4, f=filename, p=path)
     return path
@@ -291,7 +320,7 @@ def indent_lines(text, indentation=None, max_width=512):
     return result
 
 
-MAX_ELIDED_TEXT_LEN = tpo.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
+MAX_ELIDED_TEXT_LEN = system.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 #
 def elide(value, max_len=None):
     """Returns VALUE converted to text and elided to at most MAX_LEN characters (with '...' used to indicate remainder). 
@@ -357,16 +386,16 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
         subtrace_level = default_subtrace_level
     if subtrace_level != trace_level:
         debug_level_env = os.getenv("DEBUG_LEVEL")
-        setenv("DEBUG_LEVEL", str(subtrace_level))
+        system.setenv("DEBUG_LEVEL", str(subtrace_level))
     in_just_issue = just_issue
     if just_issue is None:
         just_issue = False
     save_temp_base = TEMP_BASE
     if TEMP_BASE:
-         setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
+         system.setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
     save_temp_file = TEMP_FILE
     if TEMP_FILE:
-        setenv("TEMP_FILE", TEMP_FILE + "_subprocess_")
+        system.setenv("TEMP_FILE", TEMP_FILE + "_subprocess_")
     # Expand the command template
     # TODO: make this optional
     command_line = command
@@ -391,16 +420,17 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
     ## OLD: wait_for_command = (not foreground_wait or not just_issue)
     wait_for_command = (foreground_wait and not just_issue)
     debug.trace_expr(5, foreground_wait, just_issue, wait_for_command)
+    ## TODO3: clarify what output is when stdout redirected (e.g., for issue in support of unittest_wrapper.run_script
     result = getoutput(command_line) if wait_for_command else str(os.system(command_line))
     if output:
         print(result)
     # Restore debug level setting in environment
     if debug_level_env:
-        setenv("DEBUG_LEVEL", debug_level_env)
+        system.setenv("DEBUG_LEVEL", debug_level_env)
     if save_temp_base:
-        setenv("TEMP_BASE", save_temp_base)
+        system.setenv("TEMP_BASE", save_temp_base)
     if save_temp_file:
-        setenv("TEMP_FILE", save_temp_file)
+        system.setenv("TEMP_FILE", save_temp_file)
     debug_print("run(_) => {\n%s\n}" % indent_lines(result), (trace_level + 1))
     return result
 
@@ -754,9 +784,9 @@ def getenv_filename(var, default="", description=None):
     # TODO4: explain motivation
     debug_format("getenv_filename({v}, {d}, {desc})", 6,
                  v=var, d=default, desc=description)
-    filename = tpo.getenv_text(var, default, description)
+    filename = system.getenv_text(var, default, description)
     if filename and not non_empty_file(filename):
-        tpo.print_stderr("Error: filename %s empty or missing for environment option %s" % (filename, var))
+        system.print_stderr("Error: filename %s empty or missing for environment option %s" % (filename, var))
     return filename
 
 
@@ -818,7 +848,7 @@ else:
 def init():
     """Work around for Python quirk"""
     # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
-    debug.trace(5, "gh.init()")
+    debug.trace(5, "glue_helpers.init()")
     global TEMP_FILE
     temp_filename = "temp-file.list"
     if USE_TEMP_BASE_DIR and TEMP_BASE:
@@ -827,9 +857,25 @@ def init():
     TEMP_FILE = system.getenv_value("TEMP_FILE", temp_file_default,
                                     "Override for temporary filename")
 
+def main():
+    """Entry point"""
+    # Uses dynamic import to avoid circularity
+    from mezcla.main import Main        # pylint: disable=import-outside-toplevel
+    
+    # Note: Uses main-based arg parsing for sake of show environment options
+    #   ./glue_helpers.py --help --verbose
+    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+
+    # Parse command line options, show usage if --help given
+    main_app = Main(description=__doc__.format(script=basename(__file__)))
+    debug.assertion(main_app.parsed_args)
+    return
+    
 #------------------------------------------------------------------------
 
 # Warn if invoked standalone
 #
 if __name__ == '__main__':
-    print_stderr("Warning: %s is not intended to be run standalone" % __file__)
+    debug.trace_current_context(level=TL.QUITE_VERBOSE)
+    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone\n")
+    main()

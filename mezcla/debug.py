@@ -478,6 +478,8 @@ if __debug__:
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
         trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw}); debug_level={dl}",
                   l=level, args=values, kw=kwargs, dl=trace_level)
+        ## TODO1: check for unknown keywords, which could be cut-n-paste error
+        ## EX (from convert_emoticons.py): debug.trace_expr(7, replace=None, strip=None, replacement=None, text=None, prefix="in ConvertEmoticons.__init__: ")
         ## DEBUG:
         ## trace_fmt(1, "(global_trace_level:{g} < level:{l})={v}",
         ##           g=trace_level, l=level, v=(trace_level < level))
@@ -721,16 +723,15 @@ else:
         # Note: no return value assumed by debug.expr
         return
 
-
     def get_level():
         """Returns tracing level (i.e., 0)"""
         return trace_level
-
 
     def get_output_timestamps():
         """Non-debug stub"""
         return False
 
+    set_level = non_debug_stub
 
     set_output_timestamps = non_debug_stub
 
@@ -807,6 +808,19 @@ def debugging(level=USUAL):
     ## TODO: use level=WARNING (i.e., 2)
     return (get_level() >= level)
 
+def active():
+    """Whether debugging is active (i.e., trace level 1 or higher)
+    Note: Use enabled to check whether debugging is supported
+    """
+    return debugging(level=1)
+
+def enabled():
+    """Whether debug code is being executed (i.e., __debug__ nonzero)
+    Note: Use active to check whether conditional debugging in effect
+    """
+    result = __debug__
+    assertion((not result) or active())
+    return result
 
 def detailed_debugging():
     """Whether debugging with trace level DETAILED (4) or higher"""
@@ -1129,7 +1143,7 @@ if __debug__:
         trace_fmt(DETAILED, "{pre}environment: {{\n\t{env}\n}}{post}",
                   env="\n\t".join([(k + ': ' + format_value(os.environ[k]))
                                    for k in sorted(dict(os.environ))]),
-                  pre=pre, post=post)
+                  pre=pre, post=post, max_len=4096)
 
         # Likewise show additional information during verbose debug tracing
         # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
@@ -1176,4 +1190,3 @@ if __name__ == '__main__':
 else:
     ## DEBUG: trace_expr(MOST_VERBOSE, 999)
     pass
-

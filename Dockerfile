@@ -6,6 +6,9 @@
 # - Mostly based initially on
 #     https://stackoverflow.com/a/70866416 [How to install python specific version on docker?]
 # - For Docker docs, see https://docs.docker.com/get-started.
+# - The avoid linux continuation characters (i.e., \<newline), <<END-style heredocs are used: See
+#      https://www.docker.com/blog/introduction-to-heredocs-in-dockerfiles
+#   This allows for commenting out code (e.g., inline comment within heredoc group).
 #
 # Usage:
 # 1. Build the image:
@@ -98,12 +101,16 @@ RUN if [ "$PYTHON_VERSION" == "" ]; then                                        
 COPY ./requirements.txt $REQUIREMENTS
 
 # Install the package requirements
-# This is normally handled via workflow, but is needed if docker used standalone.
-# NOTE: The workflow only handles requirements for the runner VM, not the docker container.
-## TEST: RUN if [ "$PYTHON_VERSION" != "" ]; then                                                \
-RUN if [ "$(which nltk)" == "" ]; then                                                  \
-        python -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;     \
-    fi
+# NOTE: The workflow only handles requirements for the runner VM, not the docker container;
+# Also, the results aren't cached to save space in the image.
+RUN <<END_RUN
+  if [ "$(which nltk)" == "" ]; then
+       python -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
+       ## TODO?
+       ## # note: makes a second pass for failed installations, doing non-binary
+       ## python -m pip install --verbose --no-cache-dir --ignore-installed --no-binary --requirement $REQUIREMENTS;
+  fi
+END_RUN
 ## TODO3: add option for optional requirements (likewise, for all via '#full#")
 ##   RUN python -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')
 
@@ -115,9 +122,17 @@ RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perce
 
 # Install required tools and libraries (TODO: why lsb-release?)
 # Note: cleans the apt-get cache
-RUN apt-get update -y && apt-get install -y lsb-release && apt-get clean all
+RUN apt-get update -y && apt-get install --yes lsb-release && apt-get clean all
 # note: rcs needed for merge (TODO: place in required-packages.txt)
-RUN apt-get install rcs
+RUN apt-get install --yes enchant-2 rcs
+
+# Show disk usage when debugging
+RUN <<END_RUN
+  if [ "$DEBUG_LEVEL" -ge 5 ]; then
+      echo "Top directories by disk usage:";
+      du --block-size=1K / 2>&1 | sort -rn | head -20;
+  fi
+END_RUN
 
 # Run the test, normally pytest over mezcla/tests
 # Note: the status code (i.e., $?) determines whether docker run succeeds (e.g., OK if 0)

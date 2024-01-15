@@ -1338,16 +1338,21 @@ def reference_variables(*args):
 #
 
 def memodict(f):
-    """Memoization decorator for a function taking a single argument"""
-    class _memodict(dict):
-        """Internal class for implementing memoization"""
-        #
-        def __missing__(self, key):
-            """Invokes function to produce value if arg not in hash"""
-            ret = self[key] = f(key)
-            return ret
-    #
-    return _memodict().__getitem__
+    """Memoization decorator for a function taking a single argument
+    Warning: deprecated; uses version in system.py instead
+    """
+    return system.memodict(f)
+    ## OLD
+    ## """Memoization decorator for a function taking a single argument"""
+    ## class _memodict(dict):
+    ##     """Internal class for implementing memoization"""
+    ##     #
+    ##     def __missing__(self, key):
+    ##         """Invokes function to produce value if arg not in hash"""
+    ##         ret = self[key] = f(key)
+    ##         return ret
+    ## #
+    ## return _memodict().__getitem__
 
 #------------------------------------------------------------------------
 

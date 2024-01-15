@@ -9,6 +9,8 @@
 #   https://github.com/tomasohara/shell-scripts
 # - When running under a Mac M1 the architecture needs to be specified to x64_64 (amd).
 #   This is a no-op otherwise (e.g., under Linux) as x64_64 is used by defauly.
+# - Disables following shellcheck warnings
+#   SC2086: Double quote to prevent globbing)
 #
 
 # trace-vars(var, ...): trace each VAR in command line
@@ -61,8 +63,12 @@ if [ "${RUN_WORKFLOW:-1}" = "1" ]; then
     # Note: Unfortunately, the environment setting is not affecting the docker
     # invocation. A workaround is to modify the 'Run tests' steps in the
     # workflow configuration file (e.g., .github/workflows/debug.yml).
-    ## OLD: act --verbose --env "DEBUG_LEVEL=$DEBUG_LEVEL $USER_ENV" --container-architecture linux/amd64 --pull="$ACT_PULL" -P "$ACT_WORKFLOW" -W ./.github/workflows/"$file"
-    act --verbose --env "DEBUG_LEVEL=$DEBUG_LEVEL $USER_ENV" --container-architecture linux/amd64 --pull="$ACT_PULL" -W ./.github/workflows/"$file"
+    act="${ACT_PROGRAM:-act}"
+    misc_args=()
+    # note: ACT_JSON can be used to disable act-specific flags (e.g., to enable runner matrix)
+    json="${ACT_JSON:-""}"
+    if [ "$json" != "" ]; then misc_args+=(--eventpath ./.github/workflows/"$json"); fi;
+    "$act" --verbose --env "DEBUG_LEVEL=$DEBUG_LEVEL $USER_ENV" --container-architecture linux/amd64 --pull="$ACT_PULL" --workflows ./.github/workflows/"$file"  "${misc_args[@]}"
 fi
 
 # Run via docker directly
