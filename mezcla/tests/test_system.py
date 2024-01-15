@@ -121,14 +121,14 @@ class TestSystem(TestWrapper):
     def test_getenv(self):
         """Ensure getenv works as expected"""
         debug.trace(4, "test_getenv()")
-        self.set_env('TEST_ENV_VAR', 'some value', prepend=False)
+        self.monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv('TEST_ENV_VAR') == 'some value'
         assert THE_MODULE.getenv('INT_ENV_VAR', default_value=5) == 5
 
     def test_getenv_text(self):
         """Ensure getenv_text works as expected"""
         debug.trace(4, "test_getenv_text()")
-        self.set_env('TEST_ENV_VAR', 'some value', prepend=False)
+        self.monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv_text('TEST_ENV_VAR') == 'some value'
         assert not THE_MODULE.getenv_text("REALLY FUBAR?", False)
 
@@ -136,7 +136,7 @@ class TestSystem(TestWrapper):
         """Ensure getenv_value works as expected"""
         debug.trace(4, "test_getenv_value()")
         set_test_env_var()
-        self.set_env('NEW_ENV_VAR', 'some value', prepend=False)
+        self.monkeypatch.setenv('NEW_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv_value('NEW_ENV_VAR', default='empty', description='another test env var') == 'some value'
         assert THE_MODULE.env_defaults['NEW_ENV_VAR'] == 'empty'
         assert THE_MODULE.env_options['NEW_ENV_VAR'] == 'another test env var'
@@ -145,9 +145,9 @@ class TestSystem(TestWrapper):
         """Ensure getenv_bool works as expected"""
         debug.trace(4, "test_getenv_bool()")
         # note: whitespaces is not a typo, is to test strip condition
-        self.set_env('TEST_BOOL', 'FALSE', prepend=False)
+        self.monkeypatch.setenv('TEST_BOOL', 'FALSE', prepend=False)
         assert not THE_MODULE.getenv_bool('TEST_BOOL', None)
-        self.set_env('TEST_BOOL', '  true   ', prepend=False)
+        self.monkeypatch.setenv('TEST_BOOL', '  true   ', prepend=False)
         assert THE_MODULE.getenv_bool('TEST_BOOL', None)
         assert isinstance(THE_MODULE.getenv_bool('TEST_BOOL', None), bool)
 
@@ -155,7 +155,7 @@ class TestSystem(TestWrapper):
         """Ensure getenv_number works as expected"""
         debug.trace(4, "test_getenv_number()")
         # note: whitespaces is not a typo, is to test strip condition
-        self.set_env('TEST_NUMBER', ' 9.81    ', prepend=False)
+        self.monkeypatch.setenv('TEST_NUMBER', ' 9.81    ', prepend=False)
         assert THE_MODULE.getenv_number('TEST_NUMBER', default=10) == 9.81
         assert THE_MODULE.getenv_number('BAD_TEST_NUMBER', default=10) == 10
         ## TODO: test helper argument
@@ -163,7 +163,7 @@ class TestSystem(TestWrapper):
     def test_getenv_int(self):
         """Ensure getenv_int works as expected"""
         debug.trace(4, "test_getenv_int()")
-        self.set_env('TEST_NUMBER', '9.81', prepend=False)
+        self.monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
         assert THE_MODULE.getenv_int('TEST_NUMBER', default=20) == 9
         assert THE_MODULE.getenv_int("REALLY FUBAR", 123) == 123
 
@@ -341,7 +341,7 @@ class TestSystem(TestWrapper):
     def test_stdin_reader(self):
         """Ensure stdin_reader works as expected"""
         debug.trace(4, "test_stdin_reader()")
-        self.set_attr('sys.stdin', io.StringIO('my input\nsome line\n'))
+        self.monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line\n'))
         test_iter = THE_MODULE.stdin_reader()
         assert next(test_iter) == 'my\tinput'
         assert next(test_iter) == 'some\tline'
@@ -350,7 +350,7 @@ class TestSystem(TestWrapper):
     def test_read_all_stdin(self):
         """Ensure read_all_stdin works as expected"""
         debug.trace(4, "test_read_all_stdin()")
-        self.set_attr('sys.stdin', io.StringIO('my input\nsome line'))
+        self.monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line'))
         assert THE_MODULE.read_all_stdin() == 'my input\nsome line'
 
     def test_read_entire_file(self):
@@ -844,7 +844,7 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_sleep()")
         def sleep_mock(secs):
             return f'sleeping {secs}'
-        self.set_attr(time, "sleep", sleep_mock)
+        self.monkeypatch.setattr(time, "sleep", sleep_mock)
         THE_MODULE.sleep(123123, trace_level=-1)
         captured = self.get_stderr()
         assert '123123' in captured
@@ -854,7 +854,7 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_current_time()")
         def time_mock():
             return 12345.6789
-        self.set_attr(time, "time", time_mock)
+        self.monkeypatch.setattr(time, "time", time_mock)
         assert THE_MODULE.current_time() == 12345.6789
         assert THE_MODULE.current_time(integral=True) == 12346
 
@@ -877,7 +877,7 @@ class TestSystem(TestWrapper):
             "--name",
             "logfilename.log",
         ]
-        self.set_attr("sys.argv", args)
+        self.monkeypatch.setattr("sys.argv", args)
         assert THE_MODULE.get_args() == args
 
     def test_main(self):
