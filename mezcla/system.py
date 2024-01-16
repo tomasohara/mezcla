@@ -26,8 +26,8 @@
 
 # Standard packages
 from collections import defaultdict, OrderedDict
-import importlib_metadata
 import datetime
+import importlib_metadata
 import inspect
 import os
 import pickle
@@ -371,7 +371,7 @@ def print_full_stack(stream=sys.stderr):
 
 
 def trace_stack(level=debug.VERBOSE, stream=sys.stderr):
-    """Output stack trace to stderr (if at trace LEVEL or higher)"""
+    """Output stack trace to STREAM (if at trace LEVEL or higher)"""
     if debug.debugging(level):
         print_full_stack(stream)
     return
@@ -613,7 +613,8 @@ def read_directory(directory):
     # Note simple wrapper around os.listdir with tracing
     # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
     files = os.listdir(directory)
-    debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files)
+    debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files,
+                     max_len=4096)
     return files
 
 
@@ -810,7 +811,8 @@ def split_path(path):
         debug.assertion(file_exists(dir_name))
     debug.trace(6, f"split_path({path}) => {result}")
     return result
-    
+
+
 def filename_proper(path):
     """Return PATH sans directories
     Note: unlike os.path.split, this always returns filename component
@@ -1066,23 +1068,13 @@ def get_module_version(module_name):
     # note: used in bash function (alias):
     #     python-module-version() = { python -c "print(get_module_version('$1))"; }'
 
-    ## OLD: 
-    # try:
-    #     ## BAD: eval("import {m}".format(m=module_name)) # pylint: disable=eval-used
-    #     exec("import {m}".format(m=module_name)) # pylint: disable=eval-used
-    # except:
-    #     debug.trace_fmtd(6, "Exception importing module '{m}': {exc}",
-    #                      m=module_name, exc=get_exception())
-    #     return "-1.-1.-1"
-
     # Try to get the version number for the module
     version = "?.?.?"
     try:
-        ## OLD: version = eval(f"{module_name}.__version__") # pylint: disable=eval-used
         version = importlib_metadata.version(module_name)
     except:
-        debug.trace_fmtd(6, f"Exception evaluating metadada from {module_name}: {get_exception()}")
-        ## TODO: version = "0.0.0"
+        print_exception_info("get_module_version for {module_name}")
+    debug.trace(6, f"get_module_version({module_name}) => {version}")
     return version
 
 

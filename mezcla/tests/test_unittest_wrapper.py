@@ -16,9 +16,10 @@ import pytest
 
 # Local packages
 ## TODO (effing pytest): from mezcla.unittest_wrapper import TestWrapper, trap_exception, pytest_fixture_wrapper
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla.my_regex import my_re
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                  global module object
@@ -28,25 +29,21 @@ import mezcla.unittest_wrapper as THE_MODULE
 
 ## TODO (use TestWrapper directly):
 
-## class TestIt(TestWrapper):
-##     """Class for command-line based testcase definition"""
-##     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-## 
-##     ## TODO: @pytest.mark.xfail                   # TODO: remove xfail
-##     ## TODO:
-##     ## @pytest_fixture_wrapper
-##     ## @trap_exception
-##     def test_do_assert(self, capsys):
-##         """Ensure do_assert identifies failing line"""
-##         debug.trace(4, f"TestIt.test_do_assert({capsys}); self={self}")
-##         captured_trace = ""
-##         try:
-##             captured_trace = capsys.readouterr()
-##             self.do_assert(False)
-##         except AssertionError:
-##             pass
-##         self.do_assert(my_re.search("do_assert", captured_trace))
-##         return
+class TestIt(TestWrapper):
+    """Class for command-line based testcase definition"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_usage(self):
+        """Make sure usage warns that not intended for command line and that no stdout"""
+        debug.trace(4, f"TestIt.test_usage(); self={self}")
+        log_file = self.temp_file + ".log"
+        output = self.run_script(log_file=log_file)
+        log_contents = system.read_file(log_file)
+        self.do_assert(my_re.search(r"Warning: not intended.*command-line", log_contents))
+        debug.trace_expr(5, log_contents)
+        self.do_assert(not output.strip())
+        return
 
 class TestIt2:
     """Class for API usage"""
@@ -96,4 +93,4 @@ class TestIt2:
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests([__file__])

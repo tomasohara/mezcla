@@ -16,6 +16,9 @@ import os
 from mezcla import debug
 from mezcla import system
 
+# Constants
+TL = debug.TL
+
 
 def split_extension(path):
     """Returns basename and extension for PATH"""
@@ -28,3 +31,19 @@ def split_extension(path):
         pass
     debug.trace(5, f"split_extension({path}) => {result}")
     return result
+
+
+def main(*args, **kwargs):
+    """Supporting code for command-line processing"""
+    debug.trace_fmtd(6, "main{a}; kw=", a=args, kw=kwargs)
+    system.print_stderr("Warning: {f} not intended for direct invocation!",
+                        f=system.filename_proper(__file__))
+    return
+
+#-------------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    debug.trace_current_context(level=TL.QUITE_VERBOSE)
+    debug.trace(5, f"module __doc__: {__doc__}")
+    debug.assertion("TODO:" not in __doc__)
+    main()

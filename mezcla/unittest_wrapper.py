@@ -76,6 +76,12 @@ TODO_MODULE = "TODO MODULE"
 THIS_PACKAGE = getattr(mezcla.debug, "__package__", None)
 debug.assertion(THIS_PACKAGE == "mezcla")
 
+# Environment options
+VIA_UNITTEST = system.getenv_bool(
+    "VIA_UNITTEST", False,
+    description="Run tests via unittest instead of pytest")
+
+#-------------------------------------------------------------------------------
 
 def get_temp_dir(keep=None):
     """Get temporary directory, omitting later deletion if KEEP"""
@@ -134,6 +140,14 @@ def pytest_fixture_wrapper(function):
     debug.trace(7, f"pytest_fixture_wrapper() => {gh.elide(wrapper)}")
     return wrapper
 
+def invoke_tests(filename, via_unittest=VIA_UNITTEST):
+    """Invoke TESTS defined in FILENAME, optionally VIA_UNITTEST"""
+    if via_unittest:
+        unittest.main()
+    else:
+        pytest.main(filename)
+
+#-------------------------------------------------------------------------------
 
 class TestWrapper(unittest.TestCase):
     """Class for testcase definition
@@ -152,6 +166,7 @@ class TestWrapper(unittest.TestCase):
     temp_file = None
     use_temp_base_dir = system.is_directory(temp_base)
     test_num = 1
+    class_setup = False
     
     ## TEST:
     ## NOTE: leads to pytest warning. See
@@ -165,10 +180,13 @@ class TestWrapper(unittest.TestCase):
     ## __test__ = False                 # make sure not assumed test
         
     @classmethod
-    def setUpClass(cls):
-        """Per-class initialization: make sure script_module set properly"""
-        debug.trace_fmtd(6, "TestWrapper.setupClass(): cls={c}", c=cls)
+    def setUpClass(cls, filename=None, module=None):
+        """Per-class initialization: make sure script_module set properly
+        Note: Optional FILENAME is path for testing script and MODULE the imported object for tested script
+        """
+        debug.trace(6, f"TestWrapper.setupClass({cls}, fn={filename}, mod={module})")
         super().setUpClass()
+        cls.class_setup = True
         debug.trace_object(7, cls, "TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
         if (cls.script_module is not None):
@@ -191,6 +209,18 @@ class TestWrapper(unittest.TestCase):
             ## TODO: pure python
             ## TODO: gh.full_mkdir
             gh.run("mkdir -p {dir}", dir=cls.temp_base)
+
+        # Warn that coverage support is limited
+        if cls.check_coverage:
+            # note: For proper invocation info, see https://coverage.readthedocs.io/en/latest
+            test_module = "pytest ..." if not VIA_UNITTEST else "unittest discover"
+            debug.trace(4, "FYI: coverage check only covers run_script usages; "
+                        "invoke externally for more general support:\n"
+                        f"    python -m coverage run -m {test_module}")
+
+        # Optionally, setup up script_file and script_module
+        if filename:
+            cls.set_module_info(filename, module_object=module)
 
         return
 
@@ -234,11 +264,23 @@ class TestWrapper(unittest.TestCase):
     def get_module_file_path(test_filename):
         """Return absolute path of module being tested"""
         result = system.absolute_path(test_filename)
+        ## TODO3: use os.path.delim instead of /
         result = my_re.sub(r'tests\/test_(.*\.py)', r'\1', result)
         debug.assertion(result.endswith(".py"))
         debug.trace(7, f'get_module_file_path({test_filename}) => {result}')
         return result
 
+    @classmethod
+    def set_module_info(cls, test_filename, module_object=None):
+        """Sets both script_module and script_path
+        Note: normally invoked in setupClass method
+        Usage: cls.set_module_info(__file__, THE_MODULE)
+        """
+        debug.trace(7, f'set_module_info({test_filename}, {module_object})')
+        cls.script_module = cls.get_testing_module_name(test_filename, module_object)
+        cls.script_file = cls.get_module_file_path(test_filename)
+        return 
+    
     def setUp(self):
         """Per-test initializations
         Notes:
@@ -246,6 +288,9 @@ class TestWrapper(unittest.TestCase):
         - Initializes temp file name (With override from environment)."""
         # Note: By default, each test gets its own temp file.
         debug.trace(6, "TestWrapper.setUp()")
+        if not self.class_setup:
+            debug.trace(5, "Warning: invoking setupClass in setup")
+            TestWrapper.setupClass(self.__class__)
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
         # The temp file is an extension of temp-base file by default.
@@ -393,7 +438,7 @@ class TestWrapper(unittest.TestCase):
 
     @pytest.fixture(autouse=True)
     def monkeypatch(self, monkeypatch):
-        """Support for using pytest monkeypatch"""
+        """Support for using pytest monkeypatch to modify objects (e.g., dictionaries or environment variables)"""
         # See https://docs.pytest.org/en/latest/how-to/monkeypatch.html
         self.monkeypatch = monkeypatch
 
@@ -403,10 +448,11 @@ class TestWrapper(unittest.TestCase):
         # See https://docs.pytest.org/en/latest/how-to/capture-stdout-stderr.html
         self.capsys = capsys
 
-    @pytest.fixture(autouse=True)
-    def monkeypatch(self, monkeypatch):
-        """Support for modifying objects, dictionaries or environment variables"""
-        self.monkeypatch = monkeypatch
+    ## DUPLICATE
+    ## @pytest.fixture(autouse=True)
+    ## def monkeypatch(self, monkeypatch):
+    ##     """Support for modifying objects, dictionaries or environment variables"""
+    ##    self.monkeypatch = monkeypatch
 
     def get_stdout_stderr(self):
         """Get currently captured standard output and error
