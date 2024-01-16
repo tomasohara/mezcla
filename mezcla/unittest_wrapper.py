@@ -438,7 +438,7 @@ class TestWrapper(unittest.TestCase):
 
     @pytest.fixture(autouse=True)
     def monkeypatch(self, monkeypatch):
-        """Support for using pytest monkeypatch"""
+        """Support for using pytest monkeypatch to modify objects (e.g., dictionaries or environment variables)"""
         # See https://docs.pytest.org/en/latest/how-to/monkeypatch.html
         self.monkeypatch = monkeypatch
 
@@ -448,10 +448,11 @@ class TestWrapper(unittest.TestCase):
         # See https://docs.pytest.org/en/latest/how-to/capture-stdout-stderr.html
         self.capsys = capsys
 
-    @pytest.fixture(autouse=True)
-    def monkeypatch(self, monkeypatch):
-        """Support for modifying objects, dictionaries or environment variables"""
-        self.monkeypatch = monkeypatch
+    ## DUPLICATE
+    ## @pytest.fixture(autouse=True)
+    ## def monkeypatch(self, monkeypatch):
+    ##     """Support for modifying objects, dictionaries or environment variables"""
+    ##    self.monkeypatch = monkeypatch
 
     def get_stdout_stderr(self):
         """Get currently captured standard output and error
