@@ -204,7 +204,8 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_exit()")
         def sys_exit_mock():
             return 'exit'
-        self.set_attr(sys, "exit", sys_exit_mock)
+        ## BAD: self.set_attr(sys, "exit", sys_exit_mock)
+        self.monkeypatch.setattr(sys, "exit", sys_exit_mock)
         assert THE_MODULE.exit('test exit {method}', method='method') == 'exit'
         # Exit is mocked, ignore code editor hidding
         captured = self.get_stderr()
@@ -296,6 +297,7 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_quote_url_text()")
 
         ## TODO: set fixed sys.version_info.major > 2.
+        ## TODO1: please explain the issue here and below
 
         # Test quoting
         assert THE_MODULE.quote_url_text("<2/") == "%3C2%2F"
@@ -722,11 +724,16 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_get_module_version()")
         num_good = 0
         num_total = 0
-        for line in gh.run("pip freeze"):
-            module, version = (my_re.search(r"r(\S+)==(\S+))", line) and my_re.groups()[:2])
-            if version == THE_MODULE.get_module_version(module):
-                num_good += 1
-                percent = (num_good / num_total * 100) if num_total else 0
+        for line in gh.run("pip freeze").splitlines():
+            if my_re.search(r"(\S+)==(\S+)", line):
+                num_total += 1
+                module, version = my_re.groups()
+                if version == THE_MODULE.get_module_version(module):
+                    num_good += 1
+            else:
+                debug.trace(4, f"Ignoring pip freeze line: {line}")
+        percent = (num_good / num_total * 100) if num_total else 0
+        debug.trace_expr(5, num_good, num_total, percent)
         assert (percent >= 90)
 
     def test_intersection(self):
