@@ -26,6 +26,7 @@
 
 # Standard packages
 from collections import defaultdict, OrderedDict
+import importlib_metadata
 import datetime
 import inspect
 import os
@@ -369,10 +370,10 @@ def print_full_stack(stream=sys.stderr):
     return
 
 
-def trace_stack(level=debug.VERBOSE):
+def trace_stack(level=debug.VERBOSE, stream=sys.stderr):
     """Output stack trace to stderr (if at trace LEVEL or higher)"""
     if debug.debugging(level):
-        print_full_stack()
+        print_full_stack(stream)
     return
 
     
@@ -612,7 +613,7 @@ def read_directory(directory):
     # Note simple wrapper around os.listdir with tracing
     # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
     files = os.listdir(directory)
-    debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files, max_len=4096)
+    debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files)
     return files
 
 
@@ -1065,24 +1066,22 @@ def get_module_version(module_name):
     # note: used in bash function (alias):
     #     python-module-version() = { python -c "print(get_module_version('$1))"; }'
 
-    # Try to load the module with given name
-    # TODO: eliminate eval and just import directly
-    try:
-        eval("import {m}".format(m=module_name))             # pylint: disable=eval-used
-    except:
-        debug.trace_fmtd(6, "Exception importing module '{m}': {exc}",
-                         m=module_name, exc=get_exception())
-        return "-1.-1.-1"
+    ## OLD: 
+    # try:
+    #     ## BAD: eval("import {m}".format(m=module_name)) # pylint: disable=eval-used
+    #     exec("import {m}".format(m=module_name)) # pylint: disable=eval-used
+    # except:
+    #     debug.trace_fmtd(6, "Exception importing module '{m}': {exc}",
+    #                      m=module_name, exc=get_exception())
+    #     return "-1.-1.-1"
 
     # Try to get the version number for the module
-    # TODO: eliminate eval and use getattr()
-    # TODO: try other conventions besides module.__version__ member variable
     version = "?.?.?"
     try:
-        version = eval("module_name.__version__")            # pylint: disable=eval-used
+        ## OLD: version = eval(f"{module_name}.__version__") # pylint: disable=eval-used
+        version = importlib_metadata.version(module_name)
     except:
-        debug.trace_fmtd(6, "Exception evaluating '{m}.__version__': {exc}",
-                         m=module_name, exc=get_exception())
+        debug.trace_fmtd(6, f"Exception evaluating metadada from {module_name}: {get_exception()}")
         ## TODO: version = "0.0.0"
     return version
 

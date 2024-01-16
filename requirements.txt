@@ -36,6 +36,7 @@ flair
 flask
 git+https://github.com/tehabstract/textract.git
 gradio                        # UI support (e.g., huggingface-based apps)
+importlib_metadata
 #opt# kenlm                   # language model support (NOTE: problem with wheel)
 librosa>=0.10.0           
 lxml
