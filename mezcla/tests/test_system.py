@@ -23,20 +23,24 @@ import pytest
 import pickle
 
 # Local packages
+from mezcla.unittest_wrapper import TestWrapper
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.system as THE_MODULE
 
-class TestSystem:
+class TestSystem(TestWrapper):
     """Class for test case definitions"""
 
     def test_maxint(self):
         """Ensure maxint works as expected"""
         debug.trace(4, "test_maxint()")
-        ## TODO: WORK-IN=PROGRESS
+
+        assert THE_MODULE.maxint() is not None
+        assert THE_MODULE.maxint() == sys.maxsize
 
     def test_register_env_option(self):
         """Ensure register_env_option works as expected"""
@@ -114,92 +118,97 @@ class TestSystem:
         )
         assert THE_MODULE.formatted_environment_option_descriptions(indent=' + ') == expected
 
-    def test_getenv(self, monkeypatch):
+    def test_getenv(self):
         """Ensure getenv works as expected"""
         debug.trace(4, "test_getenv()")
-        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        self.monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv('TEST_ENV_VAR') == 'some value'
         assert THE_MODULE.getenv('INT_ENV_VAR', default_value=5) == 5
 
-    def test_getenv_text(self, monkeypatch):
+    def test_getenv_text(self):
         """Ensure getenv_text works as expected"""
         debug.trace(4, "test_getenv_text()")
-        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        self.monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv_text('TEST_ENV_VAR') == 'some value'
         assert not THE_MODULE.getenv_text("REALLY FUBAR?", False)
 
-    def test_getenv_value(self, monkeypatch):
+    def test_getenv_value(self):
         """Ensure getenv_value works as expected"""
         debug.trace(4, "test_getenv_value()")
         set_test_env_var()
-        monkeypatch.setenv('NEW_ENV_VAR', 'some value', prepend=False)
+        self.monkeypatch.setenv('NEW_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv_value('NEW_ENV_VAR', default='empty', description='another test env var') == 'some value'
         assert THE_MODULE.env_defaults['NEW_ENV_VAR'] == 'empty'
         assert THE_MODULE.env_options['NEW_ENV_VAR'] == 'another test env var'
 
-    def test_getenv_bool(self, monkeypatch):
+    def test_getenv_bool(self):
         """Ensure getenv_bool works as expected"""
         debug.trace(4, "test_getenv_bool()")
         # note: whitespaces is not a typo, is to test strip condition
-        monkeypatch.setenv('TEST_BOOL', 'FALSE', prepend=False)
+        self.monkeypatch.setenv('TEST_BOOL', 'FALSE', prepend=False)
         assert not THE_MODULE.getenv_bool('TEST_BOOL', None)
-        monkeypatch.setenv('TEST_BOOL', '  true   ', prepend=False)
+        self.monkeypatch.setenv('TEST_BOOL', '  true   ', prepend=False)
         assert THE_MODULE.getenv_bool('TEST_BOOL', None)
         assert isinstance(THE_MODULE.getenv_bool('TEST_BOOL', None), bool)
 
-    def test_getenv_number(self, monkeypatch):
+    def test_getenv_number(self):
         """Ensure getenv_number works as expected"""
         debug.trace(4, "test_getenv_number()")
         # note: whitespaces is not a typo, is to test strip condition
-        monkeypatch.setenv('TEST_NUMBER', ' 9.81    ', prepend=False)
+        self.monkeypatch.setenv('TEST_NUMBER', ' 9.81    ', prepend=False)
         assert THE_MODULE.getenv_number('TEST_NUMBER', default=10) == 9.81
         assert THE_MODULE.getenv_number('BAD_TEST_NUMBER', default=10) == 10
         ## TODO: test helper argument
 
-    def test_getenv_int(self, monkeypatch):
+    def test_getenv_int(self):
         """Ensure getenv_int works as expected"""
         debug.trace(4, "test_getenv_int()")
-        monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
+        self.monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
         assert THE_MODULE.getenv_int('TEST_NUMBER', default=20) == 9
         assert THE_MODULE.getenv_int("REALLY FUBAR", 123) == 123
 
     def test_get_exception(self):
         """Ensure get_exception works as expected"""
         debug.trace(4, "test_get_exception()")
-        ## TODO: WORK-IN=PROGRESS
+        exception = None
+        try:
+            raise RuntimeError("testing")
+        except RuntimeError:
+            exception = THE_MODULE.get_exception() 
+        assert str(exception[1]) == "testing"
 
-    def test_print_error(self, capsys):
+    def test_print_error(self):
         """Ensure print_error works as expected"""
         debug.trace(4, "test_print_error()")
         THE_MODULE.print_error("this is an test error message")
-        captured = capsys.readouterr()
-        assert "error" in captured.err
+        captured = self.get_stderr()
+        assert "error" in captured
 
-    def test_print_stderr(self, capsys):
+    def test_print_stderr(self):
         """Ensure print_stderr works as expected"""
         debug.trace(4, "test_print_stderr()")
         THE_MODULE.print_stderr("Error: F{oo}bar!", oo='OO')
-        captured = capsys.readouterr()
-        assert "Error: FOObar!" in captured.err
+        captured = self.get_stderr()
+        assert "Error: FOObar!" in captured
 
-    def test_print_exception_info(self, capsys):
+    def test_print_exception_info(self):
         """Ensure print_exception_info works as expected"""
         debug.trace(4, "test_print_exception_info()")
         THE_MODULE.print_exception_info("Foobar")
-        captured = capsys.readouterr()
-        assert "Foobar" in captured.err
+        captured = self.get_stderr()
+        assert "Foobar" in captured
 
     @pytest.mark.xfail
-    def test_exit(self, monkeypatch, capsys):
+    def test_exit(self):
         """Ensure exit works as expected"""
         debug.trace(4, "test_exit()")
         def sys_exit_mock():
             return 'exit'
-        monkeypatch.setattr(sys, "exit", sys_exit_mock)
+        self.set_attr(sys, "exit", sys_exit_mock)
         assert THE_MODULE.exit('test exit {method}', method='method') == 'exit'
         # Exit is mocked, ignore code editor hidding
-        captured = capsys.readouterr()
-        assert "test exit method" in captured.err
+        captured = self.get_stderr()
+        assert "test exit method" in captured
 
     def test_setenv(self):
         """Ensure setenv works as expected"""
@@ -210,12 +219,26 @@ class TestSystem:
     def test_print_full_stack(self):
         """Ensure print_full_stack works as expected"""
         debug.trace(4, "test_print_full_stack()")
-        ## TODO: WORK-IN=PROGRESS
+        def raiseException():
+            raise RuntimeError('test')
+        try:
+            raiseException()
+        except RuntimeError:
+            THE_MODULE.print_full_stack(sys.stderr)
+        capturedError = self.get_stderr()
+        assert 'RuntimeError' in capturedError
 
     def test_trace_stack(self):
         """Ensure trace_stack works as expected"""
         debug.trace(4, "test_trace_stack()")
-        ## TODO: WORK-IN=PROGRESS
+        def raiseException():
+            raise RuntimeError('test')
+        try:
+            raiseException()
+        except RuntimeError:
+            THE_MODULE.trace_stack(1, sys.stderr)
+        capturedError = self.get_stderr()
+        assert 'RuntimeError' in capturedError
 
     def test_get_current_function_name(self):
         """Ensure get_current_function_name works as expected"""
@@ -223,9 +246,14 @@ class TestSystem:
         assert THE_MODULE.get_current_function_name() == "test_get_current_function_name"
 
     def test_open_file(self):
-        """Ensure open_file works as expected"""
+        """Ensure open_file works as expected with existent files"""
         debug.trace(4, "test_open_file()")
-        ## TODO: WORK-IN=PROGRESS
+        #test file exists and can be open
+        test_filename = gh.create_temp_file("open file")
+        assert THE_MODULE.open_file(test_filename).read() == "open file\n"
+
+        # assert opening a nonexistent file returns none
+        assert THE_MODULE.open_file("empty") is None
 
     def test_save_object(self):
         """Ensure save_object works as expected"""
@@ -243,7 +271,7 @@ class TestSystem:
         assert actual_object == test_dict
         test_file.close()
 
-    def test_load_object(self, capsys):
+    def test_load_object(self):
         """Ensure load_object works as expected"""
         debug.trace(4, "test_load_object()")
 
@@ -260,8 +288,8 @@ class TestSystem:
 
         # Test invalid file
         THE_MODULE.load_object('bad_file_name')
-        captured = capsys.readouterr()
-        assert "Error:" in captured.err
+        captured = self.get_stderr()
+        assert "Error:" in captured
 
     def test_quote_url_text(self):
         """Ensure quote_url_text works as expected"""
@@ -310,22 +338,22 @@ class TestSystem:
 
         ## TODO: test with sys.version_info.major < 2
 
-    def test_stdin_reader(self, monkeypatch):
+    def test_stdin_reader(self):
         """Ensure stdin_reader works as expected"""
         debug.trace(4, "test_stdin_reader()")
-        monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line\n'))
+        self.monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line\n'))
         test_iter = THE_MODULE.stdin_reader()
         assert next(test_iter) == 'my\tinput'
         assert next(test_iter) == 'some\tline'
         assert next(test_iter) == ''
 
-    def test_read_all_stdin(self, monkeypatch):
+    def test_read_all_stdin(self):
         """Ensure read_all_stdin works as expected"""
         debug.trace(4, "test_read_all_stdin()")
-        monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line'))
+        self.monkeypatch.setattr('sys.stdin', io.StringIO('my input\nsome line'))
         assert THE_MODULE.read_all_stdin() == 'my input\nsome line'
 
-    def test_read_entire_file(self, capsys):
+    def test_read_entire_file(self):
         """Ensure read_entire_file works as expected"""
         debug.trace(4, "test_read_entire_file()")
 
@@ -337,11 +365,11 @@ class TestSystem:
         # Test invalid file
         debug.set_level(3)
         THE_MODULE.read_entire_file('invalid_file', errors='ignore')
-        captured = capsys.readouterr()
-        assert "Unable to read file" not in captured.err
+        captured = self.get_stderr()
+        assert "Unable to read file" not in captured
         THE_MODULE.read_entire_file('invalid_file')
-        captured = capsys.readouterr()
-        assert "Unable to read file" in captured.err
+        captured = self.get_stderr()
+        assert "Unable to read file" in captured
 
     def test_read_lines(self):
         """Ensure read_lines works as expected"""
@@ -353,12 +381,17 @@ class TestSystem:
     def test_read_binary_file(self):
         """Ensure read_binary_file works as expected"""
         debug.trace(4, "test_read_binary_file()")
-        ## TODO: WORK-IN=PROGRESS
+        test_filename = gh.create_temp_file("open binary")
+        assert THE_MODULE.read_binary_file(test_filename) == b"open binary\n"
+
 
     def test_read_directory(self):
         """Ensure read_directory works as expected"""
         debug.trace(4, "test_read_directory()")
-        ## TODO: WORK-IN=PROGRESS
+        split = gh.create_temp_file('').split('/')
+        path = '/'.join(split[:-1])
+        filename = split[-1]
+        assert filename in THE_MODULE.read_directory(path) 
 
     def test_get_directory_filenames(self):
         """Ensure get_directory_filenames works as expected"""
@@ -366,7 +399,7 @@ class TestSystem:
         assert "/etc/passwd" in THE_MODULE.get_directory_filenames("/etc")
         assert "/boot" not in THE_MODULE.get_directory_filenames("/", just_regular_files=True)
 
-    def test_read_lookup_table(self, capsys):
+    def test_read_lookup_table(self):
         """Ensure read_lookup_table works as expected"""
         debug.trace(4, "test_read_lookup_table()")
 
@@ -410,15 +443,15 @@ class TestSystem:
         temp_file = gh.get_temp_file()
         gh.write_file(temp_file, without_delim_content)
         THE_MODULE.read_lookup_table(temp_file)
-        captured = capsys.readouterr()
-        assert 'Warning: Ignoring line' in captured.err
+        captured = self.get_stderr()
+        assert 'Warning: Ignoring line' in captured
 
         # Test invalid filename
         THE_MODULE.read_lookup_table('bad_filename')
-        captured = capsys.readouterr()
-        assert 'Error' in captured.err
+        captured = self.get_stderr()
+        assert 'Error' in captured
 
-    def test_create_boolean_lookup_table(self, capsys):
+    def test_create_boolean_lookup_table(self):
         """Ensure create_boolean_lookup_table works as expected"""
         debug.trace(4, "test_create_boolean_lookup_table()")
 
@@ -451,8 +484,8 @@ class TestSystem:
 
         # Test invalid file
         THE_MODULE.create_boolean_lookup_table('/tmp/bad_filename')
-        captured = capsys.readouterr()
-        assert 'Error:' in captured.err
+        captured = self.get_stderr()
+        assert 'Error:' in captured
 
     def test_lookup_entry(self):
         """Ensure lookup_entry works as expected"""
@@ -483,8 +516,11 @@ class TestSystem:
     def test_write_binary_file(self):
         """Ensure write_binary_file works as expected"""
         debug.trace(4, "test_write_binary_file()")
-        ## TODO: WORK-IN=PROGRESS
+        filename = gh.get_temp_file()
+        THE_MODULE.write_binary_file(filename, bytes("binary", "UTF-8"))
+        assert THE_MODULE.read_binary_file(filename) == b'binary'
 
+        
     def test_write_lines(self):
         """Ensure write_lines works as expected"""
         debug.trace(4, "test_write_lines()")
@@ -519,7 +555,21 @@ class TestSystem:
     def test_get_file_modification_time(self):
         """Ensure get_file_modification_time works as expected"""
         debug.trace(4, "test_get_file_modification_time()")
-        ## TODO: WORK-IN=PROGRESS
+
+        # create two temp files at the same time
+        filedir1 = gh.create_temp_file('test modified time')
+        filedir2 = gh.create_temp_file('test modified time2')
+        # get the modification time of the files
+        timestamp1 = THE_MODULE.get_file_modification_time(filedir1)[:19]
+        timestamp2 = THE_MODULE.get_file_modification_time(filedir2)[:19]
+        # get and format local time
+        timestampNow = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+        # test timestamps are equal 
+        assert timestamp1 == timestamp2
+
+        # test timestamp is equal to actual time (ignoring miliseconds)
+        assert timestamp1 == timestampNow
 
     def test_remove_extension(self):
         """Ensure remove_extension works as expected"""
@@ -552,7 +602,7 @@ class TestSystem:
     def test_form_path(self):
         """Ensure form_path works as expected"""
         debug.trace(4, "test_form_path()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.form_path('/usr', 'bin', 'cat') == '/usr/bin/cat'  
 
     def test_is_directory(self):
         """Ensure is_directory works as expected"""
@@ -570,9 +620,10 @@ class TestSystem:
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
         debug.trace(4, "test_create_directory()")
-        ## TODO: WORK-IN=PROGRESS
+        path = '/tmp/mezcla_test'
+        THE_MODULE.create_directory('/tmp/mezcla_test')
+        assert THE_MODULE.is_directory(path)
 
-    @pytest.mark.xfail
     def test_get_current_directory(self):
         """Ensure get_current_directory works as expected"""
         debug.trace(4, "test_get_current_directory()")
@@ -581,7 +632,11 @@ class TestSystem:
     def test_set_current_directory(self):
         """Ensure set_current_directory works as expected"""
         debug.trace(4, "test_set_current_directory()")
-        ## TODO: WORK-IN=PROGRESS
+        past_dir = THE_MODULE.get_current_directory()
+        assert THE_MODULE.set_current_directory('/home') is None
+        assert THE_MODULE.get_current_directory() == '/home'
+        assert THE_MODULE.get_current_directory() is not past_dir
+
 
     def test_to_utf8(self):
         """Ensure to_utf8 works as expected"""
@@ -598,19 +653,21 @@ class TestSystem:
     def test_from_utf8(self):
         """Ensure from_utf8 works as expected"""
         debug.trace(4, "test_from_utf8()")
-        ## TODO: WORK-IN=PROGRESS
-
+        assert THE_MODULE.from_utf8("\xBF") == "\u00BF"
+        # assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\ufeff"
+        # Lorenzo: can't convert "\ufeff" to BOM, but can convert "\xEF\xBB\xBF"
+    
     def test_to_unicode(self):
         """Ensure to_unicode works as expected"""
         debug.trace(4, "test_to_unicode()")
         assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\xEF\xBB\xBF"
         ## TODO: add tests for sys.version_info.major < 3
-        ## assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\ufeff"
+        # assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\ufeff"
 
     def test_from_unicode(self):
         """Ensure from_unicode works as expected"""
         debug.trace(4, "test_from_unicode()")
-        ## TODO: WORK-IN=PROGRESS
+        assert THE_MODULE.from_unicode("\u00BF") == "¿"
 
     def test_to_string(self):
         """Ensure to_string works as expected"""
@@ -654,16 +711,23 @@ class TestSystem:
         debug.trace(4, "test_absolute_path()")
         assert THE_MODULE.absolute_path("/etc/mtab").startswith("/etc")
 
-    @pytest.mark.xfail
     def test_real_path(self):
         """Ensure real_path works as expected"""
         debug.trace(4, "test_real_path()")
         assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
 
+    @pytest.mark.xfail
     def test_get_module_version(self):
         """Ensure get_module_version works as expected"""
         debug.trace(4, "test_get_module_version()")
-        ## TODO: WORK-IN=PROGRESS
+        num_good = 0
+        num_total = 0
+        for line in gh.run("pip freeze"):
+            module, version = (my_re.search(r"r(\S+)==(\S+))", line) and my_re.groups()[:2])
+            if version == THE_MODULE.get_module_version(module):
+                num_good += 1
+                percent = (num_good / num_total * 100) if num_total else 0
+        assert (percent >= 90)
 
     def test_intersection(self):
         """Ensure intersection works as expected"""
@@ -775,22 +839,22 @@ class TestSystem:
         assert THE_MODULE.round_as_str(3.15914, 3) == "3.159"
         assert isinstance(THE_MODULE.round_as_str(3.15914, 3), str)
 
-    def test_sleep(self, monkeypatch, capsys):
+    def test_sleep(self):
         """Ensure sleep works as expected"""
         debug.trace(4, "test_sleep()")
         def sleep_mock(secs):
             return f'sleeping {secs}'
-        monkeypatch.setattr(time, "sleep", sleep_mock)
+        self.monkeypatch.setattr(time, "sleep", sleep_mock)
         THE_MODULE.sleep(123123, trace_level=-1)
-        captured = capsys.readouterr()
-        assert '123123' in captured.err
+        captured = self.get_stderr()
+        assert '123123' in captured
 
-    def test_current_time(self, monkeypatch):
+    def test_current_time(self):
         """Ensure current_time works as expected"""
         debug.trace(4, "test_current_time()")
         def time_mock():
             return 12345.6789
-        monkeypatch.setattr(time, "time", time_mock)
+        self.monkeypatch.setattr(time, "time", time_mock)
         assert THE_MODULE.current_time() == 12345.6789
         assert THE_MODULE.current_time(integral=True) == 12346
 
@@ -805,7 +869,7 @@ class TestSystem:
         debug.trace(4, "test_python_maj_min_version()")
         assert re.search(r'\d+\.\d+', str(THE_MODULE.python_maj_min_version()))
 
-    def test_get_args(self, monkeypatch):
+    def test_get_args(self):
         """Ensure get_args works as expected"""
         debug.trace(4, "test_get_args()")
         args = [
@@ -813,15 +877,15 @@ class TestSystem:
             "--name",
             "logfilename.log",
         ]
-        monkeypatch.setattr("sys.argv", args)
+        self.monkeypatch.setattr("sys.argv", args)
         assert THE_MODULE.get_args() == args
 
-    def test_main(self, capsys):
+    def test_main(self):
         """Ensure main works as expected"""
         THE_MODULE.main('some-arg')
-        captured = capsys.readouterr()
+        captured = self.get_stderr()
         # ex: Warning, tomohara: system.py not intended for direct invocation!
-        assert "not intended" in captured.err.lower()
+        assert "not intended" in captured.lower()
 
 
 def set_test_env_var():
