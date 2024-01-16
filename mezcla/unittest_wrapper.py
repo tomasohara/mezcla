@@ -152,6 +152,7 @@ class TestWrapper(unittest.TestCase):
     temp_file = None
     use_temp_base_dir = system.is_directory(temp_base)
     test_num = 1
+    class_setup = False
     
     ## TEST:
     ## NOTE: leads to pytest warning. See
@@ -169,6 +170,7 @@ class TestWrapper(unittest.TestCase):
         """Per-class initialization: make sure script_module set properly"""
         debug.trace_fmtd(6, "TestWrapper.setupClass(): cls={c}", c=cls)
         super().setUpClass()
+        cls.class_setup = True
         debug.trace_object(7, cls, "TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
         if (cls.script_module is not None):
@@ -246,6 +248,9 @@ class TestWrapper(unittest.TestCase):
         - Initializes temp file name (With override from environment)."""
         # Note: By default, each test gets its own temp file.
         debug.trace(6, "TestWrapper.setUp()")
+        if not self.class_setup:
+            debug.trace(5, "Warning: invoking setupClass in setup")
+            TestWrapper.setupClass(self.__class__)
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
         # The temp file is an extension of temp-base file by default.
