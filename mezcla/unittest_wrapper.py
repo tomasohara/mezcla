@@ -448,12 +448,6 @@ class TestWrapper(unittest.TestCase):
         # See https://docs.pytest.org/en/latest/how-to/capture-stdout-stderr.html
         self.capsys = capsys
 
-    ## DUPLICATE
-    ## @pytest.fixture(autouse=True)
-    ## def monkeypatch(self, monkeypatch):
-    ##     """Support for modifying objects, dictionaries or environment variables"""
-    ##    self.monkeypatch = monkeypatch
-
     def get_stdout_stderr(self):
         """Get currently captured standard output and error
         Note: Clears both stdout and stderr captured
