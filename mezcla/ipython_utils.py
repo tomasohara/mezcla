@@ -25,6 +25,8 @@ Advanced usage:
     (1e-06, 0.001)
 """
 
+# Note: most imports are done for the sake of ipython usage
+#
 # pylint: disable=unused-import
 
 # Standard modules
@@ -48,6 +50,7 @@ import mezcla
 from mezcla import debug
 from mezcla import html_utils
 from mezcla import main
+from mezcla.main import Main
 from mezcla import system
 from mezcla.my_regex import my_re
 from mezcla import data_utils as du
