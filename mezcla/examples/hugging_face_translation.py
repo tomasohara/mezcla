@@ -17,36 +17,22 @@ USE_INTERFACE=1 {script} -
 """
 
 # Standard modules
-# TODO: import re
+## TODO: import json
 
-# Intalled module
-# import transformers
-# BAD (NOT DYNAMIC): import torch
-# BAD (NOT DYNAMIC): from transformers import pipeline
+# Intalled modules
+# Note: done dynamically below
 
 # Local modules
 from mezcla import debug
 from mezcla.main import Main
 # TODO2: add new mezcla.hugging_face module for common stuff
-# OLD: from mezcla.examples.hugging_face_speechrec import TORCH_DEVICE
 import mezcla.examples.hugging_face_speechrec as hf_speechrec
 from mezcla import misc_utils
 from mezcla import system
 from mezcla import glue_helpers as gh
 
-# Constants
+# Constants and Environment options
 TL = debug.TL
-
-## TODO:
-## # Environment options
-## # Notes:
-## # - These are just intended for internal options, not for end users.
-## # - They also allow for enabling options in one place rather than four
-## #   when using main.Main (e.g., [Main member] initialization, run-time
-## #   value, and argument spec., along with string constant definition).
-## #
-## ENABLE_FUBAR = system.getenv_bool("ENABLE_FUBAR", False,
-##                                   description="Enable fouled up beyond all recognition processing") #pylint: disable=line-too-long
 
 FROM = system.getenv_text("FROM", "es")
 TO = system.getenv_text("TO", "en")
@@ -55,12 +41,6 @@ SOURCE_LANG = system.getenv_text("SOURCE_LANG", FROM,
 TARGET_LANG = system.getenv_text("TARGET_LANG", TO,
                                  "Target language")
 debug.assertion(SOURCE_LANG != TARGET_LANG)
-## OLD:
-## MT_TASK = f"translation_{SOURCE_LANG}_to_{TARGET_LANG}"
-## DEFAULT_MODEL = f"Helsinki-NLP/opus-mt-{SOURCE_LANG}-{TARGET_LANG}"
-## OLD:
-## MT_MODEL = system.getenv_value("MT_MODEL", None,
-##                                "Hugging Face model for MT")
 SHOW_ELAPSED = system.getenv_bool("SHOW_ELAPSED", False,
                                   "Show elapsed time")
 MAX_LENGTH = system.getenv_value(
@@ -73,10 +53,7 @@ TO_ARG = "to"
 ## TODO: ELAPSED_ARG = "elapsed-time"
 TASK_ARG = "task"
 MODEL_ARG = "model"
-
-#-------------------------------------------------------------------------------
-# OLD: USE_CPU = system.getenv_bool("USE_CPU", True, "Uses Torch on CPU if True")
-# NEW: USE_GPU
+UI_ARG = "ui"
 
 USE_GPU = system.getenv_bool("USE_GPU", True, "Uses Torch on GPU if True")
 MAX_LENGTH = system.getenv_int("MAX_LENGTH", 512, "Maximum Length of Tokens")
@@ -85,27 +62,18 @@ TEXT_FILE = system.getenv_text("TEXT_FILE", "-",
 USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
                                    "Use web-based interface via gradio")
 
-# OLD: device = torch.device("cpu") if USE_CPU else torch.device("cuda")
-# NEW: USE_GPU
-
-## OLD v2: After using init_torch_etc
-# torch = None
-# device = torch.device("cuda") if USE_GPU else torch.device("cpu")
-
-# Optionally load UI support
-gr = None                               # pylint: disable=invalid-name
-if USE_INTERFACE:
-    import gradio as gr                 # pylint: disable=import-error
+#-------------------------------------------------------------------------------
 
 def main():
     """Entry point"""
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
 
     # Show simple usage if --help given
-    ## OLD: dummy_app = Main(description=__doc__, skip_input=False, manual_input=False)
     dummy_app = Main(description=__doc__.format(script=gh.basename(__file__)),
                      skip_input=False, manual_input=True,
-                     ## TODO: bool_options=[(ELAPSED_ARG, "Show elapsed time")],
+                     bool_options=[
+                         ## TODO3: (ELAPSED_ARG, "Show elapsed time")],
+                         (UI_ARG, "Invoke user interface")],
                      text_options=[
                          (FROM_ARG, "Source language code"),
                          (TO_ARG, "Target language code"),
@@ -122,10 +90,11 @@ def main():
     MT_MODEL = f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"          # pylint: disable=invalid-name
     mt_task = dummy_app.get_parsed_option(TASK_ARG, MT_TASK)
     mt_model = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL)
+    use_interface = dummy_app.get_parsed_option(UI_ARG, USE_INTERFACE)
 
     # Get input file
     text_file = TEXT_FILE
-    if ((text is not None) or USE_INTERFACE):
+    if ((text is not None) or use_interface):
         pass
     elif text_file == "-":
         text_file = dummy_app.temp_file
@@ -133,43 +102,36 @@ def main():
     else:
         text = system.read_file(text_file)
 
-    ## TEMP:
-    ## pylint: disable=import-outside-toplevel
-    ## OLD: model = pipeline(task=mt_task, model=mt_model)
-    ## OLD (Redefining name 'device' from outer scope): device = torch.device(TORCH_DEVICE)
-    
-    ## OLDv2: After using init_torch_etc()
-    # from transformers import pipeline
-    # device = torch.device(TORCH_DEVICE)
-    # debug.trace_expr(5, device)
-    # model = pipeline(task=mt_task, model=mt_model, device=device)
-
-    ## NEW:
+    # Load PyTorch and Hugging Face pipeline support
+    # pylint: disable=import-outside-toplevel
     torch = hf_speechrec.init_torch_etc()
     debug.trace_expr(4, torch)
     if torch is None:
         import torch
         debug.trace_expr(4, torch)
-    from transformers import pipeline
+    from transformers import pipeline   
+    
     # Load Model
     device = torch.device(hf_speechrec.TORCH_DEVICE)
     debug.trace_expr(5, device)
     model = pipeline(task=mt_task, model=mt_model, device=device)
 
-    if USE_INTERFACE:
+    # Pull up web interface if requested
+    if use_interface:
         # TODO2: add language controls
+        import gradio as gr             # pylint: disable=import-outside-toplevel
         pipeline_if = gr.Interface.from_pipeline(
             model,
             title="Machine translation (MT)",
             ## TODO2: subtitle=f"From: {FROM}; To: {TO}",
-            ## OLD:
-            ## description="Using pipeline with default",
             description=f"From: {FROM}; To: {TO}",
-            ## examples=[text_file])
+            ## TODO3: examples=[...]); See example in hf_stable_diffusion.py.
             )
         pipeline_if.launch()
+
+    # Otherwise, do translation and output
     else:
-        TRANSLATION_TEXT = "translation_text"                               # pylint: disable=invalid-name
+        TRANSLATION_TEXT = "translation_text"
         try:
             translation = model(text, max_length=MAX_LENGTH)
             debug.assertion(isinstance(translation, list)
@@ -177,15 +139,15 @@ def main():
             print(translation[0].get(TRANSLATION_TEXT) or "")
         except:
             system.print_exception_info("translation")
-    debug.code(5, lambda: debug.trace(1, gh.run("nvidia-smi")))
 
-    ## OLD (pylint: Useless return at end of function or method)
-    # return
+    # Show nvidia usage if under GPU
+    if (hf_speechrec.TORCH_DEVICE == "GPU"):
+        debug.code(5, lambda: debug.trace(1, gh.run("nvidia-smi")))
+    return
 
 #-------------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    ## OLD: main()
     elapsed = misc_utils.time_function(main)
     if SHOW_ELAPSED:
         print(f"Elapsed time: {system.round_as_str(elapsed)}ms")
