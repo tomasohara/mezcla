@@ -17,7 +17,7 @@ import re
 
 # Installed packages
 import pytest
-import bs4
+## OLD: import bs4
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
@@ -51,7 +51,7 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, "test_get_url_parameter_value()")
         save_user_parameters = THE_MODULE.user_parameters
         THE_MODULE.user_parameters = {}
-        assert THE_MODULE.get_url_parameter_value("fubar", None) == None
+        assert THE_MODULE.get_url_parameter_value("fubar", None) is None
         assert THE_MODULE.get_url_parameter_value("fubar", None, {"fubar": "fu"}) == "fu"
         THE_MODULE.user_parameters = {"fubar": "bar"}
         assert THE_MODULE.get_url_parameter_value("fubar", None) == "bar"
@@ -229,7 +229,7 @@ class TestHtmlUtils(TestWrapper):
         """Ensure download_web_document() works as expected"""
         debug.trace(4, "test_download_web_document()")
         assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
-        assert THE_MODULE.download_web_document("www. bogus. url.html") == None 
+        assert THE_MODULE.download_web_document("www. bogus. url.html") is None 
 
     def test_test_download_html_document(self):
         """Ensure test_download_html_document() works as expected"""
