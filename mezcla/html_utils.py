@@ -57,7 +57,8 @@ import html
 import re
 import sys
 import time
-import urllib
+## OLD: import urllib
+import urllib.request
 from urllib.error import HTTPError, URLError
 from http.client import HTTPMessage
 ## OLD: from typing import Dict
@@ -113,7 +114,7 @@ BeautifulSoup : Optional[Callable] = None
 #-------------------------------------------------------------------------------
 # HTML utility functions
 
-browser_cache : Dict[str, Optional[str]] = {}
+browser_cache : Dict = {}
 ##
 def get_browser(url : str):
     """Get existing browser for URL or create new one
@@ -187,13 +188,14 @@ def get_inner_text(url : str):
     """Get text of URL (i.e., without HTML tags) after JavaScript processing (via selenium)"""
     debug.trace_fmt(5, "get_inner_text({u})", u=url)
     # See https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText
+    inner_text: str = ""
     try:
         # Navigate to the page (or get browser instance with existing page)
         browser = get_browser(url)
         # Wait for Javascript to finish processing
         wait_until_ready(url)
         # Extract fully-rendered text
-        inner_text:str = browser.execute_script("return document.body.innerText")
+        inner_text = browser.execute_script("return document.body.innerText")
     except:
         system.print_exception_info("get_inner_text")
     debug.trace_fmt(7, "get_inner_text({u}) => {it}", u=url, it=inner_text)
@@ -430,7 +432,7 @@ def expand_misc_param(misc_dict : Dict, param_name : str, param_dict : Optional[
     return new_misc_dict
 
 
-def _read_file(filename : str, as_binary : bool):
+def _read_file(filename : str, as_binary : bool) -> Optional[str|bytes]:
     """Wrapper around read_entire_file or read_binary_file if AS_BINARY"""
     ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_read_file({filename}, {as_binary})")
@@ -438,7 +440,7 @@ def _read_file(filename : str, as_binary : bool):
     return read_fn(filename)
 
 
-def _write_file(filename : str, data : Union[str, bytes], as_binary : bool):
+def _write_file(filename : str, data : Union[str, bytes], as_binary : bool) -> None:
     """Wrapper around write_file or write_binary_file if AS_BINARY"""
     ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_write_file({filename}, _, {as_binary})")
@@ -655,7 +657,7 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
             web_site_url += "/"
             debug.trace_fmtd(6, "wsu2={wsu}", wsu=web_site_url)
     # Determine base URL
-    if base_url is None:
+    if base_url is None and soup:
         base_url_info = soup.find("base")
         
         base_url = base_url_info.get("href") if base_url_info else None
@@ -673,7 +675,7 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
 
     # Get links and resolve to full URL (TODO: see if utility for this)
     links = []
-    all_links = soup.find_all('a')
+    all_links = soup.find_all('a') if soup else []
     for link in all_links:
         debug.trace_fmtd(6, "link={inf}; style={sty}", inf=link, sty=link.attrs.get('style'))
         link_src = link.get("href", "")
@@ -839,12 +841,13 @@ def html_to_text(document_data : str):
     soup = BeautifulSoup(document_data, "lxml") if BeautifulSoup else None
     # Remove all script and style elements
     text = ""
-    for script in soup.find_all(["script", "style"]):
-        # *** TODO: soup = soup.extract(script)
-        # -or- Note the in-place change (i.e., destructive).
-        script.extract()
-    # Get the text
-    text = soup.get_text(separator=" ")
+    if soup:
+        for script in soup.find_all(["script", "style"]):
+            # *** TODO: soup = soup.extract(script)
+            # -or- Note the in-place change (i.e., destructive).
+            script.extract()
+        # Get the text
+        text = soup.get_text(separator=" ")
     debug.trace_fmtd(6, "html_to_text() => {t}", t=gh.elide(text))
     return text
 
@@ -874,7 +877,7 @@ def extract_html_images(document_data : Optional[str|bytes] = None, url : Option
     if not web_site_url.endswith("/"):
         web_site_url += "/"
         debug.trace_fmtd(6, "wsu2={wsu}", wsu=web_site_url)
-    base_url_info = soup.find("base")
+    base_url_info = soup.find("base") if soup else None
     base_url = base_url_info.get("href") if base_url_info else None
     debug.trace_fmtd(6, "bu1={bu}", bu=base_url)
     ## BAD:
@@ -894,7 +897,7 @@ def extract_html_images(document_data : Optional[str|bytes] = None, url : Option
     # TODO: include CSS background images
     # TODO: use DATA-SRC if SRC not valid URL (e.g., src="data:image/gif;base64,R0lGODl...")
     images = []
-    all_images = soup.find_all('img')
+    all_images = soup.find_all('img') if soup else []
     for image in all_images:
         debug.trace_fmtd(6, "image={inf}; style={sty}", inf=image, sty=image.attrs.get('style'))
         ## TEST: if (image.has_attr('attrs') and (image.attrs.get['style'] in ["display:none", "visibility:hidden"])):
