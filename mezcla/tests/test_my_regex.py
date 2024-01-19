@@ -30,11 +30,12 @@ class TestMyRegex(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
     my_re = THE_MODULE.my_re
-    
-    @pytest.fixture(autouse=True)
-    def capsys(self, capsys):
-        """Gets capsys"""
-        self.capsys = capsys
+
+    ## OLD:
+    ## @pytest.fixture(autouse=True)
+    ## def capsys(self, capsys):
+    ##     """Gets capsys"""
+    ##     self.capsys = capsys
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_search(self):
@@ -103,9 +104,10 @@ class TestMyRegex(TestWrapper):
         debug.trace(4, "in test_f_string()")
         self.my_re.search("{fubar}", "foobar")
         # TODO2: change usages elsewhere to make godawful pytest default more intuitive
-        captured_stderr = self.capsys.readouterr().err
+        captured_stderr = self.get_stderr()
         debug.trace_expr(4, captured_stderr, max_len=4096)
         self.do_assert(self.my_re.search("Warning:.*f-string", captured_stderr))
+        ## TEST: print(f"{self.my_re=}")
         debug.trace(5, "out test_f_string()")
 
     def test_simple_regex(self):
