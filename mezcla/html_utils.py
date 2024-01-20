@@ -62,7 +62,10 @@ import urllib.request
 from urllib.error import HTTPError, URLError
 from http.client import HTTPMessage
 ## OLD: from typing import Dict
-from typing_extensions import Any, Callable, Dict, List, Optional, Union
+try:
+    from typing_extensions import Any, Callable, Dict, List, Optional, Union
+except:
+    sys.exit("Error: html_utils.py requires Python 3.9+ (backport limitations with typing_extensions)")
 
 # Installed packages
 # Note: selenium import now optional; BeautifulSoup also optional
@@ -102,6 +105,10 @@ EXCLUDE_IMPORTS = system.getenv_bool("EXCLUDE_IMPORTS", False,
                                      "Sets --follow-imports=silent; no import files are checked")
 HEADERS = "headers"
 FILENAME = "filename"
+
+# Custom Types
+OptStrBytes = Union[str, bytes, None]
+OptBoolStr = Union[bool, str, None]
 
 # Globals
 # note: for convenience in Mako template code
@@ -313,7 +320,7 @@ def get_url_text(name : str, default_value : Any = None, param_dict : Optional[D
 # EX: get_url_text("param2") => "a b c"
    
 
-def get_url_param_checkbox_spec(name : str, default_value : Optional[bool|str] = "", param_dict : Optional[Dict] = None):
+def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", param_dict : Optional[Dict] = None):
     """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT
     Note: the value is only specified/submitted if checked"""
     # TODO3?: extend to handle case with multiple values (see get_url_parameter_value)
@@ -432,7 +439,7 @@ def expand_misc_param(misc_dict : Dict, param_name : str, param_dict : Optional[
     return new_misc_dict
 
 
-def _read_file(filename : str, as_binary : bool) -> Optional[str|bytes]:
+def _read_file(filename : str, as_binary : bool) -> OptStrBytes:
     """Wrapper around read_entire_file or read_binary_file if AS_BINARY"""
     ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_read_file({filename}, {as_binary})")
@@ -450,7 +457,7 @@ def _write_file(filename : str, data : Union[str, bytes], as_binary : bool) -> N
 
 def old_download_web_document(url : str, filename: Optional[str] = None, download_dir : Optional[str] = None,
                               meta_hash : Optional[Dict[str, Any]] = None, use_cached : bool = False,
-                              as_binary : bool = False, ignore : bool = False) -> Optional[str|bytes]:
+                              as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
     """Download document contents at URL, returning as unicode text (unless AS_BINARY)
     Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED. If IGNORE, no exceptions reports are printed."""
     # EX: ("Search" in old_download_web_document("https://www.google.com"))
@@ -513,7 +520,7 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
     return data
 
 
-def download_web_document(url : str, filename: Optional[str] = None, download_dir: Optional[str] = None, meta_hash=None, use_cached : bool = False, as_binary : bool = False, ignore : bool = False) -> Optional[str|bytes]:
+def download_web_document(url : str, filename: Optional[str] = None, download_dir: Optional[str] = None, meta_hash=None, use_cached : bool = False, as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
     """Download document contents at URL, returning as unicode text (unless AS_BINARY).
     Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED. If IGNORE, no exceptions reports are printed."""
     # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
@@ -542,7 +549,7 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
     if meta_hash is not None:
         meta_hash[FILENAME] = local_filename
     headers = {}
-    doc_data: Optional[str|bytes] = ""
+    doc_data: OptStrBytes = ""
     if use_cached and system.non_empty_file(local_filename):
         debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
         doc_data = _read_file(local_filename, as_binary)
@@ -561,7 +568,7 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
     return doc_data
 
 
-def test_download_html_document(url : str, encoding : Optional[str] = None, lookahead: int = 256, **kwargs) -> Optional[str|bytes]:
+def test_download_html_document(url : str, encoding : Optional[str] = None, lookahead: int = 256, **kwargs) -> OptStrBytes:
     """Wrapper around download_web_document for HTML or text (i.e., non-binary), using ENCODING.
     Note: If ENCODING unspecified, checks result LOOKAHEAD bytes for meta encoding spec and uses UTF-8 as a fallback."""
     # EX: "Google" in test_download_html_document("www.google.com")
@@ -594,15 +601,15 @@ def download_html_document(url : str, **kwargs) -> str:
     return (result)
 
 
-def download_binary_file(url : str, **kwargs) -> Optional[str|bytes]:
+def download_binary_file(url : str, **kwargs) -> OptStrBytes:
     """Wrapper around download_web_document for binary files (e.g., images)"""
-    result : Optional[str|bytes] = (download_web_document(url, as_binary=True, **kwargs) or b"")
+    result : OptStrBytes = (download_web_document(url, as_binary=True, **kwargs) or b"")
     debug.trace_fmtd(7, "download_binary_file({u}) => _; len(_)={l}",
                      u=url, l=(len(result) if result else 0))
     return (result)
     
 
-def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, ignore : bool = False) -> Optional[str|bytes]:
+def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
     """Get document contents at URL, using unicode text (unless AS_BINARY)
     Note:
     - Simpler version of old_download_web_document, using an optional META_HASH for recording headers
@@ -691,7 +698,7 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
     return links
 
 
-def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : Optional[bool|str] = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None):
+def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None):
     """Returns HTML specification for input checkbox, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, CSS STYLE and MISC_ATTR (catch all).
     Note: param_name + "-id" is used for the field ID.
     The TOOLTIP requires CSS support (e.g., tooltip-control class).
@@ -852,7 +859,7 @@ def html_to_text(document_data : str):
     return text
 
 
-def extract_html_images(document_data : Optional[str|bytes] = None, url : Optional[str] = None, filename : Optional[str] = None):
+def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] = None, filename : Optional[str] = None):
     """Returns list of all images in HTML DOC from URL (n.b., URL used to determine base URL)"""
     debug.trace(6, f"extract_html_images(_, {url}, fn={filename})")
     debug.trace_fmtd(8, "\tdata={d}", d=document_data)
