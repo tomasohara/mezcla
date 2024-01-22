@@ -65,7 +65,9 @@ from http.client import HTTPMessage
 try:
     from typing_extensions import Any, Callable, Dict, List, Optional, Union
 except:
-    sys.exit("Error: html_utils.py requires Python 3.9+ (backport limitations with typing_extensions)")
+    ## OLD: sys.exit("Error: html_utils.py requires Python 3.9+ (backport limitations with typing_extensions)")
+    sys.stderr.write("Error importing extensions: {sys.exc_info}\n")
+    sys.exit("Error: html_utils.py requires Python typing_extensions >= 4.7.0 (backport limitations with typing_extensions)")
 
 # Installed packages
 # Note: selenium import now optional; BeautifulSoup also optional
