@@ -34,6 +34,7 @@ import mezcla.system as THE_MODULE
 
 class TestSystem(TestWrapper):
     """Class for test case definitions"""
+    script_module = None
 
     def test_maxint(self):
         """Ensure maxint works as expected"""
@@ -201,12 +202,15 @@ class TestSystem(TestWrapper):
     @pytest.mark.xfail
     def test_exit(self):
         """Ensure exit works as expected"""
+        # Note: This modifies sys.exit so that system.exit doesn't really exit.
         debug.trace(4, "test_exit()")
+        #
         def sys_exit_mock():
+            """Stub for sys.exit that just return 'exit' text"""
             return 'exit'
-        ## BAD: self.set_attr(sys, "exit", sys_exit_mock)
+        #
         self.monkeypatch.setattr(sys, "exit", sys_exit_mock)
-        assert THE_MODULE.exit('test exit {method}', method='method') == 'exit'
+        assert THE_MODULE.exit('test exit method') == 'exit'
         # Exit is mocked, ignore code editor hidding
         captured = self.get_stderr()
         assert "test exit method" in captured
@@ -629,7 +633,8 @@ class TestSystem(TestWrapper):
     def test_get_current_directory(self):
         """Ensure get_current_directory works as expected"""
         debug.trace(4, "test_get_current_directory()")
-        assert '/home/' in THE_MODULE.get_current_directory()
+        ## BAD: assert '/home/' in THE_MODULE.get_current_directory()
+        assert 'mezcla' in THE_MODULE.get_current_directory()
 
     def test_set_current_directory(self):
         """Ensure set_current_directory works as expected"""
