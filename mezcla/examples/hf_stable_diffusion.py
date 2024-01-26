@@ -91,16 +91,19 @@ DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.75,
 HF_SD_MODEL = system.getenv_text(
     "HF_SD_MODEL", "CompVis/stable-diffusion-v1-4",
     description="Hugging Face model for Stable Diffusion")
-CAPTION_MODEL = system.getenv_text(
-    "CAPTION_MODEL", "blip-large",
-    description="Caption model to use in CLIP interrogation")
-CLIP_MODEL = system.getenv_text(
-    "CLIP_MODEL", "ViT-L-14/openai",
-    # TODO4: see https://arxiv.org/pdf/2010.11929.pdf for ViT-S-NN explanation
-    description="Model to use for CLIP interrogation")
 STREAMLINED_CLIP = system.getenv_bool(
+    # note: Doesn't default to LOW_MEMORY, which just uses 16-bit floating point:
+    # several settings are changed (see apply_low_vram_defaults in clip_interrogator).
     "STREAMLINED_CLIP", False,
     description="Use streamlined CLIP settings to reduce memory usage")
+REGULAR_CLIP = (not STREAMLINED_CLIP)
+CAPTION_MODEL = system.getenv_text(
+    "CAPTION_MODEL", ("blip-large" if REGULAR_CLIP else "blip-base"),
+    description="Caption model to use in CLIP interrogation")
+CLIP_MODEL = system.getenv_text(
+    "CLIP_MODEL", ("ViT-L-14/openai" if REGULAR_CLIP else "ViT-B-16/openai"),
+    # TODO4: see https://arxiv.org/pdf/2010.11929.pdf for ViT-S-NN explanation
+    description="Model to use for CLIP interrogation")
 #
 BATCH_ARG = "batch"
 SERVER_ARG = "server"
@@ -112,7 +115,7 @@ GUIDANCE_ARG = "guidance"
 TXT2IMG_ARG = "txt2img"
 IMG2IMG_ARG = "img2img"
 IMG2TXT_ARG = "img2txt"
-IMAGE_ARG = "input-image"
+## OLD: IMAGE_ARG = "input-image"
 DENOISING_ARG = "denoising-factor"
 DUMMY_BASE64_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAMzMzP////8AAABGA1scAAAAJUlEQVR4nGNgAAFGQUEowRoa6sCABBZowAgsgBEIGUQCRALAPACMHAOQvR4HGwAAAABJRU5ErkJggg=="
 DUMMY_IMAGE_FILE = gh.resolve_path("dummy-image.png")
@@ -1066,7 +1069,8 @@ def main():
 
     # Parse command line argument, show usage if --help given
     # TODO? auto_help=False
-    main_app = Main(description=__doc__, skip_input=True,
+    main_app = Main(description=__doc__,
+                    ## OLD: skip_input=True,
                     boolean_options=[(BATCH_ARG, "Use batch mode--no UI"),
                                      (SERVER_ARG, "Run flask server"),
                                      (UI_ARG, "Show user interface"),
@@ -1075,29 +1079,33 @@ def main():
                                      (IMG2TXT_ARG, "Run image-to-text: clip interrogator")],
                     text_options=[(PROMPT_ARG, "Positive prompt"),
                                   (NEGATIVE_ARG, "Negative prompt"),
-                                  (IMAGE_ARG, "Filename for img2img input image")],
+                                  ## OLD: (IMAGE_ARG, "Filename for img2img input image")
+                                  ],
                     int_options=[(GUIDANCE_ARG, GUIDANCE_HELP)],
                     float_options=[(DENOISING_ARG, "Denoising factor for img2img")])
     debug.trace_object(5, main_app)
     debug.assertion(main_app.parsed_args)
     #
-    batch_mode = main_app.get_parsed_option(BATCH_ARG)
+    input_image_file = main_app.filename
+    BATCH_MODE_DEFAULT = (input_image_file != "-")
+    batch_mode = main_app.get_parsed_option(BATCH_ARG, BATCH_MODE_DEFAULT)
     server_mode = main_app.get_parsed_option(SERVER_ARG)
-    ui_mode = main_app.get_parsed_option(UI_ARG, not (batch_mode or server_mode))
+    ## OLD: ui_mode = main_app.get_parsed_option(UI_ARG, not (batch_mode or server_mode))
+    ui_mode = main_app.get_parsed_option(UI_ARG)
     prompt = main_app.get_parsed_option(PROMPT_ARG, PROMPT)
     negative_prompt = main_app.get_parsed_option(NEGATIVE_ARG, NEGATIVE_PROMPT)
     guidance = main_app.get_parsed_option(GUIDANCE_ARG, GUIDANCE_SCALE)
     ## TODO?: use_txt2img = main_app.get_parsed_option(TXT2IMG_ARG, USE_TXT2IMG)
     use_img2img = main_app.get_parsed_option(IMG2IMG_ARG, USE_IMG2IMG)
     use_img2txt = main_app.get_parsed_option(IMG2TXT_ARG, USE_IMG2TXT)
-    input_image_file = main_app.get_parsed_option(IMAGE_ARG)
+    ## OLD: input_image_file = main_app.get_parsed_option(IMAGE_ARG)
     denoising_factor = main_app.get_parsed_option(DENOISING_ARG)
     ## TODO?: debug.assertion(use_txt2img ^ use_img2img)
     # TODO2: BASENAME and NUM_IMAGES (options)
     ## TODO: x_mode = main_app.get_parsed_option(X_ARG)
     debug.assertion(not (batch_mode and server_mode))
 
-    # Invoke UI via HTTP unless in batch mode
+    # Invoke UI via HTTP unless in batch or server mode
     show_gpu_usage()
     init_stable_diffusion()
     if batch_mode:
@@ -1124,9 +1132,13 @@ def main():
         debug.trace_object(5, flask_app)
         flask_app.run(host=SD_URL, port=SD_PORT, debug=SD_DEBUG)
     # Start UI
-    else:
-        debug.assertion(ui_mode)
+    elif ui_mode:
+        debug.assertion(main_app.filename == "-")
         run_ui(use_img2img=use_img2img)
+    # Otheriwse, show command-line options
+    else:
+        ## TODO3: expose print_usage directly through main_app
+        main_app.parser.print_usage()
     show_gpu_usage()
 
 
