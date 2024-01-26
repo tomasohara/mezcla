@@ -91,8 +91,17 @@ DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.75,
 HF_SD_MODEL = system.getenv_text(
     "HF_SD_MODEL", "CompVis/stable-diffusion-v1-4",
     description="Hugging Face model for Stable Diffusion")
-
-
+CAPTION_MODEL = system.getenv_text(
+    "CAPTION_MODEL", "blip-large",
+    description="Caption model to use in CLIP interrogation")
+CLIP_MODEL = system.getenv_text(
+    "CLIP_MODEL", "ViT-L-14/openai",
+    # TODO4: see https://arxiv.org/pdf/2010.11929.pdf for ViT-S-NN explanation
+    description="Model to use for CLIP interrogation")
+STREAMLINED_CLIP = system.getenv_bool(
+    "STREAMLINED_CLIP", False,
+    description="Use streamlined CLIP settings to reduce memory usage")
+#
 BATCH_ARG = "batch"
 SERVER_ARG = "server"
 UI_ARG = "UI"
@@ -208,6 +217,7 @@ class StableDiffusion:
         """Initialize Stable Diffusion"""
         debug.trace(4, "init_pipeline()")
         debug.assertion(not (txt2img and img2img))
+        ## TODO2: fix lack of support for img2img
         debug.assertion(not img2img)
         # pylint: disable=import-outside-toplevel
         from diffusers import StableDiffusionPipeline
@@ -253,8 +263,12 @@ class StableDiffusion:
         # pylint: disable=import-outside-toplevel
         debug.trace(4, "init_clip_interrogation()")
         from clip_interrogator import Config, Interrogator
-        self.img2txt_engine = Interrogator(Config(clip_model_name="ViT-L-14/openai"))
-    
+        clip_config = Config(caption_model_name=CAPTION_MODEL,
+                             clip_model_name=CLIP_MODEL)
+        if STREAMLINED_CLIP:
+            clip_config.apply_low_vram_defaults()
+        self.img2txt_engine = Interrogator(clip_config)
+
     def infer(self, prompt=None, negative_prompt=None, scale=None, num_images=None,
               skip_img_spec=False, width=None, height=None, skip_cache=False):
         """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE,
@@ -501,7 +515,7 @@ class StableDiffusion:
 
 def init_stable_diffusion(use_hf_api=None):
     """Initialize stable diffusion usage, locally if USE_HF_API"""
-    debug.trace(4, "init_stable_diffusion({use_hf_api})")
+    debug.trace(4, f"init_stable_diffusion({use_hf_api})")
     init()
     global sd_instance
     sd_instance = StableDiffusion(use_hf_api=use_hf_api)
@@ -1084,6 +1098,7 @@ def main():
     debug.assertion(not (batch_mode and server_mode))
 
     # Invoke UI via HTTP unless in batch mode
+    show_gpu_usage()
     init_stable_diffusion()
     if batch_mode:
         # Optionally convert input image into base64
@@ -1112,6 +1127,7 @@ def main():
     else:
         debug.assertion(ui_mode)
         run_ui(use_img2img=use_img2img)
+    show_gpu_usage()
 
 
 if __name__ == '__main__':
