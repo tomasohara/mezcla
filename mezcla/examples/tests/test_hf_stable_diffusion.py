@@ -112,9 +112,7 @@ class TestIt(TestWrapper):
         # ex: "See sd-app-image-1.png for output image(s)."
         script_output = self.run_script(
             options="--batch --prompt 'orange ball' --negative 'green blue red yellow purple pink brown'",
-            ## TEMP: avoid use of - (see TestWrapper.run_script in unittest_wrapper.py)
-            data_file="",
-            env_options=f"BASENAME='{self.temp_base}' LOW_MEMORY=1", uses_stdin=True)
+            env_options=f"BASENAME='{self.temp_base}' LOW_MEMORY=1", uses_stdin=False)
         debug.trace_expr(5, script_output)
         self.do_assert(my_re.search(r"See (\S+.png) for output image\(s\).", script_output.strip()))
         image_file = my_re.group(1)
