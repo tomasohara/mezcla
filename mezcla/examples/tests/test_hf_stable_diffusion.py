@@ -8,6 +8,18 @@
 #
 # TODO3: check image attributes (e.g., backgfround color) and work in image classification (e.g., box)
 #
+#--------------------------------------------------------------------------------
+# Note:
+# - This only runs if NVidia GPU support is installed OK, as determined via nvidia-smi output.
+#   $ nvidia-smi
+#   Fri Jan 26 12:51:57 2024       
+#   +---------------------------------------------------------------------------------------+
+#   | NVIDIA-SMI 535.98                 Driver Version: 535.98       CUDA Version: 12.2     |
+#   ...
+#   |   0  NVIDIA GeForce RTX 3080        Off | 00000000:01:00.0 Off |                  N/A |
+#   |  0%   42C    P8              28W / 320W |    677MiB / 10240MiB |      0%      Default |
+#   ...
+#
 
 """Tests for hf_stable_diffusion module"""
 
@@ -36,23 +48,62 @@ from mezcla import glue_helpers as gh
 from mezcla.misc_utils import RANDOM_SEED
 from mezcla.my_regex import my_re
 
+# HACK: Makes sure low-resource GPU configuration used for tests
+system.setenv("LOW_MEMORY", "1")
+system.setenv("STREAMLINED_CLIP", "1")
+
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                  global module object
 #    TestTemplate.script_module:  path to file
 import mezcla.examples.hf_stable_diffusion as THE_MODULE
 hfsd = THE_MODULE
 
-# Constants
+# Constants, etc.
 TORCH_SEED = system.getenv_int("TORCH_SEED", RANDOM_SEED,
                                "Random seed for torch if non-zero")
 NUMPY_SEED = system.getenv_int("NUMPY_SEED", RANDOM_SEED,
                                "Random seed for numpy if non-zero")
+#................................................................................
+# Utility functions
+
+def get_gpu_stats():
+    """
+    Note: Currently uses NVIDIA System Management Interface (SMI) program"""
+    # TODO3: use torch.cuda.memory_summary
+    result = gh.run("nvidia-smi")
+    debug.trace(7, f"get_gpu_stats() => {result}")
+    return result
+
+
+def gpu_mem_usage():
+    """Return GPU memory usage in gigabytes"""
+    # TEMP: Uses nvidia-smi until torch bug fixed
+    # ex: |  0%   42C    P8              28W / 320W |    677MiB / 10240MiB |      0%      Default |
+    total_usage = 0.0
+    for line in get_gpu_stats().splitlines():
+        if my_re.search(r"(\d+)MiB */ *(\d+)MiB", line, flags=my_re.IGNORECASE):
+            device_usage, _device_total = my_re.groups()
+            total_usage += system.to_float(device_usage)
+    total_usage /= 1024
+    debug.trace(6, f"get_gpu_stats() => {total_usage}")
+    return total_usage
+
+#................................................................................
+# Globals
+
+## TODO3: rework NVidia test via torch CUDA support
+nvidia_ok = my_re.search("NVIDIA-SMI.*Driver Version",
+                         get_gpu_stats(), flags=my_re.IGNORECASE)
+sd_or_nvidia_issue = (not (diffusers and nvidia_ok))
+
+#................................................................................
 
 class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
+    init_gpu_mem_usage = gpu_mem_usage()
 
     @classmethod
     def setUpClass(cls, filename=None, module=None):
@@ -92,6 +143,8 @@ class TestIt(TestWrapper):
                 hfsd.write_image_file(temp_image_file, spec)
         return images
 
+    
+    @pytest.mark.skipif(sd_or_nvidia_issue, reason="SD or NVidia not setup")
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_00_init_stable_diffusion(self):
         """Make sure ST module gets initialized OK"""
@@ -101,9 +154,10 @@ class TestIt(TestWrapper):
         self.do_assert(THE_MODULE.torch is not None)
         self.do_assert(THE_MODULE.sd_instance is not None)
         self.do_assert(isinstance(THE_MODULE.sd_instance, THE_MODULE.StableDiffusion))
+        self.do_assert(self.init_gpu_mem_usage > 0)
         return
     
-    @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
+    @pytest.mark.skipif(sd_or_nvidia_issue, reason="SD or NVidia not setup")
     def test_01_simple_generation(self):
         """Makes sure simple image generation (txt2img) works as expected"""
         debug.trace(4, f"test_01_simple_generation(); self={self}")
@@ -133,7 +187,7 @@ class TestIt(TestWrapper):
     ##    """Another class for testcase definition
     ##    Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper"""
     
-    @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
+    @pytest.mark.skipif(sd_or_nvidia_issue, reason="SD or NVidia not setup")
     def test_02_txt2img_pipeline(self):
         """Make sure valid SD pipeline created"""
         debug.trace(4, f"test_02_txt2img_pipeline(); self={self}")
@@ -146,7 +200,7 @@ class TestIt(TestWrapper):
         return
     
     @pytest.mark.xfail                   # TODO: remove xfail
-    @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
+    @pytest.mark.skipif(sd_or_nvidia_issue, reason="SD or NVidia not setup")
     def test_03_txt2img_generation(self):
         """Make sure text-to-image reasonable"""
         debug.trace(4, f"test_03_txt2img_generation(); self={self}")
@@ -162,7 +216,7 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
+    @pytest.mark.skipif(sd_or_nvidia_issue, reason="SD or NVidia not setup")
     @trap_exception
     def test_04_img2img_generation(self):
         """Make sure image-to-image reasonable"""
@@ -186,7 +240,7 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
+    @pytest.mark.skipif(sd_or_nvidia_issue, reason="SD or NVidia not setup")
     @trap_exception
     def test_05_img2txt_generation(self):
         """Make sure image-to-text reasonable"""
@@ -199,7 +253,7 @@ class TestIt(TestWrapper):
         debug.trace_expr(5, description)
         # TODO4: assert(english-like-text(description))
         self.do_assert(not my_re.search(r"canine|dog|puppy", description))
-        debug.trace(5, "post-test_05 GPU stats:\n" + gh.run("nvidia-smi"))
+        debug.trace(5, "post-test_05 GPU stats:\n" + get_gpu_stats())
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -224,6 +278,18 @@ class TestIt(TestWrapper):
         self.do_assert(len(images) == 1)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not extcolors, reason="extcolors package missing")
+    def test_99_gpu_mem_usage(self):
+        """Ensure at least 2gb of GPU memory used
+        Note: This should be the last test run
+        """
+        usage_before = self.init_gpu_mem_usage
+        usage_after = gpu_mem_usage()
+        usage = (usage_after - usage_before)
+        debug.trace_expr(5, usage, usage_before, usage_after)
+        self.do_assert(usage >= 2)
+    
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
@@ -234,6 +300,7 @@ if __name__ == '__main__':
         system.print_exception_info("pytest.main")
     ## TEMP (Show GPU memory usage, etc.):
     ## NOTE: maldito pytest makes debugging a real pain!
-    gpu_stats = "post test-suite GPU stats: {{\n{out}\n}}".format(out=gh.indent_lines(gh.run("nvidia-smi")))
+    gpu_stats = "post test-suite GPU stats: {{\n{out}\n}}".format(
+        out=gh.indent_lines(get_gpu_stats()))
     print(gpu_stats)
     debug.trace(3, gpu_stats)
