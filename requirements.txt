@@ -30,12 +30,15 @@ beautifulsoup4
 bs4
 cachetools
 cherrypy
+clip_interrogator
+datasets                      # Hugging Face (HF) data
+diffusers                     # Stale Diffusion
 diskcache
 extcolors>=1.0.0
 flair
 flask
 git+https://github.com/tehabstract/textract.git
-gradio                        # UI support (e.g., huggingface-based apps)
+gradio                        # UI support (e.g., HF-based apps)
 importlib_metadata
 #opt# kenlm                   # language model support (NOTE: problem with wheel)
 librosa>=0.10.0           
@@ -57,8 +60,8 @@ scipy
 sentencepiece
 six
 stop_words
-#opt# tensorrt                # for HF
-transformers                  # Hugging Face (HF)
+#opt# tensorrt                # NVidia GPU support
+transformers                  # HF models
 torch
 torchaudio
 webcolors
@@ -83,8 +86,6 @@ xgboost
 #opt# bash_kernel
 #opt# colout
 #opt# coverage
-#opt# datasets
-#opt# diffusers
 #opt# flit
 #opt# gensim
 #opt# ibm-watson
