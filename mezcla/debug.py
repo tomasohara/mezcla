@@ -535,7 +535,8 @@ if __debug__:
             expressions = []
 
         # Output initial text
-        trace(level, prefix, no_eol=no_eol)
+        if prefix:
+            trace(level, prefix, no_eol=no_eol)
 
         # Output each expression value
         for expression, value in zip_longest(expressions, values):

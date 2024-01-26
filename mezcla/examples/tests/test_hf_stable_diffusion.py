@@ -55,11 +55,11 @@ class TestIt(TestWrapper):
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls, filename=None, module=None):
         """One-time initialization (i.e., for entire class)"""
         debug.trace(5, f"TestIt.setUpClass(); cls={cls}")
         # note: should do parent processing first
-        super().setUpClass()
+        super().setUpClass(filename, module)
 
         # Initialize torch's seed and numpy (n.b., separate from python, which misc_utils handles).
         # See https://pytorch.org/docs/stable/notes/randomness.html
@@ -92,6 +92,16 @@ class TestIt(TestWrapper):
                 hfsd.write_image_file(temp_image_file, spec)
         return images
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_00_init_stable_diffusion(self):
+        """Make sure ST module gets initialized OK"""
+        debug.trace(4, f"test_00_init_stable_diffusion(); self={self}")
+        ## HACK: This also serves to initialize the module for other tests (TODO2: fix init)
+        THE_MODULE.init_stable_diffusion()
+        self.do_assert(THE_MODULE.torch is not None)
+        self.do_assert(THE_MODULE.sd_instance is not None)
+        self.do_assert(isinstance(THE_MODULE.sd_instance, THE_MODULE.StableDiffusion))
+        return
     
     @pytest.mark.skipif(not diffusers, reason="SD diffusers package missing")
     def test_01_simple_generation(self):
@@ -102,7 +112,7 @@ class TestIt(TestWrapper):
         # ex: "See sd-app-image-1.png for output image(s)."
         script_output = self.run_script(
             options="--batch --prompt 'orange ball' --negative 'green blue red yellow purple pink brown'",
-            env_options=f"BASENAME='{self.temp_base}' LOW_MEMORY=1", uses_stdin=True)
+            env_options=f"BASENAME='{self.temp_base}' LOW_MEMORY=1", uses_stdin=False)
         debug.trace_expr(5, script_output)
         self.do_assert(my_re.search(r"See (\S+.png) for output image\(s\).", script_output.strip()))
         image_file = my_re.group(1)
@@ -182,19 +192,21 @@ class TestIt(TestWrapper):
         """Make sure image-to-text reasonable"""
         debug.trace(4, f"test_05_img2txt_generation(); self={self}")
         # TODO2: use common setup method (e.g., via TestWrapper)
-        sd = THE_MODULE.StableDiffusion(use_hf_api=True)
+        sd = THE_MODULE.StableDiffusion(use_hf_api=True, low_memory=True)
         PACMAC_LIKE_IMAGE = gh.resolve_path("sd-spooky-pacman.png", heuristic=True)
         pacmac_like_base64 = THE_MODULE.encode_image_file(PACMAC_LIKE_IMAGE)
         description = sd.infer_img2txt(image_b64=pacmac_like_base64)
+        debug.trace_expr(5, description)
         # TODO4: assert(english-like-text(description))
         self.do_assert(not my_re.search(r"canine|dog|puppy", description))
+        debug.trace(5, "post-test_05 GPU stats:\n" + gh.run("nvidia-smi"))
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     @pytest.mark.skipif(not extcolors, reason="extcolors package missing")
     @trap_exception
     def test_06_prompted_color(self):
-        """Make sure prompted color is used"""
+        """Make sure prompted color is used in txt2img"""
         debug.trace(4, f"test_06_prompted_color(); self={self}")
         sd = THE_MODULE.StableDiffusion(use_hf_api=True, low_memory=True)
         images = sd.infer(prompt="a ripe orange", scale=30, skip_img_spec=True)
@@ -216,4 +228,12 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    try:
+        pytest.main([__file__])
+    except:
+        system.print_exception_info("pytest.main")
+    ## TEMP (Show GPU memory usage, etc.):
+    ## NOTE: maldito pytest makes debugging a real pain!
+    gpu_stats = "post test-suite GPU stats: {{\n{out}\n}}".format(out=gh.indent_lines(gh.run("nvidia-smi")))
+    print(gpu_stats)
+    debug.trace(3, gpu_stats)

@@ -245,7 +245,7 @@ getenv_float = getenv_number
 
 
 
-def getenv_int(var, default=-1, allow_none=False, description=None, desc=None, update=None):
+def getenv_int(var, default=-1, description=None, desc=None, allow_none=False, update=None):
     """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
     Note: Return is an integer unless ALLOW_NONE
     """
@@ -597,7 +597,7 @@ def read_lines(filename, ignore_comments=None):
 def read_binary_file(filename):
     """Read FILENAME as byte stream"""
     debug.trace_fmt(7, "read_binary_file({f}, _)", f=filename)
-    data = []
+    data = b""
     try:
         with open(filename, mode="rb") as f:
             data = f.read()

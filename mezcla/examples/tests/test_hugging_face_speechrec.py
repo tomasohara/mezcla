@@ -13,7 +13,6 @@ import pytest
 
 # Local modules
 from mezcla.unittest_wrapper import TestWrapper
-from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
@@ -60,7 +59,6 @@ class TestIt(TestWrapper):
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_sound_file_default(self):
         """Ensures that test_sound_file_default works properly"""
-        ## NEW: Added tests for hugging_face_speechrec.py
         ## TEST 1: Test the vanilla script using a soundfile
         debug.trace(4, f"TestIt.test_sound_file_default(); self={self}")
         audio_file = gh.resolve_path("fuzzy-testing-1-2-3.wav")

@@ -22,10 +22,8 @@ USE_INTERFACE=1 {script} -
 # Standard modules
 # TODO: import re
 
-# Intalled module
-## OLD: import gradio as gr
-## BAD: import torch
-## TODO:
+# Intalled modules
+# Note: done dynamically below
 
 # Local modules
 from mezcla import debug
@@ -37,40 +35,34 @@ from mezcla import glue_helpers as gh
 # Constants
 TL = debug.TL
 
-## TODO:
-## # Environment options
-## # Notes:
-## # - These are just intended for internal options, not for end users.
-## # - They also allow for enabling options in one place rather than four
-## #   when using main.Main (e.g., [Main member] initialization, run-time
-## #   value, and argument spec., along with string constant definition).
-## #
-## ENABLE_FUBAR = system.getenv_bool("ENABLE_FUBAR", False,
-##                                   description="Enable fouled up beyond all recognition processing")
-
+# Constants and Environment options
 ASR_TASK = "automatic-speech-recognition"
 # TODO: WHISPER = getenv...("whisper-large"); DEFAULT_MODEL = ...
 DEFAULT_MODEL = "facebook/s2t-medium-librispeech-asr"
 ASR_MODEL = system.getenv_text(
     "ASR_MODEL", DEFAULT_MODEL,
     description="Hugging Face model for ASR")
-# OLD: USE_CPU = system.getenv_bool("USE_CPU", False, description="Uses Torch on CPU if True")
-# OLD: TORCH_DEVICE_DEFAULT = ("cpu" if USE_CPU else "cuda")
-USE_GPU = system.getenv_bool("USE_GPU", False, description="Uses Torch on GPU if True")
-TORCH_DEVICE_DEFAULT = ("cuda" if USE_GPU else "cpu")
-TORCH_DEVICE = system.getenv_text(
-    "TORCH_DEVICE", TORCH_DEVICE_DEFAULT,
-    description="Torch device to use")
-
-#-------------------------------------------------------------------------------
+## OLD:
+## USE_GPU = system.getenv_bool("USE_GPU", False, description="Uses Torch on GPU if True")
+## TORCH_DEVICE_DEFAULT = ("cuda" if USE_GPU else "cpu")
+## TORCH_DEVICE = system.getenv_text(
+##     "TORCH_DEVICE", TORCH_DEVICE_DEFAULT,
+##     description="Torch device to use")
 
 SOUND_FILE = system.getenv_text("SOUND_FILE", "fuzzy-testing-1-2-3.wav",
                                 "Audio file with speech to recognize")
 USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
                                    "Use web-based interface via gradio")
 
+# Globals
+TORCH_DEVICE = None
+torch = None
+
+#-------------------------------------------------------------------------------
+
 # Optionally load UI support
-gr = None   # pylint: disable=invalid-name
+## TODO2: rework following hugging_face_translation.py
+gr = None                               # pylint: disable=invalid-name
 if USE_INTERFACE:
     import gradio as gr                 # pylint: disable=import-error
 
@@ -83,12 +75,12 @@ def init_torch_etc():
 
     # Import torch
     global torch
-    import torch as _torch
-    torch = _torch
+    import torch                        # pylint: disable=import-outside-toplevel
     HAS_CUDA = torch.cuda.is_available()
     debug.trace_expr(5, torch.__version__, HAS_CUDA)
 
     # Determine device to use, with fallack to CPU if no cuda
+    ## TODO2: rename TORCH_DEVICE as torch_device (because not a constant)
     global TORCH_DEVICE
     USE_CPU = system.getenv_bool(
         "USE_CPU", False,
@@ -104,6 +96,7 @@ def main():
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
 
     # Show simple usage if --help given
+    ## TODO2: rework script_dir fixup to os.path.delim or better yet split_path
     script_dir = gh.dirname(__file__)
     if script_dir.startswith(system.real_path(".")):
         script_dir = my_re.sub(fr"{system.real_path('.')}/?", "", script_dir)
@@ -121,9 +114,7 @@ def main():
     
     # Load "heavy" packages (delayed for sake of quicker usage)
     init_torch_etc()
-    ## TEMP:
-    ## pylint: disable=import-outside-toplevel
-    from transformers import pipeline
+    from transformers import pipeline   # pylint: disable=import-outside-toplevel
 
     # Load model
     device = torch.device(TORCH_DEVICE)
@@ -138,10 +129,8 @@ def main():
             examples=[sound_file])
         pipeline_if.launch()
     else:
-        ## OLD: Prints dictionary {"text": "TRANSLATED_CONTENT"}
-        # print(model(sound_file))
         print((model(sound_file))["text"])
-    # return
+    return
 
 #-------------------------------------------------------------------------------
 

@@ -53,12 +53,21 @@
 """HTML utility functions"""
 
 # Standard packages
+import html
 import re
 import sys
 import time
-import urllib
+## OLD: import urllib
+import urllib.request
 from urllib.error import HTTPError, URLError
-from typing import Dict
+from http.client import HTTPMessage
+## OLD: from typing import Dict
+try:
+    from typing_extensions import Any, Callable, Dict, List, Optional, Union
+except:
+    ## OLD: sys.exit("Error: html_utils.py requires Python 3.9+ (backport limitations with typing_extensions)")
+    sys.stderr.write("Error importing extensions: {sys.exc_info}\n")
+    sys.exit("Error: html_utils.py requires Python typing_extensions >= 4.7.0 (backport limitations with typing_extensions)")
 
 # Installed packages
 # Note: selenium import now optional; BeautifulSoup also optional
@@ -73,7 +82,8 @@ from mezcla import system
 from mezcla.system import write_temp_file
 
 # Constants
-DEFAULT_STATUS_CODE = "000"
+## OLD: DEFAULT_STATUS_CODE = "000"
+DEFAULT_STATUS_CODE = 0
 MAX_DOWNLOAD_TIME = system.getenv_integer("MAX_DOWNLOAD_TIME", 60,
                                           "Time in seconds for rendered-HTML download as with get_inner_html")
 ## OLD: MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("MID_DOWNLOAD_SLEEP_SECONDS", 60)
@@ -98,26 +108,34 @@ EXCLUDE_IMPORTS = system.getenv_bool("EXCLUDE_IMPORTS", False,
 HEADERS = "headers"
 FILENAME = "filename"
 
+# Custom Types
+OptStrBytes = Union[str, bytes, None]
+OptBoolStr = Union[bool, str, None]
+
 # Globals
 # note: for convenience in Mako template code
 user_parameters:Dict[str, str] = {}
 issued_param_dict_warning:bool = False
 
 # Placeholders for dynamically loaded modules
-BeautifulSoup = None
+BeautifulSoup : Optional[Callable] = None
 
 #-------------------------------------------------------------------------------
 # HTML utility functions
 
-browser_cache:Dict[str, str] = {}
+browser_cache : Dict = {}
 ##
-def get_browser(url):
+def get_browser(url : str):
     """Get existing browser for URL or create new one
     Notes: 
     - This is for use in web automation (e.g., via selenium).
     - A large log file might be produced (e.g., geckodriver.log).
     """
-    browser = None
+    # pylint: disable=import-error, import-outside-toplevel
+    from selenium import webdriver
+    from selenium.webdriver.remote.webdriver import WebDriver
+    #
+    browser : Optional[WebDriver] = None
     global browser_cache
     debug.assertion(USE_BROWSER_CACHE, 
                     "Note: Browser automation without cache not well tested!")
@@ -125,9 +143,6 @@ def get_browser(url):
     # Check for cached version of browser. If none, create one and access page.
     browser = browser_cache.get(url) if USE_BROWSER_CACHE else None
     if not browser:
-        # HACK: unclean import (i.e., buried in function)
-        from selenium import webdriver       # pylint: disable=import-error, import-outside-toplevel
-
         # Make the browser hidden by default (i.e., headless)
         # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
         # pylint: disable=import-outside-toplevel
@@ -154,7 +169,7 @@ def get_browser(url):
     return browser
 
 
-def get_inner_html(url:str):
+def get_inner_html(url : str):
     """Return the fully-rendered version of the URL HTML source (e.g., after JavaScript DOM manipulation)
     Note:
     - requires selenium webdriver (browser specific)
@@ -178,24 +193,25 @@ def get_inner_html(url:str):
     return inner_html
 
 
-def get_inner_text(url:str):
+def get_inner_text(url : str):
     """Get text of URL (i.e., without HTML tags) after JavaScript processing (via selenium)"""
     debug.trace_fmt(5, "get_inner_text({u})", u=url)
     # See https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText
+    inner_text: str = ""
     try:
         # Navigate to the page (or get browser instance with existing page)
         browser = get_browser(url)
         # Wait for Javascript to finish processing
         wait_until_ready(url)
         # Extract fully-rendered text
-        inner_text:str = browser.execute_script("return document.body.innerText")
+        inner_text = browser.execute_script("return document.body.innerText")
     except:
         system.print_exception_info("get_inner_text")
     debug.trace_fmt(7, "get_inner_text({u}) => {it}", u=url, it=inner_text)
     return inner_text
 
 
-def document_ready(url:str):
+def document_ready(url : str):
     """Determine whether document for URL has completed loading (via selenium)"""
     # See https://developer.mozilla.org/en-US/docs/Web/API/Document/readyState
     browser = get_browser(url)
@@ -206,7 +222,7 @@ def document_ready(url:str):
     return is_ready
 
 
-def wait_until_ready(url:str, stable_download_check:bool=STABLE_DOWNLOAD_CHECK):
+def wait_until_ready(url : str, stable_download_check : bool = STABLE_DOWNLOAD_CHECK):
     """Wait for document_ready (q.v.) and pause to allow loading to finish (via selenium)
     Note: If STABLE_DOWNLOAD_CHECK, the wait incoporates check for download size differences"""
     # TODO: make sure the sleep is proper way to pause
@@ -243,7 +259,7 @@ def wait_until_ready(url:str, stable_download_check:bool=STABLE_DOWNLOAD_CHECK):
     return
     
 
-def escape_hash_value(hash_table, key):
+def escape_hash_value(hash_table : Dict, key: str):
     """Wrapper around escape_html_value for HASH_TABLE[KEY] (or "" if missing).
     Note: newlines are converted into <br>'s."""
     escaped_item_value = escape_html_value(hash_table.get(key, ""))
@@ -252,7 +268,7 @@ def escape_hash_value(hash_table, key):
     return escaped_value
 
 
-def get_param_dict(param_dict=None):
+def get_param_dict(param_dict : Optional[Dict] = None):
     """Returns parameter dict using PARAM_DICT if non-Null else USER_PARAMETERS
        Note: """
     result = (param_dict if (param_dict is not None) else user_parameters)
@@ -260,7 +276,7 @@ def get_param_dict(param_dict=None):
     return result
 
 
-def set_param_dict(param_dict):
+def set_param_dict(param_dict : Dict):
     """Sets global user_parameters to value of PARAM_DICT"""
     # EX: set_param_dict({"param1": "a+b+c", "param2": "a%2Bb%2Bc"}); len(user_parameters) => 2
     debug.trace(7, f"set_param_dict({param_dict})")
@@ -274,7 +290,7 @@ def set_param_dict(param_dict):
     user_parameters = param_dict
 
 
-def get_url_param(name, default_value=None, param_dict=None, escaped=False):
+def get_url_param(name : str, default_value : Optional[str] = None, param_dict : Optional[Dict] = None, escaped : bool = False):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
     Note: It can be ESCAPED for use in HTML.
     Different from get_url_parameter_value in possible returning list.
@@ -294,10 +310,10 @@ def get_url_param(name, default_value=None, param_dict=None, escaped=False):
 get_url_parameter = get_url_param
 
 
-def get_url_text(name, param_dict=None):
+def get_url_text(name : str, default_value : Any = None, param_dict : Optional[Dict] = None):
     """Get TEXT value for URL encoded parameter, using current PARAM_DICT"""
     # EX: get_url_text("param1") => "a b c"
-    encoded_vaue = get_url_parameter(name, param_dict)
+    encoded_vaue = get_url_parameter(name, default_value, param_dict)
     value = unescape_html_value(system.unquote_url_text(encoded_vaue))
     debug.trace_fmt(6, "get_url_text({n}, [d={d}]) => {v})",
                     n=name, d=param_dict, v=value)
@@ -306,7 +322,7 @@ def get_url_text(name, param_dict=None):
 # EX: get_url_text("param2") => "a b c"
    
 
-def get_url_param_checkbox_spec(name, default_value="", param_dict=None):
+def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", param_dict : Optional[Dict] = None):
     """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT
     Note: the value is only specified/submitted if checked"""
     # TODO3?: extend to handle case with multiple values (see get_url_parameter_value)
@@ -326,7 +342,7 @@ def get_url_param_checkbox_spec(name, default_value="", param_dict=None):
 get_url_parameter_checkbox_spec = get_url_param_checkbox_spec
 
 
-def get_url_parameter_value(param, default_value=None, param_dict=None):
+def get_url_parameter_value(param, default_value : Any = None, param_dict : Optional[Dict] = None):
     """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)
     Note: different from get_url_parameter in just returning single value
     """
@@ -340,7 +356,7 @@ def get_url_parameter_value(param, default_value=None, param_dict=None):
     return result
 
 
-def get_url_parameter_bool(param, default_value=False, param_dict=None):
+def get_url_parameter_bool(param, default_value : bool = False, param_dict : Optional[Dict] = None):
     """Get boolean value for PARAM from PARAM_DICT, with "on" treated as True. @note the hash defaults to user_parameters, and the default value is False
     Note: Only treates {"1", "on", "True", True} as True.
     Warning: defaults with non-None values might return unintuitive results unless
@@ -363,7 +379,7 @@ get_url_param_bool = get_url_parameter_bool
 # EX: get_url_param_bool("abc", False, { "abc": "True" }) => True
 
 
-def get_url_parameter_int(param, default_value=0, param_dict=None):
+def get_url_parameter_int(param, default_value : int = 0, param_dict : Optional[Dict] = None):
     """Get integer value for PARAM from PARAM_DICT.
     Note: the hash defaults to user_parameters, and the default value is 0"""
     result = system.to_int(get_url_parameter_value(param, default_value, param_dict))
@@ -374,7 +390,7 @@ def get_url_parameter_int(param, default_value=0, param_dict=None):
 get_url_param_int = get_url_parameter_int
 
 
-def get_url_parameter_float(param, default_value=0.0, param_dict=None):
+def get_url_parameter_float(param, default_value : float = 0.0, param_dict : Optional[Dict] = None):
     """Get floating-point value for PARAM from PARAM_DICT.
     Note: the hash defaults to user_parameters, and the default value is 0.0"""
     result = system.to_float(get_url_parameter_value(param, default_value, param_dict))
@@ -385,7 +401,7 @@ def get_url_parameter_float(param, default_value=0.0, param_dict=None):
 get_url_param_float = get_url_parameter_float
 
 
-def fix_url_parameters(url_parameters):
+def fix_url_parameters(url_parameters : Dict):
     """Uses the last values for any user parameter with multiple values
     and ensures dashes are used instead of embedded underscores in the keys"""
     # EX: fix_url_parameters({'w_v':[7, 8], 'h_v':10}) => {'w-v':8, 'h-v':10}
@@ -399,7 +415,7 @@ def fix_url_parameters(url_parameters):
     return new_url_parameters
 
 
-def expand_misc_param(misc_dict, param_name, param_dict=None):
+def expand_misc_param(misc_dict : Dict, param_name : str, param_dict : Optional[Dict] = None):
     """Expands MISC_DICT to include separate keys for those in PARAM_DICT under PARAM_NAME
     Notes:
     - The parameter specification is comma separated. 
@@ -425,7 +441,7 @@ def expand_misc_param(misc_dict, param_name, param_dict=None):
     return new_misc_dict
 
 
-def _read_file(filename, as_binary):
+def _read_file(filename : str, as_binary : bool) -> OptStrBytes:
     """Wrapper around read_entire_file or read_binary_file if AS_BINARY"""
     ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_read_file({filename}, {as_binary})")
@@ -433,7 +449,7 @@ def _read_file(filename, as_binary):
     return read_fn(filename)
 
 
-def _write_file(filename, data, as_binary):
+def _write_file(filename : str, data : Union[str, bytes], as_binary : bool) -> None:
     """Wrapper around write_file or write_binary_file if AS_BINARY"""
     ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_write_file({filename}, _, {as_binary})")
@@ -441,7 +457,9 @@ def _write_file(filename, data, as_binary):
     return write_fn(filename, data)
 
 
-def old_download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False, as_binary=False, ignore=False):
+def old_download_web_document(url : str, filename: Optional[str] = None, download_dir : Optional[str] = None,
+                              meta_hash : Optional[Dict[str, Any]] = None, use_cached : bool = False,
+                              as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
     """Download document contents at URL, returning as unicode text (unless AS_BINARY)
     Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED. If IGNORE, no exceptions reports are printed."""
     # EX: ("Search" in old_download_web_document("https://www.google.com"))
@@ -451,8 +469,6 @@ def old_download_web_document(url, filename=None, download_dir=None, meta_hash=N
                      uc=use_cached, ab=as_binary)
 
     # Download the document and optional headers (metadata).
-    # Note: urlretrieve chokes on URLS like www.cssny.org without the protocol.
-    # TODO: report as bug if not fixed in Python 3
     if url.endswith("/"):
         url = url[:-1]
     if filename is None:
@@ -465,7 +481,10 @@ def old_download_web_document(url, filename=None, download_dir=None, meta_hash=N
     if (not system.file_exists(download_dir)):
         gh.full_mkdir(download_dir)
     local_filename = gh.form_path(download_dir, filename)
-    headers = ""
+    ## OLD: headers = ""
+    ## TEST: headers = {}
+    ## TEST: headers : Dict[Any, Any] = {}
+    headers : HTTPMessage = HTTPMessage()
     status_code = DEFAULT_STATUS_CODE
     ok = False
     if DOWNLOAD_TIMEOUT:
@@ -503,7 +522,7 @@ def old_download_web_document(url, filename=None, download_dir=None, meta_hash=N
     return data
 
 
-def download_web_document(url, filename=None, download_dir=None, meta_hash=None, use_cached=False, as_binary=False, ignore=False):
+def download_web_document(url : str, filename: Optional[str] = None, download_dir: Optional[str] = None, meta_hash=None, use_cached : bool = False, as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
     """Download document contents at URL, returning as unicode text (unless AS_BINARY).
     Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED. If IGNORE, no exceptions reports are printed."""
     # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
@@ -512,13 +531,10 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
     debug.trace_fmtd(4, "download_web_document({u}, d={d}, f={f}, h={mh}, cached={uc}, binary={ab})",
                      u=url, d=download_dir, f=filename, mh=meta_hash,
                      uc=use_cached, ab=as_binary)
-
     if not DOWNLOAD_VIA_REQUESTS:
         return old_download_web_document(url, filename, download_dir, meta_hash, use_cached, as_binary, ignore=ignore)
     
     # Download the document and optional headers (metadata).
-    # Note: urlretrieve chokes on URLS like www.cssny.org without the protocol.
-    # TODO: report as bug if not fixed in Python 3
     if url.endswith("/"):
         url = url[:-1]
     if filename is None:
@@ -534,8 +550,8 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
     local_filename = gh.form_path(download_dir, filename)
     if meta_hash is not None:
         meta_hash[FILENAME] = local_filename
-    headers = "n/a"
-    doc_data = ""
+    headers = {}
+    doc_data: OptStrBytes = ""
     if use_cached and system.non_empty_file(local_filename):
         debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
         doc_data = _read_file(local_filename, as_binary)
@@ -544,30 +560,33 @@ def download_web_document(url, filename=None, download_dir=None, meta_hash=None,
         if doc_data:
             _write_file(local_filename, doc_data, as_binary)
         if meta_hash:
-            headers = meta_hash.get(HEADERS, "")
+            headers = meta_hash.get(HEADERS, {})
     debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
                      f=local_filename, h=headers)
 
-    ## OLD: debug.trace_fmtd(6, "download_web_document() => {d}", d=gh.elide(doc_data))
     ## TODO: show hex dump of initial data
     debug.trace_fmtd(6, "download_web_document() => _; len(_)={l}",
                      l=(len(doc_data) if doc_data else -1))
     return doc_data
 
 
-def test_download_html_document(url, encoding=None, lookahead=256, **kwargs):
+def test_download_html_document(url : str, encoding : Optional[str] = None, lookahead: int = 256, **kwargs) -> OptStrBytes:
     """Wrapper around download_web_document for HTML or text (i.e., non-binary), using ENCODING.
     Note: If ENCODING unspecified, checks result LOOKAHEAD bytes for meta encoding spec and uses UTF-8 as a fallback."""
     # EX: "Google" in test_download_html_document("www.google.com")
     # EX: "Tomás" not in test_download_html_document("http://www.tomasohara.trade", encoding="big5"¨)
     result = (download_web_document(url, as_binary=True, **kwargs) or b"")
+    ## TEMP: for mypy
+    if isinstance(result, str):
+        result = result.encode('utf-8')
     if (len(result) and (not encoding)):
         encoding = "UTF-8"
         if my_re.search(r"<meta.*charset=[\"\']?([^\"\' <>]+)[\"\']?", str(result[:lookahead])):
             encoding = my_re.group(1)
             debug.trace(5, f"Using {encoding} for encoding based on meta charset")
     try:
-        result = result.decode(encoding=encoding, errors='ignore')
+        if isinstance(result, bytes) and encoding:
+            result = result.decode(encoding=encoding, errors='ignore')
     except:
         result = str(result)
         system.print_exception_info("download_html_document decode")
@@ -576,23 +595,23 @@ def test_download_html_document(url, encoding=None, lookahead=256, **kwargs):
     return (result)
 
 
-def download_html_document(url, **kwargs):
+def download_html_document(url : str, **kwargs) -> str:
     """Wrapper around download_web_document for HTML or text (i.e., non-binary)"""
-    result = (download_web_document(url, as_binary=False, **kwargs) or "")
+    result : str = str(download_web_document(url, as_binary=False, **kwargs) or "")
     debug.trace_fmtd(7, "download_html_document({u}) => {r}; len(_)={l}",
                      u=url, r=gh.elide(result), l=len(result))
     return (result)
 
 
-def download_binary_file(url, **kwargs):
+def download_binary_file(url : str, **kwargs) -> OptStrBytes:
     """Wrapper around download_web_document for binary files (e.g., images)"""
-    result = (download_web_document(url, as_binary=True, **kwargs) or "")
+    result : OptStrBytes = (download_web_document(url, as_binary=True, **kwargs) or b"")
     debug.trace_fmtd(7, "download_binary_file({u}) => _; len(_)={l}",
-                     u=url, l=len(result))
+                     u=url, l=(len(result) if result else 0))
     return (result)
     
 
-def retrieve_web_document(url, meta_hash=None, as_binary=False, ignore=False):
+def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
     """Get document contents at URL, using unicode text (unless AS_BINARY)
     Note:
     - Simpler version of old_download_web_document, using an optional META_HASH for recording headers
@@ -601,7 +620,8 @@ def retrieve_web_document(url, meta_hash=None, as_binary=False, ignore=False):
     # EX: re.search("Scrappy.*Cito", retrieve_web_document("www.tomasohara.trade"))
     # Note: See https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve.
     debug.trace_fmtd(5, "retrieve_web_document({u})", u=url)
-    result = None
+    ## TEST: result : Optional[AnyStr] = None
+    result : Optional[Union[str, bytes]] = None
     status_code = DEFAULT_STATUS_CODE
     if "//" not in url:
         url = "http://" + url
@@ -610,7 +630,7 @@ def retrieve_web_document(url, meta_hash=None, as_binary=False, ignore=False):
         status_code = r.status_code
         result = r.content
         debug.assertion(isinstance(result, bytes))
-        if not as_binary:
+        if (isinstance(result, bytes) and not as_binary):
             result = result.decode(errors='ignore')
         if meta_hash is not None:
             meta_hash[HEADERS] = r.headers
@@ -631,13 +651,13 @@ def init_BeautifulSoup():
     return
 
 
-def extract_html_link(html, url=None, base_url=None):
+def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Optional[str] = None):
     """Returns list of all aref links in HTML. The optional URL and BASE_URL parameters can be specified to ensure the link is fully resolved."""
-    debug.trace_fmtd(7, "extract_html_links(_):\n\thtml={h}", h=html)
+    debug.trace_fmtd(7, "extract_html_links(_):\n\thtml={h}", h=html_text)
 
     # Parse HTML, extract base URL if given and get website from URL.
     init_BeautifulSoup()
-    soup = BeautifulSoup(html, 'html.parser')
+    soup = BeautifulSoup(html_text, 'html.parser') if BeautifulSoup else None
     web_site_url = ""
     if url:
         web_site_url = re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
@@ -646,7 +666,7 @@ def extract_html_link(html, url=None, base_url=None):
             web_site_url += "/"
             debug.trace_fmtd(6, "wsu2={wsu}", wsu=web_site_url)
     # Determine base URL
-    if base_url is None:
+    if base_url is None and soup:
         base_url_info = soup.find("base")
         
         base_url = base_url_info.get("href") if base_url_info else None
@@ -664,7 +684,7 @@ def extract_html_link(html, url=None, base_url=None):
 
     # Get links and resolve to full URL (TODO: see if utility for this)
     links = []
-    all_links = soup.find_all('a')
+    all_links = soup.find_all('a') if soup else []
     for link in all_links:
         debug.trace_fmtd(6, "link={inf}; style={sty}", inf=link, sty=link.attrs.get('style'))
         link_src = link.get("href", "")
@@ -680,7 +700,7 @@ def extract_html_link(html, url=None, base_url=None):
     return links
 
 
-def format_checkbox(param_name, label=None, skip_capitalize=None, default_value=False, disabled=False, style=None, misc_attr=None, tooltip=None):
+def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None):
     """Returns HTML specification for input checkbox, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, CSS STYLE and MISC_ATTR (catch all).
     Note: param_name + "-id" is used for the field ID.
     The TOOLTIP requires CSS support (e.g., tooltip-control class).
@@ -715,7 +735,7 @@ def format_checkbox(param_name, label=None, skip_capitalize=None, default_value=
     return result
 
 
-def format_url_param(name, default=None):
+def format_url_param(name : str, default : Optional[str] = None):
     """Return URL parameter NAME formatted for an HTML form (e.g., escaped)"""
     # EX: set_param_dict({"q": '"hot dog"'}); format_url_param("q") => '&quot;hot dog&quot;'
     if default is None:
@@ -730,7 +750,12 @@ def format_url_param(name, default=None):
 # EX: format_url_param("r", "R") => "R"
 
 
-def format_input_field(param_name, label=None, skip_capitalize=None, default_value=None, max_len=None, size=None, disabled=None, style=None, misc_attr=None, tooltip=None, text_area=None, num_rows=None, on_change=None):
+def format_input_field(param_name : str, label: Optional[str] = None, skip_capitalize=None,
+                       default_value: Optional[str] = None, max_len : Optional[int] = None
+                       , size : Optional[int] = None, disabled : Optional[int] = None,
+                       style: Optional[str] = None, misc_attr: Optional[str] = None,
+                       tooltip: Optional[str] = None, text_area: Optional[str] = None,
+                       num_rows : Optional[int] = None, on_change: Optional[str] = None):
     """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, DISABLED, CSS STYLE, MISC_ATTR (catch all), and NUM_ROWS.    
     Note:
     - param_name + "-id" is used for the field ID.
@@ -787,48 +812,34 @@ def format_input_field(param_name, label=None, skip_capitalize=None, default_val
 # TEMP: Code previously in other modules
 # TODO3: move above according to some logical grouping
 
-def escape_html_text(text):
+def escape_html_text(text : str):
     """Add entity encoding to TEXT to make suitable for HTML"""
     # Note: This is wrapper around html.escape and just handles '&', '<', '>', "'", and '"'.
     # EX: escape_html_text("<2/") => "&lt;2/"
     # EX: escape_html_text("Joe's hat") => "Joe&#x27;s hat"
     debug.trace_fmtd(8, "in escape_html_text({t})", t=text)
-    result = ""
-    if (sys.version_info.major > 2):
-        # TODO: move import to top
-        import html                    # pylint: disable=import-outside-toplevel, import-error
-        result = html.escape(text)     # pylint: disable=deprecated-method, no-member
-    else:
-        import cgi                     # pylint: disable=import-outside-toplevel, import-error
-        result = cgi.escape(text, quote=True)    # pylint: disable=deprecated-method, no-member
+    result = html.escape(text)
     debug.trace_fmtd(7, "out escape_html_text({t}) => {r}", t=text, r=result)
     return result
 #
 escape_html_value = escape_html_text
 
-def unescape_html_text(text):
+def unescape_html_text(text : str):
     """Remove entity encoding, etc. from TEXT (i.e., undo)"""
-    # Note: This is wrapper around html.unescape (Python 3+) or
-    # HTMLParser.unescape (Python 2).
+    # Note: This is wrapper around html.unescape
     # See https://stackoverflow.com/questions/21342549/unescaping-html-with-special-characters-in-python-2-7-3-raspberry-pi.
     # EX: unescape_html_text("&lt;2/") => "<2/"
     # EX: unescape_html_text("Joe&#x27;s hat") => "Joe's hat"
     debug.trace_fmtd(8, "in unescape_html_text({t})", t=text)
     result = ""
-    if (sys.version_info.major > 2):
-        # TODO: see if six.py supports html-vs-cgi:unescape
-        import html                   # pylint: disable=import-outside-toplevel, import-error
-        result = html.unescape(text)
-    else:
-        import HTMLParser             # pylint: disable=import-outside-toplevel, import-error
-        html_parser = HTMLParser.HTMLParser()
-        result = html_parser.unescape(text)
+    result = html.unescape(text)
     debug.trace_fmtd(7, "out unescape_html_text({t}) => {r}", t=text, r=result)
     return result
 #
 unescape_html_value = unescape_html_text
 
-def html_to_text(document_data):
+
+def html_to_text(document_data : str):
     """Returns text version of html DATA"""
     # EX: html_to_text("<html><body><!-- a cautionary tale -->\nMy <b>fat</b> dog has fleas</body></html>") => "My fat dog has fleas"
     # Note: stripping javascript and style sections based on following:
@@ -836,20 +847,21 @@ def html_to_text(document_data):
     debug.trace_fmtd(7, "html_to_text(_):\n\tdata={d}", d=document_data)
     ## OLD: soup = BeautifulSoup(document_data)
     init_BeautifulSoup()
-    soup = BeautifulSoup(document_data, "lxml")
+    soup = BeautifulSoup(document_data, "lxml") if BeautifulSoup else None
     # Remove all script and style elements
-    for script in soup(["script", "style"]):
-        # *** TODO: soup = soup.extract(script)
-        # -or- Note the in-place change (i.e., destructive).
-        script.extract()
-    # Get the text
-    ## OLD: text = soup.get_text()
-    text = soup.get_text(separator=" ")
+    text = ""
+    if soup:
+        for script in soup.find_all(["script", "style"]):
+            # *** TODO: soup = soup.extract(script)
+            # -or- Note the in-place change (i.e., destructive).
+            script.extract()
+        # Get the text
+        text = soup.get_text(separator=" ")
     debug.trace_fmtd(6, "html_to_text() => {t}", t=gh.elide(text))
     return text
 
 
-def extract_html_images(document_data=None, url=None, filename=None):
+def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] = None, filename : Optional[str] = None):
     """Returns list of all images in HTML DOC from URL (n.b., URL used to determine base URL)"""
     debug.trace(6, f"extract_html_images(_, {url}, fn={filename})")
     debug.trace_fmtd(8, "\tdata={d}", d=document_data)
@@ -863,16 +875,18 @@ def extract_html_images(document_data=None, url=None, filename=None):
             document_data = download_web_document(url)
         else:
             system.print_error("Error in extract_html_images: unable to get data without URL or filename")
+    if url is None:
+        url = ""
 
     # Parse HTML, extract base URL if given and get website from URL.
     init_BeautifulSoup()
-    soup = BeautifulSoup(document_data, 'html.parser')
+    soup = BeautifulSoup(document_data, 'html.parser') if BeautifulSoup else None
     web_site_url = re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
     debug.trace_fmtd(6, "wsu1={wsu}", wsu=web_site_url)
     if not web_site_url.endswith("/"):
         web_site_url += "/"
         debug.trace_fmtd(6, "wsu2={wsu}", wsu=web_site_url)
-    base_url_info = soup.find("base")
+    base_url_info = soup.find("base") if soup else None
     base_url = base_url_info.get("href") if base_url_info else None
     debug.trace_fmtd(6, "bu1={bu}", bu=base_url)
     ## BAD:
@@ -892,7 +906,7 @@ def extract_html_images(document_data=None, url=None, filename=None):
     # TODO: include CSS background images
     # TODO: use DATA-SRC if SRC not valid URL (e.g., src="data:image/gif;base64,R0lGODl...")
     images = []
-    all_images = soup.find_all('img')
+    all_images = soup.find_all('img') if soup else []
     for image in all_images:
         debug.trace_fmtd(6, "image={inf}; style={sty}", inf=image, sty=image.attrs.get('style'))
         ## TEST: if (image.has_attr('attrs') and (image.attrs.get['style'] in ["display:none", "visibility:hidden"])):
@@ -924,7 +938,7 @@ def extract_html_images(document_data=None, url=None, filename=None):
 
 #-------------------------------------------------------------------------------
 
-def main(args):
+def main(args : List[str]) -> None:
     """Supporting code for command-line processing"""
     ## NOTE: This is work-in-progress from a debug-only utility
     debug.trace_fmtd(6, "main({a})", a=args)
@@ -938,7 +952,7 @@ def main(args):
     show_usage = False
     use_stdout = False
     quiet = False
-    filename = None
+    filename : Optional[str] = None
     for i, arg in enumerate(args[1:]):
         if (arg == "--help"):
             show_usage = True
@@ -981,6 +995,8 @@ def main(args):
         debug.trace_expr(6, retrieve_web_document(url))
         html_data = download_web_document(url)
         filename = system.quote_url_text(url)
+        if not filename:
+            filename = ""
         if debug.debugging():
             write_temp_file("pre-" + filename, html_data)
         
