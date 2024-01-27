@@ -751,8 +751,8 @@ def format_url_param(name : str, default : Optional[str] = None):
 
 
 def format_input_field(param_name : str, label: Optional[str] = None, skip_capitalize=None,
-                       default_value: Optional[str] = None, max_len : Optional[int] = None
-                       , size : Optional[int] = None, disabled : Optional[int] = None,
+                       default_value: Optional[str] = None, max_len : Optional[int] = None,
+                       size : Optional[int] = None, disabled : Optional[int] = None,
                        style: Optional[str] = None, misc_attr: Optional[str] = None,
                        tooltip: Optional[str] = None, text_area: Optional[str] = None,
                        num_rows : Optional[int] = None, on_change: Optional[str] = None):
@@ -790,23 +790,23 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
         tooltip_end_spec = "</span>"
     result = f'<label>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;'
     if text_area:
-        max_len_spec = (f"maxlength={max_len}" if max_len else "")
+        max_len_spec = (f'maxlength="{max_len}"' if max_len else "")
         value_spec = format_url_param(param_name)
         result += f'<textarea id="{param_name}-id" name="{param_name}" rows={num_rows} {style_spec} {max_len_spec} {disabled_spec} {misc_spec}>{value_spec}</textarea>'
     else:
         ## OLD: max_len_spec = (f"maxlength={max_len} size={max_len}" if max_len else "")
         len_spec = ""
         if max_len:
-            len_spec += f" maxlength={max_len}"
+            len_spec += f' maxlength="{max_len}"'
         if size:
-            len_spec += f" size={size}"
+            len_spec += f' size="{size}"'
         result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {len_spec} {disabled_spec} {misc_spec}>'
     result += "</label>"
         
     debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
     return result
 #
-# EX: format_input_field("num-id", label="Num", max_len=3) => '<label>Num&nbsp;<input id="num-id-id" value="" name="num-id"  maxlength=3 size=3  ></label>'
+# EX: format_input_field("num-id", label="Num", max_len=3) => '<label>Num&nbsp;<input id="num-id-id" value="" name="num-id"  maxlength="3" size="3"  ></label>'
 
 #-------------------------------------------------------------------------------
 # TEMP: Code previously in other modules
