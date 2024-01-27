@@ -27,7 +27,7 @@
 # Standard packages
 from collections import defaultdict, OrderedDict
 import datetime
-import importlib_metadata
+## OLD: import importlib_metadata
 import inspect
 import os
 import pickle
@@ -245,7 +245,7 @@ getenv_float = getenv_number
 
 
 
-def getenv_int(var, default=-1, allow_none=False, description=None, desc=None, update=None):
+def getenv_int(var, default=-1, description=None, desc=None, allow_none=False, update=None):
     """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
     Note: Return is an integer unless ALLOW_NONE
     """
@@ -597,7 +597,7 @@ def read_lines(filename, ignore_comments=None):
 def read_binary_file(filename):
     """Read FILENAME as byte stream"""
     debug.trace_fmt(7, "read_binary_file({f}, _)", f=filename)
-    data = []
+    data = b""
     try:
         with open(filename, mode="rb") as f:
             data = f.read()
@@ -805,6 +805,7 @@ def split_path(path):
     """
     # EX: split_path("/etc/passwd") => ["etc", "passwd"]
     dir_name, filename = os.path.split(path)
+    debug.assertion((not dir_name.endswith(os.path.sep)) or (dir_name == os.path.sep))
     result = dir_name, filename
     debug.assertion(dir_name or filename)
     if dir_name and debug.active() and file_exists(path):
@@ -1071,6 +1072,8 @@ def get_module_version(module_name):
     # Try to get the version number for the module
     version = "?.?.?"
     try:
+        # note: made conditional due to silly problem with shell-scripts repo workflow
+        import importlib_metadata       # pylint: disable=import-outside-toplevel
         version = importlib_metadata.version(module_name)
     except:
         print_exception_info("get_module_version for {module_name}")

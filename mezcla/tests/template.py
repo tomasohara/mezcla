@@ -62,11 +62,11 @@ class TestIt(TestWrapper):
     ## TODO: optional setup methods
     ##
     ## @classmethod
-    ## def setUpClass(cls):
+    ## def setUpClass(cls, filename=None, module=None):
     ##     """One-time initialization (i.e., for entire class)"""
     ##     debug.trace(6, f"TestIt.setUpClass(); cls={cls}")
     ##     # note: should do parent processing first
-    ##     super().setUpClass()
+    ##     super().setUpClass(filename, module)
     ##     ...
     ##     debug.trace_object(5, cls, label=f"{cls.__class__.__name__} instance")
     ##     return
