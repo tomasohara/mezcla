@@ -12,6 +12,9 @@
 """Tests for misc_utils module"""
 
 # Standard packages
+import math
+import datetime
+import time
 ## NOTE: this is empty for now
 
 # Installed packages
@@ -20,6 +23,7 @@ import pytest
 # Local packages
 from mezcla import glue_helpers as gh
 from mezcla import debug
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -125,6 +129,7 @@ class TestMiscUtils:
     def test_get_current_frame(self):
         """Ensure get_current_frame works as expected"""
         debug.trace(4, "test_get_current_frame()")
+        frame = THE_MODULE.get_current_frame()
         ## TODO: WORK-IN-PROGRESS
 
     def test_eval_expression(self):
@@ -179,10 +184,55 @@ class TestMiscUtils:
 
         assert THE_MODULE.string_diff(STRING_ONE, STRING_TWO) == EXPECTED_DIFF
 
+    
     def test_elide_string_values(self):
         """Ensure elide_string_values works as expected"""
         debug.trace(4, "test_elide_string_values()")
         ## TODO: WORK-IN-PROGRESS
+    
+    def test_is_close(self):
+        """ensure is_close works as expected"""
+        debug.trace(4, "test_is_close()")
+        assert     THE_MODULE.is_close(1.0 + 0.999 , 2.0, 0.001)
+        assert not THE_MODULE.is_close(1.0 + 0.999 , 2.0, 0.0001)
+    
+    def test_get_date_ddmmmyy(self):
+        """ensure get_date_ddmmmyy works as expected"""
+        debug.trace(4, "test_get_date_ddmmmyy()")
+        assert THE_MODULE.get_date_ddmmmyy(datetime.date(2004,9,16)) == '16sep04'
+    
+    @pytest.mark.xfail
+    def test_parse_timestamp(self):
+        ## TODO: WORK-IN-PROGRESS
+        assert False
+    
+    @pytest.mark.xfail    
+    def test_add_timestamp_diff(self):
+        ## TODO: WORK-IN-PROGRESS
+        assert False
+    
+    @pytest.mark.xfail
+    def test_random_int(self):
+        ## TODO: WORK-IN-PROGRESS
+        assert False   
+    
+    @pytest.mark.xfail    
+    def test_random_float(self):
+        ## TODO: WORK-IN-PROGRESS
+        assert False
+    
+    def test_time_function(self):
+        """ensure time_function works as expected"""
+        debug.trace(4, "test_time_function()")
+        ms = THE_MODULE.time_function(time.sleep, 0.25)
+        assert math.floor(ms) == 250
+    
+    def test_get_class_from_name(self):
+        """ensure get_class_from_name works as expected"""
+        debug.trace(4, "test_get_class_from_name()")
+        result_class = THE_MODULE.get_class_from_name('date', 'datetime')
+        assert result_class is datetime.date
+    
 
 
 if __name__ == '__main__':
