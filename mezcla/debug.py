@@ -114,7 +114,7 @@ INDENT = INDENT1
 MISSING_LINE = "???"
 
 # Globals
-max_trace_value_len = 512
+max_trace_value_len = 1024
 
 #...............................................................................
 # Utility functions
