@@ -66,9 +66,6 @@ from mezcla import system
 SKIP_BOM = system.getenv_bool("SKIP_BOM", False,
                               "Don't output byte order mark U+FEFF")
 
-## TEMP: quiet picky pylint
-# pylint: disable=consider-using-f-string
-
 #...............................................................................
 
 def resolve_date(textual_date, default_date=None):
@@ -114,7 +111,6 @@ def main():
     parser.add_argument("filename", nargs='+', default='-', help="Input filename")
     args = vars(parser.parse_args())
     debug.trace(5, "args = %s" % args)
-    ## OLD: input_files = args['filename']
     full_input_files = args['filename']
     ignore_dividers = args['ignore_dividers']
     output_dividers = args['output_dividers']
@@ -151,7 +147,6 @@ def main():
         line_num += 1
         # Note: strips leading and trailing spaces from line to facilitate regex
         # pattern matching, with raw line saved as original_line.
-        ## OLD: line = line.strip("\n")
         original_line = line.strip("\n")
         line = line.strip()
         debug.trace(6, "L%d: %s" % (line_num, line))
@@ -182,10 +177,8 @@ def main():
         line = re.sub(r"^(Tue)s (\d)", r"\1 \2", line, flags=re.IGNORECASE)
         line = re.sub(r"^(Thu)rs? (\d)", r"\1 \2", line, flags=re.IGNORECASE)
         # TODO: Ensure months are abbreviated
-        ## line = re.sub(r" (\d+) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w* (\d+)", r" \1 \2 \3", line, flags=re.IGNORECASE)
-        ## OLD: if (re.search(r"^([a-z][a-z][a-z] )?\d+ [a-z][a-z][a-z] \d+$", line, flag=re.IGNORECASE)):
+        ## EX: line = re.sub(r" (\d+) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w* (\d+)", r" \1 \2 \3", line, flags=re.IGNORECASE)
         if (my_re.search(r"^([a-z][a-z][a-z] )?\d+ [a-z][a-z][a-z] \d+$", line, re.IGNORECASE)):
-            ## OLD: new_date = line.strip()
             new_date = my_re.group(0)
             needs_source_info = True
             has_new_date = True
@@ -219,7 +212,6 @@ def main():
         # Add line to notes for current date
         # TODO: use resolved date as key so different specifications for same date output together without new date spec
         debug.assertion((not has_new_date) or (new_date != dummy_date))
-        ## notes_hash[new_date] += line + "\n"
         notes_hash[new_date] += original_line + "\n"
         has_new_date = False
 
@@ -238,12 +230,9 @@ def main():
     debug.trace_fmtd(7, "notes_hash keys: {{\n{k}\n}}", 
                      k="\t\n".join([str(v) for v in notes_hash.keys()]))
     #
-    # TODO: make byte order mark optional (used so special characters resolved automatically in Emacs)
     if not SKIP_BOM:
         try:
-            ## OLD:
             print("\uFEFF")
-            ## TEMP: print("\uFEFF".encode("UTF8"))
         except:
             system.print_exception_info("printing BOM")
     #
@@ -255,10 +244,7 @@ def main():
             print("-" * 80)
         debug.trace_fmtd(6, "[src={f}:{n}]", skip_newline=True,
                          f=fileinput.filename(), n=fileinput.filelineno())
-        ## OLD: print("%s\n\n" % notes_hash[date])
-        ## TEMP:
         try:
-            ## BAD: print("%s\n\n" % notes_hash[date].encode("UTF8", errors="ignore"))
             print("%s\n\n" % notes_hash[date])
         except:
             system.print_exception_info("printing entry")
