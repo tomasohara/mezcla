@@ -294,20 +294,32 @@ def is_close(value1, value2, epsilon=VALUE_EPSILON):
     return result
 
 
-def get_date_ddmmmyy(date=None):
-    """Return (today's) date in DDMMMYY format (e.g., 10oct22)"""
-    ## TODO EX: get_date_ddmmmyy(datetime.date(0)) => "01jan70"
+def get_formatted_date(date=None, fmt=None, sep=None):
+    """Return (today's) date in DD MMM YY format (e.g., 10 oct 22)
+    Note: uses optional SEP between components or FMT"""
+    ## EX: get_formatted_date(datetime.date(0)) => "01 jan 70"
+    ## TODO3: rename as get_formatted_date
     in_date = date
     if date is None:
         date = datetime.date.today()
+    if sep is None:
+        sep = " "
+    if fmt is None:
+        fmt = f"%d{sep}%b{sep}%y"
     try:
-        result = date.strftime("%d%b%y").lower()
+        result = date.strftime(fmt).lower()
     except:
         system.print_exception_info("get_today_ddmmmyy")
         result = "???"
-    debug.trace(6, f"get_date_ddmmmyy({in_date}) => {result}")
+    debug.trace(6, f"get_formatted_date({in_date}) => {result}")
     return result
 
+def get_date_ddmmmyy(date=None):
+    """Return (today's) date in DDMMMYY format (e.g., 10oct22)"""
+    ## EX: get_date_ddmmmyy(datetime.date(0)) => "01jan70"
+    result = get_formatted_date(date).replace(" ", "")
+    debug.trace(6, f"get_date_ddmmmyy({date}) => {result}")
+    return result
 
 def parse_timestamp(ts: str, truncate=None, utc=None) -> datetime.datetime:
     """Parse timestamp in ISO 8601 format (e.g., 2023-10-06T04:03:27.1271706Z)
