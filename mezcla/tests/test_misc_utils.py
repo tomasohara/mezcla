@@ -92,7 +92,7 @@ class TestMiscUtils:
     def test_fibonacci(self):
         """Ensure fibonacci works as expected"""
         debug.trace(4, "test_fibonacci()")
-        assert THE_MODULE.fibonacci(-5) == []
+        assert not THE_MODULE.fibonacci(-5)
         assert THE_MODULE.fibonacci(1) == [0]
         assert THE_MODULE.fibonacci(10) == [0, 1, 1, 2, 3, 5, 8]
 
@@ -129,8 +129,11 @@ class TestMiscUtils:
     def test_get_current_frame(self):
         """Ensure get_current_frame works as expected"""
         debug.trace(4, "test_get_current_frame()")
-        frame = THE_MODULE.get_current_frame()
         ## TODO: WORK-IN-PROGRESS
+        stack = str(THE_MODULE.get_current_frame())
+        test_name = system.get_current_function_name()
+        assert f'code {test_name}' in stack
+        assert __file__ in stack
 
     def test_eval_expression(self):
         """Ensure eval_expression works as expected"""
@@ -184,55 +187,65 @@ class TestMiscUtils:
 
         assert THE_MODULE.string_diff(STRING_ONE, STRING_TWO) == EXPECTED_DIFF
 
-    
+
     def test_elide_string_values(self):
         """Ensure elide_string_values works as expected"""
         debug.trace(4, "test_elide_string_values()")
-        ## TODO: WORK-IN-PROGRESS
-    
+        hello = "hello"
+        assert 'hell...' == THE_MODULE.elide_string_values(hello, max_len=4)
+
     def test_is_close(self):
         """ensure is_close works as expected"""
         debug.trace(4, "test_is_close()")
         assert     THE_MODULE.is_close(1.0 + 0.999 , 2.0, 0.001)
         assert not THE_MODULE.is_close(1.0 + 0.999 , 2.0, 0.0001)
-    
+
     def test_get_date_ddmmmyy(self):
         """ensure get_date_ddmmmyy works as expected"""
         debug.trace(4, "test_get_date_ddmmmyy()")
-        assert THE_MODULE.get_date_ddmmmyy(datetime.date(2004,9,16)) == '16sep04'
-    
-    @pytest.mark.xfail
+        assert THE_MODULE.get_date_ddmmmyy(datetime.date(2004, 9, 16)) == '16sep04'
+
     def test_parse_timestamp(self):
-        ## TODO: WORK-IN-PROGRESS
-        assert False
-    
-    @pytest.mark.xfail    
-    def test_add_timestamp_diff(self):
-        ## TODO: WORK-IN-PROGRESS
-        assert False
-    
+        """ensure parse_timestamp works as expected"""
+        ts = datetime.datetime(2004, 9, 16, 12, 30, 25, 123123)
+        ts_iso = '2004-09-16T12:30:25.1231234Z'
+        ts_iso_2 = '2004-09-16T12:30:25.123123Z'
+        parsed_ts = THE_MODULE.parse_timestamp(ts_iso, truncate=True)
+        parsed_ts_truncated = THE_MODULE.parse_timestamp(ts_iso_2, truncate=False)
+        assert parsed_ts == ts
+        assert parsed_ts_truncated == ts
+
     @pytest.mark.xfail
+    def test_add_timestamp_diff(self):
+        """ensure add_timestamp_diff works as expected"""
+        ## TODO: WORK-IN-PROGRESS
+        file_in = gh.create_temp_file("timestamp 2004-09-16T12:30:25.1231234Z")
+        file_out = gh.get_temp_file()
+        THE_MODULE.add_timestamp_diff(file_in, file_out)
+        with open(file_out, 'r', newline='\n') as contents:
+            contents = contents.read()
+            assert contents == 'timestamp 2004-09-16T12:30:25.123123Z [0]\n'
+
     def test_random_int(self):
-        ## TODO: WORK-IN-PROGRESS
-        assert False   
-    
-    @pytest.mark.xfail    
+        """ensure random_int works as expected"""
+        assert 0 <= THE_MODULE.random_int(0,4) <= 4
+
     def test_random_float(self):
-        ## TODO: WORK-IN-PROGRESS
-        assert False
-    
+        """ensure random_float works as expected"""
+        assert 0 <= THE_MODULE.random_float(0,4.3) < 4.3
+
     def test_time_function(self):
         """ensure time_function works as expected"""
         debug.trace(4, "test_time_function()")
         ms = THE_MODULE.time_function(time.sleep, 0.25)
         assert math.floor(ms) == 250
-    
+
     def test_get_class_from_name(self):
         """ensure get_class_from_name works as expected"""
         debug.trace(4, "test_get_class_from_name()")
         result_class = THE_MODULE.get_class_from_name('date', 'datetime')
         assert result_class is datetime.date
-    
+
 
 
 if __name__ == '__main__':
