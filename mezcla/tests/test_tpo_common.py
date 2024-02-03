@@ -512,77 +512,71 @@ class TestTpoCommon(TestWrapper):
         debug.trace(4, "test_memodict()")
         ## TODO: WORK-IN-PROGRESS
 
-
-class TestTpoCommon2:
-    """Another class for testcase definition
-    Note: works around silly issues with pytest and TestWrapper (e.g., capsys and monkeypatch)
-    """
-
     @pytest.mark.xfail                   # TODO: remove xfail
-    def test_exit(self, monkeypatch, capsys):
+    def test_exit(self):
         """Ensure exit works as expected"""
         debug.trace(4, "test_exit()")
         def sys_exit_mock():
             return 'exit'
-        monkeypatch.setattr(sys, "exit", sys_exit_mock)
+        self.monkeypatch.setattr(sys, "exit", sys_exit_mock)
         assert THE_MODULE.exit('test exit method') == 'exit'
         # Exit is mocked, ignore code editor hiding
         ## TODO: for some reason (probably the debug level) the message is not being printed
-        captured = capsys.readouterr()
+        captured = self.get_stdout_stderr()
         debug.trace_object(5, captured)
         ## TODO: assert "test exit method" in captured.err
-        debug.assertion("test exit method" in captured.err)
+        debug.assertion("test exit method" in captured.stderr)
 
-    def test_dummy_main(self, capsys):
+    def test_dummy_main(self):
         """Ensure dummy_main works as expected"""
         debug.trace(4, "test_dummy_main()")
         THE_MODULE.dummy_main()
-        captured = capsys.readouterr()
-        assert 'Environment options' in captured.out
+        captured = self.get_stdout()
+        assert 'Environment options' in captured
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
-    def test_getenv(self, monkeypatch):
+    def test_getenv(self):
         """Ensure getenv works as expected"""
         debug.trace(4, "test_getenv()")
-        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        self.monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv('TEST_ENV_VAR') == 'some value'
 
-    def test_getenv_value(self, monkeypatch):
+    def test_getenv_value(self):
         """Ensure getenv_value works as expected"""
         debug.trace(4, "test_getenv_value()")
-        monkeypatch.setenv('NEW_ENV_VAR', 'some value', prepend=False)
+        self.monkeypatch.setenv('NEW_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv_value('NEW_ENV_VAR', default='empty', description='another test env var') == 'some value'
         assert THE_MODULE.env_defaults['NEW_ENV_VAR'] == 'empty'
         assert THE_MODULE.env_options['NEW_ENV_VAR'] == 'another test env var'
 
-    def test_getenv_text(self, monkeypatch):
+    def test_getenv_text(self):
         """Ensure getenv_text works as expected"""
         debug.trace(4, "test_getenv_text()")
-        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        self.monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv_text('TEST_ENV_VAR') == 'some value'
         assert THE_MODULE.getenv_text("REALLY FUBAR?", False) == 'False'
 
-    def test_getenv_number(self, monkeypatch):
+    def test_getenv_number(self):
         """Ensure getenv_number works as expected"""
         debug.trace(4, "test_getenv_number()")
-        monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
+        self.monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
         assert THE_MODULE.getenv_number('TEST_NUMBER', default=20) == 9.81
         assert THE_MODULE.getenv_number("REALLY FUBAR", 123) == 123.0
 
-    def test_getenv_int(self, monkeypatch):
+    def test_getenv_int(self):
         """Ensure getenv_int works as expected"""
         debug.trace(4, "test_getenv_int()")
-        monkeypatch.setenv('TEST_NUMBER', '34', prepend=False)
+        self.monkeypatch.setenv('TEST_NUMBER', '34', prepend=False)
         assert THE_MODULE.getenv_int('TEST_NUMBER', default=20) == 34
         assert THE_MODULE.getenv_int("REALLY FUBAR", 123) == 123
 
-    def test_getenv_bool(self, monkeypatch):
+    def test_getenv_bool(self):
         """Ensure getenv_bool works as expected"""
         debug.trace(4, "test_getenv_bool()")
-        monkeypatch.setenv('TEST_BOOL', 'FALSE', prepend=False)
+        self.monkeypatch.setenv('TEST_BOOL', 'FALSE', prepend=False)
         assert not THE_MODULE.getenv_bool('TEST_BOOL', None)
-        monkeypatch.setenv('TEST_BOOL', '  true   ', prepend=False)
+        self.monkeypatch.setenv('TEST_BOOL', '  true   ', prepend=False)
         assert THE_MODULE.getenv_bool('TEST_BOOL', None)
         assert not isinstance(THE_MODULE.getenv_boolean("REALLY FUBAR?", None), bool)
         assert isinstance(THE_MODULE.getenv_boolean("REALLY FUBAR?", False), bool)
