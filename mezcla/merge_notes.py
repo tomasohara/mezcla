@@ -205,7 +205,7 @@ def main():
                             
         # Add optional source indicator to current date
         if show_file_info and needs_source_info:
-            notes_hash[new_date] += "[src={f}:{n}]\n".format(f=fileinput.filename(), 
+            notes_hash[new_date] += "[src: {f}:{n}]\n".format(f=fileinput.filename(), 
                                                              n=fileinput.filelineno())
             needs_source_info = False
                 
@@ -242,7 +242,7 @@ def main():
                          d=date, r=resolved_date.get(date))
         if output_dividers and (pos > 0):
             print("-" * 80)
-        debug.trace_fmtd(6, "[src={f}:{n}]", skip_newline=True,
+        debug.trace_fmtd(6, "[src {f}:{n}]", skip_newline=True,
                          f=fileinput.filename(), n=fileinput.filelineno())
         try:
             print("%s\n\n" % notes_hash[date])
