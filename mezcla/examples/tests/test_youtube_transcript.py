@@ -12,7 +12,23 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_<module>.py
 #
-
+#................................................................................
+# Sample test:
+#
+#   [via https://www.youtube.com/watch?v=E9yhGw66v2Q]
+#   0:51        good morning mr. lover I thought I'd
+#   0:57        find you out here how long have you been
+#   1:04        painting Oh 60 years did you start
+#   1:16        painting at Howard high school no I did
+#   1:20        some painting I was just beginning to
+#   ...
+#   20:30       the neighborhood then they're gonna have
+#   20:33       to struggle and work hard is that
+#   20:35       Dickens to make sure they they win and
+#   20:39       they can win all you gotta do is do it
+#   22:25       you
+#   
+   
 """TODO: Tests for <module> module"""
 
 # Standard modules
@@ -23,11 +39,16 @@ import pytest
 
 # Local modules
 from mezcla.unittest_wrapper import TestWrapper
-## TODO: from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
-## TODO: from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
+
+# Conditional imports
+youtube_transcript_api = None
+try:
+    import youtube_transcript_api
+except:
+    system.print_exception_info("youtube_transcript_api import")
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
@@ -49,6 +70,7 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 
 #------------------------------------------------------------------------
 
+@pytest.mark.skipif(not youtube_transcript_api, reason="Unable to load youtube_transcript_api")
 class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
@@ -58,33 +80,22 @@ class TestIt(TestWrapper):
     # TODO: use TestIt2 if capsys needed
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    ## DEBUG: @trap_exception            # TODO: remove when debugged
-    def test_data_file(self):
+    def test_run_script(self):
         """Tests run_script w/ data file"""
-        debug.trace(4, f"TestIt.test_data_file(); self={self}")
-        data = ["TODO1", "TODO2"]
-        system.write_lines(self.temp_file, data)
-        ## TODO: add use_stdin=True to following if no file argument
-        output = self.run_script(options="", data_file=self.temp_file)
-        self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
+        debug.trace(4, f"TestIt.test_run_script(); self={self}")
+        output = self.run_script(options="E9yhGw66v2Q", skip_stdin=True)
+        self.do_assert(my_re.search(r"\d+:\d+.*Howard high school",
+                                    output.strip(), flags=my_re.IGNORECASE))
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    ## DEBUG: @trap_exception            # TODO: remove when debugged
-    def test_something_else(self):
-        """Test for something_else: TODO..."""
-        debug.trace(4, f"TestIt.test_something_else(); self={self}")
-        self.do_assert(False)
-        ## ex: self.do_assert(THE_MODULE.TODO_function() == TODO_value)
-        return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
-    def test_whatever(self, capsys):
-        """TODO: flesh out test for whatever"""
-        debug.trace(4, f"TestIt2.test_whatever(); self={self}")
-        THE_MODULE.TODO_whatever()
-        captured = capsys.readouterr()
-        self.do_assert("whatever" in captured.err, "TODO_whatever trace")
+    def test_YouTubeLikeFormatter(self):
+        """Test YouTubeLikeFormatter class"""
+        debug.trace(4, f"TestIt2.test_YouTubeLikeFormatter(); self={self}")
+        # pylint: disable=protected-access
+        formatter = THE_MODULE.YouTubeLikeFormatter()
+        self.do_assert("7:37" == formatter._format_timestamp(0, 7, 37, 0))
+        self.do_assert("1:07:37" == formatter._format_timestamp(1, 7, 37, 0))
         return
 
 #------------------------------------------------------------------------
