@@ -57,7 +57,6 @@ class TestIt(TestWrapper):
     #
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
-    # TODO: use TestIt2 if capsys needed
 
     ## TODO: optional setup methods
     ##
