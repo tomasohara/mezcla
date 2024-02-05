@@ -54,7 +54,11 @@ except:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
 ## TODO (vvv): insert new module name in commented out template teo lines below
-import mezcla.examples.youtube_transcript as THE_MODULE
+THE_MODULE = None
+try:
+    import mezcla.examples.youtube_transcript as THE_MODULE
+except:
+    system.print_exception_info("youtube_transcript import")
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(__file__, r"\btemplate.py$"):
