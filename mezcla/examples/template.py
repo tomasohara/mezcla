@@ -58,7 +58,7 @@ def main():
     ## TODO:
     system.print_error("Error: Implement me!")
     ## ALT TODO:
-    ## for line in map_app.read_entire_input():
+    ## for line in main_app.read_entire_input():
     ##     print(modify_fn(line))
     return
 
