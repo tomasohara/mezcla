@@ -371,7 +371,7 @@ class TestWrapper(unittest.TestCase):
         if output.endswith("\n"):
             output = output[:-1]
         debug.trace_fmtd(trace_level, "output: {{\n{out}\n}}",
-                         out=gh.indent_lines(output), max_len=2048)
+                         out=gh.indent_lines(output), max_len=4096)
 
         # Make sure no python or bash errors. For example,
         #   "SyntaxError: invalid syntax" and "bash: python: command not found"
@@ -379,7 +379,7 @@ class TestWrapper(unittest.TestCase):
         error_found = my_re.search(r"(\S+error:)|(no module)|(command not found)",
                                    log_contents.lower())
         debug.assertion(not error_found)
-        debug.trace_expr(trace_level + 1, log_contents, max_len=2048)
+        debug.trace_expr(trace_level + 1, log_contents, max_len=4096)
 
         # Do sanity check for python exceptions
         traceback_found = my_re.search("Traceback.*most recent call", log_contents)
