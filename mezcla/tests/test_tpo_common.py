@@ -25,10 +25,12 @@
 
 # Standard modules
 import sys
+import re
 
 # Installed modules
 import pytest
 import pickle
+import trace
 
 # Local modules
 from mezcla import debug
@@ -65,7 +67,16 @@ class TestTpoCommon(TestWrapper):
     def test_debug_trace_without_newline(self):
         """Ensure debug_trace_without_newline works as expected"""
         debug.trace(4, "test_debug_trace_without_newline()")
-        ## TODO: WORK-IN-PROGRESS
+        tracer = trace.Trace(countfuncs=1)
+        tracer.runfunc(THE_MODULE.debug_trace_without_newline, ('test debug trace withouht newline'))
+        
+        # redirect write_results to temp file
+        temp = gh.get_temp_file()
+        tracer.results().write_results(coverdir=temp)
+        
+        captured = self.get_stdout()
+        assert re.search(r'modulename: debug, funcname: trace', captured)
+
 
     def test_debug_trace(self):
         """Ensure debug_trace works as expected"""
@@ -85,22 +96,57 @@ class TestTpoCommon(TestWrapper):
     def test_debug_timestamp(self):
         """Ensure debug_timestamp works as expected"""
         debug.trace(4, "test_debug_timestamp()")
-        ## TODO: WORK-IN-PROGRESS
+        tracer = trace.Trace(countfuncs=1)
+        tracer.runfunc(THE_MODULE.debug_timestamp)
+        
+        # redirect write_results to temp file
+        temp = gh.get_temp_file()
+        tracer.results().write_results(coverdir=temp)
+        
+        captured = self.get_stdout()
+        assert re.search(r'modulename: debug, funcname: timestamp', captured)
+
 
     def test_debug_raise(self):
         """Ensure debug_raise works as expected"""
         debug.trace(4, "test_debug_raise()")
-        ## TODO: WORK-IN-PROGRESS
+        tracer = trace.Trace(countfuncs=1)
+        tracer.runfunc(THE_MODULE.debug_raise)
+        
+        # redirect write_results to temp file
+        temp = gh.get_temp_file()
+        tracer.results().write_results(coverdir=temp)
+        
+        captured = self.get_stdout()
+        assert re.search(r'modulename: debug, funcname: raise_exception', captured)
+
 
     def test_trace_array(self):
         """Ensure trace_array works as expected"""
         debug.trace(4, "test_trace_array()")
-        ## TODO: WORK-IN-PROGRESS
+        tracer = trace.Trace(countfuncs=1)
+        tracer.runfunc(THE_MODULE.trace_array, (['test', 'trace', 'array']))
+        
+        # redirect write_results to temp file
+        temp = gh.get_temp_file()
+        tracer.results().write_results(coverdir=temp)
+        
+        captured = self.get_stdout()
+        assert re.search(r'modulename: debug, funcname: trace_values', captured)
 
     def test_trace_object(self):
         """Ensure trace_object works as expected"""
         debug.trace(4, "test_trace_object()")
-        ## TODO: WORK-IN-PROGRESS
+        tracer = trace.Trace(countfuncs=1)
+        tracer.runfunc(THE_MODULE.trace_object, ('test_trace_object'), show_methods_etc=True)
+        
+        # redirect write_results to temp file
+        temp = gh.get_temp_file()
+        tracer.results().write_results(coverdir=temp)
+        
+        captured = self.get_stdout()
+        assert re.search(r'modulename: debug, funcname: trace_object', captured)
+        
 
     def test_trace_value(self):
         """Ensure trace_value works as expected"""
@@ -110,27 +156,49 @@ class TestTpoCommon(TestWrapper):
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, "test_trace_current_context()")
-        ## TODO: WORK-IN-PROGRESS
+        tracer = trace.Trace(countfuncs=1)
+        tracer.runfunc(THE_MODULE.trace_current_context, show_methods_etc=True)
+        
+        # redirect write_results to temp file
+        temp = gh.get_temp_file()
+        tracer.results().write_results(coverdir=temp)
+        
+        captured = self.get_stdout()
+        assert re.search(r'modulename: debug, funcname: trace_current_context', captured)
 
     def test_during_debugging(self):
         """Ensure during_debugging works as expected"""
         debug.trace(4, "test_during_debugging()")
+
         ## TODO: WORK-IN-PROGRESS
 
     def test_debugging(self):
         """Ensure debugging works as expected"""
         debug.trace(4, "test_debugging()")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.set_debug_level(4)
+        assert THE_MODULE.debugging(2)
+        assert THE_MODULE.debugging(4)
+        assert not THE_MODULE.debugging(6)
 
     def test_detailed_debugging(self):
         """Ensure detailed_debugging works as expected"""
         debug.trace(4, "test_detailed_debugging()")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.set_debug_level(2)
+        assert not THE_MODULE.detailed_debugging()
+        THE_MODULE.set_debug_level(4)
+        assert THE_MODULE.detailed_debugging()
+        THE_MODULE.set_debug_level(6)
+        assert THE_MODULE.detailed_debugging()
 
     def test_verbose_debugging(self):
         """Ensure verbose_debugging works as expected"""
         debug.trace(4, "test_verbose_debugging()")
-        ## TODO: WORK-IN-PROGRESS
+        THE_MODULE.set_debug_level(2)
+        assert not THE_MODULE.verbose_debugging()
+        THE_MODULE.set_debug_level(5)
+        assert THE_MODULE.verbose_debugging()
+        THE_MODULE.set_debug_level(7)
+        assert THE_MODULE.verbose_debugging()
 
     def test_to_string(self):
         """Ensure to_string works as expected"""
@@ -512,7 +580,6 @@ class TestTpoCommon(TestWrapper):
         debug.trace(4, "test_memodict()")
         ## TODO: WORK-IN-PROGRESS
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_exit(self):
         """Ensure exit works as expected"""
         debug.trace(4, "test_exit()")
@@ -525,7 +592,7 @@ class TestTpoCommon(TestWrapper):
         captured = self.get_stdout_stderr()
         debug.trace_object(5, captured)
         ## TODO: assert "test exit method" in captured.err
-        debug.assertion("test exit method" in captured.stderr)
+        debug.assertion("test exit method" in captured[1])
 
     def test_dummy_main(self):
         """Ensure dummy_main works as expected"""
