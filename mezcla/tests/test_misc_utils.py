@@ -24,20 +24,21 @@ import pytest
 from mezcla import glue_helpers as gh
 from mezcla import debug
 from mezcla import system
+from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.misc_utils as THE_MODULE
 
 # Make sure more_itertools available
-has_more_itertools = True
+HAS_MORE_ITERTOOLS = True
 try:
     import more_itertools
-except:
+except ImportError:
     system.print_exception_info("more_itertools import")
-    has_more_itertools = False
+    HAS_MORE_ITERTOOLS = False
 
-class TestMiscUtils:
+class TestMiscUtils(TestWrapper):
     """Class for test case definitions"""
 
     def test_transitive_closure(self):
@@ -72,7 +73,7 @@ class TestMiscUtils:
         """Ensure is_prime works as expected"""
         debug.trace(4, "test_is_prime()")
 
-        FIRST_100_PRIMES = [
+        first_100_primes = [
             2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37,
             41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83,
             89, 97, 101, 103, 107, 109, 113, 127, 131,
@@ -86,8 +87,8 @@ class TestMiscUtils:
             503, 509, 521, 523, 541,
         ]
 
-        assert all([THE_MODULE.is_prime(n) for n in FIRST_100_PRIMES])
-        assert all([(not THE_MODULE.is_prime(n)) for n in range(FIRST_100_PRIMES[-1])  if n not in FIRST_100_PRIMES])
+        assert all(THE_MODULE.is_prime(n) for n in first_100_primes)
+        assert all((not THE_MODULE.is_prime(n)) for n in range(first_100_primes[-1]) if n not in first_100_primes)
 
     def test_fibonacci(self):
         """Ensure fibonacci works as expected"""
@@ -129,7 +130,6 @@ class TestMiscUtils:
     def test_get_current_frame(self):
         """Ensure get_current_frame works as expected"""
         debug.trace(4, "test_get_current_frame()")
-        ## TODO: WORK-IN-PROGRESS
         stack = str(THE_MODULE.get_current_frame())
         test_name = system.get_current_function_name()
         assert f'code {test_name}' in stack
@@ -141,24 +141,24 @@ class TestMiscUtils:
         assert THE_MODULE.eval_expression("len([123, 321]) == 2")
         assert not THE_MODULE.eval_expression("'helloworld' == 2")
 
-    def test_trace_named_object(self, capsys):
+    def test_trace_named_object(self):
         """Ensure trace_named_object works as expected"""
         debug.trace(4, "test_trace_named_object()")
         # With level -1 we ensure that the trace will be printed
         THE_MODULE.trace_named_object(-1, "sys.argv")
-        captured = capsys.readouterr()
-        assert "sys.argv" in captured.err
+        captured = self.get_stderr()
+        assert "sys.argv" in captured
 
-    def test_trace_named_objects(self, capsys):
+    def test_trace_named_objects(self):
         """Ensure trace_named_objects works as expected"""
         debug.trace(4, "test_trace_named_objects()")
         # With level -1 we ensure that the trace will be printed
         THE_MODULE.trace_named_objects(-1, "[len(sys.argv), sys.argv]")
-        captured = capsys.readouterr()
-        assert "len(sys.argv)" in captured.err
-        assert "sys.argv" in captured.err
+        captured = self.get_stderr()
+        assert "len(sys.argv)" in captured
+        assert "sys.argv" in captured
 
-    @pytest.mark.skipif(not has_more_itertools, reason="Unable to load more_itertools")
+    @pytest.mark.skipif(not HAS_MORE_ITERTOOLS, reason="Unable to load more_itertools")
     def test_exactly1(self):
         """Ensure exactly1 works as expected"""
         debug.trace(4, "test_exactly1()")
@@ -171,9 +171,9 @@ class TestMiscUtils:
         """Ensure string_diff works as expected"""
         debug.trace(4, "test_string_diff()")
 
-        STRING_ONE = 'one\ntwo\nthree\nfour'
-        STRING_TWO = 'one\ntoo\ntree\nfour'
-        EXPECTED_DIFF = (
+        string_one = 'one\ntwo\nthree\nfour'
+        string_two = 'one\ntoo\ntree\nfour'
+        expected_diff = (
             '  one\n'
             '< two\n'
             '…  ^\n'
@@ -185,7 +185,7 @@ class TestMiscUtils:
             '  four\n'
         )
 
-        assert THE_MODULE.string_diff(STRING_ONE, STRING_TWO) == EXPECTED_DIFF
+        assert THE_MODULE.string_diff(string_one, string_two) == expected_diff
 
 
     def test_elide_string_values(self):
@@ -207,6 +207,7 @@ class TestMiscUtils:
 
     def test_parse_timestamp(self):
         """ensure parse_timestamp works as expected"""
+        debug.trace(4, "test_parse_timestamp()")
         ts = datetime.datetime(2004, 9, 16, 12, 30, 25, 123123)
         ts_iso = '2004-09-16T12:30:25.1231234Z'
         ts_iso_2 = '2004-09-16T12:30:25.123123Z'
@@ -215,23 +216,25 @@ class TestMiscUtils:
         assert parsed_ts == ts
         assert parsed_ts_truncated == ts
 
-    @pytest.mark.xfail
     def test_add_timestamp_diff(self):
         """ensure add_timestamp_diff works as expected"""
-        ## TODO: WORK-IN-PROGRESS
-        file_in = gh.create_temp_file("timestamp 2004-09-16T12:30:25.1231234Z")
-        file_out = gh.get_temp_file()
+        debug.trace(4, "test_add_timestamp_diff()")
+        timestamp = "timestamp 2004-09-16T12:30:25.1231234Z"
+        file_in = f"{self.temp_file}.in"
+        file_out = f"{self.temp_file}.out"
+        system.write_file(file_in, timestamp)
         THE_MODULE.add_timestamp_diff(file_in, file_out)
-        with open(file_out, 'r', newline='\n') as contents:
-            contents = contents.read()
-            assert contents == 'timestamp 2004-09-16T12:30:25.123123Z [0]\n'
+        contents = system.read_file(file_out)
+        assert contents == f"{timestamp} [0]\n"
 
     def test_random_int(self):
         """ensure random_int works as expected"""
+        debug.trace(4, "test_random_int()")
         assert 0 <= THE_MODULE.random_int(0,4) <= 4
 
     def test_random_float(self):
         """ensure random_float works as expected"""
+        debug.trace(4, "test_random_float()")
         assert 0 <= THE_MODULE.random_float(0,4.3) < 4.3
 
     def test_time_function(self):
@@ -245,8 +248,6 @@ class TestMiscUtils:
         debug.trace(4, "test_get_class_from_name()")
         result_class = THE_MODULE.get_class_from_name('date', 'datetime')
         assert result_class is datetime.date
-
-
 
 if __name__ == '__main__':
     debug.trace_current_context()
