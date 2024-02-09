@@ -71,7 +71,7 @@ class TestTpoCommon(TestWrapper):
         tracer.runfunc(THE_MODULE.debug_trace_without_newline, ('test debug trace withouht newline'))
         
         # redirect write_results to temp file
-        temp = gh.get_temp_file()
+        temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
         
         captured = self.get_stdout()
@@ -100,7 +100,7 @@ class TestTpoCommon(TestWrapper):
         tracer.runfunc(THE_MODULE.debug_timestamp)
         
         # redirect write_results to temp file
-        temp = gh.get_temp_file()
+        temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
         
         captured = self.get_stdout()
@@ -114,7 +114,7 @@ class TestTpoCommon(TestWrapper):
         tracer.runfunc(THE_MODULE.debug_raise)
         
         # redirect write_results to temp file
-        temp = gh.get_temp_file()
+        temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
         
         captured = self.get_stdout()
@@ -128,7 +128,7 @@ class TestTpoCommon(TestWrapper):
         tracer.runfunc(THE_MODULE.trace_array, (['test', 'trace', 'array']))
         
         # redirect write_results to temp file
-        temp = gh.get_temp_file()
+        temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
         
         captured = self.get_stdout()
@@ -141,7 +141,7 @@ class TestTpoCommon(TestWrapper):
         tracer.runfunc(THE_MODULE.trace_object, ('test_trace_object'), show_methods_etc=True)
         
         # redirect write_results to temp file
-        temp = gh.get_temp_file()
+        temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
         
         captured = self.get_stdout()
@@ -160,7 +160,7 @@ class TestTpoCommon(TestWrapper):
         tracer.runfunc(THE_MODULE.trace_current_context, show_methods_etc=True)
         
         # redirect write_results to temp file
-        temp = gh.get_temp_file()
+        temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
         
         captured = self.get_stdout()
@@ -367,7 +367,7 @@ class TestTpoCommon(TestWrapper):
             1: 'first',
             2: 'second',
         }
-        test_filename = gh.get_temp_file()
+        test_filename = self.get_temp_file()
         test_file = open(test_filename, 'wb')
         pickle.dump(test_dict, test_file)
         test_file.close()
@@ -381,7 +381,7 @@ class TestTpoCommon(TestWrapper):
             1: 'first',
             2: 'second',
         }
-        test_filename = gh.get_temp_file()
+        test_filename = self.get_temp_file()
 
         THE_MODULE.store_object(test_filename, test_dict)
 
@@ -400,7 +400,7 @@ class TestTpoCommon(TestWrapper):
             1: 'first',
             2: 'second',
         }
-        test_filename = gh.get_temp_file()
+        test_filename = self.get_temp_file()
 
         THE_MODULE.store_object(test_filename, test_dict)
 
@@ -439,7 +439,7 @@ class TestTpoCommon(TestWrapper):
             'isbusiness - true': True,
         }
 
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, content)
         assert THE_MODULE.create_boolean_lookup_table(temp_file) == expected
 
