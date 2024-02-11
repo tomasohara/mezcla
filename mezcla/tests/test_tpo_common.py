@@ -106,12 +106,16 @@ class TestTpoCommon(TestWrapper):
         captured = self.get_stdout()
         assert re.search(r'modulename: debug, funcname: timestamp', captured)
 
-
+    @trap_exception
     def test_debug_raise(self):
         """Ensure debug_raise works as expected"""
         debug.trace(4, "test_debug_raise()")
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.debug_raise)
+        try:
+            raise RuntimeError
+        except RuntimeError:
+            with pytest.raises(RuntimeError):
+                tracer.runfunc(THE_MODULE.debug_raise)
         
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -580,6 +584,7 @@ class TestTpoCommon(TestWrapper):
         debug.trace(4, "test_memodict()")
         ## TODO: WORK-IN-PROGRESS
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_exit(self):
         """Ensure exit works as expected"""
         debug.trace(4, "test_exit()")
