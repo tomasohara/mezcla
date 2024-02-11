@@ -235,13 +235,19 @@ def resolve_path(filename, base_dir=None, heuristic=False):
     return path
 
 
-def form_path(*filenames):
+def form_path(*filenames, create=False):
     """Wrapper around os.path.join over FILENAMEs (with tracing)
     Note: includes sanity check about absolute filenames except for first
-    Warning: This will be deprecated: uses system.form_path instead.
+    If CREATE, then the directory for the path is created if needed
+    Warning: This might be deprecated: use system.form_path instead.
     """
     ## TODO3: return system.form_path(*filenames)
     debug.assertion(not any(f.startswith(system.path_separator()) for f in filenames[1:]))
+    if create:
+        path_dir = os.path.join(filenames[:-1])
+        if not system.file_exists(path_dir):
+            full_mkdir(path_dir)
+
     path = os.path.join(*filenames)
     debug_format("form_path{f} => {p}", 6, f=tuple(filenames), p=path)
     return path
