@@ -14,7 +14,8 @@
 """Tests for glue_helpers module"""
 
 # Standard packages
-from os import path
+import os
+## OLD: from os import path
 from io import StringIO
 import sys
 
@@ -24,7 +25,8 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla import tpo_common as tpo # Deprecated, only used for mock
+from mezcla.my_regex import my_re
+from mezcla import tpo_common as tpo    # Deprecated, only used for mock
 ## OLD: from mezcla.unittest_wrapper import TestWrapper
 from mezcla import system
 
@@ -32,8 +34,10 @@ from mezcla import system
 #    THE_MODULE:	    global module object
 import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 
-class TestGlueHelpers:
+class TestGlueHelpers:      ## TODO: (TestWrapper)
     """Class for testcase definition"""
+    ## TEMP
+    temp_file = gh.get_temp_file()
 
     def test_get_temp_file(self):
         """Ensure get_temp_file works as expected"""
@@ -50,6 +54,7 @@ class TestGlueHelpers:
     def test_dir_path(self):
         """Ensure dir_path works as expected"""
         debug.trace(4, "test_dir_path()")
+        debug.assertion(os.name == "posix")
         assert THE_MODULE.dir_path("/tmp/solr-4888.log") == "/tmp"
 
     def test_file_exists(self):
@@ -80,10 +85,21 @@ class TestGlueHelpers:
             pass # gh.write_file cant be used because appends a newline
         assert not THE_MODULE.non_empty_file(empty_file)
 
+    @pytest.mark.xfail
     def test_form_path(self):
         """Ensure form_path works as expected"""
         debug.trace(4, "test_form_path()")
-        assert THE_MODULE.form_path("/home/", "User/Desktop", "file.txt") == "/home/User/Desktop/file.txt"
+        debug.assertion(os.name == "posix")
+        assert(THE_MODULE.form_path("/", "home", "User", "Desktop", "file.txt")
+               == "/home/User/Desktop/file.txt")
+        ## TEMP:
+        self.temp_file += "-test_form_path"
+        # Make sure can create directory        
+        test_temp_dir = THE_MODULE.form_path(self.temp_file, "test_dir")
+        test_temp_file = THE_MODULE.form_path(test_temp_dir, "test_file",
+                                              create=True)
+        assert(system.file_exists(test_temp_dir))
+        assert(not system.file_exists(test_temp_file))
 
     @pytest.mark.xfail
     def test_create_directory(self):
@@ -101,6 +117,8 @@ class TestGlueHelpers:
     def test_real_path(self):
         """Ensure real_path works as expected"""
         debug.trace(4, "test_real_path()")
+        debug.assertion(my_re.search("ubuntu", gh.run("uname -a"),
+                                     flags=my_re.IGNORECASE))
         assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
 
     def test_indent(self):
@@ -203,9 +221,13 @@ class TestGlueHelpers:
         """Tests for resolve_path(filename)"""
         script = "glue_helpers.py"
         test_script = "test_glue_helpers.py"
+        test_dir = gh.dir_path(__file__)
+        debug.assertion(test_script in __file__)
         # The main script should resolve to parent directory but this one to test dir
-        assert not THE_MODULE.resolve_path(script) == path.join(path.dirname(__file__), test_script)
-        assert THE_MODULE.resolve_path(test_script) == path.join(path.dirname(__file__), test_script)
+        assert not (THE_MODULE.resolve_path(script)
+                    == gh.form_path(test_dir, test_script))
+        assert (THE_MODULE.resolve_path(test_script)
+                == gh.form_path(test_dir, test_script))
 
     @pytest.mark.xfail
     def test_heuristic_resolve_path(self):
@@ -214,7 +236,7 @@ class TestGlueHelpers:
         # The requirements normally isn't resolved
         assert(THE_MODULE.resolve_path(requirements_filename, heuristic=False)
                == requirements_filename)
-        test_dir = path.dirname(__file__)
+        test_dir = gh.dir_path(__file__)
         assert(gh.real_path(THE_MODULE.resolve_path(requirements_filename, heuristic=True))
                == gh.real_path(gh.form_path(test_dir, "..", "..", requirements_filename)))
 
