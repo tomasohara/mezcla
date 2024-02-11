@@ -317,7 +317,7 @@ class TestWrapper(unittest.TestCase):
         - OPTIONS uses quotes around shell special characters used (e.g., '<', '>', '|')
         - issues warning if script invocation leads to error
         - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)
-        - if """
+        - if SKIP_STDIN, then - omitted from command line"""
         debug.trace_fmtd(trace_level + 1,
                          "TestWrapper.run_script(opts={opts!r}, data={df}, log={lf}, lvl={lvl}, out={of}, env={env}, stdin={stdin}, post={post}, back={back})",
                          opts=options, df=data_file, lf=log_file, lvl=trace_level, of=out_file,
