@@ -59,8 +59,6 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
-from mezcla.tpo_common import debug_format
-
 
 # Constants (e.g., environment options)
 
@@ -301,6 +299,7 @@ class TestWrapper(unittest.TestCase):
             default_temp_file = self.temp_base + "-test-"
         default_temp_file += str(TestWrapper.test_num)
         self.temp_file = system.getenv_text("TEMP_FILE", default_temp_file)
+        gh.delete_existing_file(f"{self.temp_file}")
         for i in range(10):
             gh.delete_existing_file(f"{self.temp_file}-{i}")
         TestWrapper.test_num += 1
@@ -470,19 +469,21 @@ class TestWrapper(unittest.TestCase):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         debug.trace(6, "TestWrapper.tearDown()")
         if not KEEP_TEMP:
+            gh.run(f"rm -vf {self.temp_file}")
             for i in range(self.temp_file_count):
                 gh.run(f"rm -vf {self.temp_file}-{i}")
         self.temp_file_count = 0
 
-    def get_temp_file(self, delete=False):
+    def get_temp_file(self, delete=None):
         """return name of temporary file based on self.temp_file, optionally with DELETE"""
         # Note: delete defaults to False if detailed debugging
         # TODO: allow for overriding other options to NamedTemporaryFile
-        delete = not debug.detailed_debugging() and delete
+        if delete is None and debug.detailed_debugging():
+            delete = False
         temp_file_name = f"{self.temp_file}-{self.temp_file_count}"
         self.temp_file_count += 1
         debug.assertion(not delete, "Support for delete not implemented")
-        debug_format(f"get_temp_file() => {temp_file_name}", 5)
+        debug.format_value(f"get_temp_file() => {temp_file_name}", 5)
         return temp_file_name
 
     def create_temp_file(self, contents,  binary=False):
