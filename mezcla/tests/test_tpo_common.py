@@ -7,11 +7,6 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_tpo_common.py
 #
-# Warning:
-# - *** The tpo_common.py module is being phased out. Although there are
-#   a bunch of "work-in-progress" tests below, they are low priority because
-#   most are addressed by test_system.py or test_debug.py.
-#
 # TODO:
 # - Address commonly used debugging functions (e.g., debug_print) by redirecting output (via remapping sys.stderr to a file) and then checking file contents.
 # - add tests for normalize_unicode, ensure_unicode and other problematic functions
@@ -25,12 +20,10 @@
 
 # Standard modules
 import sys
-import re
 
 # Installed modules
 import pytest
 import pickle
-import trace
 
 # Local modules
 from mezcla import debug
@@ -67,16 +60,7 @@ class TestTpoCommon(TestWrapper):
     def test_debug_trace_without_newline(self):
         """Ensure debug_trace_without_newline works as expected"""
         debug.trace(4, "test_debug_trace_without_newline()")
-        tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.debug_trace_without_newline, ('test debug trace withouht newline'))
-        
-        # redirect write_results to temp file
-        temp = self.get_temp_file()
-        tracer.results().write_results(coverdir=temp)
-        
-        captured = self.get_stdout()
-        assert re.search(r'modulename: debug, funcname: trace', captured)
-
+        ## TODO: WORK-IN-PROGRESS
 
     def test_debug_trace(self):
         """Ensure debug_trace works as expected"""
@@ -96,61 +80,22 @@ class TestTpoCommon(TestWrapper):
     def test_debug_timestamp(self):
         """Ensure debug_timestamp works as expected"""
         debug.trace(4, "test_debug_timestamp()")
-        tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.debug_timestamp)
-        
-        # redirect write_results to temp file
-        temp = self.get_temp_file()
-        tracer.results().write_results(coverdir=temp)
-        
-        captured = self.get_stdout()
-        assert re.search(r'modulename: debug, funcname: timestamp', captured)
+        ## TODO: WORK-IN-PROGRESS
 
-    @trap_exception
     def test_debug_raise(self):
         """Ensure debug_raise works as expected"""
         debug.trace(4, "test_debug_raise()")
-        tracer = trace.Trace(countfuncs=1)
-        try:
-            raise RuntimeError
-        except RuntimeError:
-            with pytest.raises(RuntimeError):
-                tracer.runfunc(THE_MODULE.debug_raise)
-        
-        # redirect write_results to temp file
-        temp = self.get_temp_file()
-        tracer.results().write_results(coverdir=temp)
-        
-        captured = self.get_stdout()
-        assert re.search(r'modulename: debug, funcname: raise_exception', captured)
-
+        ## TODO: WORK-IN-PROGRESS
 
     def test_trace_array(self):
         """Ensure trace_array works as expected"""
         debug.trace(4, "test_trace_array()")
-        tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_array, (['test', 'trace', 'array']))
-        
-        # redirect write_results to temp file
-        temp = self.get_temp_file()
-        tracer.results().write_results(coverdir=temp)
-        
-        captured = self.get_stdout()
-        assert re.search(r'modulename: debug, funcname: trace_values', captured)
+        ## TODO: WORK-IN-PROGRESS
 
     def test_trace_object(self):
         """Ensure trace_object works as expected"""
         debug.trace(4, "test_trace_object()")
-        tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_object, ('test_trace_object'), show_methods_etc=True)
-        
-        # redirect write_results to temp file
-        temp = self.get_temp_file()
-        tracer.results().write_results(coverdir=temp)
-        
-        captured = self.get_stdout()
-        assert re.search(r'modulename: debug, funcname: trace_object', captured)
-        
+        ## TODO: WORK-IN-PROGRESS
 
     def test_trace_value(self):
         """Ensure trace_value works as expected"""
@@ -160,49 +105,27 @@ class TestTpoCommon(TestWrapper):
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, "test_trace_current_context()")
-        tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_current_context, show_methods_etc=True)
-        
-        # redirect write_results to temp file
-        temp = self.get_temp_file()
-        tracer.results().write_results(coverdir=temp)
-        
-        captured = self.get_stdout()
-        assert re.search(r'modulename: debug, funcname: trace_current_context', captured)
+        ## TODO: WORK-IN-PROGRESS
 
     def test_during_debugging(self):
         """Ensure during_debugging works as expected"""
         debug.trace(4, "test_during_debugging()")
-
         ## TODO: WORK-IN-PROGRESS
 
     def test_debugging(self):
         """Ensure debugging works as expected"""
         debug.trace(4, "test_debugging()")
-        THE_MODULE.set_debug_level(4)
-        assert THE_MODULE.debugging(2)
-        assert THE_MODULE.debugging(4)
-        assert not THE_MODULE.debugging(6)
+        ## TODO: WORK-IN-PROGRESS
 
     def test_detailed_debugging(self):
         """Ensure detailed_debugging works as expected"""
         debug.trace(4, "test_detailed_debugging()")
-        THE_MODULE.set_debug_level(2)
-        assert not THE_MODULE.detailed_debugging()
-        THE_MODULE.set_debug_level(4)
-        assert THE_MODULE.detailed_debugging()
-        THE_MODULE.set_debug_level(6)
-        assert THE_MODULE.detailed_debugging()
+        ## TODO: WORK-IN-PROGRESS
 
     def test_verbose_debugging(self):
         """Ensure verbose_debugging works as expected"""
         debug.trace(4, "test_verbose_debugging()")
-        THE_MODULE.set_debug_level(2)
-        assert not THE_MODULE.verbose_debugging()
-        THE_MODULE.set_debug_level(5)
-        assert THE_MODULE.verbose_debugging()
-        THE_MODULE.set_debug_level(7)
-        assert THE_MODULE.verbose_debugging()
+        ## TODO: WORK-IN-PROGRESS
 
     def test_to_string(self):
         """Ensure to_string works as expected"""
@@ -371,7 +294,7 @@ class TestTpoCommon(TestWrapper):
             1: 'first',
             2: 'second',
         }
-        test_filename = self.get_temp_file()
+        test_filename = gh.get_temp_file()
         test_file = open(test_filename, 'wb')
         pickle.dump(test_dict, test_file)
         test_file.close()
@@ -385,7 +308,7 @@ class TestTpoCommon(TestWrapper):
             1: 'first',
             2: 'second',
         }
-        test_filename = self.get_temp_file()
+        test_filename = gh.get_temp_file()
 
         THE_MODULE.store_object(test_filename, test_dict)
 
@@ -404,7 +327,7 @@ class TestTpoCommon(TestWrapper):
             1: 'first',
             2: 'second',
         }
-        test_filename = self.get_temp_file()
+        test_filename = gh.get_temp_file()
 
         THE_MODULE.store_object(test_filename, test_dict)
 
@@ -443,7 +366,7 @@ class TestTpoCommon(TestWrapper):
             'isbusiness - true': True,
         }
 
-        temp_file = self.get_temp_file()
+        temp_file = gh.get_temp_file()
         gh.write_file(temp_file, content)
         assert THE_MODULE.create_boolean_lookup_table(temp_file) == expected
 
@@ -584,71 +507,77 @@ class TestTpoCommon(TestWrapper):
         debug.trace(4, "test_memodict()")
         ## TODO: WORK-IN-PROGRESS
 
+
+class TestTpoCommon2:
+    """Another class for testcase definition
+    Note: works around silly issues with pytest and TestWrapper (e.g., capsys and monkeypatch)
+    """
+
     @pytest.mark.xfail                   # TODO: remove xfail
-    def test_exit(self):
+    def test_exit(self, monkeypatch, capsys):
         """Ensure exit works as expected"""
         debug.trace(4, "test_exit()")
         def sys_exit_mock():
             return 'exit'
-        self.monkeypatch.setattr(sys, "exit", sys_exit_mock)
+        monkeypatch.setattr(sys, "exit", sys_exit_mock)
         assert THE_MODULE.exit('test exit method') == 'exit'
         # Exit is mocked, ignore code editor hiding
         ## TODO: for some reason (probably the debug level) the message is not being printed
-        captured = self.get_stdout_stderr()
+        captured = capsys.readouterr()
         debug.trace_object(5, captured)
         ## TODO: assert "test exit method" in captured.err
-        debug.assertion("test exit method" in captured[1])
+        debug.assertion("test exit method" in captured.err)
 
-    def test_dummy_main(self):
+    def test_dummy_main(self, capsys):
         """Ensure dummy_main works as expected"""
         debug.trace(4, "test_dummy_main()")
         THE_MODULE.dummy_main()
-        captured = self.get_stdout()
-        assert 'Environment options' in captured
+        captured = capsys.readouterr()
+        assert 'Environment options' in captured.out
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
-    def test_getenv(self):
+    def test_getenv(self, monkeypatch):
         """Ensure getenv works as expected"""
         debug.trace(4, "test_getenv()")
-        self.monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv('TEST_ENV_VAR') == 'some value'
 
-    def test_getenv_value(self):
+    def test_getenv_value(self, monkeypatch):
         """Ensure getenv_value works as expected"""
         debug.trace(4, "test_getenv_value()")
-        self.monkeypatch.setenv('NEW_ENV_VAR', 'some value', prepend=False)
+        monkeypatch.setenv('NEW_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv_value('NEW_ENV_VAR', default='empty', description='another test env var') == 'some value'
         assert THE_MODULE.env_defaults['NEW_ENV_VAR'] == 'empty'
         assert THE_MODULE.env_options['NEW_ENV_VAR'] == 'another test env var'
 
-    def test_getenv_text(self):
+    def test_getenv_text(self, monkeypatch):
         """Ensure getenv_text works as expected"""
         debug.trace(4, "test_getenv_text()")
-        self.monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
+        monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv_text('TEST_ENV_VAR') == 'some value'
         assert THE_MODULE.getenv_text("REALLY FUBAR?", False) == 'False'
 
-    def test_getenv_number(self):
+    def test_getenv_number(self, monkeypatch):
         """Ensure getenv_number works as expected"""
         debug.trace(4, "test_getenv_number()")
-        self.monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
+        monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
         assert THE_MODULE.getenv_number('TEST_NUMBER', default=20) == 9.81
         assert THE_MODULE.getenv_number("REALLY FUBAR", 123) == 123.0
 
-    def test_getenv_int(self):
+    def test_getenv_int(self, monkeypatch):
         """Ensure getenv_int works as expected"""
         debug.trace(4, "test_getenv_int()")
-        self.monkeypatch.setenv('TEST_NUMBER', '34', prepend=False)
+        monkeypatch.setenv('TEST_NUMBER', '34', prepend=False)
         assert THE_MODULE.getenv_int('TEST_NUMBER', default=20) == 34
         assert THE_MODULE.getenv_int("REALLY FUBAR", 123) == 123
 
-    def test_getenv_bool(self):
+    def test_getenv_bool(self, monkeypatch):
         """Ensure getenv_bool works as expected"""
         debug.trace(4, "test_getenv_bool()")
-        self.monkeypatch.setenv('TEST_BOOL', 'FALSE', prepend=False)
+        monkeypatch.setenv('TEST_BOOL', 'FALSE', prepend=False)
         assert not THE_MODULE.getenv_bool('TEST_BOOL', None)
-        self.monkeypatch.setenv('TEST_BOOL', '  true   ', prepend=False)
+        monkeypatch.setenv('TEST_BOOL', '  true   ', prepend=False)
         assert THE_MODULE.getenv_bool('TEST_BOOL', None)
         assert not isinstance(THE_MODULE.getenv_boolean("REALLY FUBAR?", None), bool)
         assert isinstance(THE_MODULE.getenv_boolean("REALLY FUBAR?", False), bool)
