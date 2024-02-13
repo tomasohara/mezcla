@@ -38,7 +38,7 @@ from stop_words import get_stop_words
 
 # Local modules
 from mezcla import debug
-from mezcla.my_regex import my_re
+from mezcla.my_regex import my_re, REGEX_TRACE_LEVEL
 from mezcla import system
 from mezcla.tfidf.config import BASE_DEBUG_LEVEL as BDL
 from mezcla.tfidf.dockeyword import DocKeyword
@@ -338,6 +338,12 @@ class Preprocessor(object):
             result = self.full_yield_keywords(raw_text, document=document)
         return result
 
+    def re_search(self, regex, text):
+        """Invoke my_re.search with higher tracing"""
+        debug.reference_var(self)
+        TRACE_LEVEL = (REGEX_TRACE_LEVEL + 1)
+        return my_re.search(regex, text, base_trace_level=TRACE_LEVEL)
+    
     def full_yield_keywords(self, raw_text, document=None):
         """Full-featured version of keyword generation, including support for offsets"""
         if sys.version_info[0] < 3:  # python2 support
@@ -385,13 +391,13 @@ class Preprocessor(object):
                     for word_list in text_in_chunks:
                         word_text = ' '.join([self.stem_term(w.text) for w in word_list])
                         ## OLD: if (SPLIT_WORDS or (not re.search(BAD_WORD_PUNCT_REGEX, word_text))):
-                        exclude = my_re.search(BAD_WORD_PUNCT_REGEX, word_text)
+                        exclude = self.re_search(BAD_WORD_PUNCT_REGEX, word_text)
                         if TFIDF_ALLOW_PUNCT and exclude:
                             # Include unless punctuation starts or ends the text or is after a space
                             # TODO2: add BAD_NGRAM_PUNCT_REGEX (e.g., "[;!?]")
-                            exclude = (my_re.search("^" + BAD_WORD_PUNCT_REGEX, word_text) or
-                                       my_re.search(BAD_WORD_PUNCT_REGEX + "$", word_text) or
-                                       my_re.search(" " + BAD_WORD_PUNCT_REGEX, word_text))
+                            exclude = (self.re_search("^" + BAD_WORD_PUNCT_REGEX, word_text) or
+                                       self.re_search(BAD_WORD_PUNCT_REGEX + "$", word_text) or
+                                       self.re_search(" " + BAD_WORD_PUNCT_REGEX, word_text))
                         if not exclude:
                             word_global_start = sentence.start + word_list[0].start
                             word_global_end = sentence.start + word_list[-1].end

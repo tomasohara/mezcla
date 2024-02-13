@@ -12,17 +12,20 @@
 """Tests for misc_utils module"""
 
 # Standard packages
-## NOTE: this is empty for now
+## TODO: from collections import defaultdict
 
 # Installed packages
 import pytest
 
 # Local packages
+from mezcla.unittest_wrapper import TestWrapper
 from mezcla import glue_helpers as gh
 from mezcla import debug
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:                        global module object
+#    TestIt.script_module:              path to file
 import mezcla.misc_utils as THE_MODULE
 
 # Make sure more_itertools available
@@ -33,13 +36,13 @@ except:
     system.print_exception_info("more_itertools import")
     has_more_itertools = False
 
-class TestMiscUtils:
+class TestMiscUtils(TestWrapper):
     """Class for test case definitions"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_transitive_closure(self):
         """Ensure transitive_closure works as expected"""
         debug.trace(4, "test_transitive_closure()")
-
         actual = THE_MODULE.transitive_closure([(1, 2), (2, 3), (3, 4)])
         expected = set([(1, 2), (1, 3), (1, 4), (2, 3), (3, 4), (2, 4)])
         assert actual == expected
@@ -81,14 +84,13 @@ class TestMiscUtils:
             449, 457, 461, 463, 467, 479, 487, 491, 499,
             503, 509, 521, 523, 541,
         ]
-
-        assert all([THE_MODULE.is_prime(n) for n in FIRST_100_PRIMES])
-        assert all([(not THE_MODULE.is_prime(n)) for n in range(FIRST_100_PRIMES[-1])  if n not in FIRST_100_PRIMES])
+        assert all(THE_MODULE.is_prime(n) for n in FIRST_100_PRIMES)
+        assert all((not THE_MODULE.is_prime(n)) for n in range(FIRST_100_PRIMES[-1])  if n not in FIRST_100_PRIMES)
 
     def test_fibonacci(self):
         """Ensure fibonacci works as expected"""
         debug.trace(4, "test_fibonacci()")
-        assert THE_MODULE.fibonacci(-5) == []
+        self.do_assert(not THE_MODULE.fibonacci(-5))
         assert THE_MODULE.fibonacci(1) == [0]
         assert THE_MODULE.fibonacci(10) == [0, 1, 1, 2, 3, 5, 8]
 
@@ -122,10 +124,11 @@ class TestMiscUtils:
         assert THE_MODULE.unzip(zip(), 4) == [[], [], [], []]
         assert THE_MODULE.unzip(zip(), 4) != [[], []]
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_current_frame(self):
         """Ensure get_current_frame works as expected"""
         debug.trace(4, "test_get_current_frame()")
-        ## TODO: WORK-IN-PROGRESS
+        self.do_assert(False, "TODO: code the test")
 
     def test_eval_expression(self):
         """Ensure eval_expression works as expected"""
@@ -133,22 +136,28 @@ class TestMiscUtils:
         assert THE_MODULE.eval_expression("len([123, 321]) == 2")
         assert not THE_MODULE.eval_expression("'helloworld' == 2")
 
-    def test_trace_named_object(self, capsys):
+    def test_trace_named_object(self):
         """Ensure trace_named_object works as expected"""
         debug.trace(4, "test_trace_named_object()")
         # With level -1 we ensure that the trace will be printed
         THE_MODULE.trace_named_object(-1, "sys.argv")
-        captured = capsys.readouterr()
-        assert "sys.argv" in captured.err
+        ## OLD
+        ## captured = capsys.readouterr()
+        ## assert "sys.argv" in captured.err
+        self.do_assert("sys.argv" in self.get_stderr())
 
-    def test_trace_named_objects(self, capsys):
+    def test_trace_named_objects(self):
         """Ensure trace_named_objects works as expected"""
         debug.trace(4, "test_trace_named_objects()")
         # With level -1 we ensure that the trace will be printed
         THE_MODULE.trace_named_objects(-1, "[len(sys.argv), sys.argv]")
-        captured = capsys.readouterr()
-        assert "len(sys.argv)" in captured.err
-        assert "sys.argv" in captured.err
+        ## OLD:
+        ## captured = capsys.readouterr()
+        ## assert "len(sys.argv)" in captured.err
+        ## assert "sys.argv" in captured.err
+        stderr = self.get_stderr()
+        self.do_assert("len(sys.argv)" in stderr)
+        self.do_assert("sys.argv" in stderr)
 
     @pytest.mark.skipif(not has_more_itertools, reason="Unable to load more_itertools")
     def test_exactly1(self):
@@ -179,11 +188,16 @@ class TestMiscUtils:
 
         assert THE_MODULE.string_diff(STRING_ONE, STRING_TWO) == EXPECTED_DIFF
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_elide_string_values(self):
         """Ensure elide_string_values works as expected"""
         debug.trace(4, "test_elide_string_values()")
-        ## TODO: WORK-IN-PROGRESS
+        self.do_assert(False, "TODO: code the test")
 
+    def test_misc(self):
+        """Test miscellaneous stuff"""
+        debug.trace(4, "test_misc()")
+        assert("exactly_n" in dir(more_itertools))
 
 if __name__ == '__main__':
     debug.trace_current_context()

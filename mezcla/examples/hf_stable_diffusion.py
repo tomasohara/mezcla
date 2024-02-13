@@ -164,8 +164,9 @@ def init():
 def show_gpu_usage(level=TL.DETAILED):
     """Show usage for GPU memory, etc.
     TODO: support other types besides NVidia"""
-    debug.trace(level, "GPU usage")
-    debug.trace(level, gh.run("nvidia-smi"))
+    if USE_HF_API:
+        debug.trace(level, "GPU usage")
+        debug.trace(level, gh.run("nvidia-smi"))
 
 #-------------------------------------------------------------------------------
 # Main Stable Diffusion support

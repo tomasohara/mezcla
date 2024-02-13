@@ -57,7 +57,6 @@ class TestIt(TestWrapper):
     #
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
-    # TODO: use TestIt2 if capsys needed
 
     ## TODO: optional setup methods
     ##
@@ -101,6 +100,14 @@ class TestIt(TestWrapper):
         ## ex: self.do_assert(THE_MODULE.TODO_function() == TODO_value)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_whatever(self):
+        """TODO: flesh out test for whatever (capsys-like)"""
+        debug.trace(4, f"TestIt2.test_whatever(); self={self}")
+        THE_MODULE.TODO_whatever()
+        captured = self.get_stderr()
+        self.do_assert("whatever" in captured, "TODO_whatever trace")
+        return
 
     ## TODO: optional cleanup methods
     ##
@@ -116,26 +123,6 @@ class TestIt(TestWrapper):
     ##     super().tearDown()
     ##     ...
     ##     return
-
-class TestIt2:
-    """Class for API-based testcase definition
-    Note: Separate class avoids error with pytest due to inheritance with unittest.TestCase via TestWrapper (e.g., capsys support)"""
-
-    def do_assert(self, condition, message=None):
-        """Wrapper around assert"""
-        ## TODO2: put this in new AltTestWrapper
-        debug.trace(7, f"TestIt2.do_assert({condition}, msg={message})")
-        assert condition, message
-
-    @pytest.mark.xfail                   # TODO: remove xfail
-    def test_whatever(self, capsys):
-        """TODO: flesh out test for whatever"""
-        debug.trace(4, f"TestIt2.test_whatever(); self={self}")
-        THE_MODULE.TODO_whatever()
-        captured = capsys.readouterr()
-        self.do_assert("whatever" in captured.err, "TODO_whatever trace")
-        return
-
 
 #------------------------------------------------------------------------
 

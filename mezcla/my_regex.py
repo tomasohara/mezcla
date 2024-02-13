@@ -144,6 +144,7 @@ class regex_wrapper():
         self.match_result = re.search(regex, text, flags)
         if self.match_result:
             debug.trace_fmt(base_trace_level, "match: {m!r}; regex: {r!r}", m=self.grouping(), r=regex)
+            debug.trace_object(base_trace_level + 1, self.match_result)
         return self.match_result
 
     def match(self, regex, text, flags=0, base_trace_level=None):
@@ -157,6 +158,7 @@ class regex_wrapper():
         self.match_result = re.match(regex, text, flags)
         if self.match_result:
             debug.trace_fmt(base_trace_level, "match: {m!r}; regex: {r!r}", m=self.grouping(), r=regex)
+            debug.trace_object(base_trace_level + 1, self.match_result)
         return self.match_result
 
     def get_match(self):

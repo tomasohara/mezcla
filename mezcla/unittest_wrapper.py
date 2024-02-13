@@ -185,7 +185,7 @@ class TestWrapper(unittest.TestCase):
         """Per-class initialization: make sure script_module set properly
         Note: Optional FILENAME is path for testing script and MODULE the imported object for tested script
         """
-        debug.trace(6, f"TestWrapper.setupClass({cls}, fn={filename}, mod={module})")
+        debug.trace(6, f"TestWrapper.setUpClass({cls}, fn={filename}, mod={module})")
         super().setUpClass()
         cls.class_setup = True
         debug.trace_object(7, cls, "TestWrapper class")
@@ -272,7 +272,7 @@ class TestWrapper(unittest.TestCase):
     @classmethod
     def set_module_info(cls, test_filename, module_object=None):
         """Sets both script_module and script_path
-        Note: normally invoked in setupClass method
+        Note: normally invoked in setUpClass method
         Usage: cls.set_module_info(__file__, THE_MODULE)
         """
         debug.trace(7, f'set_module_info({test_filename}, {module_object})')
@@ -287,7 +287,7 @@ class TestWrapper(unittest.TestCase):
         # Note: By default, each test gets its own temp file.
         debug.trace(6, "TestWrapper.setUp()")
         if not self.class_setup:
-            debug.trace(5, "Warning: invoking setupClass in setup")
+            debug.trace(5, "Warning: invoking setUpClass in setup")
             TestWrapper.setUpClass(self.__class__)
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
@@ -307,7 +307,7 @@ class TestWrapper(unittest.TestCase):
         debug.trace_object(6, self, "TestWrapper instance")
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
-                   out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None):
+                   out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None, skip_stdin=None):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
         not specified, they  are derived from self.temp_file. The optional POST_OPTIONS
@@ -315,7 +315,8 @@ class TestWrapper(unittest.TestCase):
         Notes:
         - OPTIONS uses quotes around shell special characters used (e.g., '<', '>', '|')
         - issues warning if script invocation leads to error
-        - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)"""
+        - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)
+        - if SKIP_STDIN, then - omitted from command line"""
         debug.trace_fmtd(trace_level + 1,
                          "TestWrapper.run_script(opts={opts!r}, data={df}, log={lf}, lvl={lvl}, out={of}, env={env}, stdin={stdin}, post={post}, back={back})",
                          opts=options, df=data_file, lf=log_file, lvl=trace_level, of=out_file,
@@ -326,12 +327,14 @@ class TestWrapper(unittest.TestCase):
             env_options = ""
         if post_options is None:
             post_options = ""
+        if skip_stdin is None:
+            skip_stdin = False
 
         # Derive the full paths for data file and log, and then invoke script.
         # TODO: derive from temp base and data file name?;
         # TODO1: derive default for uses_stdin based on use of filename argment (e.g., from usage)
         uses_stdin_false = ((uses_stdin is not None) and not bool(uses_stdin))
-        data_path = ("" if uses_stdin_false else "-")
+        data_path = ("" if (skip_stdin or uses_stdin_false) else "-")
         if data_file is not None:
             data_path = (gh.resolve_path(data_file) if len(data_file) else data_file)
         if not log_file:
@@ -367,7 +370,7 @@ class TestWrapper(unittest.TestCase):
         if output.endswith("\n"):
             output = output[:-1]
         debug.trace_fmtd(trace_level, "output: {{\n{out}\n}}",
-                         out=gh.indent_lines(output), max_len=2048)
+                         out=gh.indent_lines(output), max_len=4096)
 
         # Make sure no python or bash errors. For example,
         #   "SyntaxError: invalid syntax" and "bash: python: command not found"
@@ -375,7 +378,7 @@ class TestWrapper(unittest.TestCase):
         error_found = my_re.search(r"(\S+error:)|(no module)|(command not found)",
                                    log_contents.lower())
         debug.assertion(not error_found)
-        debug.trace_expr(trace_level + 1, log_contents, max_len=2048)
+        debug.trace_expr(trace_level + 1, log_contents, max_len=4096)
 
         # Do sanity check for python exceptions
         traceback_found = my_re.search("Traceback.*most recent call", log_contents)

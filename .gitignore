@@ -40,7 +40,7 @@
 
 # Old or archived files
 **/old
-**/archive
+## OLD: **/archive
 
 # Output, log-file directories, etc.
 **/log-files
