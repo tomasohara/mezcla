@@ -7,11 +7,6 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_tpo_common.py
 #
-# Warning:
-# - *** The tpo_common.py module is being phased out. Although there are
-#   a bunch of "work-in-progress" tests below, they are low priority because
-#   most are addressed by test_system.py or test_debug.py.
-#
 # TODO:
 # - Address commonly used debugging functions (e.g., debug_print) by redirecting output (via remapping sys.stderr to a file) and then checking file contents.
 # - add tests for normalize_unicode, ensure_unicode and other problematic functions
