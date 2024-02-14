@@ -77,13 +77,17 @@ def main():
     debug.trace_expr(5, url, video_id)
 
     # Download the transcript and print using YouTubeLike-format
-    # note: youtube_transcript_api 
-    transcript = ytt_api.YouTubeTranscriptApi.get_transcript(video_id)
+    # note: youtube_transcript_api
     print(misc_utils.get_formatted_date())
     print("")
     print(url)
     print("")
-    print(YouTubeLikeFormatter().format_transcript(transcript))
+    try:
+        transcript = ytt_api.YouTubeTranscriptApi.get_transcript(video_id)
+        print(YouTubeLikeFormatter().format_transcript(transcript))
+    except:
+        system.print_exception_info("transcript access")
+        print("n/a")
 
     return
 

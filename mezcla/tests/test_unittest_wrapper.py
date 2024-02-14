@@ -33,16 +33,16 @@ class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_usage(self):
         """Make sure usage warns that not intended for command line and that no stdout"""
         debug.trace(4, f"TestIt.test_usage(); self={self}")
         log_file = self.temp_file + ".log"
-        output = self.run_script(log_file=log_file)
-        log_contents = system.read_file(log_file)
-        self.do_assert(my_re.search(r"Warning: not intended.*command-line", log_contents))
-        debug.trace_expr(5, log_contents)
+        ## BAD: output = self.run_script(log_file=log_file)
+        output = self.run_script(env_options="DEBUG_LEVEL=4", log_file=log_file)
         self.do_assert(not output.strip())
+        log_contents = system.read_file(log_file)
+        debug.trace_expr(5, log_contents)
+        self.do_assert(my_re.search(r"Warning: not intended.*command-line", log_contents))
         return
 
 class TestIt2:
