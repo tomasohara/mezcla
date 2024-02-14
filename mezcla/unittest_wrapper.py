@@ -5,7 +5,7 @@
 # Notes:
 # - Based on template.py used in older test scripts
 # - Creates per-test temp file, based on same class-wide temp-base file.
-# - To treat temp-base as a subdirectory, set use_temp_base_dir to True in
+# - To treat temp-base as a subdirectory, set use_temp_base_dir to True in 
 #   class member initialiation section.
 # - Changes to temporary directory/file should be synchronized with ../main.py.
 # - Overriding the temporary directory can be handy during debugging; however,
@@ -31,7 +31,7 @@
 #   class TestIt(TestWrapper):
 #       """Class for testcase definition"""
 #       script_module = TestWrapper.derive_tested_module_name(__file__)
-#
+#  
 #       def test_simple_data(self):
 #           """Make sure simple data sample processed OK"""
 #           system.write_file(self.temp_file, "really fubar")
@@ -91,7 +91,7 @@ def get_temp_dir(keep=None):
     # NOTE: Unused function
     if keep is None:
         keep = KEEP_TEMP
-    dir_path = tempfile.NamedTemporaryFile(delete=not keep).name
+    dir_path = tempfile.NamedTemporaryFile(delete=(not keep)).name
     gh.full_mkdir(dir_path)
     debug.trace(5, f"get_temp_dir() => {dir_path}")
     return dir_path
@@ -116,7 +116,7 @@ def trap_exception(function):
             raise
         except:
             system.print_exception_info(function.__name__)
-            assert False
+            assert(False)
         return result
     #
     debug.trace(7, f"trap_exception() => {gh.elide(wrapper)}")
@@ -167,11 +167,10 @@ class TestWrapper(unittest.TestCase):
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
     temp_file = None
-    temp_file_count = 0
     use_temp_base_dir = system.is_directory(temp_base)
     test_num = 1
     class_setup = False
-
+    
     ## TEST:
     ## NOTE: leads to pytest warning. See
     ##   https://stackoverflow.com/questions/62460557/cannot-collect-test-class-testmain-because-it-has-a-init-constructor-from
@@ -182,7 +181,7 @@ class TestWrapper(unittest.TestCase):
     ##     debug.trace_object(7, self, label="TestWrapper instance")
     ##
     ## __test__ = False                 # make sure not assumed test
-
+        
     @classmethod
     def setUpClass(cls, filename=None, module=None):
         """Per-class initialization: make sure script_module set properly
@@ -226,6 +225,8 @@ class TestWrapper(unittest.TestCase):
         if filename:
             cls.set_module_info(filename, module_object=module)
 
+        return
+
     @staticmethod
     def derive_tested_module_name(test_filename):
         """Derive the name of the module being tested from TEST_FILENAME. Used as follows:
@@ -238,7 +239,7 @@ class TestWrapper(unittest.TestCase):
         module = my_re.sub(r"^test_", "", module)
         debug.trace_fmtd(5, "derive_tested_module_name({f}) => {m}",
                          f=test_filename, m=module)
-        return module
+        return (module)
 
     @staticmethod
     def get_testing_module_name(test_filename, module_object=None):
@@ -252,15 +253,15 @@ class TestWrapper(unittest.TestCase):
         module_name = my_re.sub(r"^test_", "", module_name)
         package_name = THIS_PACKAGE
         if module_object is not None:
-            package_name = getattr(module_object, "__package__", "")
-            debug.trace_expr(4, package_name)
+           package_name = getattr(module_object, "__package__", "")
+           debug.trace_expr(4, package_name)
         if package_name:
             full_module_name = package_name + "." + module_name
         else:
             full_module_name = module_name
         debug.trace_fmtd(4, "get_testing_module_name({f}, [{mo}]) => {m}",
                          f=test_filename, m=full_module_name, mo=module_object)
-        return full_module_name
+        return (full_module_name)
 
     @staticmethod
     def get_module_file_path(test_filename):
@@ -281,7 +282,8 @@ class TestWrapper(unittest.TestCase):
         debug.trace(7, f'set_module_info({test_filename}, {module_object})')
         cls.script_module = cls.get_testing_module_name(test_filename, module_object)
         cls.script_file = cls.get_module_file_path(test_filename)
-
+        return 
+    
     def setUp(self):
         """Per-test initializations
         Notes:
@@ -311,6 +313,7 @@ class TestWrapper(unittest.TestCase):
         TestWrapper.test_num += 1
 
         debug.trace_object(6, self, "TestWrapper instance")
+        return
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
                    out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None, skip_stdin=None):
@@ -420,7 +423,7 @@ class TestWrapper(unittest.TestCase):
                 # ex: self.do_assert(not my_re.search(r"cat|dog", description))  # no pets
                 # Isolate condition
                 cond = my_re.sub(r"^\s*\S+\.do_assert\((.*)\)", r"\1", statement)
-                # Get expression proper, removing optional comments and semicolon
+                # Get expression proper, removing optional comments and semicolon 
                 expr = my_re.sub(r";?\s*#.*$", "", cond)
                 # Strip optional message
                 qual = ""
@@ -463,12 +466,12 @@ class TestWrapper(unittest.TestCase):
         stdout, stderr = self.capsys.readouterr()
         debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n")
         return stdout, stderr
-
+        
     def get_stdout(self):
         """Get currently captured standard output (see get_stdout_stderr)"""
         stdout, _stderr = self.get_stdout_stderr()
         return stdout
-
+        
     def get_stderr(self):
         """Get currently captured standard error (see get_stdout_stderr)"""
         _stdout, stderr = self.get_stdout_stderr()
@@ -478,29 +481,8 @@ class TestWrapper(unittest.TestCase):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         debug.trace(6, "TestWrapper.tearDown()")
         if not KEEP_TEMP:
-            gh.run(f"rm -vf {self.temp_file}")
-            for i in range(self.temp_file_count):
-                gh.run(f"rm -vf {self.temp_file}-{i}")
-        self.temp_file_count = 0
-
-    def get_temp_file(self, delete=None):
-        """return name of temporary file based on self.temp_file, optionally with DELETE"""
-        # Note: delete defaults to False if detailed debugging
-        # TODO: allow for overriding other options to NamedTemporaryFile
-        if delete is None and debug.detailed_debugging():
-            delete = False
-        temp_file_name = f"{self.temp_file}-{self.temp_file_count}"
-        self.temp_file_count += 1
-        debug.assertion(not delete, "Support for delete not implemented")
-        debug.format_value(f"get_temp_file() => {temp_file_name}", 5)
-        return temp_file_name
-
-    def create_temp_file(self, contents,  binary=False):
-        """Create temporary file with CONTENTS and return full path"""
-        temp_filename = self.get_temp_file()
-        system.write_file(temp_filename, contents, binary=binary)
-        debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
-        return temp_filename
+            gh.run("rm -vf {file}*", file=self.temp_file)
+        return
 
     @classmethod
     def tearDownClass(cls):
@@ -513,11 +495,12 @@ class TestWrapper(unittest.TestCase):
             else:
                 gh.run("rm -vf {base}*", base=cls.temp_base)
         super().tearDownClass()
+        return
 
 ## TODO: TestWrapper.assert = TestWrapper.do_assert
 
 #-------------------------------------------------------------------------------
-
+    
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_DETAILED)
     debug.trace(TL.USUAL, "Warning: not intended for command-line use\n")
