@@ -9,6 +9,7 @@
 # - ** It can be confusing debugging script that use run, because the trace level
 #  is raised by default. To disable this, set the SUB_DEBUG_LEVEL as follows:
 #     l=5; DEBUG_LEVEL=$l SUB_DEBUG_LEVEL=$l merge_files.py ...
+# - Also see ALLOW_SUBCOMMAND_TRACING usage below and in unittest_wrapper.py.
 #
 # TODO:
 # - Add more functions to facilitate command-line scripting (check bash scripts for commonly used features).
