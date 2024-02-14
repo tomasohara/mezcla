@@ -11,6 +11,10 @@
 # - Overriding the temporary directory can be handy during debugging; however,
 #   you might need to specify different ones if you invoke helper scripts. See
 #   tests/test_extract_company_info.py for an example.
+# - It can be confusing debugging tests that use run_script, because the trace level
+#   is raised by default. To disable this, set the SUB_DEBUG_LEVEL as follows:
+#      l=5; DEBUG_LEVEL=$l SUB_DEBUG_LEVEL=$l pytest -s tests/test_spell.py
+#   See glue_helper.py for implementation along with related ALLOW_SUBCOMMAND_TRACING.
 # TODO:
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 # - Clarify that this can co-exist with pytest-based tests (see tests/test_main.py).
@@ -39,7 +43,6 @@
 #-------------------------------------------------------------------------------
 # TODO:
 # - Add method to invoke unittest.main(), so clients don't need to import unittest.
-# - Clarify how ALLOW_SUBCOMMAND_TRACING affects tests that invoke external scripts.
 #
 
 """Unit test support class"""
@@ -190,7 +193,7 @@ class TestWrapper(unittest.TestCase):
         cls.class_setup = True
         debug.trace_object(7, cls, "TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
-        if cls.script_module is not None:
+        if (cls.script_module is not None):
             # Try to pull up usage via python -m mezcla.xyz --help
             help_usage = gh.run("python -m '{mod}' --help", mod=cls.script_module)
             debug.assertion("No module named" not in help_usage,
@@ -298,10 +301,13 @@ class TestWrapper(unittest.TestCase):
         else:
             default_temp_file = self.temp_base + "-test-"
         default_temp_file += str(TestWrapper.test_num)
+
+        # Get new temp file and delete existing file and variants based on temp_file_count,
+        # such as /tmp/test-2, /tmp/test-2-1, and /tmp/test-2-2 (but not /tmp/test-[13]*).
         self.temp_file = system.getenv_text("TEMP_FILE", default_temp_file)
         gh.delete_existing_file(f"{self.temp_file}")
-        for i in range(10):
-            gh.delete_existing_file(f"{self.temp_file}-{i}")
+        for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
+            gh.delete_existing_file(f)
         TestWrapper.test_num += 1
 
         debug.trace_object(6, self, "TestWrapper instance")
