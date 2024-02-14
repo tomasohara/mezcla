@@ -11,6 +11,10 @@
 # - Overriding the temporary directory can be handy during debugging; however,
 #   you might need to specify different ones if you invoke helper scripts. See
 #   tests/test_extract_company_info.py for an example.
+# - It can be confusing debugging tests that use run_script, because the trace level
+#   is raised by default. To disable this, set the SUB_DEBUG_LEVEL as follows:
+#      l=5; DEBUG_LEVEL=$l SUB_DEBUG_LEVEL=$l pytest -s tests/test_spell.py
+#   See glue_helper.py for implementation along with related ALLOW_SUBCOMMAND_TRACING.
 # TODO:
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 # - Clarify that this can co-exist with pytest-based tests (see tests/test_main.py).
@@ -39,7 +43,6 @@
 #-------------------------------------------------------------------------------
 # TODO:
 # - Add method to invoke unittest.main(), so clients don't need to import unittest.
-# - Clarify how ALLOW_SUBCOMMAND_TRACING affects tests that invoke external scripts.
 #
 
 """Unit test support class"""
@@ -184,7 +187,7 @@ class TestWrapper(unittest.TestCase):
         """Per-class initialization: make sure script_module set properly
         Note: Optional FILENAME is path for testing script and MODULE the imported object for tested script
         """
-        debug.trace(6, f"TestWrapper.setupClass({cls}, fn={filename}, mod={module})")
+        debug.trace(6, f"TestWrapper.setUpClass({cls}, fn={filename}, mod={module})")
         super().setUpClass()
         cls.class_setup = True
         debug.trace_object(7, cls, "TestWrapper class")
@@ -273,7 +276,7 @@ class TestWrapper(unittest.TestCase):
     @classmethod
     def set_module_info(cls, test_filename, module_object=None):
         """Sets both script_module and script_path
-        Note: normally invoked in setupClass method
+        Note: normally invoked in setUpClass method
         Usage: cls.set_module_info(__file__, THE_MODULE)
         """
         debug.trace(7, f'set_module_info({test_filename}, {module_object})')
@@ -289,8 +292,8 @@ class TestWrapper(unittest.TestCase):
         # Note: By default, each test gets its own temp file.
         debug.trace(6, "TestWrapper.setUp()")
         if not self.class_setup:
-            debug.trace(5, "Warning: invoking setupClass in setup")
-            TestWrapper.setupClass(self.__class__)
+            debug.trace(5, "Warning: invoking setUpClass in setup")
+            TestWrapper.setUpClass(self.__class__)
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
         # The temp file is an extension of temp-base file by default.
@@ -300,15 +303,20 @@ class TestWrapper(unittest.TestCase):
         else:
             default_temp_file = self.temp_base + "-test-"
         default_temp_file += str(TestWrapper.test_num)
+
+        # Get new temp file and delete existing file and variants based on temp_file_count,
+        # such as /tmp/test-2, /tmp/test-2-1, and /tmp/test-2-2 (but not /tmp/test-[13]*).
         self.temp_file = system.getenv_text("TEMP_FILE", default_temp_file)
-        gh.delete_existing_file(self.temp_file)
+        gh.delete_existing_file(f"{self.temp_file}")
+        for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
+            gh.delete_existing_file(f)
         TestWrapper.test_num += 1
 
         debug.trace_object(6, self, "TestWrapper instance")
         return
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
-                   out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None):
+                   out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None, skip_stdin=None):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
         not specified, they  are derived from self.temp_file. The optional POST_OPTIONS
@@ -316,7 +324,8 @@ class TestWrapper(unittest.TestCase):
         Notes:
         - OPTIONS uses quotes around shell special characters used (e.g., '<', '>', '|')
         - issues warning if script invocation leads to error
-        - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)"""
+        - if USES_STDIN, requires explicit empty string for DATA_FILE to avoid use of - (n.b., as a precaution against hangups)
+        - if SKIP_STDIN, then - omitted from command line"""
         debug.trace_fmtd(trace_level + 1,
                          "TestWrapper.run_script(opts={opts!r}, data={df}, log={lf}, lvl={lvl}, out={of}, env={env}, stdin={stdin}, post={post}, back={back})",
                          opts=options, df=data_file, lf=log_file, lvl=trace_level, of=out_file,
@@ -327,12 +336,14 @@ class TestWrapper(unittest.TestCase):
             env_options = ""
         if post_options is None:
             post_options = ""
+        if skip_stdin is None:
+            skip_stdin = False
 
         # Derive the full paths for data file and log, and then invoke script.
         # TODO: derive from temp base and data file name?;
         # TODO1: derive default for uses_stdin based on use of filename argment (e.g., from usage)
         uses_stdin_false = ((uses_stdin is not None) and not bool(uses_stdin))
-        data_path = ("" if uses_stdin_false else "-")
+        data_path = ("" if (skip_stdin or uses_stdin_false) else "-")
         if data_file is not None:
             data_path = (gh.resolve_path(data_file) if len(data_file) else data_file)
         if not log_file:
@@ -368,7 +379,7 @@ class TestWrapper(unittest.TestCase):
         if output.endswith("\n"):
             output = output[:-1]
         debug.trace_fmtd(trace_level, "output: {{\n{out}\n}}",
-                         out=gh.indent_lines(output), max_len=2048)
+                         out=gh.indent_lines(output), max_len=4096)
 
         # Make sure no python or bash errors. For example,
         #   "SyntaxError: invalid syntax" and "bash: python: command not found"
@@ -376,7 +387,7 @@ class TestWrapper(unittest.TestCase):
         error_found = my_re.search(r"(\S+error:)|(no module)|(command not found)",
                                    log_contents.lower())
         debug.assertion(not error_found)
-        debug.trace_expr(trace_level + 1, log_contents, max_len=2048)
+        debug.trace_expr(trace_level + 1, log_contents, max_len=4096)
 
         # Do sanity check for python exceptions
         traceback_found = my_re.search("Traceback.*most recent call", log_contents)

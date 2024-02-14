@@ -4,9 +4,12 @@
 # available in Unix scripting (e.g., basename command).
 #
 # NOTE:
-# - *** This module is being phased out with important functionality being moved elsewhere.
 # - Some of the utilities are specific to Unix (e.g., full_mkdir and real_path). In
 #   contrast, system.py attempts to be more cross platform.
+# - ** It can be confusing debugging script that use run, because the trace level
+#  is raised by default. To disable this, set the SUB_DEBUG_LEVEL as follows:
+#     l=5; DEBUG_LEVEL=$l SUB_DEBUG_LEVEL=$l merge_files.py ...
+# - Also see ALLOW_SUBCOMMAND_TRACING usage below and in unittest_wrapper.py.
 #
 # TODO:
 # - Add more functions to facilitate command-line scripting (check bash scripts for commonly used features).
@@ -233,13 +236,19 @@ def resolve_path(filename, base_dir=None, heuristic=False):
     return path
 
 
-def form_path(*filenames):
+def form_path(*filenames, create=False):
     """Wrapper around os.path.join over FILENAMEs (with tracing)
     Note: includes sanity check about absolute filenames except for first
-    Warning: This will be deprecated: uses system.form_path instead.
+    If CREATE, then the directory for the path is created if needed
+    Warning: This might be deprecated: use system.form_path instead.
     """
     ## TODO3: return system.form_path(*filenames)
     debug.assertion(not any(f.startswith(system.path_separator()) for f in filenames[1:]))
+    if create:
+        path_dir = os.path.join(filenames[:-1])
+        if not system.file_exists(path_dir):
+            full_mkdir(path_dir)
+
     path = os.path.join(*filenames)
     debug_format("form_path{f} => {p}", 6, f=tuple(filenames), p=path)
     return path

@@ -26,6 +26,7 @@ from youtube_transcript_api import formatters
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
+from mezcla import misc_utils
 from mezcla.my_regex import my_re
 from mezcla import system
 
@@ -65,13 +66,28 @@ def main():
     main_app = Main(description=__doc__.format(script=gh.basename(__file__)),
                     skip_input=False, manual_input=False)
     debug.assertion(main_app.parsed_args)
-    video_id = my_re.sub(r"(https://)?www.youtube.com/watch\?v=", "", main_app.filename)
-    debug.trace_expr(5, video_id)
+    url = main_app.filename
+    video_id= url
+    YOUTUBE_PREFIX = "https://www.youtube.com/watch?v="
+    if url.startswith(YOUTUBE_PREFIX):
+        video_id = url[len(YOUTUBE_PREFIX):]
+    else:
+        url = YOUTUBE_PREFIX + url
+    ## TODO: video_id = my_re.sub(r"(https://)?www.youtube.com/watch\?v=", "", main_app.filename)
+    debug.trace_expr(5, url, video_id)
 
     # Download the transcript and print using YouTubeLike-format
-    # note: youtube_transcript_api 
-    transcript = ytt_api.YouTubeTranscriptApi.get_transcript(video_id)
-    print(YouTubeLikeFormatter().format_transcript(transcript))
+    # note: youtube_transcript_api
+    print(misc_utils.get_formatted_date())
+    print("")
+    print(url)
+    print("")
+    try:
+        transcript = ytt_api.YouTubeTranscriptApi.get_transcript(video_id)
+        print(YouTubeLikeFormatter().format_transcript(transcript))
+    except:
+        system.print_exception_info("transcript access")
+        print("n/a")
 
     return
 

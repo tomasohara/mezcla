@@ -128,9 +128,23 @@ class ngram_tfidf_analysis(object):
         debug.trace_fmtd(5, "\targs={a} kwargs={k}", a=args, k=kwargs)
         if pp_lang is None:
             pp_lang = PREPROCESSOR_LANG
+        self.pp_lang = pp_lang
         self.min_ngram_size = min_ngram_size
         self.max_ngram_size = max_ngram_size
-        self.pp = tfidf_preprocessor(language=pp_lang,
+        self.pp = None
+        self.corpus = None
+        ## OLD: self.chunker = (None if (not TFIDF_NP_BOOST) else spacy_nlp.Chunker())
+        self.text_proc = None
+        if TFIDF_NP_BOOST or TFIDF_VP_BOOST:
+            self.text_proc = create_text_proc(TFIDF_TEXT_PROC)
+        ## TODO2: add international stopwords (e.g., English plus frequent ones from common languages)
+        self.stopwords = None
+        self.reset()
+        super().__init__(*args, **kwargs)
+
+    def reset(self):
+        """Re-initialize the instance"""
+        self.pp = tfidf_preprocessor(language=self.pp_lang,
                                      gramsize=self.max_ngram_size,
                                      min_ngram_size=self.min_ngram_size,
                                      all_ngrams=ALL_NGRAMS,
@@ -138,16 +152,10 @@ class ngram_tfidf_analysis(object):
         self.corpus = tfidf_corpus(gramsize=self.max_ngram_size,
                                    min_ngram_size=self.min_ngram_size,
                                    all_ngrams=ALL_NGRAMS,
-                                   language=pp_lang,
+                                   language=self.pp_lang,
                                    preprocessor=self.pp)
-        ## OLD: self.chunker = (None if (not TFIDF_NP_BOOST) else spacy_nlp.Chunker())
-        self.text_proc = None
-        if TFIDF_NP_BOOST or TFIDF_VP_BOOST:
-            self.text_proc = create_text_proc(TFIDF_TEXT_PROC)
-        ## TODO2: add international stopwords (e.g., English plus frequent ones from common languages)
         self.stopwords = (self.pp.stopwords or ENGLISH_STOPWORDS)
-        super().__init__(*args, **kwargs)
-
+        
     def add_doc(self, text, doc_id=None):
         """Add document TEXT to collection with key DOC_ID, which defaults to order processed (1-based)"""
         if doc_id is None:

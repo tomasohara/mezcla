@@ -114,7 +114,7 @@ INDENT = INDENT1
 MISSING_LINE = "???"
 
 # Globals
-max_trace_value_len = 512
+max_trace_value_len = 1024
 
 #...............................................................................
 # Utility functions
@@ -546,7 +546,7 @@ if __debug__:
                 if (match and match.group(1) in kwargs):
                     continue
                 assertion((not ((value is not None) and (expression is None))),
-                          "Warning: Likely problem resolving expression text (try reworking trace_expr call)")
+                          f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
                 value_spec = format_value(repr(value) if use_repr else value,
                                           max_len=max_len)
                 trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)

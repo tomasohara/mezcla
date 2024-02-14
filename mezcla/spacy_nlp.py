@@ -261,7 +261,8 @@ class SpacyHelper:
             self.nlp = spacy.load(self.model)
         except:
             system.print_exception_info(f"load of model {model}")
-        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+        ## TODO3: debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+        debug.trace_object(5, self, label="SpacyHelper instance")
 
 class Chunker(SpacyHelper):
     """Class for chunking text into noun phrases"""
@@ -270,7 +271,8 @@ class Chunker(SpacyHelper):
         """Initializer: ..."""
         debug.trace_fmtd(TL.VERBOSE, "Helper.__init__(): self={s}", s=self)
         super().__init__(model)
-        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+        ## TODO3: debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+        debug.trace_object(5, self, label="Chunker instance")
 
     def noun_phrases(self, text):
         """Return list of noun chunks in text"""

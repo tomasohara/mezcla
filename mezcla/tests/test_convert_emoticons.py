@@ -51,13 +51,14 @@ class TestIt(TestWrapper):
     script_file = my_re.sub(rf"{D}tests{D}test_", f"{D}", __file__)
 
     @pytest.mark.xfail                   # TODO: remove xfail
+    ## TEST: @trap_exception
     def test_over_script(self):
         """Makes sure works as expected over script itself"""
         debug.trace(4, f"TestIt.test_over_script(); self={self}")
-        output = self.run_script(options="", data_file=self.script_file)
+        output = self.run_script(options="", data_file=__file__)
         # the example usage should have input emoticon changed to match output
         script_contents = system.read_file(self.script_file)
-        debug.trace_expr(6, script_contents)
+        debug.trace_expr(6, script_contents, max_len=8192)
         # ex (see above): "# Input:\n#   Nothing to do 😴\n# Output:\n#   Nothing to do [sleeping face]"
         self.do_assert(not my_re.search(r"(\[sleeping face\]).*\1", script_contents, flags=my_re.DOTALL))
         # ex (see above): "# Input:\n#   Nothing to do [sleeping face]\n#\n# Output:\n#   Nothing to do [sleeping face]"
@@ -69,9 +70,12 @@ class TestIt(TestWrapper):
         loose_emoticon_regex = br"[\xE0-\xFF][\x80-\xFF]{1,3}"
         # ex: "# EX: convert_emoticons("天気") => "天気"   # Japanese for weather"
         self.do_assert(my_re.search(loose_emoticon_regex, script_contents.encode()))
-        output_san_Japanese_example = my_re.sub(r"^.*Japanese.*$", "", output, flags=my_re.MULTILINE)
+        output_sans_cjk_examples = my_re.sub(r"^.*(Chinese|Japanese).*$", "", output,
+                                             flags=my_re.MULTILINE)
         # ex: [same as above because CJK preserved]
-        self.do_assert(not my_re.search(loose_emoticon_regex, output_san_Japanese_example.encode()))
+        bad_match = my_re.search(loose_emoticon_regex, output_sans_cjk_examples.encode())
+        debug.trace_expr(5, bad_match, output_sans_cjk_examples)
+        self.do_assert(not bad_match)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -91,11 +95,6 @@ class TestIt(TestWrapper):
         self.do_assert(not my_re.search(b"[\x80-\xFF]", output.encode()))
         return
 
-    ## OLD:
-    ## class TestIt2:
-    ##     """Another class for testcase definition
-    ##     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper    ## """
-    
     @trap_exception
     def test_misc(self):
         """Test direct calls for conversion"""
