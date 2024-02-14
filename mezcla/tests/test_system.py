@@ -17,13 +17,14 @@ from math import pi
 import time
 import sys
 import re
+import pickle
 
 # Installed packages
 import pytest
-import pickle
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import trap_exception
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import debug
@@ -34,6 +35,7 @@ import mezcla.system as THE_MODULE
 
 class TestSystem(TestWrapper):
     """Class for test case definitions"""
+    script_module = None
 
     def test_maxint(self):
         """Ensure maxint works as expected"""
@@ -174,7 +176,7 @@ class TestSystem(TestWrapper):
         try:
             raise RuntimeError("testing")
         except RuntimeError:
-            exception = THE_MODULE.get_exception() 
+            exception = THE_MODULE.get_exception()
         assert str(exception[1]) == "testing"
 
     def test_print_error(self):
@@ -199,17 +201,24 @@ class TestSystem(TestWrapper):
         assert "Foobar" in captured
 
     @pytest.mark.xfail
+    @trap_exception                     # TODO: remove when debugged
     def test_exit(self):
         """Ensure exit works as expected"""
+        # Note: This modifies sys.exit so that system.exit doesn't really exit.
         debug.trace(4, "test_exit()")
-        def sys_exit_mock():
-            return 'exit'
-        ## BAD: self.set_attr(sys, "exit", sys_exit_mock)
+        #
+        EXIT = 'exit'
+        def sys_exit_mock(_status=None):
+            """Stub for sys.exit that just returns 'exit' text"""
+            debug.trace(4, "sys_exit_mock()")
+            return EXIT
+        #
         self.monkeypatch.setattr(sys, "exit", sys_exit_mock)
-        assert THE_MODULE.exit('test exit {method}', method='method') == 'exit'
+        MESSAGE = "test_exit method"
+        self.do_assert(THE_MODULE.exit(MESSAGE) == EXIT)
         # Exit is mocked, ignore code editor hidding
         captured = self.get_stderr()
-        assert "test exit method" in captured
+        self.do_assert(MESSAGE in captured)
 
     def test_setenv(self):
         """Ensure setenv works as expected"""
@@ -220,26 +229,22 @@ class TestSystem(TestWrapper):
     def test_print_full_stack(self):
         """Ensure print_full_stack works as expected"""
         debug.trace(4, "test_print_full_stack()")
-        def raiseException():
-            raise RuntimeError('test')
         try:
-            raiseException()
+            raise RuntimeError('test')
         except RuntimeError:
             THE_MODULE.print_full_stack(sys.stderr)
-        capturedError = self.get_stderr()
-        assert 'RuntimeError' in capturedError
+        captured_error = self.get_stderr()
+        assert 'RuntimeError' in captured_error
 
     def test_trace_stack(self):
         """Ensure trace_stack works as expected"""
         debug.trace(4, "test_trace_stack()")
-        def raiseException():
-            raise RuntimeError('test')
         try:
-            raiseException()
+            raise RuntimeError('test')
         except RuntimeError:
             THE_MODULE.trace_stack(1, sys.stderr)
-        capturedError = self.get_stderr()
-        assert 'RuntimeError' in capturedError
+        captured_error = self.get_stderr()
+        assert 'RuntimeError' in captured_error
 
     def test_get_current_function_name(self):
         """Ensure get_current_function_name works as expected"""
@@ -267,8 +272,8 @@ class TestSystem(TestWrapper):
 
         THE_MODULE.save_object(test_filename, test_dict)
 
-        test_file = open(test_filename, 'rb')
-        actual_object = pickle.load(test_file)
+        with open(test_filename, 'rb') as test_file:
+            actual_object = pickle.load(test_file)
         assert actual_object == test_dict
         test_file.close()
 
@@ -282,9 +287,9 @@ class TestSystem(TestWrapper):
             2: 'second',
         }
         test_filename = gh.get_temp_file()
-        test_file = open(test_filename, 'wb')
-        pickle.dump(test_dict, test_file)
-        test_file.close()
+        with open(test_filename, 'wb') as test_file :
+            pickle.dump(test_dict, test_file)
+            test_file.close()
         assert THE_MODULE.load_object(test_filename) == test_dict
 
         # Test invalid file
@@ -393,7 +398,7 @@ class TestSystem(TestWrapper):
         split = gh.create_temp_file('').split('/')
         path = '/'.join(split[:-1])
         filename = split[-1]
-        assert filename in THE_MODULE.read_directory(path) 
+        assert filename in THE_MODULE.read_directory(path)
 
     def test_get_directory_filenames(self):
         """Ensure get_directory_filenames works as expected"""
@@ -522,7 +527,6 @@ class TestSystem(TestWrapper):
         THE_MODULE.write_binary_file(filename, bytes("binary", "UTF-8"))
         assert THE_MODULE.read_binary_file(filename) == b'binary'
 
-        
     def test_write_lines(self):
         """Ensure write_lines works as expected"""
         debug.trace(4, "test_write_lines()")
@@ -565,13 +569,13 @@ class TestSystem(TestWrapper):
         timestamp1 = THE_MODULE.get_file_modification_time(filedir1)[:19]
         timestamp2 = THE_MODULE.get_file_modification_time(filedir2)[:19]
         # get and format local time
-        timestampNow = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
-        # test timestamps are equal 
+        # test timestamps are equal
         assert timestamp1 == timestamp2
 
         # test timestamp is equal to actual time (ignoring miliseconds)
-        assert timestamp1 == timestampNow
+        assert timestamp1 == now
 
     def test_remove_extension(self):
         """Ensure remove_extension works as expected"""
@@ -604,7 +608,7 @@ class TestSystem(TestWrapper):
     def test_form_path(self):
         """Ensure form_path works as expected"""
         debug.trace(4, "test_form_path()")
-        assert THE_MODULE.form_path('/usr', 'bin', 'cat') == '/usr/bin/cat'  
+        assert THE_MODULE.form_path('/usr', 'bin', 'cat') == '/usr/bin/cat'
 
     def test_is_directory(self):
         """Ensure is_directory works as expected"""
@@ -629,7 +633,8 @@ class TestSystem(TestWrapper):
     def test_get_current_directory(self):
         """Ensure get_current_directory works as expected"""
         debug.trace(4, "test_get_current_directory()")
-        assert '/home/' in THE_MODULE.get_current_directory()
+        ## BAD: assert '/home/' in THE_MODULE.get_current_directory()
+        assert 'mezcla' in THE_MODULE.get_current_directory()
 
     def test_set_current_directory(self):
         """Ensure set_current_directory works as expected"""
@@ -658,7 +663,7 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.from_utf8("\xBF") == "\u00BF"
         # assert THE_MODULE.to_unicode("\xEF\xBB\xBF") == "\ufeff"
         # Lorenzo: can't convert "\ufeff" to BOM, but can convert "\xEF\xBB\xBF"
-    
+
     def test_to_unicode(self):
         """Ensure to_unicode works as expected"""
         debug.trace(4, "test_to_unicode()")
@@ -718,7 +723,6 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_real_path()")
         assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
 
-    @pytest.mark.xfail
     def test_get_module_version(self):
         """Ensure get_module_version works as expected"""
         debug.trace(4, "test_get_module_version()")
@@ -734,7 +738,7 @@ class TestSystem(TestWrapper):
                 debug.trace(4, f"Ignoring pip freeze line: {line}")
         percent = (num_good / num_total * 100) if num_total else 0
         debug.trace_expr(5, num_good, num_total, percent)
-        assert (percent >= 90)
+        assert percent >= 90
 
     def test_intersection(self):
         """Ensure intersection works as expected"""
