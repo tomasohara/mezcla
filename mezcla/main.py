@@ -151,6 +151,9 @@ INPUT_ERROR_OPTION = "input_error"
 INPUT_ERROR = system.getenv_value(
     INPUT_ERROR_OPTION.upper(), None,
     description="Override for strict input processing error handling")
+DISABLE_RECURSIVE_DELETE = system.getenv_value(
+    "DISABLE_RECURSIVE_DELETE", None,
+    description="Disable use of potentially dangerous rm -r style recursive deletions")
 
 #-------------------------------------------------------------------------------
 
@@ -294,7 +297,7 @@ class Main(object):
         #
         if ((runtime_args is None) and (not skip_args)):
             # note: there is a quirk when using this with pytest
-            debug.assertion(sys.argv[1:] != "pytest")
+            debug.assertion(sys.argv[0] != "pytest")
             runtime_args = sys.argv[1:]
             debug.trace(4, f"Using sys.argv[1:] for runtime args: {runtime_args}")
             if self.auto_help and not runtime_args:
@@ -740,6 +743,8 @@ class Main(object):
                 self.run_main_step()
             # Otherwise have client process input line by line
             else:
+                debug.assertion(not self.skip_input)
+
                 # TODO: Trace status only if script blocks waiting for user
                 if not QUIET_MODE:
                     debug.trace(2, "Processing input")
@@ -950,7 +955,14 @@ class Main(object):
                                 
             # Remove all temp_base* files (or the temp_base directory)
             if self.use_temp_base_dir:
-                gh.run("rm -rvf {dir}", dir=self.temp_base)
+                ## OLD: gh.run("rm -rf {dir}", dir=self.temp_base)
+                if DISABLE_RECURSIVE_DELETE:
+                    debug.trace(4, f"FYI: Only deleting top-level files in {self.temp_base} to avoid potentially dangerous rm -r")
+                    gh.run("rm -rf {dir}/*", dir=self.temp_base)
+                    gh.run("rm -f {dir}", dir=self.temp_base)
+                else:
+                    debug.trace(4, f"FYI: Using potentially dangerous rm -r over {self.temp_base}")
+                    gh.run("rm -rvf {dir}", dir=self.temp_base)
             else:
                 gh.run("rm -vf {file}*", file=self.temp_base)
             # Likewise remove all temp_file* files
@@ -970,9 +982,24 @@ debug.trace_current_context(8, "main.py context")
 
 #------------------------------------------------------------------------
 
+def main():
+    """Entry point"""
+    class VacuousMain(Main):
+        """Sub-class that does nothing"""
+        # Note: complexity is for handle python running script from shell-scripts repo
+        #     run-python-sript"
+
+        def run_main_step(self):
+            print("No-op main step")
+            
+    # note: Following used for argument parsing
+    ## OLD: main = Main(description=__doc__)
+    ## NOTE: That hangs with run-python-script main.py
+    main_app = VacuousMain(description=__doc__, skip_input=True, manual_input=True)
+    ## TODO3: main.run_main_step = lambda self: print("No-op main step")
+    main_app.run()
+
+
 if __name__ == "__main__":
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone\n")
-    # note: Following used for argument parsing
-    main = Main(description=__doc__)
-    main.run()
-
+    main()

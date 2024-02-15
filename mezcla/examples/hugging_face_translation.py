@@ -24,10 +24,11 @@ USE_INTERFACE=1 {script} -
 
 # Local modules
 from mezcla import debug
-from mezcla.main import Main
+from mezcla.main import Main, USE_PARAGRAPH_MODE
 # TODO2: add new mezcla.hugging_face module for common stuff
 import mezcla.examples.hugging_face_speechrec as hf_speechrec
 from mezcla import misc_utils
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla import glue_helpers as gh
 
@@ -71,7 +72,7 @@ def main():
     # Show simple usage if --help given
     dummy_app = Main(description=__doc__.format(script=gh.basename(__file__)),
                      skip_input=False, manual_input=True,
-                     bool_options=[
+                     boolean_options=[
                          ## TODO3: (ELAPSED_ARG, "Show elapsed time")],
                          (UI_ARG, "Invoke user interface")],
                      text_options=[
@@ -132,13 +133,15 @@ def main():
     # Otherwise, do translation and output
     else:
         TRANSLATION_TEXT = "translation_text"
-        try:
-            translation = model(text, max_length=MAX_LENGTH)
-            debug.assertion(isinstance(translation, list)
-                            and (TRANSLATION_TEXT in translation[0]))
-            print(translation[0].get(TRANSLATION_TEXT) or "")
-        except:
-            system.print_exception_info("translation")
+        split_regex = r"\n\s*\n" if USE_PARAGRAPH_MODE else "\n"
+        for segment in my_re.split(split_regex, text):
+            try:
+                translation = model(segment, max_length=MAX_LENGTH)
+                debug.assertion(isinstance(translation, list)
+                                and (TRANSLATION_TEXT in translation[0]))
+                print(translation[0].get(TRANSLATION_TEXT) or "")
+            except:
+                system.print_exception_info("translation")
 
     # Show nvidia usage if under GPU
     if (hf_speechrec.TORCH_DEVICE == "GPU"):
