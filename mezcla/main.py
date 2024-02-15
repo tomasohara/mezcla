@@ -985,7 +985,7 @@ debug.trace_current_context(8, "main.py context")
 def main():
     """Entry point"""
     class VacuousMain(Main):
-        """Sub-class that does nothing""
+        """Sub-class that does nothing"""
         # Note: complexity is for handle python running script from shell-scripts repo
         #     run-python-sript"
 
