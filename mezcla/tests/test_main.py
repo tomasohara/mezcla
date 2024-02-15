@@ -67,7 +67,7 @@ class TestMain(TestWrapper):
         #
         self.do_assert(app.parsed_args.get("name") == "John Doe")
         self.do_assert(app.parsed_args.get("verbose"))
-        debug.trace(5, f"out test_script_options")
+        debug.trace(5, "out test_script_options")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
@@ -109,9 +109,11 @@ class TestMain(TestWrapper):
                 TestMain.main_step_invoked = True
 
         # Test scriptlet with test script as input w/ and w/o input enabled
-        debug.trace_expr(6, "app1")
+        debug.trace(6, "app1")
         TestMain.input_processed = None
-        app1 = Test(skip_input=False, runtime_args=[__file__])
+        ## TEST: MAIN_SCRIPT = "main.py"         # TOOD3: derive from __file__
+        MAIN_SCRIPT = __file__
+        app1 = Test(skip_input=False, manual_input=False, runtime_args=[__file__], program=MAIN_SCRIPT)          # avoids pytest if invoked via it
         try:
             app1.run()
         except:
@@ -120,8 +122,12 @@ class TestMain(TestWrapper):
         self.do_assert(TestMain.input_processed)
         #
         TestMain.input_processed = None
-        debug.trace_expr(6, "app2")
-        app2 = Test(skip_input=True, runtime_args=[__file__])
+        debug.trace(6, "app2")
+        ## NOTE: This produces an extraneous error, but the test class still executes:
+        ##   test_main.py: error: unrecognized arguments: tests/test_main.py
+        ## BAD:
+        app2 = Test(skip_input=True, manual_input=True, runtime_args=[__file__], program=MAIN_SCRIPT)          # avoids pytest if invoked via it
+        ## TODO2: app3 = Test(skip_input=True, manual_input=True, runtime_args=["-", "<", __file__], program=MAIN_SCRIPT)        # avoids pytest if invoked via it
         try:
             app2.run()
         except:
@@ -129,18 +135,25 @@ class TestMain(TestWrapper):
                              exc=tpo.to_string(sys.exc_info()))
         self.do_assert(not TestMain.input_processed)
 
-        # Test scriptlet w/ input disabled and wihout arguments
+        # Test scriptlet w/ input disabled and without arguments
         # note: auto_help disabled so that no arguments needed
         TestMain.main_step_invoked = None
-        debug.trace_expr(6, "app3")
+        debug.trace(6, "app3")
         app3 = Test(skip_input=True, manual_input=True, auto_help=False, runtime_args=[])
         try:
             app3.run()
         except:
             tpo.print_stderr("Exception during app3.run: {exc}",
                              exc=tpo.to_string(sys.exc_info()))
+        self.do_assert(not TestMain.input_processed)
         self.do_assert(TestMain.main_step_invoked)
-        debug.trace(5, f"out test_script_without_input")
+        
+        ## TODO2: Test scriptlet w/ all input disabled
+        ## # note: auto_help disabled so that no arguments needed
+        ## debug.trace(6, "app4")
+        ## app4 = Test(skip_input=True, manual_input=True, auto_help=False, runtime_args=[])
+        ## ...
+        debug.trace(5, "out test_script_without_input")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
@@ -163,7 +176,7 @@ class TestMain(TestWrapper):
                    runtime_args=[], perl_switch_parsing=False)
         # NOTE: this ensures that is None and not 0
         self.do_assert(app.parsed_args.get("verbose") is None)
-        debug.trace(5, f"out test_perl_arg")
+        debug.trace(5, "out test_perl_arg")
 
 
 class TestMain2:
@@ -201,7 +214,7 @@ class TestMain2:
         ## TODO: assert(TestMain.process_line_count == 1)
         assert(num_lines == len(captured.out.split("\n")))
         debug.trace_expr(5, main, num_lines, pre_captured)
-        debug.trace(5, f"out test_input_modes")
+        debug.trace(5, "out test_input_modes")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_missing_newline(self, capsys, monkeypatch):
@@ -219,7 +232,7 @@ class TestMain2:
         assert((1 + len(contents)) == len(captured.out))
         ## TODO: self.do_assert(TestMain.process_line_count == 3)
         debug.trace_expr(5, main, num_lines)
-        debug.trace(5, f"out test_missing_newline")
+        debug.trace(5, "out test_missing_newline")
 
     def test_has_parsed_option_hack(self):
         """Make sure (temporarily hacked) has_parsed_option differs from has_parsed_option_old"""
@@ -230,7 +243,7 @@ class TestMain2:
         main.parsed_args = {ok_arg: True}
         assert(main.has_parsed_option_old(ok_arg) == main.has_parsed_option(ok_arg))
         assert(main.has_parsed_option_old(missing_arg) != main.has_parsed_option(missing_arg))
-        debug.trace(5, f"out test_has_parsed_option_hack")
+        debug.trace(5, "out test_has_parsed_option_hack")
 
 #------------------------------------------------------------------------
 
