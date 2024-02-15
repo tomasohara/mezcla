@@ -60,6 +60,7 @@ import pytest
 import mezcla
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla.main import DISABLE_RECURSIVE_DELETE
 from mezcla.my_regex import my_re
 from mezcla import system
 
@@ -169,6 +170,7 @@ class TestWrapper(unittest.TestCase):
     temp_file = None
     use_temp_base_dir = system.is_directory(temp_base)
     test_num = 1
+    temp_file_count = 0
     class_setup = False
     
     ## TEST:
@@ -477,11 +479,33 @@ class TestWrapper(unittest.TestCase):
         _stdout, stderr = self.get_stdout_stderr()
         return stderr
 
+    def get_temp_file(self, delete=None):
+        """return name of temporary file based on self.temp_file, optionally with DELETE"""
+        # Note: delete defaults to False if detailed debugging
+        # TODO: allow for overriding other options to NamedTemporaryFile
+        if delete is None and debug.detailed_debugging():
+            delete = False
+        temp_file_name = f"{self.temp_file}-{self.temp_file_count}"
+        self.temp_file_count += 1
+        debug.assertion(not delete, "Support for delete not implemented")
+        debug.format_value(f"get_temp_file() => {temp_file_name}", 5)
+        return temp_file_name
+
+    def create_temp_file(self, contents,  binary=False):
+        """Create temporary file with CONTENTS and return full path"""
+        temp_filename = self.get_temp_file()
+        system.write_file(temp_filename, contents, binary=binary)
+        debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
+        return temp_filename
+
     def tearDown(self):
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         debug.trace(6, "TestWrapper.tearDown()")
         if not KEEP_TEMP:
             gh.run("rm -vf {file}*", file=self.temp_file)
+            for i in range(self.temp_file_count):
+                gh.run(f"rm -vf {self.temp_file}-{i}")
+        self.temp_file_count = 0
         return
 
     @classmethod
@@ -491,7 +515,14 @@ class TestWrapper(unittest.TestCase):
         if not KEEP_TEMP:
             ## TODO: use shutil
             if cls.use_temp_base_dir:
-                gh.run("rm -rvf {dir}", dir=cls.temp_base)
+                ## OLD: gh.run("rm -rvf {dir}", dir=cls.temp_base)
+                if DISABLE_RECURSIVE_DELETE:
+                    debug.trace(4, f"FYI: Only deleting top-level files in {cls.temp_base} to avoid potentially dangerous rm -r")
+                    gh.run("rm -rf {dir}/*", dir=cls.temp_base)
+                    gh.run("rm -f {dir}", dir=cls.temp_base)
+                else:
+                    debug.trace(4, f"FYI: Using potentially dangerous rm -r over {cls.temp_base}")
+                    gh.run("rm -rvf {dir}", dir=cls.temp_base)
             else:
                 gh.run("rm -vf {base}*", base=cls.temp_base)
         super().tearDownClass()
