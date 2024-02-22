@@ -48,11 +48,20 @@ class TestTextProcessing(TestWrapper):
         debug.trace(4, "test_split_word_tokens()")
         assert THE_MODULE.split_word_tokens("How now, brown cow?") == ['How', 'now', ',', 'brown', 'cow', '?']
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_label_for_tag(self):
         """Ensure label_for_tag works as expected"""
         debug.trace(4, "test_label_for_tag()")
-        assert False, "TODO: code test"
+        previous_value = THE_MODULE.KEEP_PUNCT
+        
+        self.monkeypatch.setattr(THE_MODULE, 'KEEP_PUNCT', True)
+        assert THE_MODULE.label_for_tag("SYM", ',') == ','
+        assert THE_MODULE.label_for_tag("SYM", '?') == '?'
+        self.monkeypatch.setattr(THE_MODULE, 'KEEP_PUNCT', False)
+        assert THE_MODULE.label_for_tag("SYM", ',') == 'SYM'
+        assert THE_MODULE.label_for_tag("SYM", '?') == 'SYM'
+        self.monkeypatch.setattr(THE_MODULE, 'KEEP_PUNCT', previous_value)
+        
 
     def test_class_for_tag(self):
         """Ensure class_for_tag works as expected"""
@@ -96,6 +105,7 @@ class TestTextProcessing(TestWrapper):
     def test_has_spelling_mistake(self):
         """Ensure has_spelling_mistake works as expected"""
         debug.trace(4, "test_has_spelling_mistake()")
+        previous_value = THE_MODULE.SKIP_ENCHANT
         self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', True)
         ## TODO: add word.freq file
         assert THE_MODULE.has_spelling_mistake('toughgh')
@@ -104,6 +114,8 @@ class TestTextProcessing(TestWrapper):
         assert not THE_MODULE.SKIP_ENCHANT
         assert THE_MODULE.has_spelling_mistake('sneik')
         assert not THE_MODULE.has_spelling_mistake('snake')
+        
+        self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', previous_value)
         
 
     @pytest.mark.xfail                   # TODO: remove xfail
