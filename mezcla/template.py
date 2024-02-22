@@ -111,11 +111,11 @@ class Script(Main):
         ## elif my_re.search(self.text_arg, line):
         ##     print("arg2 line: %s" % line)
 
-    ## TODO: if no input proocessed, customize run_main_step instead
+    ## TODO: if no input prococessed, customize run_main_step instead
     ## and specify skip_input below
     ##
     ## def run_main_step(self):
-    ##     """Main processing step"""
+    ##     """Main processing step (n.b., assumes self.manual_input)"""
     ##     debug.trace_fmtd(5, "Script.run_main_step(): self={s}", s=self)
     ##
 
