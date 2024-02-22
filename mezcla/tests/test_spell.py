@@ -8,6 +8,8 @@
 #   option shows tracing output normally suppressed by  unittest_wrapper.py.
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_bing_search.py
+# - Spellcheck requires nltk and hunspell for multi-language support
+#   $ apt-get install hunspell-ne 
 #
 # TODO1:
 # - Rework tests following test_spell_EN
@@ -76,14 +78,14 @@ class SpellFiles(TestWrapper):
     # TODO 2: A function for test_run_command replacement (optional)
 
     # Function A: Helper Function reduces the amount of code to be written
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test_helper(self, 
                     lang_code:str="en_EN", 
                     phrase:str="Hello World", 
                     batch_file_path:str="-"
                     ):
         """Helper function for test_spell.py"""
-        debug.trace(4, f"test_spell_default(); self={self}")
+        debug.trace(4, f"test_helper(); self={self}")
         if batch_file_path == "-":
             command = f'echo "{phrase}" | SPELL_LANG={lang_code} {SPELL_PATH} {batch_file_path}'
         else:
@@ -91,6 +93,22 @@ class SpellFiles(TestWrapper):
                 
         output = gh.run(command)
         return output
+    
+    # Function B: Helper Function for query-like tests
+    def test_helper_tempfile(self,
+                          lang_code:str="en_EN",
+                          phrase:str="Hello World"
+                          ):
+        """Helper function using tempfile"""
+        debug.trace(4, f"test_helper_tempfile(); self={self}")
+        temp_phrase = f"{self.temp_file}.phrase"
+        test_run_command_1 = f'echo "{phrase}" > {temp_phrase}'
+        test_run_command_2 = f'SPELL_LANG={lang_code} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
+        gh.issue(test_run_command_1)
+        output = gh.run(test_run_command_2)
+        output = self.run_script(self.temp_file)
+        return output
+
 
     # @pytest.mark.xfail
     def test_spell_default(self):
@@ -104,7 +122,6 @@ class SpellFiles(TestWrapper):
         ## OLD: test_run_command = f'echo "{test_phrase}" | {SPELL_PATH} -'
         output = self.test_helper(phrase=test_phrase)
         assert (output == test_phrase_error and len(output) != 0)
-
 
     # @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception                      # TODO: remove when debugged
@@ -146,17 +163,17 @@ class SpellFiles(TestWrapper):
         # test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} -'
         # output = gh.run(test_run_command)
     
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_NE(self):
         """Ensure test_spell_NE [Nepali] works as expected"""
         
         test_lang = "ne_NE"
         test_phrase = "थाहा छैन तिमीर को हो मेरो"
         test_phrase_error = "तिमीर"
-        test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} - > {self.temp_file}'
+        # OLD: test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} - > {self.temp_file}'
         # LITERAL TRANSLATION: "I don't know who you are"
         # WARN: ne_NE dictionary may not have some words
-        output = gh.run(test_run_command)
+        output = self.test_helper(lang_code=test_lang, phrase=test_phrase)
          
         debug.trace(4, f"test_spell_NE(); self={self}")
         ## TODO2: output = output = self.run_script(self.temp_file)
@@ -193,63 +210,84 @@ class SpellFiles(TestWrapper):
         assert (output in test_phrase and len(output.split())==1)
         return
     
-    @pytest.mark.xfail                   # TODO: remove xfail, add/modify method for testing using tempfile
+    ## OLD: Reworked using test_helper_tempfile()
+    # @pytest.mark.xfail                   # TODO: remove xfail, add/modify method for testing using tempfile
+    # def test_spell_query_EN(self):
+    #     """Ensure test_spell_query_EN works as expected"""
+        
+    #     test_lang = "en_EN"
+    #     test_phrase = "Because I am lostr in the way you move"
+    #     test_phrase_error = "lostr"
+    #     # LITERAL TRANSLATION: N/A
+    #     ## BAD: temp_phrase = None
+    #     temp_phrase = f"{self.temp_file}.phrase"
+    #     test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
+    #     test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
+         
+    #     debug.trace(4, f"test_spell_query_EN(); self={self}")
+    #     gh.issue(test_run_command_1)
+    #     output = gh.run(test_run_command_2)
+    #     ## TODO: output = self.run_script(self.temp_file)
+    #     assert (output == test_phrase_error and len(output) != 0)
+    #     return
+
     def test_spell_query_EN(self):
         """Ensure test_spell_query_EN works as expected"""
         
         test_lang = "en_EN"
         test_phrase = "Because I am lostr in the way you move"
         test_phrase_error = "lostr"
-        # LITERAL TRANSLATION: N/A
-        ## BAD: temp_phrase = None
-        temp_phrase = f"{self.temp_file}.phrase"
-        test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
-        test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
-         
+        
         debug.trace(4, f"test_spell_query_EN(); self={self}")
-        gh.issue(test_run_command_1)
-        output = gh.run(test_run_command_2)
+        output = self.test_helper_tempfile(test_lang, test_phrase)
         ## TODO: output = self.run_script(self.temp_file)
         assert (output == test_phrase_error and len(output) != 0)
         return
+
+
     
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_query_ES(self):
         """Ensure test_spell_query_ES works as expected"""
         
         test_lang = "es_ES"
-        test_phrase = "Me dijeron que te estás casandoxx"
-        test_phrase_error = "casandoxx"
+        test_phrase = "Me dijeron que te estás casandoi"
+        test_phrase_error = "casandoi"
         # LITERAL TRANSLATION: "They told me that you are getting married"
         ## BAD: temp_phrase = None
-        temp_phrase = f"{self.temp_file}.phrase"
-        test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
-        test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
+        ## OLD:
+        # temp_phrase = f"{self.temp_file}.phrase"
+        # test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
+        # test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
          
-        debug.trace(4, f"test_spell_query_ES(); self={self}")
-        gh.issue(test_run_command_1)
-        output = gh.run(test_run_command_2)
-        output = self.run_script(self.temp_file)
+        # debug.trace(4, f"test_spell_query_ES(); self={self}")
+        # gh.issue(test_run_command_1)
+        # output = gh.run(test_run_command_2)
+        # output = self.run_script(self.temp_file)
+        output = self.test_helper_tempfile(test_lang, test_phrase)
         assert (output == test_phrase_error and len(output) != 0)
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_query_NE(self):
         """Ensure test_spell_query_NE works as expected"""
         
         test_lang = "ne_NE"
         test_phrase = "तिमी नै अबप मेरो झुल्केको बिहानी"
         test_phrase_error = "अबप"
-        # LITERAL TRANSLATION: You are now my rising dawn
-        ## BAD: temp_phrase = None
-        temp_phrase = f"{self.temp_file}.phrase"
-        test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
-        test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
-         
         debug.trace(4, f"test_spell_query_NE(); self={self}")
-        gh.issue(test_run_command_1)
-        output = gh.run(test_run_command_2)
-        output = self.run_script(self.temp_file)
+        
+        ## OLD:
+        # # LITERAL TRANSLATION: You are now my rising dawn
+        # ## BAD: temp_phrase = None
+        # temp_phrase = f"{self.temp_file}.phrase"
+        # test_run_command_1 = f'echo "{test_phrase}" > {temp_phrase}'
+        # test_run_command_2 = f'SPELL_LANG={test_lang} {SPELL_PATH} {temp_phrase} > {self.temp_file}'
+         
+        # gh.issue(test_run_command_1)
+        # output = gh.run(test_run_command_2)
+        # output = self.run_script(self.temp_file)
+        output = self.test_helper_tempfile(test_lang, test_phrase)
         assert (output in test_phrase and len(output) != 0)
         return
 
@@ -281,7 +319,7 @@ class SpellFiles(TestWrapper):
         assert (output != "" and len(output)==10)    # Error Message contains large amount of characters
         return
     
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_RU_batch(self):
         """Ensure test_spell_RU_batch [Russian] works as expected"""
         debug.trace(4, f"test_spell_RU_batch(); self={self}")
@@ -295,7 +333,7 @@ class SpellFiles(TestWrapper):
         assert (output != "" and len(output)==5)    # Error Message contains large amount of characters
         return
     
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_AR_batch(self):
         """Ensure test_spell_AR_batch [Arabic] works as expected"""
         debug.trace(4, f"test_spell_AR_batch(); self={self}")
