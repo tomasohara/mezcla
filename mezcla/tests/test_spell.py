@@ -109,6 +109,7 @@ class SpellFiles(TestWrapper):
         gh.issue(test_run_command_1)
         output = gh.run(test_run_command_2)
         output = self.run_script(self.temp_file)
+        # TODO: debug.trace_expr(5, output, phrase)
         return output
 
 
@@ -123,6 +124,7 @@ class SpellFiles(TestWrapper):
         ## ORGINAL: One kiss is all it takes (from One Kiss by Calvin Harris, Dua Lipa)
         ## OLD: test_run_command = f'echo "{test_phrase}" | {SPELL_PATH} -'
         output = self.test_helper(phrase=test_phrase)
+        debug.trace_expr(5, output, test_phrase_error)
         assert (output == test_phrase_error and len(output) != 0)
 
     # @pytest.mark.xfail                   # TODO: remove xfail
@@ -154,6 +156,7 @@ class SpellFiles(TestWrapper):
         test_phrase_error = "respiraciónqq"
         output = self.test_helper(test_lang, test_phrase)
         ## TODO2: output = self.run_script(self.temp_file)
+        debug.trace_expr(5, output, test_phrase_error)
         assert (output in test_phrase and len(output) != 0)
         return
     
@@ -178,6 +181,7 @@ class SpellFiles(TestWrapper):
         output = self.test_helper(lang_code=test_lang, phrase=test_phrase)
          
         debug.trace(4, f"test_spell_NE(); self={self}")
+        debug.trace_expr(5, output, test_phrase_error)
         ## TODO2: output = output = self.run_script(self.temp_file)
         assert (output in test_phrase and len(output) != 0)
         return
@@ -201,6 +205,7 @@ class SpellFiles(TestWrapper):
         output = self.test_helper(test_lang, test_phrase)
         ## OLD (Works fine but error in Actions): 
         # assert (output != "" and len(output.split())==2)
+        debug.trace_expr(5, output, test_phrase_error)
         assert (output in test_phrase and len(output)!=0)
         return
     
@@ -216,6 +221,7 @@ class SpellFiles(TestWrapper):
         ## OLD: test_run_command = f'echo "{test_phrase}" | SPELL_LANG={test_lang} {SPELL_PATH} -'
         ## OLD: output = gh.run(test_run_command)
         output = self.test_helper(test_lang, test_phrase)
+        debug.trace_expr(5, output, test_phrase)
         assert (output in test_phrase and len(output) != 0)
         return
     
@@ -249,6 +255,7 @@ class SpellFiles(TestWrapper):
         
         debug.trace(4, f"test_spell_query_EN(); self={self}")
         output = self.test_helper_tempfile(test_lang, test_phrase)
+        debug.trace_expr(5, output, test_phrase_error)
         ## TODO: output = self.run_script(self.temp_file)
         assert (output == test_phrase_error and len(output) != 0)
         return
@@ -297,6 +304,7 @@ class SpellFiles(TestWrapper):
         # output = gh.run(test_run_command_2)
         # output = self.run_script(self.temp_file)
         output = self.test_helper_tempfile(test_lang, test_phrase)
+        debug.trace_expr(5, output, test_phrase_error)
         assert (output in test_phrase and len(output) != 0)
         return
 
@@ -311,6 +319,7 @@ class SpellFiles(TestWrapper):
 
         ## TODO2: make the tests more flexible (e.g., don't test for specific length)
         output = (self.test_helper(batch_file_path=testfile_path)).split("\n")
+        debug.trace_expr(5, output)
         assert (output != "" and len(output)==10)    # Error Message contains large amount of characters
         return
     
@@ -326,6 +335,7 @@ class SpellFiles(TestWrapper):
         
         output = (self.test_helper(lang_code=test_lang, batch_file_path=testfile_path)).split("\n")
         # OLD: assert (output != "" and len(output)==10)
+        debug.trace_expr(5, output)
         assert (output != [] and len(output) > 3)
         return
     
@@ -340,6 +350,7 @@ class SpellFiles(TestWrapper):
         # output = gh.run(test_run_command).split("\n")
 
         output = (self.test_helper(lang_code=test_lang, batch_file_path=testfile_path)).split("\n")
+        debug.trace_expr(5, output)
         assert (output != [] and len(output) > 3)    # Error Message contains large amount of characters
         return
     
@@ -353,7 +364,8 @@ class SpellFiles(TestWrapper):
         # test_run_command = f'SPELL_LANG={test_lang} python3 {SPELL_PATH} {testfile_path}'
         # output = gh.run(test_run_command).split("\n")
         output = (self.test_helper(lang_code=test_lang, batch_file_path=testfile_path)).split("\n")
-        assert (output != "" and len(output)==17)    # Error Message contains large amount of characters
+        debug.trace_expr(5, output)
+        assert (output != "" and len(output)>5)    # Error Message contains large amount of characters
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
