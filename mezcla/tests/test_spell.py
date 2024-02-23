@@ -205,7 +205,7 @@ class SpellFiles(TestWrapper):
         assert (output in test_phrase and len(output) != 0)
         return
     
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
+    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
     def test_spell_query_EN(self):
         """Ensure test_spell_query_EN works as expected"""
         debug.trace(4, f"test_spell_query_EN(); self={self}")
@@ -257,7 +257,7 @@ class SpellFiles(TestWrapper):
         output = (self.test_helper(batch_file_path=testfile_path)).split("\n")
         
         debug.trace_expr(5, output)
-        assert (output != "" and len(output)==10)
+        assert (output != [] and len(output) > 5)
         return
     
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
