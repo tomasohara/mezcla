@@ -72,6 +72,7 @@ class TestIt(TestWrapper):
         message = "Good math"
         # TODO3: use pytest patch support (monkey?)
         old_debug_level = debug.get_level()
+        _old_captured_trace = self.get_stderr()   # resets capsys capture
         try:
             debug.set_level(debug.TL.DEFAULT)
             sti.do_assert(2 + 2 == 5, message)    # Orwell's condition
@@ -81,7 +82,7 @@ class TestIt(TestWrapper):
             debug.set_level(old_debug_level)
         ## OLD: captured_trace = capsys.readouterr().err
         captured_trace = self.get_stderr()
-        debug.trace_expr(5, captured_trace)
+        debug.trace_expr(4, captured_trace, max_len=2048)
         
         #  The condition and message should be displayed
         assert("2 + 2 == 5" in captured_trace)
@@ -90,7 +91,7 @@ class TestIt(TestWrapper):
         # Make sure stuff properly stripped (i.e., message arg and comment)
         assert(not "message" in captured_trace)
         assert(not "Orwell" in captured_trace)
-        assert(not my_re.search(r"\bdo_assert\b", captured_trace))
+        assert(not "sti.do_assert" in captured_trace)
         return
 
 #------------------------------------------------------------------------

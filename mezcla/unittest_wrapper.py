@@ -307,9 +307,9 @@ class TestWrapper(unittest.TestCase):
         - Disables tracing scripts invoked via run() unless ALLOW_SUBCOMMAND_TRACING
         - Initializes temp file name (With override from environment)."""
         # Note: By default, each test gets its own temp file.
-        debug.trace(6, "TestWrapper.setUp()")
+        debug.trace(5, "TestWrapper.setUp()")
         if not self.class_setup:
-            debug.trace(5, "Warning: invoking setUpClass in setup")
+            debug.trace(4, "Warning: invoking setUpClass in setUp")
             TestWrapper.setUpClass(self.__class__)
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
@@ -328,7 +328,6 @@ class TestWrapper(unittest.TestCase):
         gh.delete_existing_file(f"{self.temp_file}")
         for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
             gh.delete_existing_file(f)
-        ## OLD: TestWrapper.test_num += 1
 
         # Start the profiler
         if PROFILE_CODE:
@@ -379,12 +378,8 @@ class TestWrapper(unittest.TestCase):
         script_module = self.script_module
         if self.check_coverage:
             debug.assertion(self.script_file)
-            ## BAD: self.script_module = self.script_file
             script_module = self.script_file
             coverage_spec = 'coverage run'
-        ## OLD:
-        ## else:
-        ##     debug.assertion(not self.script_module.endswith(".py"))
         debug.assertion(not script_module.endswith(".py"))
         amp_spec = "&" if background else ""
 
@@ -483,19 +478,25 @@ class TestWrapper(unittest.TestCase):
 
     def get_stdout_stderr(self):
         """Get currently captured standard output and error
-        Note: Clears both stdout and stderr captured
+        Note: Clears both stdout and stderr captured afterwards. This might
+        be needed beforehand to clear capsys buffer.
         """
+        ## TODO3: add explicit methods for clearing capsys buffer
         stdout, stderr = self.capsys.readouterr()
         debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n")
         return stdout, stderr
         
     def get_stdout(self):
-        """Get currently captured standard output (see get_stdout_stderr)"""
+        """Get currently captured standard output (see get_stdout_stderr)
+        Warning: You might need to invoke beforehand to clear buffer.
+        """
         stdout, _stderr = self.get_stdout_stderr()
         return stdout
         
     def get_stderr(self):
-        """Get currently captured standard error (see get_stdout_stderr)"""
+        """Get currently captured standard error (see get_stdout_stderr)
+        Warning: You might need to invoke beforehand to clear buffer.
+        """
         _stdout, stderr = self.get_stdout_stderr()
         return stderr
 
@@ -541,11 +542,10 @@ class TestWrapper(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Per-class cleanup: stub for tracing purposes"""
-        debug.trace_fmtd(6, "TestWrapper.tearDownClass(); cls={c}", c=cls)
+        debug.trace_fmtd(5, "TestWrapper.tearDownClass(); cls={c}", c=cls)
         if not KEEP_TEMP:
             ## TODO: use shutil
             if cls.use_temp_base_dir:
-                ## OLD: gh.run("rm -rvf {dir}", dir=cls.temp_base)
                 if DISABLE_RECURSIVE_DELETE:
                     debug.trace(4, f"FYI: Only deleting top-level files in {cls.temp_base} to avoid potentially dangerous rm -r")
                     gh.run("rm -rf {dir}/*", dir=cls.temp_base)

@@ -17,11 +17,43 @@
 # $ ./tools/run_tests.bash --coverage
 #
 
-tools="$(dirname "$(realpath -s "$0")")"
-base="$tools/.."
+# Set bash regular and/or verbose tracing
+DEBUG_LEVEL=${DEBUG_LEVEL:-0}
+if [ "$DEBUG_LEVEL" -ge 3 ]; then
+    echo "in $0 $* [$(date)]"
+fi
+if [ "${TRACE:-0}" = "1" ]; then
+    set -o xtrace
+fi
+if [ "${VERBOSE:-0}" = "1" ]; then
+    set -o verbose
+fi
+
+# Get directory locations
+dir=$(dirname "${BASH_SOURCE[0]}")
+## OLD:
+## tools="$(dirname "$(realpath -s "$0")")"
+## base="$tools/.."
+base="$dir/.."
 mezcla="$base/mezcla"
 tests="$mezcla/tests"
 example_tests="$mezcla/examples/tests"
+
+# Optionally source temporary settings script
+temp_script="$dir/_temp_test_settings.bash"
+if [ -e "$temp_script" ]; then
+    env_before=$(printenv)
+    source "$temp_script"
+    env_after=$(printenv)
+    if [ "$env_before" != "$env_after" ]; then
+        echo "FYI: environment changes made via $temp_script"
+    fi
+fi
+##
+## TEMP:
+echo "DEBUG_LEVEL=$DEBUG_LEVEL"
+
+# Get tests to run
 TEST_REGEX="${TEST_REGEX:-"."}"
 # Note: TEST_REGEX is for only running the specified tests, 
 # and, FILTER_REGEX is for disabling particular tests.
@@ -37,8 +69,15 @@ if [[ ("$TEST_REGEX" != ".") || ("$FILTER_REGEX" != "") ]]; then
     tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
     example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
 fi
-
-echo -e "Running tests on $tests; also running $example_tests\n"
+#
+## OLD: echo -e "Running tests on $tests; also running $example_tests\n"
+echo -n "Running tests on $tests"
+if [ "$example_tests" == "" ]; then
+    echo "Running no example tests"
+else
+    echo "Also running $example_tests"
+fi
+echo ""
 echo -n "via "
 python3 --version
 
@@ -48,9 +87,11 @@ if [ "$USER" == "docker" ]; then
     pip uninstall mezcla &> /dev/null  # Avoid conflicts with installed Mezcla
 fi
 
+# Make sure mezcla in python path
 export PYTHONPATH="$mezcla/:$PYTHONPATH"
 
 # Run with coverage enabled
+test_result=0
 # shellcheck disable=SC2046,SC2086
 if [ "$1" == "--coverage" ]; then
     export COVERAGE_RCFILE="$base/.coveragerc"
@@ -59,6 +100,20 @@ if [ "$1" == "--coverage" ]; then
     coverage run -m pytest $tests $example_tests
     coverage combine
     coverage html
+    test_result="$?"
 else
-    pytest $tests $example_tests
+    ## OLD: pytest $tests $example_tests
+    pytest_options="${PYTEST_OPTIONS:-}"
+    pytest $pytest_options $tests $example_tests
+    test_result="$?"
 fi
+
+# End of processing
+if [ "$DEBUG_LEVEL" -ge 3 ]; then
+    echo "out $0 [$(date)]"
+fi
+
+# Return status code used by Github actions
+## TODO3: integrate support for Jupyter notebooks tests and use combined result;
+## see run_tests.bash in shell-scripts repo.
+exit "$test_result"
