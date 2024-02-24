@@ -81,7 +81,7 @@ class TestIt(TestWrapper):
             debug.set_level(old_debug_level)
         ## OLD: captured_trace = capsys.readouterr().err
         captured_trace = self.get_stderr()
-        debug.trace_expr(5, captured_trace)
+        debug.trace_expr(4, captured_trace)
         
         #  The condition and message should be displayed
         assert("2 + 2 == 5" in captured_trace)
