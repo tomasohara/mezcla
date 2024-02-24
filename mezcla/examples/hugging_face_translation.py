@@ -65,6 +65,15 @@ USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
 
 #-------------------------------------------------------------------------------
 
+def show_gpu_usage(trace_level=None):
+    """Show nvidia usage if under GPU"""
+    if trace_level is None:
+        trace_level = 5
+    if (hf_speechrec.TORCH_DEVICE == "GPU"):
+        debug.code(trace_level, lambda: debug.trace(1, gh.run("nvidia-smi")))
+    return
+
+
 def main():
     """Entry point"""
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
@@ -142,10 +151,10 @@ def main():
                 print(translation[0].get(TRANSLATION_TEXT) or "")
             except:
                 system.print_exception_info("translation")
+            show_gpu_usage()
 
-    # Show nvidia usage if under GPU
-    if (hf_speechrec.TORCH_DEVICE == "GPU"):
-        debug.code(5, lambda: debug.trace(1, gh.run("nvidia-smi")))
+    # Wrap up
+    show_gpu_usage()
     return
 
 #-------------------------------------------------------------------------------

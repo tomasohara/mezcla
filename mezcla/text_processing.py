@@ -174,8 +174,9 @@ def split_sentences(text):
     return sentences
 
 
-def split_word_tokens(text, omit_punct=False):
-    """Splits TEXT into word tokens (i.e., words, punctuation, etc.) Note: run split_sentences first (e.g., to allow for proper handling of periods).
+def split_word_tokens(text, omit_punct=False, omit_stop=None):
+    """Splits TEXT into word tokens (i.e., words, punctuation, etc.), optionally with OMIT_PUNCT and OMIT_STOP.
+    Note: run split_sentences first (e.g., to allow for proper handling of periods).
     By default, this uses NLTK's PunktSentenceTokenizer."""
     # EX: split_word_tokens("How now, brown cow?") => ['How', 'now', ',', 'brown', 'cow', '?']
     debug.trace(7, "split_word_tokens(%s); type=%s" % (text, type(text)))
@@ -185,8 +186,12 @@ def split_word_tokens(text, omit_punct=False):
         tokens = nltk.word_tokenize(text)
     if omit_punct:
         tokens = [t for t in tokens if not is_punct(t)]
+    if omit_stop:
+        tokens = [t for t in tokens if not is_stopword(t)]
     debug.trace(7, "tokens: %s" % [(t, type(t)) for t in tokens])
     return tokens
+#
+# split_word_tokens("How now, brown cow?", omit_punct=True, omit_stop=True) => ['now', 'brown', 'cow']
 
 
 def label_for_tag(POS, word=None):
