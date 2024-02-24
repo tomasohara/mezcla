@@ -17,11 +17,17 @@
 # $ ./tools/run_tests.bash --coverage
 #
 
-tools="$(dirname "$(realpath -s "$0")")"
-base="$tools/.."
+# Get directory locations
+dir=$(dirname "${BASH_SOURCE[0]}")
+## OLD:
+## tools="$(dirname "$(realpath -s "$0")")"
+## base="$tools/.."
+base="$dir/.."
 mezcla="$base/mezcla"
 tests="$mezcla/tests"
 example_tests="$mezcla/examples/tests"
+
+# Get tests to run
 TEST_REGEX="${TEST_REGEX:-"."}"
 # Note: TEST_REGEX is for only running the specified tests, 
 # and, FILTER_REGEX is for disabling particular tests.
@@ -48,7 +54,19 @@ if [ "$USER" == "docker" ]; then
     pip uninstall mezcla &> /dev/null  # Avoid conflicts with installed Mezcla
 fi
 
+# Make sure mezcla in python path
 export PYTHONPATH="$mezcla/:$PYTHONPATH"
+
+# Optionally source temporary settings script
+temp_script="$dir/_temp_test_settings.bash"
+if [ -e "$temp_script" ]; then
+    env_before=$(printenv)
+    source "$temp_script"
+    env_after=$(printenv)
+    if [ "$env_before" != "$env_after" ]; then
+        echo "FYI: environment changes made via $temp_script"
+    fi
+fi
 
 # Run with coverage enabled
 # shellcheck disable=SC2046,SC2086
