@@ -48,7 +48,6 @@ class TestTextProcessing(TestWrapper):
         debug.trace(4, "test_split_word_tokens()")
         assert THE_MODULE.split_word_tokens("How now, brown cow?") == ['How', 'now', ',', 'brown', 'cow', '?']
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_label_for_tag(self):
         """Ensure label_for_tag works as expected"""
         debug.trace(4, "test_label_for_tag()")
