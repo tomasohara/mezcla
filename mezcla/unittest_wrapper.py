@@ -50,6 +50,7 @@
 # Standard packages
 import inspect
 import os
+import sys
 import tempfile
 import unittest
 
@@ -84,6 +85,14 @@ debug.assertion(THIS_PACKAGE == "mezcla")
 VIA_UNITTEST = system.getenv_bool(
     "VIA_UNITTEST", False,
     description="Run tests via unittest instead of pytest")
+PROFILE_CODE = system.getenv_boolean(
+    "PROFILE_CODE", False,
+    description="Profile each test invocation")
+
+# Dynamic imports
+if PROFILE_CODE:
+    import cProfile
+    import pstats
 
 #-------------------------------------------------------------------------------
 
@@ -169,9 +178,11 @@ class TestWrapper(unittest.TestCase):
     ## TEMP: initialize to unique value independent of temp_base
     temp_file = None
     use_temp_base_dir = system.is_directory(temp_base)
-    test_num = 1
+    ## OLD: test_num = 1
+    test_num = 0
     temp_file_count = 0
     class_setup = False
+    profiler = None
     
     ## TEST:
     ## NOTE: leads to pytest warning. See
@@ -223,6 +234,10 @@ class TestWrapper(unittest.TestCase):
                         "invoke externally for more general support:\n"
                         f"    python -m coverage run -m {test_module}")
 
+        # Enable code profiling if desired
+        if PROFILE_CODE:
+            cls.profiler = cProfile.Profile()
+            
         # Optionally, setup up script_file and script_module
         if filename:
             cls.set_module_info(filename, module_object=module)
@@ -304,6 +319,7 @@ class TestWrapper(unittest.TestCase):
             default_temp_file = gh.form_path(self.temp_base, "test-")
         else:
             default_temp_file = self.temp_base + "-test-"
+        TestWrapper.test_num += 1
         default_temp_file += str(TestWrapper.test_num)
 
         # Get new temp file and delete existing file and variants based on temp_file_count,
@@ -312,8 +328,12 @@ class TestWrapper(unittest.TestCase):
         gh.delete_existing_file(f"{self.temp_file}")
         for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
             gh.delete_existing_file(f)
-        TestWrapper.test_num += 1
+        ## OLD: TestWrapper.test_num += 1
 
+        # Start the profiler
+        if PROFILE_CODE:
+            self.profiler.enable()
+        
         debug.trace_object(6, self, "TestWrapper instance")
         return
 
@@ -506,6 +526,16 @@ class TestWrapper(unittest.TestCase):
             for i in range(self.temp_file_count):
                 gh.run(f"rm -vf {self.temp_file}-{i}")
         self.temp_file_count = 0
+
+        # Show results of code profiling if enabled
+        if PROFILE_CODE:
+            self.profiler.disable()
+            ## TODO: debug.trace(1, f"Test {self.test_num} code profiling results")
+            print(f"Test {self.test_num} code profiling results")
+            ## OLD: self.profiler.print_stats(sort='cumulative')
+            ## NOTE: Based on cProfile's print_stats (in order to use stderr)
+            stats = pstats.Stats(self.profiler, stream=sys.stderr)
+            stats.strip_dirs().sort_stats('cumulative').print_stats()
         return
 
     @classmethod
