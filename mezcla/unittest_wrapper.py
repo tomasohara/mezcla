@@ -478,19 +478,25 @@ class TestWrapper(unittest.TestCase):
 
     def get_stdout_stderr(self):
         """Get currently captured standard output and error
-        Note: Clears both stdout and stderr captured
+        Note: Clears both stdout and stderr captured afterwards. This might
+        be needed beforehand to clear capsys buffer.
         """
+        ## TODO3: add explicit methods for clearing capsys buffer
         stdout, stderr = self.capsys.readouterr()
         debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n")
         return stdout, stderr
         
     def get_stdout(self):
-        """Get currently captured standard output (see get_stdout_stderr)"""
+        """Get currently captured standard output (see get_stdout_stderr)
+        Warning: You might need to invoke beforehand to clear buffer.
+        """
         stdout, _stderr = self.get_stdout_stderr()
         return stdout
         
     def get_stderr(self):
-        """Get currently captured standard error (see get_stdout_stderr)"""
+        """Get currently captured standard error (see get_stdout_stderr)
+        Warning: You might need to invoke beforehand to clear buffer.
+        """
         _stdout, stderr = self.get_stdout_stderr()
         return stderr
 
