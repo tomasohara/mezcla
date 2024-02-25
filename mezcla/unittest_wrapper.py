@@ -548,7 +548,7 @@ class TestWrapper(unittest.TestCase):
             if cls.use_temp_base_dir:
                 if DISABLE_RECURSIVE_DELETE:
                     debug.trace(4, f"FYI: Only deleting top-level files in {cls.temp_base} to avoid potentially dangerous rm -r")
-                    gh.run("rm -rf {dir}/*", dir=cls.temp_base)
+                    gh.run("rm -f {dir}/* {dir}/.*", dir=cls.temp_base)
                     gh.run("rm -f {dir}", dir=cls.temp_base)
                 else:
                     debug.trace(4, f"FYI: Using potentially dangerous rm -r over {cls.temp_base}")
