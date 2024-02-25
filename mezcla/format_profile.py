@@ -26,9 +26,7 @@
 #
 # Valid Arg    Meaning
 # 'calls'      call count
-# 'cumulative' cumulative time
 # 'cumtime'    cumulative time
-# 'file'       file name
 # 'filename'   file name
 # 'module'     file name
 # 'ncalls'     call count
@@ -37,11 +35,7 @@
 # 'name'       function name
 # 'nfl'        name/file/line
 # 'stdname'    standard name
-# 'time'       internal time
 # 'tottime'    internal time
-#
-# Note: following apply to version 2.7 or later
-# - cumtime, filename, ncalls, tottime
 #
 
 """Displays result of python profiling"""
@@ -60,7 +54,7 @@ from mezcla.system import getenv_text, print_stderr
 
 ## OLD: PROFILE_KEY = getenv_text("PROFILE_KEY", "cumulative")
 PROFILE_KEY = getenv_text("PROFILE_KEY", "cumulative",
-                          "Sort key (e.g., calls, cumulative, file, time)")
+                          "Sort key (e.g., cumtime, filename, ncalls, tottime)")
 
 #------------------------------------------------------------------------
 # Functions
@@ -74,11 +68,11 @@ Usage: {program} profile-log
 Notes:
 - use PROFILE_KEY to over default sorting (cumulative)
 - main keys: 
-       calls, cumulative, file, time
+       cumtime, filename, ncalls, tottime
 - other keys: 
        module, pcalls, line, name, nfl, stdname
-- 2.7+ keys: 
-       cumtime, filename, ncalls, tottime
+- alternative keys:
+       calls, cumulative, file, time
 - unfortunately, memory profiling is not supported
 - see http://docs.python.org/3/library/profile.html
 
