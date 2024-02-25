@@ -61,6 +61,7 @@ TODO_FUBAR = system.getenv_bool("TODO_FUBAR", False,
 
 ## TODO: Use helper class for main logic
 ## class Helper:
+##     """TODO: class for doing ..."""
 ## 
 ##     def __init__(self, ...):
 ##         """Initializer: ..."""

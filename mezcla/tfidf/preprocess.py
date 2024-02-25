@@ -77,12 +77,21 @@ if SPLIT_WORDS:
     debug.assertion(not TFIDF_ALLOW_PUNCT)
 WORD_REGEX = r'\w+' if SPLIT_WORDS else r'\S+'
 
+
 def handle_unicode(text):
     """Needed for the description fields."""
+    # EX: handle_unicode("Predactica\u2122") => "Predactica \u2122"
     if re.search(r'\\+((u([0-9]|[a-z]|[A-Z]){4}))', text):
         text = text.encode('utf-8', 'ignore').decode('unicode-escape', 'ignore')
     text = re.sub(r'\\n', '\n', text)
     text = re.sub(r'\\t', '\t', text)
+    # Put space around non-ascii unicode characters
+    # note: excludes special punctuation like U+00A9 (©)
+    EXT_ASC_CH = "\u0000-\u007F\u00C0-\u0100"
+    if re.search(fr'[^{EXT_ASC_CH}]', text):
+        text = re.sub(fr'([{EXT_ASC_CH}]) ([^{EXT_ASC_CH}]) ([{EXT_ASC_CH}])',
+                      r'\1 \2 \3', f" {text} ", flags=re.VERBOSE)
+        text = text.strip(" ")
     return text
 
 
@@ -113,7 +122,8 @@ def handle_text_break_dash(text):
         "The 27-year-old could eat icecream any day"
     will not be changed.
     """
-    return re.sub(r'\s+-\s*|\s*-\s+', ';', text)
+    # EX: handle_text_break_dash("a - b") => "a; b"
+    return re.sub(r'\s+-\s*|\s*-\s+', '; ', text)
 
 
 def clean_text(raw_text):
@@ -134,6 +144,7 @@ def clean_text(raw_text):
         if not TFIDF_PRESERVE_CASE:
             text = text.lower()
 
+        ## TODO3: make &-stripping optional
         regex_subs = ['\t', '\n', '\r', r'\s+', '&']
         for regex_sub in regex_subs:
             text = re.sub(regex_sub, ' ', text)

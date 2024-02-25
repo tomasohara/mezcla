@@ -144,7 +144,7 @@ def version_to_number(version, max_padding=3):
     - strings in the version are ignored
     - 0 is returned if version string is non-standard"""
     # EX: version_to_number("1.11.1") => 1.00110001
-    # EX: version_to_number("1") => 1
+    # EX: version_to_number("1") => 1.0
     # EX: version_to_number("") => 0
     # TODO: support string (e.g., 1.11.2a).
     version_number = 0
@@ -154,7 +154,7 @@ def version_to_number(version, max_padding=3):
     debug.trace_fmt(5, "version_to_number({v})", v=version)
 
     # HACK: Remove newlines
-    # EX: "3.7.6 (default, Jan  8 2020, 19:59:22)<NL>[GCC 7.3.0]"
+    # example: "3.7.6 (default, Jan  8 2020, 19:59:22)<NL>[GCC 7.3.0]"
     if my_re.search(r"^([^\n]+)\n", version_text):
         debug.trace_fmt(5, "Removing pesky newline: '{vt}' => '{nvt}'", vt=version_text, nvt=my_re.group(1))
         version_text = my_re.group(1)
@@ -222,7 +222,9 @@ def extract_string_list(text):
     # EX: extract_string_list("'my dog'  likes  'my  hot  dog'") => ['my dog', 'likes', 'my  hot  dog']
 
     # Convert commas and whitespace to be blanks
+    # Also removes surrounding list brackets
     normalized_text = text.replace(",", " ").strip()
+    normalized_text = my_re.sub(r"^\[(.*)\]$", r"\1", normalized_text)
     normalized_text = re.sub(r"\s", " ", normalized_text)
     debug.trace_fmtd(6, "normalized_text1: {nt}", nt=normalized_text)
 
@@ -265,7 +267,7 @@ def extract_int_list(text, default_value=0):
 
 
 def getenv_ints(var, default_values_spec):
-    """Get integer list using values specified for environment VAR (or DEFAULT_VALUES_SPEC)"""
+    """Get integer list using values specified for environment VAR (or DEFAULT_VALUES_SPEC text)"""
     # EX: getenv_ints("DUMMY VARIABLE", str(list(range(5)))) => [0, 1, 2, 3, 4]
     return extract_int_list(system.getenv_text(var, default_values_spec))
 

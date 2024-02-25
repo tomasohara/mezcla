@@ -1075,7 +1075,7 @@ def main():
                     boolean_options=[(BATCH_ARG, "Use batch mode--no UI"),
                                      (SERVER_ARG, "Run flask server"),
                                      (UI_ARG, "Show user interface"),
-                                     ## TODO?: (TXT2IMG_ARG, "Run text-to-image"),
+                                     (TXT2IMG_ARG, "Run text-to-image--the default"),
                                      (IMG2IMG_ARG, "Run image-to-image"),
                                      (IMG2TXT_ARG, "Run image-to-text: clip interrogator")],
                     text_options=[(PROMPT_ARG, "Positive prompt"),
@@ -1096,9 +1096,9 @@ def main():
     prompt = main_app.get_parsed_option(PROMPT_ARG, PROMPT)
     negative_prompt = main_app.get_parsed_option(NEGATIVE_ARG, NEGATIVE_PROMPT)
     guidance = main_app.get_parsed_option(GUIDANCE_ARG, GUIDANCE_SCALE)
-    ## TODO?: use_txt2img = main_app.get_parsed_option(TXT2IMG_ARG, USE_TXT2IMG)
     use_img2img = main_app.get_parsed_option(IMG2IMG_ARG, USE_IMG2IMG)
     use_img2txt = main_app.get_parsed_option(IMG2TXT_ARG, USE_IMG2TXT)
+    use_txt2img = main_app.get_parsed_option(TXT2IMG_ARG, not (use_img2img or use_img2txt))
     ## OLD: input_image_file = main_app.get_parsed_option(IMAGE_ARG)
     denoising_factor = main_app.get_parsed_option(DENOISING_ARG)
     ## TODO?: debug.assertion(use_txt2img ^ use_img2img)
