@@ -62,6 +62,7 @@ import mezcla
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import DISABLE_RECURSIVE_DELETE
+from mezcla.misc_utils import string_diff
 from mezcla.my_regex import my_re
 from mezcla import system
 
@@ -412,6 +413,40 @@ class TestWrapper(unittest.TestCase):
 
         return output
 
+    def resolve_assertion(self, function_label, message):
+        """Returns statement text, filename, line number, and qualifier for FUNCTION_LABEL assertion failure"""
+        statement = filename = line_num = expr = qual = None
+        try:
+            # note: accounts for trap_exception and other decorators
+            for caller in inspect.stack():
+                debug.trace_expr(8, caller)
+                ## DEBUG: print(f"{caller=}")
+                (_frame, filename, line_num, _function, context, _index) = caller
+                statement = debug.read_line(filename, line_num).strip()
+                ## DEBUG: print(f"{statement=}")
+                if f".{function_label}(" in statement:
+                    break
+            # TODO3: use abstract syntax tree (AST) based extraction
+            # ex: self.do_assert(not my_re.search(r"cat|dog", description))  # no pets
+            # Isolate condition
+            cond = my_re.sub(fr"^\s*\S+\.{function_label}\((.*)\)", r"\1", statement)
+            # Get expression proper, removing optional comments and semicolon 
+            expr = my_re.sub(r";?\s*#.*$", "", cond)
+            # Strip optional message
+            qual = ""
+            if message is not None:
+                expr = my_re.sub(r", *([\'\"]).*\1\s*$", "", expr)   # string arg
+                expr = my_re.sub(r", *[a-z0-9_]+$", "", expr,        # variable arg
+                                 flags=my_re.IGNORECASE)
+                qual = f": {message}"
+            debug.trace_expr(7, filename, line_num, context, prefix="resolve_assertion: ")
+        except:
+            system.print_exception_info("resolve_assertion")
+        debug.assertion(statement)
+        result = (statement, filename, line_num, expr, qual)
+        debug.trace(7, f"resolve_assertion({function_label}) => {result}")
+        return result
+    
     def do_assert(self, condition, message=None):
         """Shows context for assertion failure with CONDITION and then issue assert
         If MESSAGE specified, included in assertion error
@@ -422,33 +457,8 @@ class TestWrapper(unittest.TestCase):
         """
         debug.trace(7, f"do_assert({condition}, msg={message})")
         if ((not condition) and debug.debugging(debug.TL.DEFAULT)):
-            statement = filename = line_num = None
-            try:
-                # note: accounts for trap_exception and other decorators
-                for caller in inspect.stack():
-                    debug.trace_expr(8, caller)
-                    (_frame, filename, line_num, _function, context, _index) = caller
-                    statement = debug.read_line(filename, line_num).strip()
-                    if "do_assert" in statement:
-                        break
-                debug.trace_expr(7, filename, line_num, context, prefix="do_assert: ")
-            except:
-                system.print_exception_info("do_assert")
-            debug.assertion(statement)
+            (statement, filename, line_num, expr, qual) = self.resolve_assertion("do_assert", message)
             if statement:
-                # TODO3: use abstract syntax tree (AST) based extraction
-                # ex: self.do_assert(not my_re.search(r"cat|dog", description))  # no pets
-                # Isolate condition
-                cond = my_re.sub(r"^\s*\S+\.do_assert\((.*)\)", r"\1", statement)
-                # Get expression proper, removing optional comments and semicolon 
-                expr = my_re.sub(r";?\s*#.*$", "", cond)
-                # Strip optional message
-                qual = ""
-                if message is not None:
-                    expr = my_re.sub(r", *([\'\"]).*\1\s*$", "", expr)   # string arg
-                    expr = my_re.sub(r", *[a-z0-9_]+$", "", expr,        # variable arg
-                                     flags=my_re.IGNORECASE)
-                    qual = f": {message}"
                 # Format assertion error with optional qualification (i.e., user message)
                 debug.trace(1, f"Test assertion failed: {expr} (at {filename}:{line_num}){qual}")
                 debug.trace(5, f"\t{statement}")
@@ -464,6 +474,20 @@ class TestWrapper(unittest.TestCase):
     ##     """Wrapper around do_assert (q.v.)"""
     ##     self.do_assert(*args, **kwargs)
 
+    def do_assert_equals(self, value1, value2, message=None):
+        """Make sure VALUE1 equals VALUE2, using optional MESSAGE"""
+        equals = value1 == value2
+        if ((not equals) and debug.debugging(debug.TL.DEFAULT)):
+            (statement, filename, line_num, expr, qual) = self.resolve_assertion("do_assert_equals", message)
+            if statement:
+                # Format assertion error with optional qualification (i.e., user message)
+                debug.trace(1, f"Test equality assertion failed: {expr} (at {filename}:{line_num}){qual}")
+                debug.trace(5, f"\t{statement}")
+                debug.trace(2, "diff:\n" + string_diff(value1, value2))
+            else:
+                system.print_error("Warning: unexpected condition in do_assert_equals")
+        assert equals, message
+    
     @pytest.fixture(autouse=True)
     def monkeypatch(self, monkeypatch):
         """Support for using pytest monkeypatch to modify objects (e.g., dictionaries or environment variables)"""
@@ -481,9 +505,9 @@ class TestWrapper(unittest.TestCase):
         Note: Clears both stdout and stderr captured afterwards. This might
         be needed beforehand to clear capsys buffer.
         """
-        ## TODO3: add explicit methods for clearing capsys buffer
         stdout, stderr = self.capsys.readouterr()
-        debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n")
+        ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
+        debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", maxlen=8192)
         return stdout, stderr
         
     def get_stdout(self):
@@ -500,6 +524,14 @@ class TestWrapper(unittest.TestCase):
         _stdout, stderr = self.get_stdout_stderr()
         return stderr
 
+    def clear_stdout_stderr(self):
+        """Clears stdout and stderr by issuing dummy call"""
+        _result = self.get_stdout_stderr()
+        return
+    #
+    clear_stdout = clear_stdout_stderr
+    clear_stderr = clear_stdout_stderr
+    
     def get_temp_file(self, delete=None):
         """return name of temporary file based on self.temp_file, optionally with DELETE"""
         # Note: delete defaults to False if detailed debugging
