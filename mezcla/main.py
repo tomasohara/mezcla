@@ -958,7 +958,7 @@ class Main(object):
                 ## OLD: gh.run("rm -rf {dir}", dir=self.temp_base)
                 if DISABLE_RECURSIVE_DELETE:
                     debug.trace(4, f"FYI: Only deleting top-level files in {self.temp_base} to avoid potentially dangerous rm -r")
-                    gh.run("rm -rf {dir}/*", dir=self.temp_base)
+                    gh.run("rm -f {dir}/* {dir}/.*", dir=self.temp_base)
                     gh.run("rm -f {dir}", dir=self.temp_base)
                 else:
                     debug.trace(4, f"FYI: Using potentially dangerous rm -r over {self.temp_base}")
