@@ -89,7 +89,7 @@ class ConvertEmoticons:
         # EX: ce.convert("✅ Success") => "[checkmark] Success"
         # EX: ce.convert("✅ Success", augment=True) => "✅ [checkmark] Success"
         # EX: ce.convert("año") => "año"       # ignore diacritic; Spanish for year
-        debug.trace_expr(6, replace, strip, replacement, augment, prefix=f"in ce.convert: text=_; ")
+        debug.trace_expr(6, replace, strip, replacement, augment, prefix="in ce.convert: text=_; ")
         debug.assertion(text is not None)
         debug.assertion(not (replace and strip))
         debug.assertion(not (augment and strip))
@@ -101,7 +101,7 @@ class ConvertEmoticons:
             replacement = self.replacement
         if augment is None:
             augment = self.augment
-        debug.trace_expr(5, replace, strip, replacement, augment, prefix=f"ce.convert: text=_; ")
+        debug.trace_expr(5, replace, strip, replacement, augment, prefix="ce.convert: text=_; ")
         in_text = text
         text = (text or "")
         #
