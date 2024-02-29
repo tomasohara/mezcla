@@ -57,21 +57,17 @@ import html
 import re
 import sys
 import time
-## OLD: import urllib
 import urllib.request
 from urllib.error import HTTPError, URLError
 from http.client import HTTPMessage
-## OLD: from typing import Dict
 try:
     from typing_extensions import Any, Callable, Dict, List, Optional, Union
 except:
-    ## OLD: sys.exit("Error: html_utils.py requires Python 3.9+ (backport limitations with typing_extensions)")
     sys.stderr.write("Error importing extensions: {sys.exc_info}\n")
     sys.exit("Error: html_utils.py requires Python typing_extensions >= 4.7.0 (backport limitations with typing_extensions)")
 
 # Installed packages
 # Note: selenium import now optional; BeautifulSoup also optional
-## OLD: from selenium import webdriver
 import requests
 
 # Local packages
@@ -82,11 +78,9 @@ from mezcla import system
 from mezcla.system import write_temp_file
 
 # Constants
-## OLD: DEFAULT_STATUS_CODE = "000"
 DEFAULT_STATUS_CODE = 0
 MAX_DOWNLOAD_TIME = system.getenv_integer("MAX_DOWNLOAD_TIME", 60,
                                           "Time in seconds for rendered-HTML download as with get_inner_html")
-## OLD: MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("MID_DOWNLOAD_SLEEP_SECONDS", 60)
 MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("MID_DOWNLOAD_SLEEP_SECONDS", 15,
                                                    "Mid-stream delay if document not ready")
 POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("POST_DOWNLOAD_SLEEP_SECONDS", 1,
@@ -184,7 +178,6 @@ def get_inner_html(url : str):
         # Wait for Javascript to finish processing
         wait_until_ready(url)
         # Extract fully-rendered HTML
-        ## OLD: inner_html = browser.execute_script("return document.body.innerHTML")
         inner_html:str = browser.page_source
     except:
         inner_html = ""
@@ -293,7 +286,7 @@ def set_param_dict(param_dict : Dict):
 def get_url_param(name : str, default_value : Optional[str] = None, param_dict : Optional[Dict] = None, escaped : bool = False):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
     Note: It can be ESCAPED for use in HTML.
-    Different from get_url_parameter_value in possible returning list.
+    Different from get_url_parameter_value in possibly returning list.
     """
     # TODO3: default_value => default
     if default_value is None:
@@ -333,7 +326,6 @@ def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", par
     param_dict = (get_param_dict(param_dict) or {})
     param_value = param_dict.get(name, default_value)
     param_value = system.to_unicode(param_value)
-    ## OLD: value = "checked" if (param_value in [True, "on"]) else ""
     value = "checked" if (param_value in ["1", "on", True]) else ""
     debug.trace_fmtd(4, "get_url_param_checkbox_spec({n}, [{d}]) => {v})",
                      n=name, d=default_value, v=value)
@@ -364,10 +356,8 @@ def get_url_parameter_bool(param, default_value : bool = False, param_dict : Opt
     """
     # EX: get_url_parameter_bool("abc", False, { "abc": "on" }) => True
     # TODO: implement in terms of get_url_param and also system.to_bool
-    ## OLD: result = (param_dict.get(param, default_value) in ["on", True])
     debug.assertion((default_value is None) or isinstance(default_value, bool))
     result = (get_url_parameter_value(param, default_value, param_dict)
-              ## OLD: in ["1", "on", True])
               in ["1", "on", "True", True])
     ## HACK: result = ((system.to_unicode(param_dict.get(param, default_value))) in ["on", True])
     debug.trace_fmtd(4, "get_url_parameter_bool({p}, {dft}, _) => {r}",
@@ -406,7 +396,6 @@ def fix_url_parameters(url_parameters : Dict):
     and ensures dashes are used instead of embedded underscores in the keys"""
     # EX: fix_url_parameters({'w_v':[7, 8], 'h_v':10}) => {'w-v':8, 'h-v':10}
     # EX: fix_url_parameters({'_':'_'}) => {'_':'_'}
-    ## OLD: new_url_parameters = {p.replace("_", "-"):v for  (p, v) in url_parameters.items()}
     new_url_parameters = {my_re.sub(r"([a-z0-9])_", r"\1-", p):v
                           for  (p, v) in url_parameters.items()}
     new_url_parameters = {p:(v[-1] if isinstance(v, list) else v) for (p, v) in new_url_parameters.items()}
@@ -481,7 +470,6 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
     if (not system.file_exists(download_dir)):
         gh.full_mkdir(download_dir)
     local_filename = gh.form_path(download_dir, filename)
-    ## OLD: headers = ""
     ## TEST: headers = {}
     ## TEST: headers : Dict[Any, Any] = {}
     headers : HTTPMessage = HTTPMessage()
@@ -718,14 +706,11 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
     if (label is None):
-        ## OLD: label = (param_name.replace("-", " ").capitalize() + "?")
         label = (param_name.replace("-", " ") + "?")
         if not skip_capitalize:
             label = label.capitalize()
-    ## OLD: result = ""
     ## TODO: use hidden only if (default_value in ["1", "on", True])???
     result = f"<input type='hidden' name='{param_name}' value='off'>"
-    ## OLD: result += f"<label>{label} <input type='checkbox' id='{param_name}-id' name='{param_name}' {status_spec}></label>&nbsp;"
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
         tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
@@ -778,7 +763,6 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
         num_rows = 1
     if (size is None):
         size = max_len
-    ## OLD: value_spec = (f"{default_value}" if default_value else "")
     value_spec = (get_url_param(param_name) or default_value)
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
@@ -794,7 +778,6 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
         value_spec = format_url_param(param_name)
         result += f'<textarea id="{param_name}-id" name="{param_name}" rows={num_rows} {style_spec} {max_len_spec} {disabled_spec} {misc_spec}>{value_spec}</textarea>'
     else:
-        ## OLD: max_len_spec = (f"maxlength={max_len} size={max_len}" if max_len else "")
         len_spec = ""
         if max_len:
             len_spec += f' maxlength="{max_len}"'
@@ -845,7 +828,6 @@ def html_to_text(document_data : str):
     # Note: stripping javascript and style sections based on following:
     #   https://stackoverflow.com/questions/22799990/beatifulsoup4-get-text-still-has-javascript
     debug.trace_fmtd(7, "html_to_text(_):\n\tdata={d}", d=document_data)
-    ## OLD: soup = BeautifulSoup(document_data)
     init_BeautifulSoup()
     soup = BeautifulSoup(document_data, "lxml") if BeautifulSoup else None
     # Remove all script and style elements
@@ -917,10 +899,6 @@ def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] 
         if not image_src:
             debug.trace_fmt(5, "Ignoring image without src: {img}", img=image)
             continue
-        ## OLD:
-        ## if image_src.startswith("/"):
-        ##     image_src = web_site_url + image_src
-        ## elif not image_src.startswith("http"):
         if image_src.startswith("//"):
             url_proto = (my_re.search(r"^(\w+):", url) and my_re.group(1))
             image_src = f"{url_proto}:{image_src}"
@@ -942,9 +920,6 @@ def main(args : List[str]) -> None:
     """Supporting code for command-line processing"""
     ## NOTE: This is work-in-progress from a debug-only utility
     debug.trace_fmtd(6, "main({a})", a=args)
-    ## OLD:
-    ## user = system.getenv_text("USER")
-    ## system.print_stderr("Warning, {u}: this is not intended for direct invocation".format(u=user))
 
     # Parse command line arguments
     # TODO2: use master.Main for arg parsing
@@ -987,7 +962,6 @@ def main(args : List[str]) -> None:
     # HACK: Do simple test of inner-HTML support
     # TODO: Do simpler test of download_web_document
     # TODO1: add explicit argument for inner-html support
-    ## OLD: if (len(args) > 1):
     elif (filename):
         # Get web page text
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
@@ -1003,8 +977,6 @@ def main(args : List[str]) -> None:
         # Show inner/outer HTML
         # Note: The browser is hidden unless MOZ_HEADLESS false
         # TODO: Support Chrome
-        ## OLD: wait_until_ready(url)
-        ## BAD: rendered_html = render(html_data)
         system.setenv("MOZ_HEADLESS",
                       str(int(system.getenv_bool("MOZ_HEADLESS", True))))
         rendered_html = get_inner_html(url)
@@ -1027,9 +999,7 @@ def main(args : List[str]) -> None:
         show_usage = True
 
     # Not sure what to do
-    ## OLD: else:
     if show_usage:
-        ## OLD: print("Specify a URL as argument 1 for a simple test of inner access")
         script = gh.basename(__file__)
         print("Usage: {prog} [--help] [--stdout] [--quiet] [[--regular | --inner] [filename]]")
         print("- Specify a local HTML file to save as text.")
