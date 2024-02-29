@@ -75,6 +75,7 @@ END_RUN
 RUN <<END_RUN
     echo "Warning: removing unneeded software"
     /bin/rm -rf /opt/acttoolcache/node
+    df -h /
 END_RUN
 
 # Install Python
