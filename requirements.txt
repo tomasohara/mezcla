@@ -41,7 +41,7 @@ git+https://github.com/tehabstract/textract.git
 gradio                        # UI support (e.g., HF-based apps)
 importlib_metadata
 #opt# kenlm                   # language model support (NOTE: problem with wheel)
-librosa>=0.10.0           
+## OLD: librosa>=0.10.0
 lxml
 mako
 matplotlib
@@ -66,7 +66,8 @@ torch
 torchaudio
 webcolors
 wheel
-xgboost
+## NOTE: temporarily disabled due to stupid docker disk space constraints
+## TODO: xgboost
 #
 #...............................................................................
 # Optional requirements
