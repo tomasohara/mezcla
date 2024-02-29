@@ -9,10 +9,7 @@
 """Entry point for mezcla"""
 
 # Standard module(s)
-## OLD
-## import os
-## import re
-## import sys
+## TODO: import logging
 
 # Installed modules
 import mezcla
@@ -33,7 +30,7 @@ def main(omit_warnings=False):
     debug.trace(TL.USUAL, f"Install path: {file_path}")
 
     # Derive module name
-    # ex: /home/tomohara/python/Mezcla/mezcla/__main__.py => "mezcla"
+    # example: /home/tomohara/python/Mezcla/mezcla/__main__.py => "mezcla"
     module = "<module>"
     sep = my_re.escape(system.path_separator())
     match = my_re.search(fr"([^{sep}]*){sep}[^{sep}]*$", __file__)
