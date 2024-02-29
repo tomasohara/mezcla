@@ -65,9 +65,16 @@ ARG TEST_REGEX=""
 #
 RUN <<END_RUN
     df --human-readable
-    echo "Top directories by disk usage (pre-install):";
-    du --block-size=1K / 2>&1 | sort -rn | head -20;
+    ## TODO: track down stupid problem with step failing
+    ## echo "Top directories by disk usage (pre-install):";
+    ## du --block-size=1K / 2>&1 | sort -rn | head -20;
     true;                               # ensure success (quirk w/ head)
+END_RUN
+
+# Temp: remove unneeded software taking up much disk space (e.g., node)
+RUN <<END_RUN
+    echo "Warning: removing unneeded software"
+    /bin/rm -rf /opt/acttoolcache/node
 END_RUN
 
 # Install Python
