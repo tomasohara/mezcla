@@ -60,6 +60,11 @@ ARG DEBUG_LEVEL=4
 ARG TEST_REGEX=""
 ## DEBUG: ARG TEST_REGEX="simple_main_example"
 
+# Show initial disk usage
+# See https://github.com/orgs/community/discussions/25678 [No space left on device]
+#
+RUN du --block-size=1K / 2>&1 | sort -rn | head -20
+
 # Install Python
 # See https://stackoverflow.com/a/70866416 [How to install python specific version on docker?]
 #
