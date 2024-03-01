@@ -99,6 +99,9 @@ STABLE_DOWNLOAD_CHECK = system.getenv_bool("STABLE_DOWNLOAD_CHECK", False,
                                            "Wait until download size stablizes--for dynamic content")
 EXCLUDE_IMPORTS = system.getenv_bool("EXCLUDE_IMPORTS", False,
                                      "Sets --follow-imports=silent; no import files are checked")
+TARGET_BOOTSTRAP =  system.getenv_bool(
+    "TARGET_BOOTSTRAP", False,
+    description="Format tooltips, etc. for use with bootstrap")
 HEADERS = "headers"
 FILENAME = "filename"
 
@@ -713,8 +716,11 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     result = f"<input type='hidden' name='{param_name}' value='off'>"
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
-        tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
-        tooltip_end_spec = "</span>"
+        if TARGET_BOOTSTRAP:
+            misc_spec += f" data-bs-toggle='tooltip' title='{tooltip}'"
+        else:
+            tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
+            tooltip_end_spec = "</span>"
     result += f"<label>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
@@ -770,8 +776,11 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
     misc_spec += (f"onchange={on_change}" if on_change else "")
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
-        tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
-        tooltip_end_spec = "</span>"
+        if TARGET_BOOTSTRAP:
+            misc_spec += f" data-bs-toggle='tooltip' title='{tooltip}'"
+        else:
+            tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
+            tooltip_end_spec = "</span>"
     result = f'<label>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;'
     if text_area:
         max_len_spec = (f'maxlength="{max_len}"' if max_len else "")
