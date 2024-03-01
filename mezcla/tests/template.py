@@ -102,9 +102,9 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    def test_02_whatever(self):
+    def test_03_whatever(self):
         """TODO: flesh out test for whatever (capsys-like)"""
-        debug.trace(4, f"TestIt2.test_02_whatever(); self={self}")
+        debug.trace(4, f"TestIt2.test_03_whatever(); self={self}")
         THE_MODULE.TODO_whatever()
         captured = self.get_stderr()
         self.do_assert("whatever" in captured, "TODO_whatever trace")
