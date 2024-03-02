@@ -47,8 +47,9 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 ## # Note: These are just intended for internal options, not for end users.
 ## # It also allows for enabling options in one place.
 ## #
-## FUBAR = system.getenv_bool("FUBAR", False,
-##                            description="Fouled Up Beyond All Recognition processing")
+## FUBAR = system.getenv_bool(
+##     "FUBAR", False,
+##     description="Fouled Up Beyond All Recognition processing")
 
 #------------------------------------------------------------------------
 
