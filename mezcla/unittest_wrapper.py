@@ -89,6 +89,12 @@ VIA_UNITTEST = system.getenv_bool(
 PROFILE_CODE = system.getenv_boolean(
     "PROFILE_CODE", False,
     description="Profile each test invocation")
+#
+# For use in tests
+RUN_SLOW_TESTS = system.getenv_bool(
+    "RUN_SLOW_TESTS", False,
+    description="Run tests that can a while to run")
+debug.reference_var(RUN_SLOW_TESTS)
 
 # Dynamic imports
 if PROFILE_CODE:
