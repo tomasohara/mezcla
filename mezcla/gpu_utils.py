@@ -14,6 +14,7 @@ import torch
 
 # Local modules
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla import system
 
 # Constants
@@ -45,4 +46,3 @@ def trace_gpu_usage(level=TL.DETAILED):
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
     system.print_error("Warning: Not intended for direct invocation.")
-    main()
