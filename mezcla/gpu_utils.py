@@ -32,6 +32,16 @@ TORCH_DEVICE = system.getenv_text(
 
 #-------------------------------------------------------------------------------
 
+def trace_gpu_usage(level=TL.DETAILED):
+    """Trace out usage for GPU memory, etc.
+    TODO: support other types besides NVidia"""
+    if TORCH_DEVICE == "cuda":
+        debug.trace(level, "GPU usage")
+        debug.trace(level, gh.run("nvidia-smi"))
+
+
+#-------------------------------------------------------------------------------
+
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
     system.print_error("Warning: Not intended for direct invocation.")
