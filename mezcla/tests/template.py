@@ -81,9 +81,9 @@ class TestIt(TestWrapper):
 
     @pytest.mark.xfail                   # TODO: remove xfail
     ## DEBUG: @trap_exception            # TODO: remove when debugged
-    def test_data_file(self):
+    def test_01_data_file(self):
         """Tests run_script w/ data file"""
-        debug.trace(4, f"TestIt.test_data_file(); self={self}")
+        debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
         system.write_lines(self.temp_file, data)
         ## TODO: add use_stdin=True to following if no file argument
@@ -93,17 +93,17 @@ class TestIt(TestWrapper):
 
     @pytest.mark.xfail                   # TODO: remove xfail
     ## DEBUG: @trap_exception            # TODO: remove when debugged
-    def test_something_else(self):
+    def test_02_something_else(self):
         """Test for something_else: TODO..."""
-        debug.trace(4, f"TestIt.test_something_else(); self={self}")
+        debug.trace(4, f"TestIt.test_02_something_else(); self={self}")
         self.do_assert(False)
         ## ex: self.do_assert(THE_MODULE.TODO_function() == TODO_value)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    def test_whatever(self):
+    def test_02_whatever(self):
         """TODO: flesh out test for whatever (capsys-like)"""
-        debug.trace(4, f"TestIt2.test_whatever(); self={self}")
+        debug.trace(4, f"TestIt2.test_02_whatever(); self={self}")
         THE_MODULE.TODO_whatever()
         captured = self.get_stderr()
         self.do_assert("whatever" in captured, "TODO_whatever trace")

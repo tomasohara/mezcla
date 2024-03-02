@@ -48,7 +48,7 @@ from mezcla.system import round_num as rnd
 from mezcla import tpo_common as tpo
 from mezcla import tfidf
 from mezcla.compute_tfidf import terms_overlap
-from mezcla.text_processing import stopwords as ENGLISH_STOPWORDS, create_text_proc
+from mezcla.text_processing import stopwords as ENGLISH_STOPWORDS, create_text_proc, split_word_tokens
 from mezcla.tfidf.corpus import Corpus as tfidf_corpus
 from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
 from mezcla.tfidf import preprocess as tfidf_preprocess
@@ -96,6 +96,12 @@ TFIDF_NUMERIC_BOOST = system.getenv_float(
 TFIDF_TEXT_PROC = system.getenv_text(
     "TFIDF_TEXT_PROC", "spacy",
     description="name of text processor to use for chunking")
+TFIDF_BAD_BOOST = system.getenv_float(
+    "TFIDF_BAD_BOOST", 0,
+    description="Boost factor for ngrams that bad terms")
+TFIDF_GOOD_BOOST = system.getenv_float(
+    "TFIDF_GOOD_BOOST", 0,
+    description="Boost factor for ngrams that good terms")
 
 ## OLD:
 ## # Dynamic loading
@@ -115,12 +121,22 @@ except:
 assert(TFIDF_VERSION > 1.0)
 
 
+def split_tokens(text, include_punct=None, include_stop=None):
+    """Split TEXT into word tokens (via NLTK), optionally with INCLUDE_PUNCT and INCLUDE_STOP"""
+    # EX: split_tokens("Jane's fast car") => ["Jane", "fast", "car"]
+    result = split_word_tokens(text, omit_punct=(not include_punct), omit_stop=(not include_stop))
+    debug.trace(6, f"split_tokens({text!r}, punct={include_punct}, stop={include_stop}) => {result!r}")
+    return result
+
+
 class ngram_tfidf_analysis(object):
     """Class for performing TF-IDF over ngrams and returning sorted list"""
 
-    def __init__(self, pp_lang=PREPROCESSOR_LANG, min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE, 
-                 *args, **kwargs):
-        """Class constructor: initialize corpus object (with PP_LANG, MIN_NGRAM_SIZE, and MAX_NGRAM_SIZE)"""
+    def __init__(self, pp_lang=PREPROCESSOR_LANG, min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE,
+                 good_terms=None, bad_terms=None, *args, **kwargs):
+        """Class constructor: initialize corpus object (with PP_LANG, MIN_NGRAM_SIZE, and MAX_NGRAM_SIZE)
+        Note: Optional BAD_TERMS used to boost or penalize certain ngrams (e.g., based on title)
+        """
         # EX: ((self := ngram_tfidf_analysis(pp_lang="")) and (not self.pp.stopwords))
         # TODO: add option for stemmer; add all_ngrams and min_ngram_size to constructor
         debug.trace_fmtd(4, "ngram_tfidf_analysis.__init__(lang={pl}, min={minsz}, max={maxsz})",
@@ -139,6 +155,8 @@ class ngram_tfidf_analysis(object):
             self.text_proc = create_text_proc(TFIDF_TEXT_PROC)
         ## TODO2: add international stopwords (e.g., English plus frequent ones from common languages)
         self.stopwords = None
+        self.good_terms = (good_terms or [])
+        self.bad_terms = (bad_terms or [])
         self.reset()
         super().__init__(*args, **kwargs)
 
@@ -155,6 +173,14 @@ class ngram_tfidf_analysis(object):
                                    language=self.pp_lang,
                                    preprocessor=self.pp)
         self.stopwords = (self.pp.stopwords or ENGLISH_STOPWORDS)
+
+    def set_good_terms(self, text):
+        """Sets good terms to TEXT split into word tokens"""
+        self.good_terms = split_tokens(text)
+        
+    def set_bad_terms(self, text):
+        """Sets bad terms to TEXT split into word tokens"""
+        self.bad_terms = split_tokens(text)
         
     def add_doc(self, text, doc_id=None):
         """Add document TEXT to collection with key DOC_ID, which defaults to order processed (1-based)"""
@@ -178,7 +204,7 @@ class ngram_tfidf_analysis(object):
         """Whethere NGRAM is capitalized, excepting internal stopwords"""
         ## EX: self.capitalized_ngram("House of Cards")
         ## EX: not self.capitalized_ngram("in New York")
-        tokens = ngram.split()
+        tokens = split_tokens(ngram, include_stop=True)
         result = (tokens and tokens[0].istitle()
                   and ((len(tokens) == 1) or tokens[-1].istitle()))
         if (result and (len(tokens) > 2)):
@@ -244,8 +270,15 @@ class ngram_tfidf_analysis(object):
                 if (TFIDF_VP_BOOST and self.text_proc.verb_phrases(ngram) == [ngram]):
                     score = old_score * TFIDF_VP_BOOST
                     debug.trace(5, f"boosted VP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
-                if (TFIDF_NUMERIC_BOOST and any(tpo.is_numeric(token) for token in ngram.split())):
+                if (TFIDF_NUMERIC_BOOST and any(tpo.is_numeric(token) for token in split_tokens(ngram))):
                     score = old_score * TFIDF_NUMERIC_BOOST
+                    debug.trace(5, f"boosted numeric {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                if (TFIDF_GOOD_BOOST and system.intersection(split_tokens(ngram), self.good_terms)):
+                    score = old_score * TFIDF_GOOD_BOOST
+                    debug.trace(5, f"boosted good-term {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                if (TFIDF_BAD_BOOST and system.intersection(split_tokens(ngram), self.bad_terms)):
+                    score = old_score * TFIDF_BAD_BOOST
+                    debug.trace(5, f"boosted bad-term {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                 # Update changed score
                 if old_score != score:
                     ## BAD: top_term_info[i][1] = score
@@ -276,7 +309,7 @@ class ngram_tfidf_analysis(object):
             if (not ngram.strip()):
                 debug.trace_fmt(6, "Omitting invalid ngram '{ng}'", ng=ngram)
                 continue
-            if ((not allow_numeric_ngrams) and any(tpo.is_numeric(token) for token in ngram.split())):
+            if ((not allow_numeric_ngrams) and any(tpo.is_numeric(token) for token in split_tokens(ngram))):
                 debug.trace_fmt(6, "Omitting ngram with numerics '{ng}'", ng=ngram)
                 continue
             
@@ -354,7 +387,7 @@ def simple_main_test():
     ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE)
     all_text = system.read_entire_file(__file__)
     all_ngrams = ngram_analyzer.get_ngrams(all_text)
-    reversed_all_text = " ".join(list(reversed(all_text.split())))
+    reversed_all_text = " ".join(list(reversed(split_tokens(all_text, include_punct=True, include_stop=True))))
     ngram_analyzer.add_doc(all_text, doc_id="doc1")
     ngram_analyzer.add_doc(reversed_all_text, doc_id="rev-doc1")
     top_ngrams = ngram_analyzer.get_top_terms("rev-doc1", allow_ngram_subsumption=False, allow_ngram_overlap=False)
@@ -386,10 +419,14 @@ def simple_main_test():
     print(f"top ngrams in {__file__}:\n\t{init_top_ngram_spec}")
 
 
-def output_tfidf_analysis(main_app):
+def output_tfidf_analysis(main_app, good_text=None, bad_text=None):
     """Output results for ngram TF/IDF analysis over input from MAIN_APP"""
     debug.trace(4, f"output_tfidf_analysis({main_app})")
-    ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE)
+    ## TODO3: let ngram_tfidf_analysis class do the splitting
+    good_terms = ([] if not good_text else split_tokens(good_text))
+    bad_terms = ([] if not bad_text else split_tokens(bad_text))
+    ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE,
+                                          good_terms=good_terms, bad_terms=bad_terms)
     all_text = main_app.read_entire_input()
     num_docs = 0
     for l, line in enumerate(all_text.splitlines()):
@@ -409,17 +446,23 @@ def main():
     debug.trace(4, "main()")
     SIMPLE_TEST_OPT = "simple-test"
     REGULAR_OPT = "regular"
+    GOOD_TERMS_OPT = "good-terms"
+    BAD_TERMS_OPT = "bad-terms"
     main_app = Main(description=__doc__.format(script=gh.basename(__file__),
                                                options=f"--{REGULAR_OPT}"),
-                    boolean_options=[(SIMPLE_TEST_OPT, "Run simple test (default)"),
-                                     (REGULAR_OPT, "Process regular input")],
+                    boolean_options=[(SIMPLE_TEST_OPT, "Run simple canned test--default"),
+                                     (REGULAR_OPT, "Process regular input--not canned test")],
+                    text_options=[(GOOD_TERMS_OPT, "Overlap terms for boosting ngrams scores"),
+                                  (BAD_TERMS_OPT, "Overlap terms for de-boosting ngrams scores")],
                     skip_input=False)
     regular = main_app.get_parsed_option(REGULAR_OPT)
     simple_test = main_app.get_parsed_option(SIMPLE_TEST_OPT, not regular)
+    good_terms_text = main_app.get_parsed_option(GOOD_TERMS_OPT)
+    bad_terms_text = main_app.get_parsed_option(BAD_TERMS_OPT)
     if (simple_test):
         simple_main_test()
     else:
-        output_tfidf_analysis(main_app)
+        output_tfidf_analysis(main_app, good_text=good_terms_text, bad_text=bad_terms_text)
    
 #-------------------------------------------------------------------------------
 

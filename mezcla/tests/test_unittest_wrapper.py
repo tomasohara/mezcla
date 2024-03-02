@@ -33,9 +33,9 @@ class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    def test_usage(self):
+    def test_01_usage(self):
         """Make sure usage warns that not intended for command line and that no stdout"""
-        debug.trace(4, f"TestIt.test_usage(); self={self}")
+        debug.trace(4, f"TestIt.test_01_usage(); self={self}")
         log_file = self.temp_file + ".log"
         ## BAD: output = self.run_script(log_file=log_file)
         output = self.run_script(env_options="DEBUG_LEVEL=4", log_file=log_file)
@@ -45,16 +45,19 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search(r"Warning: not intended.*command-line", log_contents))
         return
 
-class TestIt2:
-    """Class for API usage"""
+    ## OLD:
+    ## class TestIt2:
+    ## """Class for API usage"""
 
     @pytest.mark.skipif(not __debug__, reason="Must be under __debug__")
     ## TODO:
     ## @pytest_fixture_wrapper
     ## @trap_exception
-    def test_do_assert(self, capsys):
+    ## OLD: def test_02_do_assert(self, capsys):
+    def test_02_do_assert(self):
         """Ensure do_assert identifies failing line"""
-        debug.trace(4, f"TestIt.test_do_assert({capsys}); self={self}")
+        ## OLD: debug.trace(4, f"TestIt.test_02_do_assert({capsys}); self={self}")
+        debug.trace(4, f"TestIt.test_02_do_assert(); self={self}")
 
         # Get instance for test class
         # TODO3: use TestWrapper() instead of SubTestIt()
@@ -69,6 +72,7 @@ class TestIt2:
         message = "Good math"
         # TODO3: use pytest patch support (monkey?)
         old_debug_level = debug.get_level()
+        _old_captured_trace = self.get_stderr()   # resets capsys capture
         try:
             debug.set_level(debug.TL.DEFAULT)
             sti.do_assert(2 + 2 == 5, message)    # Orwell's condition
@@ -76,8 +80,9 @@ class TestIt2:
             pass
         finally:
             debug.set_level(old_debug_level)
-        captured_trace = capsys.readouterr().err
-        debug.trace_expr(5, captured_trace)
+        ## OLD: captured_trace = capsys.readouterr().err
+        captured_trace = self.get_stderr()
+        debug.trace_expr(4, captured_trace, max_len=2048)
         
         #  The condition and message should be displayed
         assert("2 + 2 == 5" in captured_trace)
@@ -86,7 +91,7 @@ class TestIt2:
         # Make sure stuff properly stripped (i.e., message arg and comment)
         assert(not "message" in captured_trace)
         assert(not "Orwell" in captured_trace)
-        assert(not my_re.search(r"\bdo_assert\b", captured_trace))
+        assert(not "sti.do_assert" in captured_trace)
         return
 
 #------------------------------------------------------------------------
