@@ -3,7 +3,7 @@
 # Desktop search support using large language models (LLMs).
 #
 # note:
-# - Initially based on following articles:
+# - Initially based on following sources:
 #   https://swharden.com/blog/2023-07-29-ai-chat-locally-with-python
 #   https://github.com/alejandro-ao/ask-multiple-pdfs
 #
@@ -12,11 +12,12 @@
 Desktop search utility
 
 Sample usage:
-   echo $'TODO:task1\\nDONE:task2' | {script} --TODO-arg --
+    {script} --index ..
+
+    {script} --similar "license"
 """
 
 # Standard modules
-import json
 import time
 import pathlib
 
@@ -33,29 +34,17 @@ from langchain_community.vectorstores import FAISS
 # TODO: def mezcla_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla import gpu_utils
 from mezcla.main import Main
-from mezcla.my_regex import my_re
 from mezcla import system
-## TODO:
-## from mezcla import data_utils as du
-##
-## Optional:
-## # Increase trace level for regex searching, etc. (e.g., from 6 to 7)
-## my_re.TRACE_LEVEL = debug.QUITE_VERBOSE
-debug.trace(5, f"global __doc__: {__doc__}")
-debug.assertion(__doc__)
-
-## TODO: Constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
-## Note: Run following in Emacs to interactively replace TODO_ARG with option label
-##    M-: (query-replace-regexp "todo\\([-_]\\)arg" "arg\\1name")
-## where M-: is the emacs keystroke short-cut for eval-expression.
-INDEX_ARG = "index"
-SEARCH_ARG = "search"
-## TEXT_ARG = "text-arg"
-## ALT_FILENAME = "alt_filename"
 
 # Constants
 TL = debug.TL
+INDEX_ARG = "index"
+SEARCH_ARG = "search"
+SIMILAR_ARG = "similar"
+TORCH_DEVICE = gpu_utils.TORCH_DEVICE
+#
 QA_TEMPLATE = """Use the following pieces of information to answer the user's question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 Context: {context}
@@ -65,19 +54,9 @@ Helpful answer:
 """
 
 # Environment options
-# Note: These are just intended for internal options, not for end users.
-# It also allows for enabling options in one place rather than four
-# (e.g., [Main member] initialization, run-time value, and argument spec., along
-# with string constant definition).
-# WARNING: To minimize environment comflicts with other programs make the names
-# longer such as two or more tokens (e.g., "FUBAR" => "FUBAR_LEVEL").
-#
-TODO_FUBAR = system.getenv_bool("TODO_FUBAR", False,
-                                description="TODO:Fouled Up Beyond All Recognition processing")
-DEVICE = system.getenv_text(
-    "TORCH_DEVICE", "cuda",
-    description="Device for running torch"
-)
+NUM_SIMILAR = system.getenv_int(
+    "NUM_SIMILAR", 10,
+    description="Number of similar documents to show")
 
 class DesktopSearch:
     """Class for searching local computer"""
@@ -87,11 +66,13 @@ class DesktopSearch:
         debug.trace_fmtd(TL.VERBOSE, "Helper.__init__(): self={s}", s=self)
         self.embeddings = None
         self.db = None
+        self.llm = None
         self.qa_llm = None
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
     def index_dir(self, dir_path):
         """Index files at DIR_PATH"""
+        debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
         # define what documents to load
         loader = DirectoryLoader(dir_path, glob="*.txt", loader_cls=TextLoader)
 
@@ -102,42 +83,52 @@ class DesktopSearch:
         texts = splitter.split_documents(documents)
         self.embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={'device': DEVICE})
+            model_kwargs={'device': TORCH_DEVICE})
 
         # create and save the local database
         self.db = FAISS.from_documents(texts, self.embeddings)
         self.db.save_local("faiss")
         debug.trace_expr(4, self.db)
-    
+        gpu_utils.trace_gpu_usage()
 
-    def load_index(self):
+    def load_index(self, for_qa=False):
         """Load index of documents"""
+        debug.trace(4, "DesktopSearch.load_index()")
         # load the language model
         ## OLD: config = {'max_new_tokens': 256, 'temperature': 0.01}
         config = {'max_new_tokens': 256, 'temperature': 0.01, 'context_length': 512}
         llm = CTransformers(model='/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
                             model_type='llama', config=config)
+        if for_qa:
+            self.llm = llm
 
         # load the interpreted information from the local database
         embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={'device': DEVICE})
-        db = FAISS.load_local("faiss", embeddings)
+            model_kwargs={'device': TORCH_DEVICE})
+        self.db = FAISS.load_local("faiss", embeddings)
+        gpu_utils.trace_gpu_usage()
 
-        # prepare a version of the llm pre-loaded with the local content
-        retriever = db.as_retriever(search_kwargs={'k': 2})
+    def prepare_qa_llm(self):
+        """Prepare a version of the llm pre-loaded with the local content"""
+        debug.trace(4, "prepare_qa_llm()")
+        if not self.db:
+            self.load_index(for_qa=True)        
+        retriever = self.db.as_retriever(search_kwargs={'k': NUM_SIMILAR})
         prompt = PromptTemplate(
             template=QA_TEMPLATE,
             input_variables=['context', 'question'])
 
         self.qa_llm = RetrievalQA.from_chain_type(
-            llm=llm, chain_type='stuff', retriever=retriever,
+            llm=self.llm, chain_type='stuff', retriever=retriever,
             return_source_documents=True, chain_type_kwargs={'prompt': prompt})
+        gpu_utils.trace_gpu_usage()
         
-    def search(self, question):
+    def search_to_answer(self, question):         # TODO2: rename like answer_question
         """Search documents to answer QUESTION"""
+        debug.trace(4, f"DesktopSearchsearch_to_answer({question})")
         if not self.qa_llm:
-            self.load_index()
+            self.prepare_qa_llm()
         model_path = self.qa_llm.combine_documents_chain.llm_chain.llm.model
         model_name = pathlib.Path(model_path).name
         time_start = time.time()
@@ -147,23 +138,34 @@ class DesktopSearch:
         print(f'<code>{model_name} response time: {time_elapsed:.02f} sec</code>')
         print(f'<strong>Question:</strong> {question}')
         print(f'<strong>Answer:</strong> {response}')
+        gpu_utils.trace_gpu_usage()
 
+    def show_similar(self, query, num=None):
+        """Show similar documents to QUERY in the vector store, up to NUM"""
+        debug.trace(4, f"DesktopSearch.show_similar(n={num})")
+        if num is None:
+            num = NUM_SIMILAR
+        if not self.db:
+            self.load_index()
+        docs = self.db.similarity_search(query=query, k=num)
+        print(docs)
+        gpu_utils.trace_gpu_usage()
 
 class Script(Main):
     """Adhoc script class (e.g., no I/O loop, just run calls)"""
     ## TODO: class-level member variables for arguments (avoids need for class constructor)
     index_arg = False
     search_arg = False
+    similar_arg = False
+    text = None
 
     def setup(self):
         """Check results of command line processing"""
         debug.trace_fmtd(TL.VERBOSE, "Script.setup(): self={s}", s=self)
-        ## TODO: extract argument values
         self.index_arg = self.get_parsed_option(INDEX_ARG, self.index_arg)
         self.search_arg = self.get_parsed_option(SEARCH_ARG, self.search_arg)
-        ## TODO:
-        ## self.text_arg = self.get_parsed_option(TEXT_ARG, self.text_arg)
-        ## self.alt_filename = self.get_parsed_argument(ALT_FILENAME)
+        self.similar_arg = self.get_parsed_option(SIMILAR_ARG, self.similar_arg)
+        self.text = self.filename
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
     def run_main_step(self):
@@ -172,37 +174,25 @@ class Script(Main):
         ds = DesktopSearch()
         if self.index_arg:
             ds.index_dir(self.filename)
+        elif self.search_arg:
+            ds.search_to_answer(self.text)
+        elif self.similar_arg:
+            ds.show_similar(self.text)
         else:
-            ds.search(self.filename)
+            system.print_error("Error: Unexpected condition")
 
 
 def main():
     """Entry point"""
     app = Script(
         description=__doc__.format(script=gh.basename(__file__)),
-        # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
-        # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
-        skip_input=False,
-        manual_input=True,
-        ## TODO (specify auto_help such as when manual_input set):
-        ## # Note: shows brief usage if no arguments given
-        ## auto_help=True,
-        ## -or-: # Disable inference of --help argument
-        ## auto_help=False,
-        ## TODO: specify options and (required) arguments
-        boolean_options=[(INDEX_ARG, "Index directory"),
-                         (SEARCH_ARG, "Search documents")],
-        ## TODO
-        ## Note: FILENAME is default argument unless skip_input
-        ## positional_arguments=[ALT_FILENAME], 
-        ## text_options=[(TEXT_ARG, "TODO-desc")],
-        ## Note: Following added for indentation float options not common (TODO: remove?)
+        skip_input=False, manual_input=True,
+        boolean_options=[(INDEX_ARG, "Index directory")],
+        text_options=[(SEARCH_ARG, "Search documents to answer question"),
+                      (SIMILAR_ARG, "Show similar documents")],
         float_options=None)
     app.run()
-    # Make sure no TODO_vars above (i.e., in namespace)
-    debug.assertion(not any(my_re.search(r"^TODO_", m, my_re.IGNORECASE)
-                            for m in dir(app)))    
-    
+
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
