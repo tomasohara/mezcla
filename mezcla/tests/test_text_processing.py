@@ -33,6 +33,7 @@ RESOURCES = f'{gh.dir_path(__file__)}/resources'
 TEXT_EXAMPLE = f'{RESOURCES}/example_text.txt'
 TEXT_EXAMPLE_TAGS = f'{RESOURCES}/example_text_tags.txt'
 WORD_POS_FREQ_FILE = f'{RESOURCES}/word-POS.freq'
+WORD_FREQ_FILE = f'{RESOURCES}/word.freq'
 
 class TestTextProcessing(TestWrapper):
     """Class for testcase definition"""
@@ -100,15 +101,13 @@ class TestTextProcessing(TestWrapper):
         assert THE_MODULE.is_stopword('i')
         assert not THE_MODULE.is_stopword('cow')
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_has_spelling_mistake(self):
         """Ensure has_spelling_mistake works as expected"""
         debug.trace(4, "test_has_spelling_mistake()")
         previous_value = THE_MODULE.SKIP_ENCHANT
         self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', True)
-        ## TODO: add word.freq file
-        assert THE_MODULE.has_spelling_mistake('toughgh')
-        assert not THE_MODULE.has_spelling_mistake('to')
+        assert not THE_MODULE.has_spelling_mistake('the')
+        assert THE_MODULE.has_spelling_mistake('ai')
         self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', False)
         assert not THE_MODULE.SKIP_ENCHANT
         assert THE_MODULE.has_spelling_mistake('sneik')
@@ -117,20 +116,23 @@ class TestTextProcessing(TestWrapper):
         self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', previous_value)
         
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_read_freq_data(self):
         """Ensure read_freq_data works as expected"""
         debug.trace(4, "test_read_freq_data()")
-        assert False, "TODO: code test"
+        lines = gh.read_lines(WORD_FREQ_FILE)
+        freq = THE_MODULE.read_freq_data(WORD_FREQ_FILE)
+        for line in lines[7:]:
+            token = re.match(r'^.+?(?=\s)', line).group(0).lower()
+            self.do_assert(freq[token])
+
 
     def test_read_word_POS_data(self): # pylint: disable=invalid-name
         """Ensure read_word_POS_data works as expected"""
         debug.trace(4, "test_read_word_POS_data()")
         lines = gh.read_lines(WORD_POS_FREQ_FILE)
         freq_pos = THE_MODULE.read_word_POS_data(WORD_POS_FREQ_FILE)
-        for line in lines[1:]:
-            ## NOTE:
-            token = re.match(r'^.+?(?=\s)', line).group(0)
+        for line in lines[6:]:
+            token = re.match(r'^.+?(?=\s)', line).group(0).lower()
             self.do_assert(freq_pos[token])
 
     def test_get_most_common_POS(self): # pylint: disable=invalid-name
