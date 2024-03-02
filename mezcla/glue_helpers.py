@@ -43,7 +43,7 @@ from mezcla import system
 from mezcla import tpo_common as tpo
 ## OLD: from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
 from mezcla.tpo_common import debug_format, debug_print
-from mezcla.main import DISABLE_RECURSIVE_DELETE
+## OLD: from mezcla.main import DISABLE_RECURSIVE_DELETE
 
 # Constants
 TL = debug.TL
@@ -94,6 +94,10 @@ TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and
 USE_TEMP_BASE_DIR = system.getenv_bool(
     "USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
     description="Whether TEMP_BASE should be a dir instead of prefix")
+DISABLE_RECURSIVE_DELETE = system.getenv_value(
+    "DISABLE_RECURSIVE_DELETE", None,
+    description="Disable use of potentially dangerous rm -r style recursive deletions")
+
 
 # Globals
 # note: see init() for initialization
