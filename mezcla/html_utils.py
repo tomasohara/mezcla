@@ -142,10 +142,12 @@ def get_browser(url : str):
     if not browser:
         # Make the browser hidden by default (i.e., headless)
         # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
+        ## TODO2: add an option to use Chrome
         # pylint: disable=import-outside-toplevel
         from selenium.webdriver.firefox.options import Options
         webdriver_options = Options()
-        webdriver_options.headless = HEADLESS_WEBDRIVER
+        ## OLD: webdriver_options.headless = HEADLESS_WEBDRIVER
+        webdriver_options.add_argument('-headless')
         browser = webdriver.Firefox(options=webdriver_options)
         debug.trace_object(5, browser)
 
@@ -932,7 +934,9 @@ def main(args : List[str]) -> None:
 
     # Parse command line arguments
     # TODO2: use master.Main for arg parsing
+    plain_text = False
     skip_inner = False
+    plain_html = False
     show_usage = False
     use_stdout = False
     quiet = False
@@ -942,6 +946,10 @@ def main(args : List[str]) -> None:
             show_usage = True
         elif (arg == "--regular"):
             skip_inner = True
+            plain_text = True
+        elif (arg == "--html"):
+            skip_inner = True
+            plain_html = True
         elif (arg == "--inner"):
             pass
         elif (arg == "--stdout"):
@@ -958,7 +966,7 @@ def main(args : List[str]) -> None:
         i += 1
 
     # HACK: Convert local html document to text
-    if (filename and (not my_re.search("www|http", filename) or skip_inner)):
+    if (filename and (not my_re.search("www|http", filename) or plain_text)):
         doc_filename = filename
         document_data = system.read_file(doc_filename)
         document_text = html_to_text(document_data)
@@ -980,40 +988,50 @@ def main(args : List[str]) -> None:
         filename = system.quote_url_text(url)
         if not filename:
             filename = ""
-        if debug.debugging():
-            write_temp_file("pre-" + filename, html_data)
-        
-        # Show inner/outer HTML
-        # Note: The browser is hidden unless MOZ_HEADLESS false
-        # TODO: Support Chrome
-        system.setenv("MOZ_HEADLESS",
-                      str(int(system.getenv_bool("MOZ_HEADLESS", True))))
-        rendered_html = get_inner_html(url)
-        output_filename = "post-" + filename
-        if (not use_stdout) or debug.debugging():
-            write_temp_file(output_filename, rendered_html)
-        if use_stdout:
-            if not quiet:
-                print("Rendered html:")
-            print(system.to_utf8(rendered_html))            
+
+        if plain_html:
+            if use_stdout:
+                print(html_data)
+            else:
+                system.write_file(doc_filename + ".html", html_data)
+                print(f"See {doc_filename}.html")
         else:
-            print(f"See {output_filename}")
+            if debug.debugging():
+                write_temp_file("pre-" + filename, html_data)
             
-        if debug.debugging():
-            rendered_text = get_inner_text(url)
-            debug.trace_fmt(5, "type(rendered_text): {t}", t=rendered_text)
-            write_temp_file("post-" + filename + ".txt", rendered_text)
-        debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
+            # Show inner/outer HTML
+            # Note: The browser is hidden unless MOZ_HEADLESS false
+            # TODO: Support Chrome
+            system.setenv("MOZ_HEADLESS",
+                          str(int(system.getenv_bool("MOZ_HEADLESS", True))))
+            rendered_html = get_inner_html(url)
+            output_filename = "post-" + filename
+            if (not use_stdout) or debug.debugging():
+                write_temp_file(output_filename, rendered_html)
+            if use_stdout:
+                if not quiet:
+                    print("Rendered html:")
+                print(system.to_utf8(rendered_html))            
+            else:
+                print(f"See {output_filename}")
+                
+            if debug.debugging():
+                rendered_text = get_inner_text(url)
+                debug.trace_fmt(5, "type(rendered_text): {t}", t=rendered_text)
+                write_temp_file("post-" + filename + ".txt", rendered_text)
+            debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
     else:
         show_usage = True
 
     # Not sure what to do
     if show_usage:
         script = gh.basename(__file__)
-        print("Usage: {prog} [--help] [--stdout] [--quiet] [[--regular | --inner] [filename]]")
-        print("- Specify a local HTML file to save as text.")
+        print("Usage: {prog} [--help] [--stdout] [--quiet] [[--regular | --inner | --html] [filename]]")
+        print("- Specify a local HTML file to download (e.g., save as text).")
         print("- Otherwise, specify a URL for a simple test of inner html access (n.b., via stdout).")
-        print("- Use --regular to bypass default inner processing.")
+        print("- Use --regular to bypass default inner processing (and save as text).")
+        ## TODO3: add explicit option like --text to make processing more consistent
+        print("- With --html or --inner, the result is saved as html.")
         print()
         print("Examples:")
         print(f"- {script} --inner --stdout --quiet https://twitter.com/home > twitter-home.html")
