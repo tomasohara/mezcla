@@ -102,6 +102,9 @@ EXCLUDE_IMPORTS = system.getenv_bool("EXCLUDE_IMPORTS", False,
 TARGET_BOOTSTRAP =  system.getenv_bool(
     "TARGET_BOOTSTRAP", False,
     description="Format tooltips, etc. for use with bootstrap")
+FIREFOX_WEBDRIVER = system.getenv_bool(
+    "FIREFOX_WEBDRIVER", True,          ## TODO: "FIREFOX_WEBDRIVER", False,
+    description="Use Firefox webdriver for Selenium")
 HEADERS = "headers"
 FILENAME = "filename"
 
@@ -143,12 +146,17 @@ def get_browser(url : str):
         # Make the browser hidden by default (i.e., headless)
         # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
         ## TODO2: add an option to use Chrome
-        # pylint: disable=import-outside-toplevel
-        from selenium.webdriver.firefox.options import Options
-        webdriver_options = Options()
+        ## OLD:
+        ## # pylint: disable=import-outside-toplevel
+        ## from selenium.webdriver.firefox.options import Options
+        options_module = (webdriver.firefox.options if FIREFOX_WEBDRIVER else webdriver.chrome.options)
+        webdriver_options = options_module.Options()
         ## OLD: webdriver_options.headless = HEADLESS_WEBDRIVER
-        webdriver_options.add_argument('-headless')
-        browser = webdriver.Firefox(options=webdriver_options)
+        if HEADLESS_WEBDRIVER:
+            webdriver_options.add_argument('-headless')
+        ## OLD: browser = webdriver.Firefox(options=webdriver_options)
+        browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
+        browser = browser_class(options=webdriver_options)
         debug.trace_object(5, browser)
 
         # Get the page, setting optional cache entry and sleeping afterwards
@@ -935,7 +943,6 @@ def main(args : List[str]) -> None:
     # Parse command line arguments
     # TODO2: use master.Main for arg parsing
     plain_text = False
-    skip_inner = False
     plain_html = False
     show_usage = False
     use_stdout = False
@@ -945,10 +952,8 @@ def main(args : List[str]) -> None:
         if (arg == "--help"):
             show_usage = True
         elif (arg == "--regular"):
-            skip_inner = True
             plain_text = True
         elif (arg == "--html"):
-            skip_inner = True
             plain_html = True
         elif (arg == "--inner"):
             pass
