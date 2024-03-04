@@ -102,6 +102,14 @@ class TestHtmlUtils(TestWrapper):
             )
 
     @pytest.mark.xfail                   # TODO: remove xfail
+    def test_run_script_for_inner_html(self):
+        """Test of getting inner HTML via script invocation"""
+        debug.trace(4, f"TestIt.test_run_script_for_inner_html(); self={self}")
+        output = self.run_script(options="--inner --stdout www.scrappycito.com", data_file=self.temp_file)
+        self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNOIRECASE))
+        return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_document_ready(self):
         """Ensure document_ready() works as expected"""
         debug.trace(4, "test_document_ready()")
