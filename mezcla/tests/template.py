@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# TODO: # -*- coding: utf-8 -*-
 #
 # TODO: Test(s) for ../<module>.py
 #
@@ -12,6 +13,10 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_<module>.py
 #
+
+## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
+## example, only delete todo comments not regular code, unless suggested in tip).
+## In particular, it is critical that script_module gets initialized properly.
 
 """TODO: Tests for <module> module"""
 
@@ -46,8 +51,9 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 ## # Note: These are just intended for internal options, not for end users.
 ## # It also allows for enabling options in one place.
 ## #
-## FUBAR = system.getenv_bool("FUBAR", False,
-##                            description="Fouled Up Beyond All Recognition processing")
+## FUBAR = system.getenv_bool(
+##     "FUBAR", False,
+##     description="Fouled Up Beyond All Recognition processing")
 
 #------------------------------------------------------------------------
 
@@ -101,9 +107,9 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    def test_02_whatever(self):
+    def test_03_whatever(self):
         """TODO: flesh out test for whatever (capsys-like)"""
-        debug.trace(4, f"TestIt2.test_02_whatever(); self={self}")
+        debug.trace(4, f"TestIt2.test_03_whatever(); self={self}")
         THE_MODULE.TODO_whatever()
         captured = self.get_stderr()
         self.do_assert("whatever" in captured, "TODO_whatever trace")
@@ -128,4 +134,5 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
+    ## TODO2: here and elsewhere: invoke_tests(__file__)
     pytest.main([__file__])

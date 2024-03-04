@@ -60,6 +60,24 @@ ARG DEBUG_LEVEL=4
 ARG TEST_REGEX=""
 ## DEBUG: ARG TEST_REGEX="simple_main_example"
 
+# Show initial disk usage
+# See https://github.com/orgs/community/discussions/25678 [No space left on device]
+#
+RUN <<END_RUN
+    df --human-readable
+    ## TODO: track down stupid problem with step failing
+    ## echo "Top directories by disk usage (pre-install):";
+    ## du --block-size=1K / 2>&1 | sort -rn | head -20;
+    true;                               # ensure success (quirk w/ head)
+END_RUN
+
+# Temp: remove unneeded software taking up much disk space (e.g., node)
+RUN <<END_RUN
+    echo "Warning: removing unneeded software"
+    /bin/rm -rf /opt/acttoolcache/node
+    df -h /
+END_RUN
+
 # Install Python
 # See https://stackoverflow.com/a/70866416 [How to install python specific version on docker?]
 #
@@ -128,10 +146,11 @@ RUN apt-get install --yes enchant-2 rcs
 
 # Show disk usage when debugging
 RUN <<END_RUN
-  if [ "$DEBUG_LEVEL" -ge 5 ]; then
-      echo "Top directories by disk usage:";
-      du --block-size=1K / 2>&1 | sort -rn | head -20;
-  fi
+    df --human-readable
+    ## TODO: track down stupid problem with step failing
+    ## echo "Top directories by disk usage (post-install):";
+    ## du --block-size=1K / 2>&1 | sort -rn | head -20;
+    true;                               # ensure success (quirk w/ head)
 END_RUN
 
 # Run the test, normally pytest over mezcla/tests

@@ -12,6 +12,8 @@
 #   a bunch of "work-in-progress" tests below, they are low priority because
 #   most are addressed by test_system.py or test_debug.py.
 #
+# TODO1: Make sure all work-in-progress tests issue Assert(False).
+#
 # TODO:
 # - Address commonly used debugging functions (e.g., debug_print) by redirecting output (via remapping sys.stderr to a file) and then checking file contents.
 # - add tests for normalize_unicode, ensure_unicode and other problematic functions
