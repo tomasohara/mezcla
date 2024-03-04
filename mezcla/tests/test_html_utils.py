@@ -24,6 +24,7 @@ from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
 from mezcla import system
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -37,6 +38,7 @@ TEST_SELENIUM = system.getenv_bool("TEST_SELENIUM", False,
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
+    scrappycito_url = "http://www.scrappycito.com"
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
@@ -102,11 +104,19 @@ class TestHtmlUtils(TestWrapper):
             )
 
     @pytest.mark.xfail                   # TODO: remove xfail
+    def test_get_inner_html_alt(self):
+        """Alternative test of get_inner_html"""
+        debug.trace(4, f"TestIt.test_get_inner_html_alt(); self={self}")
+        output = THE_MODULE.get_inner_html(self.scrappycito_url)
+        self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
+        return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_run_script_for_inner_html(self):
         """Test of getting inner HTML via script invocation"""
         debug.trace(4, f"TestIt.test_run_script_for_inner_html(); self={self}")
-        output = self.run_script(options="--inner --stdout www.scrappycito.com", data_file=self.temp_file)
-        self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNOIRECASE))
+        output = self.run_script(options=f"--inner --stdout {self.scrappycito_url}", data_file=self.temp_file)
+        self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
