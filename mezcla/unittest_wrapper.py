@@ -160,12 +160,12 @@ def pytest_fixture_wrapper(function):
     debug.trace(7, f"pytest_fixture_wrapper() => {gh.elide(wrapper)}")
     return wrapper
 
-def invoke_tests(filename, via_unittest=VIA_UNITTEST):
+def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
     """Invoke TESTS defined in FILENAME, optionally VIA_UNITTEST"""
     if via_unittest:
         unittest.main()
     else:
-        pytest.main(filename)
+        pytest.main([filename])
 
 #-------------------------------------------------------------------------------
 
