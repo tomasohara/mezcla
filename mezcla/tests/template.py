@@ -14,6 +14,10 @@
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_<module>.py
 #
 
+## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
+## example, only delete todo comments not regular code, unless suggested in tip).
+## In particular, it is critical that script_module gets initialized properly.
+
 """TODO: Tests for <module> module"""
 
 # Standard modules
@@ -130,4 +134,5 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
+    ## TODO2: here and elsewhere: invoke_tests(__file__)
     pytest.main([__file__])

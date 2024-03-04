@@ -44,4 +44,4 @@ class TestOsUtils(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    invoke_tests([__file__])
+    invoke_tests(__file__)
