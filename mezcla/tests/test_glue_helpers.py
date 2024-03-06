@@ -425,6 +425,28 @@ class TestGlueHelpers:      ## TODO: (TestWrapper)
 
         # Test non enviroment var
         assert THE_MODULE.getenv_filename('BAD_ENV_FILE_VAR', default='missing-file') == 'missing-file'
+        
+    def test_copy_directory(self):
+        """Ensure copy_directory works as expected"""
+        debug.trace(4, "test_copy_directory()")
+        
+        
+    def test_delete_directory(self):
+        """Ensure delete_directory works as expected"""
+        debug.trace(4, "test_delete_directory()")
+        
+        # test an empty directory gets deleted
+        empty_dir = '/tmp/test_delete_directory-1/'
+        system.create_directory(empty_dir)
+        assert THE_MODULE.is_directory(empty_dir)
+        assert THE_MODULE.delete_directory(empty_dir) is None
+
+        # test a directory with files gets deleted
+        non_empty_dir = '/tmp/test_delete_directory-2'
+        system.create_directory(non_empty_dir)
+        system.write_file(f'{non_empty_dir}/test_delete_directory')
+        assert THE_MODULE.is_directory(non_empty_dir)
+        assert THE_MODULE.delete_directory(non_empty_dir) is None
 
 
 if __name__ == '__main__':
