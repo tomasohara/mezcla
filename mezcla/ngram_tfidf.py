@@ -16,7 +16,7 @@
 # - See compute_tfidf.py for computing tfidf over files.
 #
 # TODO:
-# - Add more optional heuristics: part-of-speech boosting, adjoining ngram fitlering,
+# - Add more optional heuristics: part-of-speech boosting, adjoining ngram filtering,
 #   noun-phrase boosting, etc.
 # - Isolate ngram support into separate module.
 # - Reconcile with compute_tfidf.py (e.g., subsumption here with overlap there).
@@ -32,6 +32,7 @@ Examples:
 ## TODO: fix description (e.g., add pointer to VDS code)
 
 # Standard packages
+from collections import defaultdict
 import re
 import sys
 
@@ -157,6 +158,8 @@ class ngram_tfidf_analysis(object):
         self.stopwords = None
         self.good_terms = (good_terms or [])
         self.bad_terms = (bad_terms or [])
+        self.noun_phrases = None
+        self.verb_phrases = None
         self.reset()
         super().__init__(*args, **kwargs)
 
@@ -173,6 +176,8 @@ class ngram_tfidf_analysis(object):
                                    language=self.pp_lang,
                                    preprocessor=self.pp)
         self.stopwords = (self.pp.stopwords or ENGLISH_STOPWORDS)
+        self.noun_phrases = []
+        self.verb_phrases = []
 
     def set_good_terms(self, text):
         """Sets good terms to TEXT split into word tokens"""
@@ -187,6 +192,12 @@ class ngram_tfidf_analysis(object):
         if doc_id is None:
             doc_id = str(len(self.corpus) + 1)
         self.corpus[doc_id] = text
+        self.noun_phrases = defaultdict(list)
+        self.verb_phrases = defaultdict(list)
+        if TFIDF_NP_BOOST:
+            self.noun_phrases[doc_id] = self.text_proc.noun_phrases(text) 
+        if TFIDF_VP_BOOST:
+            self.verb_phrases[doc_id] = self.text_proc.verb_phrases(text) 
 
     def get_doc(self, doc_id):
         """Return document data for DOC_ID"""
@@ -264,10 +275,12 @@ class ngram_tfidf_analysis(object):
                 old_score = top_term_info[i][1]
 
                 # Apply boost if entire ngram is a noun phrase and likewise for verb phrase
-                if (TFIDF_NP_BOOST and self.text_proc.noun_phrases(ngram) == [ngram]):
+                ## OLD: if (TFIDF_NP_BOOST and self.text_proc.noun_phrases(ngram) == [ngram]):
+                if (TFIDF_NP_BOOST and (ngram in self.noun_phrases[doc_id])):
                     score = old_score * TFIDF_NP_BOOST
                     debug.trace(5, f"boosted NP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
-                if (TFIDF_VP_BOOST and self.text_proc.verb_phrases(ngram) == [ngram]):
+                ## OLD: if (TFIDF_VP_BOOST and self.text_proc.verb_phrases(ngram) == [ngram]):
+                if (TFIDF_VP_BOOST and (ngram in self.verb_phrases[doc_id])):
                     score = old_score * TFIDF_VP_BOOST
                     debug.trace(5, f"boosted VP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                 if (TFIDF_NUMERIC_BOOST and any(tpo.is_numeric(token) for token in split_tokens(ngram))):

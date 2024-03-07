@@ -245,7 +245,7 @@ def form_path(*filenames, create=False):
     ## TODO3: return system.form_path(*filenames)
     debug.assertion(not any(f.startswith(system.path_separator()) for f in filenames[1:]))
     if create:
-        path_dir = os.path.join(filenames[:-1])
+        path_dir = os.path.join(*filenames[:-1])
         if not system.file_exists(path_dir):
             full_mkdir(path_dir)
 

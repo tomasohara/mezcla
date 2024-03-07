@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+# -*- coding: utf-8 -*-
 #
 # Test(s) for ../unittest_wrapper.py
 #
@@ -8,6 +9,12 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_unittest_wrapper.py
 #
+# Warning:
+# - It can be tricky to debug the do_assert and do_assert_equals tests.
+# - Temporarily disabling the use of TL.DEFAULT below can help, so that the detailed
+#   debugging traces are shown.
+# - You might also need to temporarily enable the print-based tracing in resolve_assertion.
+#
 
 """Tests for unittest_wrapper module"""
 
@@ -15,8 +22,7 @@
 import pytest
 
 # Local packages
-## TODO (effing pytest): from mezcla.unittest_wrapper import TestWrapper, trap_exception, pytest_fixture_wrapper
-from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests, trap_exception
 from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
@@ -45,18 +51,10 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search(r"Warning: not intended.*command-line", log_contents))
         return
 
-    ## OLD:
-    ## class TestIt2:
-    ## """Class for API usage"""
-
     @pytest.mark.skipif(not __debug__, reason="Must be under __debug__")
-    ## TODO:
-    ## @pytest_fixture_wrapper
-    ## @trap_exception
-    ## OLD: def test_02_do_assert(self, capsys):
+    @trap_exception
     def test_02_do_assert(self):
         """Ensure do_assert identifies failing line"""
-        ## OLD: debug.trace(4, f"TestIt.test_02_do_assert({capsys}); self={self}")
         debug.trace(4, f"TestIt.test_02_do_assert(); self={self}")
 
         # Get instance for test class
@@ -74,17 +72,18 @@ class TestIt(TestWrapper):
         old_debug_level = debug.get_level()
         _old_captured_trace = self.get_stderr()   # resets capsys capture
         try:
+            # Note: see warning with tips on debugging in header comments
             debug.set_level(debug.TL.DEFAULT)
             sti.do_assert(2 + 2 == 5, message)    # Orwell's condition
         except AssertionError:
             pass
         finally:
             debug.set_level(old_debug_level)
-        ## OLD: captured_trace = capsys.readouterr().err
         captured_trace = self.get_stderr()
         debug.trace_expr(4, captured_trace, max_len=2048)
         
         #  The condition and message should be displayed
+        # example: Test assertion failed: 2 + 2 == 5 (at .../mezcla/tests/test_unittest_wrapper.py:77): Good math
         assert("2 + 2 == 5" in captured_trace)
         assert(message in captured_trace)
         
@@ -94,8 +93,52 @@ class TestIt(TestWrapper):
         assert(not "sti.do_assert" in captured_trace)
         return
 
+    @pytest.mark.skipif(not __debug__, reason="Must be under __debug__")
+    @trap_exception
+    def test_03_do_assert_equals(self):
+        """Ensure do_assert_equals shows diff"""
+        debug.trace(4, f"TestIt.test_03_do_assert_equals(); self={self}")
+
+        # Get instance for test class
+        # TODO3: use TestWrapper() instead of SubTestIt()
+        class SubTestIt(TestWrapper):
+            """Embedded test suite"""
+            pass
+        #
+        sti = SubTestIt()
+
+        # Make assertion, ensuring debugging level set at minimum required (2)
+        captured_trace = ""
+        message = "dawg diff"
+        # TODO3: use pytest patch support (monkey?)
+        old_debug_level = debug.get_level()
+        _old_captured_trace = self.get_stderr()   # resets capsys capture
+        try:
+            # Note: see warning with tips on debugging in header comments
+            debug.set_level(debug.TL.DEFAULT)
+            sti.do_assert_equals("dog's bark", "dawg's bark", message)
+        except AssertionError:
+            pass
+        finally:
+            debug.set_level(old_debug_level)
+        captured_trace = self.get_stderr()
+        debug.trace_expr(4, captured_trace, max_len=2048)
+        
+        # The condition and message should be displayed
+        # example: Test equality assertion failed: "dog\'s bark", "dawg\'s bark" (at .../mezcla/tests/test_unittest_wrapper.py:118): dawg diff
+        assert(my_re.search(r"dog.*dawg", captured_trace))
+        assert(message in captured_trace)
+
+        # The value diff should also be displayed
+        # example: "diff:\n< dog\'s bark\n…  ^\n> dawg\'s bark\n…  ^^\n\n"
+        assert(my_re.search(r" \^\n.* \^\^\n", captured_trace, flags=my_re.DOTALL))
+        
+        # Make sure stuff properly stripped (i.e., message arg and comment)
+        assert(not "sti.do_assert_equals" in captured_trace)
+        return
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    invoke_tests([__file__])
+    invoke_tests(__file__)

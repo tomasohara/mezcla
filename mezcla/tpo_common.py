@@ -23,6 +23,11 @@
 #   arguments to functions that do nothing in release code.
 # - Includes support for overriding stderr (e.g., for use with embedded apps as in adhoc/optimize_company_extraction.py's invocation of extract_company_info.py).
 #
+# TODO1:
+# - *** Make sure any function not mapping directly to debug or system traces out
+#   with "tpo" for grep purposes (e.g.,  tpo.debug_format in debug_format). ***
+#   This will help flag functions to be ported (e.g., redirect_stderr).
+#
 # TODO:
 # - Change all functions to using docstrings for comments already!!!
 # - Add support for using pprint module
@@ -479,6 +484,7 @@ def debug_format(text, level=1, skip_newline=False, **namespace):
     """Version of debug_print that expands TEXT using format.
     Note: Exceptions are ignored (to encourage tracing, not discourage)."
     """
+    debug.trace(6, f"tpo.debug_format({text}, {skip_newline}, ...)")
     ## TODO: return debug.trace(no_eol=skip_newline, level, text, **namespace)
     # NOTE: String values from namespace need to be in UTF-8 format.
     # TODO: rename as debug_print_format as not just formatting the text
@@ -1333,6 +1339,7 @@ def reference_variables(*args):
 #
 #    @memodict
 #    def fubar(word):
+#        """Fouled up"""
 #        result = ...
 #        return result
 #
