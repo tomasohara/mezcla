@@ -429,8 +429,12 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_copy_directory(self):
         """Ensure copy_directory works as expected"""
         debug.trace(4, "test_copy_directory()")
+        temp_dir = '/tmp/test_copy_dir_'
+        system.create_directory(f'{temp_dir}1')
+        system.write_file(f'{temp_dir}1/test_file', "copy")
+        assert 'test_file' in system.read_directory(THE_MODULE.copy_directory(f'{temp_dir}1', f'{temp_dir}2'))
+        assert 'copy' in system.read_file(f'{temp_dir}2/test_file')
         
-    # @pytest.mark.xfail
     def test_delete_directory(self):
         """Ensure delete_directory works as expected"""
         debug.trace(4, "test_delete_directory()")
@@ -463,7 +467,9 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert THE_MODULE.is_directory(subdir)
         system.write_file(f"{subdir}/subdir_file", '4')
         THE_MODULE.DISABLE_RECURSIVE_DELETE = False
-        assert THE_MODULE.delete_directory(dir_with_subdirs) is None        
+        assert THE_MODULE.delete_directory(dir_with_subdirs) is None
+        
+        THE_MODULE.DISABLE_RECURSIVE_DELETE = old     
         
 if __name__ == '__main__':
     debug.trace_current_context()
