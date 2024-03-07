@@ -425,7 +425,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
 
         # Test non enviroment var
         assert THE_MODULE.getenv_filename('BAD_ENV_FILE_VAR', default='missing-file') == 'missing-file'
-        
+
     def test_copy_directory(self):
         """Ensure copy_directory works as expected"""
         debug.trace(4, "test_copy_directory()")
@@ -434,12 +434,12 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         system.write_file(f'{temp_dir}1/test_file', "copy")
         assert 'test_file' in system.read_directory(THE_MODULE.copy_directory(f'{temp_dir}1', f'{temp_dir}2'))
         assert 'copy' in system.read_file(f'{temp_dir}2/test_file')
-        
+
     def test_delete_directory(self):
         """Ensure delete_directory works as expected"""
         debug.trace(4, "test_delete_directory()")
         old = THE_MODULE.DISABLE_RECURSIVE_DELETE
-        
+
         # test an empty directory gets deleted
         empty_dir = '/tmp/test_delete_directory-1/'
         system.create_directory(empty_dir)
@@ -462,15 +462,15 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         system.write_file(f"{subdir}/subdir_file", '3')
         assert THE_MODULE.is_directory(subdir)
         assert not THE_MODULE.delete_directory(dir_with_subdirs)
-        
+
         # test a directory with subdirs gets deleted if not DISABLE_RECURSIVE_DELETE
         assert THE_MODULE.is_directory(subdir)
         system.write_file(f"{subdir}/subdir_file", '4')
         THE_MODULE.DISABLE_RECURSIVE_DELETE = False
         assert THE_MODULE.delete_directory(dir_with_subdirs) is None
-        
-        THE_MODULE.DISABLE_RECURSIVE_DELETE = old     
-        
+
+        THE_MODULE.DISABLE_RECURSIVE_DELETE = old
+
 if __name__ == '__main__':
     debug.trace_current_context()
     pytest.main([__file__])
