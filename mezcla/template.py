@@ -56,8 +56,9 @@ TL = debug.TL
 # WARNING: To minimize environment comflicts with other programs make the names
 # longer such as two or more tokens (e.g., "FUBAR" => "FUBAR_LEVEL").
 #
-TODO_FUBAR = system.getenv_bool("TODO_FUBAR", False,
-                                description="TODO:Fouled Up Beyond All Recognition processing")
+TODO_FUBAR = system.getenv_bool(
+    "TODO_FUBAR", False,
+    description="TODO:Fouled Up Beyond All Recognition processing")
 
 ## TODO: Use helper class for main logic
 ## class Helper:
@@ -89,7 +90,7 @@ class Script(Main):
     ## def __init__(self, *args, **kwargs):
     ##     debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {self.__class__.__name__}.__init__({a})")
     ##     super().__init__(*args, **kwargs)
-    
+
     def setup(self):
         """Check results of command line processing"""
         debug.trace_fmtd(TL.VERBOSE, "Script.setup(): self={s}", s=self)
@@ -150,10 +151,10 @@ def main():
     app.run()
     # Make sure no TODO_vars above (i.e., in namespace)
     debug.assertion(not any(my_re.search(r"^TODO_", m, my_re.IGNORECASE)
-                            for m in dir(app)))    
-    
+                            for m in dir(app)))
+
 #-------------------------------------------------------------------------------
-    
+
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
     debug.trace(5, f"module __doc__: {__doc__}")

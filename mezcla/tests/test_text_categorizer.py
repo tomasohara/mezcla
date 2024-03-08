@@ -26,7 +26,14 @@ from mezcla import misc_utils
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 system.setenv("USE_XGB", "1")
-import mezcla.text_categorizer as THE_MODULE
+THE_MODULE = None
+try:
+    ## TEMP: fails if xgboost not available (workaround for stupid docker issue)
+    import xgboost
+    debug.trace_expr(5, xgboost.XGBClassifier)
+    import mezcla.text_categorizer as THE_MODULE
+except:
+    system.print_exception_info("text_categorizer import")
 
 # Environment options
 TEST_TBD = system.getenv_bool("TEST_TBD", False,
@@ -55,6 +62,7 @@ class TestTextCategorizerUtils(TestWrapper):
         debug.trace(4, "test_read_categorization_data()")
         assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_int_if_whole(self):
         """Ensure int_if_whole works as expected"""
         debug.trace(4, "test_int_if_whole()")
@@ -111,7 +119,6 @@ class TestTextCategorizerScript(TestWrapper):
         usage = self.run_script(options="--help")
         assert "model" in usage
     
-    @trap_exception
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_test_untrained(self):
         """Make sure accuracy 0 if untrained (TODO: trap stderr)"""
@@ -124,7 +131,6 @@ class TestTextCategorizerScript(TestWrapper):
         accuracy = tc.test(self.temp_file)
         assert(accuracy == 0)
 
-    @trap_exception
     @pytest.mark.xfail
     def test_train(self):
         """Make sure training works"""

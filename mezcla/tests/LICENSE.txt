@@ -1,3 +1,5 @@
+TODO4: use LICENSE.txt fom repo base directory
+
 GNU LESSER GENERAL PUBLIC LICENSE
 Version 3, 29 June 2007
 

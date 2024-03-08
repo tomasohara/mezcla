@@ -63,6 +63,7 @@ class TestGensimTest(TestWrapper):
         ## TODO: assert re.search("storing corpus in Matrix Market format", output)
         assert gh.non_empty_file(temp_data_file.replace(".txt", ".bow.mm"))
         debug.trace_expr(5, output)
+        ## TODO3: check for expected entries (e.g., .wordids.txt.bz2 file)
         return
 
     @pytest.mark.skipif(not gensim, reason="gensim module missing")
@@ -73,6 +74,7 @@ class TestGensimTest(TestWrapper):
         gh.write_file(temp_file, "My dog has fleas.\n")
         output = self.run_script("--print --verbose", temp_file)
         assert re.search(r"\(u?'dog', 1\),.*\(u?'has', 1\)", output)
+        ## TODO4: likewise do non-trivial input like LICENSE.txt
         debug.trace_expr(5, output)
         return
 
