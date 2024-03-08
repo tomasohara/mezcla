@@ -84,16 +84,19 @@ class TestTpoCommon(TestWrapper):
         """Ensure debug_trace works as expected"""
         debug.trace(4, "test_debug_trace()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_debug_print(self):
         """Ensure debug_print works as expected"""
         debug.trace(4, "test_debug_print()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_debug_format(self):
         """Ensure debug_format works as expected"""
         debug.trace(4, "test_debug_format()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_debug_timestamp(self):
         """Ensure debug_timestamp works as expected"""
@@ -158,6 +161,7 @@ class TestTpoCommon(TestWrapper):
         """Ensure trace_value works as expected"""
         debug.trace(4, "test_trace_value()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
@@ -175,8 +179,8 @@ class TestTpoCommon(TestWrapper):
     def test_during_debugging(self):
         """Ensure during_debugging works as expected"""
         debug.trace(4, "test_during_debugging()")
-
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_debugging(self):
         """Ensure debugging works as expected"""
@@ -235,16 +239,19 @@ class TestTpoCommon(TestWrapper):
         """Ensure print_stderr works as expected"""
         debug.trace(4, "test_print_stderr()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_redirect_stderr(self):
         """Ensure redirect_stderr works as expected"""
         debug.trace(4, "test_redirect_stderr()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_restore_stderr(self):
         """Ensure restore_stderr works as expected"""
         debug.trace(4, "test_restore_stderr()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_setenv(self):
         """Ensure setenv works as expected"""
@@ -330,11 +337,13 @@ class TestTpoCommon(TestWrapper):
         """Ensure getenv_real works as expected"""
         debug.trace(4, "test_getenv_real()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_getenv_float(self):
         """Ensure getenv_float works as expected"""
         debug.trace(4, "test_getenv_float()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_get_current_function_name(self):
         """Test(s) for get_current_function_name()"""
@@ -345,11 +354,13 @@ class TestTpoCommon(TestWrapper):
         """Ensure get_property_value works as expected"""
         debug.trace(4, "test_get_property_value()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_simple_format(self):
         """Ensure simple_format works as expected"""
         debug.trace(4, "test_simple_format()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_format(self):
         """Ensure format resolves from local and global namespace, and that local takes precedence"""
@@ -365,6 +376,7 @@ class TestTpoCommon(TestWrapper):
         """Ensure init_logging works as expected"""
         debug.trace(4, "test_init_logging()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_load_object(self):
         """Ensure load_object works as expected"""
@@ -419,6 +431,7 @@ class TestTpoCommon(TestWrapper):
         """Ensure create_lookup_table works as expected"""
         debug.trace(4, "test_create_lookup_table()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_lookup_key(self):
         """Ensure lookup_key works as expected"""
@@ -453,11 +466,13 @@ class TestTpoCommon(TestWrapper):
         """Ensure normalize_frequencies works as expected"""
         debug.trace(4, "test_normalize_frequencies()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_sort_frequencies(self):
         """Ensure sort_frequencies works as expected"""
         debug.trace(4, "test_sort_frequencies()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_sort_weighted_hash(self):
         """Ensure sort_weighted_hash works as expected"""
@@ -485,6 +500,7 @@ class TestTpoCommon(TestWrapper):
         """Ensure format_freq_hash works as expected"""
         debug.trace(4, "test_format_freq_hash()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_union(self):
         """Ensure union works as expected"""
@@ -570,21 +586,25 @@ class TestTpoCommon(TestWrapper):
         """Ensure safe_int works as expected"""
         debug.trace(4, "test_safe_int()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_safe_float(self):
         """Ensure safe_float works as expected"""
         debug.trace(4, "test_safe_float()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_reference_variables(self):
         """Ensure reference_variables works as expected"""
         debug.trace(4, "test_reference_variables()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     def test_memodict(self):
         """Ensure memodict works as expected"""
         debug.trace(4, "test_memodict()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_exit(self):
