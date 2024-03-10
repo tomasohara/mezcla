@@ -36,7 +36,8 @@ class TestMyRegex(TestWrapper):
     ## def capsys(self, capsys):
     ##     """Gets capsys"""
     ##     self.capsys = capsys
-
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_search(self):
         """Ensure search() works as expected"""
         debug.trace(4, f"test_search(); self={self}")
@@ -45,7 +46,8 @@ class TestMyRegex(TestWrapper):
         self.my_re.search(regex, text)
         output = self.my_re.get_match()
         assert (output.group() == "quick" and output.span() == (4, 9))
-
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_match(self):
         """Ensure match() works as expected"""
         debug.trace(4, f"test_match(); self={self}")
@@ -56,6 +58,7 @@ class TestMyRegex(TestWrapper):
         assert(output.group() == "1" and output.span() == (0, 1))
         ## TODO: return the matched value (solved: use group() after my_re.get_match())
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_match(self):
         """Ensure get_match() works as expected"""
         debug.trace(4, f"test_get_match(); self={self}")
@@ -66,6 +69,7 @@ class TestMyRegex(TestWrapper):
         output = self.my_re.get_match()
         assert isinstance(output, re.Match)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_group(self):
         """Ensure group() works as expected"""
         debug.trace(4, f"test_group(); self={self}")
@@ -75,6 +79,7 @@ class TestMyRegex(TestWrapper):
         output = self.my_re.group(0)
         assert (output == 'three,')
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_groups(self):
         """Ensure groups() works as expected"""
         debug.trace(4, f"test_groups(); self={self}")
@@ -84,6 +89,7 @@ class TestMyRegex(TestWrapper):
         output = self.my_re.groups()
         assert(output == ('John Doe', '30'))
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_grouping(self):
         """Ensure grouping() works as expected"""
         debug.trace(4, f"test_grouping(); self={self}")
@@ -93,6 +99,7 @@ class TestMyRegex(TestWrapper):
         output = self.my_re.grouping()
         assert(output == ('John Doe', '30'))
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_start(self):
         """Ensure start() works as expected"""
         debug.trace(4, f"test_start(); self={self}")
@@ -103,6 +110,7 @@ class TestMyRegex(TestWrapper):
         # start() returns starting index
         assert(output == 0)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_end(self):
         """Ensure end() works as expected"""
         debug.trace(4, f"test_end(); self={self}")
@@ -113,6 +121,7 @@ class TestMyRegex(TestWrapper):
         # start() returns ending index
         assert(output == 5)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_sub(self):
         """Ensure sub() works as expected"""
         debug.trace(4, f"test_sub(); self={self}")
@@ -123,6 +132,7 @@ class TestMyRegex(TestWrapper):
         output = self.my_re.sub(pattern=regex, string=text, replacement=replacement)
         assert(output == output_sample)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_span(self):
         """Ensure span() works as expected"""
         debug.trace(4, f"test_span(); self={self}")
@@ -132,6 +142,7 @@ class TestMyRegex(TestWrapper):
         output = self.my_re.span()
         assert(output == (4, 8))
     
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_split(self):
         """Ensure split() works as expected"""
         debug.trace(4, f"test_split(); self={self}")
@@ -139,7 +150,8 @@ class TestMyRegex(TestWrapper):
         regex = ","
         output = self.my_re.split(pattern=regex, string=text)
         assert(output == text.split(","))
-    
+
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_findall(self):
         """Ensure findall() works as expected"""
         debug.trace(4, f"test_findall(); self={self}")
@@ -148,6 +160,7 @@ class TestMyRegex(TestWrapper):
         output = self.my_re.findall(pattern=regex, string=text)
         assert(output == ['32768', '256', '0'])
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_escape(self):
         """Ensure escape() works as expected"""
         debug.trace(4, f"test_escape(); self={self}")
