@@ -42,7 +42,7 @@ class TestMyRegex(TestWrapper):
         """Ensure search() works as expected"""
         debug.trace(4, f"test_search(); self={self}")
         text = "The quick brown fox jumps over the lazy dog."
-        regex = "\w{5}"
+        regex = r"\w{5}"
         self.my_re.search(regex, text)
         output = self.my_re.get_match()
         assert (output.group() == "quick" and output.span() == (4, 9))
@@ -52,7 +52,7 @@ class TestMyRegex(TestWrapper):
         """Ensure match() works as expected"""
         debug.trace(4, f"test_match(); self={self}")
         text = "1 kiss is all takes."
-        regex = "\d+"
+        regex = r"\d+"
         self.my_re.match(regex, text, 0)
         output = self.my_re.get_match()
         assert(output.group() == "1" and output.span() == (0, 1))
@@ -64,7 +64,7 @@ class TestMyRegex(TestWrapper):
         debug.trace(4, f"test_get_match(); self={self}")
         # get_match() returns the last the result of match
         text = "333 little birds"
-        regex = "\d+"
+        regex = r"\d+"
         self.my_re.match(regex, text, 0)
         output = self.my_re.get_match()
         assert isinstance(output, re.Match)
@@ -74,7 +74,7 @@ class TestMyRegex(TestWrapper):
         """Ensure group() works as expected"""
         debug.trace(4, f"test_group(); self={self}")
         text = "three, 7, eight"
-        regex = "\w{5},"
+        regex = r"\w{5},"
         self.my_re.search(regex, text, 0)
         output = self.my_re.group(0)
         assert (output == 'three,')
@@ -84,7 +84,7 @@ class TestMyRegex(TestWrapper):
         """Ensure groups() works as expected"""
         debug.trace(4, f"test_groups(); self={self}")
         text = "John Doe: 30 years old, Jane Smith: 25 years old"
-        regex = "(\w+\s\w+): (\d+) years"
+        regex = r"(\w+\s\w+): (\d+) years"
         self.my_re.search(regex, text)
         output = self.my_re.groups()
         assert(output == ('John Doe', '30'))
@@ -94,7 +94,7 @@ class TestMyRegex(TestWrapper):
         """Ensure grouping() works as expected"""
         debug.trace(4, f"test_grouping(); self={self}")
         text = "John Doe: 30 years old, Jane Smith: 25 years old"
-        regex = "(\w+\s\w+): (\d+) years"
+        regex = r"(\w+\s\w+): (\d+) years"
         self.my_re.search(regex, text)
         output = self.my_re.grouping()
         assert(output == ('John Doe', '30'))
@@ -104,7 +104,7 @@ class TestMyRegex(TestWrapper):
         """Ensure start() works as expected"""
         debug.trace(4, f"test_start(); self={self}")
         text = "three little birds"
-        regex = "\w{5}"
+        regex = r"\w{5}"
         self.my_re.search(regex, text)
         output = self.my_re.start()
         # start() returns starting index
@@ -115,7 +115,7 @@ class TestMyRegex(TestWrapper):
         """Ensure end() works as expected"""
         debug.trace(4, f"test_end(); self={self}")
         text = "three big birds"
-        regex = "\w{5}"
+        regex = r"\w{5}"
         self.my_re.search(regex, text)
         output = self.my_re.end()
         # start() returns ending index
@@ -126,7 +126,7 @@ class TestMyRegex(TestWrapper):
         """Ensure sub() works as expected"""
         debug.trace(4, f"test_sub(); self={self}")
         text = "The quick brown fox jumps over the lazy dog."
-        regex = "\w{4}"
+        regex = r"\w{4}"
         replacement = "****"
         output_sample = "The ****k ****n fox ****s **** the **** dog."
         output = self.my_re.sub(pattern=regex, string=text, replacement=replacement)
@@ -137,7 +137,7 @@ class TestMyRegex(TestWrapper):
         """Ensure span() works as expected"""
         debug.trace(4, f"test_span(); self={self}")
         text = "The quick brown fox jumps over the lazy dog."
-        regex = "\w{4}"
+        regex = r"\w{4}"
         self.my_re.search(regex, text)
         output = self.my_re.span()
         assert(output == (4, 8))
@@ -147,7 +147,7 @@ class TestMyRegex(TestWrapper):
         """Ensure split() works as expected"""
         debug.trace(4, f"test_split(); self={self}")
         text = "three,little,birds"
-        regex = ","
+        regex = r","
         output = self.my_re.split(pattern=regex, string=text)
         assert(output == text.split(","))
 
@@ -156,7 +156,7 @@ class TestMyRegex(TestWrapper):
         """Ensure findall() works as expected"""
         debug.trace(4, f"test_findall(); self={self}")
         text = "There are 32768 possible combinations, with 256 other combinations and 0 impossible combinations."
-        regex = "\d+"
+        regex = r"\d+"
         output = self.my_re.findall(pattern=regex, string=text)
         assert(output == ['32768', '256', '0'])
 
@@ -166,7 +166,7 @@ class TestMyRegex(TestWrapper):
         debug.trace(4, f"test_escape(); self={self}")
         text = "foo*bar"
         output = self.my_re.escape(text)
-        assert("\*" in output)
+        assert(r"\*" in output)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
