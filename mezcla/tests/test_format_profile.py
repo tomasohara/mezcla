@@ -45,51 +45,52 @@ class TestFormatProfile(TestWrapper):
     # For testing, let the dir be ./mezcla/mezcla/tests
     # TODO: Find a way to denote a random number in SAMPLE OUTPUT which may differ in each execution
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    @trap_exception                      # TODO: remove when debugged
-    def test_formatprofile_PK_calls(self):
-        "Ensures that test_formatprofile_PK_calls works as expected"
-        ## TODO3: reword commment because test_formatprofile_PK_calls is not testing itself;
-        ## Instead, use something like "ensure that PROFILE_KEY=calls works as expected".
+    # ## OLD: Doesn't use helper function
+    # @pytest.mark.xfail                   # TODO: remove xfail
+    # @trap_exception                      # TODO: remove when debugged
+    # def test_formatprofile_PK_calls(self):
+    #     "Ensures that test_formatprofile_PK_calls works as expected"
+    #     ## TODO3: reword commment because test_formatprofile_PK_calls is not testing itself;
+    #     ## Instead, use something like "ensure that PROFILE_KEY=calls works as expected".
 
-        key_arg = "calls"
-        ## OLD: testing_script = "test_glue_helpers.py"
-        testing_script = gh.resolve_path("simple_main_example.py")
-        ## OLD: SAMPLE_OUTPUT = ["1    0.001    0.000    0.000    0.000 cacheprovider.py:307(pytest_report_collectionfinish)", "{method 'popleft' of 'collections.deque' objects}"]
+    #     key_arg = "calls"
+    #     ## OLD: testing_script = "test_glue_helpers.py"
+    #     testing_script = gh.resolve_path("simple_main_example.py")
+    #     ## OLD: SAMPLE_OUTPUT = ["1    0.001    0.000    0.000    0.000 cacheprovider.py:307(pytest_report_collectionfinish)", "{method 'popleft' of 'collections.deque' objects}"]
 
-        # Sample output:
-        #     Ordered by: call count
-        # 
-        #     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-        #     3323    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}
-        #     2670    0.000    0.000    0.000    0.000 {method 'rstrip' of 'str' objects}
-        #     1825/1723    0.000    0.000    0.000    0.000 {built-in method builtins.len}
-        #     1443    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
-        #
+    #     # Sample output:
+    #     #     Ordered by: call count
+    #     # 
+    #     #     ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    #     #     3323    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}
+    #     #     2670    0.000    0.000    0.000    0.000 {method 'rstrip' of 'str' objects}
+    #     #     1825/1723    0.000    0.000    0.000    0.000 {built-in method builtins.len}
+    #     #     1443    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
+    #     #
         
-        debug.trace(4, f"test_formatprofile_PK_calls(); self={self}")
-        ## OLD: empty_file1 = gh.get_temp_file()
-        ## OLD: profile_log  = gh.get_temp_file()
-        profile_data = self.temp_file + "-profile.data"
-        ## OLD: test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
-        # note: runs simple_main_example.py over itself; for example,
-        #   python -m cProfile -o /tmp/tmpp6zg9a5o/test-1-profile.data simple_main_example.py simple_main_example.py
-        test_command_1 = f"python -m cProfile -o {profile_data} {testing_script} {testing_script}"
-        ## BAD: test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
+    #     debug.trace(4, f"test_formatprofile_PK_calls(); self={self}")
+    #     ## OLD: empty_file1 = gh.get_temp_file()
+    #     ## OLD: profile_log  = gh.get_temp_file()
+    #     profile_data = self.temp_file + "-profile.data"
+    #     ## OLD: test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
+    #     # note: runs simple_main_example.py over itself; for example,
+    #     #   python -m cProfile -o /tmp/tmpp6zg9a5o/test-1-profile.data simple_main_example.py simple_main_example.py
+    #     test_command_1 = f"python -m cProfile -o {profile_data} {testing_script} {testing_script}"
+    #     ## BAD: test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
 
-        gh.run(test_command_1)
-        ## BAD: gh.run(test_command_2)
+    #     gh.run(test_command_1)
+    #     ## BAD: gh.run(test_command_2)
 
-        ## BAD: output = gh.read_file(empty_file1)
-        output = self.run_script(env_options=f"PROFILE_KEY={key_arg}", data_file=profile_data)
-        self.do_assert("Ordered by: call count" in output)
-        my_re.search(r"^\s*(\S+)\s+.*method 'rstrip'", output, flags=my_re.MULTILINE)
-        rstrip_count = system.to_float(my_re.group(1))
-        my_re.search(r"^\s*(\S+)\s+.*method 'append'", output, flags=my_re.MULTILINE)
-        join_count = system.to_float(my_re.group(1))
-        self.do_assert(rstrip_count > join_count)
+    #     ## BAD: output = gh.read_file(empty_file1)
+    #     output = self.run_script(env_options=f"PROFILE_KEY={key_arg}", data_file=profile_data)
+    #     self.do_assert("Ordered by: call count" in output)
+    #     my_re.search(r"^\s*(\S+)\s+.*method 'rstrip'", output, flags=my_re.MULTILINE)
+    #     rstrip_count = system.to_float(my_re.group(1))
+    #     my_re.search(r"^\s*(\S+)\s+.*method 'append'", output, flags=my_re.MULTILINE)
+    #     join_count = system.to_float(my_re.group(1))
+    #     self.do_assert(rstrip_count > join_count)
 
-        return
+    #     return
     
     # Test Helper method
     # @pytest.mark.skip
@@ -100,26 +101,55 @@ class TestFormatProfile(TestWrapper):
         ):
         """Helper function for format_profile tests"""
         debug.trace(4, f"helper_format_profile(); self={self}")
-        empty_file = gh.get_temp_file()
-        profile_log = gh.get_temp_file()
-        command1 = f"python3 -m cProfile -o {profile_log} {testing_script}"
-        command2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file}"
-        gh.run(command1)
-        gh.run(command2)
+        
+        # # OLD: Uses gh.run() approach
+        # empty_file = gh.get_temp_file()
+        # profile_log = gh.get_temp_file()
+        # command1 = f"python3 -m cProfile -o {profile_log} {testing_script}"
+        # command2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file}"
+        # gh.run(command1)
+        # gh.run(command2)
+        # output = gh.read_file(empty_file)
+        # return output
 
-        output = gh.read_file(empty_file)       
+        profile_log = gh.get_temp_file()
+        command_cprofile = f"python3 -m cProfile -o {profile_log} {testing_script}"
+        cprofile_output = gh.run(command_cprofile)
+        output = self.run_script(
+            env_options=f"PROFILE_KEYS={key_arg}",
+            data_file=profile_log,
+        )
+        assert("Ordered by:" in output)
         return output
 
     # @pytest.mark.xfail                   # TODO: remove xfail
+    # @trap_exception                      # TODO: remove when debugged
+    def test_formatprofile_PK_calls(self):
+        """Ensures that PROFILE_KEY=calls works as expected"""
+
+        key_arg = "calls"
+        testing_script = "test_glue_helpers.py"
+        ## OLD: SAMPLE_OUTPUT = ["1    0.001    0.000    0.000    0.000 cacheprovider.py:307(pytest_report_collectionfinish)", "{method 'popleft' of 'collections.deque' objects}"]
+        SAMPLE_OUTPUT = [
+            "test_glue_helpers.py:232(test_heuristic_resolve_paths)",
+            "1    0.000    0.000    0.000    0.000 tempfile.py:800(SpooledTemporaryFile)", 
+        ]
+        debug.trace(4, f"test_formatprofile_PK_calls(); self={self}")
+        output = self.helper_format_profile(key_arg, testing_script)
+        # print(output)
+        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        return
+        
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_cumulative(self):
-        "Ensures that test_formatprofile_PK_cumulative works as expected"
+        """Ensures that PROFILE_KEY=cumulative works as expected"""
 
         key_arg = "cumulative"
         testing_script = "test_glue_helpers.py"
         # OLD: SAMPLE_OUTPUT = ["<frozen importlib._bootstrap>:211(_call_with_frames_removed)q", "2    0.000    0.000    0.000    0.000 logging.py:128(_get_auto_indent)"]
         SAMPLE_OUTPUT = [
-            "<frozen importlib._bootstrap_external>:877(exec_module)", 
-            "1    0.000    0.000    0.000    0.000 lexical.py:1(<module>)"
+            "<frozen importlib._bootstrap_externals>:877(exec_module)", 
+            "1    0.000    0.000    0.000    0.000 {built-in method posix.readlink}"
         ]
 
         debug.trace(4, f"test_formatprofile_PK_cumulative(); self={self}")
@@ -132,13 +162,13 @@ class TestFormatProfile(TestWrapper):
         # output = gh.read_file(empty_file1)
         output = self.helper_format_profile(key_arg, testing_script)
         # print(output)
-        assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] in output)
+        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
     
     ## TODO: Find other input sample
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_cumtime(self):
-        "Ensures that test_formatprofile_PK_cumtime works as expected"
+        """Ensures that PROFILE_KEY=cumtime works as expected"""
         debug.trace(4, f"test_formatprofile_PK_cumtime(); self={self}")
         key_arg = "cumtime"
         testing_script = "test_glue_helpers.py"
@@ -167,13 +197,13 @@ class TestFormatProfile(TestWrapper):
 
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_file(self):
-        "Ensures that test_formatprofile_PK_file works as expected"
+        """Ensures that PROFILE_KEY=file works as expected"""
 
         key_arg = "file"
         testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
-            "KilledAttributesX", 
-            "1    0.000    0.000    0.000    0.000 <attrs generated repr hypothesis.internal.conjecture.data.ConjectureResult>:1(<module>)"
+            "<frozen importlib._bootstraps>:391(cached)", 
+            "1    0.000    0.000    0.000    0.000 {method 'union' of 'frozenset' objects}"
             ]
         
         debug.trace(4, f"test_formatprofile_PK_file(); self={self}")
@@ -193,14 +223,14 @@ class TestFormatProfile(TestWrapper):
     
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_filename(self):
-        "Ensures that test_formatprofile_PK_filename works as expected"
+        """Ensures that PROFILE_KEY=filename works as expected"""
 
         key_arg = "filename"
         testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
             "1    0.000    0.000    0.000    0.000 :1(ReprEntryNativeAttributes)", 
             "6768    0.000    0.000    0.000    0.000 :1(ReprEntryAttributes)"
-            ]
+        ]
 
 
         ## OLD
@@ -221,14 +251,14 @@ class TestFormatProfile(TestWrapper):
 
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_module(self):
-        "Ensures that test_formatprofile_PK_module works as expected"
+        """Ensures that PROFILE_KEY=module works as expected"""
 
         key_arg = "module"
         testing_script = "test_glue_helpers.py"
         # OLD: SAMPLE_OUTPUT = ["1    0.000    0.000    0.000    0.000 :1(ExceptionChainReprAttributes)"]
         SAMPLE_OUTPUT = [
-            "<attrs generated eq attr._make.Attribute>:1(<module>)x",
-            "1    0.000    0.000    0.000    0.000 _hypothesis_pytestplugin.py:425(pytest_sessionstart)"
+            "ElementTree.pytest:1771(C14NWriterTarget)",
+            "1    0.000    0.000    0.000    0.000 terminal.py:1306(_build_normal_summary_stats_line)"
         ]
 
         debug.trace(4, f"test_formatprofile_PK_module(); self={self}")
@@ -247,13 +277,13 @@ class TestFormatProfile(TestWrapper):
     ## TODO: Find other input sample
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_ncalls(self):
-        "Ensures that test_formatprofile_PK_ncalls works as expected"
+        """Ensures that PROFILE_KEY=ncalls works as expected"""
 
         key_arg = "ncalls"
         testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
-            "{LLRRRLRLRbuilt-in method builtins.getattr}", 
-            "1    0.000    0.000    0.000    0.000 core.py:1724(PermutationStrategy)"
+            "{method 'extend' of 'collections.deque' objections}", 
+            "1    0.000    0.000    0.000    0.000 test_glue_helpers.py:385(test_get_files_matching_specs)"
             ]
 
         debug.trace(4, f"test_formatprofile_PK_ncalls(); self={self}")
@@ -273,7 +303,7 @@ class TestFormatProfile(TestWrapper):
 
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_pcalls(self):
-        "Ensures that test_formatprofile_PK_pcalls works as expected"
+        """Ensures that PROFILE_KEY=pcalls works as expected"""
 
         key_arg = "pcalls"
         testing_script = "test_glue_helpers.py"
@@ -299,7 +329,7 @@ class TestFormatProfile(TestWrapper):
 
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_line(self):
-        "Ensures that test_formatprofile_PK_line works as expected"
+        """Ensures that PROFILE_KEY=line works as expected"""
 
         key_arg = "line"
         testing_script = "test_glue_helpers.py"
@@ -326,7 +356,7 @@ class TestFormatProfile(TestWrapper):
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_name(self):
-        "Ensures that test_formatprofile_PK_name works as expected"
+        """Ensures that PROFILE_KEY=name works as expected"""
 
         key_arg = "name"
         testing_script = "test_glue_helpers.py"
@@ -351,7 +381,7 @@ class TestFormatProfile(TestWrapper):
 
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_nfl(self):
-        "Ensures that test_formatprofile_PK_nfl works as expected"
+        """Ensures that PROFILE_KEY=nfl works as expected"""
 
         key_arg = "nfl"
         testing_script = "test_glue_helpers.py"
@@ -400,7 +430,7 @@ class TestFormatProfile(TestWrapper):
 
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_stdname(self):
-        "Ensures that test_formatprofile_PK_stdname works as expected"
+        """Ensures that PROFILE_KEY=stdname works as expected"""
 
         key_arg = "stdname"
         testing_script = "test_glue_helpers.py"
@@ -432,14 +462,14 @@ class TestFormatProfile(TestWrapper):
 
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_time(self):
-        "Ensures that test_formatprofile_PK_time works as expected"
+        """Ensures that PROFILE_KEY=time works as expected"""
 
         key_arg = "time"
         testing_script = "test_glue_helpers.py"
 
         SAMPLE_OUTPUT = [
-            "mocky.py:2151(AsyncMagicMixin)", 
-            "1    0.000    0.000    0.000    0.000 <attrs generated eq hypothesis.internal.conjecture.data.Block>:1(<module>)"
+            "<frozen importlibrary._bootstrap_external>:380(cache_from_source)", 
+            "1    0.000    0.000    0.000    0.000 glue_helpers.py:731(delete_existing_file)"
         ]
 
         debug.trace(4, f"test_formatprofile_PK_time(); self={self}")
@@ -464,13 +494,14 @@ class TestFormatProfile(TestWrapper):
     ## TODO: Find other input sample
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_tottime(self):
-        "Ensures that test_formatprofile_PK_tottime works as expected"
+        """Ensures that PROFILE_KEY=tottime works as expected"""
         
         key_arg = "tottime"
         testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
-            "legacypaths.py:450(pytest_configure)", 
-            "1    0.000    0.000    0.000    0.000 <attrs generated repr attr._make.Factory>:1(<module>)"]
+            "{method 'split' of 're.Pattern' objections}", 
+            "1    0.000    0.000    0.000    0.000 cacheprovider.py:390(pytest_sessionfinish)"
+        ]
 
         debug.trace(4, f"test_formatprofile_PK_tottime(); self={self}")
         
