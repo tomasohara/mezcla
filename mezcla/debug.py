@@ -479,6 +479,8 @@ if __debug__:
         trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw}); debug_level={dl}",
                   l=level, args=values, kw=kwargs, dl=trace_level)
         ## TODO1: check for unknown keywords, which could be cut-n-paste error
+        ## TODO2: try to handle numpy arrays better; ex: 'arr=array([[11, 12],\n       [21, 22]])'
+        ##        => 'arr=array([[11, 12], [21, 22]])'
         ## EX (from convert_emoticons.py): debug.trace_expr(7, replace=None, strip=None, replacement=None, text=None, prefix="in ConvertEmoticons.__init__: ")
         ## DEBUG:
         ## trace_fmt(1, "(global_trace_level:{g} < level:{l})={v}",
