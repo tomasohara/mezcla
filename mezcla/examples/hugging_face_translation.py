@@ -63,6 +63,9 @@ TEXT_FILE = system.getenv_text("TEXT_FILE", "-",
 USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
                                    "Use web-based interface via gradio")
 
+ROUND_TRIP = system.getenv_bool("ROUND_TRIP", False, 
+                                "Perform round-trip translation")
+
 #-------------------------------------------------------------------------------
 
 def show_gpu_usage(trace_level=None):
@@ -73,11 +76,15 @@ def show_gpu_usage(trace_level=None):
         debug.code(trace_level, lambda: debug.trace(1, gh.run("nvidia-smi")))
     return
 
+def translated_text(model_obj):
+    TRANSLATION_TEXT = "translation_text"
+    return model_obj[0][TRANSLATION_TEXT] or ""
 
 def main():
     """Entry point"""
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
 
+    
     # Show simple usage if --help given
     dummy_app = Main(description=__doc__.format(script=gh.basename(__file__)),
                      skip_input=False, manual_input=True,
@@ -95,11 +102,19 @@ def main():
     text = dummy_app.get_parsed_option(TEXT_ARG)
     source_lang = dummy_app.get_parsed_option(FROM_ARG, SOURCE_LANG)
     target_lang = dummy_app.get_parsed_option(FROM_ARG, TARGET_LANG)
-    #
+    
     MT_TASK = f"translation_{source_lang}_to_{target_lang}"                 # pylint: disable=invalid-name
     MT_MODEL = f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"          # pylint: disable=invalid-name
+    ## OLD: Before addition of ROUND_TRIP
     mt_task = dummy_app.get_parsed_option(TASK_ARG, MT_TASK)
     mt_model = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL)
+
+    if ROUND_TRIP:
+        MT_TASK_REVERSE = f"translation_{target_lang}_to_{source_lang}"                 # pylint: disable=invalid-name
+        MT_MODEL_REVERSE = f"Helsinki-NLP/opus-mt-{target_lang}-{source_lang}"          # pylint: disable=invalid-name  
+        mt_task_reverse = dummy_app.get_parsed_option(TASK_ARG, MT_TASK_REVERSE)
+        mt_model_reverse = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL_REVERSE)
+
     use_interface = dummy_app.get_parsed_option(UI_ARG, USE_INTERFACE)
 
     # Get input file
@@ -125,6 +140,8 @@ def main():
     device = torch.device(hf_speechrec.TORCH_DEVICE)
     debug.trace_expr(5, device)
     model = pipeline(task=mt_task, model=mt_model, device=device)
+    if ROUND_TRIP:
+        model_reverse = pipeline(task=mt_task_reverse, model=mt_model_reverse)
 
     # Pull up web interface if requested
     if use_interface:
@@ -143,12 +160,34 @@ def main():
     else:
         TRANSLATION_TEXT = "translation_text"
         split_regex = r"\n\s*\n" if USE_PARAGRAPH_MODE else "\n"
+        # print(my_re.split(split_regex, text))
         for segment in my_re.split(split_regex, text):
             try:
                 translation = model(segment, max_length=MAX_LENGTH)
+                translation_text = translated_text(translation)
+                
+                # Round-trip translation
+                if ROUND_TRIP:
+                    # Translation Level II (TO -> FROM_AUX)
+                    translation_reverse = model_reverse(translation_text, max_length=MAX_LENGTH)
+                    translation_reverse_text = translated_text(translation_reverse)
+                    
+                    # Translation Level III (FROM_AUX -> TO)
+                    translation_round = model(translation_reverse_text, max_length=MAX_LENGTH)
+                    translation_round_text = translated_text(translation_round)
+
                 debug.assertion(isinstance(translation, list)
                                 and (TRANSLATION_TEXT in translation[0]))
-                print(translation[0].get(TRANSLATION_TEXT) or "")
+                
+                ## OLD: Before round-trip translation
+                # print(translation[0].get(TRANSLATION_TEXT) or "")
+                if ROUND_TRIP:
+                    print(f"\nORIGINAL      ({FROM}):\n{segment}")
+                    print(f"\nTRANSLATE     ({TO}):\n{translation_text}")
+                    print(f"\nORIGINAL[R]   ({FROM}):\n{translation_reverse_text if ROUND_TRIP else ''}")
+                    print(f"\nTRANSLATE[R]  ({TO}):\n{translation_round_text if ROUND_TRIP else ''}")
+                else:
+                    print(translation_text)
             except:
                 system.print_exception_info("translation")
             show_gpu_usage()
