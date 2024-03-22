@@ -38,6 +38,7 @@ import trace
 # Local modules
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla.unittest_wrapper import trap_exception
 
@@ -80,12 +81,12 @@ class TestTpoCommon(TestWrapper):
         temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
         
-        stdout, stderr = self.get_stdout_stderr()
-        assert re.search(r'modulename: debug, funcname: trace', stdout)
+        out, error = self.get_stdout_stderr()
+        assert re.search(r'modulename: debug, funcname: trace', out)
 
         # test behaviour of functions
-        assert text in stderr
-        assert f'{text}\n' not in stderr
+        assert text in error
+        assert f'{text}\n' not in error
 
 
     @pytest.mark.xfail
@@ -154,11 +155,11 @@ class TestTpoCommon(TestWrapper):
         temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
         
-        stdout, stderr = self.get_stdout_stderr()
-        assert re.search(r'modulename: debug, funcname: trace_values', stdout)
+        out, error = self.get_stdout_stderr()
+        assert re.search(r'modulename: debug, funcname: trace_values', out)
         
         for i, item in enumerate(array):
-            assert f"{i}: {item}" in stderr
+            assert f"{i}: {item}" in error
 
     def test_trace_object(self):
         """Ensure trace_object works as expected"""
@@ -178,11 +179,11 @@ class TestTpoCommon(TestWrapper):
         temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
         
-        stdout, stderr = self.get_stdout_stderr()
-        assert re.search(r'modulename: debug, funcname: trace_object', stdout)
+        out, error = self.get_stdout_stderr()
+        assert re.search(r'modulename: debug, funcname: trace_object', out)
         
-        assert '__var__: 1' in stderr
-        assert 'test_method' in stderr
+        assert '__var__: 1' in error
+        assert 'test_method' in error
         
 
     @pytest.mark.xfail
@@ -200,10 +201,10 @@ class TestTpoCommon(TestWrapper):
         test_var = 1
         #assert local and global variables are traced
         THE_MODULE.trace_current_context(level=8, label='TPO', show_methods_etc=True)
-        stderr = self.get_stderr()
-        assert 'TPO' in stderr
-        assert 'test_var' in stderr
-        assert 'FOOBAR' in stderr
+        error = self.get_stderr()
+        assert 'TPO' in error
+        assert 'test_var' in error
+        assert 'FOOBAR' in error
         
         # assert debug function is being called
         tracer = trace.Trace(countfuncs=1)
@@ -276,26 +277,38 @@ class TestTpoCommon(TestWrapper):
         ## TODO: add tests for sys.version_info.major < 3
         ## assert THE_MODULE.ensure_unicode('\xe1\x88\xb4') == '\u1234'
 
-    @pytest.mark.xfail
     def test_print_stderr(self):
         """Ensure print_stderr works as expected"""
         debug.trace(4, "test_print_stderr()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        # ensure stderr is not being redirected
+        self.monkeypatch.setattr(THE_MODULE, 'stderr', sys.stderr)
 
-    @pytest.mark.xfail
+        message = "this is error"
+        THE_MODULE.print_stderr(message)
+        error = self.get_stderr()
+        assert message in error
+
+    # @pytest.mark.xfail
     def test_redirect_stderr(self):
         """Ensure redirect_stderr works as expected"""
         debug.trace(4, "test_redirect_stderr()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        # ensure stderr is not being redirected
+        self.monkeypatch.setattr(THE_MODULE, 'stderr', sys.stderr)
+        
+        temp = self.get_temp_file()
+        THE_MODULE.redirect_stderr(temp)
+        THE_MODULE.print_stderr("stderr redirected")
+        THE_MODULE.restore_stderr()
+        assert "stderr redirected" in gh.read_file(temp)
 
     @pytest.mark.xfail
     def test_restore_stderr(self):
         """Ensure restore_stderr works as expected"""
         debug.trace(4, "test_restore_stderr()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        # ensure stderr is already being redirected
+        self.monkeypatch.setattr(THE_MODULE, 'stderr', system.open_file(self.get_temp_file()))
+        THE_MODULE.restore_stderr()
+        assert sys.stderr == THE_MODULE.stderr
 
     def test_setenv(self):
         """Ensure setenv works as expected"""
