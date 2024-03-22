@@ -182,14 +182,17 @@ def main():
 
                 debug.assertion(isinstance(translation, list)
                                 and (TRANSLATION_TEXT in translation[0]))
-                
+                translation_reverse_text = translation_reverse_text if round_trip else ''
+                translation_round_text = translation_round_text if round_trip else ''
+
                 ## OLD: Before round-trip translation
                 # print(translation[0].get(TRANSLATION_TEXT) or "")
                 if round_trip:
-                    print(f"\nORIGINAL      ({FROM}):\n{segment}")
-                    print(f"\nTRANSLATE     ({TO}):\n{translation_text}")
-                    print(f"\nORIGINAL[R]   ({FROM}):\n{translation_reverse_text if round_trip else ''}")
-                    print(f"\nTRANSLATE[R]  ({TO}):\n{translation_round_text if round_trip else ''}\n")
+                    print(f"\nOriginal      ({FROM}):\n{segment}")
+                    print(f"\nTranslate     ({TO}):\n{translation_text}")
+                    print(f"\nOriginal  [R]   ({FROM}):\n{translation_reverse_text}")
+                    print(f"\nTranslate [R]  ({TO}):\n{translation_round_text}")
+                    print(f"\nDifference in Translation: {translation_round_text == translation_text}\n")
                 else:
                     print(translation_text)
             except:
