@@ -19,7 +19,7 @@ Sample usage:
 
 # Standard modules
 import time
-import pathlib
+import pathlib 
 
 # Installed modules
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -37,6 +37,9 @@ from mezcla import glue_helpers as gh
 from mezcla import gpu_utils
 from mezcla.main import Main
 from mezcla import system
+from mezcla import html_utils
+from mezcla import extract_document_text
+from mezcla.my_regex import my_re
 
 # Constants
 TL = debug.TL
@@ -57,6 +60,8 @@ Helpful answer:
 NUM_SIMILAR = system.getenv_int(
     "NUM_SIMILAR", 10,
     description="Number of similar documents to show")
+LLAMA_MODEL = system.getenv_text ("LLAMA_MODEL", '/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
+                                  description="path to llama model bin")
 
 class DesktopSearch:
     """Class for searching local computer"""
@@ -74,8 +79,23 @@ class DesktopSearch:
         """Index files at DIR_PATH"""
         debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
         # define what documents to load
+        
+        def convert_to_txt(in_file: str) -> str:
+            if file.endswith('.html'):
+                text = html_utils.html_to_text(system.read_file(in_file))
+            else:
+                text = extract_document_text.document_to_text(in_file)
+            return text
+        
+        #convert pdf, docs or html files into txt 
+        old_files = system.read_directory(dir_path)
+        non_txt_files = (found for found in old_files if my_re.match(r'.*\.(pdf|docx|html)', found) )
+        for num,file in enumerate(non_txt_files):
+            debug.trace_fmt(4,file)
+            full_path = system.form_path(dir_path, file)
+            system.write_file(f"{full_path}_temp_{num}.txt", convert_to_txt(full_path))
+        
         loader = DirectoryLoader(dir_path, glob="*.txt", loader_cls=TextLoader)
-
         # interpret information in the documents
         documents = loader.load()
         splitter = RecursiveCharacterTextSplitter(chunk_size=500,
@@ -90,6 +110,10 @@ class DesktopSearch:
         self.db.save_local("faiss")
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
+        
+        # delete converted files
+        for new_file in (file for file in system.read_directory(dir_path) if file not in old_files):
+              gh.delete_file(system.form_path(dir_path, new_file))
 
     def load_index(self, for_qa=False):
         """Load index of documents"""
@@ -97,7 +121,7 @@ class DesktopSearch:
         # load the language model
         ## OLD: config = {'max_new_tokens': 256, 'temperature': 0.01}
         config = {'max_new_tokens': 256, 'temperature': 0.01, 'context_length': 512}
-        llm = CTransformers(model='/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
+        llm = CTransformers(model=LLAMA_MODEL,
                             model_type='llama', config=config)
         if for_qa:
             self.llm = llm
@@ -106,7 +130,9 @@ class DesktopSearch:
         embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2",
             model_kwargs={'device': TORCH_DEVICE})
-        self.db = FAISS.load_local("faiss", embeddings)
+        self.db = FAISS.load_local("faiss", embeddings,
+                                   # necessary to allow loading of possibly unsafe Pickle
+                                   allow_dangerous_deserialization=True)
         gpu_utils.trace_gpu_usage()
 
     def prepare_qa_llm(self):
@@ -126,7 +152,7 @@ class DesktopSearch:
         
     def search_to_answer(self, question):         # TODO2: rename like answer_question
         """Search documents to answer QUESTION"""
-        debug.trace(4, f"DesktopSearchsearch_to_answer({question})")
+        debug.trace(4, f"DesktopSearch.search_to_answer({question})")
         if not self.qa_llm:
             self.prepare_qa_llm()
         model_path = self.qa_llm.combine_documents_chain.llm_chain.llm.model
@@ -142,12 +168,12 @@ class DesktopSearch:
 
     def show_similar(self, query, num=None):
         """Show similar documents to QUERY in the vector store, up to NUM"""
-        debug.trace(4, f"DesktopSearch.show_similar(n={num})")
+        debug.trace(4, f"DesktopSearch.show_similar(query={query}, n={num})")
         if num is None:
             num = NUM_SIMILAR
         if not self.db:
             self.load_index()
-        docs = self.db.similarity_search(query=query, k=num)
+        docs = self.db.similarity_search_with_score(query=query, k=num)
         print(docs)
         gpu_utils.trace_gpu_usage()
 
