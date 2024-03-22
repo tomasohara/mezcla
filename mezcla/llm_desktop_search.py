@@ -201,9 +201,9 @@ class Script(Main):
         if self.index_arg:
             ds.index_dir(self.filename)
         elif self.search_arg:
-            ds.search_to_answer(self.text)
+            ds.search_to_answer(self.search_arg)
         elif self.similar_arg:
-            ds.show_similar(self.text)
+            ds.show_similar(self.similar_arg)
         else:
             system.print_error("Error: Unexpected condition")
 
