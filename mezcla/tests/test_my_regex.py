@@ -36,6 +36,16 @@ class TestMyRegex(TestWrapper):
     ## def capsys(self, capsys):
     ##     """Gets capsys"""
     ##     self.capsys = capsys
+
+    @pytest.mark.xfail
+    def helper_my_regex(self, regex, text, is_match=0):
+        """Helper functions for my_regex"""
+        if is_match:
+            self.my_re.match(regex, text, 0)
+        else:
+            self.my_re.search(regex, text)
+        output = self.my_re.get_match()
+        return output
     
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_search(self):
@@ -43,8 +53,7 @@ class TestMyRegex(TestWrapper):
         debug.trace(4, f"test_search(); self={self}")
         text = "The quick brown fox jumps over the lazy dog."
         regex = r"\w{5}"
-        self.my_re.search(regex, text)
-        output = self.my_re.get_match()
+        output = self.helper_my_regex(regex, text)
         assert (output.group() == "quick" and output.span() == (4, 9))
     
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -53,8 +62,7 @@ class TestMyRegex(TestWrapper):
         debug.trace(4, f"test_match(); self={self}")
         text = "1 kiss is all takes."
         regex = r"\d+"
-        self.my_re.match(regex, text, 0)
-        output = self.my_re.get_match()
+        output = self.helper_my_regex(regex, text, is_match=1)
         assert(output.group() == "1" and output.span() == (0, 1))
         ## TODO: return the matched value (solved: use group() after my_re.get_match())
 
@@ -65,8 +73,7 @@ class TestMyRegex(TestWrapper):
         # get_match() returns the last the result of match
         text = "333 little birds"
         regex = r"\d+"
-        self.my_re.match(regex, text, 0)
-        output = self.my_re.get_match()
+        output = self.helper_my_regex(regex, text, is_match=1)
         assert isinstance(output, re.Match)
 
     @pytest.mark.xfail                   # TODO: remove xfail
