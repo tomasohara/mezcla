@@ -48,11 +48,16 @@ class TestTextProcessing:
         debug.trace(4, "test_split_word_tokens()")
         assert THE_MODULE.split_word_tokens("How now, brown cow?") == ['How', 'now', ',', 'brown', 'cow', '?']
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_label_for_tag(self):
         """Ensure label_for_tag works as expected"""
         debug.trace(4, "test_label_for_tag()")
-        assert False, "TODO: code test"
+        pos_tag = "VERB"
+        word = "jump"
+        result = THE_MODULE.label_for_tag(pos_tag, word)
+        assert result == "VERB"
+
+        # assert False, "TODO: code test"
 
     def test_class_for_tag(self):
         """Ensure class_for_tag works as expected"""
@@ -71,34 +76,64 @@ class TestTextProcessing:
         #   Related: https://stackoverflow.com/a/30823202
         assert THE_MODULE.tag_part_of_speech(['How', 'now', ',', 'brown', 'cow', '?']) == [('How', 'WRB'), ('now', 'RB'), (',', ','), ('brown', 'IN'), ('cow', 'NN'), ('?', '.')]
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_tokenize_and_tag(self):
         """Ensure tokenize_and_tag works as expected"""
         debug.trace(4, "test_tokenize_and_tag()")
-        assert False, "TODO: code test"
+        text = "Hello, this is Dora"
+        output = [
+            ('Hello', 'NNP'), 
+            (',', ','), 
+            ('this', 'DT'), 
+            ('is', 'VBZ'), 
+            ('Dora', 'NNP')
+        ]
+        assert THE_MODULE.tokenize_and_tag(text) == output
+        # assert False, "TODO: code test"
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_tokenize_text(self):
         """Ensure tokenize_text works as expected"""
         debug.trace(4, "test_tokenize_text()")
-        assert False, "TODO: code test"
+        text = "Hello, this is Dora. I'm Boots."
+        output = [
+            ['Hello', ',', 'this', 'is', 'Dora', '.'], 
+            ['I', "'m", 'Boots', '.']
+        ]
+        assert THE_MODULE.tokenize_text(text) == output 
+        # assert False, "TODO: code test"
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_is_stopword(self):
         """Ensure is_stopword works as expected"""
         debug.trace(4, "test_is_stopword()")
-        assert False, "TODO: code test"
+        words = ["to", "apple"]
+        assert(
+            THE_MODULE.is_stopword(words[0]) == True and 
+            THE_MODULE.is_stopword(words[1]) == False
+            )
+        # assert False, "TODO: code test"
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_has_spelling_mistake(self):
         """Ensure has_spelling_mistake works as expected"""
         debug.trace(4, "test_has_spelling_mistake()")
+        
+        ## Error: Unable to open 'word.freq': (<class 'FileNotFoundError'>, [Errno 2] No such file or directory: 'word.freq', <traceback object at 0x7ceb8a9cf2c0>)
+        # word1, word2 = "Mitochondria", "Coffee"
+        # assert(
+        #     THE_MODULE.has_spelling_mistake(word1) == False 
+        #     and 
+        #     THE_MODULE.has_spelling_mistake(word2) == True)
         assert False, "TODO: code test"
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_read_freq_data(self):
         """Ensure read_freq_data works as expected"""
         debug.trace(4, "test_read_freq_data()")
+        # text = "In the heart of the bustling city, amidst towering skyscrapers and neon lights, there lies a quaint little bookstore. Its shelves are adorned with rows upon rows of books, each telling a unique story waiting to be discovered. The scent of freshly brewed coffee wafts through the air, inviting patrons to linger a little longer as they lose themselves in the pages of their chosen adventures. From classic literature to contemporary thrillers, there's something for every reader's taste. As the sun sets beyond the horizon, the bookstore's lights glow warmly, offering solace to those seeking refuge in the world of words."
+        # input_file = gh.create_temp_file(contents="text")
+        # assert THE_MODULE.read_freq_data(input_file) == ""
         assert False, "TODO: code test"
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -183,17 +218,33 @@ class TestTextProcessingScript(TestWrapper):
         output = self.run_script(data_file=TEXT_EXAMPLE)
         assert output == gh.read_file(TEXT_EXAMPLE_TAGS)[:-1]
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_just_tokenize(self):
         """Ensure just_tokenize argument works as expected"""
         debug.trace(4, "test_just_tokenize()")
-        self.do_assert(False, "TODO: code test")
+        text = "Hello. I'm Dora, and this is my pal Boots."
+        data_file = gh.create_temp_file(contents=text)
+        output = self.run_script(
+            data_file=data_file,
+            options="--just-tokenize"
+        )
+        sample_output = "Hello .\nI 'm Dora , and this is my pal Boots ."
+        assert output == sample_output
+        # self.do_assert(False, "TODO: code test")
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # @pytest.mark.xfail                   # TODO: remove xfail
     def test_make_lowercase(self):
         """Ensure make_lowercase argument works as expected"""
         debug.trace(4, "test_make_lowercase()")
-        self.do_assert(False, "TODO: code test")
+        text = "Would you ever ride a wave with me?"
+        taggings = "[('Would', 'MD'), ('you', 'PRP'), ('ever', 'RB'), ('ride', 'VB'), ('a', 'DT'), ('wave', 'NN'), ('with', 'IN'), ('me', 'PRP'), ('?', '.')]"
+        data_file = gh.create_temp_file(contents=text)
+        output = self.run_script(
+            data_file=data_file,
+            options="--lowercase"
+        )
+        assert text in output and taggings in output
+        # self.do_assert(False, "TODO: code test")
 
 
 class TestTextProc(TestWrapper):
