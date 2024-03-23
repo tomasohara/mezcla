@@ -72,6 +72,7 @@ def main():
     if url.startswith(YOUTUBE_PREFIX):
         video_id = url[len(YOUTUBE_PREFIX):]
     else:
+        debug.assertion("youtube.com" not in url)
         url = YOUTUBE_PREFIX + url
     ## TODO: video_id = my_re.sub(r"(https://)?www.youtube.com/watch\?v=", "", main_app.filename)
     debug.trace_expr(5, url, video_id)
