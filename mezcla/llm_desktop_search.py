@@ -113,7 +113,7 @@ class DesktopSearch:
         
         # delete converted files
         for new_file in (file for file in system.read_directory(dir_path) if file not in old_files):
-              gh.delete_file(system.form_path(dir_path, new_file))
+            gh.delete_file(system.form_path(dir_path, new_file))
 
     def load_index(self, for_qa=False):
         """Load index of documents"""
