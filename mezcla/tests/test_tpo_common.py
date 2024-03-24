@@ -648,20 +648,24 @@ class TestTpoCommon(TestWrapper):
         assert THE_MODULE.is_numeric("123")
         assert not THE_MODULE.is_numeric("one")
 
-    @pytest.mark.xfail
     def test_safe_int(self):
         """Ensure safe_int works as expected"""
         debug.trace(4, "test_safe_int()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        THE_MODULE.safe_int('1') == 1
+        THE_MODULE.safe_int(2.0) == 2
+        THE_MODULE.safe_int("F", base=16) == 16
+        THE_MODULE.safe_int("82", base=8) == 10
+        THE_MODULE.safe_int("four") == 0
 
-    @pytest.mark.xfail
+    # @pytest.mark.xfail
     def test_safe_float(self):
         """Ensure safe_float works as expected"""
         debug.trace(4, "test_safe_float()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
-
+        assert THE_MODULE.safe_float(5) == 5.0
+        assert THE_MODULE.safe_float("3") == 3.0
+        assert THE_MODULE.safe_float("three") == 0.0
+        
+        
     @pytest.mark.xfail
     def test_reference_variables(self):
         """Ensure reference_variables works as expected"""
@@ -698,7 +702,6 @@ class TestTpoCommon(TestWrapper):
         captured = self.get_stdout()
         assert 'Environment options' in captured
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
     def test_getenv(self):
         """Ensure getenv works as expected"""
