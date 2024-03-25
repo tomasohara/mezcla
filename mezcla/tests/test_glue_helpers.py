@@ -27,14 +27,14 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import tpo_common as tpo    # Deprecated, only used for mock
-## OLD: from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper
 from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 
-class TestGlueHelpers:      ## TODO: (TestWrapper)
+class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     """Class for testcase definition"""
     ## TEMP
     temp_file = gh.get_temp_file()
@@ -166,7 +166,7 @@ class TestGlueHelpers:      ## TODO: (TestWrapper)
         debug.trace(4, "test_run()")
         assert "root" in THE_MODULE.run("ls /")
 
-    def test_issue(self, monkeypatch, capsys):
+    def test_issue(self):
         """Ensure issue works as expected"""
         debug.trace(4, "test_issue()")
 
@@ -180,17 +180,17 @@ class TestGlueHelpers:      ## TODO: (TestWrapper)
         system.write_file(log_file, 'random content')
         def debugging_mock():
             return True
-        monkeypatch.setattr(tpo, 'debugging', debugging_mock)
-        monkeypatch.setenv('TEMP_LOG_FILE', log_file, prepend=False)
+        self.monkeypatch.setattr(tpo, 'debugging', debugging_mock)
+        self.monkeypatch.setenv('TEMP_LOG_FILE', log_file, prepend=False)
 
         # Run test with log file
         THE_MODULE.issue('bash bad_filename.bash')
 
         # Check result of test with log file
         if debug.debugging():
-            captured = capsys.readouterr()
-            assert 'stderr' in captured.err
-            assert 'bad_filename.bash' in captured.err
+            captured = self.get_stderr()
+            assert 'stderr' in captured
+            assert 'bad_filename.bash' in captured
         ## TODO: for some reason the log_file is not being overriden
         ## assert 'random content' not in gh.read_file(log_file)
         ## assert 'bad_filename.bash' in gh.read_file(log_file)
@@ -257,7 +257,7 @@ class TestGlueHelpers:      ## TODO: (TestWrapper)
         assert dict(THE_MODULE.count_it("[a-z]", "Panama")) == {"a": 3, "n": 1, "m": 1}
         assert THE_MODULE.count_it(r"\w+", "My d@wg's fleas have fleas")["fleas"] == 2
 
-    def test_read_lines(self, monkeypatch, capsys):
+    def test_read_lines(self):
         """Ensure read_lines works as expected"""
         debug.trace(4, "test_read_lines()")
 
@@ -267,7 +267,7 @@ class TestGlueHelpers:      ## TODO: (TestWrapper)
         assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
 
         # Test no filename (read from stdin)
-        monkeypatch.setattr('sys.stdin', StringIO('my input\nsome line'))
+        self.monkeypatch.setattr('sys.stdin', StringIO('my input\nsome line'))
         assert THE_MODULE.read_lines() == ['my input', 'some line']
         ## TODO: solve "ValueError: I/O operation on closed file."
         ## THE_MODULE.read_lines()
@@ -277,8 +277,8 @@ class TestGlueHelpers:      ## TODO: (TestWrapper)
         # Test invalid filename
         assert(not THE_MODULE.read_lines(filename='bad_filename.txt'))
         if debug.debugging():
-            captured = capsys.readouterr()
-            assert 'Warning:' in captured.err
+            captured = self.get_stderr()
+            assert 'Warning:' in captured
 
     def test_write_lines(self):
         """Ensure write_lines works as expected"""
@@ -351,7 +351,7 @@ class TestGlueHelpers:      ## TODO: (TestWrapper)
         assert not gh.file_exists(test_filename)
         assert gh.read_file(new_test_filename) == 'some content\n'
 
-    def test_delete_file(self, capsys):
+    def test_delete_file(self):
         """Ensure delete_file works as expected"""
         debug.trace(4, "test_delete_file()")
 
@@ -365,8 +365,8 @@ class TestGlueHelpers:      ## TODO: (TestWrapper)
         # Test invalid file
         THE_MODULE.delete_file('bad_filename.txt')
         if debug.debugging():
-            captured = capsys.readouterr()
-            assert 'assertion failed' in captured.err.lower()
+            captured = self.get_stderr()
+            assert 'assertion failed' in captured.lower()
 
     def test_file_size(self):
         """Ensure file_size works as expected"""
@@ -399,14 +399,14 @@ class TestGlueHelpers:      ## TODO: (TestWrapper)
         filenames = [file.replace('/tmp/', '') for file in filenames]
         assert set(filenames).issubset(THE_MODULE.get_directory_listing('/tmp/'))
 
-    def test_getenv_filename(self, monkeypatch, capfd):
+    def test_getenv_filename(self):
         """Ensure getenv_filename works as expected"""
         debug.trace(4, "test_getenv_filename()")
 
         # Test valid filename with valid content
         test_filename = gh.get_temp_file()
         gh.write_file(test_filename, 'random content')
-        monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
+        self.monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
         assert THE_MODULE.getenv_filename('TEST_ENV_FILENAME') == test_filename
 
         # Test valid filename with empty content
@@ -414,18 +414,62 @@ class TestGlueHelpers:      ## TODO: (TestWrapper)
         with open(test_filename, 'wb') as _:
             pass # gh.write_file cant be used because appends a newline
         debug.set_level(7)
-        monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
+        self.monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
         # This avoids flaky tpo.stderr due to other tests
         ## TODO: fix tpo.restore_stderr() to work with pytest 
         tpo.stderr = sys.stderr
         THE_MODULE.getenv_filename('TEST_ENV_FILENAME')
-        captured = capfd.readouterr() # Note: capfd must be used instead of capsys to capture stderr
-        assert 'Error' in captured.err
-        assert test_filename in captured.err
+        captured = self.get_stderr() # Note: capfd must be used instead of capsys to capture stderr
+        assert 'Error' in captured
+        assert test_filename in captured
 
         # Test non enviroment var
         assert THE_MODULE.getenv_filename('BAD_ENV_FILE_VAR', default='missing-file') == 'missing-file'
 
+    def test_copy_directory(self):
+        """Ensure copy_directory works as expected"""
+        debug.trace(4, "test_copy_directory()")
+        temp_dir = '/tmp/test_copy_dir_'
+        system.create_directory(f'{temp_dir}1')
+        system.write_file(f'{temp_dir}1/test_file', "copy")
+        assert 'test_file' in system.read_directory(THE_MODULE.copy_directory(f'{temp_dir}1', f'{temp_dir}2'))
+        assert 'copy' in system.read_file(f'{temp_dir}2/test_file')
+
+    def test_delete_directory(self):
+        """Ensure delete_directory works as expected"""
+        debug.trace(4, "test_delete_directory()")
+        old = THE_MODULE.DISABLE_RECURSIVE_DELETE
+
+        # test an empty directory gets deleted
+        empty_dir = '/tmp/test_delete_directory-1/'
+        system.create_directory(empty_dir)
+        assert THE_MODULE.is_directory(empty_dir)
+        assert THE_MODULE.delete_directory(empty_dir) is None
+
+        # test a directory with files gets deleted
+        non_empty_dir = '/tmp/test_delete_directory-2'
+        system.create_directory(non_empty_dir)
+        system.write_file(f'{non_empty_dir}/test_delete_directory', '2')
+        assert THE_MODULE.is_directory(non_empty_dir)
+        assert THE_MODULE.delete_directory(non_empty_dir) is None
+
+        # test a directory with subdirs doesnt get deleted if DISABLE_RECURSIVE_DELETE
+        THE_MODULE.DISABLE_RECURSIVE_DELETE = True
+        dir_with_subdirs = '/tmp/test_delete_directory-3'
+        subdir = f"{dir_with_subdirs}/subdir"
+        system.create_directory(dir_with_subdirs)
+        system.create_directory(subdir)
+        system.write_file(f"{subdir}/subdir_file", '3')
+        assert THE_MODULE.is_directory(subdir)
+        assert not THE_MODULE.delete_directory(dir_with_subdirs)
+
+        # test a directory with subdirs gets deleted if not DISABLE_RECURSIVE_DELETE
+        assert THE_MODULE.is_directory(subdir)
+        system.write_file(f"{subdir}/subdir_file", '4')
+        THE_MODULE.DISABLE_RECURSIVE_DELETE = False
+        assert THE_MODULE.delete_directory(dir_with_subdirs) is None
+
+        THE_MODULE.DISABLE_RECURSIVE_DELETE = old
 
 if __name__ == '__main__':
     debug.trace_current_context()
