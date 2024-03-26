@@ -63,6 +63,8 @@ TEXT_FILE = system.getenv_text("TEXT_FILE", "-",
                                "Text file to translate")
 USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
                                    "Use web-based interface via gradio")
+
+## NOTE: Round-trip translation: Translating text from one language to another and back to its original form
 ROUND_TRIP = system.getenv_bool("ROUND_TRIP", False, 
                                 "Perform round-trip translation")
 
@@ -111,10 +113,10 @@ def main():
     
     MT_TASK = f"translation_{source_lang}_to_{target_lang}"                 # pylint: disable=invalid-name
     MT_MODEL = f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"          # pylint: disable=invalid-name
-    ## OLD: Before addition of ROUND_TRIP
     mt_task = dummy_app.get_parsed_option(TASK_ARG, MT_TASK)
     mt_model = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL)
 
+    ## Creating language models and tasks in reverse for round-trip translation
     if round_trip:
         MT_TASK_REVERSE = f"translation_{target_lang}_to_{source_lang}"                 # pylint: disable=invalid-name
         MT_MODEL_REVERSE = f"Helsinki-NLP/opus-mt-{target_lang}-{source_lang}"          # pylint: disable=invalid-name  
@@ -144,6 +146,8 @@ def main():
     device = torch.device(hf_speechrec.TORCH_DEVICE)
     debug.trace_expr(5, device)
     model = pipeline(task=mt_task, model=mt_model, device=device)
+
+    ## Create a model for reverse translation when ROUND_TRIP is true
     if round_trip:
         model_reverse = pipeline(task=mt_task_reverse, model=mt_model_reverse)
 
@@ -164,13 +168,20 @@ def main():
     else:
         TRANSLATION_TEXT = "translation_text"
         split_regex = r"\n\s*\n" if USE_PARAGRAPH_MODE else "\n"
-        # print(my_re.split(split_regex, text))
-        for segment in my_re.split(split_regex, text):
+        ## Avoid "I'm sorry" bug when reading from stdin
+        segments = my_re.split(split_regex, text)
+        # print(segments)
+        if segments[-1] == "":
+            segments = segments[:-1]
+        ## OLD:
+        # for segment in my_re.split(split_regex, text)
+        for segment in segments:
             try:
+                # Translation Level I (FROM -> TO)
                 translation = model(segment, max_length=MAX_LENGTH)
                 translation_text = translated_text(translation)
                 
-                # Round-trip translation
+                ## Round-Trip translation uses the reverse model to re-translate back to original form
                 if round_trip:
                     # Translation Level II (TO -> FROM_AUX)
                     translation_reverse = model_reverse(translation_text, max_length=MAX_LENGTH)
@@ -187,16 +198,30 @@ def main():
 
                 ## OLD: Before round-trip translation
                 # print(translation[0].get(TRANSLATION_TEXT) or "")
+                
+                ## For round trip translation, print all possible translations along with their language code
                 if round_trip:
                     print(f"\nOriginal      ({FROM}):\n{segment}")
                     print(f"\nTranslate     ({TO}):\n{translation_text}")
                     print(f"\nOriginal  [R]   ({FROM}):\n{translation_reverse_text}")
                     print(f"\nTranslate [R]  ({TO}):\n{translation_round_text}")
-                    print(f"\nDifference in Translation: {translation_round_text != translation_text}\n")
+                    round_trip_diff_original =  (segment != translation_reverse_text)
+                    round_trip_diff_translate = (translation_round_text != translation_text)
+                    round_trip_difference = round_trip_diff_original or round_trip_diff_translate
+                    print(f"\nDifference in Translation: {round_trip_difference}\n")
+                    
+                    ## If there is any difference during round-trip translation, print the difference
+                    if round_trip_difference:
+                        print("="*40)
+                        print(f"\nDifferences in Original ({FROM}):")
+                        print(f"{misc_utils.string_diff(segment, translation_reverse_text) if round_trip_diff_original else None}")
+                        print(f"Differences in Translated ({TO}):")
+                        print(f"{misc_utils.string_diff(translation_text, translation_round_text) if round_trip_diff_translate else None}")
                 else:
                     print(translation_text)
             except:
                 system.print_exception_info("translation")
+            
             show_gpu_usage()
 
     # Wrap up
