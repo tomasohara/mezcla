@@ -28,7 +28,8 @@ from mezcla import system
 
 # Constants
 TL = debug.TL
-## TODO: TODO_OPT1 = "todo-option1"
+## TODO: TODO_BOOL_OPT1 = "todo-bool-option1"
+## TODO: TODO_TEXT_OPT1 = "todo-text-option1"
 
 ## TODO:
 ## # Environment options
@@ -50,7 +51,8 @@ def main():
     # Parse command line options, show usage if --help given
     # TODO: manual_input=True; short_options=True
     main_app = Main(description=__doc__.format(script=gh.basename(__file__)),
-                    ## TODO: boolean_options=[(TODO_OPT1, "TODO desc1")]
+                    ## TODO: boolean_options=[(TODO_BOOL_OPT1, "TODO desc1")]
+                    ## TODO: boolean_options=[(TODO_TEXT_OPT1, "TODO desc1")]
                     skip_input=False)
     debug.assertion(main_app.parsed_args)
     ## TODO_OPT1 = main_app.get_parsed_option(TODO_OPT1)
