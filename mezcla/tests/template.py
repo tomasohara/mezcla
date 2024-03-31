@@ -10,8 +10,8 @@
 #   (see examples below for setUp and tearDown).
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by unittest_wrapper.py.
-# - This can be run as follows:
-#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_<module>.py
+# - This can be run as follows (e.g., from root of repo):
+#   $ pytest ./mezcla/tests/test_<module>.py
 #
 
 ## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
