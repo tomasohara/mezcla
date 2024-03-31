@@ -77,43 +77,61 @@ class DesktopSearch:
 
     def index_dir(self, dir_path):
         """Index files at DIR_PATH"""
+        ## TODO: look into indexing files from buffers rather than external files
         debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
-        # define what documents to load
-        
+
         def convert_to_txt(in_file: str) -> str:
-            if file.endswith('.html'):
+            """reads non-txt files and returns the text inside them"""
+            if in_file.endswith('.html'):
                 text = html_utils.html_to_text(system.read_file(in_file))
             else:
                 text = extract_document_text.document_to_text(in_file)
-            return text
-        
-        #convert pdf, docs or html files into txt 
-        old_files = system.read_directory(dir_path)
-        non_txt_files = (found for found in old_files if my_re.match(r'.*\.(pdf|docx|html)', found) )
-        for num,file in enumerate(non_txt_files):
+            return text        
+
+        # copy files over to temp dir
+        timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
+        tmp_path = system.form_path(f"/tmp/llm_desktop_search.{timestamp}", dir_path[1:])
+        list_files = system.read_directory(dir_path)
+        gh.full_mkdir(tmp_path)
+        files_to_convert = (found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found) )
+        for num,file in enumerate(files_to_convert):
             debug.trace_fmt(4,file)
-            full_path = system.form_path(dir_path, file)
-            system.write_file(f"{full_path}_temp_{num}.txt", convert_to_txt(full_path))
+            file_path = system.form_path(dir_path, file)
+            file_tmp_path = system.form_path(tmp_path, file)
+            if file.endswith('.txt'):
+                gh.copy_file(file_path, file_tmp_path)
+            else:
+                system.write_file(f"{file_tmp_path}_temp_{num}.txt", convert_to_txt(file_path))
+    
         
-        loader = DirectoryLoader(dir_path, glob="*.txt", loader_cls=TextLoader)
         # interpret information in the documents
+        loader = DirectoryLoader(tmp_path, glob="*.txt", loader_cls=TextLoader)
         documents = loader.load()
         splitter = RecursiveCharacterTextSplitter(chunk_size=500,
-                                                  chunk_overlap=50)
+                                                    chunk_overlap=50)
+        # delete temp dir after files are loaded
+        gh.delete_directory(tmp_path)
+        
         texts = splitter.split_documents(documents)
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={'device': TORCH_DEVICE})
+        if not self.embeddings:
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                model_kwargs={'device': TORCH_DEVICE})
 
-        # create and save the local database
-        self.db = FAISS.from_documents(texts, self.embeddings)
+        # add (or create from docs) to the db and save it 
+        try:
+            self.load_index()
+        except RuntimeError:
+            debug.trace_exception(6, "load_index")
+        if self.db is not None:
+            self.db.add_documents(texts)
+        else:
+            self.db = FAISS.from_documents(texts, self.embeddings)
         self.db.save_local("faiss")
+
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
-        
-        # delete converted files
-        for new_file in (file for file in system.read_directory(dir_path) if file not in old_files):
-            gh.delete_file(system.form_path(dir_path, new_file))
+
 
     def load_index(self, for_qa=False):
         """Load index of documents"""
@@ -127,10 +145,11 @@ class DesktopSearch:
             self.llm = llm
 
         # load the interpreted information from the local database
-        embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={'device': TORCH_DEVICE})
-        self.db = FAISS.load_local("faiss", embeddings,
+        if not self.embeddings:
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                model_kwargs={'device': TORCH_DEVICE})
+        self.db = FAISS.load_local("faiss", self.embeddings,
                                    # necessary to allow loading of possibly unsafe Pickle
                                    allow_dangerous_deserialization=True)
         gpu_utils.trace_gpu_usage()
@@ -199,7 +218,7 @@ class Script(Main):
         debug.trace_fmtd(5, "Script.run_main_step(): self={s}", s=self)
         ds = DesktopSearch()
         if self.index_arg:
-            ds.index_dir(self.filename)
+            ds.index_dir(self.text)
         elif self.search_arg:
             ds.search_to_answer(self.search_arg)
         elif self.similar_arg:
