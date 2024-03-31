@@ -176,15 +176,17 @@ class Main(object):
                  paragraph_mode=None, track_pages=None, file_input_mode=None, newlines=None,
                  boolean_options=None, text_options=None, int_options=None,
                  float_options=None, positional_options=None, positional_arguments=None,
-                 skip_input=None, manual_input=None, auto_help=None, brief_usage=None,
+                 skip_input=None, manual_input=None, skip_stdin=None, auto_help=None, brief_usage=None,
                  short_options=None, **kwargs):
         """Class constructor: parses RUNTIME_ARGS (or command line), with specifications
         for BOOLEAN_OPTIONS, TEXT_OPTIONS, INT_OPTIONS, FLOAT_OPTIONS, and POSITIONAL_OPTIONS
-        (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args). Also allows for SHORT_OPTIONS"""
+        (see convert_option). Includes options to SKIP_INPUT, or to have MANUAL_INPUT, or to use AUTO_HELP invocation (i.e., assuming {ha} if no args). Also allows for SHORT_OPTIONS.
+        Note: SKIP_STDIN makes explicit SKIP_INPUT which gets inferred from MANUAL_INPUT when no specified. This avoids the - argument support that blocks help usage.
+        """
         #
         def trace_args(level:int, label:str):
             """Trace out input arguments, each on separate line to simplify diff"""
-            debug.trace_expr(level, runtime_args, description, skip_args, multiple_files, use_temp_base_dir, usage_notes, program, paragraph_mode, track_pages, file_input_mode, newlines, boolean_options, text_options, int_options, float_options, positional_options, positional_arguments, skip_input, manual_input, auto_help, brief_usage, short_options, kwargs, prefix=f"{label}: {{", delim="\n\t", suffix="}")
+            debug.trace_expr(level, runtime_args, description, skip_args, multiple_files, use_temp_base_dir, usage_notes, program, paragraph_mode, track_pages, file_input_mode, newlines, boolean_options, text_options, int_options, float_options, positional_options, positional_arguments, skip_input, manual_input, skip_stdin, auto_help, brief_usage, short_options, kwargs, prefix=f"{label}: {{", delim="\n\t", suffix="}")
         #
         debug.trace(4, f"Main.__init__(): self={self}")
         trace_args(5, "input")
@@ -206,6 +208,8 @@ class Main(object):
         self.line_num = -1
         self.char_offset = -1
         self.raw_line = None
+        # note: auto_help is typically used when there is a filename argument
+        debug.assertion(not (auto_help and skip_stdin))
         if (auto_help is None):
             ## TODO?: if (all(map(lambda v: v is None, [auto_help, skip_input, manual_input]))):
             ## TEST: auto_help = ((skip_input is None) and (manual_input is None)))
@@ -223,7 +227,8 @@ class Main(object):
             debug.trace_fmt(7, "inferred manual_input: {mi}", mi=manual_input)
         self.manual_input = manual_input
         if skip_input is None:
-            skip_input = self.manual_input
+            ## OLD: skip_input = self.manual_input
+            skip_input = (self.manual_input or skip_stdin)
             debug.trace_fmt(7, "inferred skip_input: {si}", si=skip_input)
         self.skip_input = skip_input
         #
