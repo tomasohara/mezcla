@@ -23,6 +23,9 @@ Advanced usage:
     (TYPICAL_EPSILON, VALUE_EPSILON)
     >>>
     (1e-06, 0.001)
+
+Misc. usage:
+    set_xterm_title(f"ipython: {os.getcwd()}")
 """
 
 # Note: most imports are done for the sake of ipython usage

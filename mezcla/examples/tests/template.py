@@ -11,7 +11,7 @@
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by unittest_wrapper.py.
 # - This can be run as follows (e.g., from root of repo):
-#   $ pytest ./mezcla/tests/test_<module>.py
+#   $ pytest ./mezcla/examples/tests/test_<module>.py
 #
 
 ## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
@@ -39,8 +39,12 @@ from mezcla import system
 #    TestIt.script_module:              path to file
 ## TODO (vvv): insert new module name in commented out template teo lines below
 THE_MODULE = None         ## TODO: remove this line: avoids <module> syntax error in next)
-## import mezcla.<module> as THE_MODULE   ## TODO: uncomment this line (<<<)
+ mezcla.
+import 
+## TODO: ## import <module> as THE_MODULE
+import 
 ## TODO (^^^): use modified line above
+## TODO1: ## import mezcla.examples.<module> as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(__file__, r"\btemplate.py$"):
