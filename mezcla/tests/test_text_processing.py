@@ -12,15 +12,15 @@
 """Tests for text_processing module"""
 
 # Standard packages
-## NOTE: this is empty for now
-
-# Installed packages
 import pytest
+import re
+# Installed packages
 
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
+from mezcla.my_regex import my_re
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla.unittest_wrapper import trap_exception
 
@@ -33,8 +33,9 @@ RESOURCES = f'{gh.dir_path(__file__)}/resources'
 TEXT_EXAMPLE = f'{RESOURCES}/example_text.txt'
 TEXT_EXAMPLE_TAGS = f'{RESOURCES}/example_text_tags.txt'
 WORD_POS_FREQ_FILE = f'{RESOURCES}/word-POS.freq'
+WORD_FREQ_FILE = f'{RESOURCES}/word.freq'
 
-class TestTextProcessing:
+class TestTextProcessing(TestWrapper):
     """Class for testcase definition"""
 
     def test_split_sentences(self):
@@ -48,11 +49,19 @@ class TestTextProcessing:
         debug.trace(4, "test_split_word_tokens()")
         assert THE_MODULE.split_word_tokens("How now, brown cow?") == ['How', 'now', ',', 'brown', 'cow', '?']
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_label_for_tag(self):
         """Ensure label_for_tag works as expected"""
         debug.trace(4, "test_label_for_tag()")
-        assert False, "TODO: code test"
+        previous_value = THE_MODULE.KEEP_PUNCT
+        
+        self.monkeypatch.setattr(THE_MODULE, 'KEEP_PUNCT', True)
+        assert THE_MODULE.label_for_tag("SYM", ',') == ','
+        assert THE_MODULE.label_for_tag("SYM", '?') == '?'
+        self.monkeypatch.setattr(THE_MODULE, 'KEEP_PUNCT', False)
+        assert THE_MODULE.label_for_tag("SYM", ',') == 'SYM'
+        assert THE_MODULE.label_for_tag("SYM", '?') == 'SYM'
+        self.monkeypatch.setattr(THE_MODULE, 'KEEP_PUNCT', previous_value)
+        
 
     def test_class_for_tag(self):
         """Ensure class_for_tag works as expected"""
@@ -71,41 +80,60 @@ class TestTextProcessing:
         #   Related: https://stackoverflow.com/a/30823202
         assert THE_MODULE.tag_part_of_speech(['How', 'now', ',', 'brown', 'cow', '?']) == [('How', 'WRB'), ('now', 'RB'), (',', ','), ('brown', 'IN'), ('cow', 'NN'), ('?', '.')]
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_tokenize_and_tag(self):
         """Ensure tokenize_and_tag works as expected"""
         debug.trace(4, "test_tokenize_and_tag()")
-        assert False, "TODO: code test"
+        # NOTE:
+        #   'brown' tagged as IN is wrong, should be JJ, this is a problem related to NLTK
+        #   not the module being tested, so we are ignoring it for now.
+        #   Related: https://stackoverflow.com/a/30823202
+        assert THE_MODULE.tokenize_and_tag("How now, brown cow ?") == [('How', 'WRB'), ('now', 'RB'), (',', ','), ('brown', 'IN'), ('cow', 'NN'), ('?', '.')]
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_tokenize_text(self):
         """Ensure tokenize_text works as expected"""
         debug.trace(4, "test_tokenize_text()")
-        assert False, "TODO: code test"
+        assert THE_MODULE.tokenize_text("I came. I saw. I conquered!") == [['I', 'came', '.'], ['I', 'saw', '.'], ['I', 'conquered', '!']]
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_is_stopword(self):
         """Ensure is_stopword works as expected"""
         debug.trace(4, "test_is_stopword()")
-        assert False, "TODO: code test"
+        assert THE_MODULE.is_stopword('we')
+        assert THE_MODULE.is_stopword('i')
+        assert not THE_MODULE.is_stopword('cow')
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_has_spelling_mistake(self):
         """Ensure has_spelling_mistake works as expected"""
         debug.trace(4, "test_has_spelling_mistake()")
-        assert False, "TODO: code test"
+        previous_value = THE_MODULE.SKIP_ENCHANT
+        self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', True)
+        assert not THE_MODULE.has_spelling_mistake('the')
+        assert THE_MODULE.has_spelling_mistake('ai')
+        self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', False)
+        assert not THE_MODULE.SKIP_ENCHANT
+        assert THE_MODULE.has_spelling_mistake('sneik')
+        assert not THE_MODULE.has_spelling_mistake('snake')
+        
+        self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', previous_value)
+        
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_read_freq_data(self):
         """Ensure read_freq_data works as expected"""
         debug.trace(4, "test_read_freq_data()")
-        assert False, "TODO: code test"
+        lines = gh.read_lines(WORD_FREQ_FILE)
+        freq = THE_MODULE.read_freq_data(WORD_FREQ_FILE)
+        for line in lines[7:]:
+            token = re.match(r'^.+?(?=\s)', line).group(0).lower()
+            self.do_assert(freq[token])
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+
     def test_read_word_POS_data(self): # pylint: disable=invalid-name
         """Ensure read_word_POS_data works as expected"""
         debug.trace(4, "test_read_word_POS_data()")
-        assert False, "TODO: code test"
+        lines = gh.read_lines(WORD_POS_FREQ_FILE)
+        freq_pos = THE_MODULE.read_word_POS_data(WORD_POS_FREQ_FILE)
+        for line in lines[6:]:
+            token = re.match(r'^.+?(?=\s)', line).group(0).lower()
+            self.do_assert(freq_pos[token])
 
     def test_get_most_common_POS(self): # pylint: disable=invalid-name
         """Ensure get_most_common_POS works as expected"""
@@ -165,12 +193,17 @@ class TestTextProcessing:
         assert THE_MODULE.is_punct('$', '$')
         assert not THE_MODULE.is_punct('can', 'MD')
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_usage(self):
         """Ensure usage works as expected"""
         debug.trace(4, "test_usage()")
-        assert False, "TODO: code test"
-
+        THE_MODULE.usage()
+        captured = self.get_stderr()
+        assert f"Usage: {THE_MODULE.__file__} [--help] [--just-tokenize] [--just-chunk] [--lowercase] file" in captured
+        assert f"echo \"My dawg has fleas.\" | {THE_MODULE.__file__} -" in captured
+        assert "- Intended more as a library module" in captured
+        assert "- In standalone mode it runs the text processing pipeline over the file:" in captured
+        assert "sentence splitting, word tokenization, and part-of-speech tagging" in captured
+        assert "- Set SKIP_NLTK environment variable to 1 to disable NLTK usage." in captured
 
 class TestTextProcessingScript(TestWrapper):
     """Class for testcase definition"""
@@ -183,24 +216,30 @@ class TestTextProcessingScript(TestWrapper):
         output = self.run_script(data_file=TEXT_EXAMPLE)
         assert output == gh.read_file(TEXT_EXAMPLE_TAGS)[:-1]
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_just_tokenize(self):
         """Ensure just_tokenize argument works as expected"""
         debug.trace(4, "test_just_tokenize()")
-        self.do_assert(False, "TODO: code test")
+        tokenized_text = self.run_script(data_file=TEXT_EXAMPLE,options="--just-tokenize")
+        non_tokenized_text = gh.read_file(TEXT_EXAMPLE)
+        # match every token except whitespaces, 
+        # that way tokenized and non-tokenized texts are equals 
+        matches_tokenized = my_re.match(r'\S', tokenized_text).groups()
+        matches_normal = my_re.match(r'\S', non_tokenized_text).groups()
+        assert matches_tokenized == matches_normal
+        assert not tokenized_text == non_tokenized_text
+        # self.do_assert(output == '', "TODO: code test")
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_make_lowercase(self):
         """Ensure make_lowercase argument works as expected"""
         debug.trace(4, "test_make_lowercase()")
-        self.do_assert(False, "TODO: code test")
-
+        output_normal = self.run_script(data_file=TEXT_EXAMPLE,options="--just-tokenize")
+        output_lower = self.run_script(data_file=TEXT_EXAMPLE,options="--just-tokenize --lowercase")
+        self.do_assert(output_lower == output_normal.lower(), "TODO: code test")
 
 class TestTextProc(TestWrapper):
     """Test TextProc classes"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     ## DEBUG:
     @trap_exception            # TODO: remove when debugged
     def test_chunk_noun_phrases(self):
