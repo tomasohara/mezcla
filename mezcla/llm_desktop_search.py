@@ -24,6 +24,7 @@ import pathlib
 # Installed modules
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import PromptTemplate
+from langchain_core.documents import Document
 from langchain.chains import RetrievalQA
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -86,7 +87,16 @@ class DesktopSearch:
                 text = html_utils.html_to_text(system.read_file(in_file))
             else:
                 text = extract_document_text.document_to_text(in_file)
-            return text        
+            return text
+    
+        def correct_metadata(doc: Document) -> Document:
+            """removes the first two parts of the source metadata
+               so it represents the actual source of the file"""
+            old_source = doc.metadata['source'].split(system.path_separator(), maxsplit=3)
+            # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
+            new_source = f"{system.path_separator()}{old_source[2]}"
+            doc.metadata['source'] = new_source
+            return doc
 
         # copy files over to temp dir
         timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
