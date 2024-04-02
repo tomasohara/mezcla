@@ -19,7 +19,8 @@ Sample usage:
 
 # Standard modules
 import time
-import pathlib 
+import pathlib
+import atexit
 
 # Installed modules
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -100,10 +101,13 @@ class DesktopSearch:
 
         # copy files over to temp dir
         timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
+        ## TODO: look for some variable/function  to not hardcode tmp_path
         tmp_path = system.form_path(f"/tmp/llm_desktop_search.{timestamp}", dir_path[1:])
         list_files = system.read_directory(dir_path)
         gh.full_mkdir(tmp_path)
         files_to_convert = (found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found) )
+        # register cleanup function before creating temp files
+        atexit.register(gh.delete_directory, tmp_path)
         for num,file in enumerate(files_to_convert):
             debug.trace_fmt(4,file)
             file_path = system.form_path(dir_path, file)
@@ -119,9 +123,6 @@ class DesktopSearch:
         documents = loader.load()
         splitter = RecursiveCharacterTextSplitter(chunk_size=500,
                                                     chunk_overlap=50)
-        # delete temp dir after files are loaded
-        gh.delete_directory(tmp_path)
-        
         texts = splitter.split_documents(documents)
         if not self.embeddings:
             self.embeddings = HuggingFaceEmbeddings(
