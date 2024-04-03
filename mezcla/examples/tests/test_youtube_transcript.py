@@ -1,16 +1,10 @@
 #! /usr/bin/env python
 #
-# TODO: Test(s) for ../<module>.py
+# Test(s) for ../youtube_transcript.py
 #
 # Notes:
-# - Fill out TODO's below. Use numbered tests to order (e.g., test_1_usage).
-# - * See test_python_ast.py for simple example of customization.
-# - TODO: If any of the setup/cleanup methods defined, make sure to invoke base
-#   (see examples below for setUp and tearDown).
-# - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
-#   option shows tracing output normally suppressed by unittest_wrapper.py.
-# - This can be run as follows:
-#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_<module>.py
+# - This can be run as follows (e.g., from repo base dir):
+#   $ pytest ./mezcla/examples/tests/test_youtube_transcript.py
 #
 #................................................................................
 # Sample test:
@@ -29,7 +23,7 @@
 #   22:25       you
 #   
    
-"""TODO: Tests for <module> module"""
+"""Tests for youtube_transcript module"""
 
 # Standard modules
 ## TODO: from collections import defaultdict

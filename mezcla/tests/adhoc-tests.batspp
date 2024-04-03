@@ -37,3 +37,10 @@ $ r1=$(ls *.py | count-it 'test_(m)')
 $ r2=$(ls | count-it '^test_(.)*.py$' | grep m)
 $ [ "$r1" = "$r2" ]; echo "$?"
 0
+
+#-------------------------------------------------------------------------------
+# TODO": check for bad references
+
+## $ pytest ./mezcla/tests/test_youtube_transcript.py
+## ...
+## ERROR: file or directory not found: ./mezcla/tests/test_youtube_transcript.py
