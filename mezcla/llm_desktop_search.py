@@ -25,8 +25,8 @@ import atexit
 # Installed modules
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import PromptTemplate
-from langchain_core.documents import Document
 from langchain.chains import RetrievalQA
+from langchain_core.documents import Document
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.llms import CTransformers
@@ -93,10 +93,14 @@ class DesktopSearch:
         def correct_metadata(doc: Document) -> Document:
             """removes the first two parts of the source metadata
                so it represents the actual source of the file"""
-            old_source = doc.metadata['source'].split(system.path_separator(), maxsplit=3)
+            doc_metadata = doc.metadata
+            debug.trace_fmtd(4, f"old_source: {doc_metadata['source']}")
+            split_source = doc_metadata['source'].split(system.path_separator(),maxsplit=3)
             # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
-            new_source = f"{system.path_separator()}{old_source[2]}"
-            doc.metadata['source'] = new_source
+            new_source = f"{system.path_separator()}{split_source[3]}"
+            debug.trace_fmtd(4, f"new_source: {new_source}")
+            doc_metadata['source'] = new_source
+            doc.metadata = doc_metadata
             return doc
 
         # copy files over to temp dir
@@ -105,7 +109,7 @@ class DesktopSearch:
         tmp_path = system.form_path(f"/tmp/llm_desktop_search.{timestamp}", dir_path[1:])
         list_files = system.read_directory(dir_path)
         gh.full_mkdir(tmp_path)
-        files_to_convert = (found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found) )
+        files_to_convert = (found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found))
         # register cleanup function before creating temp files
         atexit.register(gh.delete_directory, tmp_path)
         for num,file in enumerate(files_to_convert):
@@ -124,6 +128,7 @@ class DesktopSearch:
         splitter = RecursiveCharacterTextSplitter(chunk_size=500,
                                                     chunk_overlap=50)
         texts = splitter.split_documents(documents)
+        corrected_texts = [correct_metadata(text) for text in texts]
         if not self.embeddings:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2",
@@ -135,9 +140,9 @@ class DesktopSearch:
         except RuntimeError:
             debug.trace_exception(6, "load_index")
         if self.db is not None:
-            self.db.add_documents(texts)
+            self.db.add_documents(corrected_texts)
         else:
-            self.db = FAISS.from_documents(texts, self.embeddings)
+            self.db = FAISS.from_documents(corrected_texts, self.embeddings)
         self.db.save_local("faiss")
 
         debug.trace_expr(4, self.db)
