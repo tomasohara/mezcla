@@ -97,7 +97,7 @@ class DesktopSearch:
             debug.trace_fmtd(4, f"old_source: {doc_metadata['source']}")
             split_source = doc_metadata['source'].split(system.path_separator(),maxsplit=3)
             # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
-            new_source = f"{system.path_separator()}{split_source[3]}"
+            new_source = system.real_path(split_source[3])
             debug.trace_fmtd(4, f"new_source: {new_source}")
             doc_metadata['source'] = new_source
             doc.metadata = doc_metadata
@@ -106,20 +106,20 @@ class DesktopSearch:
         # copy files over to temp dir
         timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
         ## TODO: look for some variable/function  to not hardcode tmp_path
-        tmp_path = system.form_path(f"/tmp/llm_desktop_search.{timestamp}", dir_path[1:])
-        list_files = system.read_directory(dir_path)
+        real_path = system.real_path(dir_path)
+        tmp_path = system.form_path(f"/tmp/llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
+        list_files = system.get_directory_filenames(real_path)
         gh.full_mkdir(tmp_path)
         files_to_convert = (found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found))
         # register cleanup function before creating temp files
         atexit.register(gh.delete_directory, tmp_path)
         for num,file in enumerate(files_to_convert):
-            debug.trace_fmt(4,file)
-            file_path = system.form_path(dir_path, file)
-            file_tmp_path = system.form_path(tmp_path, file)
+            filename = system.filename_proper(file)
+            file_tmp_path = system.form_path(tmp_path, filename) 
             if file.endswith('.txt'):
-                gh.copy_file(file_path, file_tmp_path)
+                gh.copy_file(file, file_tmp_path)
             else:
-                system.write_file(f"{file_tmp_path}_temp_{num}.txt", convert_to_txt(file_path))
+                system.write_file(f"{file_tmp_path}_temp_{num}.txt", convert_to_txt(file))
     
         
         # interpret information in the documents
