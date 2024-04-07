@@ -94,22 +94,29 @@ class SpellFiles(TestWrapper):
         lang_code:str="en_EN", 
         phrase:str="Hello World", 
         batch_file_path:str="-",
-        query_like:bool=False
         ):
         """Helper function for test_spell.py"""
         debug.trace(4, f"\nhelper_spell(); self={self}")
+        
+        data_file = gh.create_temp_file(contents=phrase) if batch_file_path == "-" else batch_file_path
+        output = self.run_script(
+            env_options=f"SPELL_LANG={lang_code}",
+            data_file=data_file,
+        )
 
-        if batch_file_path == "-" and query_like == False:
-            command = f'echo "{phrase}" | SPELL_LANG={lang_code} {SPELL_PATH} {batch_file_path}'
-        elif query_like:
-            temp_file = gh.create_temp_file(contents=phrase)
-            command = f'SPELL_LANG={lang_code} {SPELL_PATH} {temp_file}'
-        else:
-            command = f'SPELL_LANG={lang_code} {SPELL_PATH} {batch_file_path}'
-
-        output = gh.run(command)
-        debug.trace_expr(5, output, lang_code, phrase, batch_file_path, query_like)        
+        debug.trace_expr(5, output, lang_code, phrase, batch_file_path)      
         return output
+
+        ## OLD    
+        # if batch_file_path == "-" and query_like == False:
+        #     command = f'echo "{phrase}" | SPELL_LANG={lang_code} {SPELL_PATH} {batch_file_path}'
+        # elif query_like:
+        #     temp_file = gh.create_temp_file(contents=phrase) if query_like else batch_file_path
+        #     command = f'SPELL_LANG={lang_code} {SPELL_PATH} {temp_file}'
+        # else:
+        #     command = f'SPELL_LANG={lang_code} {SPELL_PATH} {batch_file_path}'
+        
+        # output = gh.run(command)
     
     ## OLD: Merged to helper_spell()
     # # Function B: Helper Function for query-like tests (skipped by default)
@@ -235,7 +242,7 @@ class SpellFiles(TestWrapper):
         test_lang = "en_EN"
         test_phrase = "Because I am lostr in the way you move"
         test_phrase_error = "lostr"
-        output = self.helper_spell(test_lang, test_phrase, query_like=True)
+        output = self.helper_spell(test_lang, test_phrase)
 
         debug.trace_expr(5, output, test_phrase_error)
         assert (output == test_phrase_error and len(output) != 0)
@@ -251,7 +258,7 @@ class SpellFiles(TestWrapper):
         test_lang = "es_ES"
         test_phrase = "Me dijeron que te estás casandoi"
         test_phrase_error = "casandoi"
-        output = self.helper_spell(test_lang, test_phrase, query_like=True)
+        output = self.helper_spell(test_lang, test_phrase)
         
         debug.trace_expr(5, output, test_phrase_error)
         assert (output == test_phrase_error and len(output) != 0)
@@ -266,7 +273,7 @@ class SpellFiles(TestWrapper):
         test_lang = "ne_NE"
         test_phrase = "तिमी नै अबप मेरो झुल्केको बिहानी"
         test_phrase_error = "अबप"
-        output = self.helper_spell(test_lang, test_phrase, query_like=True)
+        output = self.helper_spell(test_lang, test_phrase)
 
         debug.trace_expr(5, output, test_phrase_error)
         assert (output in test_phrase and len(output) != 0)
