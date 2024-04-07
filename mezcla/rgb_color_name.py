@@ -107,6 +107,7 @@ class Script(Main):
         self.check_direct_match = not self.skip_direct
 
         # Populate color names into spatial name database
+        # TODo2: isolate into helper class
         hexnames = webcolors.CSS3_HEX_TO_NAMES
         self.color_names = []
         color_positions = []
