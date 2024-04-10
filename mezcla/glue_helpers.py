@@ -717,7 +717,7 @@ def copy_directory(source, dest):
 
     def non_empty_directory(path):
         """Whether PATH exists and is not empty"""
-        size = get_directory_listing(path) if is_directory(path) else -1
+        size = len(get_directory_listing(path)) if is_directory(path) else -1
         non_empty = size > 0
         debug.trace_fmt(5, f'non_empty_directory({path}) => {non_empty} (files={size})')
         return non_empty
