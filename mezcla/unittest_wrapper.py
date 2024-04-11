@@ -294,7 +294,7 @@ class TestWrapper(unittest.TestCase):
         ## TODO3: use os.path.delim instead of /
         result = my_re.sub(r'tests\/test_(.*\.py)', r'\1', result)
         debug.assertion(result.endswith(".py"))
-        debug.trace(7, f'get_module_file_path({test_filename}) => {result}')
+        debug.trace(6, f'get_module_file_path({test_filename}) => {result}')
         return result
 
     @classmethod
