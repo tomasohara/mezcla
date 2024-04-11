@@ -22,10 +22,12 @@ TL = debug.TL
 #
 # Environment-based
 HAS_CUDA = torch.cuda.is_available()
+HAS_MPS = (hasattr(torch.backends, "mps") and torch.backends.mps.is_available())
 USE_CPU = system.getenv_bool(
     "USE_CPU", False,
-    description="Uses Torch on CPU if True")
-TORCH_DEVICE_DEFAULT = ("cpu" if (USE_CPU or not HAS_CUDA) else "cuda")
+    description="Uses Torch on CPU if true")
+## OLD: TORCH_DEVICE_DEFAULT = ("cpu" if (USE_CPU or not HAS_CUDA) else "cuda")
+TORCH_DEVICE_DEFAULT = ("cuda" if HAS_CUDA else "mps" if HAS_MPS else "cpu")
 TORCH_DEVICE = system.getenv_text(
     "TORCH_DEVICE", TORCH_DEVICE_DEFAULT,
     description="Device for running torch"
