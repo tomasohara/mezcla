@@ -43,7 +43,14 @@ TL = debug.TL
 INDEX_ARG = "index"
 SEARCH_ARG = "search"
 SIMILAR_ARG = "similar"
-TORCH_DEVICE = gpu_utils.TORCH_DEVICE
+## OLD: TORCH_DEVICE = gpu_utils.TORCH_DEVICE
+TORCH_DEVICE = system.getenv_text(
+    "TORCH_DEVICE", gpu_utils.TORCH_DEVICE,
+    desc="Torch devcice to use--gpu or mps if available else cpu")
+debug.trace_expr(5, TORCH_DEVICE)
+MODEL = system.getenv_text(
+    "MODEL", "llama-2-7b-chat.ggmlv3.q8_0.bin",
+    desc="Llama 2 type model from hugging Face hub")
 #
 QA_TEMPLATE = """Use the following pieces of information to answer the user's question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
@@ -74,10 +81,14 @@ class DesktopSearch:
         """Index files at DIR_PATH"""
         debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
         # define what documents to load
-        loader = DirectoryLoader(dir_path, glob="*.txt", loader_cls=TextLoader)
+        ## OLD: loader = DirectoryLoader(dir_path, glob="*.txt", loader_cls=TextLoader)
+        text_loader_kwargs={'autodetect_encoding': True}
+        loader = DirectoryLoader(dir_path, glob="./*.txt", loader_cls=TextLoader, loader_kwargs=text_loader_kwargs)
+        debug.trace_expr(5, loader)
 
         # interpret information in the documents
         documents = loader.load()
+        debug.trace_expr(5, len(documents), documents)
         splitter = RecursiveCharacterTextSplitter(chunk_size=500,
                                                   chunk_overlap=50)
         texts = splitter.split_documents(documents)
@@ -97,8 +108,13 @@ class DesktopSearch:
         # load the language model
         ## OLD: config = {'max_new_tokens': 256, 'temperature': 0.01}
         config = {'max_new_tokens': 256, 'temperature': 0.01, 'context_length': 512}
-        llm = CTransformers(model='/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
-                            model_type='llama', config=config)
+        ## OLD:
+        ## llm = CTransformers(model='/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
+        ##                     model_type='llama', config=config)
+        # note: no option for all layers so using value from https://github.com/marella/ctransformers
+        layers = (0 if (TORCH_DEVICE == "cpu") else 50)
+        llm = CTransformers(model=MODEL, model_type='llama', config=config, gpu_layers=layers)
+        debug.trace_object(5, llm)
         if for_qa:
             self.llm = llm
 
@@ -106,7 +122,9 @@ class DesktopSearch:
         embeddings = HuggingFaceEmbeddings(
             model_name="sentence-transformers/all-MiniLM-L6-v2",
             model_kwargs={'device': TORCH_DEVICE})
-        self.db = FAISS.load_local("faiss", embeddings)
+        ## OLD: self.db = FAISS.load_local("faiss", embeddings)
+        self.db = FAISS.load_local("faiss", embeddings, allow_dangerous_deserialization=True)
+        debug.trace_expr(5, llm, embeddings, self.db)
         gpu_utils.trace_gpu_usage()
 
     def prepare_qa_llm(self):
