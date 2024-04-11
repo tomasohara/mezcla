@@ -123,7 +123,8 @@ class DesktopSearch:
             model_name="sentence-transformers/all-MiniLM-L6-v2",
             model_kwargs={'device': TORCH_DEVICE})
         ## OLD: self.db = FAISS.load_local("faiss", embeddings)
-        self.db = FAISS.load_local("faiss", embeddings, allow_dangerous_deserialization=True)
+        ## OLD: self.db = FAISS.load_local("faiss", embeddings, allow_dangerous_deserialization=True)
+        self.db = FAISS.load_local("faiss", embeddings)
         debug.trace_expr(5, llm, embeddings, self.db)
         gpu_utils.trace_gpu_usage()
 
