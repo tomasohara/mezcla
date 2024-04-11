@@ -110,7 +110,7 @@ class DesktopSearch:
         tmp_path = system.form_path(f"/tmp/llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
         list_files = system.get_directory_filenames(real_path)
         gh.full_mkdir(tmp_path)
-        files_to_convert = (found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found))
+        files_to_convert = [found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
         # register cleanup function before creating temp files
         atexit.register(gh.delete_directory, tmp_path)
         for num,file in enumerate(files_to_convert):
@@ -127,6 +127,7 @@ class DesktopSearch:
         documents = loader.load()
         splitter = RecursiveCharacterTextSplitter(chunk_size=500,
                                                     chunk_overlap=50)
+        #documents are splitted to a maximum of 500 characters per chunk
         texts = splitter.split_documents(documents)
         corrected_texts = [correct_metadata(text) for text in texts]
         if not self.embeddings:
