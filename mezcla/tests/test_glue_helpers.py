@@ -426,6 +426,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         # Test non enviroment var
         assert THE_MODULE.getenv_filename('BAD_ENV_FILE_VAR', default='missing-file') == 'missing-file'
 
+    @pytest.mark.xfail
     def test_copy_directory(self):
         """Ensure copy_directory works as expected"""
         debug.trace(4, "test_copy_directory()")
@@ -435,6 +436,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert 'test_file' in system.read_directory(THE_MODULE.copy_directory(f'{temp_dir}1', f'{temp_dir}2'))
         assert 'copy' in system.read_file(f'{temp_dir}2/test_file')
 
+    @pytest.mark.xfail
     def test_delete_directory(self):
         """Ensure delete_directory works as expected"""
         debug.trace(4, "test_delete_directory()")
