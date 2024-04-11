@@ -32,7 +32,7 @@ cachetools
 cherrypy
 clip_interrogator
 datasets                      # Hugging Face (HF) data
-diffusers                     # Stale Diffusion
+#opt# diffusers               # Stale Diffusion; TEMP
 diskcache
 extcolors>=1.0.0
 flair
@@ -59,13 +59,13 @@ pytest
 requests
 scikit-learn
 scipy
-sentencepiece
+#opt# sentencepiece           # BERT tokenization; TEMP
 six
 stop_words
 #opt# tensorrt                # NVidia GPU support
 transformers                  # HF models
 torch
-torchaudio
+#opt# torchaudio
 webcolors
 wheel
 ## NOTE: temporarily disabled due to stupid docker disk space constraints
