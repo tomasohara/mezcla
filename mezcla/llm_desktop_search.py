@@ -62,8 +62,12 @@ Helpful answer:
 NUM_SIMILAR = system.getenv_int(
     "NUM_SIMILAR", 10,
     description="Number of similar documents to show")
-LLAMA_MODEL = system.getenv_text ("LLAMA_MODEL", '/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
+LLAMA_MODEL = system.getenv_text("LLAMA_MODEL", '~/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
                                   description="path to llama model bin")
+FAISS_STORE_DIR = system.getenv_text("FAISS_STORE_DIR", gh.form_path(gh.dirname(__file__),"faiss"),
+                                      description="path to store faiss data base")
+if not system.is_directory(FAISS_STORE_DIR):
+    gh.full_mkdir(FAISS_STORE_DIR)
 
 class DesktopSearch:
     """Class for searching local computer"""
@@ -144,7 +148,7 @@ class DesktopSearch:
             self.db.add_documents(corrected_texts)
         else:
             self.db = FAISS.from_documents(corrected_texts, self.embeddings)
-        self.db.save_local("faiss")
+        self.db.save_local(FAISS_STORE_DIR)
 
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
@@ -166,7 +170,7 @@ class DesktopSearch:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2",
                 model_kwargs={'device': TORCH_DEVICE})
-        self.db = FAISS.load_local("faiss", self.embeddings,
+        self.db = FAISS.load_local(FAISS_STORE_DIR, self.embeddings,
                                    # necessary to allow loading of possibly unsafe Pickle
                                    allow_dangerous_deserialization=True)
         gpu_utils.trace_gpu_usage()
