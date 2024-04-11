@@ -10,6 +10,8 @@
 # - For utility to extract colors from images, see
 #   https://pypi.org/project/extcolors
 #
+# TODO2: Put on a new low-priority script with respect to testing coverage.
+#
 #--------------------------------------------------------------------------------
 # Sample input (based on extcolors):
 #
@@ -34,6 +36,7 @@
 # - Add example usage with extcolors:
 #   extcolors self.filename | self.program -
 # - Add option to invoke extcolors automatically.
+# - Add direct way to generate webcolor listing.
 #
 
 r"""Convert RGB tuples into color names
@@ -107,8 +110,10 @@ class Script(Main):
         self.check_direct_match = not self.skip_direct
 
         # Populate color names into spatial name database
-        # TODo2: isolate into helper class
+        # TODO2: isolate into helper class
         hexnames = webcolors.CSS3_HEX_TO_NAMES
+        debug.trace_values(6, hexnames)
+        debug.trace_expr(5, hexnames, max_len=2**16)
         self.color_names = []
         color_positions = []
         #
