@@ -390,6 +390,8 @@ class Main(object):
         ## TODO2: add short option support as in ("--num-eggs/-#", "Number of eggs", 2)
         ## TODO3: make the component representation structured (e.g., namedtuple)
         ## TEST: result = ["", "", ""]
+        tpo.debug_format("in convert_option({o}, {d}, {p})", 6,
+                         o=option_spec, d=default_value, p=positional)
         opt_label = None
         opt_desc = None
         opt_default = default_value
