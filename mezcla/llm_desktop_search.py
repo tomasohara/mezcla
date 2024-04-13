@@ -112,8 +112,12 @@ class DesktopSearch:
         ## llm = CTransformers(model='/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
         ##                     model_type='llama', config=config)
         # note: no option for all layers so using value from https://github.com/marella/ctransformers
-        layers = (0 if (TORCH_DEVICE == "cpu") else 50)
+        # See https://python.langchain.com/docs/integrations/llms/llamacpp/#gpu
+        ## OLD: layers = (0 if (TORCH_DEVICE == "cpu") else 50)
+        # TODO1: only load if for_qa [DUH!]
+        layers = (0 if (TORCH_DEVICE == "cpu") else -1)
         llm = CTransformers(model=MODEL, model_type='llama', config=config, gpu_layers=layers)
+        debug.trace_expr(4, llm)
         debug.trace_object(5, llm)
         if for_qa:
             self.llm = llm
