@@ -62,7 +62,9 @@ Helpful answer:
 NUM_SIMILAR = system.getenv_int(
     "NUM_SIMILAR", 10,
     description="Number of similar documents to show")
-LLAMA_MODEL = system.getenv_text("LLAMA_MODEL", '~/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
+HOME_DIR = system.getenv_text("HOME", description="home directory")
+LLAMA_DEFAULT = gh.form_path(HOME_DIR, "Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin")
+LLAMA_MODEL = system.getenv_text("LLAMA_MODEL", LLAMA_DEFAULT,
                                   description="path to llama model bin")
 FAISS_STORE_DIR = system.getenv_text("FAISS_STORE_DIR", gh.form_path(gh.dirname(__file__),"faiss"),
                                       description="path to store faiss data base")
@@ -111,7 +113,7 @@ class DesktopSearch:
         timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
         ## TODO: look for some variable/function  to not hardcode tmp_path
         real_path = system.real_path(dir_path)
-        tmp_path = system.form_path(f"/tmp/llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
+        tmp_path = system.form_path(f"{system.TEMP_DIR}/llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
         list_files = system.get_directory_filenames(real_path)
         gh.full_mkdir(tmp_path)
         files_to_convert = [found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
