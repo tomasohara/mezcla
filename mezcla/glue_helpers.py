@@ -212,7 +212,7 @@ def resolve_path(filename, base_dir=None, heuristic=False):
                 debug.trace_expr(4, calling_filename, base_dir)
             except (AttributeError, KeyError):
                 base_dir = ""
-                debug_print("Exception during resolve_path: " + str(sys.exc_info()), 5)
+                debug_print("Error: Exception during resolve_path: " + str(sys.exc_info()), 5)
             finally:
                 if frame:
                     del frame
@@ -230,7 +230,8 @@ def resolve_path(filename, base_dir=None, heuristic=False):
     if (not os.path.exists(path)) and heuristic:
         debug.trace(4, "FYI: resolve_path falling back to find")
         debug.assertion(" " not in path)
-        path = run(f"find {base_dir} -name '{path}'")
+        debug.assertion(base_dir)
+        path = run(f"find {base_dir or '.'} -name '{path}'")
             
     debug_format("resolve_path({f}) => {p}", 4, f=filename, p=path)
     return path
