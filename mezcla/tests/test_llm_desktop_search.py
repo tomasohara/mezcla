@@ -36,7 +36,7 @@ class TestIt(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     faiss_store_dir = THE_MODULE.FAISS_STORE_DIR.lstrip().lstrip(system.path_separator())        
     # set a temp dir to test faiss indexing
-    faiss_temp_dir = gh.form_path(system.TEMP_DIR, self.faiss_store_dir)        
+    faiss_temp_dir = gh.form_path(system.TEMP_DIR, faiss_store_dir)        
     faiss_parent = gh.form_path(faiss_temp_dir, "..")
     #
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
@@ -67,25 +67,23 @@ class TestIt(TestWrapper):
         self.do_assert("index.pkl" in faiss_files)
         # self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         
-        
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
-    ## DEBUG: @trap_exception            # TODO: remove when debugged
-    def test_01_2_index_dir(self):
-        """Tests run_script to index directory with already existing index"""
-        debug.trace(4, f"TestIt.test_01_2_index_dir(); self={self}")
-        if not system.is_directory(self.faiss_parent):
-            gh.full_mkdir(self.faiss_parent)
+        get_size_of = lambda x: sum(map(system.get_file_size ,system.get_directory_filenames(x)))
+            
+        prev_size = get_size_of(self.faiss_temp_dir)
         
         # test that indexing with an already existing DB works
         resource_dir = gh.form_path(gh.real_path(gh.dirname(__file__)), "resources")
-        output = self.run_script(options=f"--index {resource_dir}")
-        ## TODO: Test that the indexing was done 
-        
+        self.run_script(options="--index",
+                        data_file=resource_dir,
+                        env_options=f"FAISS_STORE_DIR={self.faiss_temp_dir}")
+        new_size = get_size_of(self.faiss_temp_dir)
+        gh.delete_directory(self.faiss_temp_dir)
+                
+        #for now, test based on the size of the index
+        self.do_assert(new_size > prev_size)
         # self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         
-        gh.delete_directory(self.faiss_parent)
-        
-        
+
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
     @pytest.mark.xfail                   # TODO: remove xfail
     ## DEBUG: @trap_exception            # TODO: remove when debugged
@@ -95,6 +93,7 @@ class TestIt(TestWrapper):
         output = self.run_script(options="--search 'What license is used?'")
         self.do_assert(my_re.search(r"GNU", output.strip()))
         return
+
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_gpu_usage(self):
@@ -107,7 +106,8 @@ class TestIt(TestWrapper):
         self.do_assert("tensorflow" in stderr)
         return
     
-    # @pytest.mark.skipif(True, reason="Ignoring slow test")
+
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
     def test_04_show_similar(self):
         ## TODO: WORK-IN-PROGRESS
         """Test run_script to show similar document to QUERY"""
@@ -128,17 +128,17 @@ class TestIt(TestWrapper):
         
         output_file = self.get_temp_file()
         
-        assert system.is_directory(faiss_temp_dir)
-        output = self.run_script(options=f"--similar LICENSE",
+        self.do_assert(system.is_directory(faiss_temp_dir))
+        self.run_script(options="--similar LICENSE",
                                  out_file=output_file,
-                                 log_file=output_file, 
+                                 log_file=output_file,
                                  env_options=f"FAISS_STORE_DIR={faiss_temp_dir}")
-        assert "Lesser General Public License" in system.read_file(output_file) 
+        gh.delete_directory(faiss_temp_dir)
+        self.do_assert("Lesser General Public License" in system.read_file(output_file))
         
-        gh.delete_directory(faiss_parent)
-        
-        
-        
+
+
+
 
 #------------------------------------------------------------------------
 
