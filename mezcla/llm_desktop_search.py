@@ -62,14 +62,8 @@ Helpful answer:
 NUM_SIMILAR = system.getenv_int(
     "NUM_SIMILAR", 10,
     description="Number of similar documents to show")
-HOME_DIR = system.getenv_text("HOME", description="home directory")
-LLAMA_DEFAULT = gh.form_path(HOME_DIR, "Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin")
-LLAMA_MODEL = system.getenv_text("LLAMA_MODEL", LLAMA_DEFAULT,
+LLAMA_MODEL = system.getenv_text ("LLAMA_MODEL", '/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
                                   description="path to llama model bin")
-FAISS_STORE_DIR = system.getenv_text("FAISS_STORE_DIR", gh.form_path(gh.dirname(__file__),"faiss"),
-                                      description="path to store faiss data base")
-if not system.is_directory(FAISS_STORE_DIR):
-    gh.full_mkdir(FAISS_STORE_DIR)
 
 class DesktopSearch:
     """Class for searching local computer"""
@@ -113,7 +107,7 @@ class DesktopSearch:
         timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
         ## TODO: look for some variable/function  to not hardcode tmp_path
         real_path = system.real_path(dir_path)
-        tmp_path = system.form_path(f"{system.TEMP_DIR}/llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
+        tmp_path = system.form_path(f"/tmp/llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
         list_files = system.get_directory_filenames(real_path)
         gh.full_mkdir(tmp_path)
         files_to_convert = [found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
@@ -150,7 +144,7 @@ class DesktopSearch:
             self.db.add_documents(corrected_texts)
         else:
             self.db = FAISS.from_documents(corrected_texts, self.embeddings)
-        self.db.save_local(FAISS_STORE_DIR)
+        self.db.save_local("faiss")
 
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
@@ -172,7 +166,7 @@ class DesktopSearch:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2",
                 model_kwargs={'device': TORCH_DEVICE})
-        self.db = FAISS.load_local(FAISS_STORE_DIR, self.embeddings,
+        self.db = FAISS.load_local("faiss", self.embeddings,
                                    # necessary to allow loading of possibly unsafe Pickle
                                    allow_dangerous_deserialization=True)
         gpu_utils.trace_gpu_usage()
