@@ -12,7 +12,7 @@ import mezcla.extended_validation as ev
 
 @validate_call
 @ev.validate_dictionaries()
-def trivial_dict_parameter(some_dict: dict) -> None:
+def trivial_dict_parameter(some_dict: dict) -> bool:
     """Example of simple dictionary validation"""
     assert isinstance(some_dict, dict), "The validation should fail before this"
     print("@custom_validate_call works!")
@@ -24,7 +24,7 @@ class ExpectedDictModel(BaseModel):
 
 @validate_call
 @ev.validate_dictionaries(some_dict = ExpectedDictModel)
-def example_dict_keys_values(some_dict: dict) -> None:
+def example_dict_keys_values(some_dict: dict) -> bool:
     """Example validating keys and values of a dictionary"""
     assert isinstance(some_dict, dict), "The validation should fail before this"
     assert isinstance(some_dict.get("example_key"), str), "The validation should fail before this"
