@@ -113,7 +113,7 @@ class DesktopSearch:
         timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
         ## TODO: look for some variable/function  to not hardcode tmp_path
         real_path = system.real_path(dir_path)
-        tmp_path = system.form_path(f"{system.TEMP_DIR}/llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
+        tmp_path = system.form_path(f"{system.TEMP_DIR}",f"llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
         list_files = system.get_directory_filenames(real_path)
         gh.full_mkdir(tmp_path)
         files_to_convert = [found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
