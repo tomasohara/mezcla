@@ -130,3 +130,4 @@ typing_extensions>=4.7.0
 #full# tensorflow
 #full# tensorflow_hub
 #full# tensorrt
+types-six
