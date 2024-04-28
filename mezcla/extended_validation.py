@@ -4,10 +4,16 @@
 Extended validation for Pydantic models with dictionaries
 """
 
+import os
+from typing import Union
 from functools import wraps
 from pydantic import BaseModel
 
+# Constants
 VALIDATE_ARGUMENTS = True
+
+# Common types used in multiple modules
+FileDescriptorOrPath = Union[str, bytes, os.PathLike]
 
 # pylint: disable=unused-argument
 def validate_dictionaries(*decorator_args, **decorator_kwargs):
