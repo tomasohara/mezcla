@@ -263,7 +263,7 @@ if __debug__:
 
 
     @docstring_parameter(max_len=max_trace_value_len)
-    def trace_fmtd(level, text, **kwargs):
+    def trace_fmtd(level: int, text, **kwargs):
         """Print TEXT with formatting using optional format KWARGS if at trace LEVEL or higher, including newline
         Note: Use MAX_LEN keyword argument to override the maximum length ({max_len}) of traced text (see format_value).
         """
