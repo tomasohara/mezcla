@@ -128,7 +128,11 @@ class DesktopSearch:
             model_kwargs={'device': TORCH_DEVICE})
         ## OLD: self.db = FAISS.load_local("faiss", embeddings)
         ## OLD: self.db = FAISS.load_local("faiss", embeddings, allow_dangerous_deserialization=True)
-        self.db = FAISS.load_local("faiss", embeddings)
+        options = {}
+        if TORCH_DEVICE == "mps":
+            options["allow_dangerous_deserialization"] = True
+        self.db = FAISS.load_local("faiss", embeddings, **options)
+        ## TODO: self.db = FAISS.load_local("faiss", embeddings)
         debug.trace_expr(5, llm, embeddings, self.db)
         gpu_utils.trace_gpu_usage()
 
@@ -198,9 +202,11 @@ class Script(Main):
         if self.index_arg:
             ds.index_dir(self.filename)
         elif self.search_arg:
-            ds.search_to_answer(self.text)
+            ## BAD: ds.search_to_answer(self.text)
+            ds.search_to_answer(self.search_arg)
         elif self.similar_arg:
-            ds.show_similar(self.text)
+            ## BAD: ds.show_similar(self.text)
+            ds.show_similar(self.similar_arg)
         else:
             system.print_error("Error: Unexpected condition")
 
