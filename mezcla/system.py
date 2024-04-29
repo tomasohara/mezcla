@@ -34,13 +34,21 @@ import pickle
 import re
 import sys
 import time
+from typing import (
+    Any, IO, Optional, Union, overload, List,
+    Tuple, Callable,
+)
 
 # Installed packages
+from numpy import unicode_
 import six
 
 # Local packages
 from mezcla import debug
-from mezcla.debug import UTF8
+from mezcla.debug import UTF8, TraceLevel
+from mezcla.extended_validation import (
+    FileDescriptorOrPath, OptExcInfo,
+)
 
 # Constants
 STRING_TYPES = six.string_types
@@ -55,7 +63,7 @@ debug.assertion(sys.version_info >= (3, 8), "Require Python 3.8+ for function de
 #-------------------------------------------------------------------------------
 # Support for needless python changes
 
-def maxint():
+def maxint() -> int:
     """Maximum size for an integer"""
     # Note: this is just a sanity check
     debug.assertion(MAX_INT == MAX_SIZE)
@@ -68,7 +76,7 @@ def maxint():
 env_options = {}
 env_defaults = {}
 #
-def register_env_option(var, description, default):
+def register_env_option(var: str, description: str, default: Any) -> None:
     """Register environment VAR as option with DESCRIPTION and DEFAULT"""
     # Note: The default value is typically the default value passes into the
     # getenv_xyz call, not the current value from the environment.
@@ -81,7 +89,7 @@ def register_env_option(var, description, default):
     return
 
 
-def get_registered_env_options():
+def get_registered_env_options() -> List[str]:
     """Returns list of environment options registered via register_env_option"""
     ## TEMP
     # pylint: disable=consider-using-dict-items
@@ -90,7 +98,11 @@ def get_registered_env_options():
     return option_names
 
 
-def get_environment_option_descriptions(include_all=None, include_default=None, indent=" "):
+def get_environment_option_descriptions(
+        include_all: Optional[bool] = None,
+        include_default: Optional[bool] = None,
+        indent: str = " "
+    ) -> List[Tuple[str, str]]:
     """
     Returns list of environment options and their descriptions,
     also can be included their default values with INCLUDE_DEFAULT, separated by INDENT
@@ -106,14 +118,14 @@ def get_environment_option_descriptions(include_all=None, include_default=None, 
     if not include_default:
         indent = ''
     #
-    def _format_env_option(opt):
+    def _format_env_option(opt: str) -> Tuple[str, str]:
         """Returns OPT description and optionally default value (if INCLUDE_DEFAULT)"""
         debug.trace_fmt(7, "_format_env_option({o})", o=opt)
         ## TEST: Uses unicode O-with-stoke (U+00D8) to indicate n/a
         ## TEMP: desc_spec = to_text(env_options.get(opt))
         env_desc = env_options.get(opt)
-        ## TEST: desc_spec = ("\u00D8 " if (env_options.get(opt) is None) else env_desc)
-        desc_spec = ("n/a" if (env_options.get(opt) is None) else env_desc)
+        ## TEST: desc_spec = ("\u00D8 " if (env_desc is None) else env_desc)
+        desc_spec = ("n/a" if (env_desc is None) else env_desc)
         default_spec = ""
         if include_default:
             # Note: environment default is based on prior-initialization state
@@ -134,7 +146,11 @@ def get_environment_option_descriptions(include_all=None, include_default=None, 
     return option_descriptions
 
 
-def formatted_environment_option_descriptions(sort=False, include_all=None, indent="\t"):
+def formatted_environment_option_descriptions(
+        sort: bool = False,
+        include_all: Optional[bool] = None,
+        indent: str = "\t"
+    ) -> str:
     """Returns string list of environment options and their descriptions (separated by newlines and tabs), optionally SORTED"""
     option_info = get_environment_option_descriptions(include_all)
     if sort:
@@ -146,7 +162,7 @@ def formatted_environment_option_descriptions(sort=False, include_all=None, inde
     return descriptions
 
 
-def getenv(var, default_value=None):
+def getenv(var: str, default_value: Any = None) -> Any:
     """Simple wrapper around os.getenv, with tracing"""
     # Note: Use getenv_* for type-specific versions with env. option description
     result = os.getenv(var, default_value)
@@ -154,7 +170,11 @@ def getenv(var, default_value=None):
     return result
 
 
-def setenv(var, value, normalize=False):
+def setenv(
+        var: str,
+        value: Any,
+        normalize: bool = False
+    ) -> None:
     """Set environment VAR to non-Null VALUE
     If normalize, the var is converted to uppercase and dashes to underscores
     """
@@ -166,7 +186,14 @@ def setenv(var, value, normalize=False):
     return
 
 
-def getenv_text(var, default=None, description=None, desc=None, helper=False, update=None):
+def getenv_text(
+        var: str,
+        default: Optional[str] = None,
+        description: str = "",
+        desc: str = "",
+        helper: bool = False,
+        update: Optional[bool] = None
+    ) -> str:
     """Returns textual value for environment variable VAR (or DEFAULT value, excluding None).
     Notes:
     - Use getenv_value if default can be None, as result is always a string.
@@ -193,7 +220,13 @@ def getenv_text(var, default=None, description=None, desc=None, helper=False, up
     return (text_value)
 
 
-def getenv_value(var, default=None, description=None, desc=None, update=None):
+def getenv_value(
+        var: str,
+        default: Optional[Any] = None,
+        description: str = "",
+        desc: str = "",
+        update: Optional[bool] = None
+    ) -> Any:
     """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE"""
     # EX: getenv_value("bad env var") => None
     register_env_option(var, description or desc, default)
@@ -208,7 +241,13 @@ def getenv_value(var, default=None, description=None, desc=None, update=None):
 
 DEFAULT_GETENV_BOOL = False
 #
-def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, update=None):
+def getenv_bool(
+        var: str,
+        default: bool = DEFAULT_GETENV_BOOL,
+        description: str = "",
+        desc: str = "",
+        update: Optional[bool] = None
+    ) -> bool:
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note:
     - "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)
@@ -227,7 +266,14 @@ def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, u
 getenv_boolean = getenv_bool
 
 
-def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, update=None):
+def getenv_number(
+        var: str,
+        default: float = -1.0,
+        description: str = "",
+        desc: str = "",
+        helper: bool = False,
+        update: Optional[bool] = None
+    ) -> float:
     """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE"""
     # TODO: def getenv_number(...) -> Optional(float):
     # Note: use getenv_int or getenv_float for typed variants
@@ -245,7 +291,14 @@ getenv_float = getenv_number
 
 
 
-def getenv_int(var, default=-1, description=None, desc=None, allow_none=False, update=None):
+def getenv_int(
+        var: str,
+        default: int = -1,
+        description: str = "",
+        desc: str = "",
+        allow_none: bool = False,
+        update: Optional[bool] = None
+    ) -> int:
     """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
     Note: Return is an integer unless ALLOW_NONE
     """
@@ -264,12 +317,12 @@ getenv_integer = getenv_int
 #-------------------------------------------------------------------------------
 # Miscellaneous functions
 
-def get_exception():
+def get_exception() -> OptExcInfo:
     """Return information about the exception that just occurred"""
     # Note: Convenience wrapper to avoid need to import sys in simple scripts.
     return sys.exc_info()
 
-def print_error(text):
+def print_error(text: str) -> None:
     """Output TEXT to standard error
     Note: Use print_error_fmt to include format keyword arguments"
     """
@@ -278,7 +331,7 @@ def print_error(text):
     print(text, file=sys.stderr)
     return None
 
-def print_stderr_fmt(text, **kwargs):
+def print_stderr_fmt(text: str, **kwargs) -> None:
     """Output TEXT to standard error, using KWARGS for formatting"""       
     # ex: print_stderr("Error: F{oo}bar!", oo=("oo" if (time_in_secs() % 2) else "u"))
     # TODO: rename as print_error_fmt
@@ -300,7 +353,7 @@ def print_stderr_fmt(text, **kwargs):
     return None
 #
 #
-def print_stderr(text, **kwargs):
+def print_stderr(text: str, **kwargs) -> None:
     """Currently, an alias for print_stderr_fmt
     Note: soon to be alias for print_error (i.e., kwargs will not supported)"""
     debug.trace(7, f"print_stderr({text}, kw={kwargs})")
@@ -308,13 +361,12 @@ def print_stderr(text, **kwargs):
     # NOTE: maldito pylint (see https://github.com/pylint-dev/pylint/issues/2332 [Don't issue assignment-from-none if None is returned explicitly]
     # pylint: disable=assignment-from-none
     if not kwargs:
-        result = print_error(text)
+        print_error(text)
     else:
-        result = print_stderr_fmt(text, **kwargs)
-    return result
+        print_stderr_fmt(text, **kwargs)
 
 
-def print_exception_info(task, show_stack=None):
+def print_exception_info(task: str, show_stack: Optional[bool] = None) -> None:
     """Output exception information to stderr regarding TASK (e.g., function);
     Note: Optionally includes stack trace (default when detailed debugging)"""
     # Note: used to simplify exception reporting of border conditions
@@ -328,7 +380,8 @@ def print_exception_info(task, show_stack=None):
     return
 
 
-def exit(message=None, status_code=None, **namespace):    # pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin
+def exit(message: str = "", status_code: Optional[int] = None, **namespace) -> None:
     """Display error MESSAGE to stderr and then exit, using optional
     NAMESPACE for format. The STATUS_CODE can be overrided (n.b., 0 if None)."""
     # EX: exit("Error: {reason}!", status_code=123, reason="Whatever")
@@ -339,10 +392,10 @@ def exit(message=None, status_code=None, **namespace):    # pylint: disable=rede
         print_stderr(message)
         if status_code is None:
             status_code = 1
-    return sys.exit(status_code)
+    sys.exit(status_code)
 
 
-def print_full_stack(stream=sys.stderr):
+def print_full_stack(stream: IO = sys.stderr) -> None:
     """Prints stack trace (for use in error messages, etc.)"""
     # Notes: Developed originally for Android stack tracing support.
     # Based on http://blog.dscpl.com.au/2015/03/generating-full-stack-traces-for.html.
@@ -370,14 +423,14 @@ def print_full_stack(stream=sys.stderr):
     return
 
 
-def trace_stack(level=debug.VERBOSE, stream=sys.stderr):
+def trace_stack(level: TraceLevel = debug.VERBOSE, stream: IO = sys.stderr) -> None:
     """Output stack trace to STREAM (if at trace LEVEL or higher)"""
     if debug.debugging(level):
         print_full_stack(stream)
     return
 
     
-def get_current_function_name():
+def get_current_function_name() -> str:
     """Returns name of current function that is running"""
     function_name = "???"
     try:
@@ -387,8 +440,15 @@ def get_current_function_name():
         debug.trace_fmtd(3, "Unable to resolve function name: {exc}", exc=get_exception())
     return function_name
 
-
-def open_file(filename, /, mode="r", *, encoding=None, errors=None, **kwargs):
+def open_file(
+        filename: FileDescriptorOrPath,
+        /,
+        mode: str = "r",
+        *,
+        encoding: Optional[str] = None,
+        errors: Optional[str] = None,
+        **kwargs
+    ) -> Optional[IO]:
     """Wrapper around around open() with FILENAME using UTF-8 encoding and ignoring ERRORS (both by default)
     Notes:
     - The mode is left at default (i.e., 'r')
@@ -412,7 +472,7 @@ def open_file(filename, /, mode="r", *, encoding=None, errors=None, **kwargs):
     return result
 
 
-def save_object(file_name, obj):
+def save_object(file_name: FileDescriptorOrPath, obj: Any) -> None:
     """Saves OBJ to FILE_NAME in pickle format"""
     # Note: The data file is created in binary mode to avoid quirk under Windows.
     # See https://stackoverflow.com/questions/556269/importerror-no-module-named-copy-reg-pickle.
@@ -426,7 +486,7 @@ def save_object(file_name, obj):
     return
 
     
-def load_object(file_name, ignore_error=False):
+def load_object(file_name: FileDescriptorOrPath, ignore_error: bool = False) -> Optional[Any]:
     """Loads object from FILE_NAME in pickle format"""
     # Note: Reads in binary mode to avoid unicode decode error. See
     #    https://stackoverflow.com/questions/32957708/python-pickle-error-unicodedecodeerror
@@ -447,7 +507,7 @@ def load_object(file_name, ignore_error=False):
     return obj
 
 
-def quote_url_text(text, unquote=False):
+def quote_url_text(text: str, unquote: bool = False) -> str:
     """(un)Quote/encode TEXT to make suitable for use in URL. Note: This return the input if the text has encoded characters (i.e., %HH) where H is uppercase hex digit."""
     # Note: This is a wrapper around quote_plus and thus escapes slashes, along with spaces and other special characters (";?:@&=+$,\"'").
     # EX: quote_url_text("<2/") => "%3C2%2f"
@@ -459,18 +519,14 @@ def quote_url_text(text, unquote=False):
     try:
         proceed = True
         if proceed:
-            # pylint: disable=no-member
-            fn = None
             ## TODO: debug.trace_object(6, "urllib", urllib, show_all=True)
-            if sys.version_info.major > 2:
-                ## TODO: debug.trace_object(6, "urllib.parse", urllib.parse, show_all=True)
-                import urllib.parse   # pylint: disable=redefined-outer-name, import-outside-toplevel
-                ## TODO: debug.trace_fmt(6, "take 2 urllib.parse", m=urllib.parse, show_all=True)
-                fn = urllib.parse.quote_plus if quote else urllib.parse.unquote_plus
+            ## TODO: debug.trace_object(6, "urllib.parse", urllib.parse, show_all=True)
+            import urllib.parse   # pylint: disable=redefined-outer-name, import-outside-toplevel
+            ## TODO: debug.trace_fmt(6, "take 2 urllib.parse", m=urllib.parse, show_all=True)
+            if quote:
+                result = urllib.parse.quote_plus(text)
             else:
-                fn = urllib.quote_plus if quote else urllib.unquote_plus
-                text = to_utf8(text)
-            result = fn(text)
+                result = urllib.parse.unquote_plus(text)
     except (TypeError, ValueError):
         debug.trace_fmtd(6, "Exception quoting url text 't': {exc}",
                          t=text, exc=get_exception())
@@ -478,12 +534,12 @@ def quote_url_text(text, unquote=False):
     debug.trace_fmtd(6, "out quote_url_text({t}) => {r}", t=text, r=result)
     return result
 #
-def unquote_url_text(text):
+def unquote_url_text(text: str) -> str:
     """Unquotes/decodes URL TEXT:
     Note: Wrapper around quote_url_text w/ UNQUOTE set"""
     return quote_url_text(text, unquote=True)
 
-def escape_html_value(value):
+def escape_html_value(value: str) -> str:
     """Escape VALUE for HTML embedding
     Warning: deprecated function; import from html_utils instead
     """
@@ -492,7 +548,7 @@ def escape_html_value(value):
 #
 escape_html_text = escape_html_value
 
-def unescape_html_value(value):
+def unescape_html_value(value: str) -> str:
     """Undo escaped VALUE for HTML embedding
     Warning: deprecated function; import from html_utils instead
     """
@@ -531,7 +587,7 @@ class stdin_reader(object):
             line = ""
         return line
 
-    def normalize_line(self, original_line):
+    def normalize_line(self, original_line: str) -> str:
         """Normalize line (e.g., replacing spaces with single tab)"""
         debug.trace_fmtd(6, "in normalize_line({ol})", ol=original_line)
         line = original_line
@@ -546,14 +602,14 @@ class stdin_reader(object):
         return line
 
 
-def read_all_stdin():
+def read_all_stdin() -> str:
     """Read all STDIN and return as a string"""
     data = ''.join(sys.stdin.readlines()) if not sys.stdin.isatty() else ''
     debug.trace(debug.VERBOSE, f'read_all_stdin() => "{data}"')
     return data
 
 
-def read_entire_file(filename, **kwargs):
+def read_entire_file(filename: FileDescriptorOrPath, **kwargs) -> str:
     """Read all of FILENAME and return as a string
     Note: optional arguments to open() passed along (e.g., encoding amd error handling)"""
     # TODO: allow for overriding handling of newlines (e.g., block \r being treated as line delim)
@@ -575,7 +631,7 @@ def read_entire_file(filename, **kwargs):
 read_file = read_entire_file
 
 
-def read_lines(filename, ignore_comments=None):
+def read_lines(filename: FileDescriptorOrPath, ignore_comments: Optional[bool] = None) -> List[str]:
     """Return lines in FILENAME as list (each without newline)
     Note: If IGNORE_COMMENTS, then comments of the form '[#;] text' are stripped
     """
@@ -594,7 +650,7 @@ def read_lines(filename, ignore_comments=None):
 # EX: l = ["1", "2"]; f="/tmp/12.list"; write_lines(f, l); read_lines(f) => l
 
 
-def read_binary_file(filename):
+def read_binary_file(filename: FileDescriptorOrPath) -> bytes:
     """Read FILENAME as byte stream"""
     debug.trace_fmt(7, "read_binary_file({f}, _)", f=filename)
     data = b""
@@ -607,8 +663,19 @@ def read_binary_file(filename):
     ## TODO: output hexdump excerpt (e.g., via https://pypi.org/project/hexdump)
     return data
 
+@overload
+def read_directory(directory: Optional[str]) -> List[str]:
+    ...
 
-def read_directory(directory):
+@overload
+def read_directory(directory: bytes) -> List[bytes]:
+    ...
+
+@overload
+def read_directory(directory: int) -> List[str]:
+    ...
+
+def read_directory(directory: Union[Optional[str], bytes, int]) -> Union[List[str], List[bytes]]:
     """Returns list of files in DIRECTORY"""
     # Note simple wrapper around os.listdir with tracing
     # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
@@ -617,8 +684,7 @@ def read_directory(directory):
                      max_len=4096)
     return files
 
-
-def get_directory_filenames(directory, just_regular_files=False):
+def get_directory_filenames(directory: str, just_regular_files: bool = False) -> List[str]:
     """Returns full pathname for files in DIRECTORY, optionally restrictded to JUST_REGULAR_FILES
     Note: The files are returned in lexicographical order"""
     # EX: ("/etc/passwd" in get_directory_filenames("/etc")
@@ -633,7 +699,13 @@ def get_directory_filenames(directory, just_regular_files=False):
     return files
     
 
-def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False, ignore_comments=None):
+def read_lookup_table(
+        filename: FileDescriptorOrPath,
+        skip_header: bool = False,
+        delim: Optional[str] = None,
+        retain_case: bool = False,
+        ignore_comments: Optional[bool] = None
+    ) -> defaultdict:
     """Reads FILENAME and returns as hash lookup, optionally SKIP[ing]_HEADER and using DELIM (tab by default).
     Note:
     - Input is made lowercase unless RETAIN_CASE.
@@ -672,8 +744,13 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
     return hash_table
 
 
-def create_boolean_lookup_table(filename, delim=None, retain_case=False, ignore_comments=None,
-                                **kwargs):
+def create_boolean_lookup_table(
+        filename: FileDescriptorOrPath,
+        delim: Optional[str] = None,
+        retain_case: bool = False,
+        ignore_comments: Optional[bool] = None,
+        **kwargs
+    ) -> defaultdict:
     """Create lookup hash table from string keys to boolean occurrence indicator.
     Notes:
     - The key is first field, based on DELIM (tab by default): other values ignored.
@@ -705,7 +782,7 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, ignore_
     return lookup_hash
 
 
-def lookup_entry(hash_table, entry, retain_case=False):
+def lookup_entry(hash_table: defaultdict, entry: str, retain_case: bool = False) -> str:
     """Return HASH_TABLE value for ENTRY, optionally RETAINing_CASE"""
     key = entry if retain_case else entry.lower()
     result = hash_table[key]
@@ -714,7 +791,13 @@ def lookup_entry(hash_table, entry, retain_case=False):
     return result
 
                 
-def write_file(filename, text, skip_newline=False, append=False, binary=False):
+def write_file(
+        filename: FileDescriptorOrPath,
+        text: Any,
+        skip_newline: bool = False,
+        append: bool = False,
+        binary: bool = False
+    ) -> None:
     """Create FILENAME with TEXT and optionally for APPEND.
     Note: A newline is added at the end if missing unless SKIP_NEWLINE.
     A binary file is created if BINARY (n.b., incompatible with APPEND).
@@ -745,7 +828,7 @@ def write_file(filename, text, skip_newline=False, append=False, binary=False):
 # EX: write_file(f, bytes("new", "UTF-8"), binary=True); read_file(f) => "new"
 
 
-def write_binary_file(filename, data):
+def write_binary_file(filename: FileDescriptorOrPath, data: bytes) -> None:
     """Create FILENAME with binary DATA"""
     debug.trace_fmt(7, "write_binary_file({f}, _)", f=filename)
     debug.assertion(isinstance(data, bytes))
@@ -758,7 +841,11 @@ def write_binary_file(filename, data):
     return
 
 
-def write_lines(filename, text_lines, append=False):
+def write_lines(
+        filename: FileDescriptorOrPath,
+        text_lines: List[str],
+        append: bool = False
+    ) -> None:
     """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND"""
     debug.trace_fmt(5, "write_lines({f}, _, {a})", f=filename, a=append)
     debug.trace_fmt(6, "    text_lines={tl}", tl=text_lines)
@@ -779,13 +866,17 @@ def write_lines(filename, text_lines, append=False):
     return
 
 
-def write_temp_file(filename, text):
+def write_temp_file(filename: FileDescriptorOrPath, text: str) -> None:
     """Create FILENAME in temp. directory using TEXT"""
+    assert isinstance(TEMP_DIR, str) and TEMP_DIR != "", "TEMP_DIR not defined"
     temp_path = form_path(TEMP_DIR, filename)
     return write_file(temp_path, text)
 
 
-def get_file_modification_time(filename, as_float=False):
+def get_file_modification_time(
+        filename: FileDescriptorOrPath,
+        as_float: bool = False
+    ) -> Optional[Union[float, str]]:
     """Get the time the FILENAME was last modified, optional AS_FLOAT (instead of default string).
     Note: Returns None if file doesn't exist."""
     # TODO: document how the floating point version is interpretted
@@ -799,7 +890,7 @@ def get_file_modification_time(filename, as_float=False):
     return mod_time
 
 
-def split_path(path):
+def split_path(path: str) -> Tuple[str, str]:
     """Split file PATH into directory and filename
     Note: wrapper around os.path.split with tracing and sanity checks
     """
@@ -814,7 +905,7 @@ def split_path(path):
     return result
 
 
-def filename_proper(path):
+def filename_proper(path: str) -> str:
     """Return PATH sans directories
     Note: unlike os.path.split, this always returns filename component
     """
@@ -828,7 +919,7 @@ def filename_proper(path):
     return filename
 
 
-def remove_extension(filename, extension=None):
+def remove_extension(filename: str, extension: Optional[str] = None) -> str:
     """Return FILENAME without final EXTENSION
     Note: Unless extension specified, only last dot is included"""
     # EX: remove_extension("/tmp/document.pdf") => "/tmp/document")
@@ -848,7 +939,7 @@ def remove_extension(filename, extension=None):
     return new_filename
 
 
-def get_extension(filename):
+def get_extension(filename: str) -> str:
     """Return extension in FILENAME"""
     # EX: get_extension("document.pdf") => "pdf"
     # EX: get_extension("it.abc.def") => "def"
@@ -860,14 +951,14 @@ def get_extension(filename):
     return extension
 
 
-def file_exists(filename):
+def file_exists(filename: FileDescriptorOrPath) -> bool:
     """Returns True iff FILENAME exists"""
     does_exist = os.path.exists(filename)
     debug.trace_fmtd(5, "file_exists({f}) => {r}", f=filename, r=does_exist)
     return does_exist
 
 
-def get_file_size(filename):
+def get_file_size(filename: FileDescriptorOrPath) -> int:
     """Returns size of FILENAME or -1 if not found"""
     size = -1
     if file_exists(filename):
@@ -876,7 +967,7 @@ def get_file_size(filename):
     return size
 
 
-def path_separator(sysname=None):
+def path_separator(sysname: Optional[str] = None):
     """Return text used to separate paths components under current OS (e.g., / or \\).
     This is basically a wrapper around os.path.sep with tracing, added to avoid using non-existent os.path.delim.
     Note: can overide SYSNAME to get separator for another system; see os.uname()"""
@@ -894,7 +985,7 @@ def path_separator(sysname=None):
 # EX: path_separator() => (when((os.uname().sysname == "Linux"), "/"))
 
 
-def form_path(*filenames):
+def form_path(*filenames: str) -> str:
     """Wrapper around os.path.join over FILENAMEs (with tracing)"""
     debug.assertion(not any(f.startswith(path_separator()) for f in filenames[1:]))
     path = os.path.join(*filenames)
@@ -902,7 +993,7 @@ def form_path(*filenames):
     return path
 
 
-def is_directory(path):
+def is_directory(path: FileDescriptorOrPath) -> bool:
     """Determines whether PATH represents a directory"""
     # EX: is_directory("/etc")
     is_dir = os.path.isdir(path)
@@ -910,7 +1001,7 @@ def is_directory(path):
     return is_dir
 
 
-def is_regular_file(path):
+def is_regular_file(path: FileDescriptorOrPath) -> bool:
     """Determines whether PATH represents a plain file"""
     # EX: (not is_regular_file("/etc"))
     ok = os.path.isfile(path)
@@ -918,7 +1009,7 @@ def is_regular_file(path):
     return ok
 
 
-def create_directory(path):
+def create_directory(path: FileDescriptorOrPath) -> None:
     """Wrapper around os.mkdir over PATH (with tracing)"""
     # Note: doesn't create intermediate directories (see glue_helper.py)
     # TODO: pass along keyword parameters (e.g., mode)
@@ -931,31 +1022,28 @@ def create_directory(path):
     return
 
 
-def get_current_directory():
+def get_current_directory() -> str:
     """Tracing wrapper around os.getcwd"""
     current_dir = os.getcwd()
     debug.trace_fmt(6, "get_current_directory() => {r}", r=current_dir)
     return current_dir
 
 
-def set_current_directory(PATH):
+def set_current_directory(PATH: FileDescriptorOrPath) -> None:
     """Tracing wrapper around os.chdir(PATH)"""
-    result = os.chdir(PATH)
-    debug.trace_fmt(6, "set_current_directory({p}) => {r}", r=result)
-    return result
+    os.chdir(PATH)
+    debug.trace_fmt(6, "set_current_directory({p}) => None")
 
 
-def to_utf8(text):
+def to_utf8(text: str) -> str:
     """obsolete no-op: Convert TEXT to UTF-8 (e.g., for I/O)"""
     # EX: to_utf8(u"\ufeff") => "\xEF\xBB\xBF"
     result = text
-    if ((sys.version_info.major < 3) and (isinstance(text, unicode))):   # pylint: disable=undefined-variable
-        result = result.encode(UTF8, 'ignore')
     debug.trace_fmtd(8, "to_utf8({t}) => {r}", t=text, r=result)
     return result
 
 
-def to_str(value):
+def to_str(value: Any) -> str:
     """Convert VALUE to text (i.e., of type str)
     Note: use to_utf8 for output or to_string to use default string type"""
     # Note: included for sake of completeness with other basic types
@@ -966,42 +1054,32 @@ def to_str(value):
     return result
 
 
-def from_utf8(text):
+def from_utf8(text: str) -> str:
     """Convert TEXT to Unicode from UTF-8"""
     # EX: to_utf8("\xEF\xBB\xBF") => u"\ufeff"
     result = text
-    if ((sys.version_info.major < 3) and (not isinstance(result, unicode))):     # pylint: disable=undefined-variable
-        result = result.decode(UTF8, 'ignore')
     debug.trace_fmtd(8, "from_utf8({t}) => {r}", t=text, r=result)
     return result
 
 
-def to_unicode(text, encoding=None):
+def to_unicode(text: str, encoding: Optional[str] = None):
     """Ensure TEXT in ENCODING is Unicode, such as from the default UTF8"""
     # EX: to_unicode("\xEF\xBB\xBF") => u"\ufeff"
     # TODO: rework from_utf8 in terms of this
     result = text
-    if ((sys.version_info.major < 3) and (not isinstance(result, unicode))):     # pylint: disable=undefined-variable
-        if not encoding:
-            encoding = UTF8
-        result = result.decode(encoding, 'ignore')
     debug.trace_fmtd(8, "to_unicode({t}, [{e}]) => {r}", t=text, e=encoding, r=result)
     return result
 
 
-def from_unicode(text, encoding=None):
+def from_unicode(text: str, encoding: Optional[str] = None):
     """Convert TEXT to ENCODING from Unicode, such as to the default UTF8"""
     # TODO: rework to_utf8 in terms of this
     result = text
-    if ((sys.version_info.major < 3) and (isinstance(text, unicode))):    # pylint: disable=undefined-variable
-        if not encoding:
-            encoding = UTF8
-        result = result.encode(encoding, 'ignore')
     debug.trace_fmtd(8, "from_unicode({t}, [{e}]) => {r}", t=text, e=encoding, r=result)
     return result
 
 
-def to_string(text):
+def to_string(text: Any) -> str:
     """Ensure VALUE is a string type
     Note: under Python 2, result is str or Unicode; but for Python 3+, it is always str"""
     # EX: to_string(123) => "123"
@@ -1020,7 +1098,7 @@ def to_string(text):
 to_text = to_string
 
 
-def chomp(text, line_separator=os.linesep):
+def chomp(text: str, line_separator: str = os.linesep) -> str:
     """Removes trailing occurrence of LINE_SEPARATOR from TEXT"""
     # EX: chomp("abc\n") => "abc"
     # EX: chomp("http://localhost/", "/") => "http://localhost"
@@ -1033,7 +1111,7 @@ def chomp(text, line_separator=os.linesep):
     return result
 
 
-def normalize_dir(path):
+def normalize_dir(path: str) -> str:
     """Normalize the directory PATH (e.g., removing ending path delim)"""
     # EX: normalize_dir("/etc/") => "/etc")
     result = chomp(path, path_separator())
@@ -1041,14 +1119,14 @@ def normalize_dir(path):
     return result
 
 
-def non_empty_file(filename):
+def non_empty_file(filename: FileDescriptorOrPath) -> bool:
     """Whether file exists and is non-empty"""
     non_empty = (file_exists(filename) and (os.path.getsize(filename) > 0))
     debug.trace_fmtd(5, "non_empty_file({f}) => {r}", f=filename, r=non_empty)
     return non_empty
 
 
-def absolute_path(path):
+def absolute_path(path: str) -> str:
     """Return resolved absolute pathname for PATH, as with Linux realpath command w/ --no-symlinks"""
     # EX: absolute_path("/etc/mtab").startswith("/etc")
     result = os.path.abspath(path)
@@ -1056,7 +1134,7 @@ def absolute_path(path):
     return result
 
 
-def real_path(path):
+def real_path(path: str) -> str:
     """Return resolved absolute pathname for PATH, as with Linux realpath command"""
     # EX: real_path("/etc/mtab").startswith("/proc")
     result = os.path.realpath(path)
@@ -1064,7 +1142,7 @@ def real_path(path):
     return result
 
 
-def get_module_version(module_name):
+def get_module_version(module_name: str) -> str:
     """Get version number for MODULE_NAME (string)"""
     # note: used in bash function (alias):
     #     python-module-version() = { python -c "print(get_module_version('$1))"; }'
@@ -1081,7 +1159,7 @@ def get_module_version(module_name):
     return version
 
 
-def intersection(list1, list2, as_set=None):
+def intersection(list1: list, list2: list, as_set: bool = False) -> Union[list, set]:
     """Return intersection of LIST1 and LIST2
     Note: result is a list unless AS_SET specified
     """
@@ -1097,7 +1175,7 @@ def intersection(list1, list2, as_set=None):
     return result
 
 
-def union(list1, list2, as_set=None):
+def union(list1: list, list2: list, as_set: bool = False) -> Union[list, set]:
     """Return union of LIST1 and LIST2
     Note: result is a list unless AS_SET specified
     """
@@ -1111,7 +1189,7 @@ def union(list1, list2, as_set=None):
     return result
 
 
-def difference(list1, list2, as_set=None):
+def difference(list1: list, list2: list, as_set: bool = False) -> Union[list, set]:
     """Return set difference from LIST1 vs LIST2, preserving order
     Note: result is a list unless AS_SET specified
     """
@@ -1128,7 +1206,7 @@ def difference(list1, list2, as_set=None):
     return diff
 
 
-def append_new(in_list, item):
+def append_new(in_list: list, item: Any) -> list:
     """Returns copy of LIST with ITEM included unless already in it"""
     # ex: append_new([1, 2], 3) => [1, 2, 3]
     # ex: append_new([1, 2, 3], 3) => [1, 2, 3]
@@ -1140,7 +1218,7 @@ def append_new(in_list, item):
     return result
 
 
-def just_one_true(in_list, strict=False):
+def just_one_true(in_list: list, strict: bool = False) -> bool:
     """True if only one element of IN_LIST is considered True (or all None unless STRICT)"""
     # Note: Consider using misc_utils.just1 (based on more_itertools.exactly_n)
     # TODO: Trap exceptions (e.g., string input)
@@ -1150,7 +1228,7 @@ def just_one_true(in_list, strict=False):
     return is_true
 
 
-def just_one_non_null(in_list, strict=False):
+def just_one_non_null(in_list: list, strict: bool = False) -> bool:
     """True if only one element of IN_LIST is not None (or all None unless STRICT)"""
     min_count = 1 if strict else 0
     is_true = (min_count <= sum(int(x is not None) for x in in_list) <= 1)
@@ -1158,7 +1236,7 @@ def just_one_non_null(in_list, strict=False):
     return is_true
 
 
-def unique_items(in_list, prune_empty=False):
+def unique_items(in_list: list, prune_empty: bool = False) -> list:
     """Returns unique items from IN_LIST, preserving order and optionally PRUN[ing]_EMPTY items"""
     # EX: unique_items([1, 2, 3, 2, 1]) => [1, 2, 3]
     ordered_hash = OrderedDict()
@@ -1170,7 +1248,7 @@ def unique_items(in_list, prune_empty=False):
     return result
 
 
-def is_number(text):
+def is_number(text: str) -> bool:
     """Indicates whether TEXT represents a number (integer or float)"""
     # EX: is_number("123") => True
     # EX: is_number("one") => False
@@ -1185,7 +1263,7 @@ def is_number(text):
     return ok
 
 
-def to_float(text, default_value=0.0):
+def to_float(text: str, default_value: float = 0.0) -> float:
     """Interpret TEXT as float, using DEFAULT_VALUE"""
     result = default_value
     try:
@@ -1198,7 +1276,7 @@ def to_float(text, default_value=0.0):
 safe_float = to_float
 
 
-def to_int(text, default_value=0, base=None):
+def to_int(text: str, default_value: int = 0, base: Optional[int] = None) -> int:
     """Interpret TEXT as integer with optional DEFAULT_VALUE and BASE"""
     # TODO: use generic to_num with argument specifying type
     result = default_value
@@ -1212,7 +1290,7 @@ def to_int(text, default_value=0, base=None):
 safe_int = to_int
 
 
-def to_bool(value):
+def to_bool(value: str) -> bool:
     """Converts VALUE to boolean value, returning False iff in {0, False, None, "False", "None", "Off", and ""}, ignoring case.
     Note: ensures the result is of type bool.""" 
     # EX: to_bool("off") => False
@@ -1232,7 +1310,7 @@ def to_bool(value):
 PRECISION = getenv_int("PRECISION", 6,
                        "Precision for rounding (e.g., decimal places)")
 #
-def round_num(value, precision=None):
+def round_num(value: float, precision: Optional[int] = None) -> float:
     """Round VALUE [to PRECISION places, 6 by default]"""
     # EX: round_num(3.15914, 3) => 3.159
     if precision is None:
@@ -1243,7 +1321,7 @@ def round_num(value, precision=None):
     return rounded_value
 
 
-def round_as_str(value, precision=PRECISION):
+def round_as_str(value: float, precision: Optional[int] = PRECISION) -> str:
     """Returns round_num(VALUE, PRECISION) as string"""
     # EX: round_as_str(3.15914, 3) => "3.159"
     result = f"{round_num(value, precision):.{precision}f}"
@@ -1252,12 +1330,12 @@ def round_as_str(value, precision=PRECISION):
     return result
 
 
-def round3(num):
+def round3(num: float) -> float:
     """Round NUM using precision of 3"""
     return round_num(num, 3)
 
 
-def sleep(num_seconds, trace_level=5):
+def sleep(num_seconds: float, trace_level: int = 5) -> None:
     """Sleep for NUM_SECONDS"""
     # TODO: annotate num_seconds with float
     debug.trace_fmtd(trace_level, "sleep({ns}, [tl={tl}])",
@@ -1266,7 +1344,7 @@ def sleep(num_seconds, trace_level=5):
     return
 
 
-def current_time(integral=False):
+def current_time(integral: bool = False) -> float:
     """Return current time in seconds since 1970, optionally INTEGRAL"""
     secs = time.time()
     if integral:
@@ -1275,12 +1353,12 @@ def current_time(integral=False):
     return secs
 
 
-def time_in_secs():
+def time_in_secs() -> float:
     """Wrapper around current_time"""
     return current_time(integral=True)
 
 
-def python_maj_min_version():
+def python_maj_min_version() -> float:
     """Return Python version as a float of form Major.Minor"""
     # EX: debug.assertion(python_maj_min_version() >= 3.6, "F-Strings are used")
     version = sys.version_info
@@ -1292,7 +1370,7 @@ def python_maj_min_version():
     return py_maj_min
 
 
-def get_args():
+def get_args() -> List[str]:
     """Return command-line arguments (as a list of strings)"""
     result = sys.argv
     debug.trace_fmtd(6, "get_args() => {r}", r=result)
@@ -1312,7 +1390,7 @@ def get_args():
 #        return result
 #
 
-def memodict(f):
+def memodict(f: Callable) -> Callable:
     """Memoization decorator for a function taking a single argument"""
     class _memodict(dict):
         """Internal class for implementing memoization"""
@@ -1326,7 +1404,7 @@ def memodict(f):
 
 #-------------------------------------------------------------------------------
 
-def init():
+def init() -> None:
     """Performs module initilization"""
     # TODO: rework global initialization to avoid the need for this
     global TEMP_DIR
@@ -1344,7 +1422,7 @@ init()
 #-------------------------------------------------------------------------------
 # Command line usage
 
-def main(args):
+def main(args: List[str]) -> None:
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
     user = getenv_text("USER", "user")
