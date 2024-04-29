@@ -5,6 +5,7 @@ Extended validation for Pydantic models with dictionaries
 """
 
 import os
+from types import TracebackType
 from typing import Union
 from functools import wraps
 from pydantic import BaseModel
@@ -13,7 +14,13 @@ from pydantic import BaseModel
 VALIDATE_ARGUMENTS = True
 
 # Common types used in multiple modules
+#
+# These types are the same as those used in builtins.pyi,
+# but we need to copy them here because they are protected
+# and cannot be imported directly.
 FileDescriptorOrPath = Union[str, bytes, os.PathLike]
+ExcInfo = tuple[type[BaseException], BaseException, TracebackType]
+OptExcInfo = ExcInfo | tuple[None, None, None]
 
 # pylint: disable=unused-argument
 def validate_dictionaries(*decorator_args, **decorator_kwargs):
