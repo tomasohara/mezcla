@@ -719,7 +719,7 @@ class Main(object):
                     debug.trace_expr(3, self.filename, self.other_filenames)
             else:
                 debug.assertion(isinstance(self.filename, str))
-                if not self.manual_input:
+                if not (self.manual_input and self.skip_input):
                     debug.assertion(os.path.exists(self.filename))
                     mode = ("r" if (not self.binary_input) else "rb")
                     self.input_stream = system.open_file(self.filename, mode=mode, errors=self.input_error)
