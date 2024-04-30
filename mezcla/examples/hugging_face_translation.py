@@ -103,6 +103,7 @@ def main():
     use_interface = dummy_app.get_parsed_option(UI_ARG, USE_INTERFACE)
 
     # Get input file
+    debug.trace_expr(5, dummy_app.input_stream, text, TEXT_FILE)
     text_file = TEXT_FILE
     if ((text is not None) or use_interface):
         pass
