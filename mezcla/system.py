@@ -393,8 +393,9 @@ def open_file(filename, /, mode="r", *, encoding=None, errors=None, **kwargs):
     Notes:
     - The mode is left at default (i.e., 'r')
     - As with open(), result can be used in a with statement:
-        with system.open_file(filename) as f: ...
+    ____ with system.open_file(filename) as f: ..
     """
+    ## TODO1: fix up ^^ for maldito sphinx: had to add ____'s for indendation
     # Note: position-only args precedes / and keyword only follow * (based on https://stackoverflow.com/questions/24735311/what-does-the-slash-mean-when-help-is-listing-method-signatures):
     #   def f(pos_only1, pos_only2, /, pos_or_kw1, pos_or_kw2, *, kw_only1, kw_only2): pass
     if (encoding is None) and ("b" not in mode):
