@@ -101,6 +101,7 @@ wheel
 #opt# pyyaml
 #opt# scispacy
 #opt# selenium
+#opt# Sphinx
 #
 ## OLD: #opt# spacy>=3.0.0
 ## TODO:
