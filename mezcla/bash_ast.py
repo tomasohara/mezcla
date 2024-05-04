@@ -129,10 +129,10 @@ def main():
 
     # Show simple usage if --help given
     dummy_main_app = Main(description=__doc__.format(prog=gh.basename(__file__)),
-                          skip_input=False, manual_input=False)
+                          skip_input=False, manual_input=True)
     debug.assertion(dummy_main_app.parsed_args)
 
-    # Prase Bash snippet from stdin
+    # Parse Bash snippet from stdin
     snippet = dummy_main_app.read_entire_input()
     ast = BashAST(snippet)
     print(ast.dump())
