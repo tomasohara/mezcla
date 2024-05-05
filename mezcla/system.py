@@ -47,7 +47,7 @@ import six
 from mezcla import debug
 from mezcla.debug import UTF8, TraceLevel
 from mezcla.extended_validation import (
-    FileDescriptorOrPath, OptExcInfo,
+    FileDescriptorOrPath, OptExcInfo, StrOrBytesPath,
 )
 
 # Constants
@@ -501,8 +501,7 @@ def load_object(file_name: FileDescriptorOrPath, ignore_error: bool = False) -> 
                     obj = pickle.load(f, encoding='bytes') 
     except (AttributeError, IOError, TypeError, ValueError):
         if (not ignore_error):
-            print_stderr("Error: Unable to load object from {f}: {exc}".
-                         format(f=file_name, exc=get_exception()))
+            print_stderr(f"Error: Unable to load object from {file_name!r}: {get_exception()}")
     debug.trace_fmtd(7, "load_object({f}) => {o}", f=file_name, o=obj)
     return obj
 
@@ -644,7 +643,7 @@ def read_lines(filename: FileDescriptorOrPath, ignore_comments: Optional[bool] =
     lines = contents.split("\n")
     if ((lines[-1] == "") and contents.endswith("\n")):
         lines = lines[:-1]
-    debug.trace(7, f"read_lines({filename}) => {lines}")
+    debug.trace(7, f"read_lines({filename!r}) => {lines}")
     return lines
 #
 # EX: l = ["1", "2"]; f="/tmp/12.list"; write_lines(f, l); read_lines(f) => l
@@ -1009,7 +1008,7 @@ def is_regular_file(path: FileDescriptorOrPath) -> bool:
     return ok
 
 
-def create_directory(path: FileDescriptorOrPath) -> None:
+def create_directory(path: StrOrBytesPath) -> None:
     """Wrapper around os.mkdir over PATH (with tracing)"""
     # Note: doesn't create intermediate directories (see glue_helper.py)
     # TODO: pass along keyword parameters (e.g., mode)
@@ -1276,7 +1275,7 @@ def to_float(text: str, default_value: float = 0.0) -> float:
 safe_float = to_float
 
 
-def to_int(text: str, default_value: int = 0, base: Optional[int] = None) -> int:
+def to_int(text: Any, default_value: int = 0, base: Optional[int] = None) -> int:
     """Interpret TEXT as integer with optional DEFAULT_VALUE and BASE"""
     # TODO: use generic to_num with argument specifying type
     result = default_value
@@ -1294,7 +1293,7 @@ def to_bool(value: str) -> bool:
     """Converts VALUE to boolean value, returning False iff in {0, False, None, "False", "None", "Off", and ""}, ignoring case.
     Note: ensures the result is of type bool.""" 
     # EX: to_bool("off") => False
-    result = value
+    result = value != ""
     if isinstance(value, str):
         result = (value.lower() not in ["false", "none", "off", "0", ""])
     if not isinstance(result, bool):
