@@ -125,7 +125,7 @@ MISSING_LINE = "???"
 max_trace_value_len = 1024
 
 # Types
-AnyLevel = Union[int, TraceLevel]
+IntOrTraceLevel = Union[int, TraceLevel]
 
 #...............................................................................
 # Utility functions
@@ -146,7 +146,7 @@ if __debug__:
     # Initialize debug tracing level
     # TODO: mark as "private" (e.g., trace_level => _trace_level)
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
-    trace_level: AnyLevel = TL.DEFAULT            # typically same as TL.WARNING (2); TODO: global_trace_level
+    trace_level: IntOrTraceLevel = TL.DEFAULT            # typically same as TL.WARNING (2); TODO: global_trace_level
     output_timestamps = False           # prefix output with timestamp
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
@@ -164,14 +164,14 @@ if __debug__:
         pass
 
 
-    def set_level(level: AnyLevel) -> None:
+    def set_level(level: IntOrTraceLevel) -> None:
         """Set new trace level"""
         global trace_level
         trace_level = level
         return
 
 
-    def get_level() -> AnyLevel:
+    def get_level() -> IntOrTraceLevel:
         """Get current tracing level"""
         # Note: ensures result is integer (not enum)
         # EX: (get_level() >= 0)
@@ -234,7 +234,7 @@ if __debug__:
             print(text, file=debug_file, end=end)
     
     def trace(
-            level: AnyLevel,
+            level: IntOrTraceLevel,
             text: str,
             empty_arg: Optional[bool] = None,
             no_eol: bool = False,
@@ -275,7 +275,7 @@ if __debug__:
 
 
     @docstring_parameter(max_len=max_trace_value_len)
-    def trace_fmtd(level: AnyLevel, text: str, **kwargs) -> None:
+    def trace_fmtd(level: IntOrTraceLevel, text: str, **kwargs) -> None:
         """Print TEXT with formatting using optional format KWARGS if at trace LEVEL or higher, including newline
         Note: Use MAX_LEN keyword argument to override the maximum length ({max_len}) of traced text (see format_value).
         """
@@ -315,7 +315,7 @@ if __debug__:
     SIMPLE_TYPES = (bool, int, float, type(None), str)
     #
     def trace_object(
-            level: AnyLevel,
+            level: IntOrTraceLevel,
             obj: object,
             label: Optional[str] = None,
             show_all: Optional[bool] = None,
@@ -443,7 +443,7 @@ if __debug__:
 
 
     def trace_values(
-            level: AnyLevel,
+            level: IntOrTraceLevel,
             collection: Union[list, dict, Any],
             label: Optional[str] = None,
             indentation: Optional[str] = None,
@@ -491,7 +491,7 @@ if __debug__:
 
 
     @docstring_parameter(max_len=max_trace_value_len)
-    def trace_expr(level: AnyLevel, *values, **kwargs) -> None:
+    def trace_expr(level: IntOrTraceLevel, *values, **kwargs) -> None:
         """Trace each of the argument VALUES (if at trace LEVEL or higher), with KWARGS for options.
         Introspection is used to derive label for each expression. By default, the following format is used:
            expr1=value1; ... exprN=valueN
@@ -597,7 +597,7 @@ if __debug__:
         return
 
     
-    def trace_current_context(level: AnyLevel = QUITE_DETAILED, label: Optional[str] = None,
+    def trace_current_context(level: IntOrTraceLevel = QUITE_DETAILED, label: Optional[str] = None,
                               show_methods_etc: bool = False) -> None:
         """Traces out current context (local and global variables), with output
         prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
@@ -640,7 +640,7 @@ if __debug__:
     ##     return
 
 
-    def trace_exception(level: AnyLevel, task: Callable) -> None:
+    def trace_exception(level: IntOrTraceLevel, task: Callable) -> None:
         """Trace exception information regarding TASK (e.g., function) at LEVEL"""
         # Note: Conditional output version of system's print_exception_info.
         # ex: trace_exception(DETAILED, "tally_counts")
@@ -651,7 +651,7 @@ if __debug__:
         return
 
     
-    def raise_exception(level: AnyLevel = 1) -> None:
+    def raise_exception(level: IntOrTraceLevel = 1) -> None:
         """Raise an exception if debugging (at specified trace LEVEL)"""
         # Note: For producing full stacktrace in except clause when debugging.
         # TODO: elaborate
@@ -663,7 +663,7 @@ if __debug__:
     def assertion(
             expression: Union[bool, Any],
             message: Optional[str] = None,
-            assert_level: Optional[AnyLevel] = None
+            assert_level: Optional[IntOrTraceLevel] = None
         ) -> Optional[str]:
         """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
         Note:
@@ -713,7 +713,7 @@ if __debug__:
                 trace_object(ALWAYS, inspect.currentframe(), "caller frame", pretty_print=True)
         return expression_text
 
-    def val(level: AnyLevel, value: Any) -> Any:
+    def val(level: IntOrTraceLevel, value: Any) -> Any:
         """Returns VALUE if at trace LEVEL or higher otherwise None
         Note: inspired by Lisp's convenient IF form without an explicit else: (if test value-if-true)"""
         # EX: (101 if ((get_level() == 1) and val(1, 101)) else None) => 101
@@ -722,7 +722,7 @@ if __debug__:
         return (value if (trace_level >= level) else None)
 
 
-    def code(level: AnyLevel, no_arg_function: Callable) -> Any:
+    def code(level: IntOrTraceLevel, no_arg_function: Callable) -> Any:
         """Execute NO_ARG_FUNCTION if at trace LEVEL or higher
         Notes:
         - Use call() for more flexible invocation (e.g., can avoid lambda function)
@@ -742,7 +742,7 @@ if __debug__:
         return result
 
     
-    def call(level: AnyLevel, function: Callable, *args, **kwargs) -> Any:
+    def call(level: IntOrTraceLevel, function: Callable, *args, **kwargs) -> Any:
         """Invoke FUNCTION with ARGS and KWARGS if at trace LEVEL or higher
         Note: Use code() for simpler invocation (e.g., via lambda function)
         """
@@ -762,7 +762,7 @@ else:
         # Note: no return value assumed by debug.expr
         return
 
-    def get_level() -> AnyLevel:
+    def get_level() -> IntOrTraceLevel:
         """Returns tracing level (i.e., 0)"""
         return trace_level
 
@@ -828,7 +828,7 @@ cond_val = val
 # TODO: alias trace to trace_fmt as well (add something like trace_out if format not desired)
 trace_fmt = trace_fmtd
 
-def debug_print(text: str, level: AnyLevel) -> None:
+def debug_print(text: str, level: IntOrTraceLevel) -> None:
     """Wrapper around trace() for backward compatibility
     Note: debug_print will soon be deprecated."""
     return trace(level, text)
@@ -840,7 +840,7 @@ def timestamp() -> str:
     
 
 ## OLD: def debugging(level=ERROR):
-def debugging(level: AnyLevel = USUAL) -> bool:
+def debugging(level: IntOrTraceLevel = USUAL) -> bool:
     """Whether debugging at specified trace LEVEL (e.g., 3 for usual)"""
     ## BAD: """Whether debugging at specified trace level, which defaults to {l}""".format(l=ERROR)
     ## NOTE: Gotta hate python/pylint (no warning about docstring)
