@@ -4,10 +4,10 @@
 Extended validation for Pydantic models with dictionaries
 """
 
-import os
+from os import PathLike
 from types import TracebackType
-from typing import Union
 from functools import wraps
+from typing_extensions import TypeAlias
 from pydantic import BaseModel
 
 # Constants
@@ -18,7 +18,8 @@ VALIDATE_ARGUMENTS = True
 # These types are the same as those used in builtins.pyi,
 # but we need to copy them here because they are protected
 # and cannot be imported directly.
-FileDescriptorOrPath = Union[str, bytes, os.PathLike]
+StrOrBytesPath: TypeAlias = str | bytes | PathLike[str] | PathLike[bytes]  # stable
+FileDescriptorOrPath: TypeAlias = int | StrOrBytesPath
 ExcInfo = tuple[type[BaseException], BaseException, TracebackType]
 OptExcInfo = ExcInfo | tuple[None, None, None]
 
