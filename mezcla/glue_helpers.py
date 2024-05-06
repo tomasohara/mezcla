@@ -134,7 +134,7 @@ def create_temp_file(contents: Any, binary: bool = False) -> Optional[str]:
     return temp_filename
 
 
-def basename(filename: FileDescriptorOrPath, extension: Optional[str] = None) -> Optional[str]:
+def basename(filename: str, extension: Optional[str] = None) -> Optional[str]:
     """Remove directory from FILENAME along with optional EXTENSION, as with Unix basename command. Note: the period in the extension must be explicitly supplied (e.g., '.data' not 'data')"""
     # EX: basename("fubar.py", ".py") => "fubar"
     # EX: basename("fubar.py", "py") => "fubar."
@@ -144,11 +144,11 @@ def basename(filename: FileDescriptorOrPath, extension: Optional[str] = None) ->
         pos = base.find(extension)
         if pos > -1:
             base = base[:pos]
-    debug_print("basename(%s, %s) => %s" % (filename, extension, base), 5)
+    debug_print(f"basename({filename!r}, {extension}) => {base}", 5)
     return base
 
 
-def remove_extension(filename: FileDescriptorOrPath, extension: str) -> str:
+def remove_extension(filename: str, extension: str) -> str:
     """Returns FILENAME without EXTENSION. Note: similar to basename() but retaining directory portion."""
     # EX: remove_extension("/tmp/solr-4888.log", ".log") => "/tmp/solr-4888"
     # EX: remove_extension("/tmp/fubar.py", ".py") => "/tmp/fubar"
@@ -156,7 +156,7 @@ def remove_extension(filename: FileDescriptorOrPath, extension: str) -> str:
     # NOTE: Unlike os.path.splitext, only the specific extension is removed (not whichever extension used).
     pos = filename.find(extension)
     base = filename[:pos] if (pos > -1) else filename
-    debug_print("remove_extension(%s, %s) => %s" % (filename, extension, base), 5)
+    debug_print(f"remove_extension({filename!r}, {extension}) => {base!r}", 5)
     return base
 
 
@@ -164,7 +164,7 @@ def remove_extension(filename: FileDescriptorOrPath, extension: str) -> str:
 ##           ...
 
 
-def dir_path(filename: FileDescriptorOrPath, explicit: bool = False) -> str:
+def dir_path(filename: str, explicit: bool = False) -> str:
     """Wrapper around os.path.dirname over FILENAME
     Note: With EXPLICIT, returns . instead of "" (e.g., if filename in current direcotry)
     """
@@ -174,14 +174,16 @@ def dir_path(filename: FileDescriptorOrPath, explicit: bool = False) -> str:
     path = os.path.dirname(filename)
     if (not path and explicit):
         path = "."
-    debug.trace(5, f"dir_path({filename}, [explicit={explicit}]) => {path}")
+    debug.trace(5, f"dir_path({filename!r}, [explicit={explicit}]) => {path}")
     # TODO: add realpath (i.e., canonical path)
     if not explicit:
-        debug.assertion(form_path(path, basename(filename)) == filename)
+        base = basename(filename)
+        assert isinstance(base, str)
+        debug.assertion(form_path(path, base) == filename)
     return path
 
 
-def dirname(file_path: FileDescriptorOrPath) -> str:
+def dirname(file_path: str) -> str:
     """"Returns directory component of FILE_PATH as with Unix dirname"""
     # EX: dirname("/tmp/solr-4888.log") => "/tmp"
     # EX: dirname("README.md") => "."
@@ -191,7 +193,7 @@ def dirname(file_path: FileDescriptorOrPath) -> str:
 def file_exists(filename: FileDescriptorOrPath) -> bool:
     """Returns indication that FILENAME exists"""
     ok = os.path.exists(filename)
-    debug_print(f"file_exists({filename}) => {ok}", 7)
+    debug_print(f"file_exists({filename!r}) => {ok}", 7)
     return ok
 
 
@@ -199,19 +201,19 @@ def non_empty_file(filename: FileDescriptorOrPath) -> bool:
     """Whether FILENAME exists and is non-empty"""
     size = (os.path.getsize(filename) if os.path.exists(filename) else -1)
     non_empty = (size > 0)
-    debug_print("non_empty_file(%s) => %s (filesize=%s)" % (filename, non_empty, size), 5)
+    debug_print(f"non_empty_file({filename!r}) => {non_empty} (filesize={size})", 5)
     return non_empty
 
 
 def resolve_path(
-        filename: FileDescriptorOrPath,
+        filename: str,
         base_dir: Optional[str] = None,
         heuristic: bool = False
     ) -> str:
     """Resolves path for FILENAME relative to BASE_DIR if not in current directory. Note: this uses the script directory for the calling module if BASE_DIR not specified (i.e., as if os.path.dirname(__file__) passed).
     If HEURISTIC, then also checks nearby directories such as parent for base_dir.
     """
-    debug.trace(5, f"in resolve_path({filename})")
+    debug.trace(5, f"in resolve_path({filename!r})")
     debug.trace_expr(6,  base_dir, heuristic)
     # TODO: give preference to script directory over current directory
     path = filename
@@ -248,7 +250,7 @@ def resolve_path(
     if (not os.path.exists(path)) and heuristic:
         debug.trace(4, "FYI: resolve_path falling back to find")
         debug.assertion(" " not in path)
-        path = run(f"find {base_dir} -name '{path}'")
+        path = run(f"find {base_dir} -name '{path!r}'")
             
     debug_format("resolve_path({f}) => {p}", 4, f=filename, p=path)
     return path
@@ -287,7 +289,7 @@ def is_directory(path: FileDescriptorOrPath) -> bool:
 ##      func.body = f'debug.trace(3, "{warning}")' + func.body
 
 
-def create_directory(path: FileDescriptorOrPath) -> None:
+def create_directory(path: StrOrBytesPath) -> None:
     """Wrapper around os.mkdir over PATH (with tracing)
     Warning: obsolete
     """
@@ -314,9 +316,9 @@ def real_path(path: FileDescriptorOrPath) -> str:
     Note: Use version in system instead"""
     # EX: re.search("vmlinuz.*\d.\d", real_path("/vmlinuz"))
     ## TODO: result = system.real_path(path)
-    result = run(f'realpath "{path}"')
+    result = run(f'realpath "{path!r}"')
     debug.trace(6, "Warning: obsolete: use system.real_path instead")
-    debug.trace(7, f"real_path({path}) => {result}")
+    debug.trace(7, f"real_path({path!r}) => {result}")
     return result
 
 
@@ -677,7 +679,7 @@ def count_it(
     # EX: dict(count_it("[a-z]", "Panama")) => {"a": 3, "n": 1, "m": 1}
     # EX: count_it("\w+", "My d@wg's fleas have fleas")["fleas"] => 2
     debug.trace(7, f"count_it({pattern}, _, {field}, {multiple}")
-    value_counts = defaultdict(int)
+    value_counts: Dict[str, int] = defaultdict(int)
     for value in extract_matches_from_text(pattern, text, field, multiple):
         value_counts[value] += 1
     debug.trace_values(6, value_counts, "count_it()")
@@ -710,11 +712,11 @@ def read_lines(
                 line = tpo.ensure_unicode(line)
             lines.append(line)
     except IOError:
-        debug_print(f"Warning: Exception reading file {filename}: {sys.exc_info()}", 2)
+        debug_print(f"Warning: Exception reading file {filename!r}: {sys.exc_info()}", 2)
     finally:
         if f:
             f.close()
-    debug_print("read_lines(%s) => %s" % (filename, lines), 6)
+    debug_print(f"read_lines({filename!r}) => {lines}", 6)
     return lines
 
 
@@ -724,7 +726,7 @@ def write_lines(
         append: bool = False
     ) -> None:
     """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND"""
-    debug_print("write_lines(%s, _)" % (filename), 5)
+    debug_print(f"write_lines({filename!r}, _)", 5)
     debug_print("    text_lines=%s" % text_lines, 6)
     debug.assertion(isinstance(text_lines, list) and all(isinstance(x, str) for x in text_lines))
     f = None
@@ -736,7 +738,7 @@ def write_lines(
             line = tpo.normalize_unicode(line)
             f.write(line + "\n")
     except IOError:
-        debug_print("Warning: Exception writing file %s: %s" % (filename, str(sys.exc_info())), 2)
+        debug_print(f"Warning: Exception writing file {filename!r}: {sys.exc_info()}", 2)
     finally:
         if f:
             f.close()
@@ -748,7 +750,7 @@ def read_file(filename: FileDescriptorOrPath, make_unicode: bool = False) -> str
     Note: optionally returned as unicde.
     Warning: deprecated function--use system.read_file instead
     """
-    debug_print(f"read_file({filename})", 7)
+    debug_print(f"read_file({filename!r})", 7)
     debug_print("Warning: Deprecated (glue_helpers.read_file): use version in system", 3)
     text = "\n".join(read_lines(filename, make_unicode=make_unicode))
     return (text + "\n") if text else ""
@@ -766,7 +768,7 @@ def write_file(filename: FileDescriptorOrPath, text: str, append: bool=False) ->
     return write_lines(filename, text_lines, append)
 
 
-def copy_file(source: FileDescriptorOrPath, target: str) -> None:
+def copy_file(source: str, target: str) -> None:
     """Copy SOURCE file to TARGET file (or directory)"""
     # Note: meta data is not copied (e.g., access control lists)); see
     #    https://docs.python.org/2/library/shutil.html
@@ -785,7 +787,7 @@ def copy_file(source: FileDescriptorOrPath, target: str) -> None:
     return
 
 
-def rename_file(source: FileDescriptorOrPath, target: str) -> None:
+def rename_file(source: StrOrBytesPath, target: str) -> None:
     """Rename SOURCE file as TARGET file"""
     # TODO: have option to skip if target exists
     debug_print("rename_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
@@ -810,7 +812,7 @@ def delete_file(filename: StrOrBytesPath) -> bool:
     return ok
 
 
-def delete_existing_file(filename: FileDescriptorOrPath) -> bool:
+def delete_existing_file(filename: StrOrBytesPath) -> bool:
     """Deletes FILENAME if it exists and is not a directory or other special file"""
     ok = False
     if file_exists(filename):
