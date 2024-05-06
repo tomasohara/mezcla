@@ -35,7 +35,7 @@ import sys
 import tempfile
 from typing import (
     Optional, Any, List, Dict, Union,
-    IO,
+    IO, TextIO,
 )
 from types import FrameType
 
@@ -695,7 +695,7 @@ def read_lines(
     # TODO: use enumerate(f); refine exception in except; 
     # TODO: force unicode if UTF8 encountered
     lines = []
-    f = None
+    f: Optional[Union[TextIO, IO]] = None
     try:
         # Open the file
         if not filename:
