@@ -884,7 +884,7 @@ def get_file_modification_time(
     Note: Returns None if file doesn't exist."""
     # TODO: document how the floating point version is interpretted
     # See https://stackoverflow.com/questions/237079/how-to-get-file-creation-modification-date-times-in-python
-    mod_time = None
+    mod_time: Optional[Union[float, str]] = None
     if file_exists(filename):
         mod_time = os.path.getmtime(filename)
         if not as_float:
@@ -1170,7 +1170,7 @@ def intersection(list1: list, list2: list, as_set: bool = False) -> Union[list, 
     # EX: sorted(intersection([1, 2, 3, 4, 5], [2, 4])) => [2, 4]
     # EX: intersection([1, 2, 3, 4, 5], [2, 4], as_set=True)) => {2, 4}
     # TODO: have option for returning list
-    result = set(list1).intersection(set(list2))
+    result: Union[list, set] = set(list1).intersection(set(list2))
     if not as_set:
         result = list(result)
     debug.trace_fmtd(7, "intersection({l1}, {l2}) => {r}",
@@ -1184,7 +1184,7 @@ def union(list1: list, list2: list, as_set: bool = False) -> Union[list, set]:
     """
     # EX: union([1, 3, 5], [5, 7]) => [1, 3, 5, 7]
     # note: wrapper around set.union used for tracing
-    result = set(list1).union(set(list2))
+    result: Union[list, set] = set(list1).union(set(list2))
     if not as_set:
         result = list(result)
     debug.trace_fmtd(7, "union({l1}, {l2}) => {r}",
@@ -1198,12 +1198,11 @@ def difference(list1: list, list2: list, as_set: bool = False) -> Union[list, se
     """
     # TODO: optmize (e.g., via a hash table)
     # EX: difference([5, 4, 3, 2, 1], [1, 2, 3]) => [5, 4]
-    diff = []
+    diff_as_list = []
     for item1 in list1:
         if item1 not in list2:
-            diff.append(item1)
-    if as_set:
-        diff = set(diff)
+            diff_as_list.append(item1)
+    diff: Union[list, set] = set(diff_as_list) if as_set else diff_as_list
     debug.trace_fmtd(7, "difference({l1}, {l2}) => {d}",
                      l1=list1, l2=list2, d=diff)
     return diff
