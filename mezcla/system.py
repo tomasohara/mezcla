@@ -719,7 +719,9 @@ def read_lookup_table(
     line_num = 0
     try:
         # TODO: use csv.reader
-        with open_file(filename) as f:
+        file_obj = open_file(filename)
+        assert isinstance(file_obj, IO)
+        with file_obj as f:
             for line in f:
                 line_num += 1
                 if (skip_header and (line_num == 1)):
@@ -764,7 +766,9 @@ def create_boolean_lookup_table(
                     f=filename, rc=retain_case)
     lookup_hash = defaultdict(bool)
     try:
-        with open_file(filename, **kwargs) as f:
+        file_obj = open_file(filename, **kwargs)
+        assert isinstance(file_obj, IO)
+        with file_obj as f:
             for line in f:
                 key = line.strip()
                 if ignore_comments:
