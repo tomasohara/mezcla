@@ -640,7 +640,7 @@ if __debug__:
     ##     return
 
 
-    def trace_exception(level: IntOrTraceLevel, task: Callable) -> None:
+    def trace_exception(level: IntOrTraceLevel, task: Any) -> None:
         """Trace exception information regarding TASK (e.g., function) at LEVEL"""
         # Note: Conditional output version of system's print_exception_info.
         # ex: trace_exception(DETAILED, "tally_counts")
