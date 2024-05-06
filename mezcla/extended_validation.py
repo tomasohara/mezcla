@@ -20,8 +20,8 @@ VALIDATE_ARGUMENTS = True
 # and cannot be imported directly.
 StrOrBytesPath = Union[str, bytes, PathLike]  # stable
 FileDescriptorOrPath = Union[int, StrOrBytesPath]
-ExcInfo = Tuple[type[BaseException], BaseException, TracebackType]
-OptExcInfo = Union[ExcInfo, tuple[None, None, None]]
+ExcInfo = Tuple[BaseException, TracebackType]
+OptExcInfo = Union[ExcInfo, Tuple[None, None, None]]
 
 # pylint: disable=unused-argument
 def validate_dictionaries(*decorator_args, **decorator_kwargs):
