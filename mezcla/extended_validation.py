@@ -18,7 +18,7 @@ VALIDATE_ARGUMENTS = True
 # These types are the same as those used in builtins.pyi,
 # but we need to copy them here because they are protected
 # and cannot be imported directly.
-StrOrBytesPath = Union[str, bytes, PathLike[str], PathLike[bytes]]  # stable
+StrOrBytesPath = Union[str, bytes, PathLike]  # stable
 FileDescriptorOrPath = Union[int, StrOrBytesPath]
 ExcInfo = Tuple[type[BaseException], BaseException, TracebackType]
 OptExcInfo = Union[ExcInfo, tuple[None, None, None]]
