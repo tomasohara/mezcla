@@ -103,19 +103,25 @@ if PROFILE_CODE:
 
 #-------------------------------------------------------------------------------
 
-def get_temp_dir(keep=None):
-    """Get temporary directory, omitting later deletion if KEEP"""
+def get_temp_dir(keep=None, unique=None):
+    """Get temporary directory, omitting later deletion if KEEP
+    Note: Optionally returns UNIQUE dir
+    """
     # NOTE: Unused function
     if keep is None:
         keep = KEEP_TEMP
     dir_base = gh.get_temp_file()
-    # Note: creates parent temp dir if temp file regular file
-    if not system.is_directory(dir_base):
-        dir_base += "_temp_dir_"
-        gh.full_mkdir(dir_base)
-    dir_path = tempfile.NamedTemporaryFile(
-        delete=(not keep), dir=dir_base).name
-    gh.full_mkdir(dir_path)
+    if unique:
+        # Note: creates parent temp dir if temp file regular file
+        if not system.is_directory(dir_base):
+            dir_base += "_temp_dir_"
+            gh.full_mkdir(dir_base)
+        dir_path = tempfile.NamedTemporaryFile(
+            delete=(not keep), dir=dir_base).name
+    else:
+        dir_path = dir_base
+    if not system.is_directory(dir_path):
+        gh.full_mkdir(dir_path)
     debug.trace(5, f"get_temp_dir() => {dir_path}")
     return dir_path
 
