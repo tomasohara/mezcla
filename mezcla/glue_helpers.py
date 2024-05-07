@@ -260,9 +260,9 @@ def form_path(*filenames, create=False):
 
 
 def is_directory(path):
-    """Determins wther PATH represents a directory"""
+    """Determines whether PATH represents a directory"""
     is_dir = os.path.isdir(path)
-    debug_format("is_dir{p} => {r}", 6, p=path, r=is_dir)
+    debug_format("is_dir({p}) => {r}", 6, p=path, r=is_dir)
     return is_dir
 
 
