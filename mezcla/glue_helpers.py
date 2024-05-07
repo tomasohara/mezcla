@@ -95,8 +95,16 @@ USE_TEMP_BASE_DIR = system.getenv_bool(
     description="Whether TEMP_BASE should be a dir instead of prefix")
 
 # Globals
-# note: see init() for initialization
+# note:
+# - see init() for main initialization;
+# - these are placeholds until module initialized
+# - os.path.join used to likewise avoid chick-n-egg problems with init
+TMP = system.getenv_text(
+    "TMP", "/tmp",
+    description="Temporary directory")
 TEMP_FILE = None
+TEMP_LOG_FILE = os.path.join(TMP, "log_file.temp")
+TEMP_SCRIPT_FILE = os.path.join(TMP, "temp_script_file.temp")
 
 #------------------------------------------------------------------------
 
@@ -110,11 +118,7 @@ def get_temp_file(delete=None):
     debug.assertion(not delete, "Support for delete not implemented")
     debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
     return temp_file_name
-#
-TEMP_LOG_FILE = system.getenv_text("TEMP_LOG_FILE", get_temp_file() + "-log",
-                                "Log file for stderr such as for issue function")
-TEMP_SCRIPT_FILE = system.getenv_text("TEMP_SCRIPT_FILE", get_temp_file() + "-script",
-                                   "File for command invocation")
+
 
 def create_temp_file(contents, binary=False):
     """Create temporary file with CONTENTS and return full path"""
@@ -285,6 +289,7 @@ def create_directory(path):
 
 def full_mkdir(path):
     """Issues mkdir to ensure path directory, including parents (assuming Linux like shell)"""
+    debug.trace(6, f"full_mkdir({path!r})")
     ## TODO: os.makedirs(path, exist_ok=True)
     debug.assertion(os.name == "posix")
     issue('mkdir --parents "{p}"', p=path)
@@ -863,9 +868,22 @@ def init():
     temp_filename = "temp-file.list"
     if USE_TEMP_BASE_DIR and TEMP_BASE:
         full_mkdir(TEMP_BASE)
+    #
     temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
-    TEMP_FILE = system.getenv_value("TEMP_FILE", temp_file_default,
-                                    "Override for temporary filename")
+    TEMP_FILE = system.getenv_value(
+        "TEMP_FILE", temp_file_default,
+        description="Override for temporary filename")
+    #
+    global TEMP_LOG_FILE
+    TEMP_LOG_FILE = system.getenv_text(
+        "TEMP_LOG_FILE", get_temp_file() + "-log",
+        description="Log file for stderr such as for issue function")
+    global TEMP_SCRIPT_FILE
+    TEMP_SCRIPT_FILE = system.getenv_text(
+        "TEMP_SCRIPT_FILE", get_temp_file() + "-script",
+        description="File for command invocation")
+#
+init()
 
 def main():
     """Entry point"""
