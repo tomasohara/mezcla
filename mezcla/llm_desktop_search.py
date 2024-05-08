@@ -66,10 +66,10 @@ HOME_DIR = system.getenv_text("HOME", description="home directory")
 LLAMA_DEFAULT = gh.form_path(HOME_DIR, "Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin")
 LLAMA_MODEL = system.getenv_text("LLAMA_MODEL", LLAMA_DEFAULT,
                                   description="path to llama model bin")
-FAISS_STORE_DIR = system.getenv_text("FAISS_STORE_DIR", gh.form_path(gh.dirname(__file__),"faiss"),
-                                      description="path to store faiss data base")
-if not system.is_directory(FAISS_STORE_DIR):
-    gh.full_mkdir(FAISS_STORE_DIR)
+INDEX_STORE_DIR = system.getenv_text("INDEX_STORE_DIR", gh.form_path(gh.dirname(__file__),"faiss"),
+                                      description="path to store index data base")
+if not system.is_directory(INDEX_STORE_DIR):
+    gh.full_mkdir(INDEX_STORE_DIR)
 
 class DesktopSearch:
     """Class for searching local computer"""
@@ -108,6 +108,8 @@ class DesktopSearch:
             doc_metadata['source'] = new_source
             doc.metadata = doc_metadata
             return doc
+        
+        if system.
 
         # copy files over to temp dir
         timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
@@ -123,7 +125,7 @@ class DesktopSearch:
             filename = system.filename_proper(file)
             file_tmp_path = system.form_path(tmp_path, filename) 
             if file.endswith('.txt'):
-                gh.copy_file(file, file_tmp_path)
+                system.write_file(file_tmp_path, system.read_entire_file(file, encoding="unicode_escape"))
             else:
                 system.write_file(f"{file_tmp_path}_temp_{num}.txt", convert_to_txt(file))
     
@@ -150,7 +152,7 @@ class DesktopSearch:
             self.db.add_documents(corrected_texts)
         else:
             self.db = FAISS.from_documents(corrected_texts, self.embeddings)
-        self.db.save_local(FAISS_STORE_DIR)
+        self.db.save_local(INDEX_STORE_DIR)
 
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
@@ -172,7 +174,7 @@ class DesktopSearch:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2",
                 model_kwargs={'device': TORCH_DEVICE})
-        self.db = FAISS.load_local(FAISS_STORE_DIR, self.embeddings,
+        self.db = FAISS.load_local(INDEX_STORE_DIR, self.embeddings,
                                    # necessary to allow loading of possibly unsafe Pickle
                                    allow_dangerous_deserialization=True)
         gpu_utils.trace_gpu_usage()
