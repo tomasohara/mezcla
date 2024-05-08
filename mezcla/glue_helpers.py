@@ -312,7 +312,7 @@ def full_mkdir(path):
     debug.trace(6, f"full_mkdir({path!r})")
     ## TODO: os.makedirs(path, exist_ok=True)
     debug.assertion(os.name == "posix")
-    if not system.file_exists(path_dir):
+    if not system.file_exists(path):
         issue('mkdir --parents "{p}"', p=path)
     debug.assertion(is_directory(path))
     return
