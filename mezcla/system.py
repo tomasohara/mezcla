@@ -36,7 +36,7 @@ import sys
 import time
 from typing import (
     Any, IO, Optional, Union, overload, List,
-    Tuple, Callable,
+    Tuple, Callable, TextIO,
 )
 from io import TextIOWrapper
 
@@ -1293,15 +1293,17 @@ def to_int(text: Any, default_value: int = 0, base: Optional[int] = None) -> int
 safe_int = to_int
 
 
-def to_bool(value: str) -> bool:
+def to_bool(value: Any) -> bool:
     """Converts VALUE to boolean value, returning False iff in {0, False, None, "False", "None", "Off", and ""}, ignoring case.
     Note: ensures the result is of type bool.""" 
     # EX: to_bool("off") => False
-    result = value != ""
-    if isinstance(value, str):
+    result = False
+    if isinstance(value, bool):
+        result = value
+    elif isinstance(value, str):
         result = (value.lower() not in ["false", "none", "off", "0", ""])
-    if not isinstance(result, bool):
-        result = bool(result)
+    elif not isinstance(value, bool):
+        result = bool(value)
     debug.trace_fmtd(7, "to_bool({v}) => {r}", v=value, r=result)
     return result
 #
