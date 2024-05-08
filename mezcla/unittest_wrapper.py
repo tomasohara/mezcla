@@ -17,6 +17,7 @@
 #   See glue_helper.py for implementation along with related ALLOW_SUBCOMMAND_TRACING.
 # TODO:
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
+# - Add TEMP_DIR for more direct specification.
 # - Clarify that this can co-exist with pytest-based tests (see tests/test_main.py).
 # TODO2:
 # - Clean up script_file usage (and unncessary settings in test scripts).
@@ -70,7 +71,7 @@ from mezcla import system
 
 TL = debug.TL
 KEEP_TEMP = system.getenv_bool("KEEP_TEMP", debug.detailed_debugging(),
-                               "keep temporary files")
+                               "Keep temporary files")
 TODO_FILE = "TODO FILE"
 TODO_MODULE = "TODO MODULE"
 
@@ -107,7 +108,7 @@ def get_temp_dir(keep=None, unique=None):
     """Get temporary directory, omitting later deletion if KEEP
     Note: Optionally returns UNIQUE dir
     """
-    # NOTE: Unused function
+    debug.assertion(not ((keep is False) and (unique is False)))
     if keep is None:
         keep = KEEP_TEMP
     dir_base = gh.get_temp_file()
