@@ -35,9 +35,10 @@ import sys
 import tempfile
 from typing import (
     Optional, Any, List, Dict, Union,
-    IO, TextIO,
+    TextIO,
 )
 from types import FrameType
+from io import TextIOWrapper
 
 # Installed packages
 import textwrap
@@ -695,7 +696,7 @@ def read_lines(
     # TODO: use enumerate(f); refine exception in except; 
     # TODO: force unicode if UTF8 encountered
     lines = []
-    f: Optional[Union[TextIO, IO]] = None
+    f: Optional[Union[TextIO, TextIOWrapper]] = None
     try:
         # Open the file
         if not filename:
@@ -733,7 +734,7 @@ def write_lines(
     try:
         mode = 'a' if append else 'w'
         f = system.open_file(filename, mode=mode)
-        assert isinstance(f, IO)
+        assert isinstance(f, TextIOWrapper)
         for line in text_lines:
             line = tpo.normalize_unicode(line)
             f.write(line + "\n")

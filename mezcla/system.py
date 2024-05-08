@@ -38,6 +38,7 @@ from typing import (
     Any, IO, Optional, Union, overload, List,
     Tuple, Callable,
 )
+from io import TextIOWrapper
 
 # Installed packages
 from numpy import unicode_
@@ -720,7 +721,7 @@ def read_lookup_table(
     try:
         # TODO: use csv.reader
         file_obj = open_file(filename)
-        assert isinstance(file_obj, IO)
+        assert isinstance(file_obj, TextIOWrapper)
         with file_obj as f:
             for line in f:
                 line_num += 1
@@ -767,7 +768,7 @@ def create_boolean_lookup_table(
     lookup_hash = defaultdict(bool)
     try:
         file_obj = open_file(filename, **kwargs)
-        assert isinstance(file_obj, IO)
+        assert isinstance(file_obj, TextIOWrapper)
         with file_obj as f:
             for line in f:
                 key = line.strip()
