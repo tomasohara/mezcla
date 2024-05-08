@@ -454,9 +454,10 @@ class TestSystem(TestWrapper):
         assert 'Warning: Ignoring line' in captured
 
         # Test invalid filename
-        THE_MODULE.read_lookup_table('bad_filename')
-        captured = self.get_stderr()
-        assert 'Error' in captured
+        with pytest.raises(AssertionError):
+            THE_MODULE.read_lookup_table('bad_filename')
+            captured = self.get_stderr()
+            assert 'Error' in captured
 
     def test_create_boolean_lookup_table(self):
         """Ensure create_boolean_lookup_table works as expected"""
@@ -490,9 +491,10 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.create_boolean_lookup_table(temp_file, retain_case=True) == expected_uppercase
 
         # Test invalid file
-        THE_MODULE.create_boolean_lookup_table('/tmp/bad_filename')
-        captured = self.get_stderr()
-        assert 'Error:' in captured
+        with pytest.raises(AssertionError):
+            THE_MODULE.create_boolean_lookup_table('/tmp/bad_filename')
+            captured = self.get_stderr()
+            assert 'Error:' in captured
 
     def test_lookup_entry(self):
         """Ensure lookup_entry works as expected"""
