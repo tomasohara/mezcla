@@ -10,6 +10,10 @@
 #  is raised by default. To disable this, set the SUB_DEBUG_LEVEL as follows:
 #     l=5; DEBUG_LEVEL=$l SUB_DEBUG_LEVEL=$l merge_files.py ...
 # - Also see ALLOW_SUBCOMMAND_TRACING usage below and in unittest_wrapper.py.
+# - By default, temporary files are created in the system temporary directory. To
+#   facilate debugging, two environment variables allow for overriding this
+#      TEMP_FILE: fixed temporary file to use
+#      TEMP_BASE: basename for temporary files (or a directory if USE_TEMP_BASE_DIR)
 #
 # TODO:
 # - Add more functions to facilitate command-line scripting (check bash scripts for commonly used features).
@@ -99,12 +103,16 @@ USE_TEMP_BASE_DIR = system.getenv_bool(
 # - see init() for main initialization;
 # - these are placeholds until module initialized
 # - os.path.join used to likewise avoid chick-n-egg problems with init
+# - TEMP_FILE is normally None to indicate use of random temp file name
+# - TEMP_LOG_FILE and TEMP_SCRIPT_FILE are used in run, issue, etc.
 TMP = system.getenv_text(
     "TMP", "/tmp",
     description="Temporary directory")
+PID = system.get_process_id()
 TEMP_FILE = None
-TEMP_LOG_FILE = os.path.join(TMP, "log_file.temp")
-TEMP_SCRIPT_FILE = os.path.join(TMP, "temp_script_file.temp")
+GLOBAL_TEMP_FILE = os.path.join(TMP, f"temp-{PID}")
+TEMP_LOG_FILE = os.path.join(TMP, f"{GLOBAL_TEMP_FILE}.log")
+TEMP_SCRIPT_FILE = os.path.join(TMP, f"{GLOBAL_TEMP_FILE}.script")
 
 #------------------------------------------------------------------------
 
@@ -120,11 +128,21 @@ def get_temp_file(delete=None):
     return temp_file_name
 
 
+def get_temp_dir(delete=None):
+    """Gets temporary file to use as a directory
+    note: Optionally DELETEs directory afterwards
+    """
+    debug.assertion(False, "work-in-progress implementation")
+    dir_path = get_temp_file(delete=delete)
+    full_mkdir(dir_path)
+    return dir_path
+
+
 def create_temp_file(contents, binary=False):
     """Create temporary file with CONTENTS and return full path"""
     temp_filename = get_temp_file()
     system.write_file(temp_filename, contents, binary=binary)
-    debug.trace(6, "create_temp_file({contents!r}) => {temp_filename}")
+    debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
     return temp_filename
 
 
@@ -288,11 +306,14 @@ def create_directory(path):
 
 
 def full_mkdir(path):
-    """Issues mkdir to ensure path directory, including parents (assuming Linux like shell)"""
+    """Issues mkdir to ensure path directory, including parents (assuming Linux like shell)
+    Note: Doesn't handle case when file exists but is not a directory
+    """
     debug.trace(6, f"full_mkdir({path!r})")
     ## TODO: os.makedirs(path, exist_ok=True)
     debug.assertion(os.name == "posix")
-    issue('mkdir --parents "{p}"', p=path)
+    if not system.file_exists(path_dir):
+        issue('mkdir --parents "{p}"', p=path)
     debug.assertion(is_directory(path))
     return
 
@@ -869,7 +890,9 @@ def init():
     if USE_TEMP_BASE_DIR and TEMP_BASE:
         full_mkdir(TEMP_BASE)
     #
-    temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
+    ## BAD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
+    ## BAD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}" if TEMP_BASE else temp_filename)
+    temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}" if TEMP_BASE else None)
     TEMP_FILE = system.getenv_value(
         "TEMP_FILE", temp_file_default,
         description="Override for temporary filename")
