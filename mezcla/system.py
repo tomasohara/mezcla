@@ -1299,8 +1299,40 @@ def get_args():
     debug.trace_fmtd(6, "get_args() => {r}", r=result)
     return result
 
+
+def make_wrapper(function_name, function, trace_level=6):
+    """Creates wrapper around FUNCTION with NAME"""
+    debug.trace(7, f"make_wrapper{(function_name, function, trace_level)}")
+    # EX: make_wrapper("get_process_id", os.getpid).__doc__ => "Wrapper around posix.getpid"
+    # TODO3: resolve module used in refernce so that docstring more intuitive (e.g., posix.getpid => os.getpid)
+    #
+    def wrapper(*args, **kwargs):
+        """placeholder docstring"""
+        debug.trace(trace_level + 1, f"in f{function_name}: {args=} {kwargs=}")
+        result = function(*args, **kwargs)
+        debug.trace(trace_level, f"{function_name}() => {result!r}")
+        return result
+    #
+    function_spec = f"{function.__module__}.{function.__name__}"
+    wrapper.__doc__ = f"Wrapper around {function_spec}"
+    return wrapper
+
+def install_wrapper(function_name, function, **kwargs):
+    """Creates wrapper via make_wrapper (q.v.) and install in current namespace"""
+    debug.trace(7, f"install_wrapper{(function_name, function, kwargs)}")
+    wrapper = make_wrapper(function_name, function, **kwargs)
+    global_namespace = globals()
+    global_namespace[function_name] = wrapper
+
 #-------------------------------------------------------------------------------
-# Memomization support (i.e., functiona result caching), based on 
+# Wrapper support
+# TODO: look into ways to inform pylint about function definitions
+
+install_wrapper("get_parent_pid", os.getppid)
+get_process_id = make_wrapper("get_process_id", os.getpid, trace_level=7)
+
+#-------------------------------------------------------------------------------
+# Memomization support (i.e., function result caching), based on 
 #     See http://code.activestate.com/recipes/578231-probably-the-fastest-memoization-decorator-in-the-. [world!]
 # This is implemented transparently via Python decorators. See
 #     http://stackoverflow.com/questions/739654/understanding-python-decorators
