@@ -21,6 +21,7 @@ Sample usage:
 import time
 import pathlib
 import atexit
+from collections.abc import Iterable
 
 # Installed modules
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -68,6 +69,8 @@ LLAMA_MODEL = system.getenv_text("LLAMA_MODEL", LLAMA_DEFAULT,
                                   description="path to llama model bin")
 INDEX_STORE_DIR = system.getenv_text("INDEX_STORE_DIR", gh.form_path(gh.dirname(__file__),"faiss"),
                                       description="path to store index data base")
+INDEX_ONLY_RECENT = system.getenv_bool("INDEX_ONLY_RECENT", True,
+                                       description="wheter or not to filter files by modification time newer than index")
 if not system.is_directory(INDEX_STORE_DIR):
     gh.full_mkdir(INDEX_STORE_DIR)
 
@@ -109,16 +112,32 @@ class DesktopSearch:
             doc.metadata = doc_metadata
             return doc
         
-        if system.
+        def get_last_modified_date(iterable: Iterable) -> float|None:
+            """return the newest modification date as a float, 
+               or None if iterable is empty or files don't exist"""
+            times = map(system.get_file_modification_time, iterable)
+            result = None
+            for time in times: 
+                if time is None:
+                    continue
+                result = time if result is None or time > result else result
+            return result
 
         # copy files over to temp dir
         timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
-        ## TODO: look for some variable/function  to not hardcode tmp_path
         real_path = system.real_path(dir_path)
         tmp_path = system.form_path(f"{system.TEMP_DIR}",f"llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
-        list_files = system.get_directory_filenames(real_path)
         gh.full_mkdir(tmp_path)
-        files_to_convert = [found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
+        
+        list_files = system.get_directory_filenames(real_path)
+        filtered_files = list_files
+        # filter files by modification time if needed
+        modif_time = get_last_modified_date(system.get_directory_filenames(INDEX_STORE_DIR))
+        if modif_time is not None and INDEX_ONLY_RECENT:
+            filtered_files = filter(system.get_file_modification_time, list_files)
+        
+        
+        files_to_convert = [found for found in filtered_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
         # register cleanup function before creating temp files
         atexit.register(gh.delete_directory, tmp_path)
         for num,file in enumerate(files_to_convert):
