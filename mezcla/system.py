@@ -41,6 +41,8 @@ import six
 # Local packages
 from mezcla import debug
 from mezcla.debug import UTF8
+## TODO3: debug.trace_expr(6, __file__)
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Constants
 STRING_TYPES = six.string_types
