@@ -12,6 +12,8 @@
 
 # Standard modules
 ## TODO: from collections import defaultdict
+import atexit
+from collections.abc import Iterable
 
 # Installed modules
 import pytest
@@ -31,13 +33,24 @@ import mezcla.llm_desktop_search as THE_MODULE
 
 #------------------------------------------------------------------------
 
+def get_last_modified_date(iterable: Iterable) -> float|None:
+            """return the newest modification date as a float, 
+               or None if iterable is empty or files don't exist"""
+            times = map(system.get_file_modification_time, iterable)
+            result = None
+            for time in times: 
+                if time is None:
+                    continue
+                result = time if result is None or time > result else result
+            return result
+
 class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    faiss_store_dir = THE_MODULE.FAISS_STORE_DIR.lstrip().lstrip(system.path_separator())        
-    # set a temp dir to test faiss indexing
-    faiss_temp_dir = gh.form_path(system.TEMP_DIR, faiss_store_dir)        
-    faiss_parent = gh.form_path(faiss_temp_dir, "..")
+    INDEX_STORE_DIR = THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator())        
+    # set a temp dir to test index indexing
+    self.index_temp_dir = gh.form_path(system.TEMP_DIR, INDEX_STORE_DIR)        
+    index_parent = gh.form_path(self.index_temp_dir, "..")
     #
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
@@ -47,9 +60,10 @@ class TestIt(TestWrapper):
     def test_01_index_dir(self):
         """Tests run_script to index directory"""
         debug.trace(4, f"TestIt.test_01_index_dir(); self={self}")
+        atexit.register(gh.delete_directory(self.self.index_temp_dir))
 
-        if not system.is_directory(self.faiss_parent):
-            gh.full_mkdir(self.faiss_parent)
+        if not system.is_directory(self.index_parent):
+            gh.full_mkdir(self.index_parent)
         
         # test if indexing works with with no existing db
         repo_base_dir = gh.form_path(gh.real_path(gh.dirname(__file__)),
@@ -60,26 +74,25 @@ class TestIt(TestWrapper):
                         data_file=repo_base_dir,
                         log_file=index_file,
                         out_file=index_file,
-                        env_options=f"FAISS_STORE_DIR={self.faiss_temp_dir}")
+                        env_options=f"index_STORE_DIR={self.self.index_temp_dir}")
         
-        faiss_files = system.read_directory(self.faiss_temp_dir)
-        self.do_assert("index.faiss" in faiss_files)
-        self.do_assert("index.pkl" in faiss_files)
+        index_files = system.read_directory(self.self.index_temp_dir)
+        
+        # assert INDEX_STORE_DIR is not empty
+        self.do_assert(index_files != [])
         # self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         
-        get_size_of = lambda x: sum(map(system.get_file_size ,system.get_directory_filenames(x)))
-            
-        prev_size = get_size_of(self.faiss_temp_dir)
+        #save modified date for comparing later 
+        prev_size = get_last_modified_date(system.get_directory_filenames(self.self.index_temp_dir, just_regular_files=True))
         
         # test that indexing with an already existing DB works
         resource_dir = gh.form_path(gh.real_path(gh.dirname(__file__)), "resources")
         self.run_script(options="--index",
                         data_file=resource_dir,
-                        env_options=f"FAISS_STORE_DIR={self.faiss_temp_dir}")
-        new_size = get_size_of(self.faiss_temp_dir)
-        gh.delete_directory(self.faiss_temp_dir)
-                
-        #for now, test based on the size of the index
+                        env_options=f"INDEX_STORE_DIR={self.self.index_temp_dir}")
+        
+        # get modification time and check if it changed
+        new_size = get_last_modified_date(system.get_directory_filenames(self.self.index_temp_dir, just_regular_files=True))
         self.do_assert(new_size > prev_size)
         # self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         
@@ -113,27 +126,26 @@ class TestIt(TestWrapper):
         """Test run_script to show similar document to QUERY"""
         debug.trace(4,f"test_04_show_similar(): self={self}")
         
-        faiss_temp_dir = gh.form_path(system.TEMP_DIR,self.faiss_store_dir)        
-        faiss_parent = gh.form_path(faiss_temp_dir, "..")
-        if not system.is_directory(faiss_parent):
-            gh.full_mkdir(faiss_parent)
+        index_parent = gh.form_path(self.index_temp_dir, "..")
+        if not system.is_directory(index_parent):
+            gh.full_mkdir(index_parent)
             
         
         # index base mezcla dir for LICENSE.txt
         mezcla_base = gh.form_path(gh.dirname(__file__), "..", "..")
         self.run_script(options="--index",
                         data_file= mezcla_base,
-                        env_options=f"FAISS_STORE_DIR={faiss_temp_dir}",
+                        env_options=f"index_STORE_DIR={self.index_temp_dir}",
                         trace_level=6)
         
         output_file = self.get_temp_file()
         
-        self.do_assert(system.is_directory(faiss_temp_dir))
+        self.do_assert(system.is_directory(self.index_temp_dir))
         self.run_script(options="--similar LICENSE",
                                  out_file=output_file,
                                  log_file=output_file,
-                                 env_options=f"FAISS_STORE_DIR={faiss_temp_dir}")
-        gh.delete_directory(faiss_temp_dir)
+                                 env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
+        gh.delete_directory(self.index_temp_dir)
         self.do_assert("Lesser General Public License" in system.read_file(output_file))
         
 
