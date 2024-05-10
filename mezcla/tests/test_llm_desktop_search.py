@@ -49,8 +49,8 @@ class TestIt(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     INDEX_STORE_DIR = THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator())        
     # set a temp dir to test index indexing
-    self.index_temp_dir = gh.form_path(system.TEMP_DIR, INDEX_STORE_DIR)        
-    index_parent = gh.form_path(self.index_temp_dir, "..")
+    index_temp_dir = gh.form_path(system.TEMP_DIR, INDEX_STORE_DIR)        
+    index_parent = gh.form_path(index_temp_dir, "..")
     #
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
