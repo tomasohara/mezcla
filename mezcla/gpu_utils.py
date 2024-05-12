@@ -39,21 +39,25 @@ GPU_DEBUG_LEVEL = system.getenv_int(
 
 #-------------------------------------------------------------------------------
 
-def trace_gpu_usage(level: Optional[int] = None):
+def trace_gpu_usage(level: Optional[int] = None, show_if_disabed: Optional[bool] = False):
     """Trace out usage for GPU memory, etc.
-    Note: Optional level defaults to GPU_DEBUG_LEVEL
+    Note: This used nvidia-smi and is omitted for non-CUDA unless SHOW_IF_DISABED.
+    The optional level defaults to GPU_DEBUG_LEVEL.
+
     TODO: support other types besides NVidia"""
     if level is None:
         level = GPU_DEBUG_LEVEL
-    if TORCH_DEVICE == "cuda":
+    if ((TORCH_DEVICE == "cuda") or show_if_disabed):
         debug.trace(level, "GPU usage")
         debug.trace(level, gh.run("nvidia-smi"))
+    else:
+        debug.trace(level, "No CUDA device enabled, so skipping nvidia-smi")
     ## DEBUG: debug.trace_expr(1, int(level), int(DEBUG_LEVEL), GPU_DEBUG_LEVEL)
     if level > DEBUG_LEVEL:
         debug.trace(TL.USUAL, "FYI: Use higher trace level--DEBUG_LEVEL")
 
 #-------------------------------------------------------------------------------
-
+        
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
     system.print_error("Warning: Not intended for direct invocation.")
