@@ -50,11 +50,15 @@ import pstats
 # Local packages
 from mezcla import debug
 ## OLD: from tpo_common import *
-from mezcla.system import getenv_text, print_stderr
+from mezcla.system import getenv_bool, getenv_text, print_stderr
 
 ## OLD: PROFILE_KEY = getenv_text("PROFILE_KEY", "cumulative")
-PROFILE_KEY = getenv_text("PROFILE_KEY", "cumulative",
-                          "Sort key (e.g., cumtime, filename, ncalls, tottime)")
+PROFILE_KEY = getenv_text(
+    "PROFILE_KEY", "cumulative",
+    desc="Sort key (e.g., cumtime, filename, ncalls, tottime)")
+FULL_PATH = getenv_bool(
+    "FULL_PATH", False,
+    desc="Show full path in filename field")
 
 #------------------------------------------------------------------------
 # Functions
@@ -66,6 +70,8 @@ def usage():
 Usage: {program} profile-log
 
 Notes:
+- use FULL_PATH to include directoy for filename
+  (e.g., helps to resolve all those __init__.py entries)
 - use PROFILE_KEY to over default sorting (cumulative)
 - main keys: 
        cumtime, filename, ncalls, tottime
@@ -94,7 +100,9 @@ def main():
 
     # Generate listing and sort by cumulative time
     p = pstats.Stats(file)
-    p.strip_dirs().sort_stats(PROFILE_KEY).print_stats()
+    if not FULL_PATH:
+        p = p.strip_dirs()
+    p.sort_stats(PROFILE_KEY).print_stats()
     return
 
 #------------------------------------------------------------------------

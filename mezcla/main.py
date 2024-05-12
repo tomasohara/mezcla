@@ -91,6 +91,7 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla.my_regex import my_re
 from mezcla.system import getenv_bool
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Constants
 HELP_ARG = "--help"
@@ -390,6 +391,8 @@ class Main(object):
         ## TODO2: add short option support as in ("--num-eggs/-#", "Number of eggs", 2)
         ## TODO3: make the component representation structured (e.g., namedtuple)
         ## TEST: result = ["", "", ""]
+        tpo.debug_format("in convert_option({o}, {d}, {p})", 6,
+                         o=option_spec, d=default_value, p=positional)
         opt_label = None
         opt_desc = None
         opt_default = default_value
@@ -717,10 +720,11 @@ class Main(object):
                     debug.trace_expr(3, self.filename, self.other_filenames)
             else:
                 debug.assertion(isinstance(self.filename, str))
-                debug.assertion(os.path.exists(self.filename))
-                mode = ("r" if (not self.binary_input) else "rb")
-                self.input_stream = system.open_file(self.filename, mode=mode, errors=self.input_error)
-                debug.assertion(self.input_stream)
+                if not (self.manual_input and self.skip_input):
+                    debug.assertion(os.path.exists(self.filename))
+                    mode = ("r" if (not self.binary_input) else "rb")
+                    self.input_stream = system.open_file(self.filename, mode=mode, errors=self.input_error)
+                    debug.assertion(self.input_stream)
         # Optionally reopen stream to change built-in settings
         error_handling_change = (self.input_error and (self.input_error != self.input_stream.errors))
         reopen_stream = (error_handling_change or self.newlines)

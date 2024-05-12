@@ -67,6 +67,7 @@ import re
 import six
 import sys
 import time
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Local packages
 ## OLD:
@@ -1122,6 +1123,7 @@ if __debug__:
         module_file = __file__
         trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
         trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
+        trace_expr(QUITE_DETAILED, __file__)
 
         # Determine other debug-only environment options
         global para_mode_tracing
