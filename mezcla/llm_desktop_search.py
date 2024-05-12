@@ -63,14 +63,14 @@ Helpful answer:
 NUM_SIMILAR = system.getenv_int(
     "NUM_SIMILAR", 10,
     description="Number of similar documents to show")
-HOME_DIR = system.getenv_text("HOME", description="home directory")
-LLAMA_DEFAULT = gh.form_path(HOME_DIR, "Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin")
-LLAMA_MODEL = system.getenv_text("LLAMA_MODEL", LLAMA_DEFAULT,
+LLAMA_MODEL = system.getenv_text ("LLAMA_MODEL", '/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
                                   description="path to llama model bin")
 INDEX_STORE_DIR = system.getenv_text("INDEX_STORE_DIR", gh.form_path(gh.dirname(__file__),"faiss"),
                                       description="path to store index data base")
 INDEX_ONLY_RECENT = system.getenv_bool("INDEX_ONLY_RECENT", True,
                                        description="wheter or not to filter files by modification time newer than index")
+# 
+debug.trace(*1, "*** Warning: put this in class (e.g., index_dir)")
 if not system.is_directory(INDEX_STORE_DIR):
     gh.full_mkdir(INDEX_STORE_DIR)
 
@@ -126,7 +126,10 @@ class DesktopSearch:
         # copy files over to temp dir
         timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
         real_path = system.real_path(dir_path)
-        tmp_path = system.form_path(f"{system.TEMP_DIR}",f"llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
+        # note: # using [1:] to remove the initial path separator
+        # TODO1: add assertion that real_path[10] is like "." (or better motivate why ignored)
+        tmp_path = system.form_path(f"{system.TEMP_DIR}",
+                                    f"llm_desktop_search.{timestamp}", real_path[1:]) 
         gh.full_mkdir(tmp_path)
         
         list_files = system.get_directory_filenames(real_path)
