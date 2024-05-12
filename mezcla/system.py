@@ -622,7 +622,11 @@ def read_directory(directory):
     """Returns list of files in DIRECTORY"""
     # Note simple wrapper around os.listdir with tracing
     # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
-    files = os.listdir(directory)
+    files = []
+    try:
+        files = os.listdir(directory)
+    except:
+        print_exception_info(f"reading dir {directory!r}")
     debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files,
                      max_len=4096)
     return files
