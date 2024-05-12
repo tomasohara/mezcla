@@ -124,10 +124,6 @@ INDEX_STORE_DIR = system.getenv_text(
 INDEX_ONLY_RECENT = system.getenv_bool(
     "INDEX_ONLY_RECENT", True,
     description="whether or not to filter files by modification time newer than index")
-#
-# TODO1: put this in class
-if not system.is_directory(INDEX_STORE_DIR):
-    gh.full_mkdir(INDEX_STORE_DIR)
 
 
 def get_file_mod_fime(path: str) -> float:
@@ -160,9 +156,12 @@ def get_last_modified_date(iterable: Iterable) -> float:
 class DesktopSearch:
     """Class for searching local computer"""
 
-    def __init__(self):
-        """Initializer"""
+    def __init__(self, index_store_dir=None):
+        """Initializer; index placed in INDEX_STORE_DIR"""
         debug.trace_fmtd(TL.VERBOSE, "Helper.__init__(): self={s}", s=self)
+        if index_store_dir is None:
+            index_store_dir = INDEX_STORE_DIR
+        self.index_store_dir = index_store_dir
         self.embeddings = None
         self.db = None
         self.llm = None
@@ -174,6 +173,10 @@ class DesktopSearch:
         ## TODO: look into indexing files from buffers rather than external files
         debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
 
+        # Make sure target index directory exists
+        if not system.is_directory(self.index_store_dir):
+            gh.full_mkdir(self.index_store_dir)
+        
         # define what documents to load
         text_loader_kwargs={'autodetect_encoding': True}
         loader = DirectoryLoader(dir_path, glob="./*.txt", loader_cls=TextLoader, loader_kwargs=text_loader_kwargs)
@@ -189,16 +192,22 @@ class DesktopSearch:
             return text
     
         ## TODO1: move this helper outside of index_dir
-        def correct_metadata(doc: Document) -> Document:
+        def correct_metadata(doc: Document, base_dir: str) -> Document:
             """removes the first two parts of the source metadata
-               so it represents the actual source of the file"""
+               so it represents the actual source of the file
+               Note: Now removes specifid BASE_DIR"""
+            # TODO1: fix docstrings with respect to hardcoded assumptions
             doc_metadata = doc.metadata
-            debug.trace_fmtd(4, f"old_source: {doc_metadata['source']}")
-            split_source = doc_metadata['source'].split(system.path_separator(),maxsplit=3)
+            old_source = doc_metadata['source']
+            debug.trace_expr(4, old_source)
+            ## BAD:
+            ## split_source = doc_metadata['source'].split(system.path_separator(),maxsplit=3)
             ## TODO2: make sure this works for other temp directories (e.g., /home/tomohara/temp)
-            # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
-            new_source = system.real_path(split_source[3])
-            debug.trace_fmtd(4, f"new_source: {new_source}")
+            ## # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
+            ## new_source = system.real_path(split_source[3])
+            new_source = old_source.replace(base_dir, "")
+            debug.assertion(new_source != old_source)
+            debug.trace_expr(4, new_source)
             doc_metadata['source'] = new_source
             doc.metadata = doc_metadata
             return doc
@@ -217,7 +226,7 @@ class DesktopSearch:
         filtered_files = list_files
         # filter files by modification time if needed
         # note: The modification time is -1 
-        modif_time = get_last_modified_date(system.get_directory_filenames(INDEX_STORE_DIR))
+        modif_time = get_last_modified_date(system.get_directory_filenames(self.index_store_dir))
         ## BAD:
         ## if modif_time is not None and INDEX_ONLY_RECENT:
         ##     filtered_files = filter(system.get_file_modification_time, list_files)
@@ -235,7 +244,6 @@ class DesktopSearch:
                 system.write_file(file_tmp_path, system.read_entire_file(file, encoding="unicode_escape"))
             else:
                 system.write_file(f"{file_tmp_path}_temp_{num}.txt", convert_to_txt(file))
-    
         
         # interpret information in the documents
         loader = DirectoryLoader(tmp_path, glob="*.txt", loader_cls=TextLoader)
@@ -245,13 +253,13 @@ class DesktopSearch:
                                                   chunk_overlap=CHUNK_OVERLAP)
         # documents are splitted to a maximum of 500 characters per chunk (by default)
         texts = splitter.split_documents(documents)
-        corrected_texts = [correct_metadata(text) for text in texts]
+        corrected_texts = [correct_metadata(text, tmp_path) for text in texts]
         if not self.embeddings:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name=EMBEDDING_MODEL,
                 model_kwargs={'device': TORCH_DEVICE})
 
-        # add (or create from docs) to the db and save it 
+        # add (or create from docs) to the db and save it
         try:
             self.load_index()
         except RuntimeError:
@@ -260,7 +268,7 @@ class DesktopSearch:
             self.db.add_documents(corrected_texts)
         else:
             self.db = FAISS.from_documents(corrected_texts, self.embeddings)
-        self.db.save_local(INDEX_STORE_DIR)
+        self.db.save_local(self.index_store_dir)
 
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
@@ -283,12 +291,12 @@ class DesktopSearch:
         # load the interpreted information from the local database
         if not self.embeddings:
             self.embeddings = HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                model_name=EMBEDDING_MODEL,
                 model_kwargs={'device': TORCH_DEVICE})
         options = {}
         if ALLOW_UNSAFE_MODELS:
             options["allow_dangerous_deserialization"] = ALLOW_UNSAFE_MODELS
-        self.db = FAISS.load_local(INDEX_STORE_DIR, self.embeddings, **options)
+        self.db = FAISS.load_local(self.index_store_dir, self.embeddings, **options)
         debug.trace_expr(5, self.llm, self.embeddings, self.db)
         gpu_utils.trace_gpu_usage()
 
