@@ -105,13 +105,22 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
         debug.trace(4, "test_create_directory()")
-        assert False
+        assert False, "TODO: implement"
 
     @pytest.mark.xfail
     def test_full_mkdir(self):
         """Ensure full_mkdir works as expected"""
         debug.trace(4, "test_full_mkdir()")
-        assert False
+        temp_dir_abc = gh.form_path(gh.TMP, "a", "b", "c", str(system.get_process_id()))
+        debug.assertion(not system.is_directory(temp_dir_abc))
+        THE_MODULE.full_mkdir(temp_dir_abc)
+        assert  system.is_directory(temp_dir_abc)
+
+    @pytest.mark.xfail
+    def test_get_temp_dir(self):
+        """Tests get_temp_dir"""
+        debug.trace(4, "test_get_temp_dir()")
+        assert False, "TODO: implement"
 
     @pytest.mark.xfail
     def test_real_path(self):
@@ -158,7 +167,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_disable_subcommand_tracing(self):
         """Ensure disable_subcommand_tracing works as expected"""
         debug.trace(4, "test_disable_subcommand_tracing()")
-        assert False
+        assert False, "TODO: implement"
 
     @pytest.mark.xfail
     def test_run(self):
@@ -380,13 +389,13 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_get_matching_files(self):
         """Ensure get_matching_files works as expected"""
         debug.trace(4, "test_get_matching_files()")
-        assert False
+        assert False, "TODO: implement"
 
     @pytest.mark.xfail
     def test_get_files_matching_specs(self):
         """Ensure get_files_matching_specs works as expected"""
         debug.trace(4, "test_get_files_matching_specs()")
-        assert False
+        assert False, "TODO: implement"
 
     @pytest.mark.xfail
     def test_get_directory_listing(self):
@@ -473,6 +482,13 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
 
         THE_MODULE.DISABLE_RECURSIVE_DELETE = old
 
+    @pytest.mark.xfail
+    def test_initialization(self):
+        """Make sure module initialized OK"""
+        # TODO1: add checks for TEMP_BASE and TEMP_FILE, along with PRESERVE_TEMP_FILE
+        # TODO3: add checks for TEMP_LOG_FILE and TEMP_SCRIPT_FILE
+        assert False, "TODO: implement"
+        
 if __name__ == '__main__':
     debug.trace_current_context()
     pytest.main([__file__])
