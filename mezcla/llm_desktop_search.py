@@ -7,10 +7,11 @@
 #   https://swharden.com/blog/2023-07-29-ai-chat-locally-with-python
 #   https://github.com/alejandro-ao/ask-multiple-pdfs
 #
-# TODO:
+# TODO1: ***
 # - Lorenzo: review the TODO1 items below (added during merge).
 # - Look into dropping atexit (becuase temp directories as used);
 #   or at least skip if main.KEEP_TEMP_FILES (useful for debugging).
+# - Note that --index arg changed rom binary to text with index dir.
 #
 
 """
@@ -43,7 +44,7 @@ from langchain_community.vectorstores import FAISS
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import gpu_utils
-from mezcla.main import Main
+from mezcla.main import Main, KEEP_TEMP_FILES
 from mezcla import system
 from mezcla import html_utils
 from mezcla import extract_document_text
@@ -140,6 +141,22 @@ def get_file_mod_fime(path: str) -> float:
     return result
 
 
+def get_last_modified_date(iterable: Iterable) -> float:
+    """return the newest modification date as a float, 
+       or -1 if iterable is empty or files don't exist"""
+    ## OLD:
+    ## times = map(get_file_mod_fime, iterable)
+    ## result = None
+    ## for time in times: 
+    ##     if time is None:
+    ##         continue
+    ##     result = time if result is None or time > result else result
+    result = -1
+    if iterable:
+        result = max(map(get_file_mod_fime, iterable))
+    return result
+
+
 class DesktopSearch:
     """Class for searching local computer"""
 
@@ -186,22 +203,6 @@ class DesktopSearch:
             doc.metadata = doc_metadata
             return doc
         
-        ## TODO1: move this helper outside of index_dir
-        def get_last_modified_date(iterable: Iterable) -> float|None:
-            """return the newest modification date as a float, 
-               or -1 if iterable is empty or files don't exist"""
-            ## OLD:
-            ## times = map(get_file_mod_fime, iterable)
-            ## result = None
-            ## for time in times: 
-            ##     if time is None:
-            ##         continue
-            ##     result = time if result is None or time > result else result
-            result = -1
-            if iterable:
-                result = max(map(get_file_mod_fime, iterable))
-            return result
-
         # copy files over to temp dir
         # note: timestamp strips the time of day (e.g., 2024-05-11)
         timestamp = debug.timestamp().split(' ', maxsplit=1)[0]
@@ -225,7 +226,8 @@ class DesktopSearch:
         
         files_to_convert = [found for found in filtered_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
         # register cleanup function before creating temp files
-        atexit.register(gh.delete_directory, tmp_path)
+        if not KEEP_TEMP_FILES:
+            atexit.register(gh.delete_directory, tmp_path)
         for num, file in enumerate(files_to_convert):
             filename = system.filename_proper(file)
             file_tmp_path = system.form_path(tmp_path, filename) 
