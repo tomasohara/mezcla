@@ -46,7 +46,7 @@ SIMILAR_ARG = "similar"
 ## OLD: TORCH_DEVICE = gpu_utils.TORCH_DEVICE
 TORCH_DEVICE = system.getenv_text(
     "TORCH_DEVICE", gpu_utils.TORCH_DEVICE,
-    desc="Torch devcice to use--gpu or mps if available else cpu")
+    desc="Torch devcice to use--cuda or mps if available else cpu")
 debug.trace_expr(5, TORCH_DEVICE)
 MODEL = system.getenv_text(
     "MODEL", "llama-2-7b-chat.ggmlv3.q8_0.bin",
