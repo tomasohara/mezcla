@@ -87,8 +87,9 @@ QA_LLM_MODEL = system.getenv_text(
 QA_LLM_TYPE = system.getenv_text(
     "QA_LLM_TYPE", "llama",
     description="Type of transformer model for Q&A, such as llama or gpt2")
-ALLOW_UNSAFE_MODELS = system.getenv_bool(
-    "ALLOW_UNSAFE_MODELS", TORCH_DEVICE == "mps",
+ALLOW_UNSAFE_MODELS_DEFAULT = None if (TORCH_DEVICE != "mps") else True
+ALLOW_UNSAFE_MODELS = system.getenv_value(
+    "ALLOW_UNSAFE_MODELS", ALLOW_UNSAFE_MODELS_DEFAULT,
     description="Whether to allow loading of possibly unsafe Pickle models")
 CHUNK_SIZE = system.getenv_int(
     "CHUNK_SIZE", 500,
@@ -220,12 +221,12 @@ class DesktopSearch:
         ## if modif_time is not None and INDEX_ONLY_RECENT:
         ##     filtered_files = filter(system.get_file_modification_time, list_files)
         if INDEX_ONLY_RECENT:
-            filtered_files = [f for f in list_files if ((f) > modif_time)]
+            filtered_files = [f for f in list_files if (get_file_mod_fime(f) > modif_time)]
         
         files_to_convert = [found for found in filtered_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
         # register cleanup function before creating temp files
         atexit.register(gh.delete_directory, tmp_path)
-        for num,file in enumerate(files_to_convert):
+        for num, file in enumerate(files_to_convert):
             filename = system.filename_proper(file)
             file_tmp_path = system.form_path(tmp_path, filename) 
             if file.endswith('.txt'):
@@ -282,9 +283,11 @@ class DesktopSearch:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2",
                 model_kwargs={'device': TORCH_DEVICE})
-        options = {"allow_dangerous_deserialization": ALLOW_UNSAFE_MODELS}
+        options = {}
+        if ALLOW_UNSAFE_MODELS:
+            options["allow_dangerous_deserialization"] = ALLOW_UNSAFE_MODELS
         self.db = FAISS.load_local(INDEX_STORE_DIR, self.embeddings, **options)
-        debug.trace_expr(5, llm, self.embeddings, self.db)
+        debug.trace_expr(5, self.llm, self.embeddings, self.db)
         gpu_utils.trace_gpu_usage()
 
     def prepare_qa_llm(self):
@@ -332,10 +335,9 @@ class DesktopSearch:
 class Script(Main):
     """Adhoc script class (e.g., no I/O loop, just run calls)"""
     # note: class-level variables for arguments avoids need for class constructor
-    index_arg = False
+    index_arg = None
     search_arg = False
     similar_arg = False
-    text = None
 
     def setup(self):
         """Check results of command line processing"""
@@ -343,7 +345,6 @@ class Script(Main):
         self.index_arg = self.get_parsed_option(INDEX_ARG, self.index_arg)
         self.search_arg = self.get_parsed_option(SEARCH_ARG, self.search_arg)
         self.similar_arg = self.get_parsed_option(SIMILAR_ARG, self.similar_arg)
-        self.text = self.filename
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
     def run_main_step(self):
@@ -351,7 +352,7 @@ class Script(Main):
         debug.trace_fmtd(5, "Script.run_main_step(): self={s}", s=self)
         ds = DesktopSearch()
         if self.index_arg:
-            ds.index_dir(self.text)
+            ds.index_dir(self.index_arg)
         elif self.search_arg:
             ds.search_to_answer(self.search_arg)
         elif self.similar_arg:
@@ -364,9 +365,10 @@ def main():
     """Entry point"""
     app = Script(
         description=__doc__.format(script=gh.basename(__file__)),
-        skip_input=False, manual_input=True,
-        boolean_options=[(INDEX_ARG, "Index directory")],
-        text_options=[(SEARCH_ARG, "Search documents to answer question"),
+        skip_input=True, manual_input=True,
+        boolean_options=[],
+        text_options=[(INDEX_ARG, "Index directory"),
+                      (SEARCH_ARG, "Search documents to answer question"),
                       (SIMILAR_ARG, "Show similar documents")],
         float_options=None)
     app.run()
