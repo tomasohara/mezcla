@@ -7,6 +7,11 @@
 #   https://swharden.com/blog/2023-07-29-ai-chat-locally-with-python
 #   https://github.com/alejandro-ao/ask-multiple-pdfs
 #
+# TODO:
+# - Lorenzo: review the TODO1 items below (added during merge).
+# - Look into dropping atexit (becuase temp directories as used);
+#   or at least skip if main.KEEP_TEMP_FILES (useful for debugging).
+#
 
 """
 Desktop search utility
@@ -20,11 +25,14 @@ Sample usage:
 # Standard modules
 import time
 import pathlib
+import atexit
+from collections.abc import Iterable
 
 # Installed modules
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
+from langchain_core.documents import Document
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.llms import CTransformers
@@ -37,14 +45,19 @@ from mezcla import glue_helpers as gh
 from mezcla import gpu_utils
 from mezcla.main import Main
 from mezcla import system
+from mezcla import html_utils
+from mezcla import extract_document_text
+from mezcla.my_regex import my_re
 
 # Constants
 TL = debug.TL
 INDEX_ARG = "index"
 SEARCH_ARG = "search"
 SIMILAR_ARG = "similar"
-TORCH_DEVICE = gpu_utils.TORCH_DEVICE
-#
+TORCH_DEVICE = system.getenv_text(
+    "TORCH_DEVICE", gpu_utils.TORCH_DEVICE,
+    desc="Torch devcice to use--cuda or mps if available else cpu")
+debug.trace_expr(5, TORCH_DEVICE)
 QA_TEMPLATE = """Use the following pieces of information to answer the user's question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 Context: {context}
@@ -57,6 +70,74 @@ Helpful answer:
 NUM_SIMILAR = system.getenv_int(
     "NUM_SIMILAR", 10,
     description="Number of similar documents to show")
+HOME_DIR = system.getenv_text("HOME", description="home directory")
+## OLD:
+## LLAMA_DEFAULT = gh.form_path(HOME_DIR, "Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin")
+## LLAMA_MODEL = system.getenv_text(
+##     "LLAMA_MODEL", LLAMA_DEFAULT,
+##     description="path to llama model bin")
+EMBEDDING_MODEL = system.getenv_text(
+    "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2",
+    description="Model for sentence transformer embeddings")
+# note: changed default to currrent dir rather than home
+QA_LLM_DEFAULT = "llama-2-7b-chat.ggmlv3.q8_0.bin"
+QA_LLM_MODEL = system.getenv_text(
+    "QA_LLM_MODEL", QA_LLM_DEFAULT,
+    description="Path to LLM model file for Q&A, such as a llama-2-7b .bin file")
+QA_LLM_TYPE = system.getenv_text(
+    "QA_LLM_TYPE", "llama",
+    description="Type of transformer model for Q&A, such as llama or gpt2")
+ALLOW_UNSAFE_MODELS = system.getenv_bool(
+    "ALLOW_UNSAFE_MODELS", TORCH_DEVICE == "mps",
+    description="Whether to allow loading of possibly unsafe Pickle models")
+CHUNK_SIZE = system.getenv_int(
+    "CHUNK_SIZE", 500,
+    description="Number of characters for text splitter chunking")
+CHUNK_OVERLAP = system.getenv_int(
+    "CHUNK_OVERLAP", 50,
+    description="Size of overlap in characters for text splitter chunking")
+MAX_NEW_TOKENS = system.getenv_int(
+    "MAX_NEW_TOKENS", 256,
+    description="Max number of generated tokens for Q&A LLM")
+TEMPERATURE = system.getenv_int(
+    "TEMPERATURE", 0.01,
+    description="Degree of randomness or creativity of generated text")
+CONTEXT_LENGTH = system.getenv_int(
+    "CONTEXT_LENGTH", 512,
+    description="Context window size in tokens")
+GPU_LAYERS = system.getenv_int(
+    "GPU_LAYERS", (0 if (TORCH_DEVICE == "cpu") else -1),
+    description="Number of layers to use for CTransfomers model")
+## TODO
+## X = system.getenv_int(
+##     "X", X,
+##     description="X")
+
+
+INDEX_STORE_DIR = system.getenv_text(
+    # note: changed default to current directory to avoid script dir being reused
+    ## OLD: "INDEX_STORE_DIR", gh.form_path(gh.dirname(__file__), "faiss"),
+    "INDEX_STORE_DIR", "faiss",
+    description="path to store index data base")
+INDEX_ONLY_RECENT = system.getenv_bool(
+    "INDEX_ONLY_RECENT", True,
+    description="whether or not to filter files by modification time newer than index")
+#
+# TODO1: put this in class
+if not system.is_directory(INDEX_STORE_DIR):
+    gh.full_mkdir(INDEX_STORE_DIR)
+
+
+def get_file_mod_fime(path: str) -> float:
+    """Returns file modification time in fractional seconds
+    Note: -1 is returned if the file doesn't exist
+    """
+    # EX: (get_file_mod_fime("/etc/passwd") > get_file_mod_fime("/boot/vmlinuz"))
+    # EX: get_file_mod_fime(" /etc /password") => -1
+    result = (system.get_file_modification_time(path, as_float=True) or -1)
+    debug.trace(7, f"get_file_mod_fime({path}) => {result}")
+    return result
+
 
 class DesktopSearch:
     """Class for searching local computer"""
@@ -72,41 +153,138 @@ class DesktopSearch:
 
     def index_dir(self, dir_path):
         """Index files at DIR_PATH"""
+        ## TODO: look into indexing files from buffers rather than external files
         debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
+
         # define what documents to load
-        loader = DirectoryLoader(dir_path, glob="*.txt", loader_cls=TextLoader)
+        text_loader_kwargs={'autodetect_encoding': True}
+        loader = DirectoryLoader(dir_path, glob="./*.txt", loader_cls=TextLoader, loader_kwargs=text_loader_kwargs)
+        debug.trace_expr(5, loader)
 
+        ## TODO1: move this helper outside of index_dir
+        def convert_to_txt(in_file: str) -> str:
+            """reads non-txt files and returns the text inside them"""
+            if in_file.endswith('.html'):
+                text = html_utils.html_to_text(system.read_file(in_file))
+            else:
+                text = extract_document_text.document_to_text(in_file)
+            return text
+    
+        ## TODO1: move this helper outside of index_dir
+        def correct_metadata(doc: Document) -> Document:
+            """removes the first two parts of the source metadata
+               so it represents the actual source of the file"""
+            doc_metadata = doc.metadata
+            debug.trace_fmtd(4, f"old_source: {doc_metadata['source']}")
+            split_source = doc_metadata['source'].split(system.path_separator(),maxsplit=3)
+            ## TODO2: make sure this works for other temp directories (e.g., /home/tomohara/temp)
+            # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
+            new_source = system.real_path(split_source[3])
+            debug.trace_fmtd(4, f"new_source: {new_source}")
+            doc_metadata['source'] = new_source
+            doc.metadata = doc_metadata
+            return doc
+        
+        ## TODO1: move this helper outside of index_dir
+        def get_last_modified_date(iterable: Iterable) -> float|None:
+            """return the newest modification date as a float, 
+               or -1 if iterable is empty or files don't exist"""
+            ## OLD:
+            ## times = map(get_file_mod_fime, iterable)
+            ## result = None
+            ## for time in times: 
+            ##     if time is None:
+            ##         continue
+            ##     result = time if result is None or time > result else result
+            result = -1
+            if iterable:
+                result = max(map(get_file_mod_fime, iterable))
+            return result
+
+        # copy files over to temp dir
+        # note: timestamp strips the time of day (e.g., 2024-05-11)
+        timestamp = debug.timestamp().split(' ', maxsplit=1)[0]
+        real_path = system.real_path(dir_path)
+        # note: using [1:] to remove the initial path separator 
+        ## TODO1: make sure this work if TMP not /tmp
+        tmp_path = system.form_path(f"{system.TEMP_DIR}", f"llm_desktop_search.{timestamp}",
+                                    real_path[1:])
+        gh.full_mkdir(tmp_path)
+        
+        list_files = system.get_directory_filenames(real_path)
+        filtered_files = list_files
+        # filter files by modification time if needed
+        # note: The modification time is -1 
+        modif_time = get_last_modified_date(system.get_directory_filenames(INDEX_STORE_DIR))
+        ## BAD:
+        ## if modif_time is not None and INDEX_ONLY_RECENT:
+        ##     filtered_files = filter(system.get_file_modification_time, list_files)
+        if INDEX_ONLY_RECENT:
+            filtered_files = [f for f in list_files if ((f) > modif_time)]
+        
+        files_to_convert = [found for found in filtered_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
+        # register cleanup function before creating temp files
+        atexit.register(gh.delete_directory, tmp_path)
+        for num,file in enumerate(files_to_convert):
+            filename = system.filename_proper(file)
+            file_tmp_path = system.form_path(tmp_path, filename) 
+            if file.endswith('.txt'):
+                system.write_file(file_tmp_path, system.read_entire_file(file, encoding="unicode_escape"))
+            else:
+                system.write_file(f"{file_tmp_path}_temp_{num}.txt", convert_to_txt(file))
+    
+        
         # interpret information in the documents
+        loader = DirectoryLoader(tmp_path, glob="*.txt", loader_cls=TextLoader)
         documents = loader.load()
-        splitter = RecursiveCharacterTextSplitter(chunk_size=500,
-                                                  chunk_overlap=50)
+        debug.trace_expr(5, len(documents), documents)
+        splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE,
+                                                  chunk_overlap=CHUNK_OVERLAP)
+        # documents are splitted to a maximum of 500 characters per chunk (by default)
         texts = splitter.split_documents(documents)
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={'device': TORCH_DEVICE})
+        corrected_texts = [correct_metadata(text) for text in texts]
+        if not self.embeddings:
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name=EMBEDDING_MODEL,
+                model_kwargs={'device': TORCH_DEVICE})
 
-        # create and save the local database
-        self.db = FAISS.from_documents(texts, self.embeddings)
-        self.db.save_local("faiss")
+        # add (or create from docs) to the db and save it 
+        try:
+            self.load_index()
+        except RuntimeError:
+            debug.trace_exception(6, "load_index")
+        if self.db is not None:
+            self.db.add_documents(corrected_texts)
+        else:
+            self.db = FAISS.from_documents(corrected_texts, self.embeddings)
+        self.db.save_local(INDEX_STORE_DIR)
+
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
+
 
     def load_index(self, for_qa=False):
         """Load index of documents"""
         debug.trace(4, "DesktopSearch.load_index()")
         # load the language model
         ## OLD: config = {'max_new_tokens': 256, 'temperature': 0.01}
-        config = {'max_new_tokens': 256, 'temperature': 0.01, 'context_length': 512}
-        llm = CTransformers(model='/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
-                            model_type='llama', config=config)
+        config = {'max_new_tokens': MAX_NEW_TOKENS, 'temperature': TEMPERATURE,
+                  'context_length': CONTEXT_LENGTH}
         if for_qa:
+            llm = CTransformers(model=QA_LLM_MODEL, model_type=QA_LLM_TYPE,
+                                config=config, gpu_layers=GPU_LAYERS)
+            debug.trace_expr(4, llm)
+            debug.trace_object(5, llm)
             self.llm = llm
 
         # load the interpreted information from the local database
-        embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs={'device': TORCH_DEVICE})
-        self.db = FAISS.load_local("faiss", embeddings)
+        if not self.embeddings:
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                model_kwargs={'device': TORCH_DEVICE})
+        options = {"allow_dangerous_deserialization": ALLOW_UNSAFE_MODELS}
+        self.db = FAISS.load_local(INDEX_STORE_DIR, self.embeddings, **options)
+        debug.trace_expr(5, llm, self.embeddings, self.db)
         gpu_utils.trace_gpu_usage()
 
     def prepare_qa_llm(self):
@@ -126,7 +304,7 @@ class DesktopSearch:
         
     def search_to_answer(self, question):         # TODO2: rename like answer_question
         """Search documents to answer QUESTION"""
-        debug.trace(4, f"DesktopSearchsearch_to_answer({question})")
+        debug.trace(4, f"DesktopSearch.search_to_answer({question})")
         if not self.qa_llm:
             self.prepare_qa_llm()
         model_path = self.qa_llm.combine_documents_chain.llm_chain.llm.model
@@ -142,18 +320,18 @@ class DesktopSearch:
 
     def show_similar(self, query, num=None):
         """Show similar documents to QUERY in the vector store, up to NUM"""
-        debug.trace(4, f"DesktopSearch.show_similar(n={num})")
+        debug.trace(4, f"DesktopSearch.show_similar(query={query}, n={num})")
         if num is None:
             num = NUM_SIMILAR
         if not self.db:
             self.load_index()
-        docs = self.db.similarity_search(query=query, k=num)
+        docs = self.db.similarity_search_with_score(query=query, k=num)
         print(docs)
         gpu_utils.trace_gpu_usage()
 
 class Script(Main):
     """Adhoc script class (e.g., no I/O loop, just run calls)"""
-    ## TODO: class-level member variables for arguments (avoids need for class constructor)
+    # note: class-level variables for arguments avoids need for class constructor
     index_arg = False
     search_arg = False
     similar_arg = False
@@ -173,11 +351,11 @@ class Script(Main):
         debug.trace_fmtd(5, "Script.run_main_step(): self={s}", s=self)
         ds = DesktopSearch()
         if self.index_arg:
-            ds.index_dir(self.filename)
+            ds.index_dir(self.text)
         elif self.search_arg:
-            ds.search_to_answer(self.text)
+            ds.search_to_answer(self.search_arg)
         elif self.similar_arg:
-            ds.show_similar(self.text)
+            ds.show_similar(self.similar_arg)
         else:
             system.print_error("Error: Unexpected condition")
 

@@ -285,7 +285,7 @@ def main():
                 pass
             ## OLD: weekly_hours += specified_hours
             weekly_hours += hours
-            debug.assertion(weekday_hours[day_of_week] == "")
+            debug.assertion((weekday_hours[day_of_week] == ""), "Missing weekly-hours lines?")
             ## OLD: weekday_hours[day_of_week] = specified_hours
             ## OLD2: weekday_hours[day_of_week] = hours
             weekday_hours[day_of_week] += ("" if not weekday_hours[day_of_week] else "-or-")

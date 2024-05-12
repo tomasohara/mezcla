@@ -22,6 +22,8 @@
 import pytest
 
 # Local packages
+import os
+## TEST: os.environ["PRESERVE_TEMP_FILE"] = "1"
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests, trap_exception
 from mezcla import debug
 from mezcla.my_regex import my_re
@@ -35,9 +37,13 @@ import mezcla.unittest_wrapper as THE_MODULE
 
 ## TODO (use TestWrapper directly):
 
+# Globals
+last_self = None                        # Reserved for test_05_check_temp_part1/2
+
 class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    last_temp_file = None               # Reserved for test_05_check_temp_part1/2
 
     def test_01_usage(self):
         """Make sure usage warns that not intended for command line and that no stdout"""
@@ -136,6 +142,35 @@ class TestIt(TestWrapper):
         # Make sure stuff properly stripped (i.e., message arg and comment)
         assert(not "sti.do_assert_equals" in captured_trace)
         return
+
+    @pytest.mark.xfail
+    def test_04_get_temp_dir(self):
+        """Tests get_temp_dir"""
+        debug.trace(4, f"TestIt.test_04_get_temp_dir(); self={self}")
+        assert False, "TODO: implement"
+
+    @pytest.mark.xfail
+    def test_05_check_temp_part1(self):
+        """Make sure self.temp setup OK"""
+        debug.trace(4, f"TestIt.test_05_check_temp_part1(); self={self!r}; id={id(self)}")
+        debug.trace_expr(5, self.last_temp_file, self.temp_file)
+        assert(self.last_temp_file is None)
+        self.last_temp_file = self.temp_file
+        global last_self                # TODO4 (use class member)
+        debug.assertion(last_self is None)
+        last_self = self
+
+    @pytest.mark.xfail
+    def test_06_check_temp_part2(self):
+        """Make sure self.temp unique"""
+        debug.trace(4, f"TestIt.test_06_check_temp_part2(); self={self!r}; id={id(self)}")
+        debug.trace_expr(5, self.last_temp_file, self.temp_file)
+        assert self.last_temp_file != self.temp_file
+        assert(self.last_temp_file is not None)
+        global last_self                # TODO4 (use class member)
+        # NOTE: The following will fail: apparently each test is run using
+        # a separate class instance.
+        debug.assertion(last_self == self)
 
 #------------------------------------------------------------------------
 

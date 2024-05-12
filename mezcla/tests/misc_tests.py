@@ -80,3 +80,11 @@ class TestMisc(TestWrapper):
         for module in self.get_python_module_files():
             has_execute_perm = gh.run(f'ls -l "{module}" | grep ^...x..x..x')
             self.do_assert(has_execute_perm)
+
+    @pytest.mark.xfail
+    def test_04_usage_statements(self):
+        """Make sure usage statments refer to valid arguments"""
+        debug.trace(4, "test_04_usage_statements()")
+        # note: addresses change like --include-header => --header in randomize_lines.py
+        #   for module in ...: for usage in module usage: assert (not "test_04_usage_statements" in run_script(usage))
+        self.do_assert(False, "TODO: implement")

@@ -23,6 +23,7 @@
 """Extracts columns from a file as with Unix cut command"""
 
 # Standard modules
+import argparse
 import csv
 import re
 import sys
@@ -65,6 +66,10 @@ COMMA = ","
 EXCEL_STYLE = "excel-style"             # use Excel dialect for CSV (redundant with default)
 UNIX_STYLE = "unix-style"               # use Unix dialect for CSV (otherwise Excel is used)
 PYSPARK_STYLE = "pyspark-style"         # use PySpark dialect for CSV (otherwise Unix is used)
+## TEMP: workaround problem under MacOS
+FORCE_SINGLE_LINE = system.getenv_bool(
+    "FORCE_SINGLE_LINE", False,
+    description="Force single line quotedchar handling (i.e., non-strict mode)")
 TAB_STYLE = "tab-style"                 # use (non-Excel) tab dialect
 DIALECT = "dialect"                     # --dialect option
 OUTPUT_DIALECT = "output-dialect"       # --output-dialect option
@@ -78,6 +83,7 @@ MAX_FIELD_LEN = "max-field-len"         # value length before elided
 ## TODO: TODO_ARG = "TODO-arg"          # TODO: comment
 NEW_FIX = system.getenv_bool("NEW_FIX", False,
                              "HACK: Fix for --fix bug")
+NUM_FN_SHORTCUTS = 9
 
 #...............................................................................
 
@@ -148,7 +154,8 @@ csv.register_dialect("hive", pyspark_dialect)
 class tab_dialect(csv.Dialect):
     """TSV module dialect for tab-separated values (non-Excel)."""
     delimiter = TAB
-    quotechar = ''               # default of '"' leads to multiline rows
+    ## OLD: quotechar = ''               # default of '"' leads to multiline rows
+    quotechar = ('"' if not FORCE_SINGLE_LINE else '')
     doublequote = False          # uses escaped double quote when embedded
     # TODO: use special Unicode space-like character
     escapechar = '\\'
@@ -184,13 +191,20 @@ class Script(Main):
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
 
         # Check main options
+        # note: several options regarding fields including --Fn aliases
         ## OLD: fields = self.get_parsed_option(FIELDS, self.fields)
-        fields = self.get_parsed_option(F_OPT, ",".join(self.fields))
+        for i in range(NUM_FN_SHORTCUTS):
+            if self.get_parsed_option(f"F{i + 1}"):
+                self.fields.append(str(i + 1))
+        FIELDS_DEFAULT = ",".join(self.fields)
+        debug.trace_expr(4, FIELDS_DEFAULT)
+        fields = self.get_parsed_option(F_OPT, FIELDS_DEFAULT)
         fields = self.get_parsed_option(FIELDS, fields)
         if fields:
             self.fields = self.parse_field_spec(fields)
         self.all_fields = self.get_parsed_option(ALL_FIELDS, (not fields))
         debug.assertion(not (self.fields and self.all_fields))
+        #
         self.fix = self.get_parsed_option(FIX, self.fix)
 
         # Check delimiter options
@@ -438,20 +452,23 @@ if __name__ == '__main__':
         skip_input=False,
         manual_input=True,
         multiple_files=True,
-        boolean_options=[(CSV, "Comma-separated values ({xls} as per csv module)".format(xls=EXCEL_STYLE)),
-                         (TSV, "Tab-separated values"),
-                         OUTPUT_CSV, OUTPUT_TSV,
-                         (CONVERT_DELIM, "Convert csv to tsv (or vice versa)"),
-                         (SNIFFER_ARG, "Detect csv dialect by lookahead (file-input only)"),
-                         ## TODO: INPUT_CSV, OUTPUT_CSV, INPUT_TSV, OUTPUT_TSV,
-                         (FIX, "Fix up sloppy input (e.g., multiple spaces into tab)--csv fixup not yet supported"),
-                         (ALL_FIELDS, "Alternative to {f} option".format(f=FIELDS)),
-                         (EXCEL_STYLE, "Use Excel conventions for CSV files (see csv python package docs)"),
-                         (PYSPARK_STYLE, "Use PySpark conventions for CSV files (see {f} source)".format(f=__file__)),
-                         (SINGLE_LINE, "Remove embedded newlines from mult-line fields"),
-                         (TAB_STYLE, "Non-excel TSV conventions (default)"),
-                         ## (TODO_ARG, "TODO: arg desc").
-                         (UNIX_STYLE, "Use Unix conventions for CSV files (see csv python package docs)")],
+        boolean_options=(
+            [("Fn", "alias for --field n")] +
+            [(f"F{i + 1}", argparse.SUPPRESS) for i in range(NUM_FN_SHORTCUTS)] +
+            [(CSV, "Comma-separated values ({xls} as per csv module)".format(xls=EXCEL_STYLE)),
+             (TSV, "Tab-separated values"),
+             OUTPUT_CSV, OUTPUT_TSV,
+             (CONVERT_DELIM, "Convert csv to tsv (or vice versa)"),
+             (SNIFFER_ARG, "Detect csv dialect by lookahead (file-input only)"),
+             ## TODO: INPUT_CSV, OUTPUT_CSV, INPUT_TSV, OUTPUT_TSV,
+             (FIX, "Fix up sloppy input (e.g., multiple spaces into tab)--csv fixup not yet supported"),
+             (ALL_FIELDS, "Alternative to {f} option".format(f=FIELDS)),
+             (EXCEL_STYLE, "Use Excel conventions for CSV files (see csv python package docs)"),
+             (PYSPARK_STYLE, "Use PySpark conventions for CSV files (see {f} source)".format(f=__file__)),
+             (SINGLE_LINE, "Remove embedded newlines from mult-line fields"),
+             (TAB_STYLE, "Non-excel TSV conventions (default)"),
+             ## (TODO_ARG, "TODO: arg desc").
+             (UNIX_STYLE, "Use Unix conventions for CSV files (see csv python package docs)")]),
         int_options = [(MAX_FIELD_LEN, "Maximum length per field")],
         text_options=[(DELIM, "Input field separator"),
                       (DIALECT, "CSV module dialect: standard (i.e., excel, excel-tab, or unix) or adhoc (e.g., pyspark, hive)"),

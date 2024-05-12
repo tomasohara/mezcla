@@ -102,14 +102,14 @@ class TestIt(TestWrapper):
     def test_02_something_else(self):
         """Test for something_else: TODO..."""
         debug.trace(4, f"TestIt.test_02_something_else(); self={self}")
-        self.do_assert(False)
+        self.do_assert(False, "TODO: implement")
         ## ex: self.do_assert(THE_MODULE.TODO_function() == TODO_value)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_whatever(self):
         """TODO: flesh out test for whatever (capsys-like)"""
-        debug.trace(4, f"TestIt2.test_03_whatever(); self={self}")
+        debug.trace(4, f"TestIt.test_03_whatever(); self={self}")
         THE_MODULE.TODO_whatever()
         captured = self.get_stderr()
         self.do_assert("whatever" in captured, "TODO_whatever trace")

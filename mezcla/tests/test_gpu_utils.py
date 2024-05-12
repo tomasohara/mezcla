@@ -88,6 +88,20 @@ class TestIt(TestWrapper):
                                     captured))
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_03_type_hints(self):
+        """Test out validation via pydantic"""
+        # NOTE: This will not work until there is automatic support for pydantic type checking,
+        # TODO2: write gpu_utils.py with validation decorators to to temp mezcla repo and invoke pytest using that repo
+        # TODO?: mod="gpu_utils.py"; tmp_dir="/tmp/mezcla"; mkdir -p $tmp_dir $tmp_dir/tests; perl -pe 's/^def /\@valdate_call\n$&/;' $mod | perl -0777 -pe 's/^import/from pydantic import validate_call\n$&/;' >| $tmp_dir/$mod; copy-force tests/test_$mod $tmp_dir/tests/test_$mod; PYTHONPATH="$tmp_dir" pytest --runxfail $tmp_dir/tests/test_$mod
+        debug.trace(4, f"TestIt2.test_03_type_hints(); self={self}")
+        captured = self.get_stderr()
+        try:
+            THE_MODULE.trace_gpu_usage(level="two")
+        except:
+            pass
+        assert("ValidationError" in captured)
+    
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
