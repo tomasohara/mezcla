@@ -7,10 +7,11 @@
 #   https://swharden.com/blog/2023-07-29-ai-chat-locally-with-python
 #   https://github.com/alejandro-ao/ask-multiple-pdfs
 #
-# TODO:
+# TODO1: ***
 # - Lorenzo: review the TODO1 items below (added during merge).
 # - Look into dropping atexit (becuase temp directories as used);
 #   or at least skip if main.KEEP_TEMP_FILES (useful for debugging).
+# - Note that --index arg changed rom binary to text with index dir.
 #
 
 """
@@ -43,7 +44,7 @@ from langchain_community.vectorstores import FAISS
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import gpu_utils
-from mezcla.main import Main
+from mezcla.main import Main, KEEP_TEMP_FILES
 from mezcla import system
 from mezcla import html_utils
 from mezcla import extract_document_text
@@ -87,8 +88,9 @@ QA_LLM_MODEL = system.getenv_text(
 QA_LLM_TYPE = system.getenv_text(
     "QA_LLM_TYPE", "llama",
     description="Type of transformer model for Q&A, such as llama or gpt2")
-ALLOW_UNSAFE_MODELS = system.getenv_bool(
-    "ALLOW_UNSAFE_MODELS", TORCH_DEVICE == "mps",
+ALLOW_UNSAFE_MODELS_DEFAULT = None if (TORCH_DEVICE != "mps") else True
+ALLOW_UNSAFE_MODELS = system.getenv_value(
+    "ALLOW_UNSAFE_MODELS", ALLOW_UNSAFE_MODELS_DEFAULT,
     description="Whether to allow loading of possibly unsafe Pickle models")
 CHUNK_SIZE = system.getenv_int(
     "CHUNK_SIZE", 500,
@@ -122,10 +124,6 @@ INDEX_STORE_DIR = system.getenv_text(
 INDEX_ONLY_RECENT = system.getenv_bool(
     "INDEX_ONLY_RECENT", True,
     description="whether or not to filter files by modification time newer than index")
-#
-# TODO1: put this in class
-if not system.is_directory(INDEX_STORE_DIR):
-    gh.full_mkdir(INDEX_STORE_DIR)
 
 
 def get_file_mod_fime(path: str) -> float:
@@ -139,12 +137,31 @@ def get_file_mod_fime(path: str) -> float:
     return result
 
 
+def get_last_modified_date(iterable: Iterable) -> float:
+    """return the newest modification date as a float, 
+       or -1 if iterable is empty or files don't exist"""
+    ## OLD:
+    ## times = map(get_file_mod_fime, iterable)
+    ## result = None
+    ## for time in times: 
+    ##     if time is None:
+    ##         continue
+    ##     result = time if result is None or time > result else result
+    result = -1
+    if iterable:
+        result = max(map(get_file_mod_fime, iterable))
+    return result
+
+
 class DesktopSearch:
     """Class for searching local computer"""
 
-    def __init__(self):
-        """Initializer"""
+    def __init__(self, index_store_dir=None):
+        """Initializer; index placed in INDEX_STORE_DIR"""
         debug.trace_fmtd(TL.VERBOSE, "Helper.__init__(): self={s}", s=self)
+        if index_store_dir is None:
+            index_store_dir = INDEX_STORE_DIR
+        self.index_store_dir = index_store_dir
         self.embeddings = None
         self.db = None
         self.llm = None
@@ -156,6 +173,10 @@ class DesktopSearch:
         ## TODO: look into indexing files from buffers rather than external files
         debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
 
+        # Make sure target index directory exists
+        if not system.is_directory(self.index_store_dir):
+            gh.full_mkdir(self.index_store_dir)
+        
         # define what documents to load
         text_loader_kwargs={'autodetect_encoding': True}
         loader = DirectoryLoader(dir_path, glob="./*.txt", loader_cls=TextLoader, loader_kwargs=text_loader_kwargs)
@@ -171,36 +192,26 @@ class DesktopSearch:
             return text
     
         ## TODO1: move this helper outside of index_dir
-        def correct_metadata(doc: Document) -> Document:
+        def correct_metadata(doc: Document, base_dir: str) -> Document:
             """removes the first two parts of the source metadata
-               so it represents the actual source of the file"""
+               so it represents the actual source of the file
+               Note: Now removes specifid BASE_DIR"""
+            # TODO1: fix docstrings with respect to hardcoded assumptions
             doc_metadata = doc.metadata
-            debug.trace_fmtd(4, f"old_source: {doc_metadata['source']}")
-            split_source = doc_metadata['source'].split(system.path_separator(),maxsplit=3)
+            old_source = doc_metadata['source']
+            debug.trace_expr(4, old_source)
+            ## BAD:
+            ## split_source = doc_metadata['source'].split(system.path_separator(),maxsplit=3)
             ## TODO2: make sure this works for other temp directories (e.g., /home/tomohara/temp)
-            # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
-            new_source = system.real_path(split_source[3])
-            debug.trace_fmtd(4, f"new_source: {new_source}")
+            ## # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
+            ## new_source = system.real_path(split_source[3])
+            new_source = old_source.replace(base_dir, "")
+            debug.assertion(new_source != old_source)
+            debug.trace_expr(4, new_source)
             doc_metadata['source'] = new_source
             doc.metadata = doc_metadata
             return doc
         
-        ## TODO1: move this helper outside of index_dir
-        def get_last_modified_date(iterable: Iterable) -> float|None:
-            """return the newest modification date as a float, 
-               or -1 if iterable is empty or files don't exist"""
-            ## OLD:
-            ## times = map(get_file_mod_fime, iterable)
-            ## result = None
-            ## for time in times: 
-            ##     if time is None:
-            ##         continue
-            ##     result = time if result is None or time > result else result
-            result = -1
-            if iterable:
-                result = max(map(get_file_mod_fime, iterable))
-            return result
-
         # copy files over to temp dir
         # note: timestamp strips the time of day (e.g., 2024-05-11)
         timestamp = debug.timestamp().split(' ', maxsplit=1)[0]
@@ -215,24 +226,24 @@ class DesktopSearch:
         filtered_files = list_files
         # filter files by modification time if needed
         # note: The modification time is -1 
-        modif_time = get_last_modified_date(system.get_directory_filenames(INDEX_STORE_DIR))
+        modif_time = get_last_modified_date(system.get_directory_filenames(self.index_store_dir))
         ## BAD:
         ## if modif_time is not None and INDEX_ONLY_RECENT:
         ##     filtered_files = filter(system.get_file_modification_time, list_files)
         if INDEX_ONLY_RECENT:
-            filtered_files = [f for f in list_files if ((f) > modif_time)]
+            filtered_files = [f for f in list_files if (get_file_mod_fime(f) > modif_time)]
         
         files_to_convert = [found for found in filtered_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
         # register cleanup function before creating temp files
-        atexit.register(gh.delete_directory, tmp_path)
-        for num,file in enumerate(files_to_convert):
+        if not KEEP_TEMP_FILES:
+            atexit.register(gh.delete_directory, tmp_path)
+        for num, file in enumerate(files_to_convert):
             filename = system.filename_proper(file)
             file_tmp_path = system.form_path(tmp_path, filename) 
             if file.endswith('.txt'):
                 system.write_file(file_tmp_path, system.read_entire_file(file, encoding="unicode_escape"))
             else:
                 system.write_file(f"{file_tmp_path}_temp_{num}.txt", convert_to_txt(file))
-    
         
         # interpret information in the documents
         loader = DirectoryLoader(tmp_path, glob="*.txt", loader_cls=TextLoader)
@@ -242,13 +253,13 @@ class DesktopSearch:
                                                   chunk_overlap=CHUNK_OVERLAP)
         # documents are splitted to a maximum of 500 characters per chunk (by default)
         texts = splitter.split_documents(documents)
-        corrected_texts = [correct_metadata(text) for text in texts]
+        corrected_texts = [correct_metadata(text, tmp_path) for text in texts]
         if not self.embeddings:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name=EMBEDDING_MODEL,
                 model_kwargs={'device': TORCH_DEVICE})
 
-        # add (or create from docs) to the db and save it 
+        # add (or create from docs) to the db and save it
         try:
             self.load_index()
         except RuntimeError:
@@ -257,7 +268,7 @@ class DesktopSearch:
             self.db.add_documents(corrected_texts)
         else:
             self.db = FAISS.from_documents(corrected_texts, self.embeddings)
-        self.db.save_local(INDEX_STORE_DIR)
+        self.db.save_local(self.index_store_dir)
 
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
@@ -280,11 +291,13 @@ class DesktopSearch:
         # load the interpreted information from the local database
         if not self.embeddings:
             self.embeddings = HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-MiniLM-L6-v2",
+                model_name=EMBEDDING_MODEL,
                 model_kwargs={'device': TORCH_DEVICE})
-        options = {"allow_dangerous_deserialization": ALLOW_UNSAFE_MODELS}
-        self.db = FAISS.load_local(INDEX_STORE_DIR, self.embeddings, **options)
-        debug.trace_expr(5, llm, self.embeddings, self.db)
+        options = {}
+        if ALLOW_UNSAFE_MODELS:
+            options["allow_dangerous_deserialization"] = ALLOW_UNSAFE_MODELS
+        self.db = FAISS.load_local(self.index_store_dir, self.embeddings, **options)
+        debug.trace_expr(5, self.llm, self.embeddings, self.db)
         gpu_utils.trace_gpu_usage()
 
     def prepare_qa_llm(self):
@@ -332,10 +345,9 @@ class DesktopSearch:
 class Script(Main):
     """Adhoc script class (e.g., no I/O loop, just run calls)"""
     # note: class-level variables for arguments avoids need for class constructor
-    index_arg = False
+    index_arg = None
     search_arg = False
     similar_arg = False
-    text = None
 
     def setup(self):
         """Check results of command line processing"""
@@ -343,7 +355,6 @@ class Script(Main):
         self.index_arg = self.get_parsed_option(INDEX_ARG, self.index_arg)
         self.search_arg = self.get_parsed_option(SEARCH_ARG, self.search_arg)
         self.similar_arg = self.get_parsed_option(SIMILAR_ARG, self.similar_arg)
-        self.text = self.filename
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
     def run_main_step(self):
@@ -351,7 +362,7 @@ class Script(Main):
         debug.trace_fmtd(5, "Script.run_main_step(): self={s}", s=self)
         ds = DesktopSearch()
         if self.index_arg:
-            ds.index_dir(self.text)
+            ds.index_dir(self.index_arg)
         elif self.search_arg:
             ds.search_to_answer(self.search_arg)
         elif self.similar_arg:
@@ -364,9 +375,10 @@ def main():
     """Entry point"""
     app = Script(
         description=__doc__.format(script=gh.basename(__file__)),
-        skip_input=False, manual_input=True,
-        boolean_options=[(INDEX_ARG, "Index directory")],
-        text_options=[(SEARCH_ARG, "Search documents to answer question"),
+        skip_input=True, manual_input=True,
+        boolean_options=[],
+        text_options=[(INDEX_ARG, "Index directory"),
+                      (SEARCH_ARG, "Search documents to answer question"),
                       (SIMILAR_ARG, "Show similar documents")],
         float_options=None)
     app.run()

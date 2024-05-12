@@ -13,6 +13,17 @@
 # - This can be run as follows (e.g., from root of repo):
 #   $ pytest ./mezcla/tests/test_<module>.py
 #
+# Warning:
+# - The use of run_script as in test_01_data_file is an older style of testing.
+#   It is better to directly invoke a helper class in the script that is independent
+#   of the Script class based on Main. (See an example of this, see python_ast.py
+#   and tests/tests_python_ast.py.)
+# - Moreover, debugging tests with run_script is complicated because a separate
+#   process is involved (e.g., with separate environment variables.)
+# - See discussion of SUB_DEBUG_LEVEL in unittest_wrapper.py for more info.
+# - TODO: Feel free to delete this warning as well as the related one below.
+#
+
 
 ## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
 ## example, only delete todo comments not regular code, unless suggested in tip).
@@ -89,6 +100,7 @@ class TestIt(TestWrapper):
     ## DEBUG: @trap_exception            # TODO: remove when debugged
     def test_01_data_file(self):
         """Tests run_script w/ data file"""
+        # Warning: see notes above about potential issues with run_script-based tests.
         debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
         system.write_lines(self.temp_file, data)
