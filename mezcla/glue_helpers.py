@@ -43,6 +43,7 @@ from mezcla import system
 from mezcla import tpo_common as tpo
 ## OLD: from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
 from mezcla.tpo_common import debug_format, debug_print
+## OLD: from mezcla.main import DISABLE_RECURSIVE_DELETE
 
 # Constants
 TL = debug.TL
@@ -93,6 +94,10 @@ TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and
 USE_TEMP_BASE_DIR = system.getenv_bool(
     "USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
     description="Whether TEMP_BASE should be a dir instead of prefix")
+DISABLE_RECURSIVE_DELETE = system.getenv_value(
+    "DISABLE_RECURSIVE_DELETE", None,
+    description="Disable use of potentially dangerous rm -r style recursive deletions")
+
 
 # Globals
 # note: see init() for initialization
@@ -704,6 +709,25 @@ def copy_file(source, target):
     return
 
 
+def copy_directory(source, dest):
+    """copy SOURCE dir to DEST dir"""
+    # Note: meta data is not copied (e.g., access control lists)); see
+    #    https://docs.python.org/3/library/shutil.html
+    debug.trace_fmt(5, f'copy_directory({source}, {dest})')
+
+    def non_empty_directory(path):
+        """Whether PATH exists and is not empty"""
+        size = len(get_directory_listing(path)) if is_directory(path) else -1
+        non_empty = size > 0
+        debug.trace_fmt(5, f'non_empty_directory({path}) => {non_empty} (files={size})')
+        return non_empty
+    
+    debug.assertion(non_empty_directory(source))
+    dest_path = shutil.copytree(src=source, dst=dest)
+    debug.assertion(len(get_directory_listing(source)) == len(get_directory_listing(dest_path)))
+    debug.assertion(non_empty_directory(dest_path))
+
+
 def rename_file(source, target):
     """Rename SOURCE file as TARGET file"""
     # TODO: have option to skip if target exists
@@ -736,6 +760,23 @@ def delete_existing_file(filename):
     tpo.debug_format("delete_existing_file({f}) => {r}", 5, f=filename, r=ok)
     return ok
 
+def delete_directory(path):
+    """Deletes PATH"""
+    debug.trace_fmt(5, f"delete_directory({path})")
+    ok = False
+    try:
+        if DISABLE_RECURSIVE_DELETE:
+            debug.trace(4, f"FYI: Only deleting top-level files in {path} to avoid potentially dangerous rm -r")
+            run(f"rm -vf {path}/* {path}/.*")
+            run(f"rm -vf {path}")
+            ok = None
+        else:
+            debug.trace(4, f"FYI: Using potentially dangerous rm -r over {path}")
+            run(f"rm -rvf {path}")
+            ok = None
+    except OSError:
+        debug.trace_fmt(5, f"Exception during deletion of {path}: {system.get_exception()}")
+    return ok
 
 def file_size(filename):
     """Returns size of FILENAME in bytes (or -1 if not found)"""
