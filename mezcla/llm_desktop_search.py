@@ -21,6 +21,7 @@ Sample usage:
 import time
 import pathlib
 import atexit
+from collections.abc import Iterable
 
 # Installed modules
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -64,6 +65,14 @@ NUM_SIMILAR = system.getenv_int(
     description="Number of similar documents to show")
 LLAMA_MODEL = system.getenv_text ("LLAMA_MODEL", '/home/tomohara/Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin',
                                   description="path to llama model bin")
+INDEX_STORE_DIR = system.getenv_text("INDEX_STORE_DIR", gh.form_path(gh.dirname(__file__),"faiss"),
+                                      description="path to store index data base")
+INDEX_ONLY_RECENT = system.getenv_bool("INDEX_ONLY_RECENT", True,
+                                       description="wheter or not to filter files by modification time newer than index")
+# 
+debug.trace(*1, "*** Warning: put this in class (e.g., index_dir)")
+if not system.is_directory(INDEX_STORE_DIR):
+    gh.full_mkdir(INDEX_STORE_DIR)
 
 class DesktopSearch:
     """Class for searching local computer"""
@@ -102,22 +111,43 @@ class DesktopSearch:
             doc_metadata['source'] = new_source
             doc.metadata = doc_metadata
             return doc
+        
+        def get_last_modified_date(iterable: Iterable) -> float|None:
+            """return the newest modification date as a float, 
+               or None if iterable is empty or files don't exist"""
+            times = map(system.get_file_modification_time, iterable)
+            result = None
+            for time in times: 
+                if time is None:
+                    continue
+                result = time if result is None or time > result else result
+            return result
 
         # copy files over to temp dir
         timestamp = debug.timestamp().split(' ',maxsplit=1)[0]
-        ## TODO: look for some variable/function  to not hardcode tmp_path
         real_path = system.real_path(dir_path)
-        tmp_path = system.form_path(f"/tmp/llm_desktop_search.{timestamp}", real_path[1:]) # using [1:] to remove the initial path separator 
-        list_files = system.get_directory_filenames(real_path)
+        # note: # using [1:] to remove the initial path separator
+        # TODO1: add assertion that real_path[10] is like "." (or better motivate why ignored)
+        tmp_path = system.form_path(f"{system.TEMP_DIR}",
+                                    f"llm_desktop_search.{timestamp}", real_path[1:]) 
         gh.full_mkdir(tmp_path)
-        files_to_convert = [found for found in list_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
+        
+        list_files = system.get_directory_filenames(real_path)
+        filtered_files = list_files
+        # filter files by modification time if needed
+        modif_time = get_last_modified_date(system.get_directory_filenames(INDEX_STORE_DIR))
+        if modif_time is not None and INDEX_ONLY_RECENT:
+            filtered_files = filter(system.get_file_modification_time, list_files)
+        
+        
+        files_to_convert = [found for found in filtered_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
         # register cleanup function before creating temp files
         atexit.register(gh.delete_directory, tmp_path)
         for num,file in enumerate(files_to_convert):
             filename = system.filename_proper(file)
             file_tmp_path = system.form_path(tmp_path, filename) 
             if file.endswith('.txt'):
-                gh.copy_file(file, file_tmp_path)
+                system.write_file(file_tmp_path, system.read_entire_file(file, encoding="unicode_escape"))
             else:
                 system.write_file(f"{file_tmp_path}_temp_{num}.txt", convert_to_txt(file))
     
@@ -144,7 +174,7 @@ class DesktopSearch:
             self.db.add_documents(corrected_texts)
         else:
             self.db = FAISS.from_documents(corrected_texts, self.embeddings)
-        self.db.save_local("faiss")
+        self.db.save_local(INDEX_STORE_DIR)
 
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
@@ -166,7 +196,7 @@ class DesktopSearch:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2",
                 model_kwargs={'device': TORCH_DEVICE})
-        self.db = FAISS.load_local("faiss", self.embeddings,
+        self.db = FAISS.load_local(INDEX_STORE_DIR, self.embeddings,
                                    # necessary to allow loading of possibly unsafe Pickle
                                    allow_dangerous_deserialization=True)
         gpu_utils.trace_gpu_usage()
