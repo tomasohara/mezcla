@@ -41,7 +41,7 @@ Randomize lines in a file (without reading entirely into memory).
 Note: The default seed is {seed}.
 
 Sample usage:
-    {script} --include-header --percent 10 ./examples/pima-indians-diabetes.csv
+    {script} --header --percent 10 ./examples/pima-indians-diabetes.csv
 """
 
 # Standard modules
