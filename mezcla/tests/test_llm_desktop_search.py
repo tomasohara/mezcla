@@ -60,7 +60,7 @@ class TestIt(TestWrapper):
     def test_01_index_dir(self):
         """Tests run_script to index directory"""
         debug.trace(4, f"TestIt.test_01_index_dir(); self={self}")
-        atexit.register(gh.delete_directory(self.self.index_temp_dir))
+        atexit.register(gh.delete_directory(self.index_temp_dir))
 
         if not system.is_directory(self.index_parent):
             gh.full_mkdir(self.index_parent)
@@ -74,25 +74,25 @@ class TestIt(TestWrapper):
                         data_file=repo_base_dir,
                         log_file=index_file,
                         out_file=index_file,
-                        env_options=f"index_STORE_DIR={self.self.index_temp_dir}")
+                        env_options=f"index_STORE_DIR={self.index_temp_dir}")
         
-        index_files = system.read_directory(self.self.index_temp_dir)
+        index_files = system.read_directory(self.index_temp_dir)
         
         # assert INDEX_STORE_DIR is not empty
         self.do_assert(index_files != [])
         # self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         
         #save modified date for comparing later 
-        prev_size = get_last_modified_date(system.get_directory_filenames(self.self.index_temp_dir, just_regular_files=True))
+        prev_size = get_last_modified_date(system.get_directory_filenames(self.index_temp_dir, just_regular_files=True))
         
         # test that indexing with an already existing DB works
         resource_dir = gh.form_path(gh.real_path(gh.dirname(__file__)), "resources")
         self.run_script(options="--index",
                         data_file=resource_dir,
-                        env_options=f"INDEX_STORE_DIR={self.self.index_temp_dir}")
+                        env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
         
         # get modification time and check if it changed
-        new_size = get_last_modified_date(system.get_directory_filenames(self.self.index_temp_dir, just_regular_files=True))
+        new_size = get_last_modified_date(system.get_directory_filenames(self.index_temp_dir, just_regular_files=True))
         self.do_assert(new_size > prev_size)
         # self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         
