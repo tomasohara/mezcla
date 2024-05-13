@@ -404,10 +404,13 @@ def open_file(filename, /, mode="r", *, encoding=None, errors=None, **kwargs):
         encoding = "UTF-8"
     if (encoding and (errors is None)):
         errors = 'ignore'
+    if kwargs.get(ENCODING) is None:
+        kwargs[ENCODING] = encoding
     result = None
     try:
         # pylint: disable=consider-using-with; note: bogus 'Bad option value' warning
-        result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
+        ## BAD: result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
+        result = open(filename, mode=mode, errors=errors, **kwargs)
     except IOError:
         debug.trace_fmtd(3, "Unable to open {f!r}: {exc}", f=filename, exc=get_exception())
     debug.trace_fmt(5, "open({f}, [{enc}, {err}], kwargs={kw}) => {r}",
@@ -563,8 +566,12 @@ def read_entire_file(filename, **kwargs):
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
+        ENCODING = "encoding"
+        if kwargs.get(ENCODING) is None:
+            kwargs[ENCODING] = "UTF-8"
         ## TODO: with open_file(filename, **kwargs) as f:
-        with open(filename, encoding="UTF-8", **kwargs) as f:
+        ## BAD: with open(filename, encoding="UTF-8", **kwargs) as f:
+        with open(filename, **kwargs) as f:
             data = f.read()
     except (AttributeError, IOError):
         debug.trace_exception(1, "read_entire_file/IOError")
@@ -615,7 +622,11 @@ def read_directory(directory):
     """Returns list of files in DIRECTORY"""
     # Note simple wrapper around os.listdir with tracing
     # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
-    files = os.listdir(directory)
+    files = []
+    try:
+        files = os.listdir(directory)
+    except:
+        print_exception_info(f"reading dir {directory!r}")
     debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files,
                      max_len=4096)
     return files

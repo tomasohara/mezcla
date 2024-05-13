@@ -1099,7 +1099,7 @@ if __debug__:
     def debug_init():
         """Debug-only initialization"""
         time_start = time.time()
-        trace(DETAILED, f"in debug_init(); {timestamp()}")
+        trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
         ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
         # note: shows command invocation unless invoked via "python -c ..."
         command_line = " ".join(sys.argv)
