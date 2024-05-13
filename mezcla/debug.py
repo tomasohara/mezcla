@@ -63,11 +63,19 @@ import logging
 import os
 from pprint import pprint
 import re
+from typing import (
+    Optional, Any, Union, Callable, List,
+)
+from types import CodeType
+from typing_extensions import Buffer
 ## OLD: from xml.dom.minidom import Element
 import six
 import sys
 import time
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
+from mezcla.extended_validation import (
+    FileDescriptorOrPath,
+)
 
 # Local packages
 ## OLD:
@@ -117,6 +125,9 @@ MISSING_LINE = "???"
 # Globals
 max_trace_value_len = 1024
 
+# Types
+IntOrTraceLevel = Union[int, TraceLevel]
+
 #...............................................................................
 # Utility functions
 
@@ -136,7 +147,7 @@ if __debug__:
     # Initialize debug tracing level
     # TODO: mark as "private" (e.g., trace_level => _trace_level)
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
-    trace_level:int = TL.DEFAULT            # typically same as TL.WARNING (2); TODO: global_trace_level
+    trace_level: IntOrTraceLevel = TL.DEFAULT            # typically same as TL.WARNING (2); TODO: global_trace_level
     output_timestamps = False           # prefix output with timestamp
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
@@ -154,14 +165,14 @@ if __debug__:
         pass
 
 
-    def set_level(level):
+    def set_level(level: IntOrTraceLevel) -> None:
         """Set new trace level"""
         global trace_level
         trace_level = level
         return
 
 
-    def get_level():
+    def get_level() -> IntOrTraceLevel:
         """Get current tracing level"""
         # Note: ensures result is integer (not enum)
         # EX: (get_level() >= 0)
@@ -177,7 +188,7 @@ if __debug__:
             _print_exception_info("get_level")
         return level
 
-    def get_output_timestamps():
+    def get_output_timestamps() -> bool:
         """Return whether outputting timestamps"""
         return output_timestamps
 
@@ -188,27 +199,22 @@ if __debug__:
         output_timestamps = do_output_timestamps
 
 
-    def _to_utf8(text):
+    # NOTE: python 2 is deprecated and to avoid errors with mypy, python 2 code was removed
+    def _to_utf8(text: str) -> str:
         """Convert TEXT to UTF-8 (e.g., for I/O)"""
         # Note: version like one from system.py to avoid circular dependency
         result = text
-        if ((sys.version_info.major < 3) and (isinstance(text, unicode))):  # pylint: disable=undefined-variable
-            result = result.encode("UTF-8", 'ignore')
         return result
 
 
-    def _to_unicode(text, encoding=None):
+    # NOTE: python 2 is deprecated and to avoid errors with mypy, python 2 code was removed
+    def _to_unicode(text: str, encoding: Optional[bool] = None) -> str:
         """Ensure TEXT in ENCODING is Unicode, such as from the default UTF8"""
-        # TODO: rework from_utf8 in terms of this
-        if not encoding:
-            encoding = UTF8
         result = text
-        if ((sys.version_info.major < 3) and (not isinstance(result, unicode))): # pylint: disable=undefined-variable
-            result = result.decode(encoding, 'ignore')
         return result
 
 
-    def _to_string(text):
+    def _to_string(text: Any) -> str:
         """Ensure TEXT is a string type"""
         result = text
         if (not isinstance(result, STRING_TYPES)):
@@ -222,13 +228,19 @@ if __debug__:
                 result = "%s" % result
         return result
 
-    def do_print(text, end=None):
+    def do_print(text: str, end: Optional[str] = None) -> None:
         """Print TEXT to stderr and optionally to DEBUG_FILE"""
         print(text, file=sys.stderr, end=end)
         if debug_file:
             print(text, file=debug_file, end=end)
     
-    def trace(level, text, empty_arg=None, no_eol=False, indentation=None):
+    def trace(
+            level: IntOrTraceLevel,
+            text: str,
+            empty_arg: Optional[bool] = None,
+            no_eol: bool = False,
+            indentation: Optional[str] = None
+        ) -> None:
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE"""
         # TODO: add option to use format_value
         # Note: trace should not be used with text that gets formatted to avoid
@@ -264,7 +276,7 @@ if __debug__:
 
 
     @docstring_parameter(max_len=max_trace_value_len)
-    def trace_fmtd(level, text, **kwargs):
+    def trace_fmtd(level: IntOrTraceLevel, text: str, **kwargs) -> None:
         """Print TEXT with formatting using optional format KWARGS if at trace LEVEL or higher, including newline
         Note: Use MAX_LEN keyword argument to override the maximum length ({max_len}) of traced text (see format_value).
         """
@@ -303,7 +315,19 @@ if __debug__:
     STANDARD_TYPES = (int, float, dict, list)
     SIMPLE_TYPES = (bool, int, float, type(None), str)
     #
-    def trace_object(level, obj, label=None, show_all=None, show_private=None, show_methods_etc=None, indentation=None, pretty_print=None, max_value_len=max_trace_value_len, max_depth=0, regular_standard=False):
+    def trace_object(
+            level: IntOrTraceLevel,
+            obj: object,
+            label: Optional[str] = None,
+            show_all: Optional[bool] = None,
+            show_private: Optional[bool] = None,
+            show_methods_etc: Optional[bool] = None,
+            indentation: Optional[str] = None,
+            pretty_print: Optional[bool] = None,
+            max_value_len: int = max_trace_value_len,
+            max_depth: int = 0,
+            regular_standard: bool = False
+        ) -> None:
         """Trace out OBJ's members to stderr if at trace LEVEL or higher.
         Note: Optionally uses output LABEL, with INDENTATION, SHOWing_ALL members, and PRETTY_PRINTing.
         TODO: Use SHOW_PRIVATE to display private members and SHOW_METHODS_ETC for methods.
@@ -419,7 +443,14 @@ if __debug__:
         return
 
 
-    def trace_values(level, collection, label=None, indentation=None, use_repr=None, max_len=None):
+    def trace_values(
+            level: IntOrTraceLevel,
+            collection: Union[list, dict, Any],
+            label: Optional[str] = None,
+            indentation: Optional[str] = None,
+            use_repr: Optional[bool] = None,
+            max_len: Optional[int] = None
+        ) -> None:
         """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
         trace_fmt(MOST_VERBOSE, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
                   dl=level, lbl=label, coll=collection, ind=indentation)
@@ -461,7 +492,7 @@ if __debug__:
 
 
     @docstring_parameter(max_len=max_trace_value_len)
-    def trace_expr(level, *values, **kwargs):
+    def trace_expr(level: IntOrTraceLevel, *values, **kwargs) -> None:
         """Trace each of the argument VALUES (if at trace LEVEL or higher), with KWARGS for options.
         Introspection is used to derive label for each expression. By default, the following format is used:
            expr1=value1; ... exprN=valueN
@@ -493,7 +524,7 @@ if __debug__:
         sep = kwargs.get('_sep') or kwargs.get('sep')
         delim = kwargs.get('_delim') or kwargs.get('delim')
         suffix = kwargs.get('_suffix') or kwargs.get('suffix')
-        no_eol = kwargs.get('_no_eol') or kwargs.get('no_eol')
+        no_eol = bool(kwargs.get('_no_eol') or kwargs.get('no_eol'))
         in_no_eol = no_eol
         use_repr = kwargs.get('_use_repr') or kwargs.get('use_repr')
         max_len = kwargs.get('_max_len') or kwargs.get('max_len')
@@ -567,8 +598,8 @@ if __debug__:
         return
 
     
-    def trace_current_context(level=QUITE_DETAILED, label=None, 
-                              show_methods_etc=False):
+    def trace_current_context(level: IntOrTraceLevel = QUITE_DETAILED, label: Optional[str] = None,
+                              show_methods_etc: bool = False) -> None:
         """Traces out current context (local and global variables), with output
         prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
         Notes: By default the debugging level must be quite-detailed (6).
@@ -578,7 +609,8 @@ if __debug__:
         if label is None:
             label = "current"
         try:
-            frame = inspect.currentframe().f_back
+            current_frame = inspect.currentframe()
+            frame = current_frame.f_back if current_frame else None
         except (AttributeError, KeyError, ValueError):
             trace_fmt(VERBOSE, "Exception during trace_current_context: {exc}",
                       exc=sys.exc_info())
@@ -609,7 +641,7 @@ if __debug__:
     ##     return
 
 
-    def trace_exception(level, task):
+    def trace_exception(level: IntOrTraceLevel, task: Any) -> None:
         """Trace exception information regarding TASK (e.g., function) at LEVEL"""
         # Note: Conditional output version of system's print_exception_info.
         # ex: trace_exception(DETAILED, "tally_counts")
@@ -620,7 +652,7 @@ if __debug__:
         return
 
     
-    def raise_exception(level=1):
+    def raise_exception(level: IntOrTraceLevel = 1) -> None:
         """Raise an exception if debugging (at specified trace LEVEL)"""
         # Note: For producing full stacktrace in except clause when debugging.
         # TODO: elaborate
@@ -629,7 +661,11 @@ if __debug__:
         return
 
 
-    def assertion(expression, message=None, assert_level=None):
+    def assertion(
+            expression: Union[bool, Any],
+            message: Optional[str] = None,
+            assert_level: Optional[IntOrTraceLevel] = None
+        ) -> Optional[str]:
         """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
         Note:
         - Warning: introspection fails to resolve expression if split across lines.
@@ -678,7 +714,7 @@ if __debug__:
                 trace_object(ALWAYS, inspect.currentframe(), "caller frame", pretty_print=True)
         return expression_text
 
-    def val(level, value):
+    def val(level: IntOrTraceLevel, value: Any) -> Any:
         """Returns VALUE if at trace LEVEL or higher otherwise None
         Note: inspired by Lisp's convenient IF form without an explicit else: (if test value-if-true)"""
         # EX: (101 if ((get_level() == 1) and val(1, 101)) else None) => 101
@@ -687,7 +723,7 @@ if __debug__:
         return (value if (trace_level >= level) else None)
 
 
-    def code(level, no_arg_function):
+    def code(level: IntOrTraceLevel, no_arg_function: Callable) -> Any:
         """Execute NO_ARG_FUNCTION if at trace LEVEL or higher
         Notes:
         - Use call() for more flexible invocation (e.g., can avoid lambda function)
@@ -707,7 +743,7 @@ if __debug__:
         return result
 
     
-    def call(level, function, *args, **kwargs):
+    def call(level: IntOrTraceLevel, function: Callable, *args, **kwargs) -> Any:
         """Invoke FUNCTION with ARGS and KWARGS if at trace LEVEL or higher
         Note: Use code() for simpler invocation (e.g., via lambda function)
         """
@@ -722,16 +758,16 @@ else:
 
     trace_level = 0
     
-    def non_debug_stub(*_args, **_kwargs):
+    def non_debug_stub(*_args, **_kwargs) -> None:
         """Non-debug stub (i.e., no-op function)"""
         # Note: no return value assumed by debug.expr
         return
 
-    def get_level():
+    def get_level() -> IntOrTraceLevel:
         """Returns tracing level (i.e., 0)"""
         return trace_level
 
-    def get_output_timestamps():
+    def get_output_timestamps() -> bool:
         """Non-debug stub"""
         return False
 
@@ -764,12 +800,12 @@ else:
     ## TODO?:
     ## val = non_debug_stub
     ##
-    def val(_expression):
+    def val(_expression: Any) -> None:
         """Non-debug stub for value()--a no-op function"""
         # Note: implemented separately from non_debug_stub to ensure no return value
         return
     ##
-    def _safe_eval(expression, default=None):
+    def _safe_eval(expression: Union[str, Buffer, CodeType], default: Any = None) -> Any:
         """Returns evaluation of string EXPRESSION trapping for errors and if so returning DEFAULT"""
         try:
             result = eval(expression)   # pylint: disable=eval-used
@@ -793,32 +829,32 @@ cond_val = val
 # TODO: alias trace to trace_fmt as well (add something like trace_out if format not desired)
 trace_fmt = trace_fmtd
 
-def debug_print(text, level):
+def debug_print(text: str, level: IntOrTraceLevel) -> None:
     """Wrapper around trace() for backward compatibility
     Note: debug_print will soon be deprecated."""
     return trace(level, text)
 
 
-def timestamp():
+def timestamp() -> str:
     """Return timestamp for use in logging, etc."""
     return (str(datetime.now()))
     
 
 ## OLD: def debugging(level=ERROR):
-def debugging(level=USUAL):
+def debugging(level: IntOrTraceLevel = USUAL) -> bool:
     """Whether debugging at specified trace LEVEL (e.g., 3 for usual)"""
     ## BAD: """Whether debugging at specified trace level, which defaults to {l}""".format(l=ERROR)
     ## NOTE: Gotta hate python/pylint (no warning about docstring)
     ## TODO: use level=WARNING (i.e., 2)
     return (get_level() >= level)
 
-def active():
+def active() -> bool:
     """Whether debugging is active (i.e., trace level 1 or higher)
     Note: Use enabled to check whether debugging is supported
     """
     return debugging(level=1)
 
-def enabled():
+def enabled() -> bool:
     """Whether debug code is being executed (i.e., __debug__ nonzero)
     Note: Use active to check whether conditional debugging in effect
     """
@@ -826,19 +862,19 @@ def enabled():
     assertion((not result) or active())
     return result
 
-def detailed_debugging():
+def detailed_debugging() -> bool:
     """Whether debugging with trace level DETAILED (4) or higher"""
     ## BAD: """Whether debugging with trace level at or above {l}""".format(l=DETAILED)
     return (get_level() >= DETAILED)
 
 
-def verbose_debugging():
+def verbose_debugging() -> bool:
     """Whether debugging with trace level VERBOSE (5) or higher"""
     ## BAD: """Whether debugging with trace level at or above {l}""".format(l=VERBOSE)
     return (get_level() >= VERBOSE)
 
 
-def _getenv_bool(name, default_value):
+def _getenv_bool(name: str, default_value: bool) -> bool:
     """Version of system.getenv_bool w/o tracing"""
     ## EX: os.setenv("FU", "1"); _getenv_bool("FU", False)) => True
     result = default_value
@@ -847,7 +883,7 @@ def _getenv_bool(name, default_value):
     return result
 
 
-def _getenv_int(name, default_value):
+def _getenv_int(name: str, default_value: int) -> int:
     """Version of system.getenv_int w/o tracing"""
     result = default_value
     try:
@@ -860,7 +896,7 @@ def _getenv_int(name, default_value):
 
 
 @docstring_parameter(max_len=max_trace_value_len)
-def format_value(value, max_len=None, strict=None):
+def format_value(value: str, max_len: Optional[int] = None, strict: Optional[bool] = None) -> str:
     """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines
     Note: With STRICT, MAX_LEN is maximum length ({max_len}) for returned string (i.e., including "...")
     """
@@ -899,7 +935,7 @@ def format_value(value, max_len=None, strict=None):
     return result
 
 
-def xor(value1, value2):
+def xor(value1: Any, value2: Any) -> bool:
     """Whether VALUE1 and VALUE2 differ when interpretted as booleans"""
     # Note: Used to clarify assertions; same as bool(value1) != bool(value2).
     # See https://stackoverflow.com/questions/432842/how-do-you-get-the-logical-xor-of-two-variables-in-python
@@ -920,7 +956,7 @@ def xor3(value1:bool, value2:bool, value3:bool) -> bool:
     return result
 
 
-def init_logging():
+def init_logging() -> None:
     """Enable logging with INFO level by default or with DEBUG if detailed debugging"""
     trace(DETAILED, "init_logging()")
     trace_object(QUITE_DETAILED, logging.root, "logging.root")
@@ -940,7 +976,7 @@ def init_logging():
     return
 
 
-def _print_exception_info(task):
+def _print_exception_info(task: Any) -> None:
     """Output exception information to stderr regarding TASK (e.g., function)"""
     # Note: non-tracing version of system's print_exception_info
     sys.stderr.write("Error during {t}: {exc}\n".
@@ -948,6 +984,7 @@ def _print_exception_info(task):
     return
 
 
+## TODO: add tpye hints to run checks (e.g., mypy)
 def profile_function(frame, event, arg):
     """Function for monitoring function entry and exit (FEE), etc., currently just tracing at level 4. See sys.setprofile.
     # Note: Use a package like viztracer for non-trivial monitoring"""
@@ -990,7 +1027,7 @@ def profile_function(frame, event, arg):
                   mod=module, func=name, e=event, a=arg)
     return
 
-def reference_var(*args):
+def reference_var(*args) -> None:
     """No-op function used for referencing variables in ARGS"""
     trace(MOST_VERBOSE, f"reference_var{tuple(args)}")
     return
@@ -1001,7 +1038,7 @@ def reference_var(*args):
 # TODO: CLIPPED_MAX = system-ish.getenv_int("CLIPPED_MAX", 132)
 CLIPPED_MAX = 132
 #
-def clip_value(value, max_len=CLIPPED_MAX):
+def clip_value(value: Any, max_len: int = CLIPPED_MAX) -> str:
     """Return clipped version of VALUE (e.g., first MAX_LEN chars)"""
     # TODO3: replace with format_value
     # TODO: omit conversion to text if already text [DUH!]
@@ -1010,7 +1047,7 @@ def clip_value(value, max_len=CLIPPED_MAX):
         clipped = clipped[:max_len] + "..."
     return clipped
 
-def read_line(filename, line_number):
+def read_line(filename: FileDescriptorOrPath, line_number: int) -> str:
     """Returns contents of FILENAME at LINE_NUMBER
     Note: returns '???' upon exception
     """
@@ -1026,7 +1063,7 @@ def read_line(filename, line_number):
 
 #-------------------------------------------------------------------------------
 
-def main(args):
+def main(args: List[str]) -> None:
     """Supporting/ code for command-line processing"""
     trace_expr(DETAILED, len(args))
     trace(ERROR, "FYI: Not intended for direct invocation. Some tracing examples follow.")
@@ -1057,7 +1094,7 @@ def main(args):
 
 if __debug__:
 
-    def open_debug_file():
+    def open_debug_file() -> None:
         """Open external file for copy of trace output"""
         trace(5, "open_debug_file()")
         global debug_file
@@ -1079,7 +1116,7 @@ if __debug__:
                    fn=debug_filename, f=debug_file)
         return
 
-    def reopen_debug_file():
+    def reopen_debug_file() -> None:
         """Re-open debug file to work around concurrent access issues
         Note: The debug file is mainly used with pytest to work around stderr tracing issues"""
         trace(5, "reopen_debug_file()")
@@ -1096,7 +1133,7 @@ if __debug__:
         return
                         
 
-    def debug_init():
+    def debug_init() -> None:
         """Debug-only initialization"""
         time_start = time.time()
         trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
@@ -1156,7 +1193,7 @@ if __debug__:
 
         # Register to show shuttdown time and elapsed seconds
         # TODO: rename to reflect generic-exit nature
-        def display_ending_time_etc():
+        def display_ending_time_etc() -> None:
             """Display ending time information"""
             # note: does nothing if stderr closed (e.g., other monitor)
             # TODO: resolve pylint issue with sys.stderr.closed
