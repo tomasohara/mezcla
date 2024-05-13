@@ -41,6 +41,8 @@ import six
 # Local packages
 from mezcla import debug
 from mezcla.debug import UTF8
+## TODO3: debug.trace_expr(6, __file__)
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Constants
 STRING_TYPES = six.string_types
@@ -393,18 +395,22 @@ def open_file(filename, /, mode="r", *, encoding=None, errors=None, **kwargs):
     Notes:
     - The mode is left at default (i.e., 'r')
     - As with open(), result can be used in a with statement:
-        with system.open_file(filename) as f: ...
+    ____ with system.open_file(filename) as f: ..
     """
+    ## TODO1: fix up ^^ for maldito sphinx: had to add ____'s for indendation
     # Note: position-only args precedes / and keyword only follow * (based on https://stackoverflow.com/questions/24735311/what-does-the-slash-mean-when-help-is-listing-method-signatures):
     #   def f(pos_only1, pos_only2, /, pos_or_kw1, pos_or_kw2, *, kw_only1, kw_only2): pass
     if (encoding is None) and ("b" not in mode):
         encoding = "UTF-8"
     if (encoding and (errors is None)):
         errors = 'ignore'
+    if kwargs.get(ENCODING) is None:
+        kwargs[ENCODING] = encoding
     result = None
     try:
         # pylint: disable=consider-using-with; note: bogus 'Bad option value' warning
-        result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
+        ## BAD: result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
+        result = open(filename, mode=mode, errors=errors, **kwargs)
     except IOError:
         debug.trace_fmtd(3, "Unable to open {f!r}: {exc}", f=filename, exc=get_exception())
     debug.trace_fmt(5, "open({f}, [{enc}, {err}], kwargs={kw}) => {r}",
@@ -560,8 +566,12 @@ def read_entire_file(filename, **kwargs):
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
+        ENCODING = "encoding"
+        if kwargs.get(ENCODING) is None:
+            kwargs[ENCODING] = "UTF-8"
         ## TODO: with open_file(filename, **kwargs) as f:
-        with open(filename, encoding="UTF-8", **kwargs) as f:
+        ## BAD: with open(filename, encoding="UTF-8", **kwargs) as f:
+        with open(filename, **kwargs) as f:
             data = f.read()
     except (AttributeError, IOError):
         debug.trace_exception(1, "read_entire_file/IOError")
@@ -612,7 +622,11 @@ def read_directory(directory):
     """Returns list of files in DIRECTORY"""
     # Note simple wrapper around os.listdir with tracing
     # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
-    files = os.listdir(directory)
+    files = []
+    try:
+        files = os.listdir(directory)
+    except:
+        print_exception_info(f"reading dir {directory!r}")
     debug.trace_fmtd(5, "read_directory({d}) => {r}", d=directory, r=files,
                      max_len=4096)
     return files
@@ -1298,8 +1312,40 @@ def get_args():
     debug.trace_fmtd(6, "get_args() => {r}", r=result)
     return result
 
+
+def make_wrapper(function_name, function, trace_level=6):
+    """Creates wrapper around FUNCTION with NAME"""
+    debug.trace(7, f"make_wrapper{(function_name, function, trace_level)}")
+    # EX: make_wrapper("get_process_id", os.getpid).__doc__ => "Wrapper around posix.getpid"
+    # TODO3: resolve module used in refernce so that docstring more intuitive (e.g., posix.getpid => os.getpid)
+    #
+    def wrapper(*args, **kwargs):
+        """placeholder docstring"""
+        debug.trace(trace_level + 1, f"in f{function_name}: {args=} {kwargs=}")
+        result = function(*args, **kwargs)
+        debug.trace(trace_level, f"{function_name}() => {result!r}")
+        return result
+    #
+    function_spec = f"{function.__module__}.{function.__name__}"
+    wrapper.__doc__ = f"Wrapper around {function_spec}"
+    return wrapper
+
+def install_wrapper(function_name, function, **kwargs):
+    """Creates wrapper via make_wrapper (q.v.) and install in current namespace"""
+    debug.trace(7, f"install_wrapper{(function_name, function, kwargs)}")
+    wrapper = make_wrapper(function_name, function, **kwargs)
+    global_namespace = globals()
+    global_namespace[function_name] = wrapper
+
 #-------------------------------------------------------------------------------
-# Memomization support (i.e., functiona result caching), based on 
+# Wrapper support
+# TODO: look into ways to inform pylint about function definitions
+
+install_wrapper("get_parent_pid", os.getppid)
+get_process_id = make_wrapper("get_process_id", os.getpid, trace_level=7)
+
+#-------------------------------------------------------------------------------
+# Memomization support (i.e., function result caching), based on 
 #     See http://code.activestate.com/recipes/578231-probably-the-fastest-memoization-decorator-in-the-. [world!]
 # This is implemented transparently via Python decorators. See
 #     http://stackoverflow.com/questions/739654/understanding-python-decorators
