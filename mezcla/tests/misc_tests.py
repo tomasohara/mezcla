@@ -99,6 +99,7 @@ class TestMisc(TestWrapper):
             self.do_assert(has_execute_perm)
 
     @pytest.mark.xfail
+<<<<<<< HEAD
     def test_04_check_transform_for_validation(self):
         """Make sure the transformation is successful when adding decorators for validation of function calls"""
         debug.trace(4, "test_04_check_transform_for_validation()")
@@ -114,3 +115,11 @@ class TestMisc(TestWrapper):
 
 
 
+=======
+    def test_04_usage_statements(self):
+        """Make sure usage statments refer to valid arguments"""
+        debug.trace(4, "test_04_usage_statements()")
+        # note: addresses change like --include-header => --header in randomize_lines.py
+        #   for module in ...: for usage in module usage: assert (not "test_04_usage_statements" in run_script(usage))
+        self.do_assert(False, "TODO: implement")
+>>>>>>> main

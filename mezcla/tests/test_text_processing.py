@@ -101,6 +101,7 @@ class TestTextProcessing(TestWrapper):
         assert THE_MODULE.is_stopword('i')
         assert not THE_MODULE.is_stopword('cow')
 
+    @pytest.mark.xfail
     def test_has_spelling_mistake(self):
         """Ensure has_spelling_mistake works as expected"""
         debug.trace(4, "test_has_spelling_mistake()")

@@ -10,7 +10,7 @@
 #      pip install --verbose $(perl -pe 's/^#opt#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
 #   3. Full (i.e., including all optional):
 #      pip install --verbose $(perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
-#      # TODO2: --ignore-errors [maldito pip]
+#      # TODO2: --ignore-errors [maldito pip]; set pip-update check
 #      perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#' | xargs -I '{}' pip install '{}'
 # - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
 # - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
@@ -32,7 +32,7 @@ cachetools
 cherrypy
 clip_interrogator
 datasets                      # Hugging Face (HF) data
-diffusers                     # Stale Diffusion
+#opt# diffusers               # Stale Diffusion; TEMP
 diskcache
 extcolors>=1.0.0
 flair
@@ -59,13 +59,13 @@ pytest
 requests
 scikit-learn
 scipy
-sentencepiece
+#opt# sentencepiece           # BERT tokenization; TEMP
 six
 stop_words
 #opt# tensorrt                # NVidia GPU support
 transformers                  # HF models
 torch
-torchaudio
+#opt# torchaudio
 webcolors
 wheel
 ## NOTE: temporarily disabled due to stupid docker disk space constraints
@@ -101,6 +101,7 @@ wheel
 #opt# pyyaml
 #opt# scispacy
 #opt# selenium
+#opt# Sphinx
 #
 ## OLD: #opt# spacy>=3.0.0
 ## TODO:

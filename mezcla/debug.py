@@ -67,6 +67,7 @@ import re
 import six
 import sys
 import time
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Local packages
 ## OLD:
@@ -1098,7 +1099,7 @@ if __debug__:
     def debug_init():
         """Debug-only initialization"""
         time_start = time.time()
-        trace(DETAILED, f"in debug_init(); {timestamp()}")
+        trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
         ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
         # note: shows command invocation unless invoked via "python -c ..."
         command_line = " ".join(sys.argv)
@@ -1122,6 +1123,7 @@ if __debug__:
         module_file = __file__
         trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
         trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
+        trace_expr(QUITE_DETAILED, __file__)
 
         # Determine other debug-only environment options
         global para_mode_tracing

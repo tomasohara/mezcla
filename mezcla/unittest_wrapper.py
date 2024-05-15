@@ -17,6 +17,7 @@
 #   See glue_helper.py for implementation along with related ALLOW_SUBCOMMAND_TRACING.
 # TODO:
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
+# - Add TEMP_DIR for more direct specification.
 # - Clarify that this can co-exist with pytest-based tests (see tests/test_main.py).
 # TODO2:
 # - Clean up script_file usage (and unncessary settings in test scripts).
@@ -58,6 +59,8 @@ import unittest
 import pytest
 
 # Local packages
+# note: Disables TEMP_FILE default used by in glue_helpers.py.
+os.environ["PRESERVE_TEMP_FILE"] = "1"
 import mezcla
 from mezcla import debug
 from mezcla import glue_helpers as gh
@@ -65,12 +68,14 @@ from mezcla.main import DISABLE_RECURSIVE_DELETE
 from mezcla.misc_utils import string_diff
 from mezcla.my_regex import my_re
 from mezcla import system
+## DEBUG: debug.trace_expr(6, __file__)
 
 # Constants (e.g., environment options)
 
 TL = debug.TL
-KEEP_TEMP = system.getenv_bool("KEEP_TEMP", debug.detailed_debugging(),
-                               "keep temporary files")
+KEEP_TEMP = system.getenv_bool(
+    "KEEP_TEMP", debug.detailed_debugging(),
+    desc="Keep temporary files")
 TODO_FILE = "TODO FILE"
 TODO_MODULE = "TODO MODULE"
 
@@ -103,13 +108,25 @@ if PROFILE_CODE:
 
 #-------------------------------------------------------------------------------
 
-def get_temp_dir(keep=None):
-    """Get temporary directory, omitting later deletion if KEEP"""
-    # NOTE: Unused function
+def get_temp_dir(keep=None, unique=None):
+    """Get temporary directory, omitting later deletion if KEEP
+    Note: Optionally returns UNIQUE dir
+    """
+    debug.assertion(not ((keep is False) and (unique is False)))
     if keep is None:
         keep = KEEP_TEMP
-    dir_path = tempfile.NamedTemporaryFile(delete=(not keep)).name
-    gh.full_mkdir(dir_path)
+    dir_base = gh.get_temp_file()
+    if unique:
+        # Note: creates parent temp dir if temp file regular file
+        if not system.is_directory(dir_base):
+            dir_base += "_temp_dir_"
+            gh.full_mkdir(dir_base)
+        dir_path = tempfile.NamedTemporaryFile(
+            delete=(not keep), dir=dir_base).name
+    else:
+        dir_path = dir_base
+    if not system.is_directory(dir_path):
+        gh.full_mkdir(dir_path)
     debug.trace(5, f"get_temp_dir() => {dir_path}")
     return dir_path
 
@@ -175,12 +192,23 @@ class TestWrapper(unittest.TestCase):
     - script_module should be overriden to specify the module instance, such as via get_testing_module_name (see test/template.py)
     - set it to None to avoid command-line invocation checks
     """
+
+    # Re-initalize glue helper temp file settings
+    ## TODO?: system.setenv("PRESERVE_TEMP_FILE", "1")
+    debug.trace_expr(4, os.environ.get("PRESERVE_TEMP_FILE"))
+    ## TEST: os.environ["PRESERVE_TEMP_FILE"] = "1"
+    system.setenv("PRESERVE_TEMP_FILE", "1")
+    gh.init()
+    debug.trace_expr(4, os.environ.get("PRESERVE_TEMP_FILE"))
+
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usually set via derive_tested_module_name)
-    temp_base = system.getenv_text("TEMP_BASE",
-                                   tempfile.NamedTemporaryFile().name)
-    check_coverage = system.getenv_bool("CHECK_COVERAGE", False,
-                                        "Check coverage during unit testing")
+    temp_base = system.getenv_text(
+        "TEMP_BASE", tempfile.NamedTemporaryFile().name,
+        desc="Override for basename of temporary files")
+    check_coverage = system.getenv_bool(
+        "CHECK_COVERAGE", False,
+        desc="Check coverage during unit testing")
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
     temp_file = None
@@ -226,7 +254,9 @@ class TestWrapper(unittest.TestCase):
 
         # Optionally, setup temp-base directory (normally just a file)
         if cls.use_temp_base_dir is None:
-            cls.use_temp_base_dir = system.getenv_bool("USE_TEMP_BASE_DIR", False)
+            cls.use_temp_base_dir = system.getenv_bool(
+                "USE_TEMP_BASE_DIR", False,
+                desc="Treat TEMP_BASE as a directory")
             # TODO: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); cls.use_temp_base_dir = bool(temp_base_dir.strip()); ...
         if cls.use_temp_base_dir:
             ## TODO: pure python
@@ -294,7 +324,7 @@ class TestWrapper(unittest.TestCase):
         ## TODO3: use os.path.delim instead of /
         result = my_re.sub(r'tests\/test_(.*\.py)', r'\1', result)
         debug.assertion(result.endswith(".py"))
-        debug.trace(7, f'get_module_file_path({test_filename}) => {result}')
+        debug.trace(6, f'get_module_file_path({test_filename}) => {result}')
         return result
 
     @classmethod
@@ -328,10 +358,13 @@ class TestWrapper(unittest.TestCase):
             default_temp_file = self.temp_base + "-test-"
         TestWrapper.test_num += 1
         default_temp_file += str(TestWrapper.test_num)
+        debug.trace_expr(5, default_temp_file)
 
         # Get new temp file and delete existing file and variants based on temp_file_count,
         # such as /tmp/test-2, /tmp/test-2-1, and /tmp/test-2-2 (but not /tmp/test-[13]*).
-        self.temp_file = system.getenv_text("TEMP_FILE", default_temp_file)
+        self.temp_file = system.getenv_text(
+            "TEMP_FILE", default_temp_file,
+            desc="Override for temporary filename")
         gh.delete_existing_file(f"{self.temp_file}")
         for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
             gh.delete_existing_file(f)
@@ -515,7 +548,7 @@ class TestWrapper(unittest.TestCase):
         """
         stdout, stderr = self.capsys.readouterr()
         ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
-        debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", maxlen=8192)
+        debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", maxlen=16384)
         return stdout, stderr
         
     def get_stdout(self):

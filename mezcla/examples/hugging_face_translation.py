@@ -124,6 +124,7 @@ def main():
         mt_model_reverse = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL_REVERSE)
 
     # Get input file
+    debug.trace_expr(5, dummy_app.input_stream, text, TEXT_FILE)
     text_file = TEXT_FILE
     if ((text is not None) or use_interface):
         pass
