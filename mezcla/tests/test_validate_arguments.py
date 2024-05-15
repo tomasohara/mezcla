@@ -1,12 +1,15 @@
-# Test for the extended_validation.py module
+#! /usr/bin/env python
+#
+# Tests for validate_arguments module
+#
 
 """
-Test for the extended_validation.py module
+Tests for validate_arguments module
 """
 
 import pytest
 from pydantic import ValidationError, BaseModel, validate_call
-import mezcla.extended_validation as ev
+import mezcla.validate_arguments as va
 
 def assert_validation_error(func, *args, **kwargs):
     """Asserts that a function raises a ValidationError"""
@@ -19,7 +22,7 @@ class ExpectedDictModel(BaseModel):
     example_key: str
 
 @validate_call
-@ev.validate_dictionaries(some_dict = ExpectedDictModel)
+@va.validate_dictionaries(some_dict = ExpectedDictModel)
 def example_dict_keys_values(some_dict: dict) -> bool:
     """Example validating keys and values of a dictionary"""
     assert isinstance(some_dict, dict), "The validation should fail before this"
@@ -31,7 +34,7 @@ def test_trivial_dict_parameter():
     """Test for trivial_dict_parameter"""
     # Function to test
     @validate_call
-    @ev.validate_dictionaries()
+    @va.validate_dictionaries()
     def trivial_dict_parameter(some_dict: dict) -> bool:
         """Example of simple dictionary validation"""
         assert isinstance(some_dict, dict), "The validation should fail before this"
@@ -67,7 +70,7 @@ def test_wrong_model():
         example_key: str
     # Function to test
     @validate_call
-    @ev.validate_dictionaries(some_dict = WrongModel)
+    @va.validate_dictionaries(some_dict = WrongModel)
     def example_wrong_model(some_dict: dict) -> None:
         """Example of wrong model passed to custom_validate_call"""
         raise AssertionError("The validation should fail before this")
@@ -80,7 +83,7 @@ def test_custom_types():
     """Test for custom types, if they are valid for the current python version"""
     # Function to test
     @validate_call
-    def file_to_str(filename: ev.FileDescriptorOrPath) -> str:
+    def file_to_str(filename: va.FileDescriptorOrPath) -> str:
         """Example of custom types"""
         assert isinstance(filename, (str, bytes, int)), "The validation should fail before this"
         return str(filename)

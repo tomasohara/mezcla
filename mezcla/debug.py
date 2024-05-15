@@ -73,7 +73,7 @@ import six
 import sys
 import time
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
-from mezcla.extended_validation import (
+from mezcla.validate_arguments import (
     FileDescriptorOrPath,
 )
 
