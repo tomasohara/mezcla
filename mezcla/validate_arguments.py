@@ -6,32 +6,29 @@
 """Optional pydantic argument validation"""
 
 # Standard modules
-## TODO: import json
-import re
+import ast
 from functools import wraps
-from pydantic import BaseModel
 
 # Installed module
-from pydantic import validate_call
 from pydantic import BaseModel
+import astor
 
 # Local modules
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
 from mezcla import system
-from mezcla.my_regex import my_re
 
 # Constants
 VALIDATE_ARGUMENTS = True
 TL = debug.TL
-OUTPUT_PATH = "/tmp/temp_"
-LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
+TMP_PATH = "/tmp/temp_"
 
 # Arguments for Validate Arguments Script
 FILE = "file"
 ARG_INPUT_SCRIPT = "input"
 ARG_NO_TRANSFORM = "no-transform"
+OUTPUT = "output"
 
 # pylint: disable=unused-argument
 def validate_dictionaries(*decorator_args, **decorator_kwargs):
@@ -86,26 +83,51 @@ def validate_dictionaries(*decorator_args, **decorator_kwargs):
         return inner
     return decorator
 
-def transform_file(input_file_path):
-    global output_filename
-    content = system.read_file(input_file_path)
-    content = my_re.sub(r"^def", r'@validate_call\n\g<0>', content, flags=re.MULTILINE)
-    content = LINE_IMPORT_PYDANTIC + content
-    output_filename = OUTPUT_PATH + gh.basename(input_file_path)
-    system.write_file(
-        filename=output_filename,
-        text=content
-    )
-    return output_filename
+def add_validate_call_decorator(code):
+    """Add the validate_call decorator to all function calls in the code"""
 
-def validate_arguments(file_path):
-    # Perform validation of arguments here
-    command = f"python3 {file_path}"
-    try:
-        validation_output = gh.run(command)
-        return validation_output
-    except Exception as e:
-        raise f"Exception: {e}"
+    # Parse the code into AST
+    tree = ast.parse(code)
+
+    # Define an import node
+    import_node = ast.ImportFrom(
+        module='pydantic',
+        names=[ast.alias(name='validate_call', asname=None)],
+        level=0
+    )
+
+    # Define a decorator node
+    validate_decorator = ast.Name(id='validate_call', ctx=ast.Load())
+
+    # Function to recursively traverse the AST
+    # pylint: disable=invalid-name
+    def visit_Call(node):
+        """Visit a Call node"""
+        # Add the decorator to each function definition
+        node.func = ast.Call(func=validate_decorator, args=[node.func], keywords=[])
+        return node
+
+    # Add the import statement to the beginning of the AST
+    tree.body.insert(0, import_node)
+
+    # List of functions to ignore, avoiding infinite recursion
+    to_ignore = [
+        'isinstance', 'print', 'validate_call',
+    ]
+
+    # Traverse the AST and modify function definitions
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            if not isinstance(node.func, ast.Name):
+                continue
+            if node.func.id in to_ignore:
+                continue
+            node = visit_Call(node)
+
+    # Convert the modified AST back to Python code
+    modified_code = astor.to_source(tree)
+
+    return modified_code
 
 class ValidateArgumentsScript(Main):
     """Argument processing class to Validate Arguments"""
@@ -113,16 +135,27 @@ class ValidateArgumentsScript(Main):
     # Class-level member variables for arguments
     # (avoids need for class constructor)
     file = ""
+    output = ""
 
     def setup(self) -> None:
         """Process arguments"""
         self.file = self.get_parsed_argument(FILE, self.file)
+        self.output = self.get_parsed_argument(OUTPUT, self.output)
 
     def run_main_step(self) -> None:
         """Process main script"""
         debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
-        output_file = transform_file(self.file)
-        print(validate_arguments(output_file))
+        code = system.read_file(self.file)
+        if not code:
+            raise ValueError(f"File {self.file} is empty")
+        code = add_validate_call_decorator(code)
+        output_filename = self.output if self.output else TMP_PATH + gh.basename(self.file)
+        system.write_file(
+            filename=output_filename,
+            text=code
+        )
+        output = gh.run(f"python3 {output_filename}")
+        print(output)
 
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
@@ -130,6 +163,9 @@ if __name__ == '__main__':
         description = __doc__,
         positional_arguments = [
             (FILE, 'Python script to run with argument validation')
+        ],
+        text_options = [
+            (OUTPUT, 'Output of transformed script'),
         ],
         manual_input = True,
     )
