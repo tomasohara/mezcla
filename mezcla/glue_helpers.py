@@ -56,7 +56,7 @@ from mezcla.tpo_common import debug_format, debug_print
 ## OLD: from mezcla.main import DISABLE_RECURSIVE_DELETE
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 ## TODO3: debug.trace_expr(6, __file__)
-from mezcla.validate_arguments import (
+from mezcla.validate_arguments_types import (
     FileDescriptorOrPath, StrOrBytesPath
 )
 

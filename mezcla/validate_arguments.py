@@ -8,10 +8,7 @@
 # Standard modules
 ## TODO: import json
 import re
-from os import PathLike
-from types import TracebackType
 from functools import wraps
-from typing import Union, Tuple
 from pydantic import BaseModel
 
 # Installed module
@@ -34,16 +31,6 @@ LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
 # Arguments
 ARG_INPUT_SCRIPT = "input"
 ARG_NO_TRANSFORM = "no-transform"
-
-# Common types used in multiple modules
-#
-# These types are the same as those used in builtins.pyi,
-# but we need to copy them here because they are protected
-# and cannot be imported directly.
-StrOrBytesPath = Union[str, bytes, PathLike]  # stable
-FileDescriptorOrPath = Union[int, StrOrBytesPath]
-ExcInfo = Tuple[BaseException, TracebackType]
-OptExcInfo = Union[ExcInfo, Tuple[None, None, None]]
 
 # pylint: disable=unused-argument
 def validate_dictionaries(*decorator_args, **decorator_kwargs):

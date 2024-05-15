@@ -49,7 +49,7 @@ from mezcla import debug
 from mezcla.debug import UTF8, TraceLevel
 ## TODO3: debug.trace_expr(6, __file__)
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
-from mezcla.validate_arguments import (
+from mezcla.validate_arguments_types import (
     FileDescriptorOrPath, OptExcInfo, StrOrBytesPath,
 )
 
