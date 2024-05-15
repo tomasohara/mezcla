@@ -28,7 +28,8 @@ TL = debug.TL
 OUTPUT_PATH = "/tmp/temp_"
 LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
 
-# Arguments
+# Arguments for Validate Arguments Script
+FILE = "file"
 ARG_INPUT_SCRIPT = "input"
 ARG_NO_TRANSFORM = "no-transform"
 
@@ -85,7 +86,6 @@ def validate_dictionaries(*decorator_args, **decorator_kwargs):
         return inner
     return decorator
 
-#...............................................................................
 def transform_file(input_file_path):
     global output_filename
     content = system.read_file(input_file_path)
@@ -107,17 +107,30 @@ def validate_arguments(file_path):
     except Exception as e:
         raise f"Exception: {e}"
 
-#...............................................................................
-    
-def main():
-    """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
-    input_file = "spell.py"
-    output_file = transform_file(input_file)
-    print(validate_arguments(output_file))
+class ValidateArgumentsScript(Main):
+    """Argument processing class to Validate Arguments"""
 
-#-------------------------------------------------------------------------------
+    # Class-level member variables for arguments
+    # (avoids need for class constructor)
+    file = ""
+
+    def setup(self) -> None:
+        """Process arguments"""
+        self.file = self.get_parsed_argument(FILE, self.file)
+
+    def run_main_step(self) -> None:
+        """Process main script"""
+        debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+        output_file = transform_file(self.file)
+        print(validate_arguments(output_file))
 
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
-    main()
+    app = ValidateArgumentsScript(
+        description = __doc__,
+        positional_arguments = [
+            (FILE, 'Python script to run with argument validation')
+        ],
+        manual_input = True,
+    )
+    app.run()
