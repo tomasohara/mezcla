@@ -467,24 +467,64 @@ class TestDebug:
         assert THE_MODULE.clip_value('helloworld', 5) == 'hello...'
         assert THE_MODULE.clip_value('12345678910111213141516', 7) == '1234567...'
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # XPASS
+    @pytest.mark.xfail
     def test_read_line(self):
         """Ensure read_line works as expected"""
         debug.trace(4, f"test_read_line(): self={self}")
-        assert(False)
+        MISSING_LINE = "???"
+        TEST_CONTENT = [
+            "Line 1",
+            "Line 2",
+            "Line 3",
+            "Line 4",
+            "Line 5"
+        ]
+        TEST_FILE = "/tmp/test_read_line.txt"
+        system.write_lines(TEST_FILE, text_lines=TEST_CONTENT, append=False)
+        
+        for line_num in range(5):
+            assert THE_MODULE.read_line(TEST_FILE, line_num+1) == TEST_CONTENT[line_num] + "\n"
+        
+        ## THE_MODULE.read_line(TEST_FILE, 0) == "Line 5\n" does not make sense
+        # assert THE_MODULE.read_line(TEST_FILE, 0) == MISSING_LINE
+        assert THE_MODULE.read_line(TEST_FILE, 6) == MISSING_LINE
+        assert THE_MODULE.read_line("non_existent_file.txt", 1) == MISSING_LINE
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    def test_debug_init(self):
+    # XPASS
+    @pytest.mark.xfail
+    def test_debug_init(self, capsys):
         """Ensure debug_init works as expected"""
         debug.trace(4, f"test_debug_init(): self={self}")
-        assert(False)
+        THE_MODULE.debug_init()
+        captured = capsys.readouterr().err
+        to_be_asserted = [
+            "debug_init()", 
+            "sys.argv", 
+            "open_debug_file()", 
+            "debug_filename", 
+            "debug_file", 
+            "trace_level", 
+            "mezcla/debug.py", 
+            "output_timestamps",
+            "para_mode_tracing",
+            "max_trace_value_len",
+            "use_logging",
+            "monitor_functions",
+            "environment: {\n",
+        ]
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    def test_display_ending_time_etc(self):
+        for var in to_be_asserted:
+            assert var in captured
+
+    # NEED HELP
+    @pytest.mark.xfail
+    def test_display_ending_time_etc(self, capsys):
         """Ensure display_ending_time_etc works as expected"""
         debug.trace(4, f"test_display_ending_time_etc(): self={self}")
-        assert(False)
-
+        THE_MODULE.debug_init()
+        assert False
+    
     def test_visible_simple_trace(self, capsys):
         """Make sure level-1 trace outputs to stderr"""
         debug.trace(4, f"test_visible_simple_trace({capsys})")
@@ -520,7 +560,6 @@ class TestDebug:
         assert captured.out == self.expected_stdout_trace
         assert captured.err == self.expected_stderr_trace
         THE_MODULE.trace_expr(6, pre_captured, captured)
-
 
 class TestDebug2(TestWrapper):
     """Another Class for test case definitions"""
