@@ -8,13 +8,15 @@ from mezcla import debug
 def not_called_function() ->None:
     """This function is not called"""
     print('This function is not called')
-    print(debug.get_level())
+    print(validate_call(debug.get_level)())
 
 
 def move_debug_level() ->None:
     """Move debug level"""
-    debug.set_level(debug.get_level() + 1)
-    debug.set_level(debug.get_level() - 1)
+    print('Default debug level: ', debug.DEFAULT)
+    print('Current debug level: ', validate_call(debug.get_level)())
+    validate_call(debug.set_level)(validate_call(debug.get_level)() + 1)
+    validate_call(debug.set_level)(validate_call(debug.get_level)() - 1)
 
 
 def main() ->None:

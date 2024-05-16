@@ -25,6 +25,7 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 RESOURCES_DIR = os.path.join(THIS_DIR, "resources")
 SIMPLE_SCRIPT = os.path.join(RESOURCES_DIR, "simple_script.py")
 SIMPLE_SCRIPT_DECORATED = os.path.join(RESOURCES_DIR, "simple_script_decorated.py")
+SIMPLE_WRONG_SCRIPT = os.path.join(RESOURCES_DIR, "simple_script_with_wrong_types.py")
 
 def assert_validation_error(func, *args, **kwargs):
     """Asserts that a function raises a ValidationError"""
@@ -113,7 +114,7 @@ class TestValidateArgument(TestWrapper):
         )
         # Check script output
         assert script_output, 'script output is empty'
-        assert script_output == "Hello, World!"
+        assert "Hello, World!" in script_output
         # Check decorated script output
         expected_output = system.read_file(SIMPLE_SCRIPT_DECORATED)
         current_output = system.read_file(self.temp_file)
@@ -122,7 +123,11 @@ class TestValidateArgument(TestWrapper):
 
     def test_wrong_script(self):
         """Run validate arguments on a wrong script"""
-        ## TODO: implement
+        script_output = self.run_script(
+            data_file=SIMPLE_WRONG_SCRIPT,
+        )
+        assert script_output, 'script output is empty'
+        assert "further information visit" in script_output
 
 if __name__ == "__main__":
     pytest.main()

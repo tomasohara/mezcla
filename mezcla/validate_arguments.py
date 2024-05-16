@@ -99,14 +99,6 @@ def add_validate_call_decorator(code):
     # Define a decorator node
     validate_decorator = ast.Name(id='validate_call', ctx=ast.Load())
 
-    # Function to recursively traverse the AST
-    # pylint: disable=invalid-name
-    def visit_Call(node):
-        """Visit a Call node"""
-        # Add the decorator to each function definition
-        node.func = ast.Call(func=validate_decorator, args=[node.func], keywords=[])
-        return node
-
     # Add the import statement to the beginning of the AST
     tree.body.insert(0, import_node)
 
@@ -115,13 +107,24 @@ def add_validate_call_decorator(code):
         'isinstance', 'print', 'validate_call',
     ]
 
+    # Function to recursively traverse the AST
+    # pylint: disable=invalid-name
+    def visit_Call(node):
+        """Visit a Call node"""
+        # Standalone functions are represented as Name nodes.
+        # Functions from external modules are represented as Attribute nodes.
+        if not isinstance(node.func, (ast.Name, ast.Attribute)):
+            return node
+        # Skip functions to ignore
+        if isinstance(node.func, ast.Name) and node.func.id in to_ignore:
+            return node
+        # Add the decorator to the function call
+        node.func = ast.Call(func=validate_decorator, args=[node.func], keywords=[])
+        return node
+
     # Traverse the AST and modify function definitions
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
-            if not isinstance(node.func, ast.Name):
-                continue
-            if node.func.id in to_ignore:
-                continue
             node = visit_Call(node)
 
     # Convert the modified AST back to Python code

@@ -15,7 +15,7 @@ def move_debug_level() -> None:
     """Move debug level"""
     print('Default debug level: ', debug.DEFAULT)
     print('Current debug level: ', debug.get_level())
-    debug.set_level(debug.get_level() + 1)
+    debug.set_level("WRONG PARAMETER TYPE")
     debug.set_level(debug.get_level() - 1)
 
 def main() -> None:
