@@ -7,9 +7,24 @@
 Tests for validate_arguments module
 """
 
+# Standard modules
+import os
+
+# Installed packages
 import pytest
 from pydantic import ValidationError, BaseModel, validate_call
+
+# Local packages
+from mezcla import system
 import mezcla.validate_arguments as va
+from mezcla.unittest_wrapper import TestWrapper
+from mezcla import glue_helpers as gh
+
+# Constants
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+RESOURCES_DIR = os.path.join(THIS_DIR, "resources")
+SIMPLE_SCRIPT = os.path.join(RESOURCES_DIR, "simple_script.py")
+SIMPLE_SCRIPT_DECORATED = os.path.join(RESOURCES_DIR, "simple_script_decorated.py")
 
 def assert_validation_error(func, *args, **kwargs):
     """Asserts that a function raises a ValidationError"""
@@ -78,6 +93,36 @@ def test_wrong_model():
     with pytest.raises(AssertionError) as exc_info:
         example_wrong_model({})
     assert "must be a pydantic.BaseModel class" in str(exc_info.value)
+
+def test_add_validate_call_decorator():
+    """Test for add_validate_call_decorator"""
+    code = system.read_file(SIMPLE_SCRIPT)
+    expected_output_code = system.read_file(SIMPLE_SCRIPT_DECORATED)
+    assert va.add_validate_call_decorator(code) == expected_output_code
+
+class TestValidateArgument(TestWrapper):
+    """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__)
+
+    def test_simple_script(self):
+        """Run validate arguments on a simple script"""
+        script_output = self.run_script(
+            options=f"--output {self.temp_file}",
+            data_file=SIMPLE_SCRIPT,
+        )
+        # Check script output
+        assert script_output, 'script output is empty'
+        assert script_output == "Hello, World!"
+        # Check decorated script output
+        expected_output = system.read_file(SIMPLE_SCRIPT_DECORATED)
+        current_output = system.read_file(self.temp_file)
+        assert current_output, 'current output is empty'
+        assert current_output == expected_output
+
+    def test_wrong_script(self):
+        """Run validate arguments on a wrong script"""
+        ## TODO: implement
 
 if __name__ == "__main__":
     pytest.main()
