@@ -143,11 +143,15 @@ class TestIt(TestWrapper):
         assert(not "sti.do_assert_equals" in captured_trace)
         return
 
+    # XPASS
     @pytest.mark.xfail
     def test_04_get_temp_dir(self):
         """Tests get_temp_dir"""
         debug.trace(4, f"TestIt.test_04_get_temp_dir(); self={self}")
-        assert False, "TODO: implement"
+        temp_dir_path = THE_MODULE.get_temp_dir()
+        pattern = "/temp/tmp/tmp"
+        assert pattern in temp_dir_path
+        assert system.is_directory(temp_dir_path) == True
 
     @pytest.mark.xfail
     def test_05_check_temp_part1(self):
@@ -171,6 +175,35 @@ class TestIt(TestWrapper):
         # NOTE: The following will fail: apparently each test is run using
         # a separate class instance.
         debug.assertion(last_self == self)
+
+    ## TODO ## 
+    @pytest.mark.xfail
+    def test_07_trap_exception(self):
+        """Make sure trap_exception works as expected"""
+        # def sum(a, b):
+        #     return a+b
+        # output = THE_MODULE.trap_exception(sum)
+        # assert output is None
+        assert False, "TODO: IMPLEMENT"
+
+    @pytest.mark.xfail
+    def test_08_pytest_fixture_wrapper(self):
+        """Make sure trap_exception works as expected"""
+        assert False, "TODO: IMPLEMENT"
+
+    @pytest.mark.xfail
+    def test_09_invoke_tests(self):
+        """Make sure invoke_tests works as expected"""
+        assert False, "TODO: IMPLEMENT"
+
+    @pytest.mark.xfail
+    def test_10_setUpClass(self):
+        """Make sure setUpClass works as expected"""
+        assert False, "TODO: IMPLEMENT"
+
+
+
+
 
 #------------------------------------------------------------------------
 
