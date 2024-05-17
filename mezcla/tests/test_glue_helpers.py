@@ -419,17 +419,24 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert THE_MODULE.file_size(temp_file) == 8
         assert THE_MODULE.file_size('non-existent-file.txt') == -1
 
+    # XPASS
     @pytest.mark.xfail
     def test_get_matching_files(self):
         """Ensure get_matching_files works as expected"""
         debug.trace(4, "test_get_matching_files()")
-        assert False, "TODO: implement"
+        assert len(THE_MODULE.get_matching_files("test_*.py")) > 0
+        assert THE_MODULE.get_matching_files("*.md", warn=False) == ["README.md", "TODO.md"]
+        assert THE_MODULE.get_matching_files("non_existent_file.txt", warn=True) == []
 
+    # XPASS
     @pytest.mark.xfail
     def test_get_files_matching_specs(self):
         """Ensure get_files_matching_specs works as expected"""
         debug.trace(4, "test_get_files_matching_specs()")
-        assert False, "TODO: implement"
+        patterns = ["test_k*.py"]
+        expected_files = ["test_kenlm_example.py", "test_keras_param_search.py"]
+        result = THE_MODULE.get_files_matching_specs(patterns=patterns)
+        assert sorted(result) == sorted(expected_files)
 
     @pytest.mark.xfail
     def test_get_directory_listing(self):
@@ -519,10 +526,16 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     @pytest.mark.xfail
     def test_initialization(self):
         """Make sure module initialized OK"""
-        # TODO1: add checks for TEMP_BASE and TEMP_FILE, along with PRESERVE_TEMP_FILE
-        # TODO3: add checks for TEMP_LOG_FILE and TEMP_SCRIPT_FILE
-        assert False, "TODO: implement"
-        
+        ## TODO1: add checks for TEMP_BASE and TEMP_FILE, along with PRESERVE_TEMP_FILE
+        ## TODO3: add checks for TEMP_LOG_FILE and TEMP_SCRIPT_FILE
+        # TEMP_BASE = "/tmp/test_initialization"
+        # PRESERVE_TEMP_FILE = False
+        # USE_TEMP_BASE_DIR = True
+        # PID = 12345
+        # THE_MODULE.init()
+        # expected_temp_file = THE_MODULE.form_path(TEMP_BASE, f"temp-{PID}.list")
+        # assert THE_MODULE.TEMP_FILE == expected_temp_file
+        assert False, "TODO: IMPLEMENT"
 if __name__ == '__main__':
     debug.trace_current_context()
     pytest.main([__file__])
