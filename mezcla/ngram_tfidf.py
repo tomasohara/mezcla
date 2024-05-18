@@ -15,6 +15,8 @@
 #   and boosting captialized ngrams.
 # - See compute_tfidf.py for computing tfidf over files.
 #
+# TODO1: fix --regular over filename
+#
 # TODO:
 # - Add more optional heuristics: part-of-speech boosting, adjoining ngram filtering,
 #   noun-phrase boosting, etc.
@@ -454,6 +456,7 @@ def output_tfidf_analysis(main_app, good_text=None, bad_text=None):
                                     for (t, s) in top_ngrams[:SAMPLE_SIZE]])
         print(f"{l}\t{top_ngram_spec}")
     
+
 def main():
     """Entry point for script"""
     debug.trace(4, "main()")
@@ -467,7 +470,7 @@ def main():
                                      (REGULAR_OPT, "Process regular input--not canned test")],
                     text_options=[(GOOD_TERMS_OPT, "Overlap terms for boosting ngrams scores"),
                                   (BAD_TERMS_OPT, "Overlap terms for de-boosting ngrams scores")],
-                    skip_input=False)
+                    skip_input=False, manual_input=True)
     regular = main_app.get_parsed_option(REGULAR_OPT)
     simple_test = main_app.get_parsed_option(SIMPLE_TEST_OPT, not regular)
     good_terms_text = main_app.get_parsed_option(GOOD_TERMS_OPT)
