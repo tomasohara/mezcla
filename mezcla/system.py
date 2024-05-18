@@ -232,7 +232,7 @@ getenv_boolean = getenv_bool
 
 def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, allow_none=False, update=None):
     """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
-    Note: Return is a float unless ALLOW_NONE
+    Note: Return is a float unless ALLOW_NONE; defaults to -1.0
     """
     # EX: getenv_float("?", default=1.5) => 1.5
     # TODO: def getenv_number(...) -> Optional(float):
@@ -254,10 +254,10 @@ getenv_float = getenv_number
 
 def getenv_int(var, default=-1, description=None, desc=None, allow_none=False, update=None):
     """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
-    Note: Return is an integer unless ALLOW_NONE
+    Note: Return is an integer unless ALLOW_NONE; defaults to -1
     """
     # EX: getenv_int("?", default=1.5) => 1
-    value = getenv_number(var, description=description, desc=desc, default=default, helper=True, update=update)
+    value = getenv_number(var, description=description, desc=desc, default=default, allow_none=allow_none, helper=True, update=update)
     if (not isinstance(value, int)):
         ## OLD: if ((value is not None) and (not allow_none)):
         if (not ((value is None) and allow_none)):
