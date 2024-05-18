@@ -160,6 +160,8 @@ class TestSystem(TestWrapper):
         self.monkeypatch.setenv('TEST_NUMBER', ' 9.81    ', prepend=False)
         assert THE_MODULE.getenv_number('TEST_NUMBER', default=10) == 9.81
         assert THE_MODULE.getenv_number('BAD_TEST_NUMBER', default=10) == 10
+        assert THE_MODULE.getenv_number('BAD VAR', default=None, allow_none=True) is None
+        assert THE_MODULE.getenv_number('BAD VAR', default=None, allow_none=False) == 0.0
         ## TODO: test helper argument
 
     def test_getenv_int(self):
@@ -168,6 +170,8 @@ class TestSystem(TestWrapper):
         self.monkeypatch.setenv('TEST_NUMBER', '9.81', prepend=False)
         assert THE_MODULE.getenv_int('TEST_NUMBER', default=20) == 9
         assert THE_MODULE.getenv_int("REALLY FUBAR", 123) == 123
+        assert THE_MODULE.getenv_int('BAD VAR', default=None, allow_none=True) is None
+        assert THE_MODULE.getenv_int('BAD VAR', default=None, allow_none=False) == 0
 
     def test_get_exception(self):
         """Ensure get_exception works as expected"""
