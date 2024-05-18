@@ -230,8 +230,11 @@ def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, u
 getenv_boolean = getenv_bool
 
 
-def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, update=None):
-    """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE"""
+def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, allow_none=False, update=None):
+    """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
+    Note: Return is a float unless ALLOW_NONE
+    """
+    # EX: getenv_float("?", default=1.5) => 1.5
     # TODO: def getenv_number(...) -> Optional(float):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
@@ -239,6 +242,8 @@ def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, 
     if (isinstance(value, str) and value.strip()):
         debug.assertion(is_number(value))
         num_value = to_float(value)
+    if (not ((num_value is None) and allow_none)):
+        num_value = to_float(num_value)
     trace_level = 6 if helper else 5
     debug.trace_fmtd(trace_level, "getenv_number({v}, {d}) => {r}",
                      v=var, d=default, r=num_value)
@@ -247,15 +252,15 @@ def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, 
 getenv_float = getenv_number
 
 
-
 def getenv_int(var, default=-1, description=None, desc=None, allow_none=False, update=None):
     """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
     Note: Return is an integer unless ALLOW_NONE
     """
-    # EX: getenv_int("?", 1.5) => 1
+    # EX: getenv_int("?", default=1.5) => 1
     value = getenv_number(var, description=description, desc=desc, default=default, helper=True, update=update)
     if (not isinstance(value, int)):
-        if ((value is not None) or allow_none):
+        ## OLD: if ((value is not None) and (not allow_none)):
+        if (not ((value is None) and allow_none)):
             value = to_int(value)
     debug.trace_fmtd(5, "getenv_int({v}, {d}) => {r}",
                      v=var, d=default, r=value)
