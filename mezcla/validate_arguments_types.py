@@ -7,6 +7,7 @@
 # We need to separate the types used in several functions
 # in this module to avoid circular imports.
 
+# TODO: reduce redundancy
 """
 Common types used in multiple modules
 
