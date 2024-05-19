@@ -735,6 +735,7 @@ def read_lookup_table(
     try:
         # TODO: use csv.reader
         file_obj = open_file(filename)
+        # TODO: debug.assertion
         assert isinstance(file_obj, TextIOWrapper)
         with file_obj as f:
             for line in f:
@@ -782,6 +783,7 @@ def create_boolean_lookup_table(
     lookup_hash = defaultdict(bool)
     try:
         file_obj = open_file(filename, **kwargs)
+        # TODO: debug.assertion
         assert isinstance(file_obj, TextIOWrapper)
         with file_obj as f:
             for line in f:
@@ -886,6 +888,7 @@ def write_lines(
 
 def write_temp_file(filename: FileDescriptorOrPath, text: str) -> None:
     """Create FILENAME in temp. directory using TEXT"""
+    # TODO: debug.assertion
     assert isinstance(TEMP_DIR, str) and TEMP_DIR != "", "TEMP_DIR not defined"
     temp_path = form_path(TEMP_DIR, filename)
     return write_file(temp_path, text)
