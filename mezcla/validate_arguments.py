@@ -22,6 +22,7 @@ from mezcla import system
 # Constants
 VALIDATE_ARGUMENTS = True
 TL = debug.TL
+# TODO: TMP_PATH = gh.get_temp_dir
 TMP_PATH = "/tmp/temp_"
 
 # Arguments for Validate Arguments Script
@@ -66,6 +67,7 @@ def validate_dictionaries(*decorator_args, **decorator_kwargs):
             # Validate the dictionary keys and values,
             # specified in the decorator parameters
             for key, decorator_model in decorator_kwargs.items():
+                # TODO: assert => debug.assertion
                 # Check decorator parameters
                 assert issubclass(decorator_model, BaseModel), f"Parameter {key} must be a pydantic.BaseModel class"
                 # Check for function parameters
@@ -82,6 +84,7 @@ def validate_dictionaries(*decorator_args, **decorator_kwargs):
             return func(*func_args, **func_kwargs)
         return inner
     return decorator
+
 
 def add_validate_call_decorator(code):
     """Add the validate_call decorator to all function calls in the code"""
@@ -132,6 +135,7 @@ def add_validate_call_decorator(code):
 
     return modified_code
 
+
 class ValidateArgumentsScript(Main):
     """Argument processing class to Validate Arguments"""
 
@@ -159,6 +163,7 @@ class ValidateArgumentsScript(Main):
         )
         output = gh.run(f"python3 {output_filename}")
         print(output)
+
 
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
