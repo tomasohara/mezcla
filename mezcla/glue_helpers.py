@@ -210,6 +210,7 @@ def dir_path(filename: str, explicit: bool = False) -> str:
     # TODO: add realpath (i.e., canonical path)
     if not explicit:
         base = basename(filename)
+        # TODO: debug.assertion
         assert isinstance(base, str)
         debug.assertion(form_path(path, base) == filename)
     return path
@@ -255,8 +256,10 @@ def resolve_path(
             frame = None
             try:
                 frame = inspect.currentframe()
+                # TODO: debug.assertion
                 assert isinstance(frame, FrameType)
                 frame = frame.f_back
+                # TODO: debug.assertion
                 assert isinstance(frame, FrameType)
                 calling_filename = frame.f_globals['__file__']
                 base_dir = os.path.dirname(calling_filename)
@@ -267,6 +270,7 @@ def resolve_path(
             finally:
                 if frame:
                     del frame
+        # TODO: debug.assertion
         assert isinstance(base_dir, str)
         
         # Check calling directory (TODO2: add more check dirs such as children)
@@ -767,6 +771,7 @@ def write_lines(
     try:
         mode = 'a' if append else 'w'
         f = system.open_file(filename, mode=mode)
+        # TODO: debug.assertion
         assert isinstance(f, TextIOWrapper)
         for line in text_lines:
             line = tpo.normalize_unicode(line)
@@ -814,6 +819,7 @@ def copy_file(source: str, target: str) -> None:
         target_file = target
     else:
         base = basename(source)
+        # TODO: debug.assertion
         assert isinstance(base, str)
         target_file = form_path(target, base)
     ## TODO: debug.assertion(file_size(source) == file_size(target_file))
@@ -927,6 +933,7 @@ def get_directory_listing(
         make_unicode: bool = False
     ) -> Union[List[str], List[str], List[bytes]]:
     """Returns files in DIR_NAME"""
+    # TODO: Union[List[str], List[bytes]] = []
     all_file_names: Union[List[str], List[str], List[bytes]] = []
     try:
         all_file_names = os.listdir(dir_name)
@@ -979,8 +986,10 @@ if __debug__:
             frame = None
             try:
                 frame = inspect.currentframe()
+                # TODO: debug.assertion
                 assert isinstance(frame, FrameType)
                 frame = frame.f_back
+                # TODO: debug.assertion
                 assert isinstance(frame, FrameType)
                 tpo.debug_trace("frame=%s", frame, level=8)
                 tpo.trace_object(frame, 9, "frame")
