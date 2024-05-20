@@ -34,8 +34,7 @@ from mezcla import system
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
-## TODO1: import mezcla.test_matrix_multiply_benchmarking as THE_MODULE
-import test_matrix_multiply_benchmarking as THE_MODULE
+import mezcla.examples.matrix_multiply_benchmarking as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(__file__, r"\btemplate.py$"):
