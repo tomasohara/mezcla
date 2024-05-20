@@ -23,6 +23,9 @@ import pytest
 
 # Local packages
 import os
+import unittest
+from unittest import mock
+
 ## TEST: os.environ["PRESERVE_TEMP_FILE"] = "1"
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests, trap_exception
 from mezcla import debug
@@ -176,31 +179,79 @@ class TestIt(TestWrapper):
         # a separate class instance.
         debug.assertion(last_self == self)
 
-    ## TODO ## 
+    # XPASS
     @pytest.mark.xfail
     def test_07_trap_exception(self):
         """Make sure trap_exception works as expected"""
-        # def sum(a, b):
-        #     return a+b
-        # output = THE_MODULE.trap_exception(sum)
-        # assert output is None
-        assert False, "TODO: IMPLEMENT"
+        def sum(a, b):
+            if a < 0 or b < 0:
+                raise AssertionError("Negative numbers not allowed")
+            return a + b
+        wrapped_func = THE_MODULE.trap_exception(sum)
+        output = wrapped_func(17, 10)
+        assert output == 27
 
+    # XPASS
     @pytest.mark.xfail
     def test_08_pytest_fixture_wrapper(self):
         """Make sure trap_exception works as expected"""
-        assert False, "TODO: IMPLEMENT"
+        
+        # pytest_fixture_wrapper designed for unary function
+        def square(a:int):
+            if a < 0:
+                raise AssertionError("Negative numbers not allowed as input")
+            return a**2
+        
+        wrapped_func = THE_MODULE.pytest_fixture_wrapper(square)
+        output = wrapped_func(25)
+        assert output == 625
 
+    # XPASS
     @pytest.mark.xfail
-    def test_09_invoke_tests(self):
+    @mock.patch('sys.stdout', new_callable=mock.MagicMock)
+    @mock.patch('sys.stderr', new_callable=mock.MagicMock)
+    def test_09_invoke_tests(self, mock_stderr, mock_stdout):
         """Make sure invoke_tests works as expected"""
-        assert False, "TODO: IMPLEMENT"
+        try:
+            THE_MODULE.invoke_tests("test_template.py", via_unittest=True)
+        except SystemExit:
+            pass 
+        
+        # Extracting the output from the mock objects
+        output_stdout = ''.join(call[0][0] for call in mock_stdout.write.call_args_list)
+        output_stderr = ''.join(call[0][0] for call in mock_stderr.write.call_args_list)
+        
+        # Asserting that there's no error output, indicating a successful test run
+        assert "usage: pytest" in output_stderr
+        assert "\npytest: error: unrecognized arguments: -s\n" in output_stderr
+        assert output_stdout == ""
 
+    ## ATTEMPT II: test_09_invoke_tests
+    # @pytest.mark.parametrize("via_unittest", [True, False])
+    # def test_invoke_tests(via_unittest: bool):
+    #     if via_unittest:
+    #         import unittest
+    #         suite = unittest.TestLoader().discover('test___init__.py', pattern='test_*.py')
+    #         unittest.TextTestRunner(verbosity=2).run(suite)
+    #     else:
+    #         invoke_tests("test_template.py")
+    
+    # XPASS
     @pytest.mark.xfail
     def test_10_setUpClass(self):
         """Make sure setUpClass works as expected"""
-        assert False, "TODO: IMPLEMENT"
+        with mock.patch.dict(os.environ, {"CHECK_COVERAGE": "True", "TEMP_BASE": "/tmp/test_setUpClass"}):
+            test_class = THE_MODULE.TestWrapper
+            test_class.script_module = "mezcla.template"
 
+            test_class.check_coverage = os.environ.get("CHECK_COVERAGE", "False").lower() in ['true', '1', 't', 'y', 'yes']
+            
+            test_class.setUpClass(filename="test_template.py")
+
+            assert test_class.class_setup is True
+            assert test_class.script_file.endswith("template.py")
+            assert test_class.script_module == "mezcla.template"
+            assert test_class.check_coverage is True
 
 
 
