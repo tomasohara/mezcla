@@ -8,7 +8,6 @@
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_llm_desktop_search.py
 #
 # TODO1 By Lroenzo:
-# - Remove the old TODO items from template.py.
 # - Try to minize usage of run_script to just one or two tests:
 #   it is an older style of testing. It is better to use DesktopSearch
 #   class directly. More details follow in the warning.
@@ -22,13 +21,11 @@
 # - Moreover, debugging tests with run_script is complicated because a separate
 #   process is involved (e.g., with separate environment variables.)
 # - See discussion of SUB_DEBUG_LEVEL in unittest_wrapper.py for more info.
-# - TODO: Feel free to delete this warning as well as the related one below.
-#
+
 
 """Tests for llm_desktop_search module"""
 
 # Standard modules
-## TODO: from collections import defaultdict
 import atexit
 ## OLD: from collections.abc import Iterable
 
@@ -72,8 +69,12 @@ class TestIt(TestWrapper):
         debug.trace(6, f"TestIt.setUpClass(); cls={cls}")
         # note: should do parent processing first
         super().setUpClass(filename, module)
-        cls.index_temp_dir = gh.form_path(cls.temp_base, "llm-desktop-index")
-        cls.index_parent = gh.form_path(cls.index_temp_dir, "..")
+        cls.index_parent = cls.temp_base
+        cls.index_temp_dir = gh.form_path(cls.index_parent, cls.INDEX_STORE_DIR)
+        if not system.is_directory(cls.index_temp_dir):
+            gh.full_mkdir(cls.index_temp_dir)
+        if THE_MODULE.INDEX_ONLY_RECENT:
+            cls.monkeypatch.setattr(THE_MODULE, "INDEX_ONLY_RECENT", False)
         debug.trace_object(5, cls, label=f"{cls.__class__.__name__} instance")
         return
 
@@ -85,24 +86,21 @@ class TestIt(TestWrapper):
         # Warning: see notes above about potential issues with run_script-based tests.
         debug.trace(4, f"TestIt.test_01_index_dir(); self={self}")
         if not KEEP_TEMP_FILES:
-            atexit.register(gh.delete_directory(self.index_temp_dir))
-
+            atexit.register(gh.delete_directory, self.index_temp_dir)
+            
         if not system.is_directory(self.index_parent):
            debug.assertion(False)
            gh.full_mkdir(self.index_parent)
         
         # test if indexing works with with no existing db
-        repo_base_dir = gh.form_path(gh.real_path(gh.dirname(__file__)),
-                                     "..", "..")
-        # TODO1: clarify what this should get (made stderr below)
+        file_dir = gh.real_path(gh.dirname(__file__))
+        repo_base_dir = gh.form_path(file_dir, "..", "..")
         ## OLD: index_file = self.get_temp_file()
         
         self.run_script(options=f"--index {repo_base_dir}",
-                        ## TODO1: note: files shouldn't be the same (stdout and stderr)
-                        ## likewise below; output usually gotten from result
-                        ## OLD: log_file=index_file,
-                        ## OLD: out_file=index_file,
                         env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
+        ## OLD: self.run_script(options=f"--index {repo_base_dir}",
+        #                       env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
         
         index_files = system.read_directory(self.index_temp_dir)
         
@@ -111,17 +109,16 @@ class TestIt(TestWrapper):
         # self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         
         #save modified date for comparing later 
-        prev_size = get_last_modified_date(system.get_directory_filenames(self.index_temp_dir, just_regular_files=True))
+        prev_date = get_last_modified_date(system.get_directory_filenames(self.index_temp_dir, just_regular_files=True))
         
         # test that indexing with an already existing DB works
-        resource_dir = gh.form_path(gh.real_path(gh.dirname(__file__)), "resources")
+        resource_dir = gh.form_path(file_dir, "resources")
         self.run_script(options=f"--index {resource_dir}",
                         env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
         
         # get modification time and check if it changed
-        # TODO1: new_size to new_time; likewise for prev_time
-        new_size = get_last_modified_date(system.get_directory_filenames(self.index_temp_dir, just_regular_files=True))
-        self.do_assert(new_size > prev_size)
+        new_date = get_last_modified_date(system.get_directory_filenames(self.index_temp_dir, just_regular_files=True))
+        self.do_assert(new_date > prev_date)
         
 
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
@@ -130,10 +127,12 @@ class TestIt(TestWrapper):
     def test_02_search_docs(self):
         """Test for something_else: TODO..."""
         debug.trace(4, f"TestIt.test_02_search_docs(); self={self}")
-        output = self.run_script(options="--search 'What license is used?'")
+        desktop = THE_MODULE.DesktopSearch(self.index_temp_dir)
+        desktop.search_to_answer('What license is used?')
+        output = self.get_stdout()
+        
         self.do_assert(my_re.search(r"GNU", output.strip()))
-        return
-
+        
 
     @pytest.mark.xfail                   # TODO: remove xfail
     @pytest.mark.skipif(gpu_utils.TORCH_DEVICE != "cuda", reason="Ignoring non-CUDA device")
@@ -145,7 +144,7 @@ class TestIt(TestWrapper):
         #  ...
         #  |    0   N/A  N/A   1111609      C   python                                      366MiB |
         debug.trace(4, f"TestIt.test_03_gpu_usage(); self={self}")
-        ds = THE_MODULE.DesktopSearch()
+        ds = THE_MODULE.DesktopSearch(self.index_temp_dir)
         ds.show_similar("license")
         trace_level = max(1, debug.get_level())
         gpu_utils.trace_gpu_usage(level=trace_level)
@@ -162,24 +161,13 @@ class TestIt(TestWrapper):
     def test_04_show_similar(self):
         """Test run_script to show similar document to QUERY"""
         debug.trace(4, f"test_04_show_similar(): self={self}")
+        desktop = THE_MODULE.DesktopSearch(index_store_dir=self.index_temp_dir)
         
-        index_parent = gh.form_path(self.index_temp_dir, "..")
-        if not system.is_directory(index_parent):
-           debug.assertion(False)
-           gh.full_mkdir(index_parent)
-   
-        # index base mezcla dir for LICENSE.txt
-        mezcla_base = gh.form_path(gh.dirname(__file__), "..", "..")
-        self.run_script(options=f"--index {mezcla_base}",
-                        env_options=f"INDEX_STORE_DIR={self.index_temp_dir}",
-                        trace_level=6)
-        
-        self.do_assert(system.is_directory(self.index_temp_dir))
-        output = self.run_script(options="--similar LICENSE",
-                                 env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
+        desktop.show_similar(query="LICENSE", num=1)
+        output = self.get_stdout()
         if not KEEP_TEMP_FILES:
             gh.delete_directory(self.index_temp_dir)
-        self.do_assert("Lesser General Public License" in system.read_file(output))
+        self.do_assert("Lesser General Public License" in output)
         
 
     @pytest.mark.xfail                   # TODO: remove xfail
