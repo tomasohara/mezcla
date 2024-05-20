@@ -32,3 +32,4 @@ if [ "$DEBUG_LEVEL" -ge 4 ]; then
     export PYTEST_OPTIONS="-v -s"
 fi
 ## BAD: export TEST_REGEX=unittest_wrapper
+export FILTER_REGEX='tests/template.py'
