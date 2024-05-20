@@ -15,7 +15,7 @@
 ## NOTE: this is empty for now
 
 # Installed packages
-import pytest
+## TODO: import pytest
 
 # Local packages
 from mezcla import debug
