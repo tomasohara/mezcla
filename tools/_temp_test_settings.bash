@@ -31,4 +31,4 @@ fi
 if [ "$DEBUG_LEVEL" -ge 4 ]; then
     export PYTEST_OPTIONS="-v -s"
 fi
-export TEST_REGEX=unittest_wrapper
+## BAD: export TEST_REGEX=unittest_wrapper
