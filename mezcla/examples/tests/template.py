@@ -11,7 +11,17 @@
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by unittest_wrapper.py.
 # - This can be run as follows (e.g., from root of repo):
-#   $ pytest ./mezcla/examples/tests/test_<module>.py
+#   $ pytest ./mezcla/examples/tests/test_<module>.py#
+#
+# Warning:
+# - The use of run_script as in test_01_data_file is an older style of testing.
+#   It is better to directly invoke a helper class in the script that is independent
+#   of the Script class based on Main. (See an example of this, see python_ast.py
+#   and tests/tests_python_ast.py.)
+# - Moreover, debugging tests with run_script is complicated because a separate
+#   process is involved (e.g., with separate environment variables.)
+# - See discussion of SUB_DEBUG_LEVEL in unittest_wrapper.py for more info.
+# - TODO: Feel free to delete this warning as well as the related one below.
 #
 
 ## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
@@ -39,12 +49,8 @@ from mezcla import system
 #    TestIt.script_module:              path to file
 ## TODO (vvv): insert new module name in commented out template teo lines below
 THE_MODULE = None         ## TODO: remove this line: avoids <module> syntax error in next)
- mezcla.
-import 
-## TODO: ## import <module> as THE_MODULE
-import 
+## import mezcla.examples.<module> as THE_MODULE   ## TODO: uncomment this line (<<<)
 ## TODO (^^^): use modified line above
-## TODO1: ## import mezcla.examples.<module> as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(__file__, r"\btemplate.py$"):
@@ -93,6 +99,7 @@ class TestIt(TestWrapper):
     ## DEBUG: @trap_exception            # TODO: remove when debugged
     def test_01_data_file(self):
         """Tests run_script w/ data file"""
+        # Warning: see notes above about potential issues with run_script-based tests.
         debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
         system.write_lines(self.temp_file, data)
@@ -106,14 +113,14 @@ class TestIt(TestWrapper):
     def test_02_something_else(self):
         """Test for something_else: TODO..."""
         debug.trace(4, f"TestIt.test_02_something_else(); self={self}")
-        self.do_assert(False)
+        self.do_assert(False, "TODO: implement")
         ## ex: self.do_assert(THE_MODULE.TODO_function() == TODO_value)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_whatever(self):
         """TODO: flesh out test for whatever (capsys-like)"""
-        debug.trace(4, f"TestIt2.test_03_whatever(); self={self}")
+        debug.trace(4, f"TestIt.test_03_whatever(); self={self}")
         THE_MODULE.TODO_whatever()
         captured = self.get_stderr()
         self.do_assert("whatever" in captured, "TODO_whatever trace")
