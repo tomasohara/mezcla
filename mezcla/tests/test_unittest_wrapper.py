@@ -22,8 +22,8 @@
 import pytest
 
 # Local packages
+import sys
 import os
-import unittest
 from unittest import mock
 
 ## TEST: os.environ["PRESERVE_TEMP_FILE"] = "1"
@@ -305,36 +305,102 @@ class TestIt(TestWrapper):
         """Make sure setUp works as expected"""
         assert False, "TODO: Implement"
 
-
     @pytest.mark.xfail
     def test_16_run_script(self):
         """Make sure run_script works as expected"""
-        assert False, "TODO: Implement"
+        test_wrapper = TestWrapper()
+        # Define test parameters
+        options = "--option1 value1 --option2 value2"
+        data_file = "test_data.txt"
+        log_file = "test_log.txt"
+        trace_level = 4
+        out_file = "test_output.txt"
+        env_options = "ENV_VAR=value"
+        uses_stdin = False
+        post_options = "--post-option value"
+        background = True
+        skip_stdin = False
+
+        # Mocking necessary dependencies
+        capsys = TestWrapper.capsys(self)
+        test_wrapper.gh.issue = mock.MagicMock()
+        test_wrapper.system.read_file = mock.MagicMock(return_value="Test output\n")
+        test_wrapper.system.read_file.side_effect = lambda x: "No errors" if x == log_file else ""
+
+        # Call the run_script method
+        output = test_wrapper.run_script(options=options, data_file=data_file, log_file=log_file,
+                                        trace_level=trace_level, out_file=out_file, env_options=env_options,
+                                        uses_stdin=uses_stdin, post_options=post_options, background=background,
+                                        skip_stdin=skip_stdin)
+
+        # Assertions
+        assert output == "Test output"
+        test_wrapper.gh.issue.assert_called_with(
+            "{env} python -m {cov_spec} {module}  {opts}  {path}  {post} 1> {out} 2> {log} {amp_spec}",
+            env=env_options, cov_spec='', module=test_wrapper.script_module, opts=options,
+            path=data_file, out=out_file, log=log_file, post=post_options, amp_spec="&")
+        captured = capsys.readouterr()
+        assert "output: {\nTest output\n}" in captured.out  # Assert the expected output is printed
+        assert "No errors" not in captured.err  # Ensure there are no errors in stderr
+
 
     @pytest.mark.xfail
     def test_17_resolve_assertion(self):
         """Make sure resolve_assertion works as expected"""
         assert False, "TODO: Implement"
 
+    # XPASS
     @pytest.mark.xfail
     def test_18_do_assert(self):
         """Make sure do_assert works as expected"""
-        assert False, "TODO: Implement"
-
+        def sum(a, b):
+            return a+b
+        TestWrapper.do_assert(self, sum(10, 5) == 15)
+        TestWrapper.do_assert(self, "npre" in "gegenpressing")
+        TestWrapper.do_assert(self, 45 != 45+1)
+        print("This is an error message", file=sys.stderr)
+        TestWrapper.do_assert(self, TestWrapper.get_stderr(self) == "This is an error message\n")
+        TestWrapper.do_assert(self, "foo" not in "bar")
+        TestWrapper.do_assert(self, 10 > 5)
+        TestWrapper.do_assert(self, [1, 2, 3] == [1, 2, 3])
+        TestWrapper.do_assert(self, {"key": "value"} != {"key": "other_value"})
+        TestWrapper.do_assert(self, 3.14 <= 3.14159)
+        TestWrapper.do_assert(self, len("hello") == 5)
+        TestWrapper.do_assert(self, not False)
+    
+    # XPASS
     @pytest.mark.xfail
     def test_19_do_assert_equals(self):
         """Make sure do_assert_equals works as expected"""
-        assert False, "TODO: Implement"
+        THE_MODULE.TestWrapper.do_assert_equals(self, 17, 100-73-10*1)
+        THE_MODULE.TestWrapper.do_assert_equals(self, True, not False)
+        THE_MODULE.TestWrapper.do_assert_equals(self, None, None)
+        THE_MODULE.TestWrapper.do_assert_equals(self, "String", "Str" + "in" + "g")
+        THE_MODULE.TestWrapper.do_assert_equals(self, [0, 1, 2, 3], [9-9, 1*1, 2+0, 9/3])
+        THE_MODULE.TestWrapper.do_assert_equals(self, len("Freddy"), len("Fazbear")-1)
+        # Does not work: THE_MODULE.TestWrapper.do_assert_equals(self, 17, 19)
 
     @pytest.mark.xfail
-    def test_20_monkeypatch(self):
+    def test_20_monkeypatch(self, monkeypatch):
         """Make sure monkeypatch works as expected"""
-        assert False, "TODO: Implement"
-
+        assert False
+        
+    ### CHECKPOINT - TODO: FIXIT ###
     @pytest.mark.xfail
-    def test_21_capsys(self):
+    def test_21_capsys(capsys):
         """Make sure capsys works as expected"""
-        assert False, "TODO: Implement"
+        
+        def some_method_that_prints():
+            print("This goes to stdout")
+            print("This is an error", file=sys.stderr)
+        
+        some_method_that_prints()
+        
+        # Use the capsys fixture to capture stdout and stderr
+        captured = capsys.readouterr()
+        assert "This goes to stdout" in captured.out
+        assert "This is an error" in captured.err
+
 
     # XPASS
     @pytest.mark.xfail
@@ -342,7 +408,6 @@ class TestIt(TestWrapper):
         """Make sure get_stdout_stderr works as expected"""
         stdout_msg = "This is stdout"
         stderr_msg = "This is stderr"
-        import sys
         print(stdout_msg)
         print(stderr_msg, file=sys.stderr)
         assert TestWrapper.get_stdout_stderr(self) == (stdout_msg + "\n", stderr_msg + "\n")
@@ -375,8 +440,6 @@ class TestIt(TestWrapper):
     @pytest.mark.xfail
     def test_24_get_stderr(self):
         """Make sure get_stderr works as expected"""
-        # [TODO]: Find a replacement for dynamic import
-        import sys
         print("This is an error message", file=sys.stderr)
         assert TestWrapper.get_stderr(self) == "This is an error message\n"
 
@@ -394,7 +457,6 @@ class TestIt(TestWrapper):
 
         # For stderr
         error_string = "This is an error"
-        import sys
         print(error_string, file=sys.stderr)
         assert TestWrapper.get_stderr(self) == f"{error_string}\n"
         TestWrapper.clear_stdout_stderr(self)
