@@ -1,4 +1,26 @@
 #! /usr/bin/env python
+#
+# Mezcla to Standard call conversion script
+#
+# NOTE:
+# To convert Mezcla calls with standard calls by manipulating the AST,
+# we must do it with decorators at runtime. This is because we cannot
+# easily know the origin of the function call in the AST. for example:
+#
+#       from mezcla import glue_helpers as gh
+#       gh.rename_file("old", "new")
+#
+# If we peek into the AST:
+#
+#       ast.dump(node.func) =>
+#            Attribute(value=Name(id='gh', ctx=Load()), attr='rename_file', ctx=Load())
+#
+# We cannot see directly that 'rename_file' belongs to 'mezcla.glue_helpers',
+# comparing it with another function is difficult. But if we do it at
+# runtime with decorators, the comparison is more easy:
+#
+#       func == glue_helpers.rename_file => True
+#
 
 """
 Mezcla to Standard call conversion script
