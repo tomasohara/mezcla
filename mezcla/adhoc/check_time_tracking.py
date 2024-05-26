@@ -285,7 +285,7 @@ def main():
                 pass
             ## OLD: weekly_hours += specified_hours
             weekly_hours += hours
-            debug.assertion((weekday_hours[day_of_week] == ""), "Missing weekly-hours lines?")
+            debug.assertion((weekday_hours[day_of_week] == ""), f"Missing weekly-hours lines (near line {line_num})?")
             ## OLD: weekday_hours[day_of_week] = specified_hours
             ## OLD2: weekday_hours[day_of_week] = hours
             weekday_hours[day_of_week] += ("" if not weekday_hours[day_of_week] else "-or-")
@@ -310,7 +310,7 @@ def main():
         ## OLD: if (my_re.search(r"^(\S+)(day)?:\s*$", line)):
         elif (my_re.search(r"^(\S+)(day)?:\s*$", line)):
             day_of_week = my_re.group(1)
-            debug.assertion(len(day_of_week) == 3)
+            debug.assertion(len(day_of_week) == 3, f"Bad day of week at line {line_num}")
             debug.trace(6, f"day of week check: day={day_of_week}")
             ## TODO: handle Saturday and Wednesday
             ## TODO: day_of_week = re.sub(r"(ur|nes)?day$", "", my_re.group(1))
@@ -387,7 +387,7 @@ def main():
                 pass
             ## OLD: weekly_hours += specified_hours
             weekly_hours += hours
-            debug.assertion(weekday_hours[day_of_week] == "")
+            debug.assertion(weekday_hours[day_of_week] == "", f"Day of week already used at line {line_num}")
             ## OLD: weekday_hours[day_of_week] = specified_hours
             ## OLD2: weekday_hours[day_of_week] = hours
             weekday_hours[day_of_week] += ("" if not weekday_hours[day_of_week] else "-or-")
