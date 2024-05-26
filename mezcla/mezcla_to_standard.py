@@ -30,6 +30,7 @@ Mezcla to Standard call conversion script
 import os
 import ast
 import logging
+import inspect
 
 # Installed module
 import astor
@@ -60,20 +61,37 @@ class EqCall:
         """Check if the function is the same as the target"""
         return self.target == func
 
-    def run_condition(self, *args, **kwargs) -> bool:
-        """Run the condition"""
-        ## TODO: implement condition
-        return True
+    def _match_target_keys_with_args(self, *args, **kwargs) -> dict:
+        """Match the target function parameter keys with the passed args and kwargs"""
+        arguments = dict(zip(inspect.getfullargspec(self.target).args, args))
+        arguments.update(kwargs)
+        return arguments
+
+    def _filter_args_by_function(self, func: callable, args: dict) -> dict:
+        """Filter the arguments by the function"""
+        return {key: value for key, value in args.items() if key in inspect.getfullargspec(func).args}
+
+    def is_condition_met(self, *args, **kwargs) -> bool:
+        """Return if the condition is met"""
+        arguments = self._match_target_keys_with_args(*args, **kwargs)
+        arguments = self._filter_args_by_function(self.condition, arguments)
+        return self.condition(**arguments)
+
+    def run_dest(self, *args, **kwargs):
+        """Run the destination function"""
+        arguments = self._match_target_keys_with_args(*args, **kwargs)
+        arguments = self._filter_args_by_function(self.dest, arguments)
+        return self.dest(**arguments)
 
 # Add equivalent calls between Mezcla and standard
 mezcla_to_standard = []
 mezcla_to_standard.append(EqCall(gh.rename_file, os.rename))
 mezcla_to_standard.append(EqCall(gh.delete_file, os.remove))
 mezcla_to_standard.append(EqCall(gh.form_path, os.path.join))
-mezcla_to_standard.append(EqCall(debug.trace, logging.debug, lambda args: args.level > 3))
-mezcla_to_standard.append(EqCall(debug.trace, logging.info, lambda args: 2 < args.level <= 3))
-mezcla_to_standard.append(EqCall(debug.trace, logging.warning, lambda args: 1 < args.level <= 2))
-mezcla_to_standard.append(EqCall(debug.trace, logging.error, lambda args: 0 < args.level <= 1))
+mezcla_to_standard.append(EqCall(debug.trace, logging.debug, lambda level: level > 3))
+mezcla_to_standard.append(EqCall(debug.trace, logging.info, lambda level: 2 < level <= 3))
+mezcla_to_standard.append(EqCall(debug.trace, logging.warning, lambda level: 1 < level <= 2))
+mezcla_to_standard.append(EqCall(debug.trace, logging.error, lambda level: 0 < level <= 1))
 
 def use_standard_equivalent(func):
     """
@@ -84,9 +102,9 @@ def use_standard_equivalent(func):
         for call in mezcla_to_standard:
             if not call.equal(func):
                 continue
-            if not call.run_condition(*args, **kwargs):
+            if not call.is_condition_met(*args, **kwargs):
                 continue
-            return call.dest(*args, **kwargs)
+            return call.run_dest(*args, **kwargs)
         return func(*args, **kwargs)
     return wrapper
 
