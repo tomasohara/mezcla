@@ -31,6 +31,7 @@ import os
 import ast
 import logging
 import inspect
+from typing import Optional
 
 # Installed module
 import astor
@@ -51,11 +52,13 @@ class EqCall:
             self,
             target: callable,
             dest: callable,
-            condition: callable = lambda: True
+            condition: callable = lambda: True,
+            eq_params: Optional[dict] = None
         ) -> None:
         self.target = target
         self.dest = dest
         self.condition = condition
+        self.eq_params = eq_params
 
     def equal(self, func: callable) -> bool:
         """Check if the function is the same as the target"""
@@ -77,21 +80,80 @@ class EqCall:
         arguments = self._filter_args_by_function(self.condition, arguments)
         return self.condition(**arguments)
 
+    def _transform_args(self, args: dict) -> dict:
+        """Transform the arguments"""
+        if self.eq_params is None:
+            return args
+        result = {}
+        for key, value in args.items():
+            if key in self.eq_params:
+                result[self.eq_params[key]] = value
+            else:
+                result[key] = value
+        return result
+
     def run_dest(self, *args, **kwargs):
         """Run the destination function"""
         arguments = self._match_target_keys_with_args(*args, **kwargs)
+        arguments = self._transform_args(arguments)
         arguments = self._filter_args_by_function(self.dest, arguments)
         return self.dest(**arguments)
 
 # Add equivalent calls between Mezcla and standard
 mezcla_to_standard = []
-mezcla_to_standard.append(EqCall(gh.rename_file, os.rename))
-mezcla_to_standard.append(EqCall(gh.delete_file, os.remove))
-mezcla_to_standard.append(EqCall(gh.form_path, os.path.join))
-mezcla_to_standard.append(EqCall(debug.trace, logging.debug, lambda level: level > 3))
-mezcla_to_standard.append(EqCall(debug.trace, logging.info, lambda level: 2 < level <= 3))
-mezcla_to_standard.append(EqCall(debug.trace, logging.warning, lambda level: 1 < level <= 2))
-mezcla_to_standard.append(EqCall(debug.trace, logging.error, lambda level: 0 < level <= 1))
+mezcla_to_standard.append(
+    EqCall(
+        gh.rename_file,
+        os.rename,
+        eq_params = { "source": "src", "target": "dst" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.delete_file,
+        os.remove,
+        eq_params = { "filename": "path" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.form_path,
+        os.path.join,
+        eq_params = { "filenames": "a" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        debug.trace,
+        logging.debug,
+        condition = lambda level: level > 3,
+        eq_params = { "text": "msg" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        debug.trace,
+        logging.info,
+        condition = lambda level: 2 < level <= 3,
+        eq_params = { "text": "msg" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        debug.trace,
+        logging.warning,
+        condition = lambda level: 1 < level <= 2,
+        eq_params = { "text": "msg" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        debug.trace,
+        logging.error,
+        condition = lambda level: 0 < level <= 1,
+        eq_params = { "text": "msg" }
+    )
+)
 
 def use_standard_equivalent(func):
     """
