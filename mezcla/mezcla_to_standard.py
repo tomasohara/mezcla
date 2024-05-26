@@ -72,7 +72,11 @@ class EqCall:
 
     def _filter_args_by_function(self, func: callable, args: dict) -> dict:
         """Filter the arguments by the function"""
-        return {key: value for key, value in args.items() if key in inspect.getfullargspec(func).args}
+        result = {}
+        for key, value in args.items():
+            if key in inspect.getfullargspec(func).args:
+                result[key] = value
+        return result
 
     def is_condition_met(self, *args, **kwargs) -> bool:
         """Return if the condition is met"""
