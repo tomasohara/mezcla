@@ -54,17 +54,23 @@ import os
 import sys
 import tempfile
 import unittest
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Installed packages
 import pytest
 
 # Local packages
-# note: Disables TEMP_FILE default used by in glue_helpers.py.
-os.environ["PRESERVE_TEMP_FILE"] = "1"
+# note: Disables TEMP_FILE default used by glue_helpers.py.
+PRESERVE_TEMP_FILE_LABEL = "PRESERVE_TEMP_FILE"
+if PRESERVE_TEMP_FILE_LABEL not in os.environ:
+    ## DEBUG: 
+    sys.stderr.write(f"Setting {PRESERVE_TEMP_FILE_LABEL}\n")
+    os.environ[PRESERVE_TEMP_FILE_LABEL] = "1"
 import mezcla
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla.main import DISABLE_RECURSIVE_DELETE
+## BAD: from mezcla.main import DISABLE_RECURSIVE_DELETE
+DISABLE_RECURSIVE_DELETE = gh.DISABLE_RECURSIVE_DELETE
 from mezcla.misc_utils import string_diff
 from mezcla.my_regex import my_re
 from mezcla import system
@@ -177,6 +183,7 @@ def pytest_fixture_wrapper(function):
     debug.trace(7, f"pytest_fixture_wrapper() => {gh.elide(wrapper)}")
     return wrapper
 
+
 def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
     """Invoke TESTS defined in FILENAME, optionally VIA_UNITTEST"""
     if via_unittest:
@@ -184,6 +191,20 @@ def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
     else:
         pytest.main([filename])
 
+
+def init_temp_settings():
+    """Initialize settings related to temp-file names"""
+    ok = True
+    # Re-initalize glue helper temp file settings
+    ## TODO?: system.setenv("PRESERVE_TEMP_FILE", "1")
+    debug.trace_expr(4, os.environ.get(PRESERVE_TEMP_FILE_LABEL))
+    ## TEST: os.environ["PRESERVE_TEMP_FILE"] = "1"
+    if not system.getenv(PRESERVE_TEMP_FILE_LABEL):
+        system.setenv(PRESERVE_TEMP_FILE_LABEL, "1")
+    gh.init()
+    debug.trace_expr(4, os.environ.get(PRESERVE_TEMP_FILE_LABEL))
+    return ok
+        
 #-------------------------------------------------------------------------------
 
 class TestWrapper(unittest.TestCase):
@@ -192,14 +213,7 @@ class TestWrapper(unittest.TestCase):
     - script_module should be overriden to specify the module instance, such as via get_testing_module_name (see test/template.py)
     - set it to None to avoid command-line invocation checks
     """
-
-    # Re-initalize glue helper temp file settings
-    ## TODO?: system.setenv("PRESERVE_TEMP_FILE", "1")
-    debug.trace_expr(4, os.environ.get("PRESERVE_TEMP_FILE"))
-    ## TEST: os.environ["PRESERVE_TEMP_FILE"] = "1"
-    system.setenv("PRESERVE_TEMP_FILE", "1")
-    gh.init()
-    debug.trace_expr(4, os.environ.get("PRESERVE_TEMP_FILE"))
+    init_ok = init_temp_settings()
 
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usually set via derive_tested_module_name)
