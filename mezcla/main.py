@@ -271,7 +271,7 @@ class Main(object):
         bad_options = system.difference(kwargs.keys(), [BINARY_INPUT_OPTION, PERL_SWITCH_PARSING_OPTION, INPUT_ERROR_OPTION])
         debug.assertion(not bad_options, f"Extraneous kwargs: {bad_options}")
         self.binary_input = kwargs.get(BINARY_INPUT_OPTION, False)
-        self.input_error = kwargs.get(INPUT_ERROR_OPTION, INPUT_ERROR)
+        self.input_error_mode = kwargs.get(INPUT_ERROR_OPTION, INPUT_ERROR)
 
         # Setup temporary file and/or base directory
         # Note: Uses NamedTemporaryFile (hence ntf_args)
@@ -725,17 +725,19 @@ class Main(object):
                 if not (self.manual_input and self.skip_input):
                     debug.assertion(os.path.exists(self.filename))
                     mode = ("r" if (not self.binary_input) else "rb")
-                    self.input_stream = system.open_file(self.filename, mode=mode, errors=self.input_error)
+                    self.input_stream = system.open_file(self.filename, mode=mode,
+                                                         errors=self.input_error_mode)
                     debug.assertion(self.input_stream)
         # Optionally reopen stream to change built-in settings
-        error_handling_change = (self.input_error and (self.input_error != self.input_stream.errors))
+        error_handling_change = (self.input_error_mode
+                                 and (self.input_error_mode != self.input_stream.errors))
         reopen_stream = (error_handling_change or self.newlines)
         if reopen_stream:
             if self.newlines:
                 debug.trace(4, f"Changing input stream newlines from {self.input_stream.newlines!r} to {self.newlines!r}")
             if error_handling_change:
-                debug.trace(4, f"Changing input stream error handling from {self.input_stream.errors!r} to {self.input_error!r}")
-            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=self.input_error, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
+                debug.trace(4, f"Changing input stream error handling from {self.input_stream.errors!r} to {self.input_error_mode!r}")
+            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=self.input_error_mode, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
             debug.trace_object(4, self.input_stream)
     
     def run(self):
