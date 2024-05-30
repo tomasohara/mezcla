@@ -95,10 +95,10 @@ NTF_ARGS = {'prefix': TEMP_PREFIX,
 TEMP_BASE = system.getenv_value(
     "TEMP_BASE", None,
     description="Override for temporary file basename")
-TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and
-                         (system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")))
+USE_TEMP_BASE_DIR_DEFAULT = bool(
+    TEMP_BASE and (system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")))
 USE_TEMP_BASE_DIR = system.getenv_bool(
-    "USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
+    "USE_TEMP_BASE_DIR", USE_TEMP_BASE_DIR_DEFAULT,
     description="Whether TEMP_BASE should be a dir instead of prefix")
 DISABLE_RECURSIVE_DELETE = system.getenv_value(
     "DISABLE_RECURSIVE_DELETE", None,
