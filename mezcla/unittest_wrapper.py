@@ -101,6 +101,12 @@ RUN_SLOW_TESTS = system.getenv_bool(
     description="Run tests that can a while to run")
 debug.reference_var(RUN_SLOW_TESTS)
 
+UNDER_COVERAGE = system.getenv_bool(
+    "COVERAGE_RUN", False,
+    description="whether or not tests are being run under coverage"
+)
+
+
 # Dynamic imports
 if PROFILE_CODE:
     import cProfile
