@@ -37,6 +37,7 @@ import shutil
 from subprocess import getoutput
 import sys
 import tempfile
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Installed packages
 import textwrap
@@ -48,7 +49,6 @@ from mezcla import tpo_common as tpo
 ## OLD: from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
 from mezcla.tpo_common import debug_format, debug_print
 ## OLD: from mezcla.main import DISABLE_RECURSIVE_DELETE
-## DEBUG: sys.stderr.write(f"{__file__=}\n")
 ## TODO3: debug.trace_expr(6, __file__)
 
 # Constants
@@ -103,9 +103,7 @@ USE_TEMP_BASE_DIR = system.getenv_bool(
 DISABLE_RECURSIVE_DELETE = system.getenv_value(
     "DISABLE_RECURSIVE_DELETE", None,
     description="Disable use of potentially dangerous rm -r style recursive deletions")
-PRESERVE_TEMP_FILE = system.getenv_value(
-    "PRESERVE_TEMP_FILE", None,
-    desc="Retain value of TEMP_FILE even if TEMP_BASE set--see INFER_TEMP_FILE")
+PRESERVE_TEMP_FILE = None
 
 # Globals
 # note:
@@ -439,7 +437,10 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
          system.setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
     save_temp_file = TEMP_FILE
     if TEMP_FILE and (PRESERVE_TEMP_FILE is not True):
-        system.setenv("TEMP_FILE", TEMP_FILE + "_subprocess_")
+        new_TEMP_FILE = TEMP_FILE + "_subprocess_"
+        debug.trace_expr(5, PRESERVE_TEMP_FILE)
+        debug.trace(5, f"Setting TEMP_FILE to {new_TEMP_FILE}")
+        system.setenv("TEMP_FILE", new_TEMP_FILE)
     # Expand the command template
     # TODO: make this optional
     command_line = command
@@ -472,7 +473,8 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
     system.setenv("DEBUG_LEVEL", debug_level_env or "")
     system.setenv("TEMP_BASE", save_temp_base or "")
     if save_temp_file and (PRESERVE_TEMP_FILE is not True):
-        system.setenv("TEMP_FILE", save_temp_file or "")
+        debug.trace(5, f"Resetting TEMP_FILE to {save_temp_file}")
+        system.setenv("TEMP_FILE", save_temp_file)
     debug_print("run(_) => {\n%s\n}" % indent_lines(result), (trace_level + 1))
     return result
 
@@ -924,24 +926,31 @@ else:
         return
 
 def init():
-    """Work around for Python quirk"""
+    """Work around for Python quirk
+    Note: This is also used for reinitialize temp-file settings such as for unit tests (e.g., TEMP_FILE from TEMP_BASE)."""
     # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
     debug.trace(5, "glue_helpers.init()")
-    global TEMP_FILE
     ## OLD: temp_filename = "temp-file.list"
     temp_filename = f"temp-{PID}.list"
     if USE_TEMP_BASE_DIR and TEMP_BASE:
         full_mkdir(TEMP_BASE)
-    #
-    ## BAD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
-    ## BAD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}" if TEMP_BASE else temp_filename)
-    ## OLD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}" if TEMP_BASE else None)
+
+    # Re-initialize flag blocking TEMP_FILE init from TEMP_BASE
+    global PRESERVE_TEMP_FILE
+    PRESERVE_TEMP_FILE = system.getenv_bool(
+        "PRESERVE_TEMP_FILE", None, allow_none=True,
+        desc="Retain value of TEMP_FILE even if TEMP_BASE set--see run and init below as well as unittest_wrapper.py")
+        
     # note: Normally TEMP_FILE gets overriden when TEMP_BASE set. However,
     # this complicates preserving test-specific test files (see unittest_wrapper.py).
+    # Further compications are due to the implicit module loading due to __init__.py.
+    # See tests/test_unittest_wrapper.py for some diagnosis tips.
     temp_file_default = None
     if TEMP_BASE and not PRESERVE_TEMP_FILE:
         temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
+        debug.trace(4, f"FYI: Inferred TEMP_FILE default: {temp_file_default!r}")
     debug.trace_expr(5, system.getenv("TEMP_FILE"))
+    global TEMP_FILE
     TEMP_FILE = system.getenv_value(
         "TEMP_FILE", temp_file_default,
         description="Override for temporary filename")
