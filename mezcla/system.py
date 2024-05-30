@@ -34,6 +34,7 @@ import pickle
 import re
 import sys
 import time
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Installed packages
 import six
@@ -42,7 +43,6 @@ import six
 from mezcla import debug
 from mezcla.debug import UTF8
 ## TODO3: debug.trace_expr(6, __file__)
-## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Constants
 STRING_TYPES = six.string_types
@@ -211,18 +211,27 @@ def getenv_value(var, default=None, description=None, desc=None, update=None):
 
 DEFAULT_GETENV_BOOL = False
 #
-def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, update=None):
+def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, allow_none=False, update=None):
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note:
     - "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)
     - In general, it is best to use False as default instead of True, because getenv_bool is meant for environment overrides, not defaults.
+    - TODO2: Return is a bool unless ALLOW_NONE; defaults to False.
     """
     # EX: getenv_bool("bad env var", None) => False
+    # EX: getenv_bool("bad env var", None, allow_none=True) => True
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
     value_text = getenv_value(var, description=description, desc=desc, default=default, update=update)
     if (isinstance(value_text, str) and value_text.strip()):
         bool_value = to_bool(value_text)
+    if not isinstance(bool_value, bool):
+        if (bool_value is None):
+            bool_value = False if (not allow_none) else None
+        else:
+            debug.assertion(bool_value != default)
+            bool_value = to_bool(bool_value)
+    debug.assertion(isinstance(bool_value, bool) or allow_none)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
                      v=var, d=default, r=bool_value)
     return (bool_value)
@@ -416,6 +425,7 @@ def open_file(filename, /, mode="r", *, encoding=None, errors=None, **kwargs):
     try:
         # pylint: disable=consider-using-with; note: bogus 'Bad option value' warning
         ## BAD: result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
+        # pylint: disable=unspecified-encoding
         result = open(filename, mode=mode, errors=errors, **kwargs)
     except IOError:
         debug.trace_fmtd(3, "Unable to open {f!r}: {exc}", f=filename, exc=get_exception())
@@ -576,6 +586,7 @@ def read_entire_file(filename, **kwargs):
             kwargs[ENCODING] = "UTF-8"
         ## TODO: with open_file(filename, **kwargs) as f:
         ## BAD: with open(filename, encoding="UTF-8", **kwargs) as f:
+        # pylint: disable=unspecified-encoding
         with open(filename, **kwargs) as f:
             data = f.read()
     except (AttributeError, IOError):
