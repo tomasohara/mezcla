@@ -83,6 +83,7 @@ import os
 import re
 import sys
 import tempfile
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Local packages
 from mezcla import debug
@@ -91,7 +92,6 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla.my_regex import my_re
 from mezcla.system import getenv_bool
-## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Constants
 HELP_ARG = "--help"
@@ -152,9 +152,11 @@ INPUT_ERROR_OPTION = "input_error"
 INPUT_ERROR = system.getenv_value(
     INPUT_ERROR_OPTION.upper(), None,
     description="Override for strict input processing error handling")
-DISABLE_RECURSIVE_DELETE = system.getenv_value(
-    "DISABLE_RECURSIVE_DELETE", None,
-    description="Disable use of potentially dangerous rm -r style recursive deletions")
+## OLD:
+## DISABLE_RECURSIVE_DELETE = system.getenv_value(
+##     "DISABLE_RECURSIVE_DELETE", None,
+##     description="Disable use of potentially dangerous rm -r style recursive deletions")
+DISABLE_RECURSIVE_DELETE = gh.DISABLE_RECURSIVE_DELETE
 
 #-------------------------------------------------------------------------------
 
