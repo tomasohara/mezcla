@@ -360,7 +360,7 @@ class TestWrapper(unittest.TestCase):
         # Note: By default, each test gets its own temp file.
         debug.trace(5, "TestWrapper.setUp()")
         if not self.class_setup:
-            debug.trace(4, "Warning: invoking setUpClass in setUp")
+            debug.trace(3, "Warning: invoking setUpClass in setUp; make sure seUpClass calls parent")
             TestWrapper.setUpClass(self.__class__)
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
