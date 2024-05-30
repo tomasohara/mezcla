@@ -229,7 +229,7 @@ def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, a
         if (bool_value is None):
             bool_value = False if (not allow_none) else None
         else:
-            debug.assertion(bool_value != default)
+            debug.assertion(bool_value != default, f"Check {var!r} default {default!r}")
             bool_value = to_bool(bool_value)
     debug.assertion(isinstance(bool_value, bool) or allow_none)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
