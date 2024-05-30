@@ -131,14 +131,14 @@ class TestIt(TestWrapper):
     ##
     ## def tearDown(self):
     ##     debug.trace(6, f"TestIt.tearDown(); self={self}")
-    ##     super().tearDownClass()
+    ##     super().tearDown()
     ##     ...
     ##     return
     ##
     ## @classmethod
     ## def tearDownClass(cls):
     ##     debug.trace(6, f"TestIt.tearDownClass(); cls={cls}")
-    ##     super().tearDown()
+    ##     super().tearDownClass()
     ##     ...
     ##     return
 
