@@ -49,8 +49,16 @@ if RE_ALL:
 else:
     debug.trace(4, "Omitting use of re __all__")
 
-REGEX_TRACE_LEVEL = system.getenv_int("REGEX_TRACE_LEVEL", debug.QUITE_DETAILED,
-                                      "Trace level for my_regex")
+# Environment options
+## OLD
+## REGEX_TRACE_LEVEL = system.getenv_int("REGEX_TRACE_LEVEL", debug.QUITE_DETAILED,
+##                                       "Trace level for my_regex")
+REGEX_DEBUG_LEVEL = system.getenv_int(
+    "REGEX_TRACE_LEVEL", debug.QUITE_DETAILED,
+    desc="Alias for REGEX_TRACE_LEVEL")
+REGEX_TRACE_LEVEL = system.getenv_int(
+    "REGEX_TRACE_LEVEL", REGEX_DEBUG_LEVEL,
+    desc="Trace level for my_regex")
     
 ## TODO # HACK: make sure regex can be used as plug-in replacement 
 ## from from re import *
