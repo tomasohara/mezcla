@@ -96,6 +96,7 @@ wheel
 #opt# ipython
 #opt# jupyter
 #opt# librosa
+#opt# numba
 #opt# pocketsphinx
 #opt# pylint
 #opt# pyyaml
