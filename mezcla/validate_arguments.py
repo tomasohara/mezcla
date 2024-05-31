@@ -124,7 +124,7 @@ def add_validate_call_decorator(code):
         # pylint: disable=invalid-name
         def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
             """Leave a Call node"""
-            if not isinstance(original_node.func, cst.Name):
+            if not isinstance(original_node.func, (cst.Attribute, cst.Name)):
                 return updated_node
             if original_node.func.value in to_ignore:
                 return updated_node
