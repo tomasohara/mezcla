@@ -26,7 +26,11 @@ from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.text_processing as THE_MODULE
+try:
+    import mezcla.text_processing as THE_MODULE
+except:
+    THE_MODULE = None
+    system.print_exception_info("text_processing import")    
 
 # Constants
 RESOURCES = f'{gh.dir_path(__file__)}/resources'
