@@ -6,12 +6,11 @@
 """Optional pydantic argument validation"""
 
 # Standard modules
-import ast
 from functools import wraps
 
 # Installed module
 from pydantic import BaseModel
-import astor
+import libcst as cst
 
 # Local modules
 from mezcla import debug
@@ -89,49 +88,61 @@ def validate_dictionaries(*decorator_args, **decorator_kwargs):
 def add_validate_call_decorator(code):
     """Add the validate_call decorator to all function calls in the code"""
 
-    # Parse the code into AST
-    tree = ast.parse(code)
-
-    # Define an import node
-    import_node = ast.ImportFrom(
-        module='pydantic',
-        names=[ast.alias(name='validate_call', asname=None)],
-        level=0
-    )
-
-    # Define a decorator node
-    validate_decorator = ast.Name(id='validate_call', ctx=ast.Load())
-
-    # Add the import statement to the beginning of the AST
-    tree.body.insert(0, import_node)
+    # Parse the code into a CST tree
+    tree = cst.parse_module(code)
 
     # List of functions to ignore, avoiding infinite recursion
     to_ignore = [
         'isinstance', 'print', 'validate_call',
     ]
 
-    # Function to recursively traverse the AST
-    # pylint: disable=invalid-name
-    def visit_Call(node):
-        """Visit a Call node"""
-        # Standalone functions are represented as Name nodes.
-        # Functions from external modules are represented as Attribute nodes.
-        if not isinstance(node.func, (ast.Name, ast.Attribute)):
-            return node
-        # Skip functions to ignore
-        if isinstance(node.func, ast.Name) and node.func.id in to_ignore:
-            return node
-        # Add the decorator to the function call
-        node.func = ast.Call(func=validate_decorator, args=[node.func], keywords=[])
-        return node
+    # Traverse the CST and modify function calls
+    class CustomVisitor(cst.CSTTransformer):
+        """Custom visitor to modify the CST"""
 
-    # Traverse the AST and modify function definitions
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            node = visit_Call(node)
+        def __init__(self):
+            super().__init__()
+            self.added_import = False
 
-    # Convert the modified AST back to Python code
-    modified_code = astor.to_source(tree)
+        # pylint: disable=invalid-name
+        def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
+            """Leave a Module node"""
+            if self.added_import:
+                return updated_node
+            self.added_import = True
+            new_import = cst.SimpleStatementLine(
+                body=[
+                    cst.ImportFrom(
+                        module=cst.Name("pydantic"),
+                        names=[cst.ImportAlias(name=cst.Name("validate_call"))]
+                    )
+                ]
+            )
+            new_body = [new_import] + list(updated_node.body)
+            return updated_node.with_changes(body=new_body)
+
+        # pylint: disable=invalid-name
+        def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
+            """Leave a Call node"""
+            if not isinstance(original_node.func, cst.Name):
+                return updated_node
+            if original_node.func.value in to_ignore:
+                return updated_node
+            new_func = cst.Call(
+                func=cst.Name(value="validate_call"),
+                args=[cst.Arg(value=original_node.func)]
+            )
+            new_call = cst.Call(
+                func=new_func,
+                args=updated_node.args
+            )
+            return new_call
+
+    # Apply the custom visitor to the CST
+    modified_tree = tree.visit(CustomVisitor())
+
+    # Convert the modified CST back to Python code
+    modified_code = modified_tree.code
 
     return modified_code
 
