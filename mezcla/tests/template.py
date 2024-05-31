@@ -48,10 +48,14 @@ from mezcla import system
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
-## TODO (vvv): insert new module name in commented out template teo lines below
-THE_MODULE = None         ## TODO: remove this line: avoids <module> syntax error in next)
-## import mezcla.<module> as THE_MODULE   ## TODO: uncomment this line (<<<)
-## TODO (^^^): use modified line above
+THE_MODULE = None
+try:
+    ## TODO: import mezcla.<module> as THE_MODULE
+    pass                                ## TODO: delete
+except:
+    system.print_exception_info("<module> import") 
+## 
+## TODO: make sure import above syntactically valid
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(__file__, r"\btemplate.py$"):
