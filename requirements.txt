@@ -132,4 +132,4 @@ typing_extensions>=4.7.0
 #full# tensorflow_hub
 #full# tensorrt
 types-six
-astor
+libcst
