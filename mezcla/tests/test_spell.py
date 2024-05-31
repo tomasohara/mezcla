@@ -21,6 +21,9 @@
 #       """Run spelling over TEXT in TEXT looking for BAD words""
 #       output = self.run_script(env_options=f"SPELL_LANG={lang}", data_file=gh.create_temp_file(text))
 #       assert(system.intersection(text.split(), bad.split()))
+# TODO4:
+# - Reword "This test can take some time or may have missing libraries" so that just
+#   covers RUN_SLOW_TESTS; Check separately for missing libraries.
 #
 
 """Tests for spell module"""
@@ -45,6 +48,7 @@ try:
     import mezcla.spell as THE_MODULE
 except:
     THE_MODULE = None
+    system.print_exception_info("spell import")
 
 # Since importing doesn't work properly, a temporary fix is specifying the path
 # import mezcla.spell as THE_MODULE
