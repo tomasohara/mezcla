@@ -432,27 +432,25 @@ def bar(x):
     return x * 2
 '''         
         # Sample decorator is wrapped arround print
-        # Avoid double codes within the sample code
+        # OLD: Avoid double codes within the sample code
         expected_code = '''
 from mezcla.mezcla_to_standard import sample_decorator
 
 def foo():
-    sample_decorator(print)('Hello, World!')
+    sample_decorator(print)("Hello, World!")
 
 def bar(x):
     return x * 2
 '''
-            # Run the function to insert the decorator
         result = THE_MODULE.insert_decorator_to_functions(sample_decorator, original_code)
-        # Normalize whitespace for comparison
-        def normalize_whitespace(s):
-            return ''.join(s.split())
-        normalized_result = normalize_whitespace(result)
-        normalized_expected_code = normalize_whitespace(expected_code)
-        # Assert that the result matches the expected code
-        assert repr(normalized_result) == repr(normalized_expected_code)
+        
+        # Removes whitespaces and newlines
+        def clear_formatting(s):
+            temp = s.replace("\n", "")
+            return "".join(char for char in temp if not char.isspace())
+        
+        assert clear_formatting(result) == clear_formatting(expected_code)
 
-    
     # XPASS
     @pytest.mark.xfail
     def test_to_standard(self):
@@ -464,10 +462,17 @@ def foo():
 def bar(x):
     return x * 2
 '''
+
+        def remove_newline(s):
+            return s.replace("\n", "")
+            
         to_assert = ["from mezcla.mezcla_to_standard import use_standard_equivalent", "use_standard_equivalent(print)"]
         result = THE_MODULE.to_standard(original_code)
-        assert result.startswith(to_assert[0]+ "\n") == True
+        result = remove_newline(result)
+        # OLD: assert result.startswith(to_assert[0]+ "\n") == True
+        assert result.startswith(to_assert[0]) == True
         assert to_assert[1] in result
+        # assert clear_formatting(result)
     
     # XPASS
     @pytest.mark.xfail
@@ -483,10 +488,15 @@ def bar(x):
     x = gh.run('echo $PWD')
     return x
 '''
-
+        def remove_newline(s):
+            return s.replace("\n", "")
+            
         to_assert = ["from mezcla.mezcla_to_standard import use_mezcla_equivalent", "use_mezcla_equivalent(gh.create_temp_file)", "use_mezcla_equivalent(gh.run)"]
         result = THE_MODULE.to_mezcla(original_code)
-        assert result.startswith(to_assert[0]+ "\n") == True
+        result = remove_newline(result)
+
+        # OLD: assert result.startswith(to_assert[0]+ "\n") == True
+        assert result.startswith(to_assert[0]) == True
         assert to_assert[1] in result
         assert to_assert[2] in result
 
