@@ -6,6 +6,7 @@ Tests for mezcla_to_standard module
 
 # Standard packages
 ## NOTE: this is empty for now
+from unittest.mock import patch, MagicMock
 
 # Installed packages
 import pytest
@@ -418,7 +419,6 @@ def foo():
 def bar(x):
     return x * 2
 '''
-
         # Expected modified code (uses the format of the decorator)
         _expected_code = '''
 from mezcla.mezcla_to_standard import sample_decorator
@@ -431,8 +431,8 @@ def foo():
 def bar(x):
     return x * 2
 '''         
-        # Actually the sample decorator is wrapped arround print
-        # Within the test code, avoid double quotes
+        # Sample decorator is wrapped arround print
+        # Avoid double codes within the sample code
         expected_code = '''
 from mezcla.mezcla_to_standard import sample_decorator
 
@@ -444,18 +444,51 @@ def bar(x):
 '''
             # Run the function to insert the decorator
         result = THE_MODULE.insert_decorator_to_functions(sample_decorator, original_code)
-        
         # Normalize whitespace for comparison
         def normalize_whitespace(s):
             return ''.join(s.split())
-        
         normalized_result = normalize_whitespace(result)
         normalized_expected_code = normalize_whitespace(expected_code)
-        
         # Assert that the result matches the expected code
         assert repr(normalized_result) == repr(normalized_expected_code)
 
+    
+    # XPASS
+    @pytest.mark.xfail
+    def test_to_standard(self):
+        """Make sure that to_standard works as usual"""
+        original_code = '''
+def foo():
+    print("Hello, World!")
+    
+def bar(x):
+    return x * 2
+'''
+        to_assert = ["from mezcla.mezcla_to_standard import use_standard_equivalent", "use_standard_equivalent(print)"]
+        result = THE_MODULE.to_standard(original_code)
+        assert result.startswith(to_assert[0]+ "\n") == True
+        assert to_assert[1] in result
+    
+    # XPASS
+    @pytest.mark.xfail
+    def test_to_mezcla(self):
+        """Make sure that to_mezcla works as usual"""
+        original_code = '''
+from mezcla import glue_helpers as gh
 
+def foo():
+    gh.create_temp_file('temp1.tmp')
+    
+def bar(x):
+    x = gh.run('echo $PWD')
+    return x
+'''
+
+        to_assert = ["from mezcla.mezcla_to_standard import use_mezcla_equivalent", "use_mezcla_equivalent(gh.create_temp_file)", "use_mezcla_equivalent(gh.run)"]
+        result = THE_MODULE.to_mezcla(original_code)
+        assert result.startswith(to_assert[0]+ "\n") == True
+        assert to_assert[1] in result
+        assert to_assert[2] in result
 
 if __name__ == '__main__':
     debug.trace_current_context()
