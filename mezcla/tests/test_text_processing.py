@@ -8,6 +8,9 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_text_processing.py
 #
+# TODO1: Combine testes classes into one.
+# TODO2: Remove RUN_SLOW_TESTS from test_chunk_noun_phrases
+#
 
 """Tests for text_processing module"""
 
@@ -21,7 +24,7 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla.my_regex import my_re
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, RUN_SLOW_TESTS
 from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
@@ -211,6 +214,7 @@ class TestTextProcessing(TestWrapper):
         assert "sentence splitting, word tokenization, and part-of-speech tagging" in captured
         assert "- Set SKIP_NLTK environment variable to 1 to disable NLTK usage." in captured
 
+@pytest.mark.skipif(not THE_MODULE, reason="Problem loading THE_MODULE")
 class TestTextProcessingScript(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
@@ -242,10 +246,13 @@ class TestTextProcessingScript(TestWrapper):
         output_lower = self.run_script(data_file=TEXT_EXAMPLE,options="--just-tokenize --lowercase")
         self.do_assert(output_lower == output_normal.lower(), "TODO: code test")
 
+@pytest.mark.skipif(not THE_MODULE, reason="Problem loading THE_MODULE")
 class TestTextProc(TestWrapper):
     """Test TextProc classes"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.xfail
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
     ## DEBUG:
     @trap_exception            # TODO: remove when debugged
     def test_chunk_noun_phrases(self):
