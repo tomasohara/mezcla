@@ -34,7 +34,7 @@ import inspect
 from typing import Optional
 
 # Installed module
-import astor
+import libcst as cst
 
 # Local modules
 from mezcla.main import Main
@@ -250,42 +250,57 @@ def insert_decorator_to_functions(decorator: callable, code: str) -> str:
     """
     name = decorator.__name__
 
-    # Parse the code into AST
-    tree = ast.parse(code)
+    # Parse the code into a CST tree
+    tree = cst.parse_module(code)
 
-    # Define an import node
-    import_node = ast.ImportFrom(
-        module='mezcla.mezcla_to_standard',
-        names=[ast.alias(name=name, asname=None)],
-        level=0
-    )
+    # Traverse the CST and modify function calls
+    class CustomVisitor(cst.CSTTransformer):
+        """Custom visitor to modify the CST"""
 
-    # Define a decorator node
-    to_std_decorator = ast.Name(id=name, ctx=ast.Load())
+        def __init__(self):
+            super().__init__()
+            self.added_import = False
 
-    # Add the import statement to the beginning of the AST
-    tree.body.insert(0, import_node)
+        # pylint: disable=invalid-name
+        def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
+            """Leave a Module node"""
+            if self.added_import:
+                return updated_node
+            self.added_import = True
+            new_import = cst.SimpleStatementLine(
+                body=[
+                    cst.ImportFrom(
+                        module=cst.Attribute(
+                            value=cst.Name("mezcla"),
+                            attr=cst.Name("mezcla_to_standard")
+                        ),
+                        names=[cst.ImportAlias(name=cst.Name(name))]
+                    )
+                ]
+            )
+            new_body = [new_import] + list(updated_node.body)
+            return updated_node.with_changes(body=new_body)
 
-    # Function to recursively traverse the AST
-    # pylint: disable=invalid-name
-    def visit_Call(node):
-        """Visit a Call node"""
-        assert isinstance(node, ast.Call)
-        # Standalone functions are represented as Name nodes.
-        # Functions from external modules are represented as Attribute nodes.
-        if not isinstance(node.func, (ast.Name, ast.Attribute)):
-            return node
-        # Insert decortator
-        node.func = ast.Call(func=to_std_decorator, args=[node.func], keywords=[])
-        return node
+        # pylint: disable=invalid-name
+        def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
+            """Leave a Call node"""
+            if not isinstance(original_node.func, (cst.Name, cst.Attribute)):
+                return updated_node
+            new_func = cst.Call(
+                func=cst.Name(value=name),
+                args=[cst.Arg(value=original_node.func)]
+            )
+            new_call = cst.Call(
+                func=new_func,
+                args=updated_node.args
+            )
+            return new_call
 
-    # Traverse the AST and modify function definitions
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            node = visit_Call(node)
+    # Apply the custom visitor to the CST
+    modified_tree = tree.visit(CustomVisitor())
 
-    # Convert the modified AST back to Python code
-    modified_code = astor.to_source(tree)
+    # Convert the modified CST back to Python code
+    modified_code = modified_tree.code
 
     return modified_code
 
