@@ -39,6 +39,7 @@ TEXT_EXAMPLE_TAGS = f'{RESOURCES}/example_text_tags.txt'
 WORD_POS_FREQ_FILE = f'{RESOURCES}/word-POS.freq'
 WORD_FREQ_FILE = f'{RESOURCES}/word.freq'
 
+@pytest.mark.skipif(not THE_MODULE, reason="Problem loading THE_MODULE")
 class TestTextProcessing(TestWrapper):
     """Class for testcase definition"""
 
