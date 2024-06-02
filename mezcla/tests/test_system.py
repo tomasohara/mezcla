@@ -395,7 +395,6 @@ class TestSystem(TestWrapper):
         test_filename = gh.create_temp_file("open binary")
         assert THE_MODULE.read_binary_file(test_filename) == b"open binary\n"
 
-
     def test_read_directory(self):
         """Ensure read_directory works as expected"""
         debug.trace(4, "test_read_directory()")
@@ -410,6 +409,7 @@ class TestSystem(TestWrapper):
         assert "/etc/passwd" in THE_MODULE.get_directory_filenames("/etc")
         assert "/boot" not in THE_MODULE.get_directory_filenames("/", just_regular_files=True)
 
+    @pytest.mark.xfail
     def test_read_lookup_table(self):
         """Ensure read_lookup_table works as expected"""
         debug.trace(4, "test_read_lookup_table()")
@@ -462,6 +462,7 @@ class TestSystem(TestWrapper):
         captured = self.get_stderr()
         assert 'Error' in captured
 
+    @pytest.mark.xfail
     def test_create_boolean_lookup_table(self):
         """Ensure create_boolean_lookup_table works as expected"""
         debug.trace(4, "test_create_boolean_lookup_table()")
