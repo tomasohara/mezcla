@@ -105,17 +105,44 @@ class TestDebug:
 
         THE_MODULE.output_timestamps = False
 
+    # XPASS
     @pytest.mark.xfail
-    def test_trace_fmtd(self):
+    def test_trace_fmtd(self, capsys):
         """Ensure trace_fmtd works as expected"""
         debug.trace(4, f"test_trace_fmtd(): self={self}")
-        assert(False)
+        THE_MODULE.trace_fmtd(4, "Hello Mother")
+        captured = capsys.readouterr()
+        assert "\nHello Mother\n" in captured.err
 
+    # XPASS
     @pytest.mark.xfail
-    def test_trace_object(self):
+    def test_trace_object(self, capsys):
         """Ensure trace_object works as expected"""
         debug.trace(4, f"test_trace_object(): self={self}")
-        assert(False)
+        
+        class XYZClass:
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+        
+        obj = XYZClass(17, 38)
+        
+        THE_MODULE.trace_object(
+            level=2,
+            obj=obj,
+            label="XYZ Object",
+            show_all=True,
+            indentation="   ",
+            pretty_print=True,
+            max_value_len=50,
+            max_depth=1,
+            regular_standard=False
+        )
+
+        captured = capsys.readouterr().err
+        assert "XYZ Object" in captured
+        assert "x: 17" in captured
+        assert "y: 38" in captured
 
     def test_trace_values(self, capsys):
         """Ensure trace_values works as expected"""
@@ -181,24 +208,40 @@ class TestDebug:
                               var2)
         captured = capsys.readouterr()
         assert "var1=3.*var2=6" in my_re.sub(r"\s+", "", captured.err)
-        
+    
+    # XPASS
     @pytest.mark.xfail
-    def test_trace_current_context(self):
+    def test_trace_current_context(self, capsys):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
-        assert(False)
+        THE_MODULE.trace_current_context(2, "TestLabelXYZ")
+        captured = capsys.readouterr().err
+        assert "TestLabelXYZ context: {\n" in captured
 
+    # XPASS
     @pytest.mark.xfail
-    def test_trace_exception(self):
+    def test_trace_exception(self, capsys):
         """Ensure trace_exception works as expected"""
         debug.trace(4, f"test_trace_exception(): self={self}")
-        assert(False)
+        try:
+            quotient = 1738/0
+        except Exception as e:
+            THE_MODULE.trace_exception(2, task="ZeroDivTask")
+        captured = capsys.readouterr().err
+        excepted_output_1 = "Exception during ZeroDivTask: "
+        excepted_output_2 = "ZeroDivisionError('division by zero')"
+        assert excepted_output_1 in captured
+        assert excepted_output_2 in captured
 
+    # NEED HELP
     @pytest.mark.xfail
-    def test_raise_exception(self):
+    def test_raise_exception(self, capsys):
         """Ensure raise_exception works as expected"""
         debug.trace(4, f"test_raise_exception(): self={self}")
-        assert(False)
+        with pytest.raises(Exception):
+            THE_MODULE.raise_exception(level=3)
+        captured = capsys.readouterr().err
+        assert captured is None
 
     def test_assertion(self, capsys):
         """Ensure assertion works as expected"""
@@ -252,17 +295,25 @@ class TestDebug:
         THE_MODULE.set_level(save_trace_level)
         assert(count == 0)
 
+    # XPASS
     @pytest.mark.xfail
-    def test_debug_print(self):
+    def test_debug_print(self, capsys):
         """Ensure debug_print works as expected"""
         debug.trace(4, f"test_debug_print(): self={self}")
-        assert(False)
+        test_text = "DividedByOneError"
+        THE_MODULE.debug_print(text=test_text, level=-1)
+        captured = capsys.readouterr().err
+        assert f"\n{test_text}\n" in captured
 
+    #XPASS
     @pytest.mark.xfail
     def test_timestamp(self):
         """Ensure timestamp works as expected"""
         debug.trace(4, f"test_timestamp(): self={self}")
-        assert(False)
+        timestamp = THE_MODULE.timestamp()
+        timestamp_regex = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+$"
+        match = my_re.match(timestamp_regex, timestamp)
+        assert match is not None
 
     def test_debugging(self):
         """Ensure debugging works as expected"""
@@ -352,23 +403,63 @@ class TestDebug:
         captured = capsys.readouterr()
         assert "xor3" in captured.err
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    def test_init_logging(self):
+    # XPASS
+    @pytest.mark.xfail
+    def test_init_logging(self, monkeypatch, capsys):
         """Ensure init_logging works as expected"""
         debug.trace(4, f"test_init_logging(): self={self}")
-        assert(False)
+        
+        class MockLoggingRoot:
+            def __init__(self):
+                self.level = None
+                self.handlers = []
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    def test_profile_function(self):
+            # Due to INTERNALERROR when setting logger level to 20, adding methods to add and remove handlers
+            def addHandler(self, handler):
+                pass
+
+            def removeHandler(self, handler):
+                pass
+
+            def setLevel(self, level):
+                self.level = level
+
+        mock_root = MockLoggingRoot()
+        monkeypatch.setattr("mezcla.debug.detailed_debugging", lambda: False)
+        monkeypatch.setattr("mezcla.debug.logging.root", mock_root)
+        monkeypatch.setattr("mezcla.debug.logging.debug", lambda x:None)
+        
+        THE_MODULE.init_logging()
+        captured = capsys.readouterr().err
+        assert "init_logging()" in captured
+        assert mock_root.level == 20
+
+    # XPASS
+    @pytest.mark.xfail
+    def test_profile_function(self, capsys):
         """Ensure profile_function works as expected"""
         debug.trace(4, f"test_profile_function(): self={self}")
-        assert(False)
+        class MockFrame:
+            f_code = type("Code", (), {"co_name": "test_function", "__module__": "test_module"})
+            f_globals = {"test_function": lambda x: x}
+            f_locals = {"arg": 42}
 
+        THE_MODULE.profile_function(MockFrame, "call", "test_arg")
+        captured = capsys.readouterr().err
+        assert "profile_function(_, call, test_arg)" in captured
+        assert "MockFrame.<lambda> at 0x" in captured
+
+    # NEED HELP: CaptureResult(out='', err='test_reference_var(): self=<test_debug.TestDebug object at 0x7885df08df60>\n')
     @pytest.mark.xfail                   # TODO: remove xfail
-    def test_reference_var(self):
+    def test_reference_var(self, capsys):
         """Ensure reference_var works as expected"""
         debug.trace(4, f"test_reference_var(): self={self}")
-        assert(False)
+        THE_MODULE.reference_var(1, 'xyzzy', True)
+        THE_MODULE.reference_var([1, 2, 3], {'x':7, 'y':5}, None)
+        
+        captured = capsys.readouterr().err
+        assert "reference_var(1, 'xyzzy', True)" in captured
+        assert "reference_var([1, 2, 3], {'x':7, 'y':5}, None)" in captured
 
     def test_clip_value(self):
         """Ensure clip_value works as expected"""
@@ -376,24 +467,64 @@ class TestDebug:
         assert THE_MODULE.clip_value('helloworld', 5) == 'hello...'
         assert THE_MODULE.clip_value('12345678910111213141516', 7) == '1234567...'
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    # XPASS
+    @pytest.mark.xfail
     def test_read_line(self):
         """Ensure read_line works as expected"""
         debug.trace(4, f"test_read_line(): self={self}")
-        assert(False)
+        MISSING_LINE = "???"
+        TEST_CONTENT = [
+            "Line 1",
+            "Line 2",
+            "Line 3",
+            "Line 4",
+            "Line 5"
+        ]
+        TEST_FILE = "/tmp/test_read_line.txt"
+        system.write_lines(TEST_FILE, text_lines=TEST_CONTENT, append=False)
+        
+        for line_num in range(5):
+            assert THE_MODULE.read_line(TEST_FILE, line_num+1) == TEST_CONTENT[line_num] + "\n"
+        
+        ## THE_MODULE.read_line(TEST_FILE, 0) == "Line 5\n" does not make sense
+        # assert THE_MODULE.read_line(TEST_FILE, 0) == MISSING_LINE
+        assert THE_MODULE.read_line(TEST_FILE, 6) == MISSING_LINE
+        assert THE_MODULE.read_line("non_existent_file.txt", 1) == MISSING_LINE
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    def test_debug_init(self):
+    # XPASS
+    @pytest.mark.xfail
+    def test_debug_init(self, capsys):
         """Ensure debug_init works as expected"""
         debug.trace(4, f"test_debug_init(): self={self}")
-        assert(False)
+        THE_MODULE.debug_init()
+        captured = capsys.readouterr().err
+        to_be_asserted = [
+            "debug_init()", 
+            "sys.argv", 
+            "open_debug_file()", 
+            "debug_filename", 
+            "debug_file", 
+            "trace_level", 
+            "mezcla/debug.py", 
+            "output_timestamps",
+            "para_mode_tracing",
+            "max_trace_value_len",
+            "use_logging",
+            "monitor_functions",
+            "environment: {\n",
+        ]
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    def test_display_ending_time_etc(self):
+        for var in to_be_asserted:
+            assert var in captured
+
+    # NEED HELP
+    @pytest.mark.xfail
+    def test_display_ending_time_etc(self, capsys):
         """Ensure display_ending_time_etc works as expected"""
         debug.trace(4, f"test_display_ending_time_etc(): self={self}")
-        assert(False)
-
+        THE_MODULE.debug_init()
+        assert False
+    
     def test_visible_simple_trace(self, capsys):
         """Make sure level-1 trace outputs to stderr"""
         debug.trace(4, f"test_visible_simple_trace({capsys})")
@@ -429,7 +560,6 @@ class TestDebug:
         assert captured.out == self.expected_stdout_trace
         assert captured.err == self.expected_stderr_trace
         THE_MODULE.trace_expr(6, pre_captured, captured)
-
 
 class TestDebug2(TestWrapper):
     """Another Class for test case definitions"""
