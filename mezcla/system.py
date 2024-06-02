@@ -695,7 +695,7 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
                     delim_spec = ("\\t" if (delim == "\t") else delim)
                     debug.trace_fmt(2, "Warning: Ignoring line {n} w/o delim ({d}): {l}", 
                                     n=line_num, d=delim_spec, l=line)
-    except (AttributeError, IOError, ValueError):
+    except (AttributeError, IOError, TypeError, ValueError):
         debug.trace_fmtd(1, "Error creating lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmtd(7, "read_lookup_table({f}) => {r}", f=filename, r=hash_table)
@@ -728,7 +728,7 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, ignore_
                 if delim in key:
                     key = key.split(delim)[0]
                 lookup_hash[key] = True
-    except (AttributeError, IOError, ValueError):
+    except (AttributeError, IOError, TypeError, ValueError):
         debug.trace_fmtd(1, "Error: Creating boolean lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmt(7, "create_boolean_lookup_table => {h}", h=lookup_hash)
