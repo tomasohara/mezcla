@@ -74,7 +74,7 @@ class TestIt(TestWrapper):
         if not system.is_directory(cls.index_temp_dir):
             gh.full_mkdir(cls.index_temp_dir)
         if THE_MODULE.INDEX_ONLY_RECENT:
-            cls.monkeypatch.setattr(THE_MODULE, "INDEX_ONLY_RECENT", False)
+            THE_MODULE.INDEX_ONLY_RECENT = False
         debug.trace_object(5, cls, label=f"{cls.__class__.__name__} instance")
         return
 
@@ -121,7 +121,7 @@ class TestIt(TestWrapper):
         self.do_assert(new_date > prev_date)
         
 
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
+    @pytest.mark.skipif(RUN_SLOW_TESTS, reason="Ignoring slow test")
     @pytest.mark.xfail                   # TODO: remove xfail
     ## DEBUG: @trap_exception            # TODO: remove when debugged
     def test_02_search_docs(self):
