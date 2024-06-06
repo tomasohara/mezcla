@@ -66,7 +66,7 @@ CorpusKeyword = namedtuple('CorpusKeyword', ['term', 'ngram', 'score'])
 
 SKIP_NORMALIZATION = system.getenv_bool("SKIP_NORMALIZATION", False,
                                         "Skip term/ngram normalization")
-NGRAM_EPSILON = system.getenv_bool(
+NGRAM_EPSILON = system.getenv_float(
     "NGRAM_EPSILON", 0.000001,
     description="Occurrence count for unknown ngrams")
 TFIDF_NGRAM_LEN_WEIGHT = system.getenv_float(
