@@ -1,4 +1,12 @@
 #! /usr/bin/env python
+#
+# TODO1: Rework so that decorator approach is optional
+# TODO1: Add example like "Sample input and output" from  ../mezcla_to_standard.py.
+# TODO2: address pylint issues (e.g., via python-lint filter)
+# TODO3: add overview comments on how the test works
+# TODO3: please put xpass-style method comments after docstring (to facilitate reading)
+# TODO4: sketch how this can be applied to mezcla itself
+#
 
 """
 Tests for mezcla_to_standard module
@@ -21,7 +29,7 @@ class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     
-    # XPASS
+    # XPASS       ## TODO3: please put after docstring (here and below)
     @pytest.mark.xfail
     def test_eqcall_same_target(self):
         """Make sure that same_target function of EqCall class works as usual"""
