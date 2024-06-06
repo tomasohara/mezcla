@@ -4,7 +4,9 @@
 #
 # NOTE:
 # To convert Mezcla calls with standard calls by manipulating the AST,
-# we must do it with decorators at runtime. This is because we cannot
+# we must do it with decorators at runtime.
+#    [regarding "must", Tom begs to differ, as shown below]
+# This is because we cannot
 # easily know the origin of the function call in the AST. for example:
 #
 #       from mezcla import glue_helpers as gh
@@ -14,6 +16,9 @@
 #
 #       ast.dump(node.func) =>
 #            Attribute(value=Name(id='gh', ctx=Load()), attr='rename_file', ctx=Load())
+# Tom's appeal:
+# *** Surely we can keep track of the imports so that module id like gh are resolvable!
+# Run-time decorators are not an option: the output needs to only use standard! ***
 #
 # We cannot see directly that 'rename_file' belongs to 'mezcla.glue_helpers',
 # comparing it with another function is difficult. But if we do it at
@@ -21,6 +26,39 @@
 #
 #       func == glue_helpers.rename_file => True
 #
+#
+# TODO1: Make the decorator approach optional.
+# TODO1: Add tracing throughout.
+# TODO1: Make exec optional (off by default and preferably a debug-only option).
+# TODO2: Add exception handling (e.g., 'try: self.dest(**arguments); except ...').
+# TODO2: Add examples illustrating the transformations being made (e.g., AST).
+# TODO3: Send output to stdout (avoids need to specify output file).
+# TODO3: Look into making this table driven. Can't eval() be used to generate the EqCall specifications?
+# TODO4: Try to create a table covering more of system.py and glue_helper.py.  
+#
+#--------------------------------------------------------------------------------
+# Sample input and output:
+#
+# - input
+#   
+#   $ cat _simple_glue_helper_samples.py
+#   from mezcla import glue_helpers as gh
+#   gh.write_file("/tmp/fubar.list", "fubar.list")
+#   gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
+#   gh.delete_file("/tmp/fubar.list")
+#   gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+#   gh.form_path("/tmp", "fubar")
+#   
+# - output
+#   
+#   from mezcla import glue_helpers as gh
+#   import os
+#   # WARNING not supported: gh.write_file("/tmp/fubar.list", "fubar.list")
+#   # WARNING not supporte: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
+#   os.remove("/tmp/fubar.list")
+#   os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+#   os.path.join("/tmp", "fubar")
+
 
 """
 Mezcla to Standard call conversion script
@@ -28,7 +66,7 @@ Mezcla to Standard call conversion script
 
 # Standard modules
 import os
-import ast
+## OLD: import ast
 import logging
 import inspect
 from typing import Optional
@@ -248,6 +286,7 @@ def insert_decorator_to_functions(decorator: callable, code: str) -> str:
     """
     Insert a decorator to a function definition in the code
     """
+    ## TODO2: add example of what is being done
     name = decorator.__name__
 
     # Parse the code into a CST tree
@@ -264,6 +303,7 @@ def insert_decorator_to_functions(decorator: callable, code: str) -> str:
         # pylint: disable=invalid-name
         def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
             """Leave a Module node"""
+            ## TODO2: document with respect to mez2std
             if self.added_import:
                 return updated_node
             self.added_import = True
@@ -284,6 +324,7 @@ def insert_decorator_to_functions(decorator: callable, code: str) -> str:
         # pylint: disable=invalid-name
         def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
             """Leave a Call node"""
+            ## TODO2: document with respect to mez2std
             if not isinstance(original_node.func, (cst.Name, cst.Attribute)):
                 return updated_node
             new_func = cst.Call(
@@ -348,9 +389,11 @@ class MezclaToStandardScript(Main):
                 text=modified_code
             )
         # pylint: disable=exec-used
+        ## TODO1: why is the code being run?! Make this a "backdoor" option.
         exec(modified_code)
 
 if __name__ == '__main__':
+    ## TODO4: use main()
     app = MezclaToStandardScript(
         description = __doc__,
         positional_arguments = [
