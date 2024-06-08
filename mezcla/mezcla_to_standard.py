@@ -1,26 +1,4 @@
 #! /usr/bin/env python
-#
-# Mezcla to Standard call conversion script
-#
-# NOTE:
-# To convert Mezcla calls with standard calls by manipulating the AST,
-# we must do it with decorators at runtime. This is because we cannot
-# easily know the origin of the function call in the AST. for example:
-#
-#       from mezcla import glue_helpers as gh
-#       gh.rename_file("old", "new")
-#
-# If we peek into the AST:
-#
-#       ast.dump(node.func) =>
-#            Attribute(value=Name(id='gh', ctx=Load()), attr='rename_file', ctx=Load())
-#
-# We cannot see directly that 'rename_file' belongs to 'mezcla.glue_helpers',
-# comparing it with another function is difficult. But if we do it at
-# runtime with decorators, the comparison is more easy:
-#
-#       func == glue_helpers.rename_file => True
-#
 
 """
 Mezcla to Standard call conversion script
@@ -28,7 +6,6 @@ Mezcla to Standard call conversion script
 
 # Standard modules
 import os
-import ast
 import logging
 import inspect
 from typing import Optional
@@ -64,95 +41,6 @@ class EqCall:
         self.condition = condition
         self.eq_params = eq_params
         self.extra_params = extra_params
-
-    def same_target(self, func: callable) -> bool:
-        """Check if the function is the same as the target"""
-        return self.target == func
-
-    def same_dest(self, func: callable) -> bool:
-        """Check if the function is the same as the destination"""
-        return self.dest == func
-
-    def _to_dest_args(self, *args, **kwargs) -> dict:
-        """Transform the target call arguments to dest call arguments"""
-        arguments = dict(zip(inspect.getfullargspec(self.target).args, args))
-        arguments.update(kwargs)
-        arguments = self._insert_extra_params(arguments)
-        arguments = self._to_dest_args_keys(arguments)
-        return arguments
-
-    def _to_target_args(self, *args, **kwargs) -> dict:
-        """Transform the dest call arguments to target call arguments"""
-        arguments = dict(zip(inspect.getfullargspec(self.dest).args, args))
-        arguments.update(kwargs)
-        arguments = self._to_target_args_keys(arguments)
-        arguments = self._insert_extra_params(arguments)
-        return arguments
-
-    def _filter_args_by_function(self, func: callable, args: dict) -> dict:
-        """Filter the arguments by the function"""
-        result = {}
-        for key, value in args.items():
-            if key in inspect.getfullargspec(func).args:
-                result[key] = value
-        return result
-
-    def is_dest_condition_met(self, *args, **kwargs) -> bool:
-        """Return if the condition is met when running the destination function"""
-        arguments = self._to_dest_args(*args, **kwargs)
-        arguments = self._filter_args_by_function(self.condition, arguments)
-        return self.condition(**arguments)
-
-    def is_target_condition_met(self, *args, **kwargs) -> bool:
-        """Return if the condition is met when running the target function"""
-        arguments = self._to_target_args(*args, **kwargs)
-        arguments = self._filter_args_by_function(self.condition, arguments)
-        return self.condition(**arguments)
-
-    def _to_dest_args_keys(self, args: dict) -> dict:
-        """Transform the arguments keys from target to dest"""
-        if self.eq_params is None:
-            return args
-        result = {}
-        for key, value in args.items():
-            if key in self.eq_params:
-                result[self.eq_params[key]] = value
-            else:
-                result[key] = value
-        return result
-
-    def _to_target_args_keys(self, args: dict) -> dict:
-        """Transform the arguments keys from dest to target"""
-        if self.eq_params is None:
-            return args
-        result = {}
-        for key, value in args.items():
-            if key in self.eq_params.values():
-                result[list(self.eq_params.keys())[list(self.eq_params.values()).index(key)] ] = value
-            else:
-                result[key] = value
-        return result
-
-    def _insert_extra_params(self, args: dict) -> dict:
-        """Insert extra parameters, if not already present"""
-        if self.extra_params is None:
-            return args
-        for key, value in self.extra_params.items():
-            if key not in args:
-                args[key] = value
-        return args
-
-    def run_target(self, *args, **kwargs):
-        """Run the target function"""
-        arguments = self._to_target_args(*args, **kwargs)
-        arguments = self._filter_args_by_function(self.target, arguments)
-        return self.target(**arguments)
-
-    def run_dest(self, *args, **kwargs):
-        """Run the destination function"""
-        arguments = self._to_dest_args(*args, **kwargs)
-        arguments = self._filter_args_by_function(self.dest, arguments)
-        return self.dest(**arguments)
 
 # Add equivalent calls between Mezcla and standard
 mezcla_to_standard = []
@@ -214,42 +102,124 @@ mezcla_to_standard.append(
     )
 )
 
-def use_standard_equivalent(func):
-    """
-    Decorator to run the equivalent standard call to the Mezcla call
-    """
-    def wrapper(*args, **kwargs):
-        ## TODO: optimize this, avoid iterating over all calls every time a function is called
-        for call in mezcla_to_standard:
-            if not call.same_target(func):
-                continue
-            if not call.is_dest_condition_met(*args, **kwargs):
-                continue
-            return call.run_dest(*args, **kwargs)
-        return func(*args, **kwargs)
-    return wrapper
+class BaseTransformerStrategy:
+    """Transformer base class"""
 
-def use_mezcla_equivalent(func):
-    """
-    Decorator to run the equivalent Mezcla call to the standard call
-    """
-    def wrapper(*args, **kwargs):
-        ## TODO: optimize this, avoid iterating over all calls every time a function is called
-        for call in mezcla_to_standard:
-            if not call.same_dest(func):
-                continue
-            if not call.is_target_condition_met(*args, **kwargs):
-                continue
-            return call.run_target(*args, **kwargs)
-        return func(*args, **kwargs)
-    return wrapper
+    def insert_extra_params(self, eq_call: EqCall, args: dict) -> dict:
+        """Insert extra parameters, if not already present"""
+        if eq_call.extra_params is None:
+            return args
+        for key, value in eq_call.extra_params.items():
+            if key not in args:
+                ## TODO: convert value to tree
+                ## args[key] = value
+                pass
+        return args
 
-def insert_decorator_to_functions(decorator: callable, code: str) -> str:
-    """
-    Insert a decorator to a function definition in the code
-    """
-    name = decorator.__name__
+    def filter_args_by_function(self, func: callable, args: dict) -> dict:
+        """Filter the arguments to match the standard function signature"""
+        result = {}
+        for key, value in args.items():
+            if key in inspect.getfullargspec(func).args:
+                result[key] = value
+        return result
 
+class ToStandard(BaseTransformerStrategy):
+    """Mezcla to standard call conversion class"""
+
+    def find_eq_call(self, module, method) -> Optional[EqCall]:
+        """Find the equivalent call"""
+        for eq_call in mezcla_to_standard:
+            if (module == eq_call.target.__module__.split('.')[-1]
+                and method == eq_call.target.__name__):
+                return eq_call
+        return None
+
+    def is_condition_to_replace_met(self) -> bool:
+        """Return if the condition to replace is met"""
+        return True
+
+    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
+        """Transform every argument to the standard equivalent argument"""
+        arguments = dict(zip(inspect.getfullargspec(eq_call.target).args, args))
+        arguments.update(kwargs)
+        arguments = self.insert_extra_params(eq_call, arguments)
+        arguments = self.replace_args_keys(eq_call, arguments)
+        arguments = self.filter_args_by_function(eq_call.dest, arguments)
+        return list(arguments.values())
+
+    def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
+        """Replace argument keys with the equivalent ones"""
+        if eq_call.eq_params is None:
+            return args
+        result = {}
+        for key, value in args.items():
+            if key in eq_call.eq_params:
+                result[eq_call.eq_params[key]] = value
+            else:
+                result[key] = value
+        return result
+
+    def get_matching_call(self, module, method) -> Optional[EqCall]:
+        """Get the matching call"""
+        eq_call = self.find_eq_call(module, method)
+        if eq_call is None:
+            return None, None
+        if not self.is_condition_to_replace_met():
+            return None, None
+        module = eq_call.dest.__module__
+        method = eq_call.dest.__name__
+        return module, method, eq_call
+
+class ToMezcla(BaseTransformerStrategy):
+    """Standard to Mezcla call conversion class"""
+
+    def find_eq_call(self, module, method) -> Optional[EqCall]:
+        """Find the equivalent call"""
+        for eq_call in mezcla_to_standard:
+            if (module == eq_call.dest.__module__.split('.')[-1]
+                and method == eq_call.dest.__name__):
+                return eq_call
+        return None
+
+    def is_condition_to_replace_met(self) -> bool:
+        """Return if the condition to replace is met"""
+        return True
+
+    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
+        """Transform every argument to the Mezcla equivalent argument"""
+        arguments = dict(zip(inspect.getfullargspec(eq_call.target).args, args))
+        arguments.update(kwargs)
+        arguments = self.replace_args_keys(eq_call, arguments)
+        arguments = self.insert_extra_params(eq_call, arguments)
+        arguments = self.filter_args_by_function(eq_call.target, arguments)
+        return list(arguments.values())
+
+    def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
+        """Replace argument keys with the equivalent ones"""
+        if eq_call.eq_params is None:
+            return args
+        result = {}
+        for key, value in args.items():
+            if key in eq_call.eq_params.values():
+                result[list(eq_call.eq_params.keys())[list(eq_call.eq_params.values()).index(key)] ] = value
+            else:
+                result[key] = value
+        return result
+
+    def get_matching_call(self, module, method) -> Optional[EqCall]:
+        """Get the matching call"""
+        eq_call = self.find_eq_call(module, method)
+        if eq_call is None:
+            return None, None
+        if not self.is_condition_to_replace_met():
+            return None, None
+        module = eq_call.target.__module__
+        method = eq_call.target.__name__
+        return module, method, eq_call
+
+def transform(to_module, code: str) -> str:
+    """Transform the code"""
     # Parse the code into a CST tree
     tree = cst.parse_module(code)
 
@@ -257,64 +227,91 @@ def insert_decorator_to_functions(decorator: callable, code: str) -> str:
     class CustomVisitor(cst.CSTTransformer):
         """Custom visitor to modify the CST"""
 
-        def __init__(self):
+        def __init__(self, to_module) -> None:
             super().__init__()
-            self.added_import = False
+            self.to_module = to_module
+            self.aliases = {}
+            self.to_import = []
 
         # pylint: disable=invalid-name
-        def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
+        def leave_Module(
+                self,
+                original_node: cst.Module,
+                updated_node: cst.Module
+            ) -> cst.Module:
             """Leave a Module node"""
-            if self.added_import:
-                return updated_node
-            self.added_import = True
-            new_import = cst.SimpleStatementLine(
-                body=[
-                    cst.ImportFrom(
-                        module=cst.Attribute(
-                            value=cst.Name("mezcla"),
-                            attr=cst.Name("mezcla_to_standard")
-                        ),
-                        names=[cst.ImportAlias(name=cst.Name(name))]
-                    )
-                ]
-            )
-            new_body = [new_import] + list(updated_node.body)
+            new_body = list(updated_node.body)
+            for module in self.to_import:
+                new_import_node = cst.SimpleStatementLine(
+                    body=[
+                        cst.Import(
+                            names=[cst.ImportAlias(name=cst.Name(module), asname=None)]
+                        )
+                    ]
+                )
+                new_body = [new_import_node] + new_body
             return updated_node.with_changes(body=new_body)
+
+        # pylint: disable=invalid-name
+        def visit_ImportAlias(self, node: cst.ImportAlias) -> None:
+            """Visit an ImportAlias node"""
+            if isinstance(node.name, cst.Attribute):
+                name = node.name.attr.value
+            elif isinstance(node.name, cst.Name):
+                name = node.name.value
+            asname = node.asname.name.value
+            # Store the alias
+            self.aliases[asname] = name
 
         # pylint: disable=invalid-name
         def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
             """Leave a Call node"""
-            if not isinstance(original_node.func, (cst.Name, cst.Attribute)):
+            if isinstance(original_node.func, cst.Name):
+                # NOTE: we only want to transform standard
+                # functions or from the Mezcla module
+                pass
+            elif isinstance(original_node.func, cst.Attribute):
+                return self.replace_call_if_needed(original_node, updated_node)
+            return updated_node
+
+        def replace_call_if_needed(
+                self,
+                original_node: cst.Call,
+                updated_node: cst.Call
+            ) -> cst.Call:
+            """Replace the call if needed"""
+            # Get module and method names
+            module_name = original_node.func.value.value
+            module_name = self.aliases.get(module_name, module_name)
+            func_name = original_node.func.attr.value
+            # Get replacement
+            new_module, new_func, eq_call = self.to_module.get_matching_call(
+                module_name, func_name
+            )
+            if not new_module or not new_func:
                 return updated_node
-            new_func = cst.Call(
-                func=cst.Name(value=name),
-                args=[cst.Arg(value=original_node.func)]
+            # Replace
+            updated_node = updated_node.with_changes(
+                func=cst.Attribute(value=cst.Name(new_module), attr=cst.Name(new_func)),
+                args=self.replace_args_if_needed(eq_call, original_node.args)
             )
-            new_call = cst.Call(
-                func=new_func,
-                args=updated_node.args
-            )
-            return new_call
+            # Add pending import to add
+            self.to_import.append(new_module)
+            return updated_node
+
+        def replace_args_if_needed(self, eq_call: EqCall, old_args: list) -> cst.Call:
+            """Adapt the arguments"""
+            return self.to_module.get_args_replacement(eq_call, old_args, [])
+
+    visitor = CustomVisitor(to_module)
 
     # Apply the custom visitor to the CST
-    modified_tree = tree.visit(CustomVisitor())
+    modified_tree = tree.visit(visitor)
 
     # Convert the modified CST back to Python code
     modified_code = modified_tree.code
 
     return modified_code
-
-def to_standard(code: str) -> str:
-    """
-    Add decorator to function definitions in the code, to convert Mezcla calls to standard calls
-    """
-    return insert_decorator_to_functions(use_standard_equivalent, code)
-
-def to_mezcla(code: str) -> str:
-    """
-    Add decorator to function definitions in the code, to convert standard calls to Mezcla calls
-    """
-    return insert_decorator_to_functions(use_mezcla_equivalent, code)
 
 class MezclaToStandardScript(Main):
     """Argument processing class to MezclaToStandard"""
@@ -339,9 +336,10 @@ class MezclaToStandardScript(Main):
         if not code:
             raise ValueError(f"File {self.file} is empty")
         if self.to_mezcla:
-            modified_code = to_mezcla(code)
+            to_module = ToMezcla()
         else:
-            modified_code = to_standard(code)
+            to_module = ToStandard()
+        modified_code = transform(to_module, code)
         if self.output:
             system.write_file(
                 filename=self.output,
