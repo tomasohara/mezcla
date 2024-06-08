@@ -396,7 +396,8 @@ class MezclaToStandardScript(Main):
             to_module = ToMezcla()
         else:
             to_module = ToStandard()
-        return transform(to_module, code)
+        modified_code = transform(to_module, code)
+        print(modified_code)
 
 if __name__ == '__main__':
     ## TODO4: use main()
