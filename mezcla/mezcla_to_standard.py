@@ -40,7 +40,9 @@ Mezcla to Standard call conversion script
 import os
 import logging
 import inspect
-from typing import Optional
+from typing import (
+    Optional, Tuple,
+)
 
 # Installed module
 import libcst as cst
@@ -155,6 +157,35 @@ class BaseTransformerStrategy:
                 result[key] = value
         return result
 
+    def get_replacement(self, module, func, args) -> Tuple:
+        """Get the function replacement"""
+        eq_call = self.find_eq_call(module, func.attr.value)
+        if eq_call is None:
+            return None, None, []
+        if not self.is_condition_to_replace_met():
+            return None, None, []
+        new_module, new_func = self.eq_call_to_module_func(eq_call)
+        # Create the new nodes
+        new_func_node = cst.Attribute(value=cst.Name(new_module), attr=cst.Name(new_func))
+        new_args_nodes = self.get_args_replacement(eq_call, args, [])
+        return new_module, new_func_node, new_args_nodes
+
+    def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
+        """Get the module and function from the equivalent call"""
+        raise NotImplementedError
+
+    def find_eq_call(self, module, method) -> Optional[EqCall]:
+        """Find the equivalent call"""
+        raise NotImplementedError
+
+    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
+        """Transform every argument to the standard equivalent argument"""
+        raise NotImplementedError
+
+    def is_condition_to_replace_met(self) -> bool:
+        """Return if the condition to replace is met"""
+        raise NotImplementedError
+
 class ToStandard(BaseTransformerStrategy):
     """Mezcla to standard call conversion class"""
 
@@ -191,16 +222,9 @@ class ToStandard(BaseTransformerStrategy):
                 result[key] = value
         return result
 
-    def get_matching_call(self, module, method) -> Optional[EqCall]:
-        """Get the matching call"""
-        eq_call = self.find_eq_call(module, method)
-        if eq_call is None:
-            return None, None
-        if not self.is_condition_to_replace_met():
-            return None, None
-        module = eq_call.dest.__module__
-        method = eq_call.dest.__name__
-        return module, method, eq_call
+    def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
+        """Get the module and function from the equivalent call"""
+        return eq_call.dest.__module__, eq_call.dest.__name__
 
 class ToMezcla(BaseTransformerStrategy):
     """Standard to Mezcla call conversion class"""
@@ -238,16 +262,9 @@ class ToMezcla(BaseTransformerStrategy):
                 result[key] = value
         return result
 
-    def get_matching_call(self, module, method) -> Optional[EqCall]:
-        """Get the matching call"""
-        eq_call = self.find_eq_call(module, method)
-        if eq_call is None:
-            return None, None
-        if not self.is_condition_to_replace_met():
-            return None, None
-        module = eq_call.target.__module__
-        method = eq_call.target.__name__
-        return module, method, eq_call
+    def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
+        """Get the module and function from the equivalent call"""
+        return eq_call.target.__module__, eq_call.target.__name__
 
 def transform(to_module, code: str) -> str:
     """Transform the code"""
@@ -286,6 +303,9 @@ def transform(to_module, code: str) -> str:
         # pylint: disable=invalid-name
         def visit_ImportAlias(self, node: cst.ImportAlias) -> None:
             """Visit an ImportAlias node"""
+            if node.asname is None:
+                return
+            # Store asname alias for later replacement
             if isinstance(node.name, cst.Attribute):
                 name = node.name.attr.value
             elif isinstance(node.name, cst.Name):
@@ -314,25 +334,20 @@ def transform(to_module, code: str) -> str:
             # Get module and method names
             module_name = original_node.func.value.value
             module_name = self.aliases.get(module_name, module_name)
-            func_name = original_node.func.attr.value
             # Get replacement
-            new_module, new_func, eq_call = self.to_module.get_matching_call(
-                module_name, func_name
+            new_module, new_func_node, new_args_nodes = self.to_module.get_replacement(
+                module_name, original_node.func, original_node.args
             )
-            if not new_module or not new_func:
+            if not new_module or not new_func_node:
                 return updated_node
             # Replace
             updated_node = updated_node.with_changes(
-                func=cst.Attribute(value=cst.Name(new_module), attr=cst.Name(new_func)),
-                args=self.replace_args_if_needed(eq_call, original_node.args)
+                func=new_func_node,
+                args=new_args_nodes
             )
             # Add pending import to add
             self.to_import.append(new_module)
             return updated_node
-
-        def replace_args_if_needed(self, eq_call: EqCall, old_args: list) -> cst.Call:
-            """Adapt the arguments"""
-            return self.to_module.get_args_replacement(eq_call, old_args, [])
 
     visitor = CustomVisitor(to_module)
 
