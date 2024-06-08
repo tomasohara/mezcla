@@ -83,7 +83,6 @@ from mezcla import glue_helpers as gh
 FILE = "file"
 TO_STD = "to_standard"
 TO_MEZCLA = "to_mezcla"
-OUTPUT = "output"
 
 class EqCall:
     """Mezcla to standard equivalent call class"""
@@ -381,14 +380,12 @@ class MezclaToStandardScript(Main):
     file = ""
     to_std = False
     to_mezcla = False
-    output = ""
 
     def setup(self) -> None:
         """Process arguments"""
         self.file = self.get_parsed_argument(FILE, self.file)
         self.to_std = self.has_parsed_option(TO_STD)
         self.to_mezcla = self.has_parsed_option(TO_MEZCLA)
-        self.output = self.get_parsed_argument(OUTPUT, self.output)
 
     def run_main_step(self) -> None:
         """Process main script"""
@@ -399,15 +396,7 @@ class MezclaToStandardScript(Main):
             to_module = ToMezcla()
         else:
             to_module = ToStandard()
-        modified_code = transform(to_module, code)
-        if self.output:
-            system.write_file(
-                filename=self.output,
-                text=modified_code
-            )
-        # pylint: disable=exec-used
-        ## TODO1: why is the code being run?! Make this a "backdoor" option.
-        exec(modified_code)
+        return transform(to_module, code)
 
 if __name__ == '__main__':
     ## TODO4: use main()
@@ -419,9 +408,6 @@ if __name__ == '__main__':
         boolean_options = [
             (TO_STD, 'Convert Mezcla calls to standard calls'),
             (TO_MEZCLA, 'Convert standard calls to Mezcla calls')
-        ],
-        text_options = [
-            (OUTPUT, 'Output of transformed script'),
         ],
         manual_input = True,
     )
