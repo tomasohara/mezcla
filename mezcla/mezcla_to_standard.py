@@ -144,9 +144,10 @@ class BaseTransformerStrategy:
             return args
         for key, value in eq_call.extra_params.items():
             if key not in args:
-                ## TODO: convert value to tree
-                ## args[key] = value
-                pass
+                tree = cst.parse_module(str(value))
+                args[key] = cst.Arg(
+                    value=tree.body[0].body[0].value
+                )
         return args
 
     def filter_args_by_function(self, func: callable, args: dict) -> dict:
