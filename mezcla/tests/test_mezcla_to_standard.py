@@ -1,4 +1,12 @@
 #! /usr/bin/env python
+#
+# TODO1: Rework so that decorator approach is optional
+# TODO1: Add example like "Sample input and output" from  ../mezcla_to_standard.py.
+# TODO2: address pylint issues (e.g., via python-lint filter)
+# TODO3: add overview comments on how the test works
+# TODO3: please put xpass-style method comments after docstring (to facilitate reading)
+# TODO4: sketch how this can be applied to mezcla itself
+#
 
 """
 Tests for mezcla_to_standard module
@@ -6,6 +14,7 @@ Tests for mezcla_to_standard module
 
 # Standard packages
 ## NOTE: this is empty for now
+from unittest.mock import patch, MagicMock
 
 # Installed packages
 import pytest
@@ -20,7 +29,7 @@ class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     
-    # XPASS
+    # XPASS       ## TODO3: please put after docstring (here and below)
     @pytest.mark.xfail
     def test_eqcall_same_target(self):
         """Make sure that same_target function of EqCall class works as usual"""
@@ -418,7 +427,6 @@ def foo():
 def bar(x):
     return x * 2
 '''
-
         # Expected modified code (uses the format of the decorator)
         _expected_code = '''
 from mezcla.mezcla_to_standard import sample_decorator
@@ -431,31 +439,74 @@ def foo():
 def bar(x):
     return x * 2
 '''         
-        # Actually the sample decorator is wrapped arround print
-        # Within the test code, avoid double quotes
+        # Sample decorator is wrapped arround print
+        # OLD: Avoid double codes within the sample code
         expected_code = '''
 from mezcla.mezcla_to_standard import sample_decorator
 
 def foo():
-    sample_decorator(print)('Hello, World!')
+    sample_decorator(print)("Hello, World!")
 
 def bar(x):
     return x * 2
 '''
-            # Run the function to insert the decorator
         result = THE_MODULE.insert_decorator_to_functions(sample_decorator, original_code)
         
-        # Normalize whitespace for comparison
-        def normalize_whitespace(s):
-            return ''.join(s.split())
+        # Removes whitespaces and newlines
+        def clear_formatting(s):
+            temp = s.replace("\n", "")
+            return "".join(char for char in temp if not char.isspace())
         
-        normalized_result = normalize_whitespace(result)
-        normalized_expected_code = normalize_whitespace(expected_code)
-        
-        # Assert that the result matches the expected code
-        assert repr(normalized_result) == repr(normalized_expected_code)
+        assert clear_formatting(result) == clear_formatting(expected_code)
 
+    # XPASS
+    @pytest.mark.xfail
+    def test_to_standard(self):
+        """Make sure that to_standard works as usual"""
+        original_code = '''
+def foo():
+    print("Hello, World!")
+    
+def bar(x):
+    return x * 2
+'''
 
+        def remove_newline(s):
+            return s.replace("\n", "")
+            
+        to_assert = ["from mezcla.mezcla_to_standard import use_standard_equivalent", "use_standard_equivalent(print)"]
+        result = THE_MODULE.to_standard(original_code)
+        result = remove_newline(result)
+        # OLD: assert result.startswith(to_assert[0]+ "\n") == True
+        assert result.startswith(to_assert[0]) == True
+        assert to_assert[1] in result
+        # assert clear_formatting(result)
+    
+    # XPASS
+    @pytest.mark.xfail
+    def test_to_mezcla(self):
+        """Make sure that to_mezcla works as usual"""
+        original_code = '''
+from mezcla import glue_helpers as gh
+
+def foo():
+    gh.create_temp_file('temp1.tmp')
+    
+def bar(x):
+    x = gh.run('echo $PWD')
+    return x
+'''
+        def remove_newline(s):
+            return s.replace("\n", "")
+            
+        to_assert = ["from mezcla.mezcla_to_standard import use_mezcla_equivalent", "use_mezcla_equivalent(gh.create_temp_file)", "use_mezcla_equivalent(gh.run)"]
+        result = THE_MODULE.to_mezcla(original_code)
+        result = remove_newline(result)
+
+        # OLD: assert result.startswith(to_assert[0]+ "\n") == True
+        assert result.startswith(to_assert[0]) == True
+        assert to_assert[1] in result
+        assert to_assert[2] in result
 
 if __name__ == '__main__':
     debug.trace_current_context()

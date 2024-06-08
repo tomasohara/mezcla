@@ -1,4 +1,64 @@
 #! /usr/bin/env python
+#
+# Mezcla to Standard call conversion script
+#
+# NOTE:
+# To convert Mezcla calls with standard calls by manipulating the AST,
+# we must do it with decorators at runtime.
+#    [regarding "must", Tom begs to differ, as shown below]
+# This is because we cannot
+# easily know the origin of the function call in the AST. for example:
+#
+#       from mezcla import glue_helpers as gh
+#       gh.rename_file("old", "new")
+#
+# If we peek into the AST:
+#
+#       ast.dump(node.func) =>
+#            Attribute(value=Name(id='gh', ctx=Load()), attr='rename_file', ctx=Load())
+# Tom's appeal:
+# *** Surely we can keep track of the imports so that module id like gh are resolvable!
+# Run-time decorators are not an option: the output needs to only use standard! ***
+#
+# We cannot see directly that 'rename_file' belongs to 'mezcla.glue_helpers',
+# comparing it with another function is difficult. But if we do it at
+# runtime with decorators, the comparison is more easy:
+#
+#       func == glue_helpers.rename_file => True
+#
+#
+# TODO1: Make the decorator approach optional.
+# TODO1: Add tracing throughout.
+# TODO1: Make exec optional (off by default and preferably a debug-only option).
+# TODO2: Add exception handling (e.g., 'try: self.dest(**arguments); except ...').
+# TODO2: Add examples illustrating the transformations being made (e.g., AST).
+# TODO3: Send output to stdout (avoids need to specify output file).
+# TODO3: Look into making this table driven. Can't eval() be used to generate the EqCall specifications?
+# TODO4: Try to create a table covering more of system.py and glue_helper.py.  
+#
+#--------------------------------------------------------------------------------
+# Sample input and output:
+#
+# - input
+#   
+#   $ cat _simple_glue_helper_samples.py
+#   from mezcla import glue_helpers as gh
+#   gh.write_file("/tmp/fubar.list", "fubar.list")
+#   gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
+#   gh.delete_file("/tmp/fubar.list")
+#   gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+#   gh.form_path("/tmp", "fubar")
+#   
+# - output
+#   
+#   from mezcla import glue_helpers as gh
+#   import os
+#   # WARNING not supported: gh.write_file("/tmp/fubar.list", "fubar.list")
+#   # WARNING not supporte: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
+#   os.remove("/tmp/fubar.list")
+#   os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+#   os.path.join("/tmp", "fubar")
+
 
 """
 Mezcla to Standard call conversion script
@@ -346,9 +406,11 @@ class MezclaToStandardScript(Main):
                 text=modified_code
             )
         # pylint: disable=exec-used
+        ## TODO1: why is the code being run?! Make this a "backdoor" option.
         exec(modified_code)
 
 if __name__ == '__main__':
+    ## TODO4: use main()
     app = MezclaToStandardScript(
         description = __doc__,
         positional_arguments = [
