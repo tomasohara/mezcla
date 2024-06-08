@@ -152,9 +152,9 @@ class BaseTransformerStrategy:
     def filter_args_by_function(self, func: callable, args: dict) -> dict:
         """Filter the arguments to match the standard function signature"""
         result = {}
-        for key, value in args.items():
-            if key in inspect.getfullargspec(func).args:
-                result[key] = value
+        for key in inspect.getfullargspec(func).args:
+            if key in args:
+                result[key] = args[key]
         return result
 
     def get_replacement(self, module, func, args) -> Tuple:
