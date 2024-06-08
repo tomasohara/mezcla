@@ -2,37 +2,9 @@
 #
 # Mezcla to Standard call conversion script
 #
-# NOTE:
-# To convert Mezcla calls with standard calls by manipulating the AST,
-# we must do it with decorators at runtime.
-#    [regarding "must", Tom begs to differ, as shown below]
-# This is because we cannot
-# easily know the origin of the function call in the AST. for example:
-#
-#       from mezcla import glue_helpers as gh
-#       gh.rename_file("old", "new")
-#
-# If we peek into the AST:
-#
-#       ast.dump(node.func) =>
-#            Attribute(value=Name(id='gh', ctx=Load()), attr='rename_file', ctx=Load())
-# Tom's appeal:
-# *** Surely we can keep track of the imports so that module id like gh are resolvable!
-# Run-time decorators are not an option: the output needs to only use standard! ***
-#
-# We cannot see directly that 'rename_file' belongs to 'mezcla.glue_helpers',
-# comparing it with another function is difficult. But if we do it at
-# runtime with decorators, the comparison is more easy:
-#
-#       func == glue_helpers.rename_file => True
-#
-#
-# TODO1: Make the decorator approach optional.
 # TODO1: Add tracing throughout.
-# TODO1: Make exec optional (off by default and preferably a debug-only option).
 # TODO2: Add exception handling (e.g., 'try: self.dest(**arguments); except ...').
 # TODO2: Add examples illustrating the transformations being made (e.g., AST).
-# TODO3: Send output to stdout (avoids need to specify output file).
 # TODO3: Look into making this table driven. Can't eval() be used to generate the EqCall specifications?
 # TODO4: Try to create a table covering more of system.py and glue_helper.py.  
 #
