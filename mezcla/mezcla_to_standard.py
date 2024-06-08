@@ -172,10 +172,12 @@ class BaseTransformerStrategy:
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
         """Get the module and function from the equivalent call"""
+        # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
     def find_eq_call(self, module, method) -> Optional[EqCall]:
         """Find the equivalent call"""
+        # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
     def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
@@ -184,6 +186,7 @@ class BaseTransformerStrategy:
 
     def is_condition_to_replace_met(self) -> bool:
         """Return if the condition to replace is met"""
+        # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
 class ToStandard(BaseTransformerStrategy):
