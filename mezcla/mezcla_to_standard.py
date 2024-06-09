@@ -135,6 +135,18 @@ mezcla_to_standard.append(
     )
 )
 
+def value_to_arg(value: object) -> cst.Arg:
+    """Convert the value to an argument"""
+    return cst.Arg(value=cst.SimpleString(value=str(value)))
+
+def arg_to_value(arg: cst.Arg) -> object:
+    """Convert the argument to a value"""
+    return eval(arg.value.value)
+
+def args_to_values(args: list) -> list:
+    """Convert the arguments to values"""
+    return [arg_to_value(arg) for arg in args]
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -144,10 +156,7 @@ class BaseTransformerStrategy:
             return args
         for key, value in eq_call.extra_params.items():
             if key not in args:
-                tree = cst.parse_module(str(value))
-                args[key] = cst.Arg(
-                    value=tree.body[0].body[0].value
-                )
+                args[key] = value_to_arg(value)
         return args
 
     def filter_args_by_function(self, func: callable, args: dict) -> dict:
@@ -160,23 +169,32 @@ class BaseTransformerStrategy:
 
     def get_replacement(self, module, func, args) -> Tuple:
         """Get the function replacement"""
-        eq_call = self.find_eq_call(module, func.attr.value)
+        eq_call = self.find_eq_call(module, func.attr.value, args)
         if eq_call is None:
             return None, None, []
-        if not self.is_condition_to_replace_met():
-            return None, None, []
         new_module, new_func = self.eq_call_to_module_func(eq_call)
-        # Create the new nodes
-        new_func_node = cst.Attribute(value=cst.Name(new_module), attr=cst.Name(new_func))
-        new_args_nodes = self.get_args_replacement(eq_call, args, [])
-        return new_module, new_func_node, new_args_nodes
+        # Create the new module node
+        if "." in new_module:
+            new_import_node = cst.Name(new_module.split('.')[0])
+            new_value_node = cst.Attribute(
+                value=new_import_node,
+                attr=cst.Name(new_module.split('.')[1])
+            )
+        else:
+            new_import_node = cst.Name(new_module)
+            new_value_node = new_import_node
+        # Create the new function node
+        new_func_node = cst.Attribute(value=new_value_node, attr=cst.Name(new_func))
+        # Create the new arguments nodes
+        new_args_nodes = self.get_args_replacement(eq_call, args, []) ## TODO: add kwargs
+        return new_import_node, new_func_node, new_args_nodes
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
         """Get the module and function from the equivalent call"""
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
-    def find_eq_call(self, module, method) -> Optional[EqCall]:
+    def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         """Find the equivalent call"""
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
@@ -185,7 +203,7 @@ class BaseTransformerStrategy:
         """Transform every argument to the standard equivalent argument"""
         raise NotImplementedError
 
-    def is_condition_to_replace_met(self) -> bool:
+    def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         """Return if the condition to replace is met"""
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
@@ -193,17 +211,25 @@ class BaseTransformerStrategy:
 class ToStandard(BaseTransformerStrategy):
     """Mezcla to standard call conversion class"""
 
-    def find_eq_call(self, module, method) -> Optional[EqCall]:
+    def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         """Find the equivalent call"""
         for eq_call in mezcla_to_standard:
             if (module == eq_call.target.__module__.split('.')[-1]
-                and method == eq_call.target.__name__):
+                and func == eq_call.target.__name__
+                and self.is_condition_to_replace_met(eq_call, args)):
                 return eq_call
         return None
 
-    def is_condition_to_replace_met(self) -> bool:
+    def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         """Return if the condition to replace is met"""
-        return True
+        arguments = dict(zip(inspect.getfullargspec(eq_call.target).args, args))
+        arguments.update({}) ## TODO: add kwargs
+        arguments = self.filter_args_by_function(eq_call.condition, arguments)
+        arguments = args_to_values(arguments.values())
+        try:
+            return eq_call.condition(*arguments)
+        except Exception as exc:
+            return False
 
     def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
         """Transform every argument to the standard equivalent argument"""
@@ -233,21 +259,31 @@ class ToStandard(BaseTransformerStrategy):
 class ToMezcla(BaseTransformerStrategy):
     """Standard to Mezcla call conversion class"""
 
-    def find_eq_call(self, module, method) -> Optional[EqCall]:
+    def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         """Find the equivalent call"""
         for eq_call in mezcla_to_standard:
             if (module == eq_call.dest.__module__.split('.')[-1]
-                and method == eq_call.dest.__name__):
+                and func == eq_call.dest.__name__
+                and self.is_condition_to_replace_met(eq_call, args)):
                 return eq_call
         return None
 
-    def is_condition_to_replace_met(self) -> bool:
+    def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         """Return if the condition to replace is met"""
-        return True
+        arguments = dict(zip(inspect.getfullargspec(eq_call.dest).args, args))
+        arguments.update({}) ## TODO: add kwargs
+        arguments = self.insert_extra_params(eq_call, arguments)
+        arguments = self.replace_args_keys(eq_call, arguments)
+        arguments = self.filter_args_by_function(eq_call.condition, arguments)
+        arguments = args_to_values(arguments.values())
+        try:
+            return eq_call.condition(**arguments)
+        except Exception as exc:
+            return False
 
     def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
         """Transform every argument to the Mezcla equivalent argument"""
-        arguments = dict(zip(inspect.getfullargspec(eq_call.target).args, args))
+        arguments = dict(zip(inspect.getfullargspec(eq_call.dest).args, args))
         arguments.update(kwargs)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.insert_extra_params(eq_call, arguments)
@@ -297,7 +333,7 @@ def transform(to_module, code: str) -> str:
                 new_import_node = cst.SimpleStatementLine(
                     body=[
                         cst.Import(
-                            names=[cst.ImportAlias(name=cst.Name(module), asname=None)]
+                            names=[cst.ImportAlias(name=module, asname=None)]
                         )
                     ]
                 )
