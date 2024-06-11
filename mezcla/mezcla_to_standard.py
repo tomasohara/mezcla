@@ -137,7 +137,15 @@ mezcla_to_standard.append(
 
 def value_to_arg(value: object) -> cst.Arg:
     """Convert the value to an argument"""
-    return cst.Arg(value=cst.SimpleString(value=str(value)))
+    if isinstance(value, str):
+        return cst.Arg(cst.SimpleString(value=value))
+    if isinstance(value, int):
+        return cst.Arg(cst.Integer(value=str(value)))
+    if isinstance(value, float):
+        return cst.Arg(cst.Float(value=str(value)))
+    if isinstance(value, bool):
+        return cst.Arg(cst.Name(value=str(value)))
+    raise ValueError(f"Unsupported value type: {type(value)}")
 
 def arg_to_value(arg: cst.Arg) -> object:
     """Convert the argument to a value"""
@@ -277,7 +285,7 @@ class ToMezcla(BaseTransformerStrategy):
         arguments = self.filter_args_by_function(eq_call.condition, arguments)
         arguments = args_to_values(arguments.values())
         try:
-            return eq_call.condition(**arguments)
+            return eq_call.condition(*arguments)
         except Exception as exc:
             return False
 
