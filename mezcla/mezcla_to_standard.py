@@ -458,8 +458,7 @@ class ToStandard(BaseTransformerStrategy):
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         """Return if the condition to replace is met"""
-        arguments = dict(zip(inspect.getfullargspec(eq_call.target).args, args))
-        arguments.update({}) ## TODO: add kwargs
+        arguments = match_args(eq_call.target, args, {})
         arguments = self.filter_args_by_function(eq_call.condition, arguments)
         arguments = args_to_values(arguments.values())
         try:
@@ -505,8 +504,7 @@ class ToMezcla(BaseTransformerStrategy):
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         """Return if the condition to replace is met"""
-        arguments = dict(zip(inspect.getfullargspec(eq_call.dest).args, args))
-        arguments.update({}) ## TODO: add kwargs
+        arguments = match_args(eq_call.dest, args, {})
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.condition, arguments)
