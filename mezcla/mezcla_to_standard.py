@@ -395,6 +395,13 @@ def transform(to_module, code: str) -> str:
             self.aliases = {}
             self.to_import = []
 
+        def append_import_if_unique(self, new_import: cst.Name) -> None:
+            """Append the import if unique"""
+            current_imports = [node.value for node in self.to_import]
+            if new_import.value in current_imports:
+                return
+            self.to_import.append(new_import)
+
         # pylint: disable=invalid-name
         def leave_Module(
                 self,
@@ -460,7 +467,7 @@ def transform(to_module, code: str) -> str:
                 args=new_args_nodes
             )
             # Add pending import to add
-            self.to_import.append(new_module)
+            self.append_import_if_unique(new_module)
             return updated_node
 
     visitor = CustomVisitor(to_module)
