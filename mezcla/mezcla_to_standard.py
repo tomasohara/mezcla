@@ -43,6 +43,7 @@ import inspect
 from typing import (
     Optional, Tuple,
 )
+import tempfile
 
 # Installed module
 import libcst as cst
@@ -79,6 +80,58 @@ class EqCall:
 mezcla_to_standard = []
 mezcla_to_standard.append(
     EqCall(
+        gh.get_temp_file,
+        tempfile.NamedTemporaryFile,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.basename,
+        os.path.basename,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.dir_path,
+        os.path.dirname,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.dirname,
+        os.path.dirname,
+        eq_params={ "file_path": "filename" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.file_exists,
+        os.path.exists,
+        eq_params={ "filename": "path" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.form_path,
+        os.path.join,
+        eq_params = { "filenames": "a" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.is_directory,
+        os.path.isdir,
+        eq_params = { "path": "s" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.create_directory,
+        os.mkdir,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
         gh.rename_file,
         os.rename,
         eq_params = { "source": "src", "target": "dst" }
@@ -93,9 +146,22 @@ mezcla_to_standard.append(
 )
 mezcla_to_standard.append(
     EqCall(
-        gh.form_path,
-        os.path.join,
-        eq_params = { "filenames": "a" }
+        gh.delete_existing_file,
+        os.remove,
+        eq_params = { "filename": "path" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.file_size,
+        os.path.getsize,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.get_directory_listing,
+        os.listdir,
+        eq_params = { "dir_name": "path" }
     )
 )
 mezcla_to_standard.append(
