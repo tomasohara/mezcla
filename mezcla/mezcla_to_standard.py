@@ -3,7 +3,6 @@
 # Mezcla to Standard call conversion script
 #
 # TODO1: Add tracing throughout.
-# TODO2: Add exception handling (e.g., 'try: self.dest(**arguments); except ...').
 # TODO2: Add examples illustrating the transformations being made (e.g., AST).
 # TODO3: Look into making this table driven. Can't eval() be used to generate the EqCall specifications?
 # TODO4: Try to create a table covering more of system.py and glue_helper.py.  
