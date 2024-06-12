@@ -36,7 +36,9 @@ Mezcla to Standard call conversion script
 """
 
 # Standard modules
+import time
 import os
+import sys
 import logging
 import inspect
 from typing import (
@@ -77,6 +79,8 @@ class EqCall:
 
 # Add equivalent calls between Mezcla and standard
 mezcla_to_standard = []
+
+# Mezcla.glue_helpers equivalences
 mezcla_to_standard.append(
     EqCall(
         gh.get_temp_file,
@@ -163,6 +167,8 @@ mezcla_to_standard.append(
         eq_params = { "dir_name": "path" }
     )
 )
+
+# Mezcla.debug equivalences
 mezcla_to_standard.append(
     EqCall(
         debug.trace,
@@ -197,6 +203,138 @@ mezcla_to_standard.append(
         condition = lambda level: 0 < level <= 1,
         eq_params = { "text": "msg" },
         extra_params  = { "level": 1 }
+    )
+)
+
+# Mezcla.system equivalences
+mezcla_to_standard.append(
+    EqCall(
+        system.get_exception,
+        sys.exc_info,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.get_exception,
+        sys.exc_info,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.print_error,
+        print,
+        extra_params={ "file": sys.stderr },
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.exit,
+        sys.exit,
+        eq_params={ "message": "status" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.exit,
+        sys.exit,
+        eq_params={ "message": "status" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.open_file,
+        open,
+        eq_params={ "filename": "file" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.read_directory,
+        os.listdir,
+        eq_params={ "directory": "path" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.form_path,
+        os.path.join,
+        eq_params = { "filenames": "a" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.is_directory,
+        os.path.isdir,
+        eq_params = { "path": "s" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.is_regular_file,
+        os.path.isfile,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.create_directory,
+        os.mkdir,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.get_current_directory,
+        os.getcwd,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.set_current_directory,
+        os.chdir,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.absolute_path,
+        os.path.abspath,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.real_path,
+        os.path.realpath,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.real_path,
+        os.path.realpath,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.round_num,
+        round,
+        extra_params={ "ndigits": 6 }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.round3,
+        round,
+        extra_params={ "ndigits": 3 }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.sleep,
+        time.sleep,
+        eq_params={ "num_seconds": "seconds" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.get_args,
+        sys.argv,
     )
 )
 
