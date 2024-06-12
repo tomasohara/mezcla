@@ -221,6 +221,31 @@ def args_to_values(args: list) -> list:
     """Convert the arguments to values"""
     return [arg_to_value(arg) for arg in args]
 
+def match_args(func: callable, args: list, kwargs: dict) -> dict:
+    """Match the arguments to the function signature"""
+    target_spec = inspect.getfullargspec(func)
+    # Extract arguments
+    arguments = dict(zip(target_spec.args, args))
+    # Extract *arguments
+    if target_spec.varargs:
+        arguments[target_spec.varargs] = args[len(target_spec.args):]
+    # Extract **arguments
+    if target_spec.varkw:
+        arguments[target_spec.varkw] = kwargs
+    return arguments
+
+def flatten_list(list_to_flatten: list) -> list:
+    """Flatten a list"""
+    result = []
+    for arg in list_to_flatten:
+        if isinstance(arg, list):
+            result += arg
+        elif isinstance(arg, tuple):
+            result += list(arg)
+        else:
+            result.append(arg)
+    return result
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -273,7 +298,7 @@ class BaseTransformerStrategy:
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
         """Transform every argument to the standard equivalent argument"""
         raise NotImplementedError
 
@@ -305,14 +330,13 @@ class ToStandard(BaseTransformerStrategy):
         except Exception as exc:
             return False
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
         """Transform every argument to the standard equivalent argument"""
-        arguments = dict(zip(inspect.getfullargspec(eq_call.target).args, args))
-        arguments.update(kwargs)
+        arguments = match_args(eq_call.target, args, kwargs)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.dest, arguments)
-        return list(arguments.values())
+        return flatten_list(list(arguments.values()))
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         """Replace argument keys with the equivalent ones"""
@@ -355,14 +379,13 @@ class ToMezcla(BaseTransformerStrategy):
         except Exception as exc:
             return False
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
         """Transform every argument to the Mezcla equivalent argument"""
-        arguments = dict(zip(inspect.getfullargspec(eq_call.dest).args, args))
-        arguments.update(kwargs)
+        arguments = match_args(eq_call.dest, args, kwargs)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.target, arguments)
-        return list(arguments.values())
+        return flatten_list(list(arguments.values()))
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         """Replace argument keys with the equivalent ones"""
