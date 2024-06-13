@@ -85,58 +85,58 @@ mezcla_to_standard = [
     ),
     EqCall(
         gh.basename,
-        os.path.basename,
+        "os.path.basename",
     ),
     EqCall(
         gh.dir_path,
-        os.path.dirname,
+        "os.path.dirname",
     ),
     EqCall(
         gh.dirname,
-        os.path.dirname,
+        "os.path.dirname",
         eq_params={ "file_path": "filename" }
     ),
     EqCall(
         gh.file_exists,
-        os.path.exists,
+        "os.path.exists",
         eq_params={ "filename": "path" }
     ),
     EqCall(
         gh.form_path,
-        os.path.join,
+        "os.path.join",
         eq_params = { "filenames": "a" }
     ),
     EqCall(
         gh.is_directory,
-        os.path.isdir,
+        "os.path.isdir",
         eq_params = { "path": "s" }
     ),
     EqCall(
         gh.create_directory,
-        os.mkdir,
+        "os.mkdir",
     ),
     EqCall(
         gh.rename_file,
-        os.rename,
+        "os.rename",
         eq_params = { "source": "src", "target": "dst" }
     ),
     EqCall(
         gh.delete_file,
-        os.remove,
+        "os.remove",
         eq_params = { "filename": "path" }
     ),
     EqCall(
         gh.delete_existing_file,
-        os.remove,
+        "os.remove",
         eq_params = { "filename": "path" }
     ),
     EqCall(
         gh.file_size,
-        os.path.getsize,
+        "os.path.getsize",
     ),
     EqCall(
         gh.get_directory_listing,
-        os.listdir,
+        "os.listdir",
         eq_params = { "dir_name": "path" }
     ),
     EqCall(
@@ -197,46 +197,46 @@ mezcla_to_standard = [
     ),
     EqCall(
         system.read_directory,
-        os.listdir,
+        "os.listdir",
         eq_params={ "directory": "path" }
     ),
     EqCall(
         system.form_path,
-        os.path.join,
+        "os.path.join",
         eq_params = { "filenames": "a" }
     ),
     EqCall(
         system.is_directory,
-        os.path.isdir,
+        "os.path.isdir",
         eq_params = { "path": "s" }
     ),
     EqCall(
         system.is_regular_file,
-        os.path.isfile,
+        "os.path.isfile",
     ),
     EqCall(
         system.create_directory,
-        os.mkdir,
+        "os.mkdir",
     ),
     EqCall(
         system.get_current_directory,
-        os.getcwd,
+        "os.getcwd",
     ),
     EqCall(
         system.set_current_directory,
-        os.chdir,
+        "os.chdir",
     ),
     EqCall(
         system.absolute_path,
-        os.path.abspath,
+        "os.path.abspath",
     ),
     EqCall(
         system.real_path,
-        os.path.realpath,
+        "os.path.realpath",
     ),
     EqCall(
         system.real_path,
-        os.path.realpath,
+        "os.path.realpath",
     ),
     EqCall(
         system.round_num,
@@ -303,6 +303,12 @@ def flatten_list(list_to_flatten: list) -> list:
         else:
             result.append(arg)
     return result
+
+def get_module_funct(func) -> Tuple:
+    """Get the module and function from the function"""
+    if isinstance(func, str):
+        return func.rsplit('.', 1)
+    return func.__module__, func.__name__
 
 class BaseTransformerStrategy:
     """Transformer base class"""
@@ -414,7 +420,7 @@ class ToStandard(BaseTransformerStrategy):
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
         """Get the module and function from the equivalent call"""
-        return eq_call.dest.__module__, eq_call.dest.__name__
+        return get_module_funct(eq_call.dest)
 
 class ToMezcla(BaseTransformerStrategy):
     """Standard to Mezcla call conversion class"""
@@ -462,7 +468,7 @@ class ToMezcla(BaseTransformerStrategy):
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
         """Get the module and function from the equivalent call"""
-        return eq_call.target.__module__, eq_call.target.__name__
+        return get_module_funct(eq_call.target)
 
 def transform(to_module, code: str) -> str:
     """Transform the code"""
