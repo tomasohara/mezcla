@@ -3,7 +3,6 @@
 # Mezcla to Standard call conversion script
 #
 # TODO1: Add tracing throughout.
-# TODO2: Add exception handling (e.g., 'try: self.dest(**arguments); except ...').
 # TODO2: Add examples illustrating the transformations being made (e.g., AST).
 # TODO3: Look into making this table driven. Can't eval() be used to generate the EqCall specifications?
 # TODO4: Try to create a table covering more of system.py and glue_helper.py.  
@@ -37,12 +36,15 @@ Mezcla to Standard call conversion script
 """
 
 # Standard modules
+import time
 import os
+import sys
 import logging
 import inspect
 from typing import (
     Optional, Tuple,
 )
+import tempfile
 
 # Installed module
 import libcst as cst
@@ -77,6 +79,60 @@ class EqCall:
 
 # Add equivalent calls between Mezcla and standard
 mezcla_to_standard = []
+
+# Mezcla.glue_helpers equivalences
+mezcla_to_standard.append(
+    EqCall(
+        gh.get_temp_file,
+        tempfile.NamedTemporaryFile,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.basename,
+        os.path.basename,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.dir_path,
+        os.path.dirname,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.dirname,
+        os.path.dirname,
+        eq_params={ "file_path": "filename" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.file_exists,
+        os.path.exists,
+        eq_params={ "filename": "path" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.form_path,
+        os.path.join,
+        eq_params = { "filenames": "a" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.is_directory,
+        os.path.isdir,
+        eq_params = { "path": "s" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.create_directory,
+        os.mkdir,
+    )
+)
 mezcla_to_standard.append(
     EqCall(
         gh.rename_file,
@@ -93,11 +149,26 @@ mezcla_to_standard.append(
 )
 mezcla_to_standard.append(
     EqCall(
-        gh.form_path,
-        os.path.join,
-        eq_params = { "filenames": "a" }
+        gh.delete_existing_file,
+        os.remove,
+        eq_params = { "filename": "path" }
     )
 )
+mezcla_to_standard.append(
+    EqCall(
+        gh.file_size,
+        os.path.getsize,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        gh.get_directory_listing,
+        os.listdir,
+        eq_params = { "dir_name": "path" }
+    )
+)
+
+# Mezcla.debug equivalences
 mezcla_to_standard.append(
     EqCall(
         debug.trace,
@@ -135,9 +206,149 @@ mezcla_to_standard.append(
     )
 )
 
+# Mezcla.system equivalences
+mezcla_to_standard.append(
+    EqCall(
+        system.get_exception,
+        sys.exc_info,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.get_exception,
+        sys.exc_info,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.print_error,
+        print,
+        extra_params={ "file": sys.stderr },
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.exit,
+        sys.exit,
+        eq_params={ "message": "status" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.exit,
+        sys.exit,
+        eq_params={ "message": "status" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.open_file,
+        open,
+        eq_params={ "filename": "file" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.read_directory,
+        os.listdir,
+        eq_params={ "directory": "path" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.form_path,
+        os.path.join,
+        eq_params = { "filenames": "a" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.is_directory,
+        os.path.isdir,
+        eq_params = { "path": "s" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.is_regular_file,
+        os.path.isfile,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.create_directory,
+        os.mkdir,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.get_current_directory,
+        os.getcwd,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.set_current_directory,
+        os.chdir,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.absolute_path,
+        os.path.abspath,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.real_path,
+        os.path.realpath,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.real_path,
+        os.path.realpath,
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.round_num,
+        round,
+        extra_params={ "ndigits": 6 }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.round3,
+        round,
+        extra_params={ "ndigits": 3 }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.sleep,
+        time.sleep,
+        eq_params={ "num_seconds": "seconds" }
+    )
+)
+mezcla_to_standard.append(
+    EqCall(
+        system.get_args,
+        sys.argv,
+    )
+)
+
 def value_to_arg(value: object) -> cst.Arg:
     """Convert the value to an argument"""
-    return cst.Arg(value=cst.SimpleString(value=str(value)))
+    if isinstance(value, str):
+        return cst.Arg(cst.SimpleString(value=value))
+    if isinstance(value, int):
+        return cst.Arg(cst.Integer(value=str(value)))
+    if isinstance(value, float):
+        return cst.Arg(cst.Float(value=str(value)))
+    if isinstance(value, bool):
+        return cst.Arg(cst.Name(value=str(value)))
+    raise ValueError(f"Unsupported value type: {type(value)}")
 
 def arg_to_value(arg: cst.Arg) -> object:
     """Convert the argument to a value"""
@@ -146,6 +357,31 @@ def arg_to_value(arg: cst.Arg) -> object:
 def args_to_values(args: list) -> list:
     """Convert the arguments to values"""
     return [arg_to_value(arg) for arg in args]
+
+def match_args(func: callable, args: list, kwargs: dict) -> dict:
+    """Match the arguments to the function signature"""
+    target_spec = inspect.getfullargspec(func)
+    # Extract arguments
+    arguments = dict(zip(target_spec.args, args))
+    # Extract *arguments
+    if target_spec.varargs:
+        arguments[target_spec.varargs] = args[len(target_spec.args):]
+    # Extract **arguments
+    if target_spec.varkw:
+        arguments[target_spec.varkw] = kwargs
+    return arguments
+
+def flatten_list(list_to_flatten: list) -> list:
+    """Flatten a list"""
+    result = []
+    for arg in list_to_flatten:
+        if isinstance(arg, list):
+            result += arg
+        elif isinstance(arg, tuple):
+            result += list(arg)
+        else:
+            result.append(arg)
+    return result
 
 class BaseTransformerStrategy:
     """Transformer base class"""
@@ -161,11 +397,16 @@ class BaseTransformerStrategy:
 
     def filter_args_by_function(self, func: callable, args: dict) -> dict:
         """Filter the arguments to match the standard function signature"""
-        result = {}
-        for key in inspect.getfullargspec(func).args:
-            if key in args:
-                result[key] = args[key]
-        return result
+        try:
+            result = {}
+            for key in inspect.getfullargspec(func).args:
+                if key in args:
+                    result[key] = args[key]
+            return result
+        except TypeError:
+            return args
+        except ValueError:
+            return args
 
     def get_replacement(self, module, func, args) -> Tuple:
         """Get the function replacement"""
@@ -199,7 +440,7 @@ class BaseTransformerStrategy:
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
         """Transform every argument to the standard equivalent argument"""
         raise NotImplementedError
 
@@ -222,8 +463,7 @@ class ToStandard(BaseTransformerStrategy):
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         """Return if the condition to replace is met"""
-        arguments = dict(zip(inspect.getfullargspec(eq_call.target).args, args))
-        arguments.update({}) ## TODO: add kwargs
+        arguments = match_args(eq_call.target, args, {})
         arguments = self.filter_args_by_function(eq_call.condition, arguments)
         arguments = args_to_values(arguments.values())
         try:
@@ -231,14 +471,13 @@ class ToStandard(BaseTransformerStrategy):
         except Exception as exc:
             return False
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
         """Transform every argument to the standard equivalent argument"""
-        arguments = dict(zip(inspect.getfullargspec(eq_call.target).args, args))
-        arguments.update(kwargs)
+        arguments = match_args(eq_call.target, args, kwargs)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.dest, arguments)
-        return list(arguments.values())
+        return flatten_list(list(arguments.values()))
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         """Replace argument keys with the equivalent ones"""
@@ -270,25 +509,23 @@ class ToMezcla(BaseTransformerStrategy):
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         """Return if the condition to replace is met"""
-        arguments = dict(zip(inspect.getfullargspec(eq_call.dest).args, args))
-        arguments.update({}) ## TODO: add kwargs
+        arguments = match_args(eq_call.dest, args, {})
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.condition, arguments)
         arguments = args_to_values(arguments.values())
         try:
-            return eq_call.condition(**arguments)
+            return eq_call.condition(*arguments)
         except Exception as exc:
             return False
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: list) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
         """Transform every argument to the Mezcla equivalent argument"""
-        arguments = dict(zip(inspect.getfullargspec(eq_call.dest).args, args))
-        arguments.update(kwargs)
+        arguments = match_args(eq_call.dest, args, kwargs)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.target, arguments)
-        return list(arguments.values())
+        return flatten_list(list(arguments.values()))
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         """Replace argument keys with the equivalent ones"""
@@ -320,6 +557,13 @@ def transform(to_module, code: str) -> str:
             self.to_module = to_module
             self.aliases = {}
             self.to_import = []
+
+        def append_import_if_unique(self, new_import: cst.Name) -> None:
+            """Append the import if unique"""
+            current_imports = [node.value for node in self.to_import]
+            if new_import.value in current_imports:
+                return
+            self.to_import.append(new_import)
 
         # pylint: disable=invalid-name
         def leave_Module(
@@ -386,7 +630,7 @@ def transform(to_module, code: str) -> str:
                 args=new_args_nodes
             )
             # Add pending import to add
-            self.to_import.append(new_module)
+            self.append_import_if_unique(new_module)
             return updated_node
 
     visitor = CustomVisitor(to_module)
