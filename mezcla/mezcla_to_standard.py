@@ -337,7 +337,7 @@ class BaseTransformerStrategy:
 
     def get_replacement(self, module, func, args) -> Tuple:
         """Get the function replacement"""
-        eq_call = self.find_eq_call(module, func.attr.value, args)
+        eq_call = self.find_eq_call(module, func, args)
         if eq_call is None:
             return None, None, []
         new_module, new_func = self.eq_call_to_module_func(eq_call)
@@ -547,7 +547,7 @@ def transform(to_module, code: str) -> str:
             module_name = self.aliases.get(module_name, module_name)
             # Get replacement
             new_module, new_func_node, new_args_nodes = self.to_module.get_replacement(
-                module_name, original_node.func, original_node.args
+                module_name, original_node.func.attr.value, original_node.args
             )
             if not new_module or not new_func_node:
                 return updated_node
