@@ -78,265 +78,186 @@ class EqCall:
         self.extra_params = extra_params
 
 # Add equivalent calls between Mezcla and standard
-mezcla_to_standard = []
-
-# Mezcla.glue_helpers equivalences
-mezcla_to_standard.append(
+mezcla_to_standard = [
     EqCall(
         gh.get_temp_file,
         tempfile.NamedTemporaryFile,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.basename,
         os.path.basename,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.dir_path,
         os.path.dirname,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.dirname,
         os.path.dirname,
         eq_params={ "file_path": "filename" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.file_exists,
         os.path.exists,
         eq_params={ "filename": "path" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.form_path,
         os.path.join,
         eq_params = { "filenames": "a" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.is_directory,
         os.path.isdir,
         eq_params = { "path": "s" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.create_directory,
         os.mkdir,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.rename_file,
         os.rename,
         eq_params = { "source": "src", "target": "dst" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.delete_file,
         os.remove,
         eq_params = { "filename": "path" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.delete_existing_file,
         os.remove,
         eq_params = { "filename": "path" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.file_size,
         os.path.getsize,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.get_directory_listing,
         os.listdir,
         eq_params = { "dir_name": "path" }
-    )
-)
-
-# Mezcla.debug equivalences
-mezcla_to_standard.append(
+    ),
     EqCall(
         debug.trace,
         logging.debug,
         condition = lambda level: level > 3,
         eq_params = { "text": "msg" },
         extra_params = { "level": 4 }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         debug.trace,
         logging.info,
         condition = lambda level: 2 < level <= 3,
         eq_params = { "text": "msg" },
         extra_params = { "level": 3 }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         debug.trace,
         logging.warning,
         condition = lambda level: 1 < level <= 2,
         eq_params = { "text": "msg" },
         extra_params = { "level": 2 }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         debug.trace,
         logging.error,
         condition = lambda level: 0 < level <= 1,
         eq_params = { "text": "msg" },
         extra_params  = { "level": 1 }
-    )
-)
-
-# Mezcla.system equivalences
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.get_exception,
         sys.exc_info,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.get_exception,
         sys.exc_info,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.print_error,
         print,
         extra_params={ "file": sys.stderr },
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.exit,
         sys.exit,
         eq_params={ "message": "status" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.exit,
         sys.exit,
         eq_params={ "message": "status" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.open_file,
         open,
         eq_params={ "filename": "file" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.read_directory,
         os.listdir,
         eq_params={ "directory": "path" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.form_path,
         os.path.join,
         eq_params = { "filenames": "a" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.is_directory,
         os.path.isdir,
         eq_params = { "path": "s" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.is_regular_file,
         os.path.isfile,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.create_directory,
         os.mkdir,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.get_current_directory,
         os.getcwd,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.set_current_directory,
         os.chdir,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.absolute_path,
         os.path.abspath,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.real_path,
         os.path.realpath,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.real_path,
         os.path.realpath,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.round_num,
         round,
         extra_params={ "ndigits": 6 }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.round3,
         round,
         extra_params={ "ndigits": 3 }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.sleep,
         time.sleep,
         eq_params={ "num_seconds": "seconds" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.get_args,
         sys.argv,
-    )
-)
+    ),
+]
 
 def value_to_arg(value: object) -> cst.Arg:
     """Convert the value to an argument"""
