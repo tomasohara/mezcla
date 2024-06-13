@@ -304,7 +304,7 @@ def flatten_list(list_to_flatten: list) -> list:
             result.append(arg)
     return result
 
-def get_module_funct(func) -> Tuple:
+def get_module_func(func) -> Tuple:
     """Get the module and function from the function"""
     if isinstance(func, str):
         return func.rsplit('.', 1)
@@ -382,8 +382,9 @@ class ToStandard(BaseTransformerStrategy):
     def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         """Find the equivalent call"""
         for eq_call in mezcla_to_standard:
-            if (module == eq_call.target.__module__.split('.')[-1]
-                and func == eq_call.target.__name__
+            target_module, target_func = get_module_func(eq_call.target)
+            if (module in target_module
+                and func in target_func
                 and self.is_condition_to_replace_met(eq_call, args)):
                 return eq_call
         return None
@@ -420,7 +421,7 @@ class ToStandard(BaseTransformerStrategy):
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
         """Get the module and function from the equivalent call"""
-        return get_module_funct(eq_call.dest)
+        return get_module_func(eq_call.dest)
 
 class ToMezcla(BaseTransformerStrategy):
     """Standard to Mezcla call conversion class"""
@@ -428,8 +429,9 @@ class ToMezcla(BaseTransformerStrategy):
     def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         """Find the equivalent call"""
         for eq_call in mezcla_to_standard:
-            if (module == eq_call.dest.__module__.split('.')[-1]
-                and func == eq_call.dest.__name__
+            dest_module, dest_func = get_module_func(eq_call.dest)
+            if (module in dest_module
+                and func in dest_func
                 and self.is_condition_to_replace_met(eq_call, args)):
                 return eq_call
         return None
@@ -468,7 +470,7 @@ class ToMezcla(BaseTransformerStrategy):
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
         """Get the module and function from the equivalent call"""
-        return get_module_funct(eq_call.target)
+        return get_module_func(eq_call.target)
 
 def transform(to_module, code: str) -> str:
     """Transform the code"""
@@ -484,6 +486,7 @@ def transform(to_module, code: str) -> str:
             self.to_module = to_module
             self.aliases = {}
             self.to_import = []
+            self.mezcla_modules = []
 
         def append_import_if_unique(self, new_import: cst.Name) -> None:
             """Append the import if unique"""
@@ -526,6 +529,13 @@ def transform(to_module, code: str) -> str:
             self.aliases[asname] = name
 
         # pylint: disable=invalid-name
+        def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+            """Visit an ImportFrom node"""
+            if node.module.value == "mezcla":
+                for name in node.names:
+                    self.mezcla_modules.append(name.name.value)
+
+        # pylint: disable=invalid-name
         def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
             """Leave a Call node"""
             if isinstance(original_node.func, cst.Name):
@@ -549,15 +559,20 @@ def transform(to_module, code: str) -> str:
             new_module, new_func_node, new_args_nodes = self.to_module.get_replacement(
                 module_name, original_node.func.attr.value, original_node.args
             )
-            if not new_module or not new_func_node:
+            # Replace if replacement found
+            if new_module and new_func_node:
+                updated_node = updated_node.with_changes(
+                    func=new_func_node,
+                    args=new_args_nodes
+                )
+                self.append_import_if_unique(new_module)
                 return updated_node
-            # Replace
-            updated_node = updated_node.with_changes(
-                func=new_func_node,
-                args=new_args_nodes
-            )
-            # Add pending import to add
-            self.append_import_if_unique(new_module)
+            # Otherwise, check if the module
+            # is a Mezcla module and comment it
+            if isinstance(self.to_module, ToStandard) and module_name in self.mezcla_modules:
+                return cst.Comment(
+                    value=f"# WARNING not supported: {cst.Module([]).code_for_node(original_node)}"
+                )
             return updated_node
 
     visitor = CustomVisitor(to_module)
