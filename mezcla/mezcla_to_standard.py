@@ -78,265 +78,186 @@ class EqCall:
         self.extra_params = extra_params
 
 # Add equivalent calls between Mezcla and standard
-mezcla_to_standard = []
-
-# Mezcla.glue_helpers equivalences
-mezcla_to_standard.append(
+mezcla_to_standard = [
     EqCall(
         gh.get_temp_file,
         tempfile.NamedTemporaryFile,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.basename,
-        os.path.basename,
-    )
-)
-mezcla_to_standard.append(
+        "os.path.basename",
+    ),
     EqCall(
         gh.dir_path,
-        os.path.dirname,
-    )
-)
-mezcla_to_standard.append(
+        "os.path.dirname",
+    ),
     EqCall(
         gh.dirname,
-        os.path.dirname,
+        "os.path.dirname",
         eq_params={ "file_path": "filename" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.file_exists,
-        os.path.exists,
+        "os.path.exists",
         eq_params={ "filename": "path" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.form_path,
-        os.path.join,
+        "os.path.join",
         eq_params = { "filenames": "a" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.is_directory,
-        os.path.isdir,
+        "os.path.isdir",
         eq_params = { "path": "s" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.create_directory,
-        os.mkdir,
-    )
-)
-mezcla_to_standard.append(
+        "os.mkdir",
+    ),
     EqCall(
         gh.rename_file,
-        os.rename,
+        "os.rename",
         eq_params = { "source": "src", "target": "dst" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.delete_file,
-        os.remove,
+        "os.remove",
         eq_params = { "filename": "path" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.delete_existing_file,
-        os.remove,
+        "os.remove",
         eq_params = { "filename": "path" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         gh.file_size,
-        os.path.getsize,
-    )
-)
-mezcla_to_standard.append(
+        "os.path.getsize",
+    ),
     EqCall(
         gh.get_directory_listing,
-        os.listdir,
+        "os.listdir",
         eq_params = { "dir_name": "path" }
-    )
-)
-
-# Mezcla.debug equivalences
-mezcla_to_standard.append(
+    ),
     EqCall(
         debug.trace,
         logging.debug,
         condition = lambda level: level > 3,
         eq_params = { "text": "msg" },
         extra_params = { "level": 4 }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         debug.trace,
         logging.info,
         condition = lambda level: 2 < level <= 3,
         eq_params = { "text": "msg" },
         extra_params = { "level": 3 }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         debug.trace,
         logging.warning,
         condition = lambda level: 1 < level <= 2,
         eq_params = { "text": "msg" },
         extra_params = { "level": 2 }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         debug.trace,
         logging.error,
         condition = lambda level: 0 < level <= 1,
         eq_params = { "text": "msg" },
         extra_params  = { "level": 1 }
-    )
-)
-
-# Mezcla.system equivalences
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.get_exception,
         sys.exc_info,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.get_exception,
         sys.exc_info,
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.print_error,
         print,
         extra_params={ "file": sys.stderr },
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.exit,
         sys.exit,
         eq_params={ "message": "status" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.exit,
         sys.exit,
         eq_params={ "message": "status" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.open_file,
         open,
         eq_params={ "filename": "file" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.read_directory,
-        os.listdir,
+        "os.listdir",
         eq_params={ "directory": "path" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.form_path,
-        os.path.join,
+        "os.path.join",
         eq_params = { "filenames": "a" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.is_directory,
-        os.path.isdir,
+        "os.path.isdir",
         eq_params = { "path": "s" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.is_regular_file,
-        os.path.isfile,
-    )
-)
-mezcla_to_standard.append(
+        "os.path.isfile",
+    ),
     EqCall(
         system.create_directory,
-        os.mkdir,
-    )
-)
-mezcla_to_standard.append(
+        "os.mkdir",
+    ),
     EqCall(
         system.get_current_directory,
-        os.getcwd,
-    )
-)
-mezcla_to_standard.append(
+        "os.getcwd",
+    ),
     EqCall(
         system.set_current_directory,
-        os.chdir,
-    )
-)
-mezcla_to_standard.append(
+        "os.chdir",
+    ),
     EqCall(
         system.absolute_path,
-        os.path.abspath,
-    )
-)
-mezcla_to_standard.append(
+        "os.path.abspath",
+    ),
     EqCall(
         system.real_path,
-        os.path.realpath,
-    )
-)
-mezcla_to_standard.append(
+        "os.path.realpath",
+    ),
     EqCall(
         system.real_path,
-        os.path.realpath,
-    )
-)
-mezcla_to_standard.append(
+        "os.path.realpath",
+    ),
     EqCall(
         system.round_num,
         round,
         extra_params={ "ndigits": 6 }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.round3,
         round,
         extra_params={ "ndigits": 3 }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.sleep,
         time.sleep,
         eq_params={ "num_seconds": "seconds" }
-    )
-)
-mezcla_to_standard.append(
+    ),
     EqCall(
         system.get_args,
         sys.argv,
-    )
-)
+    ),
+]
 
 def value_to_arg(value: object) -> cst.Arg:
     """Convert the value to an argument"""
@@ -383,6 +304,12 @@ def flatten_list(list_to_flatten: list) -> list:
             result.append(arg)
     return result
 
+def get_module_func(func) -> Tuple:
+    """Get the module and function from the function"""
+    if isinstance(func, str):
+        return func.rsplit('.', 1)
+    return func.__module__, func.__name__
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -410,7 +337,7 @@ class BaseTransformerStrategy:
 
     def get_replacement(self, module, func, args) -> Tuple:
         """Get the function replacement"""
-        eq_call = self.find_eq_call(module, func.attr.value, args)
+        eq_call = self.find_eq_call(module, func, args)
         if eq_call is None:
             return None, None, []
         new_module, new_func = self.eq_call_to_module_func(eq_call)
@@ -455,8 +382,9 @@ class ToStandard(BaseTransformerStrategy):
     def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         """Find the equivalent call"""
         for eq_call in mezcla_to_standard:
-            if (module == eq_call.target.__module__.split('.')[-1]
-                and func == eq_call.target.__name__
+            target_module, target_func = get_module_func(eq_call.target)
+            if (module in target_module
+                and func in target_func
                 and self.is_condition_to_replace_met(eq_call, args)):
                 return eq_call
         return None
@@ -493,7 +421,7 @@ class ToStandard(BaseTransformerStrategy):
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
         """Get the module and function from the equivalent call"""
-        return eq_call.dest.__module__, eq_call.dest.__name__
+        return get_module_func(eq_call.dest)
 
 class ToMezcla(BaseTransformerStrategy):
     """Standard to Mezcla call conversion class"""
@@ -501,8 +429,9 @@ class ToMezcla(BaseTransformerStrategy):
     def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         """Find the equivalent call"""
         for eq_call in mezcla_to_standard:
-            if (module == eq_call.dest.__module__.split('.')[-1]
-                and func == eq_call.dest.__name__
+            dest_module, dest_func = get_module_func(eq_call.dest)
+            if (module in dest_module
+                and func in dest_func
                 and self.is_condition_to_replace_met(eq_call, args)):
                 return eq_call
         return None
@@ -541,7 +470,7 @@ class ToMezcla(BaseTransformerStrategy):
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
         """Get the module and function from the equivalent call"""
-        return eq_call.target.__module__, eq_call.target.__name__
+        return get_module_func(eq_call.target)
 
 def transform(to_module, code: str) -> str:
     """Transform the code"""
@@ -557,6 +486,7 @@ def transform(to_module, code: str) -> str:
             self.to_module = to_module
             self.aliases = {}
             self.to_import = []
+            self.mezcla_modules = []
 
         def append_import_if_unique(self, new_import: cst.Name) -> None:
             """Append the import if unique"""
@@ -599,6 +529,13 @@ def transform(to_module, code: str) -> str:
             self.aliases[asname] = name
 
         # pylint: disable=invalid-name
+        def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+            """Visit an ImportFrom node"""
+            if node.module.value == "mezcla":
+                for name in node.names:
+                    self.mezcla_modules.append(name.name.value)
+
+        # pylint: disable=invalid-name
         def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
             """Leave a Call node"""
             if isinstance(original_node.func, cst.Name):
@@ -620,17 +557,22 @@ def transform(to_module, code: str) -> str:
             module_name = self.aliases.get(module_name, module_name)
             # Get replacement
             new_module, new_func_node, new_args_nodes = self.to_module.get_replacement(
-                module_name, original_node.func, original_node.args
+                module_name, original_node.func.attr.value, original_node.args
             )
-            if not new_module or not new_func_node:
+            # Replace if replacement found
+            if new_module and new_func_node:
+                updated_node = updated_node.with_changes(
+                    func=new_func_node,
+                    args=new_args_nodes
+                )
+                self.append_import_if_unique(new_module)
                 return updated_node
-            # Replace
-            updated_node = updated_node.with_changes(
-                func=new_func_node,
-                args=new_args_nodes
-            )
-            # Add pending import to add
-            self.append_import_if_unique(new_module)
+            # Otherwise, check if the module
+            # is a Mezcla module and comment it
+            if isinstance(self.to_module, ToStandard) and module_name in self.mezcla_modules:
+                return cst.Comment(
+                    value=f"# WARNING not supported: {cst.Module([]).code_for_node(original_node)}"
+                )
             return updated_node
 
     visitor = CustomVisitor(to_module)
