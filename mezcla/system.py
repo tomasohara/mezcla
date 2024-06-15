@@ -1276,6 +1276,7 @@ def round_num(value, precision=None):
 def round_as_str(value, precision=PRECISION):
     """Returns round_num(VALUE, PRECISION) as string"""
     # EX: round_as_str(3.15914, 3) => "3.159"
+    ## TODO3: add separate argument for number of digits after decimal point
     result = f"{round_num(value, precision):.{precision}f}"
     debug.trace_fmtd(8, "round_as_str({v}, [prec={p}]) => {r}",
                      v=value, p=precision, r=result)
@@ -1333,7 +1334,7 @@ def make_wrapper(function_name, function, trace_level=6):
     """Creates wrapper around FUNCTION with NAME"""
     debug.trace(7, f"make_wrapper{(function_name, function, trace_level)}")
     # EX: make_wrapper("get_process_id", os.getpid).__doc__ => "Wrapper around posix.getpid"
-    # TODO3: resolve module used in refernce so that docstring more intuitive (e.g., posix.getpid => os.getpid)
+    # TODO3: resolve module used in reference so that docstring more intuitive (e.g., posix.getpid => os.getpid)
     #
     def wrapper(*args, **kwargs):
         """placeholder docstring"""
