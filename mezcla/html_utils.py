@@ -63,7 +63,7 @@ from http.client import HTTPMessage
 try:
     from typing_extensions import Any, Callable, Dict, List, Optional, Union
 except:
-    sys.stderr.write(f"Error importing extensions: {sys.exc_info}\n")
+    sys.stderr.write(f"Error importing extensions: {sys.exc_info()}\n")
     sys.exit("Error: html_utils.py requires Python typing_extensions >= 4.7.0 (backport limitations with typing_extensions)")
 
 # Installed packages
