@@ -63,8 +63,7 @@ import pytest
 # note: Disables TEMP_FILE default used by glue_helpers.py.
 PRESERVE_TEMP_FILE_LABEL = "PRESERVE_TEMP_FILE"
 if PRESERVE_TEMP_FILE_LABEL not in os.environ:
-    ## DEBUG: 
-    sys.stderr.write(f"Setting {PRESERVE_TEMP_FILE_LABEL}\n")
+    ## DEBUG: sys.stderr.write(f"Setting {PRESERVE_TEMP_FILE_LABEL}\n")
     os.environ[PRESERVE_TEMP_FILE_LABEL] = "1"
 import mezcla
 from mezcla import debug
