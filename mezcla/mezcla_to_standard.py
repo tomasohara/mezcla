@@ -472,109 +472,109 @@ class ToMezcla(BaseTransformerStrategy):
         """Get the module and function from the equivalent call"""
         return get_module_func(eq_call.target)
 
+class CustomVisitor(cst.CSTTransformer):
+    """Custom visitor to modify the CST"""
+
+    def __init__(self, to_module: BaseTransformerStrategy) -> None:
+        super().__init__()
+        self.to_module = to_module
+        self.aliases = {}
+        self.to_import = []
+        self.mezcla_modules = []
+
+    def append_import_if_unique(self, new_import: cst.Name) -> None:
+        """Append the import if unique"""
+        current_imports = [node.value for node in self.to_import]
+        if new_import.value in current_imports:
+            return
+        self.to_import.append(new_import)
+
+    # pylint: disable=invalid-name
+    def leave_Module(
+            self,
+            original_node: cst.Module,
+            updated_node: cst.Module
+        ) -> cst.Module:
+        """Leave a Module node"""
+        new_body = list(updated_node.body)
+        for module in self.to_import:
+            new_import_node = cst.SimpleStatementLine(
+                body=[
+                    cst.Import(
+                        names=[cst.ImportAlias(name=module, asname=None)]
+                    )
+                ]
+            )
+            new_body = [new_import_node] + new_body
+        return updated_node.with_changes(body=new_body)
+
+    # pylint: disable=invalid-name
+    def visit_ImportAlias(self, node: cst.ImportAlias) -> None:
+        """Visit an ImportAlias node"""
+        if node.asname is None:
+            return
+        # Store asname alias for later replacement
+        if isinstance(node.name, cst.Attribute):
+            name = node.name.attr.value
+        elif isinstance(node.name, cst.Name):
+            name = node.name.value
+        asname = node.asname.name.value
+        # Store the alias
+        self.aliases[asname] = name
+
+    # pylint: disable=invalid-name
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+        """Visit an ImportFrom node"""
+        if node.module.value == "mezcla":
+            for name in node.names:
+                self.mezcla_modules.append(name.name.value)
+
+    # pylint: disable=invalid-name
+    def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
+        """Leave a Call node"""
+        if isinstance(original_node.func, cst.Name):
+            # NOTE: we only want to transform standard
+            # functions or from the Mezcla module
+            pass
+        elif isinstance(original_node.func, cst.Attribute):
+            return self.replace_call_if_needed(original_node, updated_node)
+        return updated_node
+
+    def replace_call_if_needed(
+            self,
+            original_node: cst.Call,
+            updated_node: cst.Call
+        ) -> cst.Call:
+        """Replace the call if needed"""
+        # Get module and method names
+        module_name = original_node.func.value.value
+        module_name = self.aliases.get(module_name, module_name)
+        # Get replacement
+        new_module, new_func_node, new_args_nodes = self.to_module.get_replacement(
+            module_name, original_node.func.attr.value, original_node.args
+        )
+        # Replace if replacement found
+        if new_module and new_func_node:
+            updated_node = updated_node.with_changes(
+                func=new_func_node,
+                args=new_args_nodes
+            )
+            self.append_import_if_unique(new_module)
+            return updated_node
+        # Otherwise, check if the module
+        # is a Mezcla module and comment it
+        if isinstance(self.to_module, ToStandard) and module_name in self.mezcla_modules:
+            return cst.Comment(
+                value=f"# WARNING not supported: {cst.Module([]).code_for_node(original_node)}"
+            )
+        return updated_node
+
 def transform(to_module, code: str) -> str:
     """Transform the code"""
     # Parse the code into a CST tree
     tree = cst.parse_module(code)
 
     # Traverse the CST and modify function calls
-    class CustomVisitor(cst.CSTTransformer):
-        """Custom visitor to modify the CST"""
-
-        def __init__(self, to_module) -> None:
-            super().__init__()
-            self.to_module = to_module
-            self.aliases = {}
-            self.to_import = []
-            self.mezcla_modules = []
-
-        def append_import_if_unique(self, new_import: cst.Name) -> None:
-            """Append the import if unique"""
-            current_imports = [node.value for node in self.to_import]
-            if new_import.value in current_imports:
-                return
-            self.to_import.append(new_import)
-
-        # pylint: disable=invalid-name
-        def leave_Module(
-                self,
-                original_node: cst.Module,
-                updated_node: cst.Module
-            ) -> cst.Module:
-            """Leave a Module node"""
-            new_body = list(updated_node.body)
-            for module in self.to_import:
-                new_import_node = cst.SimpleStatementLine(
-                    body=[
-                        cst.Import(
-                            names=[cst.ImportAlias(name=module, asname=None)]
-                        )
-                    ]
-                )
-                new_body = [new_import_node] + new_body
-            return updated_node.with_changes(body=new_body)
-
-        # pylint: disable=invalid-name
-        def visit_ImportAlias(self, node: cst.ImportAlias) -> None:
-            """Visit an ImportAlias node"""
-            if node.asname is None:
-                return
-            # Store asname alias for later replacement
-            if isinstance(node.name, cst.Attribute):
-                name = node.name.attr.value
-            elif isinstance(node.name, cst.Name):
-                name = node.name.value
-            asname = node.asname.name.value
-            # Store the alias
-            self.aliases[asname] = name
-
-        # pylint: disable=invalid-name
-        def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
-            """Visit an ImportFrom node"""
-            if node.module.value == "mezcla":
-                for name in node.names:
-                    self.mezcla_modules.append(name.name.value)
-
-        # pylint: disable=invalid-name
-        def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
-            """Leave a Call node"""
-            if isinstance(original_node.func, cst.Name):
-                # NOTE: we only want to transform standard
-                # functions or from the Mezcla module
-                pass
-            elif isinstance(original_node.func, cst.Attribute):
-                return self.replace_call_if_needed(original_node, updated_node)
-            return updated_node
-
-        def replace_call_if_needed(
-                self,
-                original_node: cst.Call,
-                updated_node: cst.Call
-            ) -> cst.Call:
-            """Replace the call if needed"""
-            # Get module and method names
-            module_name = original_node.func.value.value
-            module_name = self.aliases.get(module_name, module_name)
-            # Get replacement
-            new_module, new_func_node, new_args_nodes = self.to_module.get_replacement(
-                module_name, original_node.func.attr.value, original_node.args
-            )
-            # Replace if replacement found
-            if new_module and new_func_node:
-                updated_node = updated_node.with_changes(
-                    func=new_func_node,
-                    args=new_args_nodes
-                )
-                self.append_import_if_unique(new_module)
-                return updated_node
-            # Otherwise, check if the module
-            # is a Mezcla module and comment it
-            if isinstance(self.to_module, ToStandard) and module_name in self.mezcla_modules:
-                return cst.Comment(
-                    value=f"# WARNING not supported: {cst.Module([]).code_for_node(original_node)}"
-                )
-            return updated_node
-
     visitor = CustomVisitor(to_module)
 
     # Apply the custom visitor to the CST
