@@ -472,8 +472,8 @@ class ToMezcla(BaseTransformerStrategy):
         """Get the module and function from the equivalent call"""
         return get_module_func(eq_call.target)
 
-class CustomVisitor(cst.CSTTransformer):
-    """Custom visitor to modify the CST"""
+class ReplaceCallsVisitor(cst.CSTTransformer):
+    """Replace calls visitor to modify the CST"""
 
     def __init__(self, to_module: BaseTransformerStrategy) -> None:
         super().__init__()
@@ -575,7 +575,7 @@ def transform(to_module, code: str) -> str:
     tree = cst.parse_module(code)
 
     # Traverse the CST and modify function calls
-    visitor = CustomVisitor(to_module)
+    visitor = ReplaceCallsVisitor(to_module)
 
     # Apply the custom visitor to the CST
     modified_tree = tree.visit(visitor)
