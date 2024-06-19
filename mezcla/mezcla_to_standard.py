@@ -584,14 +584,21 @@ def transform(to_module, code: str) -> str:
     # Parse the code into a CST tree
     tree = cst.parse_module(code)
 
-    # Traverse the CST and modify function calls
-    visitor = ReplaceCallsTransformer(to_module)
+    # Replace calls in the tree
+    transformer = ReplaceCallsTransformer(to_module)
+    tree = tree.visit(transformer)
+    modified_code = tree.code
 
-    # Apply the custom visitor to the CST
-    modified_tree = tree.visit(visitor)
-
-    # Convert the modified CST back to Python code
-    modified_code = modified_tree.code
+    # Remove unused imports
+    #
+    # We need to temporarily store the code in a file to run pycln on
+    temp_file = gh.get_temp_file() + "a.py"
+    system.write_file(
+        filename=temp_file,
+        text=modified_code
+    )
+    gh.run(f"pycln -a {temp_file}")
+    modified_code = system.read_file(temp_file)
 
     return modified_code
 
