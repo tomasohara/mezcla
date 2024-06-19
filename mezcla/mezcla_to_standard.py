@@ -261,22 +261,29 @@ mezcla_to_standard = [
 
 def value_to_arg(value: object) -> cst.Arg:
     """Convert the value to an argument"""
+    result = None
     if isinstance(value, str):
-        return cst.Arg(cst.SimpleString(value=value))
-    if isinstance(value, int):
-        return cst.Arg(cst.Integer(value=str(value)))
-    if isinstance(value, float):
-        return cst.Arg(cst.Float(value=str(value)))
-    if isinstance(value, bool):
-        return cst.Arg(cst.Name(value=str(value)))
-    raise ValueError(f"Unsupported value type: {type(value)}")
+        result = cst.Arg(cst.SimpleString(value=value))
+    elif isinstance(value, int):
+        result = cst.Arg(cst.Integer(value=str(value)))
+    elif isinstance(value, float):
+        result = cst.Arg(cst.Float(value=str(value)))
+    elif isinstance(value, bool):
+        result = cst.Arg(cst.Name(value=str(value)))
+    else:
+        raise ValueError(f"Unsupported value type: {type(value)}")
+    debug.trace(7, f"value_to_arg({value}) => {result}")
+    return result
 
 def arg_to_value(arg: cst.Arg) -> object:
     """Convert the argument to a value"""
-    return eval(arg.value.value)
+    result = eval(arg.value.value)
+    debug.trace(7, f"arg_to_value({arg}) => {result}")
+    return result
 
 def args_to_values(args: list) -> list:
     """Convert the arguments to values"""
+    debug.trace(7, "args_to_values(args) => list")
     return [arg_to_value(arg) for arg in args]
 
 def match_args(func: callable, args: list, kwargs: dict) -> dict:
@@ -290,6 +297,7 @@ def match_args(func: callable, args: list, kwargs: dict) -> dict:
     # Extract **arguments
     if target_spec.varkw:
         arguments[target_spec.varkw] = kwargs
+    debug.trace(7, f"match_args(func={func}, args={args}, kwargs={kwargs}) => {arguments}")
     return arguments
 
 def flatten_list(list_to_flatten: list) -> list:
@@ -302,38 +310,46 @@ def flatten_list(list_to_flatten: list) -> list:
             result += list(arg)
         else:
             result.append(arg)
+    debug.trace(7, f"flatten_list(list_to_flatten={list_to_flatten}) => {result}")
     return result
 
 def get_module_func(func) -> Tuple:
     """Get the module and function from the function"""
+    result = None
     if isinstance(func, str):
-        return func.rsplit('.', 1)
-    return func.__module__, func.__name__
+        result = func.rsplit('.', 1)
+    else:
+        result = func.__module__, func.__name__
+    debug.trace(7, f"get_module_func(func={func}) => {result}")
+    return result
 
 class BaseTransformerStrategy:
     """Transformer base class"""
 
     def insert_extra_params(self, eq_call: EqCall, args: dict) -> dict:
         """Insert extra parameters, if not already present"""
+        new_args = args.copy()
         if eq_call.extra_params is None:
             return args
         for key, value in eq_call.extra_params.items():
             if key not in args:
-                args[key] = value_to_arg(value)
-        return args
+                new_args[key] = value_to_arg(value)
+        debug.trace(6, f"BaseTransformerStrategy.insert_extra_params(args={args}) => {new_args}")
+        return new_args
 
     def filter_args_by_function(self, func: callable, args: dict) -> dict:
         """Filter the arguments to match the standard function signature"""
+        result = {}
         try:
-            result = {}
             for key in inspect.getfullargspec(func).args:
                 if key in args:
                     result[key] = args[key]
-            return result
         except TypeError:
-            return args
+            result = args
         except ValueError:
-            return args
+            result = args
+        debug.trace(6, f"BaseTransformerStrategy.filter_args_by_function(func={func}, args={args}) => {result}")
+        return result
 
     def get_replacement(self, module, func, args) -> Tuple:
         """Get the function replacement"""
@@ -355,6 +371,7 @@ class BaseTransformerStrategy:
         new_func_node = cst.Attribute(value=new_value_node, attr=cst.Name(new_func))
         # Create the new arguments nodes
         new_args_nodes = self.get_args_replacement(eq_call, args, []) ## TODO: add kwargs
+        debug.trace(5, f"BaseTransformerStrategy.get_replacement(module={module}, func={func}, args={args}) => {new_module}, {new_func_node}, {new_args_nodes}")
         return new_import_node, new_func_node, new_args_nodes
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
@@ -381,23 +398,29 @@ class ToStandard(BaseTransformerStrategy):
 
     def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         """Find the equivalent call"""
+        result = None
         for eq_call in mezcla_to_standard:
             target_module, target_func = get_module_func(eq_call.target)
             if (module in target_module
                 and func in target_func
                 and self.is_condition_to_replace_met(eq_call, args)):
-                return eq_call
-        return None
+                result = eq_call
+                break
+        debug.trace(6, f"ToStandard.find_eq_call(module={module}, func={func}, args={args}) => {result}")
+        return result
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         """Return if the condition to replace is met"""
         arguments = match_args(eq_call.target, args, {})
         arguments = self.filter_args_by_function(eq_call.condition, arguments)
         arguments = args_to_values(arguments.values())
+        result = False
         try:
-            return eq_call.condition(*arguments)
+            result = eq_call.condition(*arguments)
         except Exception as exc:
-            return False
+            result = False
+        debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {result}")
+        return result
 
     def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
         """Transform every argument to the standard equivalent argument"""
@@ -405,36 +428,45 @@ class ToStandard(BaseTransformerStrategy):
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.dest, arguments)
-        return flatten_list(list(arguments.values()))
+        result = flatten_list(list(arguments.values()))
+        debug.trace(6, f"ToStandard.get_args_replacement(eq_call={eq_call}, args={args}, kwargs={kwargs}) => {result}")
+        return result
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         """Replace argument keys with the equivalent ones"""
+        result = {}
         if eq_call.eq_params is None:
             return args
-        result = {}
-        for key, value in args.items():
-            if key in eq_call.eq_params:
-                result[eq_call.eq_params[key]] = value
-            else:
-                result[key] = value
+        else:
+            for key, value in args.items():
+                if key in eq_call.eq_params:
+                    result[eq_call.eq_params[key]] = value
+                else:
+                    result[key] = value
+        debug.trace(7, f"ToStandard.replace_args_keys(eq_call={eq_call}, args={args}) => {result}")
         return result
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
         """Get the module and function from the equivalent call"""
-        return get_module_func(eq_call.dest)
+        result = get_module_func(eq_call.dest)
+        debug.trace(7, f"ToStandard.eq_call_to_module_func(eq_call={eq_call}) => {result}")
+        return result
 
 class ToMezcla(BaseTransformerStrategy):
     """Standard to Mezcla call conversion class"""
 
     def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         """Find the equivalent call"""
+        result = None
         for eq_call in mezcla_to_standard:
             dest_module, dest_func = get_module_func(eq_call.dest)
             if (module in dest_module
                 and func in dest_func
                 and self.is_condition_to_replace_met(eq_call, args)):
-                return eq_call
-        return None
+                result = eq_call
+                break
+        debug.trace(7, f"ToMezcla.find_eq_call(module={module}, func={func}, args={args}) => {result}")
+        return result
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         """Return if the condition to replace is met"""
@@ -443,10 +475,13 @@ class ToMezcla(BaseTransformerStrategy):
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.condition, arguments)
         arguments = args_to_values(arguments.values())
+        result = False
         try:
-            return eq_call.condition(*arguments)
+            result = eq_call.condition(*arguments)
         except Exception as exc:
-            return False
+            result = False
+        debug.trace(7, f"ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {result}")
+        return result
 
     def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
         """Transform every argument to the Mezcla equivalent argument"""
@@ -454,18 +489,22 @@ class ToMezcla(BaseTransformerStrategy):
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.target, arguments)
-        return flatten_list(list(arguments.values()))
+        result = flatten_list(list(arguments.values()))
+        debug.trace(7, f"ToMezcla.get_args_replacement(eq_call={eq_call}, args={args}, kwargs={kwargs}) => {result}")
+        return result
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         """Replace argument keys with the equivalent ones"""
-        if eq_call.eq_params is None:
-            return args
         result = {}
-        for key, value in args.items():
-            if key in eq_call.eq_params.values():
-                result[list(eq_call.eq_params.keys())[list(eq_call.eq_params.values()).index(key)] ] = value
-            else:
-                result[key] = value
+        if eq_call.eq_params is None:
+            result = args
+        else:
+            for key, value in args.items():
+                if key in eq_call.eq_params.values():
+                    result[list(eq_call.eq_params.keys())[list(eq_call.eq_params.values()).index(key)] ] = value
+                else:
+                    result[key] = value
+        debug.trace(7, f"ToMezcla.replace_args_keys(eq_call={eq_call}, args={args}) => {result}")
         return result
 
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
@@ -482,6 +521,7 @@ class StoreAliasesTransformer(cst.CSTTransformer):
     # pylint: disable=invalid-name
     def visit_ImportAlias(self, node: cst.ImportAlias) -> None:
         """Visit an ImportAlias node"""
+        debug.trace(8, f"StoreAliasesTransformer.visit_ImportAlias(node={node})")
         if node.asname is None:
             return
         # Store asname alias for later replacement
@@ -495,12 +535,15 @@ class StoreAliasesTransformer(cst.CSTTransformer):
 
     def alias_to_module(self, module_name: str) -> str:
         """Get the module name if it is an alias"""
-        return self.aliases.get(module_name, module_name)
+        result = self.aliases.get(module_name, module_name)
+        debug.trace(9, f"StoreAliasesTransformer.alias_to_module(module_name={module_name}) => {result}")
+        return result
 
 class ReplaceCallsTransformer(StoreAliasesTransformer):
     """Replace calls transformer to modify the CST"""
 
     def __init__(self, to_module: BaseTransformerStrategy) -> None:
+        debug.trace(8, "ReplaceCallsTransformer.__init__()")
         super().__init__()
         self.to_module = to_module
         self.to_import = []
@@ -508,6 +551,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
 
     def append_import_if_unique(self, new_import: cst.Name) -> None:
         """Append the import if unique"""
+        debug.trace(9, f"ReplaceCallsTransformer.append_import_if_unique(new_import={new_import})")
         current_imports = [node.value for node in self.to_import]
         if new_import.value in current_imports:
             return
@@ -530,11 +574,14 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
                 ]
             )
             new_body = [new_import_node] + new_body
-        return updated_node.with_changes(body=new_body)
+        result = updated_node.with_changes(body=new_body)
+        debug.trace(8, f"ReplaceCallsTransformer.leave_Module(original_node={original_node}, updated_node={updated_node}) => {result}")
+        return result
 
     # pylint: disable=invalid-name
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         """Visit an ImportFrom node"""
+        debug.trace(8, f"ReplaceCallsTransformer.visit_ImportFrom(node={node})")
         if node.module.value == "mezcla":
             for name in node.names:
                 self.mezcla_modules.append(name.name.value)
@@ -548,6 +595,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
             pass
         elif isinstance(original_node.func, cst.Attribute):
             return self.replace_call_if_needed(original_node, updated_node)
+        debug.trace(8, f"ReplaceCallsTransformer.leave_Call(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
     def replace_call_if_needed(
@@ -570,6 +618,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
                 args=new_args_nodes
             )
             self.append_import_if_unique(new_module)
+            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
             return updated_node
         # Otherwise, check if the module
         # is a Mezcla module and comment it
@@ -577,6 +626,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
             return cst.Comment(
                 value=f"# WARNING not supported: {cst.Module([]).code_for_node(original_node)}"
             )
+        debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
 def transform(to_module, code: str) -> str:
@@ -600,6 +650,7 @@ def transform(to_module, code: str) -> str:
     gh.run(f"pycln -a {temp_file}")
     modified_code = system.read_file(temp_file)
 
+    debug.trace(5, f"transform(to_module={to_module}, code='{code}') => {modified_code}")
     return modified_code
 
 class MezclaToStandardScript(Main):
@@ -613,12 +664,14 @@ class MezclaToStandardScript(Main):
 
     def setup(self) -> None:
         """Process arguments"""
+        debug.trace(5, "MezclaToStandardScript.setup()")
         self.file = self.get_parsed_argument(FILE, self.file)
         self.to_std = self.has_parsed_option(TO_STD)
         self.to_mezcla = self.has_parsed_option(TO_MEZCLA)
 
     def run_main_step(self) -> None:
         """Process main script"""
+        debug.trace(5, "MezclaToStandardScript.run_main_step()")
         code = system.read_file(self.file)
         if not code:
             raise ValueError(f"File {self.file} is empty")
