@@ -36,7 +36,6 @@ Mezcla to Standard call conversion script
 
 # Standard modules
 import time
-import os
 import sys
 import logging
 import inspect
