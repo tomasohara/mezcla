@@ -472,13 +472,37 @@ class ToMezcla(BaseTransformerStrategy):
         """Get the module and function from the equivalent call"""
         return get_module_func(eq_call.target)
 
-class ReplaceCallsVisitor(cst.CSTTransformer):
-    """Replace calls visitor to modify the CST"""
+class StoreAliasesTransformer(cst.CSTTransformer):
+    """Store aliases visitor"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.aliases = {}
+
+    # pylint: disable=invalid-name
+    def visit_ImportAlias(self, node: cst.ImportAlias) -> None:
+        """Visit an ImportAlias node"""
+        if node.asname is None:
+            return
+        # Store asname alias for later replacement
+        if isinstance(node.name, cst.Attribute):
+            name = node.name.attr.value
+        elif isinstance(node.name, cst.Name):
+            name = node.name.value
+        asname = node.asname.name.value
+        # Store the alias
+        self.aliases[asname] = name
+
+    def alias_to_module(self, module_name: str) -> str:
+        """Get the module name if it is an alias"""
+        return self.aliases.get(module_name, module_name)
+
+class ReplaceCallsTransformer(StoreAliasesTransformer):
+    """Replace calls transformer to modify the CST"""
 
     def __init__(self, to_module: BaseTransformerStrategy) -> None:
         super().__init__()
         self.to_module = to_module
-        self.aliases = {}
         self.to_import = []
         self.mezcla_modules = []
 
@@ -509,20 +533,6 @@ class ReplaceCallsVisitor(cst.CSTTransformer):
         return updated_node.with_changes(body=new_body)
 
     # pylint: disable=invalid-name
-    def visit_ImportAlias(self, node: cst.ImportAlias) -> None:
-        """Visit an ImportAlias node"""
-        if node.asname is None:
-            return
-        # Store asname alias for later replacement
-        if isinstance(node.name, cst.Attribute):
-            name = node.name.attr.value
-        elif isinstance(node.name, cst.Name):
-            name = node.name.value
-        asname = node.asname.name.value
-        # Store the alias
-        self.aliases[asname] = name
-
-    # pylint: disable=invalid-name
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         """Visit an ImportFrom node"""
         if node.module.value == "mezcla":
@@ -548,7 +558,7 @@ class ReplaceCallsVisitor(cst.CSTTransformer):
         """Replace the call if needed"""
         # Get module and method names
         module_name = original_node.func.value.value
-        module_name = self.aliases.get(module_name, module_name)
+        module_name = self.alias_to_module(module_name)
         # Get replacement
         new_module, new_func_node, new_args_nodes = self.to_module.get_replacement(
             module_name, original_node.func.attr.value, original_node.args
@@ -575,7 +585,7 @@ def transform(to_module, code: str) -> str:
     tree = cst.parse_module(code)
 
     # Traverse the CST and modify function calls
-    visitor = ReplaceCallsVisitor(to_module)
+    visitor = ReplaceCallsTransformer(to_module)
 
     # Apply the custom visitor to the CST
     modified_tree = tree.visit(visitor)
