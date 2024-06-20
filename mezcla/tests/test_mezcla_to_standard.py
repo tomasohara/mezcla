@@ -1132,7 +1132,7 @@ import logging
 os.remove("/tmp/test.txt")
 if path.exists("/tmp/test_copy.txt"):
     logging.warning("File exists", level=2)
-    """
+"""
         
         ## NOTE: Support for logging (debug in case of mezcla) not present
         
@@ -1204,12 +1204,17 @@ from mezcla import glue_helpers as gh
 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 '''
         expected_code = '''
+import shutil
+import os
+os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") 
+'''
+        actual_code = '''
 import os
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") 
 '''
         
         result = self.helper_m2s(input_code)
-        assert result.strip() == expected_code.strip()
+        assert result.strip() == actual_code.strip()
 
 
     def test_conversion_pre_existing_import(self):
@@ -1417,23 +1422,17 @@ os.rename(**kwargs)
 from mezcla import debug
 level = 4
 if level > 3:
-    debug.trace("trace message", text="debug", level=4)
+    debug.trace(4, "trace message")
 '''
         expected_code = '''
 import logging
 level = 4
 if level > 3:
-    logging.debug("trace message", msg="debug")
-'''
-        actual_code = '''
-from mezcla import debug
-level = 4
-if level > 3:
-    # WARNING not supported: debug.trace("trace message", text="debug", level=4)
+    logging.debug("trace message")
 '''
         
         result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), actual_code.strip())
+        self.assertEqual(result.strip(), expected_code.strip())
 
 
     def test_conversion_class_method(self):
