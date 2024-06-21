@@ -2,7 +2,6 @@
 #
 # Mezcla to Standard call conversion script
 #
-# TODO2: Add examples illustrating the transformations being made (e.g., AST).
 # TODO3: Look into making this table driven. Can't eval() be used to generate the EqCall specifications?
 # TODO4: Try to create a table covering more of system.py and glue_helper.py.  
 #
@@ -28,7 +27,152 @@
 #   os.remove("/tmp/fubar.list")
 #   os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 #   os.path.join("/tmp", "fubar")
-
+#
+#--------------------------------------------------------------------------------
+# Example illustrating the transformations being made
+#
+# - Original code
+#
+#   from mezcla import glue_helpers as gh
+#   gh.form_path("/tmp", "fubar")
+#
+# - The original code is parsed into the following libCST simplified tree
+#
+#   Module(
+#       body=[
+#           SimpleStatementLine(
+#               body=[
+#                   ImportFrom(
+#                      module=Name(
+#                         value='mezcla',
+#                       ),
+#                       names=[
+#                           ImportAlias(
+#                               name=Name(
+#                                   value='glue_helpers',
+#                               ),
+#                               asname=AsName(
+#                                   name=Name(
+#                                       value='gh',
+#                                   ),
+#                               ),
+#                           ),
+#                       ],
+#                   ),
+#               ],
+#           ),
+#           SimpleStatementLine(
+#               body=[
+#                   Expr(
+#                       value=Call(
+#                           func=Attribute(
+#                               value=Name(
+#                                   value='gh',
+#                               ),
+#                               attr=Name(
+#                                   value='form_path',
+#                               ),
+#                           ),
+#                           args=[
+#                               Arg(
+#                                   value=SimpleString(
+#                                       value='"/tmp"',
+#                                   ),
+#                               ),
+#                               Arg(
+#                                   value=SimpleString(
+#                                       value='"fubar"',
+#                                   ),
+#                               ),
+#                           ],
+#                       ),
+#                   ),
+#               ],
+#           ),
+#       ],
+#   )
+#
+# - Then is transformed into the following libCST simplified tree
+#
+#    Module(
+#       body=[
+#           SimpleStatementLine(
+#               body=[
+#                   Import(
+#                       names=[
+#                           ImportAlias(
+#                               name=Name(
+#                                   value='os',
+#                               ),
+#                           ),
+#                       ],
+#                   ),
+#               ],
+#           ),
+#           SimpleStatementLine(
+#               body=[
+#                   ImportFrom(
+#                       module=Name(
+#                           value='mezcla',
+#                       ),
+#                       names=[
+#                           ImportAlias(
+#                               name=Name(
+#                                   value='glue_helpers',
+#                               ),
+#                               asname=AsName(
+#                                   name=Name(
+#                                       value='gh',
+#                                   ),
+#                               ),
+#                           ),
+#                       ],
+#                   ),
+#               ],
+#           ),
+#           SimpleStatementLine(
+#               body=[
+#                   Expr(
+#                       value=Call(
+#                           func=Attribute(
+#                               value=Attribute(
+#                                   value=Name(
+#                                       value='os',
+#                                   ),
+#                                   attr=Name(
+#                                       value='path',
+#                                   ),
+#                               ),
+#                               attr=Name(
+#                                   value='join',
+#                               ),
+#                           ),
+#                           args=[
+#                               Arg(
+#                                   value=SimpleString(
+#                                       value='"/tmp"',
+#                                   ),
+#                               ),
+#                               Arg(
+#                                   value=SimpleString(
+#                                       value='"fubar"',
+#                                   ),
+#                               ),
+#                           ],
+#                       ),
+#                   ),
+#               ],
+#           ),
+#       ],
+#   )
+#
+# - Finally the transformed tree is converted back to code and unused imports are removed
+#
+#   import os
+#   os.path.join("/tmp", "fubar")
+#
+#--------------------------------------------------------------------------------
+#
 
 """
 Mezcla to Standard call conversion script
