@@ -587,14 +587,15 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
     # pylint: disable=invalid-name
     def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
         """Leave a Call node"""
+        new_node = updated_node
         if isinstance(original_node.func, cst.Name):
             # NOTE: we only want to transform standard
             # functions or from the Mezcla module
             pass
         elif isinstance(original_node.func, cst.Attribute):
-            return self.replace_call_if_needed(original_node, updated_node)
-        debug.trace(8, f"ReplaceCallsTransformer.leave_Call(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
-        return updated_node
+            new_node = self.replace_call_if_needed(original_node, updated_node)
+        debug.trace(8, f"ReplaceCallsTransformer.leave_Call(original_node={original_node}, updated_node={updated_node}) => {new_node}")
+        return new_node
 
     def replace_call_if_needed(
             self,
