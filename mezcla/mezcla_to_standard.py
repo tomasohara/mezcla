@@ -782,6 +782,25 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
         debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
+class InsertPassTransformer(cst.CSTTransformer):
+    """Insert pass transformer to fix empty indentations"""
+
+    def leave_If(
+            self,
+            original_node: cst.If,
+            updated_node: cst.If
+        ) -> cst.If:
+        """Leave an If node"""
+        has_warning = False
+        if updated_node.body.body[0].body[0].value.value:
+            has_warning = "# WARNING not supported:" in updated_node.body.body[0].body[0].value.value
+        has_unique_body = len(updated_node.body.body) == 1
+        if has_warning and has_unique_body:
+            pass_body = cst.SimpleStatementLine(body=[cst.Pass()])
+            new_block_body = updated_node.body.with_changes(body=list(updated_node.body.body) + [pass_body])
+            updated_node = updated_node.with_changes(body=new_block_body)
+        return updated_node
+
 def transform(to_module, code: str) -> str:
     """Transform the code"""
     # Parse the code into a CST tree
@@ -790,6 +809,12 @@ def transform(to_module, code: str) -> str:
     # Replace calls in the tree
     transformer = ReplaceCallsTransformer(to_module)
     tree = tree.visit(transformer)
+
+    # Add pass to empty indentations
+    transformer = InsertPassTransformer()
+    tree = tree.visit(transformer)
+
+    # Convert the tree back to code
     modified_code = tree.code
 
     # Remove unused imports
