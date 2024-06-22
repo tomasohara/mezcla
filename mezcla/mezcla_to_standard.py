@@ -916,13 +916,19 @@ class InsertPassTransformer(cst.CSTTransformer):
             updated_node: cst.If
         ) -> cst.If:
         """Leave an If node"""
+        block_child_nodes = list(updated_node.body.body)
+        first_block_node = block_child_nodes[0].body[0]
+        # Check if warning commented code is present
         has_warning = False
-        if updated_node.body.body[0].body[0].value.value:
-            has_warning = "# WARNING not supported:" in updated_node.body.body[0].body[0].value.value
-        has_unique_body = len(updated_node.body.body) == 1
+        if isinstance(first_block_node, cst.Expr):
+            if first_block_node.value.value:
+                has_warning = "# WARNING not supported:" in first_block_node.value.value
+        # Check if the statement only have one child node
+        has_unique_body = len(block_child_nodes) == 1
+        #
         if has_warning and has_unique_body:
             pass_body = cst.SimpleStatementLine(body=[cst.Pass()])
-            new_block_body = updated_node.body.with_changes(body=list(updated_node.body.body) + [pass_body])
+            new_block_body = updated_node.body.with_changes(body=block_child_nodes + [pass_body])
             updated_node = updated_node.with_changes(body=new_block_body)
         return updated_node
 
