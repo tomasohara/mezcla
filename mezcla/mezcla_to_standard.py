@@ -428,6 +428,14 @@ def args_to_values(args: list) -> list:
     debug.trace(7, "args_to_values(args) => list")
     return [arg_to_value(arg) for arg in args]
 
+def remove_last_comma(args: list) -> list:
+    """Remove the last comma from the arguments"""
+    if not args:
+        return args
+    args[-1] = args[-1].with_changes(comma=cst.MaybeSentinel.DEFAULT)
+    debug.trace(7, "remove_last_comma(args) => list")
+    return args
+
 def match_args(func: callable, args: list, kwargs: dict) -> dict:
     """Match the arguments to the function signature"""
     target_spec = inspect.getfullargspec(func)
@@ -571,6 +579,7 @@ class ToStandard(BaseTransformerStrategy):
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.dest, arguments)
         result = flatten_list(list(arguments.values()))
+        result = remove_last_comma(result)
         debug.trace(6, f"ToStandard.get_args_replacement(eq_call={eq_call}, args={args}, kwargs={kwargs}) => {result}")
         return result
 
@@ -632,6 +641,7 @@ class ToMezcla(BaseTransformerStrategy):
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.target, arguments)
         result = flatten_list(list(arguments.values()))
+        result = remove_last_comma(result)
         debug.trace(7, f"ToMezcla.get_args_replacement(eq_call={eq_call}, args={args}, kwargs={kwargs}) => {result}")
         return result
 
