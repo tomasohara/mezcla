@@ -824,7 +824,6 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
         super().__init__()
         self.to_module = to_module
         self.to_import = []
-        self.mezcla_modules = []
 
     def append_import_if_unique(self, new_import: cst.Name) -> None:
         """Append the import if unique"""
@@ -854,14 +853,6 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
         result = updated_node.with_changes(body=new_body)
         debug.trace(8, f"ReplaceCallsTransformer.leave_Module(original_node={original_node}, updated_node={updated_node}) => {result}")
         return result
-
-    # pylint: disable=invalid-name
-    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
-        """Visit an ImportFrom node"""
-        debug.trace(8, f"ReplaceCallsTransformer.visit_ImportFrom(node={node})")
-        if node.module.value == "mezcla":
-            for name in node.names:
-                self.mezcla_modules.append(name.name.value)
 
     # pylint: disable=invalid-name
     def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
@@ -896,15 +887,53 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
                 args=new_args_nodes
             )
             self.append_import_if_unique(new_module)
-            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
-            return updated_node
-        # Otherwise, check if the module
-        # is a Mezcla module and comment it
-        if isinstance(self.to_module, ToStandard) and module_name in self.mezcla_modules:
+        debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
+        return updated_node
+
+class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
+    """Modify the CST to insert warnings to Mezcla calls"""
+
+    def __init__(self) -> None:
+        super().__init__()
+        debug.trace(8, "InsertMezclaWarningsTransformer.__init__()")
+        self.mezcla_modules = []
+
+    # pylint: disable=invalid-name
+    def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
+        """Visit an ImportFrom node"""
+        debug.trace(8, f"InsertMezclaWarningsTransformer.visit_ImportFrom(node={node})")
+        if node.module.value == "mezcla":
+            for name in node.names:
+                self.mezcla_modules.append(name.name.value)
+
+    # pylint: disable=invalid-name
+    def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
+        """Leave a Call node"""
+        new_node = updated_node
+        if isinstance(original_node.func, cst.Name):
+            # NOTE: we only want to transform standard
+            # functions or from the Mezcla module
+            pass
+        if isinstance(original_node.func, cst.Attribute):
+            new_node = self.replace_with_warning_if_needed(original_node, updated_node)
+        debug.trace(8, f"InsertMezclaWarningsTransformer.leave_Call(original_node={original_node}, updated_node={updated_node}) => {new_node}")
+        return new_node
+
+    def replace_with_warning_if_needed(
+            self,
+            original_node: cst.Call,
+            updated_node: cst.Call
+        ) -> cst.Call:
+        """Replace the call if needed"""
+        # Get module and method names
+        module_name = original_node.func.value.value
+        module_name = self.alias_to_module(module_name)
+        # Check if module is a Mezcla module, and replace call with warning comment
+        if module_name in self.mezcla_modules:
             return cst.Comment(
                 value=f"# WARNING not supported: {cst.Module([]).code_for_node(original_node)}"
             )
-        debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
+        debug.trace(7, f"InsertMezclaWarningsTransformer.replace_with_warning_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
 class InsertPassTransformer(cst.CSTTransformer):
@@ -953,6 +982,11 @@ def transform(to_module, code: str) -> str:
     # Replace calls in the tree
     transformer = ReplaceCallsTransformer(to_module)
     tree = tree.visit(transformer)
+
+    # Replace Mezcla calls with warning if not supported
+    if isinstance(to_module, ToStandard):
+        transformer = ReplaceMezclaWithWarningTransformer()
+        tree = tree.visit(transformer)
 
     # Add pass to empty indentations
     transformer = InsertPassTransformer()
