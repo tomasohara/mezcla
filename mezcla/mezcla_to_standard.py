@@ -921,7 +921,7 @@ class InsertPassTransformer(cst.CSTTransformer):
         # Check if warning commented code is present
         has_warning = False
         if isinstance(first_block_node, cst.Expr):
-            if first_block_node.value.value:
+            if isinstance(first_block_node.value, cst.Comment):
                 has_warning = "# WARNING not supported:" in first_block_node.value.value
         # Check if the statement only have one child node
         has_unique_body = len(block_child_nodes) == 1
