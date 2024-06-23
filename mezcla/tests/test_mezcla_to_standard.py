@@ -397,10 +397,15 @@ class TestToMezcla:
         )
 
         # For multiple arguments in function using multiple arguments
-        args = [4, 3]
+
+        # OLD: args = [4, 3]
+        args = [cst.Arg(value=4), cst.Arg(value=3)]
         kwargs = {}
-        result = to_mezcla.get_args_replacement(eq_call, args, kwargs)
-        assert result == [4, 3]
+        result = str(to_mezcla.get_args_replacement(eq_call, args, kwargs))
+        assert "Arg(\n    value=4," in result
+        assert "Arg(\n    value=3," in result
+        assert result.count("Arg(\n    value=4,") == 1
+        assert result.count("Arg(\n    value=3,") == 1
 
         # For multiple arguments in function using single argument (selects first arg)
         eq_call = THE_MODULE.EqCall(
@@ -409,10 +414,12 @@ class TestToMezcla:
             condition=lambda a, b: a == b,
             eq_params={"a": "path"},
         )
-        args = [4, 4]
+        # OLD: args = [4, 4]
+        args = [cst.Arg(value=4), cst.Arg(value=4)]
         kwargs = {}
-        result = to_mezcla.get_args_replacement(eq_call, args, kwargs)
-        assert result == [4]
+        result = str(to_mezcla.get_args_replacement(eq_call, args, kwargs))
+        assert "Arg(\n    value=4," in result
+        assert result.count("Arg(\n") == 1
 
     ## TEST 5: replace_args_keys
     def test_replace_args_keys(self, setup_to_mezcla):
@@ -598,14 +605,16 @@ result = new_function(2, 3)
         """Ensures that replace_call_if_needed method of CustomVisitor works as expected"""
         assert False, "TODO: Implement"
 
+
 class TestUsageM2SEqCall(TestWrapper):
     """Class for test usage of equivalent calls for mezcla_to_standard"""
+
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def helper_m2s(self, input_code):
         """Helper function to convert mezcla code to standard equivalent code"""
         return THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
-    
+
     def test_eqcall_gh_get_temp_file(self):
         """Ensures that gh.get_temp_file is equivalent to tempfile.NamedTemporaryFile"""
         input_code = """
@@ -619,175 +628,166 @@ temp_file = tempfile.NamedTemporaryFile()
         result = self.helper_m2s(input_code)
         self.assertEqual(result.split(), expected_code.split())
 
-    @pytest.mark.xfail
     def test_eqcall_gh_basename(self):
         """Ensures that gh.basename is equivalent to os.path.basename"""
         input_code = """
 from mezcla import glue_helpers as gh
-temp_file = gh.get_temp_file()
+basename = gh.basename("./foo/bar/foo.bar")
 """
         expected_code = """
-import tempfile
-temp_file = tempfile.NamedTemporaryFile()
+import os
+basename = os.path.basename("./foo/bar/foo.bar")
+"""
+
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_gh_dir_path(self):
+        """Ensures that gh.dir_path is equivalent to os.path.dirname"""
+        input_code = """
+from mezcla import glue_helpers as gh
+dir_path = gh.dir_path("/tmp/solr-4888.log")
+"""
+        expected_code = """
+import os
+dir_path = os.path.dirname("/tmp/solr-4888.log")
 """
         result = self.helper_m2s(input_code)
         self.assertEqual(result.split(), expected_code.split())
-    
-    @pytest.mark.xfail
-    def test_eqcall_gh_dir_path(self):
-        """Ensures that gh.dir_path is equivalent to os.path.dirname"""
-        assert False, "TODO: Implement"
 
-    @pytest.mark.xfail
     def test_eqcall_gh_dirname(self):
         """Ensures that gh.dirname is equivalent to os.path.dirname"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_gh_file_exists(self):
-        """Ensures that gh.file_exists is equivalent to os.path.exists"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_gh_form_path(self):
-        """Ensures that gh.form_path is equivalent to os.path.join"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_gh_is_directory(self):
-        """Ensures that gh.is_directory is equivalent to os.path.isdir"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_gh_create_directory(self):
-        """Ensures that gh.create_directory is equivalent to os.mkdir"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_gh_rename_file(self):
-        """Ensures that gh.rename_file is equivalent to os.rename"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_gh_delete_file(self):
-        """Ensures that gh.delete_file is equivalent to os.remove"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_gh_file_size(self):
-        """Ensures that gh.file_size is equivalent to os.path.getsize"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_gh_get_directory_listing(self):
-        """Ensures that gh.get_directory_listing is equivalent to os.listdir"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_debug_trace_logging(self):
-        """Ensures that debug.trace is equivalent to appropriate logging based on condition"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_get_exception(self):
-        """Ensures that system.get_exception is equivalent to sys.exc_info"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_print_error(self):
-        """Ensures that system.print_error is equivalent to printing to stderr"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_exit(self):
-        """Ensures that system.exit is equivalent to sys.exit"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_open_file(self):
-        """Ensures that system.open_file is equivalent to open"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_read_directory(self):
-        """Ensures that system.read_directory is equivalent to os.listdir"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_is_regular_file(self):
-        """Ensures that system.is_regular_file is equivalent to os.path.isfile"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_get_current_directory(self):
-        """Ensures that system.get_current_directory is equivalent to os.getcwd"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_set_current_directory(self):
-        """Ensures that system.set_current_directory is equivalent to os.chdir"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_absolute_path(self):
-        """Ensures that system.absolute_path is equivalent to os.path.abspath"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_real_path(self):
-        """Ensures that system.real_path is equivalent to os.path.realpath"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_round_num(self):
-        """Ensures that system.round_num is equivalent to rounding with ndigits=6"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_round3(self):
-        """Ensures that system.round3 is equivalent to rounding with ndigits=3"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_sleep(self):
-        """Ensures that system.sleep is equivalent to time.sleep"""
-        assert False, "TODO: Implement"
-
-    @pytest.mark.xfail
-    def test_eqcall_system_get_args(self):
-        """Ensures that system.get_args is equivalent to sys.argv"""
-        assert False, "TODO: Implement"
-
-class TestUsageImportTypes(TestWrapper):
-    """Class for test usage for several methods of import in mezcla_to_standard"""
-
-    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-
-    ## TODO: Add a helper function
-    def helper_m2s(self, input_code):
-        return THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
-
-    ## NOTE: When testing code, DO NOT follow the code in this format
-    ## NOTE: Instead, DO NOT apply any indentations on code
-    # code_direct_import = '''
-    #     from mezcla.debug import trace
-    #     trace(1, "error")
-    #     '''
-
-    def test_conversion_no_imports(self):
-        """This test case checks if the conversion correctly handles a block of code with no imports."""
-        # Input: result = gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2") if condition else gh.rename_file("/tmp/foo.list1", "/tmp/foo.list2")
-        # Expected Output: result = os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") if condition else os.rename("/tmp/foo.list1", "/tmp/foo.list2")
-        ## NO IMPORTS means that the code is treated as a usual code
         input_code = """
-gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+from mezcla import glue_helpers as gh
+dirname = gh.dirname("/tmp/solr-4888.log")
+"""
+        expected_code = """
+import os
+dirname = os.path.dirname("/tmp/solr-4888.log")
 """
         result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), input_code.strip())
+        self.assertEqual(result.split(), expected_code.split())
 
-    def test_import_debug_all(self):
-        """Usage tests for all cases of debug based imports"""
+    def test_eqcall_gh_file_exists(self):
+        """Ensures that gh.file_exists is equivalent to os.path.exists"""
+        input_code = """
+from mezcla import glue_helpers as gh
+file_exists = gh.file_exists("/tmp/solr-4888.log")
+"""
+        expected_code = """
+import os
+file_exists = os.path.exists("/tmp/solr-4888.log")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
 
+    def test_eqcall_gh_form_path(self):
+        """Ensures that gh.form_path is equivalent to os.path.join"""
+        input_code = """
+from mezcla import glue_helpers as gh
+temp_path = gh.form_path("/tmp/logs/")
+"""
+        expected_code = """
+import os
+temp_path = os.path.join("/tmp/logs/")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_gh_is_directory(self):
+        """Ensures that gh.is_directory is equivalent to os.path.isdir"""
+        input_code = """
+from mezcla import glue_helpers as gh
+is_dir = gh.is_directory("/tmp/logs/")
+"""
+        expected_code = """
+import os
+is_dir = os.path.isdir("/tmp/logs/")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_gh_create_directory(self):
+        """Ensures that gh.create_directory is equivalent to os.mkdir"""
+        input_code = """
+from mezcla import glue_helpers as gh
+is_dir = gh.is_directory("/tmp/logs/")
+"""
+        expected_code = """
+import os
+is_dir = os.path.isdir("/tmp/logs/")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_gh_rename_file(self):
+        """Ensures that gh.rename_file is equivalent to os.rename"""
+        input_code = """
+from mezcla import glue_helpers as gh
+gh.rename_file("foo.txt", "bar.txt")
+"""
+        expected_code = """
+import os
+os.rename("foo.txt", "bar.txt")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_gh_delete_file(self):
+        """Ensures that gh.delete_file is equivalent to os.remove"""
+        input_code = """
+from mezcla import glue_helpers as gh
+gh.delete_file("foo.txt")
+"""
+        expected_code = """
+import os
+os.remove("foo.txt")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_gh_delete_existing_file(self):
+        """Ensures that gh.delete_exisiting_file is equivalent to os.remove"""
+        input_code = """
+from mezcla import glue_helpers as gh
+gh.delete_existing_file("foo.txt")
+"""
+        expected_code = """
+import os
+os.remove("foo.txt")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_gh_file_size(self):
+        """Ensures that gh.file_size is equivalent to os.path.getsize"""
+        input_code = """
+from mezcla import glue_helpers as gh
+foo_size = gh.file_size("foo.txt")
+"""
+        expected_code = """
+import os
+foo_size = os.path.getsize("foo.txt")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_gh_get_directory_listing(self):
+        """Ensures that gh.get_directory_listing is equivalent to os.listdir"""
+        input_code = """
+from mezcla import glue_helpers as gh
+is_dir = gh.get_directory_listing("/tmp")
+"""
+        expected_code = """
+import os
+is_dir = os.listdir("/tmp")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_debug_trace_all(self):
+        """Ensures that debug.trace is equivalent to appropriate logging based on conditions"""
+        # OLD: Same as test_import_debug_all() from TestUsageImportTypes
         input_code_lvl_4 = """
 from mezcla import debug
 debug.trace(4, "DEBUG")
@@ -842,6 +842,258 @@ logging.error("ERROR")
             result = self.helper_m2s(input_code)
             self.assertEqual(result.strip(), expected_output.strip())
 
+    def test_eqcall_system_get_exception(self):
+        """Ensures that system.get_exception is equivalent to sys.exc_info"""
+        input_code = """
+from mezcla import system
+def divide(a, b):
+    try:
+        result = a / b
+    except ZeroDivisionError:
+        exc_type, exc_value, exc_traceback = system.get_exception()
+"""
+        expected_code = """
+import sys
+def divide(a, b):
+    try:
+        result = a / b
+    except ZeroDivisionError:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    @pytest.mark.xfail  ## ERROR: ValueError: Unsupported value type: <class '_io.TextIOWrapper'>
+    def test_eqcall_system_print_error(self):
+        """Ensures that system.print_error is equivalent to printing to stderr"""
+        input_code = """
+from mezcla import system
+system.print_error("This is an error message")
+"""
+        expected_code = """
+print("This is an error message", file=sys.stderr)
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_exit(self):
+        """Ensures that system.exit is equivalent to sys.exit"""
+        input_code = """
+from mezcla import system
+system.exit()
+"""
+        expected_code = """
+import sys
+sys.exit()
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_open_file(self):
+        """Ensures that system.open_file is equivalent to open"""
+        input_code = """
+from mezcla import system
+with system.open_file("example.txt") as f:
+    content = f.read()
+    print(content)
+"""
+        expected_code = """
+import io
+with io.open("example.txt") as f:
+    content = f.read()
+    print(content)
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_read_directory(self):
+        """Ensures that system.read_directory is equivalent to os.listdir"""
+        input_code = """
+from mezcla import system
+dir_files = system.read_directory("/tmp")
+"""
+        expected_code = """
+import os
+dir_files = os.listdir("/tmp")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_form_path(self):
+        """Ensures that system.form_path is equivalent to os.path.join"""
+        input_code = """
+from mezcla import system
+system.form_path("/tmp/foo/bar")
+"""
+        expected_code = """
+import os
+os.path.join("/tmp/foo/bar")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_is_regular_file(self):
+        """Ensures that system.is_regular_file is equivalent to os.path.isfile"""
+        input_code = """
+from mezcla import system
+is_regular = system.is_regular_file("/tmp/foo.txt")
+"""
+        expected_code = """
+import os
+is_regular = os.path.isfile("/tmp/foo.txt")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_create_directory(self):
+        """Ensures that system.create_directory is equivalent to os.mkdir"""
+        input_code = """
+from mezcla import system
+system.create_directory("foo")
+"""
+        expected_code = """
+import os
+os.mkdir("foo")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_get_current_directory(self):
+        """Ensures that system.get_current_directory is equivalent to os.getcwd"""
+        input_code = """
+from mezcla import system
+pwd = system.get_current_directory()
+"""
+        expected_code = """
+import os
+pwd = os.getcwd()
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_set_current_directory(self):
+        """Ensures that system.set_current_directory is equivalent to os.chdir"""
+        # Note: No matter the order of import, the output will always have the import on the top
+        input_code = """
+from mezcla import system
+PATH = "/home/ricekiller/Downloads"
+system.set_current_directory(PATH)
+"""
+        expected_code = """
+import os
+PATH = "/home/ricekiller/Downloads"
+os.chdir(PATH)
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_absolute_path(self):
+        """Ensures that system.absolute_path is equivalent to os.path.abspath"""
+        input_code = """
+from mezcla import system
+abs_path = system.absolute_path("./Downloads/testfile.pdf")
+"""
+        expected_code = """
+import os
+abs_path = os.path.abspath("./Downloads/testfile.pdf")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_real_path(self):
+        """Ensures that system.real_path is equivalent to os.path.realpath"""
+        input_code = """
+from mezcla import system
+real_path = system.real_path("./Downloads/testfile.pdf")
+"""
+        expected_code = """
+import os
+real_path = os.path.realpath("./Downloads/testfile.pdf")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_round_num(self):
+        """Ensures that system.round_num is equivalent to rounding with ndigits=6"""
+        input_code = """
+from mezcla import system
+round_val = system.round_num(1738.4423425357457131)
+"""
+        expected_code = """
+import builtins
+round_val = builtins.round(6)
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_round3(self):
+        """Ensures that system.round3 is equivalent to rounding with ndigits=3"""
+        input_code = """
+from mezcla import system
+round_val_3 = system.round3(1738.4423425357457131)
+"""
+        expected_code = """
+import builtins
+round_val_3 = builtins.round(3)
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    def test_eqcall_system_sleep(self):
+        """Ensures that system.sleep is equivalent to time.sleep"""
+        input_code = """
+from mezcla import system
+system.sleep(60)
+"""
+        expected_code = """
+import time
+time.sleep(60)
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+    @pytest.mark.xfail  ## AttributeError: 'list' object has no attribute '__module__'. Did you mean: '__mul__'
+    def test_eqcall_system_get_args(self):
+        """Ensures that system.get_args is equivalent to sys.argv"""
+        input_code = """
+from mezcla import system
+args = system.get_args()
+"""
+        expected_code = """
+import sys
+args = sys.argv
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.split(), expected_code.split())
+
+
+class TestUsageImportTypes(TestWrapper):
+    """Class for test usage for several methods of import in mezcla_to_standard"""
+
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+
+    ## TODO: Add a helper function
+    def helper_m2s(self, input_code):
+        return THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
+
+    ## NOTE: When testing code, DO NOT follow the code in this format
+    ## NOTE: Instead, DO NOT apply any indentations on code
+    # code_direct_import = '''
+    #     from mezcla.debug import trace
+    #     trace(1, "error")
+    #     '''
+
+    def test_conversion_no_imports(self):
+        """This test case checks if the conversion correctly handles a block of code with no imports."""
+        # Input: result = gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2") if condition else gh.rename_file("/tmp/foo.list1", "/tmp/foo.list2")
+        # Expected Output: result = os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") if condition else os.rename("/tmp/foo.list1", "/tmp/foo.list2")
+        ## NO IMPORTS means that the code is treated as a usual code
+        input_code = """
+gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.strip(), input_code.strip())
+
     @pytest.mark.xfail
     def test_import_types(self):
         """Usage test for conversion of various mezcla import styles to standard import (VANILLA: no comments or multiline imports)"""
@@ -873,7 +1125,12 @@ logging.error("error")
 """
 
         ## TEMP_HALT (Not all code import styles are currently supported)
-        code_combinations = [code_direct_import, code_alias_import, code_from_import, code_import]
+        code_combinations = [
+            code_direct_import,
+            code_alias_import,
+            code_from_import,
+            code_import,
+        ]
         # OLD (For debugging): code_combinations = [code_from_import, code_alias_import]
 
         # Writing code to input file/function and transforming it for assertion
@@ -1271,7 +1528,7 @@ if path.exists("/tmp/test_copy.txt"):
     debug.trace("File exists", level=2)
     """
 
-        actual_code = """
+        actual_code_old = """
 import os
 from mezcla import glue_helpers as gh
 from mezcla import debug
@@ -1286,13 +1543,14 @@ if path.exists("/tmp/test_copy.txt"):
 
         expected_code = """
 import os
-import logging
+from os import path
 # WARNING not supported: gh.write_file("/tmp/test.txt", "test content")
 # WARNING not supported: gh.copy_file("/tmp/test.txt", "/tmp/test_copy.txt")
 # WARNING not supported: debug.trace("Copy created", level=3)
 os.remove("/tmp/test.txt")
 if path.exists("/tmp/test_copy.txt"):
-    logging.warning("File exists", level=2)
+    # WARNING not supported: debug.trace("File exists", level=2)
+    pass
 """
 
         ## NOTE: Support for logging (debug in case of mezcla) not present
@@ -1302,7 +1560,7 @@ if path.exists("/tmp/test_copy.txt"):
         # result = THE_MODULE.transform(to_standard, input_code)
 
         result = self.helper_m2s(input_code)
-        assert result.strip() == actual_code.strip()
+        assert result.strip() == expected_code.strip()
 
     def test_conversion_conditional_statement(self):
         """Test conversion of script when conditional statements are used"""
@@ -1406,7 +1664,6 @@ gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2", extra="ignored")
 """
         expected_code = """
 import os
-from mezcla import glue_helpers as gh
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 """
         actual_output = """
@@ -1414,7 +1671,7 @@ import os
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2", )
 """
         result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), actual_output.strip())
+        self.assertEqual(result.strip(), expected_code.strip())
 
     def test_conversion_complex_args(self):
         """Test conversion of script for keyword arguments of methods"""
