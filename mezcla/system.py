@@ -36,12 +36,11 @@ import sys
 import time
 from typing import (
     Any, IO, Optional, Union, overload, List,
-    Tuple, Callable, TextIO,
+    Tuple, Callable
 )
 from io import TextIOWrapper
 
 # Installed packages
-from numpy import unicode_
 import six
 
 # Local packages
@@ -58,6 +57,7 @@ STRING_TYPES = six.string_types
 MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
 TEMP_DIR = None
+ENCODING = "encoding"
 
 ## TODO: debug.assertion(python_maj_min_version() >= 3.8, "Require Python 3.8+ for function def's with '/' or '*'")
 ## See https://stackoverflow.com/questions/9079036/how-do-i-detect-the-python-version-at-runtime
@@ -471,6 +471,7 @@ def open_file(
     try:
         # pylint: disable=consider-using-with; note: bogus 'Bad option value' warning
         ## BAD: result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
+        # pylint: disable=unspecified-encoding
         result = open(filename, mode=mode, errors=errors, **kwargs)
     except IOError:
         debug.trace_fmtd(3, "Unable to open {f!r}: {exc}", f=filename, exc=get_exception())
@@ -622,11 +623,11 @@ def read_entire_file(filename: FileDescriptorOrPath, **kwargs) -> str:
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
-        ENCODING = "encoding"
         if kwargs.get(ENCODING) is None:
             kwargs[ENCODING] = "UTF-8"
         ## TODO: with open_file(filename, **kwargs) as f:
         ## BAD: with open(filename, encoding="UTF-8", **kwargs) as f:
+        # pylint: disable=unspecified-encoding
         with open(filename, **kwargs) as f:
             data = f.read()
     except (AttributeError, IOError):
