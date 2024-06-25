@@ -469,13 +469,15 @@ def value_to_arg(value: object) -> cst.Arg:
     """
     result = None
     if isinstance(value, str):
-        result = cst.Arg(cst.SimpleString(value=value))
+        # OLD: result = cst.Arg(cst.SimpleString(value=value))
+        result = cst.Arg(cst.SimpleString(value=f'"{value}"'))
     elif isinstance(value, int):
         result = cst.Arg(cst.Integer(value=str(value)))
     elif isinstance(value, float):
         result = cst.Arg(cst.Float(value=str(value)))
     elif isinstance(value, bool):
-        result = cst.Arg(cst.Name(value=str(value)))
+        # OLD: result = cst.Arg(cst.Name(value=str(value)))
+        result = cst.Arg(cst.Name(value='True' if value else 'False'))
     else:
         raise ValueError(f"Unsupported value type: {type(value)}")
     debug.trace(7, f"value_to_arg({value}) => {result}")
