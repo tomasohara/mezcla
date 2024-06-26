@@ -179,6 +179,7 @@ Mezcla to Standard call conversion script
 """
 
 # Standard modules
+import io
 import time
 import sys
 import logging
@@ -478,6 +479,11 @@ def value_to_arg(value: object) -> cst.Arg:
     elif isinstance(value, bool):
         # OLD: result = cst.Arg(cst.Name(value=str(value)))
         result = cst.Arg(cst.Name(value='True' if value else 'False'))
+    elif isinstance(value, io.TextIOWrapper):
+        result = cst.Arg(cst.Attribute(
+            value=cst.Name(value='sys'),
+            attr=cst.Name(value='stderr')
+        ))
     else:
         raise ValueError(f"Unsupported value type: {type(value)}")
     debug.trace(7, f"value_to_arg({value}) => {result}")
