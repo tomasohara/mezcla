@@ -915,10 +915,8 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
             updated_node: cst.Call
         ) -> cst.Call:
         """Replace the call if needed"""
-        # Skip if the value is a call, for example:
-        #   ("".join([1, 2, 3])).strip()
-        if isinstance(original_node.func.value, cst.Call):
-            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skip due to value is a call")
+        if not isinstance(original_node.func.value, (cst.Attribute, cst.Name, cst.SimpleString)):
+            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skipping")
             return updated_node
         # Get module and method names
         module_name = get_module_node_to_name(original_node.func)
@@ -968,10 +966,8 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
             updated_node: cst.Call
         ) -> cst.Call:
         """Replace the call if needed"""
-        # Skip if the value is a call, for example:
-        #   ("".join([1, 2, 3])).strip()
-        if isinstance(original_node.func.value, cst.Call):
-            debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skip due to value is a call")
+        if not isinstance(original_node.func.value, (cst.Attribute, cst.Name, cst.SimpleString)):
+            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skipping")
             return updated_node
         # Get module and method names
         module_name = get_module_node_to_name(original_node.func)
