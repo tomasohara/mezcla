@@ -583,6 +583,16 @@ def get_module_node_to_name(module_node) -> str:
         return name
     raise ValueError(f"Unsupported module node type: {type(module_node)}")
 
+def text_to_comments_node(text: str) -> cst.Comment:
+    """Convert text into a comment node"""
+    # We convert the text into a single line comment,
+    # Because using multiline comments can create
+    # confusion if those lines are next to other comments
+    text = text.replace("\n", " ")
+    comment = cst.Comment(value=f"# {text}")
+    debug.trace(9, f"text_to_comment_node(text={text}) => {comment}")
+    return comment
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -944,9 +954,7 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
         module_name = self.alias_to_module(module_name)
         # Check if module is a Mezcla module, and replace call with warning comment
         if module_name in self.mezcla_modules:
-            return cst.Comment(
-                value=f"# WARNING not supported: {cst.Module([]).code_for_node(original_node)}"
-            )
+            return text_to_comments_node(f"WARNING not supported: {cst.Module([]).code_for_node(original_node)}")
         debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
