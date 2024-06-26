@@ -492,8 +492,24 @@ def arg_to_value(arg: cst.Arg) -> object:
     arg_to_value(arg) => 'text'
     ```
     """
-    result = eval(arg.value.value)
+    result = None
+    if isinstance(arg.value, cst.SimpleString):
+        result = str(arg.value.value)
+    elif isinstance(arg.value, cst.Integer):
+        result = int(arg.value.value)
+    elif isinstance(arg.value, cst.Float):
+        result = float(arg.value.value)
+    elif isinstance(arg.value, cst.Name):
+        result = bool(arg.value.value)
+    else:
+        raise ValueError(f"Unsupported CST Argument child node type: {type(arg.value)}")
     debug.trace(7, f"arg_to_value({arg}) => {result}")
+    return result
+
+def has_fixed_value(arg: cst.Arg) -> bool:
+    """Check if an CST argument node has a fixed value"""
+    result = isinstance(arg.value, (cst.SimpleString, cst.Integer, cst.Float, cst.Name))
+    debug.trace(7, f"has_fixed_value(arg={arg}) => {result}")
     return result
 
 def args_to_values(args: list) -> list:
@@ -718,11 +734,16 @@ class ToStandard(BaseTransformerStrategy):
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         arguments = match_args(eq_call.target, args, {})
         arguments = self.filter_args_by_function(eq_call.condition, arguments)
-        arguments = args_to_values(arguments.values())
+        arguments = arguments.values()
+        if any(not has_fixed_value(arg) for arg in arguments):
+            debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
+            return False
+        arguments = args_to_values(arguments)
         result = False
         try:
             result = eq_call.condition(*arguments)
-        except Exception as exc:
+        except Exception:
+            debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => condition raised error")
             result = False
         debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {result}")
         return result
