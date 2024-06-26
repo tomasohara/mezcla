@@ -211,7 +211,7 @@ class EqCall:
             self,
             target: callable,
             dest: callable,
-            condition: callable = lambda: True,
+            condition: Optional[callable] = None,
             eq_params: Optional[dict] = None,
             extra_params: Optional[dict] = None
         ) -> None:
@@ -512,6 +512,12 @@ def has_fixed_value(arg: cst.Arg) -> bool:
     debug.trace(7, f"has_fixed_value(arg={arg}) => {result}")
     return result
 
+def all_has_fixed_value(args: list) -> bool:
+    """Check if any CST argument node has a fixed value"""
+    result = all(has_fixed_value(arg) for arg in args)
+    debug.trace(7, f"any_has_fixed_value(args={args}) => {result}")
+    return result
+
 def args_to_values(args: list) -> list:
     """Convert a list of CST arguments nodes to a list of values objects"""
     debug.trace(7, "args_to_values(args) => list")
@@ -723,28 +729,24 @@ class ToStandard(BaseTransformerStrategy):
         result = None
         for eq_call in mezcla_to_standard:
             target_module, target_func = get_module_func(eq_call.target)
-            if (module in target_module
-                and func in target_func
-                and self.is_condition_to_replace_met(eq_call, args)):
-                result = eq_call
-                break
+            if module in target_module and func in target_func:
+                if self.is_condition_to_replace_met(eq_call, args):
+                    result = eq_call
+                    break
         debug.trace(6, f"ToStandard.find_eq_call(module={module}, func={func}, args={args}) => {result}")
         return result
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
+        if eq_call.condition is None:
+            return True
         arguments = match_args(eq_call.target, args, {})
         arguments = self.filter_args_by_function(eq_call.condition, arguments)
         arguments = arguments.values()
-        if any(not has_fixed_value(arg) for arg in arguments):
+        if not all_has_fixed_value(arguments):
             debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
-            return False
+            return True
         arguments = args_to_values(arguments)
-        result = False
-        try:
-            result = eq_call.condition(*arguments)
-        except Exception:
-            debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => condition raised error")
-            result = False
+        result = eq_call.condition(*arguments)
         debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {result}")
         return result
 
@@ -783,25 +785,26 @@ class ToMezcla(BaseTransformerStrategy):
         result = None
         for eq_call in mezcla_to_standard:
             dest_module, dest_func = get_module_func(eq_call.dest)
-            if (module in dest_module
-                and func in dest_func
-                and self.is_condition_to_replace_met(eq_call, args)):
-                result = eq_call
-                break
+            if module in dest_module and func in dest_func:
+                if self.is_condition_to_replace_met(eq_call, args):
+                    result = eq_call
+                    break
         debug.trace(7, f"ToMezcla.find_eq_call(module={module}, func={func}, args={args}) => {result}")
         return result
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
+        if eq_call.condition is None:
+            return True
         arguments = match_args(eq_call.dest, args, {})
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.filter_args_by_function(eq_call.condition, arguments)
-        arguments = args_to_values(arguments.values())
-        result = False
-        try:
-            result = eq_call.condition(*arguments)
-        except Exception as exc:
-            result = False
+        arguments = arguments.values()
+        if not all_has_fixed_value(arguments):
+            debug.trace(6, f"ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
+            return True
+        arguments = args_to_values(arguments)
+        result = eq_call.condition(*arguments)
         debug.trace(7, f"ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {result}")
         return result
 
@@ -979,31 +982,6 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
         debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
-class InsertPassTransformer(cst.CSTTransformer):
-    """Insert pass transformer to fix empty indentations"""
-
-    def leave_If(
-            self,
-            original_node: cst.If,
-            updated_node: cst.If
-        ) -> cst.If:
-        """Leave an If node"""
-        block_child_nodes = list(updated_node.body.body)
-        first_block_node = block_child_nodes[0].body[0]
-        # Check if warning commented code is present
-        has_warning = False
-        if isinstance(first_block_node, cst.Expr):
-            if isinstance(first_block_node.value, cst.Comment):
-                has_warning = "# WARNING not supported:" in first_block_node.value.value
-        # Check if the statement only have one child node
-        has_unique_body = len(block_child_nodes) == 1
-        #
-        if has_warning and has_unique_body:
-            pass_body = cst.SimpleStatementLine(body=[cst.Pass()])
-            new_block_body = updated_node.body.with_changes(body=block_child_nodes + [pass_body])
-            updated_node = updated_node.with_changes(body=new_block_body)
-        return updated_node
-
 def transform(to_module, code: str) -> str:
     """
     Transform the code
@@ -1030,10 +1008,6 @@ def transform(to_module, code: str) -> str:
     if isinstance(to_module, ToStandard):
         transformer = ReplaceMezclaWithWarningTransformer()
         tree = tree.visit(transformer)
-
-    # Add pass to empty indentations
-    transformer = InsertPassTransformer()
-    tree = tree.visit(transformer)
 
     # Convert the tree back to code
     modified_code = tree.code
