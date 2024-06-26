@@ -571,6 +571,16 @@ def get_module_func(func) -> Tuple:
     debug.trace(7, f"get_module_func(func={func}) => {result}")
     return result
 
+def get_module_name(module_node) -> str:
+    """Get the module name from the module node"""
+    if isinstance(module_node, cst.Attribute):
+        return get_module_name(module_node.value)
+    if isinstance(module_node, cst.Name):
+        name = module_node.value
+        debug.trace(9, f"StoreAliasesTransformer.module_node_to_name(module_node={module_node}) => {name}")
+        return name
+    raise ValueError(f"Unsupported module node type: {type(module_node)}")
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -870,7 +880,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
         ) -> cst.Call:
         """Replace the call if needed"""
         # Get module and method names
-        module_name = original_node.func.value.value
+        module_name = get_module_name(original_node.func)
         module_name = self.alias_to_module(module_name)
         # Get replacement
         new_module, new_func_node, new_args_nodes = self.to_module.get_replacement(
@@ -918,7 +928,7 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
         ) -> cst.Call:
         """Replace the call if needed"""
         # Get module and method names
-        module_name = original_node.func.value.value
+        module_name = get_module_name(original_node.func)
         module_name = self.alias_to_module(module_name)
         # Check if module is a Mezcla module, and replace call with warning comment
         if module_name in self.mezcla_modules:
