@@ -573,11 +573,11 @@ def get_module_func(func) -> Tuple:
     debug.trace(7, f"get_module_func(func={func}) => {result}")
     return result
 
-def get_module_name(module_node) -> str:
+def get_module_node_to_name(module_node) -> str:
     """Get the module name from the module node"""
     if isinstance(module_node, cst.Attribute):
-        return get_module_name(module_node.value)
-    if isinstance(module_node, cst.Name):
+        return get_module_node_to_name(module_node.value)
+    if isinstance(module_node, (cst.Name, cst.SimpleString)):
         name = module_node.value
         debug.trace(9, f"StoreAliasesTransformer.module_node_to_name(module_node={module_node}) => {name}")
         return name
@@ -881,8 +881,13 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
             updated_node: cst.Call
         ) -> cst.Call:
         """Replace the call if needed"""
+        # Skip if the value is a call, for example:
+        #   ("".join([1, 2, 3])).strip()
+        if isinstance(original_node.func.value, cst.Call):
+            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skip due to value is a call")
+            return updated_node
         # Get module and method names
-        module_name = get_module_name(original_node.func)
+        module_name = get_module_node_to_name(original_node.func)
         module_name = self.alias_to_module(module_name)
         # Get replacement
         new_module, new_func_node, new_args_nodes = self.to_module.get_replacement(
@@ -903,13 +908,13 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
 
     def __init__(self) -> None:
         super().__init__()
-        debug.trace(8, "InsertMezclaWarningsTransformer.__init__()")
+        debug.trace(8, "ReplaceMezclaWithWarningTransformer.__init__()")
         self.mezcla_modules = []
 
     # pylint: disable=invalid-name
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
         """Visit an ImportFrom node"""
-        debug.trace(8, f"InsertMezclaWarningsTransformer.visit_ImportFrom(node={node})")
+        debug.trace(8, f"ReplaceMezclaWithWarningTransformer.visit_ImportFrom(node={node})")
         if node.module.value == "mezcla":
             for name in node.names:
                 self.mezcla_modules.append(name.name.value)
@@ -920,7 +925,7 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
         new_node = updated_node
         if isinstance(original_node.func, cst.Attribute):
             new_node = self.replace_with_warning_if_needed(original_node, updated_node)
-        debug.trace(8, f"InsertMezclaWarningsTransformer.leave_Call(original_node={original_node}, updated_node={updated_node}) => {new_node}")
+        debug.trace(8, f"ReplaceMezclaWithWarningTransformer.leave_Call(original_node={original_node}, updated_node={updated_node}) => {new_node}")
         return new_node
 
     def replace_with_warning_if_needed(
@@ -929,15 +934,20 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
             updated_node: cst.Call
         ) -> cst.Call:
         """Replace the call if needed"""
+        # Skip if the value is a call, for example:
+        #   ("".join([1, 2, 3])).strip()
+        if isinstance(original_node.func.value, cst.Call):
+            debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skip due to value is a call")
+            return updated_node
         # Get module and method names
-        module_name = get_module_name(original_node.func)
+        module_name = get_module_node_to_name(original_node.func)
         module_name = self.alias_to_module(module_name)
         # Check if module is a Mezcla module, and replace call with warning comment
         if module_name in self.mezcla_modules:
             return cst.Comment(
                 value=f"# WARNING not supported: {cst.Module([]).code_for_node(original_node)}"
             )
-        debug.trace(7, f"InsertMezclaWarningsTransformer.replace_with_warning_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
+        debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
 class InsertPassTransformer(cst.CSTTransformer):
