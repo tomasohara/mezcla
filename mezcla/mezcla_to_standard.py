@@ -373,6 +373,62 @@ mezcla_to_standard = [
         extra_params  = { "level": 1 }
     ),
     EqCall(
+        debug.trace_fmt,
+        logging.debug,
+        condition = lambda level: level > 3,
+        eq_params = { "text": "msg" },
+        extra_params = { "level": 4 }
+    ),
+    EqCall(
+        debug.trace_fmt,
+        logging.info,
+        condition = lambda level: 2 < level <= 3,
+        eq_params = { "text": "msg" },
+        extra_params = { "level": 3 }
+    ),
+    EqCall(
+        debug.trace_fmt,
+        logging.warning,
+        condition = lambda level: 1 < level <= 2,
+        eq_params = { "text": "msg" },
+        extra_params = { "level": 2 }
+    ),
+    EqCall(
+        debug.trace_fmt,
+        logging.error,
+        condition = lambda level: 0 < level <= 1,
+        eq_params = { "text": "msg" },
+        extra_params  = { "level": 1 }
+    ),
+    EqCall(
+        debug.trace_fmtd,
+        logging.debug,
+        condition = lambda level: level > 3,
+        eq_params = { "text": "msg" },
+        extra_params = { "level": 4 }
+    ),
+    EqCall(
+        debug.trace_fmtd,
+        logging.info,
+        condition = lambda level: 2 < level <= 3,
+        eq_params = { "text": "msg" },
+        extra_params = { "level": 3 }
+    ),
+    EqCall(
+        debug.trace_fmtd,
+        logging.warning,
+        condition = lambda level: 1 < level <= 2,
+        eq_params = { "text": "msg" },
+        extra_params = { "level": 2 }
+    ),
+    EqCall(
+        debug.trace_fmtd,
+        logging.error,
+        condition = lambda level: 0 < level <= 1,
+        eq_params = { "text": "msg" },
+        extra_params  = { "level": 1 }
+    ),
+    EqCall(
         system.get_exception,
         sys.exc_info,
     ),
