@@ -205,6 +205,7 @@ from mezcla import glue_helpers as gh
 FILE = "file"
 TO_STD = "to_standard"
 TO_MEZCLA = "to_mezcla"
+METRICS = "metrics"
 
 class EqCall:
     """
@@ -914,6 +915,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
         super().__init__()
         self.to_module = to_module
         self.to_import = []
+        self.amount_replaced = 0
 
     def append_import_if_unique(self, new_import: cst.Name) -> None:
         """Append the import if unique"""
@@ -971,6 +973,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
         )
         # Replace if replacement found
         if new_func_node:
+            self.amount_replaced += 1
             updated_node = updated_node.with_changes(
                 func=new_func_node,
                 args=new_args_nodes
@@ -987,6 +990,7 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
         super().__init__()
         debug.trace(8, "ReplaceMezclaWithWarningTransformer.__init__()")
         self.mezcla_modules = []
+        self.amount_replaced = 0
 
     # pylint: disable=invalid-name
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
@@ -1019,11 +1023,12 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
         module_name = self.alias_to_module(module_name)
         # Check if module is a Mezcla module, and replace call with warning comment
         if module_name in self.mezcla_modules:
+            self.amount_replaced += 1
             return text_to_comments_node(f"WARNING not supported: {cst.Module([]).code_for_node(original_node)}")
         debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
-def transform(to_module, code: str) -> str:
+def transform(to_module, code: str, with_metrics: bool = False) -> str:
     """
     Transform the code
 
@@ -1042,13 +1047,27 @@ def transform(to_module, code: str) -> str:
     tree = cst.parse_module(code)
 
     # Replace calls in the tree
-    transformer = ReplaceCallsTransformer(to_module)
-    tree = tree.visit(transformer)
+    calls_transformer = ReplaceCallsTransformer(to_module)
+    tree = tree.visit(calls_transformer)
 
     # Replace Mezcla calls with warning if not supported
+    warning_transformer = ReplaceMezclaWithWarningTransformer()
     if isinstance(to_module, ToStandard):
-        transformer = ReplaceMezclaWithWarningTransformer()
-        tree = tree.visit(transformer)
+        tree = tree.visit(warning_transformer)
+
+    # Show metrics
+    if with_metrics:
+        total = calls_transformer.amount_replaced + warning_transformer.amount_replaced
+        perc = (calls_transformer.amount_replaced / total) * 100 if total > 0 else 0
+        perc_message = f"\t({perc:.2f} %)" if warning_transformer.amount_replaced > 0 else ""
+        print(
+            f"Calls replaced:\t{calls_transformer.amount_replaced}{perc_message}",
+            file=sys.stderr
+        )
+        print(
+            f"Warnings added:\t{warning_transformer.amount_replaced}",
+            file=sys.stderr
+        )
 
     # Convert the tree back to code
     modified_code = tree.code
@@ -1075,6 +1094,7 @@ class MezclaToStandardScript(Main):
     file = ""
     to_std = False
     to_mezcla = False
+    metrics = False
 
     def setup(self) -> None:
         """Process arguments"""
@@ -1082,6 +1102,7 @@ class MezclaToStandardScript(Main):
         self.file = self.get_parsed_argument(FILE, self.file)
         self.to_std = self.has_parsed_option(TO_STD)
         self.to_mezcla = self.has_parsed_option(TO_MEZCLA)
+        self.metrics = self.has_parsed_option(METRICS)
 
     def run_main_step(self) -> None:
         """Process main script"""
@@ -1093,7 +1114,7 @@ class MezclaToStandardScript(Main):
             to_module = ToMezcla()
         else:
             to_module = ToStandard()
-        modified_code = transform(to_module, code)
+        modified_code = transform(to_module, code, with_metrics=self.metrics)
         print(modified_code)
 
 if __name__ == '__main__':
@@ -1105,7 +1126,8 @@ if __name__ == '__main__':
         ],
         boolean_options = [
             (TO_STD, 'Convert Mezcla calls to standard calls'),
-            (TO_MEZCLA, 'Convert standard calls to Mezcla calls')
+            (TO_MEZCLA, 'Convert standard calls to Mezcla calls'),
+            (METRICS, 'Show metrics for the conversion'),
         ],
         manual_input = True,
     )
