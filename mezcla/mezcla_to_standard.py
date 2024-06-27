@@ -454,10 +454,6 @@ mezcla_to_standard = [
         time.sleep,
         eq_params={ "num_seconds": "seconds" }
     ),
-    EqCall(
-        system.get_args,
-        sys.argv,
-    ),
 ]
 
 def value_to_arg(value: object) -> cst.Arg:
