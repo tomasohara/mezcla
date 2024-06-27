@@ -687,6 +687,8 @@ class BaseTransformerStrategy:
         }
         ```
         """
+        if isinstance(func, str):
+            func = string_to_callable(func)
         result = {}
         try:
             for key in inspect.getfullargspec(func).args:
