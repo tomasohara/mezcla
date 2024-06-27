@@ -188,6 +188,9 @@ from typing import (
     Optional, Tuple,
 )
 import tempfile
+# Imports used to convert string to callable
+# pylint: disable=unused-import
+import os
 
 # Installed module
 import libcst as cst
@@ -543,6 +546,25 @@ def remove_last_comma(args: list) -> list:
     debug.trace(7, "remove_last_comma(args) => list")
     return args
 
+def string_to_callable(func_string):
+    """
+    Converts a string representing a function into the actual callable function.
+    
+    Parameters:
+    func_string (str): The string representing the function, e.g., "os.remove".
+    
+    Returns:
+    callable: The actual function.
+    """
+    components = func_string.split('.')
+    # Get the base module from the global namespace
+    module = globals()[components[0]]
+    # Iterate through the components to get the desired attribute
+    for component in components[1:]:
+        module = getattr(module, component)
+    debug.trace(7, f"string_to_callable(func_string={func_string}) => {module}")
+    return module
+
 def match_args(func: callable, args: list, kwargs: dict) -> dict:
     """
     Match the arguments to the function signature
@@ -556,6 +578,8 @@ def match_args(func: callable, args: list, kwargs: dict) -> dict:
     }
     ```
     """
+    if isinstance(func, str):
+        func = string_to_callable(func)
     target_spec = inspect.getfullargspec(func)
     # Extract arguments
     arguments = dict(zip(target_spec.args, args))
