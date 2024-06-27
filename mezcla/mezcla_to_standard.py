@@ -391,11 +391,6 @@ mezcla_to_standard = [
         eq_params={ "message": "status" }
     ),
     EqCall(
-        system.exit,
-        sys.exit,
-        eq_params={ "message": "status" }
-    ),
-    EqCall(
         system.open_file,
         open,
         eq_params={ "filename": "file" }
@@ -440,10 +435,6 @@ mezcla_to_standard = [
         "os.path.realpath",
     ),
     EqCall(
-        system.real_path,
-        "os.path.realpath",
-    ),
-    EqCall(
         system.round_num,
         round,
         extra_params={ "ndigits": 6 }
@@ -461,6 +452,17 @@ mezcla_to_standard = [
     EqCall(
         system.print_exception_info,
         sys.exc_info,
+    ),
+    EqCall(
+        system.file_exists,
+        "os.path.exists",
+        eq_params={ "filename": "path" }
+    ),
+    EqCall(
+        system.print_error,
+        print,
+        eq_params={ "text": "values" },
+        extra_params={ "file": sys.stderr }
     ),
 ]
 
