@@ -587,7 +587,7 @@ def flatten_list(list_to_flatten: list) -> list:
 
 def get_module_func(func) -> Tuple:
     """
-    Get the module and function from the function
+    Get the module and function from callable object
     ```
     import some_module
     get_module_func(some_module.foo) => ('some_module', 'foo')
@@ -596,6 +596,8 @@ def get_module_func(func) -> Tuple:
     result = None
     if isinstance(func, str):
         result = func.rsplit('.', 1)
+    elif func.__module__ == "builtins":
+        result = None, func.__name__
     else:
         result = func.__module__, func.__name__
     debug.trace(7, f"get_module_func(func={func}) => {result}")
@@ -688,7 +690,10 @@ class BaseTransformerStrategy:
             return None, None, []
         new_module, new_func = self.eq_call_to_module_func(eq_call)
         # Create the new module node
-        if "." in new_module:
+        if new_module is None:
+            new_import_node = None
+            new_value_node = None
+        elif "." in new_module:
             new_import_node = cst.Name(new_module.split('.')[0])
             new_value_node = cst.Attribute(
                 value=new_import_node,
@@ -698,7 +703,10 @@ class BaseTransformerStrategy:
             new_import_node = cst.Name(new_module)
             new_value_node = new_import_node
         # Create the new function node
-        new_func_node = cst.Attribute(value=new_value_node, attr=cst.Name(new_func))
+        if new_module is None:
+            new_func_node = cst.Name(new_func)
+        else:
+            new_func_node = cst.Attribute(value=new_value_node, attr=cst.Name(new_func))
         # Create the new arguments nodes
         new_args_nodes = self.get_args_replacement(eq_call, args, []) ## TODO: add kwargs
         debug.trace(5, f"BaseTransformerStrategy.get_replacement(module={module}, func={func}, args={args}) => {new_module}, {new_func_node}, {new_args_nodes}")
@@ -735,7 +743,11 @@ class ToStandard(BaseTransformerStrategy):
         result = None
         for eq_call in mezcla_to_standard:
             target_module, target_func = get_module_func(eq_call.target)
-            if module in target_module and func in target_func:
+            if target_module is None:
+                pass
+            elif module not in target_module:
+                continue
+            if func in target_func:
                 if self.is_condition_to_replace_met(eq_call, args):
                     result = eq_call
                     break
@@ -791,7 +803,11 @@ class ToMezcla(BaseTransformerStrategy):
         result = None
         for eq_call in mezcla_to_standard:
             dest_module, dest_func = get_module_func(eq_call.dest)
-            if module in dest_module and func in dest_func:
+            if dest_module is None:
+                pass
+            elif module not in dest_module:
+                continue
+            if func in dest_func:
                 if self.is_condition_to_replace_met(eq_call, args):
                     result = eq_call
                     break
@@ -932,11 +948,12 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
             module_name, original_node.func.attr.value, original_node.args
         )
         # Replace if replacement found
-        if new_module and new_func_node:
+        if new_func_node:
             updated_node = updated_node.with_changes(
                 func=new_func_node,
                 args=new_args_nodes
             )
+        if new_module:
             self.append_import_if_unique(new_module)
         debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
