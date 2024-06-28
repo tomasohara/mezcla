@@ -491,11 +491,19 @@ mezcla_to_standard = [
     EqCall(
         system.round_num,
         round,
+        eq_params={ "value": "number" },
         extra_params={ "ndigits": 6 }
     ),
     EqCall(
         system.round3,
         round,
+        eq_params={ "num": "number" },
+        extra_params={ "ndigits": 3 }
+    ),
+    EqCall(
+        tpo.round_num,
+        round,
+        eq_params={ "num": "number" },
         extra_params={ "ndigits": 3 }
     ),
     EqCall(
