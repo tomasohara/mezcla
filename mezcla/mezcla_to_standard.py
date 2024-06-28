@@ -440,10 +440,11 @@ mezcla_to_standard = [
         features=[Features.FORMAT_STRING],
     ),
     EqCall(
-        system.print_error,
+        (system.print_error, system.print_stderr, system.print_stderr_fmt),
         print,
         eq_params={ "text": "values" },
         extra_params={ "file": sys.stderr },
+        features=[Features.FORMAT_STRING],
     ),
     EqCall(
         system.exit,
@@ -779,6 +780,8 @@ def format_strings_in_args(args: list) -> dict:
                 new_arg = arg.with_changes(value=dot_format_node)
                 result.append(new_arg)
                 args_to_skip += format_kwargs
+            else:
+                result.append(arg)
         else:
             result.append(arg)
     result = remove_last_comma(result)
