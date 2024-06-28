@@ -188,6 +188,7 @@ from typing import (
     Optional, Tuple,
 )
 import tempfile
+from enum import Enum
 # Imports used to convert string to callable
 # pylint: disable=unused-import
 import os
@@ -218,7 +219,8 @@ class EqCall:
             dest: callable,
             condition: Optional[callable] = None,
             eq_params: Optional[dict] = None,
-            extra_params: Optional[dict] = None
+            extra_params: Optional[dict] = None,
+            features: list = []
         ) -> None:
         self.target = target
         """
@@ -281,6 +283,35 @@ class EqCall:
         > logging_error("message") => replacement_for_logging(1, "message")
         ```
         """
+
+        self.features = features
+        """
+        Extra features to be used in the replacement
+        """
+
+class Features(Enum):
+    """Features to be used in the EqCall"""
+
+    FORMAT_STRING = "format_string"
+    """
+    Convert arguments to format string
+
+    ```
+        debug.trace_fmt(
+            7,
+            "register_env_option({v}, {dsc}, {dft})",
+            v=var,
+            dsc=description,
+            dft=default
+        )
+    ```
+    to
+    ```
+        logging.debug(
+            "register_env_option({v}, {dsc}, {dft})".format(v=var, dsc=description, dft=default)
+        )
+    ```
+    """
 
 # Add equivalent calls between Mezcla and standard
 mezcla_to_standard = [
@@ -377,56 +408,64 @@ mezcla_to_standard = [
         logging.debug,
         condition = lambda level: level > 3,
         eq_params = { "text": "msg" },
-        extra_params = { "level": 4 }
+        extra_params = { "level": 4 },
+        features = [Features.FORMAT_STRING],
     ),
     EqCall(
         debug.trace_fmt,
         logging.info,
         condition = lambda level: 2 < level <= 3,
         eq_params = { "text": "msg" },
-        extra_params = { "level": 3 }
+        extra_params = { "level": 3 },
+        features = [Features.FORMAT_STRING],
     ),
     EqCall(
         debug.trace_fmt,
         logging.warning,
         condition = lambda level: 1 < level <= 2,
         eq_params = { "text": "msg" },
-        extra_params = { "level": 2 }
+        extra_params = { "level": 2 },
+        features = [Features.FORMAT_STRING],
     ),
     EqCall(
         debug.trace_fmt,
         logging.error,
         condition = lambda level: 0 < level <= 1,
         eq_params = { "text": "msg" },
-        extra_params  = { "level": 1 }
+        extra_params  = { "level": 1 },
+        features = [Features.FORMAT_STRING],
     ),
     EqCall(
         debug.trace_fmtd,
         logging.debug,
         condition = lambda level: level > 3,
         eq_params = { "text": "msg" },
-        extra_params = { "level": 4 }
+        extra_params = { "level": 4 },
+        features = [Features.FORMAT_STRING],
     ),
     EqCall(
         debug.trace_fmtd,
         logging.info,
         condition = lambda level: 2 < level <= 3,
         eq_params = { "text": "msg" },
-        extra_params = { "level": 3 }
+        extra_params = { "level": 3 },
+        features = [Features.FORMAT_STRING],
     ),
     EqCall(
         debug.trace_fmtd,
         logging.warning,
         condition = lambda level: 1 < level <= 2,
         eq_params = { "text": "msg" },
-        extra_params = { "level": 2 }
+        extra_params = { "level": 2 },
+        features = [Features.FORMAT_STRING],
     ),
     EqCall(
         debug.trace_fmtd,
         logging.error,
         condition = lambda level: 0 < level <= 1,
         eq_params = { "text": "msg" },
-        extra_params  = { "level": 1 }
+        extra_params  = { "level": 1 },
+        features = [Features.FORMAT_STRING],
     ),
     EqCall(
         system.get_exception,
@@ -706,6 +745,106 @@ def text_to_comments_node(text: str) -> cst.Comment:
     debug.trace(9, f"text_to_comment_node(text={text}) => {comment}")
     return comment
 
+def get_format_names_in_string(value: str) -> list:
+    """
+    Return list of format variables names in a string
+
+    Input:
+    ```
+        get_format_names_in_string("Hello {user}, welcome to {place}")
+    ```
+
+    Output:
+    ```
+        ["user", "place"]
+    ```
+    """
+    result = []
+    for name in value.split("{"):
+        if "}" in name:
+            result.append(name.split("}")[0].strip())
+    debug.trace(9, f"get_format_names_in_string(value={value}) => {result}")
+    return result
+
+def create_string_dot_format_node(value: str, format_args: list) -> cst.Call:
+    """
+    Create a string.format() node
+    """
+    format_node = cst.Attribute(
+        value=cst.SimpleString(value=value),
+        attr=cst.Name("format")
+    )
+    call_node = cst.Call(
+        func=format_node,
+        args=format_args
+    )
+    debug.trace(9, f"create_string_dot_format_node(value={value}, format_args={format_args}) => {call_node}")
+    return call_node
+
+def get_keyword_name(arg: cst.Arg) -> Optional[str]:
+    """
+    Get the keyword name from the argument node
+    """
+    if arg.keyword:
+        return arg.keyword.value
+    return None
+
+def filter_kwargs(kwargs: list, names: list) -> list:
+    """
+    Filter kwargs by the names
+    """
+    result = []
+    for kwarg in kwargs:
+        keyword = get_keyword_name(kwarg)
+        if not keyword:
+            continue
+        if keyword in names:
+            result.append(kwarg)
+    debug.trace(9, f"filter_kwargs(names={names}) => {result}")
+    return result
+
+def format_strings_in_args(args: list) -> dict:
+    """
+    Convert arguments to format strings
+
+    Usage example, with simplified CST:
+
+    ```
+    args = (
+        Arg("this is a string with some value {v}"),
+        Arg(v=42)
+    )
+    format_strings_in_args(args) => (
+        Arg("this is a string with some value {v}".format(v=42)),
+    )
+    ```
+    """
+    if not args:
+        return []
+    args = list(args)
+    result = []
+    args_to_skip = []
+    for arg in args:
+        # Check if argument is already processed
+        keyword = get_keyword_name(arg)
+        if keyword in args_to_skip:
+            continue
+        # Process the argument
+        arg_content = arg.value
+        if isinstance(arg_content, cst.SimpleString):
+            format_names = get_format_names_in_string(arg_content.value)
+            if format_names:
+                format_kwargs = filter_kwargs(args, format_names)
+                dot_format_node = create_string_dot_format_node(arg_content.value, format_kwargs)
+                new_arg = arg.with_changes(value=dot_format_node)
+                result.append(new_arg)
+                args_to_skip += format_kwargs
+        else:
+            result.append(arg)
+    result = remove_last_comma(result)
+    debug.trace(7, f"format_strings_in_args(args={args}) => {result}")
+    return result
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -854,6 +993,8 @@ class ToStandard(BaseTransformerStrategy):
         return result
 
     def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
+        if Features.FORMAT_STRING in eq_call.features:
+            args = format_strings_in_args(args)
         arguments = match_args(eq_call.target, args, kwargs)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
