@@ -1287,6 +1287,9 @@ class MezclaToStandardScript(Main):
     def run_main_step(self) -> None:
         """Process main script"""
         debug.trace(5, "MezclaToStandardScript.run_main_step()")
+        # Checks
+        if not system.file_exists(self.file):
+            raise ValueError(f"File {self.file} does not exist")
         # Read the file
         code = system.read_file(self.file)
         # Checks
