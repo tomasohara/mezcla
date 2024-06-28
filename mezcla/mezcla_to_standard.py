@@ -420,21 +420,24 @@ mezcla_to_standard = [
         logging.info,
         condition = lambda level: 2 < level <= 3,
         eq_params = { "text": "msg" },
-        extra_params = { "level": 3 }
+        extra_params = { "level": 3 },
+        features=[Features.FORMAT_STRING],
     ),
     EqCall(
         (debug.trace, debug.trace_fmt, debug.trace_fmtd),
         logging.warning,
         condition = lambda level: 1 < level <= 2,
         eq_params = { "text": "msg" },
-        extra_params = { "level": 2 }
+        extra_params = { "level": 2 },
+        features=[Features.FORMAT_STRING],
     ),
     EqCall(
         (debug.trace, debug.trace_fmt, debug.trace_fmtd),
         logging.error,
         condition = lambda level: 0 < level <= 1,
         eq_params = { "text": "msg" },
-        extra_params  = { "level": 1 }
+        extra_params  = { "level": 1 },
+        features=[Features.FORMAT_STRING],
     ),
     EqCall(
         system.print_error,
