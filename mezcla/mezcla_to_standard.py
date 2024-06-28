@@ -361,10 +361,12 @@ mezcla_to_standard = [
     EqCall(
         gh.basename,
         "os.path.basename",
+        eq_params={ "filename": "p" },
     ),
     EqCall(
         gh.dir_path,
         "os.path.dirname",
+        eq_params={ "filename": "p" },
     ),
     EqCall(
         gh.dirname,
