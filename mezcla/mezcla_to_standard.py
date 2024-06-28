@@ -515,6 +515,10 @@ mezcla_to_standard = [
         (system.print_exception_info, system.get_exception),
         sys.exc_info,
     ),
+    EqCall(
+        system.to_string,
+        str,
+    ),
 ]
 
 def value_to_arg(value: object) -> cst.Arg:
