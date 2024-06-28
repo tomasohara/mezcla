@@ -447,7 +447,7 @@ mezcla_to_standard = [
         features=[Features.FORMAT_STRING],
     ),
     EqCall(
-        (system.print_error, system.print_stderr, system.print_stderr_fmt),
+        (system.print_error, system.print_stderr, system.print_stderr_fmt, tpo.print_stderr),
         print,
         eq_params={ "text": "values" },
         extra_params={ "file": sys.stderr },
