@@ -201,6 +201,7 @@ from mezcla.main import Main
 from mezcla import system
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla import tpo_common as tpo
 
 # Arguments
 FILE = "file"
@@ -406,6 +407,12 @@ mezcla_to_standard = [
         gh.get_directory_listing,
         "os.listdir",
         eq_params = { "dir_name": "path" }
+    ),
+    EqCall(
+        tpo.debug_print,
+        logging.debug,
+        eq_params = { "text": "msg" },
+        extra_params = { "level": 1 },
     ),
     EqCall(
         (debug.trace, debug.trace_fmt, debug.trace_fmtd),
