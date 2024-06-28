@@ -523,12 +523,10 @@ mezcla_to_standard = [
     EqCall(
         (system.to_float, system.safe_float),
         float,
-        extra_params={ "default_value": 0.0 }
     ),
     EqCall(
         (system.to_int, system.safe_int),
         int,
-        extra_params={ "default_value": 0 }
     ),
 ]
 
