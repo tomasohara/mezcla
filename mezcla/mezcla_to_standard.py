@@ -208,6 +208,7 @@ FILE = "file"
 TO_STD = "to_standard"
 TO_MEZCLA = "to_mezcla"
 METRICS = "metrics"
+IN_PLACE = "in_place"
 
 class EqCall:
     """
@@ -1274,6 +1275,7 @@ class MezclaToStandardScript(Main):
     to_std = False
     to_mezcla = False
     metrics = False
+    in_place = False
 
     def setup(self) -> None:
         """Process arguments"""
@@ -1282,19 +1284,39 @@ class MezclaToStandardScript(Main):
         self.to_std = self.has_parsed_option(TO_STD)
         self.to_mezcla = self.has_parsed_option(TO_MEZCLA)
         self.metrics = self.has_parsed_option(METRICS)
+        self.in_place = self.has_parsed_option(IN_PLACE)
 
     def run_main_step(self) -> None:
         """Process main script"""
         debug.trace(5, "MezclaToStandardScript.run_main_step()")
+        # Read the file
         code = system.read_file(self.file)
+        # Checks
         if not code:
             raise ValueError(f"File {self.file} is empty")
+        if self.in_place:
+            print(
+                "\033[93m WARNING, THIS OPERATION WILL OVERRIDE:\n",
+                f"{self.file}\n",
+                "Make sure you have a backup of the file before proceeding.\n\033[0m",
+                file=sys.stderr
+            )
+            want_to_continue = input("Are you sure you want to continue? (Y/n): ").lower()
+            if want_to_continue != "y" and want_to_continue != "yes":
+                print("Operation cancelled", file=sys.stderr)
+                debug.trace(5, "MezclaToStandardScript.run_main_step() => cancelled by user")
+                return
+        # Process
         if self.to_mezcla:
             to_module = ToMezcla()
         else:
             to_module = ToStandard()
         modified_code = transform(to_module, code, with_metrics=self.metrics)
-        print(modified_code)
+        # Output
+        if self.in_place:
+            system.write_file(self.file, modified_code)
+        else:
+            print(modified_code)
 
 if __name__ == '__main__':
     ## TODO4: use main()
@@ -1307,6 +1329,7 @@ if __name__ == '__main__':
             (TO_STD, 'Convert Mezcla calls to standard calls'),
             (TO_MEZCLA, 'Convert standard calls to Mezcla calls'),
             (METRICS, 'Show metrics for the conversion'),
+            (IN_PLACE, 'Modify the file in place, useful if you want to compare changes using Git')
         ],
         manual_input = True,
     )
