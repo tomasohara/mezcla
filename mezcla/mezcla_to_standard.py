@@ -289,6 +289,43 @@ class EqCall:
         Extra features to be used in the replacement
         """
 
+    def get_permutations(self) -> list:
+        """
+        Get all permutations of the equivalent call,
+
+        This is useful when dealing with multiple targets or destinations
+        """
+        # Group all targets
+        targets = []
+        if isinstance(self.target, tuple):
+            targets = list(self.target)
+        elif isinstance(self.target, list):
+            targets = self.target
+        else:
+            targets = [self.target]
+        # Group all destinations
+        dests = []
+        if isinstance(self.dest, tuple):
+            dests += list(self.dest)
+        elif isinstance(self.dest, list):
+            dests += self.dest
+        else:
+            dests.append(self.dest)
+        # Create all permutations
+        result = []
+        for target in targets:
+            for dest in dests:
+                result.append(EqCall(
+                    target=target,
+                    dest=dest,
+                    condition=self.condition,
+                    eq_params=self.eq_params,
+                    extra_params=self.extra_params,
+                    features=self.features
+                ))
+        debug.trace(7, f"EqCall.get_permutations() => {result}")
+        return result
+
 class Features(Enum):
     """Features to be used in the EqCall"""
 
@@ -333,22 +370,22 @@ mezcla_to_standard = [
         eq_params={ "file_path": "filename" }
     ),
     EqCall(
-        gh.file_exists,
+        (gh.file_exists, system.file_exists),
         "os.path.exists",
         eq_params={ "filename": "path" }
     ),
     EqCall(
-        gh.form_path,
+        (gh.form_path, system.form_path),
         "os.path.join",
         eq_params = { "filenames": "a" }
     ),
     EqCall(
-        gh.is_directory,
+        (gh.is_directory, system.is_directory),
         "os.path.isdir",
         eq_params = { "path": "s" }
     ),
     EqCall(
-        gh.create_directory,
+        (gh.create_directory, system.create_directory),
         "os.mkdir",
     ),
     EqCall(
@@ -357,12 +394,7 @@ mezcla_to_standard = [
         eq_params = { "source": "src", "target": "dst" }
     ),
     EqCall(
-        gh.delete_file,
-        "os.remove",
-        eq_params = { "filename": "path" }
-    ),
-    EqCall(
-        gh.delete_existing_file,
+        (gh.delete_file, gh.delete_existing_file),
         "os.remove",
         eq_params = { "filename": "path" }
     ),
@@ -376,108 +408,38 @@ mezcla_to_standard = [
         eq_params = { "dir_name": "path" }
     ),
     EqCall(
-        debug.trace,
+        (debug.trace, debug.trace_fmt, debug.trace_fmtd),
         logging.debug,
         condition = lambda level: level > 3,
         eq_params = { "text": "msg" },
-        extra_params = { "level": 4 }
+        extra_params = { "level": 4 },
+        features=[Features.FORMAT_STRING]
     ),
     EqCall(
-        debug.trace,
+        (debug.trace, debug.trace_fmt, debug.trace_fmtd),
         logging.info,
         condition = lambda level: 2 < level <= 3,
         eq_params = { "text": "msg" },
         extra_params = { "level": 3 }
     ),
     EqCall(
-        debug.trace,
+        (debug.trace, debug.trace_fmt, debug.trace_fmtd),
         logging.warning,
         condition = lambda level: 1 < level <= 2,
         eq_params = { "text": "msg" },
         extra_params = { "level": 2 }
     ),
     EqCall(
-        debug.trace,
+        (debug.trace, debug.trace_fmt, debug.trace_fmtd),
         logging.error,
         condition = lambda level: 0 < level <= 1,
         eq_params = { "text": "msg" },
         extra_params  = { "level": 1 }
     ),
     EqCall(
-        debug.trace_fmt,
-        logging.debug,
-        condition = lambda level: level > 3,
-        eq_params = { "text": "msg" },
-        extra_params = { "level": 4 },
-        features = [Features.FORMAT_STRING],
-    ),
-    EqCall(
-        debug.trace_fmt,
-        logging.info,
-        condition = lambda level: 2 < level <= 3,
-        eq_params = { "text": "msg" },
-        extra_params = { "level": 3 },
-        features = [Features.FORMAT_STRING],
-    ),
-    EqCall(
-        debug.trace_fmt,
-        logging.warning,
-        condition = lambda level: 1 < level <= 2,
-        eq_params = { "text": "msg" },
-        extra_params = { "level": 2 },
-        features = [Features.FORMAT_STRING],
-    ),
-    EqCall(
-        debug.trace_fmt,
-        logging.error,
-        condition = lambda level: 0 < level <= 1,
-        eq_params = { "text": "msg" },
-        extra_params  = { "level": 1 },
-        features = [Features.FORMAT_STRING],
-    ),
-    EqCall(
-        debug.trace_fmtd,
-        logging.debug,
-        condition = lambda level: level > 3,
-        eq_params = { "text": "msg" },
-        extra_params = { "level": 4 },
-        features = [Features.FORMAT_STRING],
-    ),
-    EqCall(
-        debug.trace_fmtd,
-        logging.info,
-        condition = lambda level: 2 < level <= 3,
-        eq_params = { "text": "msg" },
-        extra_params = { "level": 3 },
-        features = [Features.FORMAT_STRING],
-    ),
-    EqCall(
-        debug.trace_fmtd,
-        logging.warning,
-        condition = lambda level: 1 < level <= 2,
-        eq_params = { "text": "msg" },
-        extra_params = { "level": 2 },
-        features = [Features.FORMAT_STRING],
-    ),
-    EqCall(
-        debug.trace_fmtd,
-        logging.error,
-        condition = lambda level: 0 < level <= 1,
-        eq_params = { "text": "msg" },
-        extra_params  = { "level": 1 },
-        features = [Features.FORMAT_STRING],
-    ),
-    EqCall(
-        system.get_exception,
-        sys.exc_info,
-    ),
-    EqCall(
-        system.get_exception,
-        sys.exc_info,
-    ),
-    EqCall(
         system.print_error,
         print,
+        eq_params={ "text": "values" },
         extra_params={ "file": sys.stderr },
     ),
     EqCall(
@@ -496,22 +458,8 @@ mezcla_to_standard = [
         eq_params={ "directory": "path" }
     ),
     EqCall(
-        system.form_path,
-        "os.path.join",
-        eq_params = { "filenames": "a" }
-    ),
-    EqCall(
-        system.is_directory,
-        "os.path.isdir",
-        eq_params = { "path": "s" }
-    ),
-    EqCall(
         system.is_regular_file,
         "os.path.isfile",
-    ),
-    EqCall(
-        system.create_directory,
-        "os.mkdir",
     ),
     EqCall(
         system.get_current_directory,
@@ -545,19 +493,8 @@ mezcla_to_standard = [
         eq_params={ "num_seconds": "seconds" }
     ),
     EqCall(
-        system.print_exception_info,
+        (system.print_exception_info, system.get_exception),
         sys.exc_info,
-    ),
-    EqCall(
-        system.file_exists,
-        "os.path.exists",
-        eq_params={ "filename": "path" }
-    ),
-    EqCall(
-        system.print_error,
-        print,
-        eq_params={ "text": "values" },
-        extra_params={ "file": sys.stderr }
     ),
 ]
 
@@ -697,13 +634,13 @@ def match_args(func: callable, args: list, kwargs: dict) -> dict:
 def flatten_list(list_to_flatten: list) -> list:
     """Flatten a list"""
     result = []
-    for arg in list_to_flatten:
-        if isinstance(arg, list):
-            result += arg
-        elif isinstance(arg, tuple):
-            result += list(arg)
+    for item in list_to_flatten:
+        if isinstance(item, list):
+            result += item
+        elif isinstance(item, tuple):
+            result += list(item)
         else:
-            result.append(arg)
+            result.append(item)
     debug.trace(7, f"flatten_list(list_to_flatten={list_to_flatten}) => {result}")
     return result
 
@@ -965,7 +902,9 @@ class ToStandard(BaseTransformerStrategy):
 
     def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         result = None
-        for eq_call in mezcla_to_standard:
+        all_eq_calls = [e.get_permutations() for e in mezcla_to_standard]
+        all_eq_calls = flatten_list(all_eq_calls)
+        for eq_call in all_eq_calls:
             target_module, target_func = get_module_func(eq_call.target)
             if target_module is None:
                 pass
@@ -1027,7 +966,9 @@ class ToMezcla(BaseTransformerStrategy):
 
     def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
         result = None
-        for eq_call in mezcla_to_standard:
+        all_eq_calls = [e.get_permutations() for e in mezcla_to_standard]
+        all_eq_calls = flatten_list(all_eq_calls)
+        for eq_call in all_eq_calls:
             dest_module, dest_func = get_module_func(eq_call.dest)
             if dest_module is None:
                 pass
