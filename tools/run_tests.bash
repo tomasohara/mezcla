@@ -90,22 +90,31 @@ fi
 # Make sure mezcla in python path
 export PYTHONPATH="$mezcla/:$PYTHONPATH"
 
-# Run with coverage enabled
-test_result=0
 # shellcheck disable=SC2046,SC2086
-if [ "$1" == "--coverage" ]; then
-    export COVERAGE_RCFILE="$base/.coveragerc"
-    export CHECK_COVERAGE='true'
-    coverage erase
-    coverage run -m pytest $tests $example_tests
-    coverage combine
-    coverage html
-    test_result="$?"
-else
-    ## OLD: pytest $tests $example_tests
-    pytest_options="${PYTEST_OPTIONS:-}"
-    pytest $pytest_options $tests $example_tests
-    test_result="$?"
+
+# Get environment overrides
+# TODO3: Get optional environment settings from _test-config.bash
+## DEBUG: export DEBUG_LEVEL=6
+## TEST: export TEST_REGEX="calc-entropy-tests"
+# Show environment if detailed debugging
+## OLD: DEBUG_LEVEL=${DEBUG_LEVEL:-0}
+if [ "$DEBUG_LEVEL" -ge 5 ]; then
+    ## OLD: echo "in $0 $*"
+    echo "Environment: {"
+    printenv | sort | perl -pe "s/^/    /;"
+    echo "   }"
+fi
+
+# Run the python tests 
+# note: the python stdout and stderr streams are unbuffered so interleaved
+## OLD: dir=$(dirname "${BASH_SOURCE[0]}")
+python_result=0
+if [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
+    export PYTHONUNBUFFERED=1
+    echo -n "Running tests under "
+    python3 --version
+    python3 "$dir"/master_test.py
+    python_result="$?"
 fi
 
 # End of processing
@@ -116,4 +125,4 @@ fi
 # Return status code used by Github actions
 ## TODO3: integrate support for Jupyter notebooks tests and use combined result;
 ## see run_tests.bash in shell-scripts repo.
-exit "$test_result"
+exit "$python_result"
