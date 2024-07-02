@@ -818,6 +818,25 @@ def format_strings_in_args(args: list) -> dict:
     debug.trace(7, f"format_strings_in_args(args={args}) => {result}")
     return result
 
+def node_to_reference_string(node: cst.CSTNode) -> str:
+    """
+    Return reference of a node
+
+    ```
+    node = cst.Call(func=cst.Attribute(value=cst.Name("os"), attr=cst.Name("remove")))
+    node_to_reference_string(node) => "os.remove"
+    ```
+    """
+    if isinstance(node, cst.Call):
+        return node_to_reference_string(node.func)
+    if isinstance(node, cst.Attribute):
+        return f"{node_to_reference_string(node.value)}.{node.attr.value}"
+    if isinstance(node, cst.Name):
+        return node.value
+    if isinstance(node, cst.SimpleString):
+        return f'"{node.value}"'
+    raise ValueError(f"Unsupported node type: {type(node)}")
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -1059,6 +1078,47 @@ class ToMezcla(BaseTransformerStrategy):
     def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
         return get_module_func(eq_call.target)
 
+class StoreMetrics:
+    """CST Transformer with metrics utilities"""
+
+    def __init__(self) -> None:
+
+        self.history = []
+        """
+        History of replacements, as strings
+        ```
+        self.history = [
+            "os.remove => os.path.remove",
+            "os.path.basename => os.path.basename"
+            ...
+        ]
+        ``` 
+        """
+
+    @property
+    def unique(self) -> int:
+        """Get the number of unique replacements"""
+        return len(set(self.history))
+
+    @property
+    def total(self) -> int:
+        """Get the number of total replacements"""
+        return len(self.history)
+
+    def add_to_history(self, from_call: str, to_call: str = None) -> None:
+        """Add replacement to metrics"""
+        replacement_as_str = f"{from_call} --> {to_call}" if to_call else from_call
+        self.history.append(replacement_as_str)
+
+    def get_unique_history(self) -> tuple:
+        """Get the sorted history by amount of counts"""
+        result = []
+        for replacement in set(self.history):
+            count = self.history.count(replacement)
+            result.append((replacement, count))
+        result = sorted(result, key=lambda x: x[1], reverse=True)
+        return result
+
 class StoreAliasesTransformer(cst.CSTTransformer):
     """Store aliases visitor"""
 
@@ -1087,15 +1147,15 @@ class StoreAliasesTransformer(cst.CSTTransformer):
         debug.trace(9, f"StoreAliasesTransformer.alias_to_module(module_name={module_name}) => {result}")
         return result
 
-class ReplaceCallsTransformer(StoreAliasesTransformer):
+class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
     """Replace calls transformer to modify the CST"""
 
     def __init__(self, to_module: BaseTransformerStrategy) -> None:
         debug.trace(8, "ReplaceCallsTransformer.__init__()")
-        super().__init__()
+        StoreAliasesTransformer.__init__(self)
+        StoreMetrics.__init__(self)
         self.to_module = to_module
         self.to_import = []
-        self.amount_replaced = 0
 
     def append_import_if_unique(self, new_import: cst.Name) -> None:
         """Append the import if unique"""
@@ -1153,24 +1213,27 @@ class ReplaceCallsTransformer(StoreAliasesTransformer):
         )
         # Replace if replacement found
         if new_func_node:
-            self.amount_replaced += 1
             updated_node = updated_node.with_changes(
                 func=new_func_node,
                 args=new_args_nodes
+            )
+            self.add_to_history(
+                f"{module_name}.{original_node.func.attr.value}",
+                node_to_reference_string(updated_node)
             )
         if new_module:
             self.append_import_if_unique(new_module)
         debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
-class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
+class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer, StoreMetrics):
     """Modify the CST to insert warnings to Mezcla calls"""
 
     def __init__(self) -> None:
-        super().__init__()
+        StoreAliasesTransformer.__init__(self)
+        StoreMetrics.__init__(self)
         debug.trace(8, "ReplaceMezclaWithWarningTransformer.__init__()")
         self.mezcla_modules = []
-        self.amount_replaced = 0
 
     # pylint: disable=invalid-name
     def visit_ImportFrom(self, node: cst.ImportFrom) -> None:
@@ -1203,7 +1266,9 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
         module_name = self.alias_to_module(module_name)
         # Check if module is a Mezcla module, and replace call with warning comment
         if module_name in self.mezcla_modules:
-            self.amount_replaced += 1
+            self.add_to_history(
+                f"{module_name}.{original_node.func.attr.value}",
+            )
             return text_to_comments_node(f"WARNING not supported: {cst.Module([]).code_for_node(original_node)}")
         debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
@@ -1249,11 +1314,23 @@ def transform(to_module, code: str) -> str:
     gh.run(f"pycln -a {temp_file}")
     modified_code = system.read_file(temp_file)
 
-    # Re metrics
+    # Build metrics
     metrics = {}
-    metrics["calls_replaced"] = calls_transformer.amount_replaced
-    metrics["warnings_added"] = warning_transformer.amount_replaced
-    metrics["total"] = calls_transformer.amount_replaced + warning_transformer.amount_replaced
+    # Call metrics
+    metrics["number_calls_replaced"] = calls_transformer.total
+    metrics["number_unique_calls_replaced"] = calls_transformer.unique
+    metrics["calls_replaced"] = calls_transformer.get_unique_history()
+    # Warning metrics
+    metrics["number_warnings_added"] = warning_transformer.total
+    metrics["number_unique_warnings_added"] = warning_transformer.unique
+    metrics["warnings_added"] = warning_transformer.get_unique_history()
+    # Total metrics
+    metrics["total"] = 0 \
+        + calls_transformer.total \
+        + warning_transformer.total
+    metrics["unique_total"] = 0 \
+        + calls_transformer.unique \
+        + warning_transformer.unique
 
     debug.trace(5, f"transform(to_module={to_module}, code='{code}') => {modified_code}")
     return modified_code, metrics
@@ -1290,22 +1367,59 @@ class MezclaToStandardScript(Main):
         # NOTE: we don't use single characters "y" as verification,
         #       because could be accidentally pressed
         if want_to_continue != "yes":
-            print("Operation cancelled", file=sys.stderr)
             debug.trace(5, "MezclaToStandardScript.run_main_step() => cancelled by user")
             system.exit("Operation cancelled by user")
 
     def print_metrics(self, metrics: dict) -> None:
         """Print metrics"""
-        def print_total_with_perc(title, number, total):
+        def print_total_with_perc(title, number, total, unique, total_unique):
             perc = (number / total) * 100 if total > 0 else 0
-            perc_as_str = f"{perc:.2f}"
-            print(
-                f"{title}:\t{number}\t({perc_as_str} %)",
-                file=sys.stderr
+            unique_perc = (unique / total_unique) * 100 if total_unique > 0 else 0
+            system.print_error(
+                f"{title}:\t{number}\t({perc:.2f} %);\t{unique} unique ({unique_perc:.2f} %)",
             )
-        print_total_with_perc("Total changes", metrics["total"], metrics["total"])
-        print_total_with_perc("Calls replaced", metrics["calls_replaced"], metrics["total"])
-        print_total_with_perc("Warnings added", metrics["warnings_added"], metrics["total"])
+        def print_replacements(title, replacements):
+            system.print_error(f"{title}:")
+            system.print_error("\tnumber\tcall")
+            while len(replacements) < 5:
+                replacements.append(("", ""))
+            for idx, (name, number) in enumerate(replacements):
+                if not number:
+                    number = "-"
+                if not name:
+                    name = "---"
+                system.print_error(f"{idx + 1}.\t{number}\t{name}")
+        system.print_error("====== Result Metrics ======")
+        print_total_with_perc(
+            "Total changes",
+            metrics["total"],
+            metrics["total"],
+            metrics["unique_total"],
+            metrics["unique_total"],
+        )
+        print_total_with_perc(
+            "Calls replaced",
+            metrics["number_calls_replaced"],
+            metrics["total"],
+            metrics["number_unique_calls_replaced"],
+            metrics['unique_total'],
+        )
+        print_total_with_perc(
+            "Warnings added",
+            metrics["number_warnings_added"],
+            metrics["total"],
+            metrics["number_unique_warnings_added"],
+            metrics['unique_total'],
+        )
+        print_replacements(
+            "Calls replaced",
+            metrics["calls_replaced"]
+        )
+        print_replacements(
+            "Warnings added",
+            metrics["warnings_added"]
+        )
+        system.print_error("============================")
 
     def read_code(self, filename: str) -> str:
         """Read code from filename, and throw exceptions if is invalid"""
