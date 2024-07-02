@@ -1208,7 +1208,7 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer):
         debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
-def transform(to_module, code: str, with_metrics: bool = False) -> str:
+def transform(to_module, code: str) -> str:
     """
     Transform the code
 
@@ -1235,20 +1235,6 @@ def transform(to_module, code: str, with_metrics: bool = False) -> str:
     if isinstance(to_module, ToStandard):
         tree = tree.visit(warning_transformer)
 
-    # Show metrics
-    if with_metrics:
-        total = calls_transformer.amount_replaced + warning_transformer.amount_replaced
-        perc = (calls_transformer.amount_replaced / total) * 100 if total > 0 else 0
-        perc_message = f"\t({perc:.2f} %)" if warning_transformer.amount_replaced > 0 else ""
-        print(
-            f"Calls replaced:\t{calls_transformer.amount_replaced}{perc_message}",
-            file=sys.stderr
-        )
-        print(
-            f"Warnings added:\t{warning_transformer.amount_replaced}",
-            file=sys.stderr
-        )
-
     # Convert the tree back to code
     modified_code = tree.code
 
@@ -1263,8 +1249,14 @@ def transform(to_module, code: str, with_metrics: bool = False) -> str:
     gh.run(f"pycln -a {temp_file}")
     modified_code = system.read_file(temp_file)
 
+    # Re metrics
+    metrics = {}
+    metrics["calls_replaced"] = calls_transformer.amount_replaced
+    metrics["warnings_added"] = warning_transformer.amount_replaced
+    metrics["total"] = calls_transformer.amount_replaced + warning_transformer.amount_replaced
+
     debug.trace(5, f"transform(to_module={to_module}, code='{code}') => {modified_code}")
-    return modified_code
+    return modified_code, metrics
 
 class MezclaToStandardScript(Main):
     """Argument processing class to MezclaToStandard"""
@@ -1302,6 +1294,19 @@ class MezclaToStandardScript(Main):
             debug.trace(5, "MezclaToStandardScript.run_main_step() => cancelled by user")
             system.exit("Operation cancelled by user")
 
+    def print_metrics(self, metrics: dict) -> None:
+        """Print metrics"""
+        def print_total_with_perc(title, number, total):
+            perc = (number / total) * 100 if total > 0 else 0
+            perc_as_str = f"{perc:.2f}"
+            print(
+                f"{title}:\t{number}\t({perc_as_str} %)",
+                file=sys.stderr
+            )
+        print_total_with_perc("Total changes", metrics["total"], metrics["total"])
+        print_total_with_perc("Calls replaced", metrics["calls_replaced"], metrics["total"])
+        print_total_with_perc("Warnings added", metrics["warnings_added"], metrics["total"])
+
     def read_code(self, filename: str) -> str:
         """Read code from filename, and throw exceptions if is invalid"""
         if not system.file_exists(filename):
@@ -1322,8 +1327,10 @@ class MezclaToStandardScript(Main):
             to_module = ToMezcla()
         else:
             to_module = ToStandard()
-        modified_code = transform(to_module, code, with_metrics=self.metrics)
+        modified_code, metrics = transform(to_module, code)
         # Output
+        if self.metrics:
+            self.print_metrics(metrics)
         if self.in_place:
             system.write_file(self.file, modified_code)
         else:
