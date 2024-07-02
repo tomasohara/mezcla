@@ -1302,17 +1302,19 @@ class MezclaToStandardScript(Main):
             debug.trace(5, "MezclaToStandardScript.run_main_step() => cancelled by user")
             system.exit("Operation cancelled by user")
 
+    def read_code(self, filename: str) -> str:
+        """Read code from filename, and throw exceptions if is invalid"""
+        if not system.file_exists(filename):
+            raise ValueError(f"File {filename} does not exist")
+        code = system.read_file(filename)
+        if not code:
+            raise ValueError(f"File {filename} is empty")
+        return code
+
     def run_main_step(self) -> None:
         """Process main script"""
         debug.trace(5, "MezclaToStandardScript.run_main_step()")
-        # Checks
-        if not system.file_exists(self.file):
-            raise ValueError(f"File {self.file} does not exist")
-        # Read the file
-        code = system.read_file(self.file)
-        # Checks
-        if not code:
-            raise ValueError(f"File {self.file} is empty")
+        code = self.read_code(self.file)
         if self.in_place:
             self.show_continue_warning()
         # Process
