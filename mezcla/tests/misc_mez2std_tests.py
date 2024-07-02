@@ -5,6 +5,7 @@ Misc tests for mezcla_to_standard module
 # Standard packages
 ## NOTE: this is empty for now
 import os
+import ast
 
 # Installed packages
 import pytest
@@ -62,16 +63,25 @@ class TestM2SBatchConversion(TestWrapper):
         for idx, script in enumerate(scripts, start=1):
             script_path = gh.form_path(MEZCLA_DIR, script)
             output, output_file = self.get_mezcla_command_output(m2s_path, script_path, option, output_path)
+            
+            # # Assertion A: Check file integrity (syntax errors)
+            # try:
+            #     converted_integrity_1 = ast.parse(source=output)
+            #     converted_integrity_2 = ast.parse(source=system.read_file(output_file))
+            # except SyntaxError:
+            #     converted_integrity_1, converted_integrity_2 = None, None
+            # # assert converted_integrity is not None
+            # print(f"#{idx} {script} -> {output_file}\n\t{converted_integrity_1} \\ {converted_integrity_2}")
+
             print(f"#{idx} {script} -> {output_file}")
 
-            # Assertion: Check if for each script, there exists no empty file or error files
+            # Assertion B: Check if for each script, there exists no empty file or error files
             assert len(output.split("\n")) > 5
 
-            # Assertion: Check similarly between file content (file_size between +/- 20%)
+            # Assertion C: Check similarly between file content (file_size between +/- 20%)
             original_size = os.path.getsize(script_path)
             converted_size = os.path.getsize(output_file)
             assert 0.8 * original_size <= converted_size <= 1.2 * original_size
-
 
         # Assertion: Check if a converted output file exists for each script in mezcla
         assert len(os.listdir(output_path)) == len(scripts)
