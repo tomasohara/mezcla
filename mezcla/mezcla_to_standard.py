@@ -1294,8 +1294,10 @@ class MezclaToStandardScript(Main):
             "Make sure you have a backup of the file before proceeding.\n\033[0m",
             file=sys.stderr
         )
-        want_to_continue = input("Are you sure you want to continue? (y/n): ").lower()
-        if want_to_continue != "y" and want_to_continue != "yes":
+        want_to_continue = input("Are you sure you want to continue? (yes/no): ").lower()
+        # NOTE: we don't use single characters "y" as verification,
+        #       because could be accidentally pressed
+        if want_to_continue != "yes":
             print("Operation cancelled", file=sys.stderr)
             debug.trace(5, "MezclaToStandardScript.run_main_step() => cancelled by user")
             system.exit("Operation cancelled by user")
