@@ -1286,6 +1286,20 @@ class MezclaToStandardScript(Main):
         self.metrics = self.has_parsed_option(METRICS)
         self.in_place = self.has_parsed_option(IN_PLACE)
 
+    def show_continue_warning(self) -> None:
+        """Show warning if user want to continue"""
+        print(
+            "\033[93m WARNING, THIS OPERATION WILL OVERRIDE:\n",
+            f"{self.file}\n",
+            "Make sure you have a backup of the file before proceeding.\n\033[0m",
+            file=sys.stderr
+        )
+        want_to_continue = input("Are you sure you want to continue? (y/n): ").lower()
+        if want_to_continue != "y" and want_to_continue != "yes":
+            print("Operation cancelled", file=sys.stderr)
+            debug.trace(5, "MezclaToStandardScript.run_main_step() => cancelled by user")
+            system.exit("Operation cancelled by user")
+
     def run_main_step(self) -> None:
         """Process main script"""
         debug.trace(5, "MezclaToStandardScript.run_main_step()")
@@ -1298,17 +1312,7 @@ class MezclaToStandardScript(Main):
         if not code:
             raise ValueError(f"File {self.file} is empty")
         if self.in_place:
-            print(
-                "\033[93m WARNING, THIS OPERATION WILL OVERRIDE:\n",
-                f"{self.file}\n",
-                "Make sure you have a backup of the file before proceeding.\n\033[0m",
-                file=sys.stderr
-            )
-            want_to_continue = input("Are you sure you want to continue? (Y/n): ").lower()
-            if want_to_continue != "y" and want_to_continue != "yes":
-                print("Operation cancelled", file=sys.stderr)
-                debug.trace(5, "MezclaToStandardScript.run_main_step() => cancelled by user")
-                return
+            self.show_continue_warning()
         # Process
         if self.to_mezcla:
             to_module = ToMezcla()
