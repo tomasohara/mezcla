@@ -837,6 +837,17 @@ def node_to_reference_string(node: cst.CSTNode) -> str:
         return f'"{node.value}"'
     raise ValueError(f"Unsupported node type: {type(node)}")
 
+def unique_cst_names(names: list) -> list:
+    """
+    Get the unique CST Names Noes by name.value from a list of CST nodes
+    """
+    result = []
+    for name in names:
+        if name.value not in [n.value for n in result]:
+            result.append(name)
+    debug.trace(9, f"unique_cst_names(names={names}) => {result}")
+    return result
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -1157,14 +1168,6 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         self.to_module = to_module
         self.to_import = []
 
-    def append_import_if_unique(self, new_import: cst.Name) -> None:
-        """Append the import if unique"""
-        debug.trace(9, f"ReplaceCallsTransformer.append_import_if_unique(new_import={new_import})")
-        current_imports = [node.value for node in self.to_import]
-        if new_import.value in current_imports:
-            return
-        self.to_import.append(new_import)
-
     # pylint: disable=invalid-name
     def leave_Module(
             self,
@@ -1173,7 +1176,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         ) -> cst.Module:
         """Leave a Module node"""
         new_body = list(updated_node.body)
-        for module in self.to_import:
+        for module in unique_cst_names(self.to_import):
             new_import_node = cst.SimpleStatementLine(
                 body=[
                     cst.Import(
@@ -1222,7 +1225,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
                 node_to_reference_string(updated_node)
             )
         if new_module:
-            self.append_import_if_unique(new_module)
+            self.to_import.append(new_module)
         debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
@@ -1302,17 +1305,6 @@ def transform(to_module, code: str) -> str:
 
     # Convert the tree back to code
     modified_code = tree.code
-
-    # Remove unused imports
-    #
-    # We need to temporarily store the code in a file to run pycln on
-    temp_file = gh.get_temp_file() + "a.py"
-    system.write_file(
-        filename=temp_file,
-        text=modified_code
-    )
-    gh.run(f"pycln -a {temp_file}")
-    modified_code = system.read_file(temp_file)
 
     # Build metrics
     metrics = {}
