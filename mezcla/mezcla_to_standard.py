@@ -519,7 +519,10 @@ mezcla_to_standard = [
         sys.exc_info,
     ),
     EqCall(
-        (system.to_string, system.to_str, system.to_unicode),
+        (
+            system.to_string, system.to_str, system.to_unicode,
+            tpo.normalize_unicode, tpo.ensure_unicode,
+        ),
         str,
     ),
     EqCall(
