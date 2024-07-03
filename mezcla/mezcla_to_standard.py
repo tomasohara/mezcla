@@ -1189,29 +1189,28 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
     def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
         """Leave a Call node"""
         new_node = updated_node
-        if isinstance(original_node.func, cst.Attribute):
-            new_node = self.replace_call_if_needed(original_node, updated_node)
+        if isinstance(updated_node.func, cst.Attribute):
+            new_node = self.replace_call_if_needed(updated_node)
         debug.trace(8, f"ReplaceCallsTransformer.leave_Call(original_node={original_node}, updated_node={updated_node}) => {new_node}")
         return new_node
 
     def replace_call_if_needed(
             self,
-            original_node: cst.Call,
             updated_node: cst.Call
         ) -> cst.Call:
         """Replace the call if needed"""
-        if not isinstance(original_node.func.value, (cst.Attribute, cst.Name, cst.SimpleString)):
-            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skipping")
+        if not isinstance(updated_node.func.value, (cst.Attribute, cst.Name, cst.SimpleString)):
+            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => skipping")
             return updated_node
         # Get module and method names
-        path = cst_to_path(original_node.func)
+        path = cst_to_path(updated_node.func)
         path = self.replace_alias_in_path(path)
         # Get replacement
         new_path, new_args_nodes = self.to_module.get_replacement(
-            path, original_node.args
+            path, updated_node.args
         )
         if not new_path:
-            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skipping")
+            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => skipping")
             return updated_node
         # We use the first components on a path is for
         # the import and the rest is for the function call
@@ -1231,13 +1230,10 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
             func=path_to_cst(call_path),
             args=new_args_nodes
         )
-        self.add_to_history(
-            cst_to_path(original_node),
-            new_path
-        )
+        self.add_to_history(path, new_path)
         if import_path:
             self.to_import.append(import_path)
-        debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
+        debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => {updated_node}")
         return updated_node
 
 class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer, StoreMetrics):
@@ -1261,30 +1257,29 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer, StoreMetrics)
     def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
         """Leave a Call node"""
         new_node = updated_node
-        if isinstance(original_node.func, cst.Attribute):
-            new_node = self.replace_with_warning_if_needed(original_node, updated_node)
+        if isinstance(updated_node.func, cst.Attribute):
+            new_node = self.replace_with_warning_if_needed(updated_node)
         debug.trace(8, f"ReplaceMezclaWithWarningTransformer.leave_Call(original_node={original_node}, updated_node={updated_node}) => {new_node}")
         return new_node
 
     def replace_with_warning_if_needed(
             self,
-            original_node: cst.Call,
             updated_node: cst.Call
         ) -> cst.Call:
         """Replace the call if needed"""
-        if not isinstance(original_node.func.value, (cst.Attribute, cst.Name, cst.SimpleString)):
-            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skipping")
+        if not isinstance(updated_node.func.value, (cst.Attribute, cst.Name, cst.SimpleString)):
+            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={updated_node}, updated_node={updated_node}) => skipping")
             return updated_node
         # Get module and method names
-        path = cst_to_path(original_node.func).split(".")[0]
+        path = cst_to_path(updated_node.func).split(".")[0]
         path = self.replace_alias_in_path(path)
         # Check if module is a Mezcla module, and replace call with warning comment
         if path in self.mezcla_modules:
             self.add_to_history(
-                cst_to_path(original_node),
+                cst_to_path(updated_node),
             )
-            return text_to_comments_node(f"WARNING not supported: {cst.Module([]).code_for_node(original_node)}")
-        debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
+            return text_to_comments_node(f"WARNING not supported: {cst.Module([]).code_for_node(updated_node)}")
+        debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(updated_node={updated_node}) => {updated_node}")
         return updated_node
 
 def transform(to_module, code: str) -> str:
