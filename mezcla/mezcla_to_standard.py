@@ -308,9 +308,9 @@ class EqCall:
         # Group all destinations
         dests = []
         if isinstance(self.dest, tuple):
-            dests += list(self.dest)
+            dests = list(self.dest)
         elif isinstance(self.dest, list):
-            dests += self.dest
+            dests = self.dest
         else:
             dests.append(self.dest)
         # Create all permutations
@@ -418,7 +418,7 @@ mezcla_to_standard = [
         extra_params = { "level": 1 },
     ),
     EqCall(
-        (debug.trace, debug.trace_fmt, debug.trace_fmtd),
+        (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
         logging.debug,
         condition = lambda level: level > 3,
         eq_params = { "text": "msg" },
@@ -426,7 +426,7 @@ mezcla_to_standard = [
         features=[Features.FORMAT_STRING]
     ),
     EqCall(
-        (debug.trace, debug.trace_fmt, debug.trace_fmtd),
+        (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
         logging.info,
         condition = lambda level: 2 < level <= 3,
         eq_params = { "text": "msg" },
@@ -434,7 +434,7 @@ mezcla_to_standard = [
         features=[Features.FORMAT_STRING],
     ),
     EqCall(
-        (debug.trace, debug.trace_fmt, debug.trace_fmtd),
+        (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
         logging.warning,
         condition = lambda level: 1 < level <= 2,
         eq_params = { "text": "msg" },
@@ -442,7 +442,7 @@ mezcla_to_standard = [
         features=[Features.FORMAT_STRING],
     ),
     EqCall(
-        (debug.trace, debug.trace_fmt, debug.trace_fmtd),
+        (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
         logging.error,
         condition = lambda level: 0 < level <= 1,
         eq_params = { "text": "msg" },
@@ -532,6 +532,40 @@ mezcla_to_standard = [
     ),
 ]
 
+def cst_to_path(tree: cst.CSTNode) -> str:
+    """
+    Convert CST Tree Node to a string path.
+    ```
+    code = "foo.bar.baz(arg1, arg2)"
+    tree = libcst.parse_expression(code)
+    cst_to_path(tree) =>"foo.bar.baz"
+    ```
+    """
+    if isinstance(tree, cst.Attribute):
+        return f"{cst_to_path(tree.value)}.{tree.attr.value}"
+    elif isinstance(tree, cst.Call):
+        return f"{cst_to_path(tree.func)}"
+    elif isinstance(tree, cst.Name):
+        return tree.value
+    elif isinstance(tree, cst.SimpleString):
+        return tree.value
+    raise ValueError(f"Unsupported node type: {type(tree)}")
+
+def path_to_cst(path: str) -> cst.CSTNode:
+    """
+    Convert a string path to CST Tree Node.
+    ```
+    convert_path_to_cst("foo.bar.baz") => cst.Attribute(value=...)
+    ```
+    """
+    parts = path.split(".")
+    if len(parts) == 1:
+        return cst.Name(parts[0])
+    return cst.Attribute(
+        value=path_to_cst(".".join(parts[:-1])),
+        attr=cst.Name(parts[-1])
+    )
+
 def value_to_arg(value: object) -> cst.Arg:
     """
     Convert the value object to an CST tree argument node
@@ -619,23 +653,23 @@ def remove_last_comma(args: list) -> list:
     debug.trace(7, "remove_last_comma(args) => list")
     return args
 
-def string_to_callable(func_string):
+def path_to_callable(path: str) -> callable:
     """
     Converts a string representing a function into the actual callable function.
     
     Parameters:
-    func_string (str): The string representing the function, e.g., "os.remove".
+    path (str): The string representing the function, e.g., "os.remove".
     
     Returns:
     callable: The actual function.
     """
-    components = func_string.split('.')
+    components = path.split('.')
     # Get the base module from the global namespace
     module = globals()[components[0]]
     # Iterate through the components to get the desired attribute
     for component in components[1:]:
         module = getattr(module, component)
-    debug.trace(7, f"string_to_callable(func_string={func_string}) => {module}")
+    debug.trace(7, f"path_to_callable(func_string={path}) => {module}")
     return module
 
 def match_args(func: callable, args: list, kwargs: dict) -> dict:
@@ -652,7 +686,7 @@ def match_args(func: callable, args: list, kwargs: dict) -> dict:
     ```
     """
     if isinstance(func, str):
-        func = string_to_callable(func)
+        func = path_to_callable(func)
     target_spec = inspect.getfullargspec(func)
     # Extract arguments
     arguments = dict(zip(target_spec.args, args))
@@ -678,33 +712,23 @@ def flatten_list(list_to_flatten: list) -> list:
     debug.trace(7, f"flatten_list(list_to_flatten={list_to_flatten}) => {result}")
     return result
 
-def get_module_func(func) -> Tuple:
+def callable_to_path(func: callable) -> Tuple:
     """
-    Get the module and function from callable object
+    Get the path from callable object
     ```
     import some_module
-    get_module_func(some_module.foo) => ('some_module', 'foo')
+    callable_to_path(some_module.foo) => "some_module.foo"
     ```
     """
-    result = None
+    result = ""
     if isinstance(func, str):
-        result = func.rsplit('.', 1)
+        result = func
     elif func.__module__ == "builtins":
-        result = None, func.__name__
+        result = func.__name__
     else:
-        result = func.__module__, func.__name__
-    debug.trace(7, f"get_module_func(func={func}) => {result}")
+        result = f"{func.__module__}.{func.__name__}"
+    debug.trace(7, f"callable_to_path(func={func}) => {result}")
     return result
-
-def get_module_node_to_name(module_node) -> str:
-    """Get the module name from the module node"""
-    if isinstance(module_node, cst.Attribute):
-        return get_module_node_to_name(module_node.value)
-    if isinstance(module_node, (cst.Name, cst.SimpleString)):
-        name = module_node.value
-        debug.trace(9, f"StoreAliasesTransformer.module_node_to_name(module_node={module_node}) => {name}")
-        return name
-    raise ValueError(f"Unsupported module node type: {type(module_node)}")
 
 def text_to_comments_node(text: str) -> cst.Comment:
     """Convert text into a comment node"""
@@ -818,36 +842,6 @@ def format_strings_in_args(args: list) -> dict:
     debug.trace(7, f"format_strings_in_args(args={args}) => {result}")
     return result
 
-def node_to_reference_string(node: cst.CSTNode) -> str:
-    """
-    Return reference of a node
-
-    ```
-    node = cst.Call(func=cst.Attribute(value=cst.Name("os"), attr=cst.Name("remove")))
-    node_to_reference_string(node) => "os.remove"
-    ```
-    """
-    if isinstance(node, cst.Call):
-        return node_to_reference_string(node.func)
-    if isinstance(node, cst.Attribute):
-        return f"{node_to_reference_string(node.value)}.{node.attr.value}"
-    if isinstance(node, cst.Name):
-        return node.value
-    if isinstance(node, cst.SimpleString):
-        return f'"{node.value}"'
-    raise ValueError(f"Unsupported node type: {type(node)}")
-
-def unique_cst_names(names: list) -> list:
-    """
-    Get the unique CST Names Noes by name.value from a list of CST nodes
-    """
-    result = []
-    for name in names:
-        if name.value not in [n.value for n in result]:
-            result.append(name)
-    debug.trace(9, f"unique_cst_names(names={names}) => {result}")
-    return result
-
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -893,7 +887,7 @@ class BaseTransformerStrategy:
         ```
         """
         if isinstance(func, str):
-            func = string_to_callable(func)
+            func = path_to_callable(func)
         result = {}
         try:
             for key in inspect.getfullargspec(func).args:
@@ -906,45 +900,28 @@ class BaseTransformerStrategy:
         debug.trace(6, f"BaseTransformerStrategy.filter_args_by_function(func={func}, args={args}) => {result}")
         return result
 
-    def get_replacement(self, module, func, args) -> Tuple:
+    def get_replacement(self, path: str, args: list) -> Tuple:
         """
         Get the function replacement
 
-        Returns tuple of `(new_module_node, new_func_node, new_args_node)`
+        Returns tuple of `(new_path, new_args_node)`
         """
-        eq_call = self.find_eq_call(module, func, args)
+        # Find the equivalent call
+        eq_call = self.find_eq_call(path, args)
         if eq_call is None:
-            return None, None, []
-        new_module, new_func = self.eq_call_to_module_func(eq_call)
-        # Create the new module node
-        if new_module is None:
-            new_import_node = None
-            new_value_node = None
-        elif "." in new_module:
-            new_import_node = cst.Name(new_module.split('.')[0])
-            new_value_node = cst.Attribute(
-                value=new_import_node,
-                attr=cst.Name(new_module.split('.')[1])
-            )
-        else:
-            new_import_node = cst.Name(new_module)
-            new_value_node = new_import_node
-        # Create the new function node
-        if new_module is None:
-            new_func_node = cst.Name(new_func)
-        else:
-            new_func_node = cst.Attribute(value=new_value_node, attr=cst.Name(new_func))
-        # Create the new arguments nodes
+            return "", []
+        new_path = self.eq_call_to_path(eq_call)
+        # Adapt the arguments
         new_args_nodes = self.get_args_replacement(eq_call, args, []) ## TODO: add kwargs
-        debug.trace(5, f"BaseTransformerStrategy.get_replacement(module={module}, func={func}, args={args}) => {new_module}, {new_func_node}, {new_args_nodes}")
-        return new_import_node, new_func_node, new_args_nodes
+        debug.trace(5, f"BaseTransformerStrategy.get_replacement(path={path}, args={args}) => {new_path}, {new_args_nodes}")
+        return new_path, new_args_nodes
 
-    def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
-        """Get the module and function from the equivalent call"""
+    def eq_call_to_path(self, eq_call: EqCall) -> str:
+        """Get the path from the equivalent call"""
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
-    def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
+    def find_eq_call(self, path: str, args: list) -> Optional[EqCall]:
         """Find the equivalent call"""
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
@@ -966,21 +943,19 @@ class BaseTransformerStrategy:
 class ToStandard(BaseTransformerStrategy):
     """Mezcla to standard call conversion class"""
 
-    def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
+    def find_eq_call(self, path: str, args: list) -> Optional[EqCall]:
         result = None
         all_eq_calls = [e.get_permutations() for e in mezcla_to_standard]
         all_eq_calls = flatten_list(all_eq_calls)
         for eq_call in all_eq_calls:
-            target_module, target_func = get_module_func(eq_call.target)
-            if target_module is None:
-                pass
-            elif module not in target_module:
-                continue
-            if func in target_func:
+            eq_path = callable_to_path(eq_call.target)
+            exactly_coincides = path == eq_path
+            last_parts_coincide = eq_path.endswith("." + path)
+            if exactly_coincides or last_parts_coincide:
                 if self.is_condition_to_replace_met(eq_call, args):
                     result = eq_call
                     break
-        debug.trace(6, f"ToStandard.find_eq_call(module={module}, func={func}, args={args}) => {result}")
+        debug.trace(6, f"ToStandard.find_eq_call(path={path}, args={args}) => {result}")
         return result
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
@@ -1022,29 +997,27 @@ class ToStandard(BaseTransformerStrategy):
         debug.trace(7, f"ToStandard.replace_args_keys(eq_call={eq_call}, args={args}) => {result}")
         return result
 
-    def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
-        result = get_module_func(eq_call.dest)
-        debug.trace(7, f"ToStandard.eq_call_to_module_func(eq_call={eq_call}) => {result}")
+    def eq_call_to_path(self, eq_call: EqCall) -> str:
+        result = callable_to_path(eq_call.dest)
+        debug.trace(7, f"ToStandard.eq_call_to_path(eq_call={eq_call}) => {result}")
         return result
 
 class ToMezcla(BaseTransformerStrategy):
     """Standard to Mezcla call conversion class"""
 
-    def find_eq_call(self, module: str, func: str, args: list) -> Optional[EqCall]:
+    def find_eq_call(self, path: str, args: list) -> Optional[EqCall]:
         result = None
         all_eq_calls = [e.get_permutations() for e in mezcla_to_standard]
         all_eq_calls = flatten_list(all_eq_calls)
         for eq_call in all_eq_calls:
-            dest_module, dest_func = get_module_func(eq_call.dest)
-            if dest_module is None:
-                pass
-            elif module not in dest_module:
-                continue
-            if func in dest_func:
+            eq_path = callable_to_path(eq_call.dest)
+            exactly_coincides = path == eq_path
+            last_parts_coincide = eq_path.endswith("." + path)
+            if exactly_coincides or last_parts_coincide:
                 if self.is_condition_to_replace_met(eq_call, args):
                     result = eq_call
                     break
-        debug.trace(7, f"ToMezcla.find_eq_call(module={module}, func={func}, args={args}) => {result}")
+        debug.trace(7, f"ToMezcla.find_eq_call(func={path}, args={args}) => {result}")
         return result
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
@@ -1086,8 +1059,8 @@ class ToMezcla(BaseTransformerStrategy):
         debug.trace(7, f"ToMezcla.replace_args_keys(eq_call={eq_call}, args={args}) => {result}")
         return result
 
-    def eq_call_to_module_func(self, eq_call: EqCall) -> Tuple:
-        return get_module_func(eq_call.target)
+    def eq_call_to_path(self, eq_call: EqCall) -> str:
+        return callable_to_path(eq_call.target)
 
 class StoreMetrics:
     """CST Transformer with metrics utilities"""
@@ -1152,10 +1125,12 @@ class StoreAliasesTransformer(cst.CSTTransformer):
         # Store the alias
         self.aliases[asname] = name
 
-    def alias_to_module(self, module_name: str) -> str:
+    def replace_alias_in_path(self, path: str) -> str:
         """Get the module name if it is an alias"""
-        result = self.aliases.get(module_name, module_name)
-        debug.trace(9, f"StoreAliasesTransformer.alias_to_module(module_name={module_name}) => {result}")
+        first_part = path.split(".")[0]
+        result = self.aliases.get(first_part, first_part)
+        result = ".".join([result] + path.split(".")[1:])
+        debug.trace(9, f"StoreAliasesTransformer.replace_alias_in_path(path={path}) => {result}")
         return result
 
 class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
@@ -1176,11 +1151,16 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         ) -> cst.Module:
         """Leave a Module node"""
         new_body = list(updated_node.body)
-        for module in unique_cst_names(self.to_import):
+        for module in set(self.to_import):
             new_import_node = cst.SimpleStatementLine(
                 body=[
                     cst.Import(
-                        names=[cst.ImportAlias(name=module, asname=None)]
+                        names=[
+                            cst.ImportAlias(
+                                name=path_to_cst(module),
+                                asname=None
+                            )
+                        ]
                     )
                 ]
             )
@@ -1208,24 +1188,39 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
             debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skipping")
             return updated_node
         # Get module and method names
-        module_name = get_module_node_to_name(original_node.func)
-        module_name = self.alias_to_module(module_name)
+        path = cst_to_path(original_node.func)
+        path = self.replace_alias_in_path(path)
         # Get replacement
-        new_module, new_func_node, new_args_nodes = self.to_module.get_replacement(
-            module_name, original_node.func.attr.value, original_node.args
+        new_path, new_args_nodes = self.to_module.get_replacement(
+            path, original_node.args
         )
-        # Replace if replacement found
-        if new_func_node:
-            updated_node = updated_node.with_changes(
-                func=new_func_node,
-                args=new_args_nodes
-            )
-            self.add_to_history(
-                f"{module_name}.{original_node.func.attr.value}",
-                node_to_reference_string(updated_node)
-            )
-        if new_module:
-            self.to_import.append(new_module)
+        if not new_path:
+            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skipping")
+            return updated_node
+        # We use the first components on a path is for
+        # the import and the rest is for the function call
+        #
+        # Example path: "mezcla.debug.trace"
+        # New import: from mezcla import debug
+        # New call: debug.trace
+        #
+        if "." in new_path:
+            import_path = ".".join(new_path.split(".")[:-1])
+            call_path = ".".join(new_path.split(".")[-2:])
+        else:
+            import_path = ""
+            call_path = new_path
+        # Replace CST Call
+        updated_node = updated_node.with_changes(
+            func=path_to_cst(call_path),
+            args=new_args_nodes
+        )
+        self.add_to_history(
+            cst_to_path(original_node),
+            new_path
+        )
+        if import_path:
+            self.to_import.append(import_path)
         debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
         return updated_node
 
@@ -1265,12 +1260,12 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer, StoreMetrics)
             debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(original_node={original_node}, updated_node={updated_node}) => skipping")
             return updated_node
         # Get module and method names
-        module_name = get_module_node_to_name(original_node.func)
-        module_name = self.alias_to_module(module_name)
+        path = cst_to_path(original_node.func).split(".")[0]
+        path = self.replace_alias_in_path(path)
         # Check if module is a Mezcla module, and replace call with warning comment
-        if module_name in self.mezcla_modules:
+        if path in self.mezcla_modules:
             self.add_to_history(
-                f"{module_name}.{original_node.func.attr.value}",
+                cst_to_path(original_node),
             )
             return text_to_comments_node(f"WARNING not supported: {cst.Module([]).code_for_node(original_node)}")
         debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(original_node={original_node}, updated_node={updated_node}) => {updated_node}")
