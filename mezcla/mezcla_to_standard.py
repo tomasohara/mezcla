@@ -845,6 +845,31 @@ def format_strings_in_args(args: list) -> dict:
     debug.trace(7, f"format_strings_in_args(args={args}) => {result}")
     return result
 
+def path_to_import(path: str) -> cst.SimpleStatementLine:
+    """
+    Convert a path to an import node
+    ```
+    path_to_import("os.path") => cst.SimpleStatementLine(body=cst.ImportFrom(...))
+    path_to_import("debug") => cst.SimpleStatementLine(body=cst.Import(...))
+    ```
+    """
+    result = None
+    parts = path.split(".")
+    if len(parts) == 1:
+        result = cst.Import([cst.ImportAlias(cst.Name(parts[0]))])
+    elif len(parts) == 2:
+        result = cst.ImportFrom(
+            module=cst.Name(parts[0]),
+            names=[cst.ImportAlias(cst.Name(parts[1]))]
+        )
+    else:
+        raise ValueError(f"Unsupported path: {path}")
+    result = cst.SimpleStatementLine(
+        body=[result]
+    )
+    debug.trace(7, f"path_to_import(path={path}) => {result}")
+    return result
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -1155,19 +1180,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         """Leave a Module node"""
         new_body = list(updated_node.body)
         for module in set(self.to_import):
-            new_import_node = cst.SimpleStatementLine(
-                body=[
-                    cst.Import(
-                        names=[
-                            cst.ImportAlias(
-                                name=path_to_cst(module),
-                                asname=None
-                            )
-                        ]
-                    )
-                ]
-            )
-            new_body = [new_import_node] + new_body
+            new_body = [path_to_import(module)] + new_body
         result = updated_node.with_changes(body=new_body)
         debug.trace(8, f"ReplaceCallsTransformer.leave_Module(original_node={original_node}, updated_node={updated_node}) => {result}")
         return result
