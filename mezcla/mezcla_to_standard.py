@@ -1406,6 +1406,7 @@ class MezclaToStandardScript(Main):
             "Warnings added",
             metrics["warnings_added"]
         )
+        system.print_error(f"Total time: {metrics['time']:.2f} seconds")
         system.print_error("============================")
 
     def read_code(self, filename: str) -> str:
@@ -1420,15 +1421,18 @@ class MezclaToStandardScript(Main):
     def run_main_step(self) -> None:
         """Process main script"""
         debug.trace(5, "MezclaToStandardScript.run_main_step()")
-        code = self.read_code(self.file)
         if self.in_place:
             self.show_continue_warning()
+        # Read code
+        time_start = time.time()
+        code = self.read_code(self.file)
         # Process
         if self.to_mezcla:
             to_module = ToMezcla()
         else:
             to_module = ToStandard()
         modified_code, metrics = transform(to_module, code)
+        metrics['time'] = time.time() - time_start
         # Output
         if self.metrics:
             self.print_metrics(metrics)
