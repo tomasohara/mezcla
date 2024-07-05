@@ -552,6 +552,21 @@ def cst_to_path(tree: cst.CSTNode) -> str:
         return tree.value
     elif isinstance(tree, cst.SimpleString):
         return tree.value
+    elif isinstance(tree, cst.ImportAlias):
+        return cst_to_path(tree.name)
+    raise ValueError(f"Unsupported node type: {type(tree)}")
+
+def cst_to_paths(tree: cst.CSTNode) -> list:
+    """
+    Convert CST Tree Node to a list of string paths.
+    ```
+    code = "from os import path, remove"
+    tree = libcst.parse_statement(code)
+    cst_to_paths(tree) => ["os.path", "os.remove"]
+    ```
+    """
+    if isinstance(tree, (cst.Import, cst.ImportFrom)):
+        return [cst_to_path(alias) for alias in tree.names]
     raise ValueError(f"Unsupported node type: {type(tree)}")
 
 def path_to_cst(path: str) -> cst.CSTNode:
@@ -870,6 +885,43 @@ def path_to_import(path: str) -> cst.SimpleStatementLine:
     debug.trace(7, f"path_to_import(path={path}) => {result}")
     return result
 
+def remove_paths_from_import_cst(
+        cst_import: cst.SimpleStatementLine,
+        paths_to_remove: list
+    ) -> cst.SimpleStatementLine:
+    """
+    Remove paths from an CST Import Node, ignore aliases
+
+    Example with simple Import
+
+    ```
+        code = "import os"
+        cst_import = libcst.parse_statement(code)
+        remove_paths_from_import_cst(cst_import, ["os"]) => None
+    ```
+
+    Example with Import From
+
+    ```
+        code = "from os import (\n    path,\n    remove,\n)"
+        cst_import = libcst.parse_statement(code)
+        remove_paths_from_import_cst(cst_import, ["path"]) => cst.ImportFrom(...)
+        remove_paths_from_import_cst(cst_import, ["path", "remove"]) => None
+    ```
+    """
+    # Keep names not in paths_to_remove
+    new_names = []
+    for name in cst_import.names:
+        if cst_to_path(name) not in paths_to_remove:
+            new_names.append(name)
+    #
+    if not new_names:
+        return None
+    # Store the new names
+    result = cst_import.with_changes(names=new_names)
+    debug.trace(7, f"remove_paths_from_import_cst(cst_import={cst_import}, paths_to_remove={paths_to_remove}) => {result}")
+    return result
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -1170,6 +1222,8 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         StoreMetrics.__init__(self)
         self.to_module = to_module
         self.to_import = []
+        self.removed = []
+        self.keep = []
 
     # pylint: disable=invalid-name
     def leave_Module(
@@ -1178,10 +1232,36 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
             updated_node: cst.Module
         ) -> cst.Module:
         """Leave a Module node"""
+        # Add new imports
         new_body = list(updated_node.body)
         for module in set(self.to_import):
             new_body = [path_to_import(module)] + new_body
         result = updated_node.with_changes(body=new_body)
+        # Extract import paths of keep/removed references
+        def extract_imports(list_of_paths: str) -> str:
+            return [path.split(".")[0] for path in list_of_paths]
+        imports_to_keep = extract_imports(self.keep)
+        imports_to_remove = extract_imports(self.removed)
+        # Substract the removed imports from the keep imports
+        unused_removed_imports = []
+        for path in imports_to_remove:
+            if path not in imports_to_keep:
+                unused_removed_imports.append(path)
+        # Remove unused imports
+        new_body = []
+        for node in result.body:
+            if not isinstance(node, cst.SimpleStatementLine):
+                new_body.append(node)
+                continue
+            if isinstance(node.body[0], (cst.Import, cst.ImportFrom)):
+                new_import_node = remove_paths_from_import_cst(node.body[0], unused_removed_imports)
+                if new_import_node is not None:
+                    new_node = node.with_changes(body=[new_import_node])
+                    new_body.append(new_node)
+            else:
+                new_body.append(node)
+        result = result.with_changes(body=new_body)
+        #
         debug.trace(8, f"ReplaceCallsTransformer.leave_Module(original_node={original_node}, updated_node={updated_node}) => {result}")
         return result
 
@@ -1191,6 +1271,8 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         new_node = updated_node
         if isinstance(updated_node.func, cst.Attribute):
             new_node = self.replace_call_if_needed(updated_node)
+        else:
+            self.keep.append(cst_to_path(updated_node))
         debug.trace(8, f"ReplaceCallsTransformer.leave_Call(original_node={original_node}, updated_node={updated_node}) => {new_node}")
         return new_node
 
@@ -1210,6 +1292,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
             path, updated_node.args
         )
         if not new_path:
+            self.keep.append(path)
             debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => skipping")
             return updated_node
         # We use the first components on a path is for
@@ -1231,6 +1314,8 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
             args=new_args_nodes
         )
         self.add_to_history(path, new_path)
+        self.removed.append(path)
+        # Handle new and old imports
         if import_path:
             self.to_import.append(import_path)
         debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => {updated_node}")
