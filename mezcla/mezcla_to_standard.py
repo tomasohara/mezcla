@@ -189,6 +189,7 @@ from typing import (
 )
 import tempfile
 from enum import Enum
+import collections
 # Imports used to convert string to callable
 # pylint: disable=unused-import
 import os
@@ -552,6 +553,23 @@ def cst_to_path(tree: cst.CSTNode) -> str:
         return tree.value
     elif isinstance(tree, cst.SimpleString):
         return tree.value
+    elif isinstance(tree, cst.ImportAlias):
+        return cst_to_path(tree.name)
+    elif isinstance(tree, cst.Subscript):
+        return cst_to_path(tree.value)
+    raise ValueError(f"Unsupported node type: {type(tree)}")
+
+def cst_to_paths(tree: cst.CSTNode) -> list:
+    """
+    Convert CST Tree Node to a list of string paths.
+    ```
+    code = "from os import path, remove"
+    tree = libcst.parse_statement(code)
+    cst_to_paths(tree) => ["os.path", "os.remove"]
+    ```
+    """
+    if isinstance(tree, (cst.Import, cst.ImportFrom)):
+        return [cst_to_path(alias) for alias in tree.names]
     raise ValueError(f"Unsupported node type: {type(tree)}")
 
 def path_to_cst(path: str) -> cst.CSTNode:
@@ -675,32 +693,164 @@ def path_to_callable(path: str) -> callable:
     debug.trace(7, f"path_to_callable(func_string={path}) => {module}")
     return module
 
-def match_args(func: callable, args: list, kwargs: dict) -> dict:
+def match_args(func: callable, cst_arguments: list) -> dict:
     """
     Match the arguments to the function signature
     ```
     def foo(a, b, c):
         ...
-    match_args(foo, [1, 2, 3], {}) => {
-        "a": 1,
-        "b": 2,
-        "c": 3
+    match_args(foo, [Arg(1), Arg(2), Arg(3)], {}) => {
+        "a": Arg(1),
+        "b": Arg(2),
+        "c": Arg(3)
     }
     ```
     """
+    # Extract function signature
+    func_spec = get_func_specs(func)
+    if func_spec is None:
+        debug.trace(7, f"match_args(func={func}, cst_arguments={cst_arguments}) => {func_spec}")
+        return {}
+    arg_names = func_spec.args
+    varargs_name = func_spec.varargs
+    kwarg_defaults = func_spec.kwonlydefaults if func_spec.kwonlydefaults else {}
+    kwarg_names = func_spec.kwargs
+
+    # Separate between args and kwargs
+    args, kwargs = [], []
+    for arg in cst_arguments:
+        if isinstance(arg, cst.Arg):
+            if arg.keyword:
+                kwargs.append(arg)
+            else:
+                args.append(arg)
+        else:
+            raise ValueError(f"Unsupported argument type: {type(arg)}")
+
+    # Match positional arguments
+    matched_args = {}
+    excess_args = []
+    for i, arg in enumerate(args):
+        if i < len(arg_names):
+            matched_args[arg_names[i]] = arg
+        else:
+            excess_args.append(arg)
+
+    # Handle *args
+    if varargs_name:
+        matched_args[varargs_name] = excess_args
+
+    # Match keyword arguments
+    for kwarg in kwargs:
+        if not kwarg.keyword:
+            continue
+        if kwarg.keyword.value in kwarg_names:
+            matched_args[kwarg.keyword.value] = kwarg
+
+    return matched_args
+
+ArgsSpecs = collections.namedtuple('Specs',
+    'args, kwargs, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations')
+"""
+Same as `inspect.FullArgSpec`, but separated `args` from `kwargs`
+"""
+
+def get_func_specs(func: callable) -> ArgsSpecs:
+    """
+    Get the function signature
+    """
     if isinstance(func, str):
         func = path_to_callable(func)
-    target_spec = inspect.getfullargspec(func)
-    # Extract arguments
-    arguments = dict(zip(target_spec.args, args))
-    # Extract *arguments
-    if target_spec.varargs:
-        arguments[target_spec.varargs] = args[len(target_spec.args):]
-    # Extract **arguments
-    if target_spec.varkw:
-        arguments[target_spec.varkw] = kwargs
-    debug.trace(7, f"match_args(func={func}, args={args}, kwargs={kwargs}) => {arguments}")
-    return arguments
+    result = None
+    if func.__module__ == "builtins":
+        # Workaround for builtins
+        if func.__name__ == "print":
+            result = ArgsSpecs(
+                args=[],
+                kwargs=["sep", "end", "file", "flush"],
+                varargs="values",
+                varkw=None,
+                defaults=[],
+                kwonlyargs=[],
+                kwonlydefaults={},
+                annotations={}
+            )
+        ## Add here more workarounds for builtins if needed
+    else:
+        func_specs = inspect.getfullargspec(func)
+        # Separate args from kwargs, based on defaults
+        new_args = func_specs.args
+        new_kwargs = []
+        if func_specs.defaults:
+            new_kwargs = func_specs.args[-len(func_specs.defaults):]
+            new_args = func_specs.args[:-len(func_specs.defaults)]
+        result = ArgsSpecs(
+            args=new_args,
+            kwargs=new_kwargs,
+            varargs=func_specs.varargs,
+            varkw=func_specs.varkw,
+            defaults=func_specs.defaults,
+            kwonlyargs=func_specs.kwonlyargs,
+            kwonlydefaults=func_specs.kwonlydefaults,
+            annotations=func_specs.annotations
+        )
+    debug.trace(7, f"get_func_specs(func={func}) => {result}")
+    return result
+
+def dict_to_func_args_list(func: callable, args_dict: dict) -> list:
+    """
+    Convert a dictionary to a list of CST arguments nodes, this is the opposite of match_args(...)
+    ```
+    def foo(a, b=None):
+        ...
+    dict_to_func_args_list(
+        foo,
+        {
+            "a": Arg(1),
+            "b": Arg(2, keyword="b"),
+            "c": Arg(3)
+        }
+    ) => [
+        Arg(1),
+        Arg(2, keyword="b")
+    ]
+    ```
+    As you can see, this method remove extra arguments
+    """
+    # Extract function signature
+    func_spec = get_func_specs(func)
+    if func_spec is None:
+        result = list(args_dict.values())
+        debug.trace(7, f"dict_to_func_args_list(func={func}, args_dict={args_dict}) => {result}")
+        return result
+
+    # Match positional arguments
+    result = []
+    for arg_name in func_spec.args:
+        if arg_name in args_dict:
+            result.append(args_dict[arg_name])
+        else:
+            break
+
+    # Handle *args
+    if func_spec.varargs in args_dict:
+        varargs = args_dict[func_spec.varargs]
+        if isinstance(varargs, list):
+            result += varargs
+        else:
+            result.append(varargs)
+
+    # Match keyword arguments
+    for kwarg_name in func_spec.kwargs:
+        if kwarg_name in args_dict:
+            new_arg = args_dict[kwarg_name].with_changes(keyword=path_to_cst(kwarg_name))
+            result.append(new_arg)
+
+    result = flatten_list(result)
+    result = remove_last_comma(result)
+
+    debug.trace(7, f"dict_to_func_args_list(func={func}, args_dict={args_dict}) => {result}")
+    return result
 
 def flatten_list(list_to_flatten: list) -> list:
     """Flatten a list"""
@@ -760,7 +910,10 @@ def get_format_names_in_string(value: str) -> list:
     result = []
     for name in value.split("{"):
         if "}" in name:
-            result.append(name.split("}")[0].strip())
+            name = name.split("}")[0].strip()
+            name = name.split("!")[0]
+            name = name.split(":")[0]
+            result.append(name)
     debug.trace(9, f"get_format_names_in_string(value={value}) => {result}")
     return result
 
@@ -841,7 +994,6 @@ def format_strings_in_args(args: list) -> dict:
                 result.append(arg)
         else:
             result.append(arg)
-    result = remove_last_comma(result)
     debug.trace(7, f"format_strings_in_args(args={args}) => {result}")
     return result
 
@@ -868,6 +1020,43 @@ def path_to_import(path: str) -> cst.SimpleStatementLine:
         body=[result]
     )
     debug.trace(7, f"path_to_import(path={path}) => {result}")
+    return result
+
+def remove_paths_from_import_cst(
+        cst_import: cst.SimpleStatementLine,
+        paths_to_remove: list
+    ) -> cst.SimpleStatementLine:
+    """
+    Remove paths from an CST Import Node, ignore aliases
+
+    Example with simple Import
+
+    ```
+        code = "import os"
+        cst_import = libcst.parse_statement(code)
+        remove_paths_from_import_cst(cst_import, ["os"]) => None
+    ```
+
+    Example with Import From
+
+    ```
+        code = "from os import (\n    path,\n    remove,\n)"
+        cst_import = libcst.parse_statement(code)
+        remove_paths_from_import_cst(cst_import, ["path"]) => cst.ImportFrom(...)
+        remove_paths_from_import_cst(cst_import, ["path", "remove"]) => None
+    ```
+    """
+    # Keep names not in paths_to_remove
+    new_names = []
+    for name in cst_import.names:
+        if cst_to_path(name) not in paths_to_remove:
+            new_names.append(name)
+    #
+    if not new_names:
+        return None
+    # Store the new names
+    result = cst_import.with_changes(names=new_names)
+    debug.trace(7, f"remove_paths_from_import_cst(cst_import={cst_import}, paths_to_remove={paths_to_remove}) => {result}")
     return result
 
 class BaseTransformerStrategy:
@@ -897,37 +1086,6 @@ class BaseTransformerStrategy:
         debug.trace(6, f"BaseTransformerStrategy.insert_extra_params(args={args}) => {new_args}")
         return new_args
 
-    def filter_args_by_function(self, func: callable, args: dict) -> dict:
-        """
-        Filter the arguments to match the function signature
-        ```
-        def foo(a, b, c):
-            ...
-        args = {
-            "a": 1,
-            "b": 2,
-            "d": 3
-        }
-        filter_args_by_function(foo, args) => {
-            "a": 1,
-            "b": 2
-        }
-        ```
-        """
-        if isinstance(func, str):
-            func = path_to_callable(func)
-        result = {}
-        try:
-            for key in inspect.getfullargspec(func).args:
-                if key in args:
-                    result[key] = args[key]
-        except TypeError:
-            result = args
-        except ValueError:
-            result = args
-        debug.trace(6, f"BaseTransformerStrategy.filter_args_by_function(func={func}, args={args}) => {result}")
-        return result
-
     def get_replacement(self, path: str, args: list) -> Tuple:
         """
         Get the function replacement
@@ -940,7 +1098,7 @@ class BaseTransformerStrategy:
             return "", []
         new_path = self.eq_call_to_path(eq_call)
         # Adapt the arguments
-        new_args_nodes = self.get_args_replacement(eq_call, args, []) ## TODO: add kwargs
+        new_args_nodes = self.get_args_replacement(eq_call, args)
         debug.trace(5, f"BaseTransformerStrategy.get_replacement(path={path}, args={args}) => {new_path}, {new_args_nodes}")
         return new_path, new_args_nodes
 
@@ -954,7 +1112,7 @@ class BaseTransformerStrategy:
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
         """Transform every argument to the equivalent argument"""
         raise NotImplementedError
 
@@ -989,28 +1147,25 @@ class ToStandard(BaseTransformerStrategy):
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         if eq_call.condition is None:
             return True
-        arguments = match_args(eq_call.target, args, {})
-        arguments = self.filter_args_by_function(eq_call.condition, arguments)
-        arguments = arguments.values()
+        arguments = match_args(eq_call.target, args)
+        arguments = dict_to_func_args_list(eq_call.condition, arguments)
         if not all_has_fixed_value(arguments):
             debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
             return True
         arguments = args_to_values(arguments)
-        result = eq_call.condition(*arguments)
-        debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {result}")
-        return result
+        arguments = eq_call.condition(*arguments)
+        debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {arguments}")
+        return arguments
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
         if Features.FORMAT_STRING in eq_call.features:
             args = format_strings_in_args(args)
-        arguments = match_args(eq_call.target, args, kwargs)
+        arguments = match_args(eq_call.target, args)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
-        arguments = self.filter_args_by_function(eq_call.dest, arguments)
-        result = flatten_list(list(arguments.values()))
-        result = remove_last_comma(result)
-        debug.trace(6, f"ToStandard.get_args_replacement(eq_call={eq_call}, args={args}, kwargs={kwargs}) => {result}")
-        return result
+        arguments = dict_to_func_args_list(eq_call.dest, arguments)
+        debug.trace(6, f"ToStandard.get_args_replacement(eq_call={eq_call}, args={args}) => {arguments}")
+        return arguments
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         result = {}
@@ -1051,11 +1206,10 @@ class ToMezcla(BaseTransformerStrategy):
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         if eq_call.condition is None:
             return True
-        arguments = match_args(eq_call.dest, args, {})
+        arguments = match_args(eq_call.dest, args)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
-        arguments = self.filter_args_by_function(eq_call.condition, arguments)
-        arguments = arguments.values()
+        arguments = dict_to_func_args_list(eq_call.condition, arguments)
         if not all_has_fixed_value(arguments):
             debug.trace(6, f"ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
             return True
@@ -1064,15 +1218,13 @@ class ToMezcla(BaseTransformerStrategy):
         debug.trace(7, f"ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {result}")
         return result
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
-        arguments = match_args(eq_call.dest, args, kwargs)
+    def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
+        arguments = match_args(eq_call.dest, args)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.insert_extra_params(eq_call, arguments)
-        arguments = self.filter_args_by_function(eq_call.target, arguments)
-        result = flatten_list(list(arguments.values()))
-        result = remove_last_comma(result)
-        debug.trace(7, f"ToMezcla.get_args_replacement(eq_call={eq_call}, args={args}, kwargs={kwargs}) => {result}")
-        return result
+        arguments = dict_to_func_args_list(eq_call.target, arguments)
+        debug.trace(7, f"ToMezcla.get_args_replacement(eq_call={eq_call}, args={args}) => {arguments}")
+        return arguments
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         result = {}
@@ -1170,6 +1322,8 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         StoreMetrics.__init__(self)
         self.to_module = to_module
         self.to_import = []
+        self.removed = []
+        self.keep = []
 
     # pylint: disable=invalid-name
     def leave_Module(
@@ -1178,10 +1332,36 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
             updated_node: cst.Module
         ) -> cst.Module:
         """Leave a Module node"""
+        # Add new imports
         new_body = list(updated_node.body)
         for module in set(self.to_import):
             new_body = [path_to_import(module)] + new_body
         result = updated_node.with_changes(body=new_body)
+        # Extract import paths of keep/removed references
+        def extract_imports(list_of_paths: str) -> str:
+            return [path.split(".")[0] for path in list_of_paths]
+        imports_to_keep = extract_imports(self.keep)
+        imports_to_remove = extract_imports(self.removed)
+        # Substract the removed imports from the keep imports
+        unused_removed_imports = []
+        for path in imports_to_remove:
+            if path not in imports_to_keep:
+                unused_removed_imports.append(path)
+        # Remove unused imports
+        new_body = []
+        for node in result.body:
+            if not isinstance(node, cst.SimpleStatementLine):
+                new_body.append(node)
+                continue
+            if isinstance(node.body[0], (cst.Import, cst.ImportFrom)):
+                new_import_node = remove_paths_from_import_cst(node.body[0], unused_removed_imports)
+                if new_import_node is not None:
+                    new_node = node.with_changes(body=[new_import_node])
+                    new_body.append(new_node)
+            else:
+                new_body.append(node)
+        result = result.with_changes(body=new_body)
+        #
         debug.trace(8, f"ReplaceCallsTransformer.leave_Module(original_node={original_node}, updated_node={updated_node}) => {result}")
         return result
 
@@ -1191,6 +1371,8 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         new_node = updated_node
         if isinstance(updated_node.func, cst.Attribute):
             new_node = self.replace_call_if_needed(updated_node)
+        else:
+            self.keep.append(cst_to_path(updated_node))
         debug.trace(8, f"ReplaceCallsTransformer.leave_Call(original_node={original_node}, updated_node={updated_node}) => {new_node}")
         return new_node
 
@@ -1210,6 +1392,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
             path, updated_node.args
         )
         if not new_path:
+            self.keep.append(path)
             debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => skipping")
             return updated_node
         # We use the first components on a path is for
@@ -1231,6 +1414,8 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
             args=new_args_nodes
         )
         self.add_to_history(path, new_path)
+        self.removed.append(path)
+        # Handle new and old imports
         if import_path:
             self.to_import.append(import_path)
         debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => {updated_node}")
