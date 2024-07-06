@@ -189,6 +189,7 @@ from typing import (
 )
 import tempfile
 from enum import Enum
+import collections
 # Imports used to convert string to callable
 # pylint: disable=unused-import
 import os
@@ -554,6 +555,8 @@ def cst_to_path(tree: cst.CSTNode) -> str:
         return tree.value
     elif isinstance(tree, cst.ImportAlias):
         return cst_to_path(tree.name)
+    elif isinstance(tree, cst.Subscript):
+        return cst_to_path(tree.value)
     raise ValueError(f"Unsupported node type: {type(tree)}")
 
 def cst_to_paths(tree: cst.CSTNode) -> list:
@@ -690,32 +693,164 @@ def path_to_callable(path: str) -> callable:
     debug.trace(7, f"path_to_callable(func_string={path}) => {module}")
     return module
 
-def match_args(func: callable, args: list, kwargs: dict) -> dict:
+def match_args(func: callable, cst_arguments: list) -> dict:
     """
     Match the arguments to the function signature
     ```
     def foo(a, b, c):
         ...
-    match_args(foo, [1, 2, 3], {}) => {
-        "a": 1,
-        "b": 2,
-        "c": 3
+    match_args(foo, [Arg(1), Arg(2), Arg(3)], {}) => {
+        "a": Arg(1),
+        "b": Arg(2),
+        "c": Arg(3)
     }
     ```
     """
+    # Extract function signature
+    func_spec = get_func_specs(func)
+    if func_spec is None:
+        debug.trace(7, f"match_args(func={func}, cst_arguments={cst_arguments}) => {func_spec}")
+        return {}
+    arg_names = func_spec.args
+    varargs_name = func_spec.varargs
+    kwarg_defaults = func_spec.kwonlydefaults if func_spec.kwonlydefaults else {}
+    kwarg_names = func_spec.kwargs
+
+    # Separate between args and kwargs
+    args, kwargs = [], []
+    for arg in cst_arguments:
+        if isinstance(arg, cst.Arg):
+            if arg.keyword:
+                kwargs.append(arg)
+            else:
+                args.append(arg)
+        else:
+            raise ValueError(f"Unsupported argument type: {type(arg)}")
+
+    # Match positional arguments
+    matched_args = {}
+    excess_args = []
+    for i, arg in enumerate(args):
+        if i < len(arg_names):
+            matched_args[arg_names[i]] = arg
+        else:
+            excess_args.append(arg)
+
+    # Handle *args
+    if varargs_name:
+        matched_args[varargs_name] = excess_args
+
+    # Match keyword arguments
+    for kwarg in kwargs:
+        if not kwarg.keyword:
+            continue
+        if kwarg.keyword.value in kwarg_names:
+            matched_args[kwarg.keyword.value] = kwarg
+
+    return matched_args
+
+ArgsSpecs = collections.namedtuple('Specs',
+    'args, kwargs, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations')
+"""
+Same as `inspect.FullArgSpec`, but separated `args` from `kwargs`
+"""
+
+def get_func_specs(func: callable) -> ArgsSpecs:
+    """
+    Get the function signature
+    """
     if isinstance(func, str):
         func = path_to_callable(func)
-    target_spec = inspect.getfullargspec(func)
-    # Extract arguments
-    arguments = dict(zip(target_spec.args, args))
-    # Extract *arguments
-    if target_spec.varargs:
-        arguments[target_spec.varargs] = args[len(target_spec.args):]
-    # Extract **arguments
-    if target_spec.varkw:
-        arguments[target_spec.varkw] = kwargs
-    debug.trace(7, f"match_args(func={func}, args={args}, kwargs={kwargs}) => {arguments}")
-    return arguments
+    result = None
+    if func.__module__ == "builtins":
+        # Workaround for builtins
+        if func.__name__ == "print":
+            result = ArgsSpecs(
+                args=[],
+                kwargs=["sep", "end", "file", "flush"],
+                varargs="values",
+                varkw=None,
+                defaults=[],
+                kwonlyargs=[],
+                kwonlydefaults={},
+                annotations={}
+            )
+        ## Add here more workarounds for builtins if needed
+    else:
+        func_specs = inspect.getfullargspec(func)
+        # Separate args from kwargs, based on defaults
+        new_args = func_specs.args
+        new_kwargs = []
+        if func_specs.defaults:
+            new_kwargs = func_specs.args[-len(func_specs.defaults):]
+            new_args = func_specs.args[:-len(func_specs.defaults)]
+        result = ArgsSpecs(
+            args=new_args,
+            kwargs=new_kwargs,
+            varargs=func_specs.varargs,
+            varkw=func_specs.varkw,
+            defaults=func_specs.defaults,
+            kwonlyargs=func_specs.kwonlyargs,
+            kwonlydefaults=func_specs.kwonlydefaults,
+            annotations=func_specs.annotations
+        )
+    debug.trace(7, f"get_func_specs(func={func}) => {result}")
+    return result
+
+def dict_to_func_args_list(func: callable, args_dict: dict) -> list:
+    """
+    Convert a dictionary to a list of CST arguments nodes, this is the opposite of match_args(...)
+    ```
+    def foo(a, b=None):
+        ...
+    dict_to_func_args_list(
+        foo,
+        {
+            "a": Arg(1),
+            "b": Arg(2, keyword="b"),
+            "c": Arg(3)
+        }
+    ) => [
+        Arg(1),
+        Arg(2, keyword="b")
+    ]
+    ```
+    As you can see, this method remove extra arguments
+    """
+    # Extract function signature
+    func_spec = get_func_specs(func)
+    if func_spec is None:
+        result = list(args_dict.values())
+        debug.trace(7, f"dict_to_func_args_list(func={func}, args_dict={args_dict}) => {result}")
+        return result
+
+    # Match positional arguments
+    result = []
+    for arg_name in func_spec.args:
+        if arg_name in args_dict:
+            result.append(args_dict[arg_name])
+        else:
+            break
+
+    # Handle *args
+    if func_spec.varargs in args_dict:
+        varargs = args_dict[func_spec.varargs]
+        if isinstance(varargs, list):
+            result += varargs
+        else:
+            result.append(varargs)
+
+    # Match keyword arguments
+    for kwarg_name in func_spec.kwargs:
+        if kwarg_name in args_dict:
+            new_arg = args_dict[kwarg_name].with_changes(keyword=path_to_cst(kwarg_name))
+            result.append(new_arg)
+
+    result = flatten_list(result)
+    result = remove_last_comma(result)
+
+    debug.trace(7, f"dict_to_func_args_list(func={func}, args_dict={args_dict}) => {result}")
+    return result
 
 def flatten_list(list_to_flatten: list) -> list:
     """Flatten a list"""
@@ -856,7 +991,6 @@ def format_strings_in_args(args: list) -> dict:
                 result.append(arg)
         else:
             result.append(arg)
-    result = remove_last_comma(result)
     debug.trace(7, f"format_strings_in_args(args={args}) => {result}")
     return result
 
@@ -949,37 +1083,6 @@ class BaseTransformerStrategy:
         debug.trace(6, f"BaseTransformerStrategy.insert_extra_params(args={args}) => {new_args}")
         return new_args
 
-    def filter_args_by_function(self, func: callable, args: dict) -> dict:
-        """
-        Filter the arguments to match the function signature
-        ```
-        def foo(a, b, c):
-            ...
-        args = {
-            "a": 1,
-            "b": 2,
-            "d": 3
-        }
-        filter_args_by_function(foo, args) => {
-            "a": 1,
-            "b": 2
-        }
-        ```
-        """
-        if isinstance(func, str):
-            func = path_to_callable(func)
-        result = {}
-        try:
-            for key in inspect.getfullargspec(func).args:
-                if key in args:
-                    result[key] = args[key]
-        except TypeError:
-            result = args
-        except ValueError:
-            result = args
-        debug.trace(6, f"BaseTransformerStrategy.filter_args_by_function(func={func}, args={args}) => {result}")
-        return result
-
     def get_replacement(self, path: str, args: list) -> Tuple:
         """
         Get the function replacement
@@ -992,7 +1095,7 @@ class BaseTransformerStrategy:
             return "", []
         new_path = self.eq_call_to_path(eq_call)
         # Adapt the arguments
-        new_args_nodes = self.get_args_replacement(eq_call, args, []) ## TODO: add kwargs
+        new_args_nodes = self.get_args_replacement(eq_call, args)
         debug.trace(5, f"BaseTransformerStrategy.get_replacement(path={path}, args={args}) => {new_path}, {new_args_nodes}")
         return new_path, new_args_nodes
 
@@ -1006,7 +1109,7 @@ class BaseTransformerStrategy:
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
         """Transform every argument to the equivalent argument"""
         raise NotImplementedError
 
@@ -1041,28 +1144,25 @@ class ToStandard(BaseTransformerStrategy):
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         if eq_call.condition is None:
             return True
-        arguments = match_args(eq_call.target, args, {})
-        arguments = self.filter_args_by_function(eq_call.condition, arguments)
-        arguments = arguments.values()
+        arguments = match_args(eq_call.target, args)
+        arguments = dict_to_func_args_list(eq_call.condition, arguments)
         if not all_has_fixed_value(arguments):
             debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
             return True
         arguments = args_to_values(arguments)
-        result = eq_call.condition(*arguments)
-        debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {result}")
-        return result
+        arguments = eq_call.condition(*arguments)
+        debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {arguments}")
+        return arguments
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
         if Features.FORMAT_STRING in eq_call.features:
             args = format_strings_in_args(args)
-        arguments = match_args(eq_call.target, args, kwargs)
+        arguments = match_args(eq_call.target, args)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
-        arguments = self.filter_args_by_function(eq_call.dest, arguments)
-        result = flatten_list(list(arguments.values()))
-        result = remove_last_comma(result)
-        debug.trace(6, f"ToStandard.get_args_replacement(eq_call={eq_call}, args={args}, kwargs={kwargs}) => {result}")
-        return result
+        arguments = dict_to_func_args_list(eq_call.dest, arguments)
+        debug.trace(6, f"ToStandard.get_args_replacement(eq_call={eq_call}, args={args}) => {arguments}")
+        return arguments
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         result = {}
@@ -1103,11 +1203,10 @@ class ToMezcla(BaseTransformerStrategy):
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         if eq_call.condition is None:
             return True
-        arguments = match_args(eq_call.dest, args, {})
+        arguments = match_args(eq_call.dest, args)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
-        arguments = self.filter_args_by_function(eq_call.condition, arguments)
-        arguments = arguments.values()
+        arguments = dict_to_func_args_list(eq_call.condition, arguments)
         if not all_has_fixed_value(arguments):
             debug.trace(6, f"ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
             return True
@@ -1116,15 +1215,13 @@ class ToMezcla(BaseTransformerStrategy):
         debug.trace(7, f"ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {result}")
         return result
 
-    def get_args_replacement(self, eq_call: EqCall, args: list, kwargs: dict) -> dict:
-        arguments = match_args(eq_call.dest, args, kwargs)
+    def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
+        arguments = match_args(eq_call.dest, args)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.insert_extra_params(eq_call, arguments)
-        arguments = self.filter_args_by_function(eq_call.target, arguments)
-        result = flatten_list(list(arguments.values()))
-        result = remove_last_comma(result)
-        debug.trace(7, f"ToMezcla.get_args_replacement(eq_call={eq_call}, args={args}, kwargs={kwargs}) => {result}")
-        return result
+        arguments = dict_to_func_args_list(eq_call.target, arguments)
+        debug.trace(7, f"ToMezcla.get_args_replacement(eq_call={eq_call}, args={args}) => {arguments}")
+        return arguments
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         result = {}
