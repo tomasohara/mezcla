@@ -910,7 +910,10 @@ def get_format_names_in_string(value: str) -> list:
     result = []
     for name in value.split("{"):
         if "}" in name:
-            result.append(name.split("}")[0].strip())
+            name = name.split("}")[0].strip()
+            name = name.split("!")[0]
+            name = name.split(":")[0]
+            result.append(name)
     debug.trace(9, f"get_format_names_in_string(value={value}) => {result}")
     return result
 
