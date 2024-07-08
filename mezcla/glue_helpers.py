@@ -407,7 +407,7 @@ def disable_subcommand_tracing():
 
 
 def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=False, **namespace):
-    """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
+    """Invokes COMMAND via system shell (e.g., os.system), using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
    Notes:
    - The result includes stderr, so direct if not desired (see issue):
          run("ls /tmp/fubar 2> /dev/null")
