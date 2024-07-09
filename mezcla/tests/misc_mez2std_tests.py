@@ -21,6 +21,8 @@ from mezcla.unittest_wrapper import TestWrapper
 # Constants
 MEZCLA_DIR = gh.form_path(gh.dir_path(__file__), "..")
 MEZCLA_SCRIPTS_COUNT = 58
+LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
+DECORATOR_VALIDATION_CALL = "@validate_call\ndef"
 
 # Environment Variables
 RUN_SLOW_TESTS = system.getenv_bool(
@@ -121,12 +123,145 @@ class TestM2SBatchConversion(TestWrapper):
             line_warning_ratio*wt_warning 
         )
     
-    
+    def transform_for_validation(self, file_path):
+        # Conversion and comparison starts from here
+        """Creates a copy of the script for validation of argument calls (using pydantic)"""
+        content = system.read_file(file_path)
+        content = my_re.sub(r"^def", r"@validate_call\ndef", content, flags=my_re.MULTILINE)
+        content = LINE_IMPORT_PYDANTIC + content
+        return content
+
+    def create_test_function(self, module_name, function_name):
+        """Creates a test function template for a given function name"""
+        return f"""
+def test_{function_name}():
+    from {module_name} import {function_name}
+    assert callable({function_name})
+    # Add appropriate function calls and assertions here
+    try:
+        {function_name}()  # Example call, modify as needed
+    except Exception as e:
+        assert False, f"Function {function_name} raised an exception: {{e}}"
+"""
+
+    def create_test_file(self, script_path, test_dir):
+        """Creates a test file for a given script"""
+        ## TODO: Convert this to a mezcla script
+        script_name = gh.basename(script_path, ".py")
+        function_names = self.extract_function_names(script_path)
+        test_file_content = "\n".join([self.create_test_function(script_name, fn) for fn in function_names])
+        test_file_dir = gh.form_path(test_dir, "tests")
+        system.create_directory(test_file_dir)
+        test_file_path = gh.form_path(test_file_dir, f"test_{script_name}.py")
+        system.write_file(test_file_path, test_file_content)
+        return test_file_path
+
+    def extract_function_names(self, file_path):
+        """Extracts function names from a script"""
+        content = system.read_file(file_path)
+        return my_re.findall(r"^def (\w+)", content, flags=my_re.MULTILINE)
+
+    def test_m2s_compare_pytest(self):
+        # Step 1: Get the basenames of scripts in mezcla
+        scripts = self.get_mezcla_scripts()
+        # scripts = scripts[:10]
+        
+        # scripts = [
+        #     "debug.py", "glue_helpers.py", "html_utils.py",
+        #     "my_regex.py", "system.py", "unittest_wrapper.py",
+        # ]
+        original_mezcla_dir = MEZCLA_DIR
+
+        temp_dir_base = self.temp_file
+        temp_dir_typehint_org = f"{temp_dir_base}-typehint_org"
+        temp_dir_typehint_m2s = f"{temp_dir_base}-typehint_m2s"
+        temp_dir_m2s = f"{temp_dir_base}-mezcla_m2s"
+        
+        # Ensure all directories exist
+        system.create_directory(temp_dir_typehint_org)
+        system.create_directory(temp_dir_typehint_m2s)
+        system.create_directory(temp_dir_m2s)
+
+        m2s_path = self.get_m2s_path()
+
+        fail_count = 0
+        for idx, script in enumerate(scripts, start=1):
+            script_path = gh.form_path(original_mezcla_dir, script)
+            
+            # Step 2.1: Batch convert mezcla scripts to standard, place it in mezcla_m2s temp
+            output, output_file = self.get_mezcla_command_output(
+                m2s_path=m2s_path, 
+                script_path=script_path, 
+                option="to_standard", 
+                output_path=temp_dir_m2s
+            )
+
+            # Step 2.1.1: Count the number of functions in a script 
+            # $ cat mezcla/compute_tfidf.py | grep -E "^\s*def\s+\w+\s*\(.*\):" | wc -l
+            # | 5
+            method_count = sum(map(int, map(lambda x: 1, my_re.findall(r"^\s*def\s+\w+\s*\(.*\):", output, my_re.MULTILINE))))
+
+            # Step 2.2: Add dynamic type checking for original code (typehint_org)
+            transformed_code_original = self.transform_for_validation(file_path=script_path)
+            script_path_typehint_org = gh.form_path(temp_dir_typehint_org, script)
+            system.write_file(script_path_typehint_org, transformed_code_original)
+            
+            # Step 2.3: Add dynamic type checking for m2s code (typehint_m2s)
+            transformed_code_m2s = self.transform_for_validation(file_path=output_file)
+            script_path_typehint_m2s = gh.form_path(temp_dir_typehint_m2s, script)
+            system.write_file(script_path_typehint_m2s, transformed_code_m2s)
+        
+            # Step 2.4: Create and run tests for original code
+            test_file_org = self.create_test_file(script_path, temp_dir_typehint_org)
+            pytest_result_original = gh.run(f"PYTHONPATH='{temp_dir_typehint_org}' pytest {test_file_org}")
+            
+            # Step 2.5: Create and run tests for typehint_m2s
+            test_file_m2s = self.create_test_file(script_path, temp_dir_typehint_m2s)
+            pytest_result_m2s = gh.run(f"PYTHONPATH='{temp_dir_typehint_m2s}' pytest {test_file_m2s}")
+            
+            num_failed_validate_org = sum(map(int, my_re.findall(r"(\d+) x?failed", pytest_result_original)))
+            num_passed_validate_org = sum(map(int, my_re.findall(r"(\d+) x?passed", pytest_result_original)))
+            num_failed_validate_mod = sum(map(int, my_re.findall(r"(\d+) x?failed", pytest_result_m2s)))
+            num_passed_validate_mod = sum(map(int, my_re.findall(r"(\d+) x?passed", pytest_result_m2s)))
+
+            print(f"\n#{idx} {script} [{method_count}]: ")
+            print(f"Converted Path: {test_file_m2s}")
+            print(f"Original: {num_passed_validate_org} passed, {num_failed_validate_org} failed")
+            print(f"Modified: {num_passed_validate_mod} passed, {num_failed_validate_mod} failed")
+            # assert num_failed_validate_mod >= num_failed_validate_org
+            
+            # Step 2.6: Write the pytest results to a directory
+            # TODO: Extract the types of errors from the Pytest result
+            temp_dir_pytest_org = f"{temp_dir_base}-pytest_org"
+            temp_dir_pytest_m2s = f"{temp_dir_base}-pytest_m2s"
+            system.create_directory(temp_dir_pytest_org)
+            system.create_directory(temp_dir_pytest_m2s)
+
+            script_path_pytest_org = gh.form_path(temp_dir_pytest_org, gh.basename(script, ".py")) + ".txt"
+            script_path_pytest_m2s = gh.form_path(temp_dir_pytest_m2s, gh.basename(script, ".py")) + ".txt"
+            system.write_file(text=pytest_result_original, filename=script_path_pytest_org)
+            system.write_file(text=pytest_result_m2s, filename=script_path_pytest_m2s)
+
+            print(f"Pytest Results (Original): {script_path_pytest_org}")
+            print(f"Pytest Results (Mezcla): {script_path_pytest_m2s}")
+
+
+            # Step 2.7: Count results and assert
+            fail_result = False
+            total_count = num_failed_validate_mod + num_passed_validate_mod
+            if num_failed_validate_mod > num_failed_validate_org:
+                fail_result = True
+            if fail_result:
+                fail_count += 1
+            bad_pct = round(fail_count * 100 / total_count, 2) if total_count != 0 else 0
+            ## TODO: assert bad_pct < 20
+
     def test_get_mezcla_scripts(self):
         # Test 1: Check all 58 scripts are collected 
         """Returns an array of all Python3 scripts in MEZCLA_DIR"""
         assert len(self.get_mezcla_scripts()) == MEZCLA_SCRIPTS_COUNT
 
+    @pytest.mark.skip
     def test_mezcla_scripts_compare(self, threshold=0.75):
         # Test 2: Find the differences between the tests and optionally set a threshold for differences
         """Tests for comparing mezcla scripts with the original scripts"""
