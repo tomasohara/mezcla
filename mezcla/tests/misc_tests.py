@@ -13,6 +13,7 @@
 """Miscellaneous/non-module tests"""
 
 # Standard packages
+import random
 ## TODO: from collections import defaultdict
 
 # Installed packages
@@ -25,6 +26,7 @@ from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla.unittest_wrapper import trap_exception
+from mezcla.validate_arguments import add_validate_call_decorator
 
 # Constants
 LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
@@ -38,6 +40,47 @@ SKIP_SLOW_TESTS = system.getenv_bool(
     "SKIP_SLOW_TESTS", False,
     description="Skip tests that can take a while to run")
 
+def transform_for_validation(file_path):
+    """Creates a copy of the script for validation of argument calls (using pydantic)"""
+    content = system.read_file(file_path)
+    transformed = add_validate_call_decorator(content)
+    ## OLD transformation method using regular expressions
+    ##     this can be replaced with add_validate_call_decorator
+    ##     that uses libcst for more robust parsing
+    # note: \g<0> subsitutes entire string (a la $& in perl)
+    content = my_re.sub(r"^def", r"@validate_call\n\g<0>", content, flags=my_re.MULTILINE)
+    ## Uncomment the line below (and comment the line above) if the decorators are previously used
+    ## May not be compatible with scripts in mezcla/tests
+    # content = my_re.sub(r"^(?:(?!\s*[@'#\']).*?)(\s*)(def )", r'\1@validate_call\n\1\2', content, flags=my_re.MULTILINE)
+    ## TODO1:  something like the following (so that shebang line kept as first):
+    ## my_re.sub(r"^((from \S+ )?import)", fr"\1{LINE_IMPORT_PYDANTIC}", content, flags=my_re.MULTILINE, count=1)
+    content = LINE_IMPORT_PYDANTIC + content
+    ## TODO2: use self.get_temp_file(): Lorenzo added new functionality
+    ## OLD:
+    ## output_path = OUTPUT_PATH_PYDANTIC + gh.basename(file_path)
+    ## system.write_file(filename=output_path, text=content)
+    ## return output_path
+    return transformed
+
+def save_transformed_for_validation(from_dir, to_dir, script_name):
+    """Creates a copy of the script for validation of argument calls (using pydantic)"""
+    original_path = gh.form_path(from_dir, script_name)
+    new_code = transform_for_validation(original_path)
+    destination_path = gh.form_path(to_dir, script_name)
+    system.write_file(destination_path, new_code)
+
+def run_test(name, temp_dir, test_name):
+    """Run a test script in a temporary directory"""
+    test_script = gh.form_path(temp_dir, "tests", f"test_{test_name}")
+    result = gh.run(f"PYTHONPATH='{temp_dir}' pytest {test_script}")
+    if debug.verbose_debugging():
+        number = random.randint(10000, 99999)
+        system.write_file(f"test_{test_name}_{number}.{name}.out", result)
+    return result
+
+def count_failures(results):
+    """Count the number of failures in the test results"""
+    return sum(map(system.to_int, gh.extract_matches_from_text(r"(\d+) x?failed", results)))
 
 class TestMisc(TestWrapper):
     """Class for test case definitions"""
@@ -57,25 +100,7 @@ class TestMisc(TestWrapper):
                 ok_python_modules.append(module)
         debug.trace_expr(5, ok_python_modules)
         return ok_python_modules
-    
-    def transform_for_validation(self, file_path):
-        """Creates a copy of the script for validation of argument calls (using pydantic)"""
-        content = system.read_file(file_path)
-        # note: \g<0> subsitutes entire string (a la $& in perl)
-        content = my_re.sub(r"^def", r"@validate_call\n\g<0>", content, flags=my_re.MULTILINE)
-        ## Uncomment the line below (and comment the line above) if the decorators are previously used
-        ## May not be compatible with scripts in mezcla/tests
-        # content = my_re.sub(r"^(?:(?!\s*[@'#\']).*?)(\s*)(def )", r'\1@validate_call\n\1\2', content, flags=my_re.MULTILINE)
-        ## TODO1:  something like the following (so that shebang line kept as first):
-        ## my_re.sub(r"^((from \S+ )?import)", fr"\1{LINE_IMPORT_PYDANTIC}", content, flags=my_re.MULTILINE, count=1)
-        content = LINE_IMPORT_PYDANTIC + content
-        ## TODO2: use self.get_temp_file(): Lorenzo added new functionality
-        ## OLD:
-        ## output_path = OUTPUT_PATH_PYDANTIC + gh.basename(file_path)
-        ## system.write_file(filename=output_path, text=content)
-        ## return output_path
-        return content
-    
+
     @pytest.mark.xfail
     def test_01_check_for_tests(self):
         """Make sure test exists for each Python module"""
@@ -123,7 +148,7 @@ class TestMisc(TestWrapper):
         ##
         ## TODO2: use gh.resolve_path
         input_file = "../html_utils.py"
-        content = self.transform_for_validation(input_file)
+        content = transform_for_validation(input_file)
         ##
         ## OLD:
         ## ## TODO1: don't hardcode refs to /tmp 
@@ -152,7 +177,7 @@ class TestMisc(TestWrapper):
         Note: This creates copy of mezcla scripts and checks pytest result over original vs modified.
         """
         debug.trace(4, "test_06_type_hinting()")
-        ## TODO3: add helper script to cut down on redundancy (e.g., temp vs orig processing)
+        ## TODO: create a module with very broken python code to test the test (for false positives)
         main_scripts = [
             "debug.py", "glue_helpers.py", "html_utils.py",
             "my_regex.py", "system.py", "unittest_wrapper.py",
@@ -172,19 +197,11 @@ class TestMisc(TestWrapper):
         num_cases = len(main_scripts)
         for script in main_scripts:
             # Add dynamic type checking to scripts (e.g., via pydantic)
-            transformed_code = self.transform_for_validation(gh.form_path(orig_mezcla_dir, script))
-            transformed_script = gh.form_path(temp_mezcla_dir, script)
-            system.write_file(transformed_script, transformed_code)
+            save_transformed_for_validation(orig_mezcla_dir, temp_mezcla_dir, script)
 
             # Run tests using transformed and original script
-            test_script = gh.form_path("tests", f"test_{script}")
-            temp_test_script = gh.form_path(temp_mezcla_dir, test_script)
-            temp_results = gh.run(f"PYTHONPATH='{temp_mezcla_dir}' pytest {temp_test_script}")
-            orig_test_script = gh.form_path(orig_mezcla_dir, test_script)
-            orig_results = gh.run(f"PYTHONPATH='{orig_mezcla_dir}' pytest {orig_test_script}")
-            if debug.verbose_debugging():
-                system.write_file(f"{self.temp_file}-{script}.temp.out", temp_results)
-                system.write_file(f"{self.temp_file}-{script}.orig.out", orig_results)
+            temp_results = run_test("temp", temp_mezcla_dir, script)
+            orig_results = run_test("orig", orig_mezcla_dir, script)
 
             # Check for errors
             # exs: 1) more exceptions in transformed run vs original; 2) differences in number of failures
@@ -192,8 +209,8 @@ class TestMisc(TestWrapper):
             if (temp_results.count("Exception") > orig_results.count("Exception")):
                 debug.trace(4, f"Warning exception running test of transformed script {script}")
                 bad_results = True
-            num_temp_failed = sum(map(system.to_int, gh.extract_matches_from_text(r"(\d+) x?failed", temp_results)))
-            num_orig_failed = sum(map(system.to_int, gh.extract_matches_from_text(r"(\d+) x?failed", orig_results)))
+            num_temp_failed = count_failures(temp_results)
+            num_orig_failed = count_failures(orig_results)
             debug.assertion(num_temp_failed >= num_orig_failed)
             debug.trace_expr(5, num_temp_failed, num_orig_failed, script)
             if (num_temp_failed > num_orig_failed):
