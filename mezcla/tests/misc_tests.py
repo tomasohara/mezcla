@@ -40,6 +40,21 @@ SKIP_SLOW_TESTS = system.getenv_bool(
     "SKIP_SLOW_TESTS", False,
     description="Skip tests that can take a while to run")
 
+def get_python_module_files(include_tests=False):
+    """Return list of files for python modules, optionally with INCLUDE_TESTS"""
+    all_python_modules = gh.run("find . -name '*.py'").splitlines()
+    ok_python_modules = []
+    for module in all_python_modules:
+        dir_path, _ = system.split_path(module)
+        _, dir_proper = system.split_path(dir_path)
+        include = True
+        if (dir_proper == "tests"):
+            include = include_tests
+        if include:
+            ok_python_modules.append(module)
+    debug.trace_expr(5, ok_python_modules)
+    return ok_python_modules
+
 def transform_for_validation(file_path):
     """Creates a copy of the script for validation of argument calls (using pydantic)"""
     content = system.read_file(file_path)
@@ -86,26 +101,11 @@ class TestMisc(TestWrapper):
     """Class for test case definitions"""
     script_module= None
 
-    def get_python_module_files(self, include_tests=False):
-        """Return list of files for python modules, optionally with INCLUDE_TESTS"""
-        all_python_modules = gh.run("find . -name '*.py'").splitlines()
-        ok_python_modules = []
-        for module in all_python_modules:
-            dir_path, _filename = system.split_path(module)
-            _parent_path, dir_proper = system.split_path(dir_path)
-            include = True
-            if (dir_proper == "tests"):
-                include = include_tests
-            if include:
-                ok_python_modules.append(module)
-        debug.trace_expr(5, ok_python_modules)
-        return ok_python_modules
-
     @pytest.mark.xfail
     def test_01_check_for_tests(self):
         """Make sure test exists for each Python module"""
         debug.trace(4, "test_01_check_for_tests()")
-        for module in self.get_python_module_files():
+        for module in get_python_module_files():
             dir_name, filename = system.split_path(module)
             include = True
             # Check for cases to skip (e.g., __init__.py)
@@ -122,7 +122,7 @@ class TestMisc(TestWrapper):
         """Make sure modules don't use certain standard library calls directly
         Note: The mezcla equivalent should be used for sake of debugging traces"""
         debug.trace(4, "test_02_check_lib_usages()")
-        for module in self.get_python_module_files():
+        for module in get_python_module_files():
             module_code = system.read_file(module)
             bad_usage = False
             # Direct use of sys.stdin.read()
@@ -137,7 +137,7 @@ class TestMisc(TestWrapper):
         """Make sure modules don't use certain standard library calls directly
         Note: The mezcla equivalent should be used for sake of debugging traces"""
         debug.trace(4, "test_03_check_permissions()")
-        for module in self.get_python_module_files():
+        for module in get_python_module_files():
             has_execute_perm = gh.run(f'ls -l "{module}" | grep ^...x..x..x')
             self.do_assert(has_execute_perm, f"module {module} is missing execute permission")
 
