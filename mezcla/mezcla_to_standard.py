@@ -212,6 +212,155 @@ METRICS = "metrics"
 IN_PLACE = "in_place"
 SKIP_WARNINGS = "skip_warnings"
 
+def path_to_callable(path: str) -> callable:
+    """
+    Converts a string representing a function into the actual callable function.
+    
+    Parameters:
+    path (str): The string representing the function, e.g., "os.remove".
+    
+    Returns:
+    callable: The actual function.
+    """
+    components = path.split('.')
+    # Get the base module from the global namespace
+    module = globals()[components[0]]
+    # Iterate through the components to get the desired attribute
+    for component in components[1:]:
+        module = getattr(module, component)
+    debug.trace(7, f"path_to_callable(func_string={path}) => {module}")
+    return module
+
+ArgsSpecs = collections.namedtuple('Specs',
+    'args, kwargs, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations')
+"""
+Same as `inspect.FullArgSpec`, but separated `args` from `kwargs`
+"""
+
+def get_func_specs(func: callable) -> ArgsSpecs:
+    """
+    Get the function signature
+    """
+    if isinstance(func, str):
+        func = path_to_callable(func)
+    result = None
+    if func.__module__ == "builtins":
+        # Workaround for builtins
+        if func.__name__ == "print":
+            result = ArgsSpecs(
+                args=[],
+                kwargs=["sep", "end", "file", "flush"],
+                varargs="values",
+                varkw=None,
+                defaults=[],
+                kwonlyargs=[],
+                kwonlydefaults={},
+                annotations={}
+            )
+        ## Add here more workarounds for builtins if needed
+    else:
+        func_specs = inspect.getfullargspec(func)
+        # Separate args from kwargs, based on defaults
+        new_args = func_specs.args
+        new_kwargs = []
+        if func_specs.defaults:
+            new_kwargs = func_specs.args[-len(func_specs.defaults):]
+            new_args = func_specs.args[:-len(func_specs.defaults)]
+        result = ArgsSpecs(
+            args=new_args,
+            kwargs=new_kwargs,
+            varargs=func_specs.varargs,
+            varkw=func_specs.varkw,
+            defaults=func_specs.defaults,
+            kwonlyargs=func_specs.kwonlyargs,
+            kwonlydefaults=func_specs.kwonlydefaults,
+            annotations=func_specs.annotations
+        )
+    debug.trace(7, f"get_func_specs(func={func}) => {result}")
+    return result
+
+def callable_to_path(func: callable) -> Tuple:
+    """
+    Get the path from callable object
+    ```
+    import some_module
+    callable_to_path(some_module.foo) => "some_module.foo"
+    ```
+    """
+    result = ""
+    if isinstance(func, str):
+        result = func
+    elif func.__module__ == "builtins":
+        result = func.__name__
+    else:
+        result = f"{func.__module__}.{func.__name__}"
+    debug.trace(7, f"callable_to_path(func={func}) => {result}")
+    return result
+
+class CallDetails:
+    """
+    Class with details of a call, this is useful to
+    store `callable`, func as `path` and `specs` of a function
+    and avoid recalculating them every time
+    """
+
+    def __init__(self, func) -> None:
+        self.func = func
+        # Some local functions as lambda in parameters
+        # cannot be converted to path or callable
+        # but also is not required, so we ignore them
+        try:
+            self.callable = path_to_callable(func) if isinstance(func, str) else func
+        except Exception:
+            self.callable = None
+        try:
+            self.path = func if isinstance(func, str) else callable_to_path(func)
+        except Exception:
+            self.path = None
+        try:
+            self.specs = get_func_specs(func)
+        except Exception:
+            self.specs = None
+
+    @staticmethod
+    def to_list_of_call_details(funcs) -> list:
+        """
+        Convert a list of functions to a list of CallDetails objects
+        """
+        # Convert to list
+        if isinstance(funcs, list):
+            funcs = funcs
+        elif isinstance(funcs, tuple):
+            funcs = list(funcs)
+        else:
+            funcs = [funcs]
+        # Process
+        result = []
+        for func in funcs:
+            if isinstance(func, CallDetails):
+                result.append(func)
+            else:
+                result.append(CallDetails(func))
+        return result
+
+    def equals_to(self, path: str) -> bool:
+        """Compare if the path is equal to the call details path"""
+        assert self.path, "CallDetails => path is None"
+        return self.path == path
+
+    def ends_equals_to(self, path: str) -> bool:
+        """
+        Compare if the path ends with the call details path
+        ```
+        "glue_helpers.get_temp_file" == "os.path.get_temp_file"
+        ```
+        """
+        assert self.path, "CallDetails => path is None"
+        return self.path.endswith("." + path)
+
+    def __call__(self, *args, **kwargs):
+        return self.callable(*args, **kwargs)
+
 class EqCall:
     """
     Mezcla to standard equivalent call class
@@ -219,14 +368,14 @@ class EqCall:
 
     def __init__(
             self,
-            target: callable,
-            dest: callable,
+            targets: list,
+            dests: list,
             condition: Optional[callable] = None,
             eq_params: Optional[dict] = None,
             extra_params: Optional[dict] = None,
             features: list = []
         ) -> None:
-        self.target = target
+        self.targets = CallDetails.to_list_of_call_details(targets)
         """
         Mezcla method to be replaced.
         ```
@@ -234,7 +383,7 @@ class EqCall:
         ```
         """
 
-        self.dest = dest
+        self.dests = CallDetails.to_list_of_call_details(dests)
         """
         Standard method to be replaced.
         ```
@@ -247,7 +396,7 @@ class EqCall:
         ```
         """
 
-        self.condition = condition
+        self.condition = condition if isinstance(condition, CallDetails) else CallDetails(condition)
         """
         Evaluation function to determine if the replacement should be made.
         ```
@@ -311,30 +460,14 @@ class EqCall:
 
         # Otherwise calculate the permutations and store them:
 
-        # Group all targets
-        targets = []
-        if isinstance(self.target, tuple):
-            targets = list(self.target)
-        elif isinstance(self.target, list):
-            targets = self.target
-        else:
-            targets = [self.target]
-        # Group all destinations
-        dests = []
-        if isinstance(self.dest, tuple):
-            dests = list(self.dest)
-        elif isinstance(self.dest, list):
-            dests = self.dest
-        else:
-            dests.append(self.dest)
         # Create all permutations
         result = []
-        for target in targets:
-            for dest in dests:
+        for target in self.targets:
+            for dest in self.dests:
                 result.append(EqCall(
-                    target=target,
-                    dest=dest,
-                    condition=self.condition,
+                    targets=target.func,
+                    dests=dest.func,
+                    condition=self.condition.func,
                     eq_params=self.eq_params,
                     extra_params=self.extra_params,
                     features=self.features
@@ -688,26 +821,7 @@ def remove_last_comma(args: list) -> list:
     debug.trace(7, "remove_last_comma(args) => list")
     return args
 
-def path_to_callable(path: str) -> callable:
-    """
-    Converts a string representing a function into the actual callable function.
-    
-    Parameters:
-    path (str): The string representing the function, e.g., "os.remove".
-    
-    Returns:
-    callable: The actual function.
-    """
-    components = path.split('.')
-    # Get the base module from the global namespace
-    module = globals()[components[0]]
-    # Iterate through the components to get the desired attribute
-    for component in components[1:]:
-        module = getattr(module, component)
-    debug.trace(7, f"path_to_callable(func_string={path}) => {module}")
-    return module
-
-def match_args(func: callable, cst_arguments: list) -> dict:
+def match_args(func: CallDetails, cst_arguments: list) -> dict:
     """
     Match the arguments to the function signature
     ```
@@ -721,13 +835,12 @@ def match_args(func: callable, cst_arguments: list) -> dict:
     ```
     """
     # Extract function signature
-    func_spec = get_func_specs(func)
+    func_spec = func.specs
     if func_spec is None:
         debug.trace(7, f"match_args(func={func}, cst_arguments={cst_arguments}) => {func_spec}")
         return {}
     arg_names = func_spec.args
     varargs_name = func_spec.varargs
-    kwarg_defaults = func_spec.kwonlydefaults if func_spec.kwonlydefaults else {}
     kwarg_names = func_spec.kwargs
 
     # Separate between args and kwargs
@@ -763,55 +876,7 @@ def match_args(func: callable, cst_arguments: list) -> dict:
 
     return matched_args
 
-ArgsSpecs = collections.namedtuple('Specs',
-    'args, kwargs, varargs, varkw, defaults, kwonlyargs, kwonlydefaults, annotations')
-"""
-Same as `inspect.FullArgSpec`, but separated `args` from `kwargs`
-"""
-
-def get_func_specs(func: callable) -> ArgsSpecs:
-    """
-    Get the function signature
-    """
-    if isinstance(func, str):
-        func = path_to_callable(func)
-    result = None
-    if func.__module__ == "builtins":
-        # Workaround for builtins
-        if func.__name__ == "print":
-            result = ArgsSpecs(
-                args=[],
-                kwargs=["sep", "end", "file", "flush"],
-                varargs="values",
-                varkw=None,
-                defaults=[],
-                kwonlyargs=[],
-                kwonlydefaults={},
-                annotations={}
-            )
-        ## Add here more workarounds for builtins if needed
-    else:
-        func_specs = inspect.getfullargspec(func)
-        # Separate args from kwargs, based on defaults
-        new_args = func_specs.args
-        new_kwargs = []
-        if func_specs.defaults:
-            new_kwargs = func_specs.args[-len(func_specs.defaults):]
-            new_args = func_specs.args[:-len(func_specs.defaults)]
-        result = ArgsSpecs(
-            args=new_args,
-            kwargs=new_kwargs,
-            varargs=func_specs.varargs,
-            varkw=func_specs.varkw,
-            defaults=func_specs.defaults,
-            kwonlyargs=func_specs.kwonlyargs,
-            kwonlydefaults=func_specs.kwonlydefaults,
-            annotations=func_specs.annotations
-        )
-    debug.trace(7, f"get_func_specs(func={func}) => {result}")
-    return result
-
-def dict_to_func_args_list(func: callable, args_dict: dict) -> list:
+def dict_to_func_args_list(func: CallDetails, args_dict: dict) -> list:
     """
     Convert a dictionary to a list of CST arguments nodes, this is the opposite of match_args(...)
     ```
@@ -832,7 +897,7 @@ def dict_to_func_args_list(func: callable, args_dict: dict) -> list:
     As you can see, this method remove extra arguments
     """
     # Extract function signature
-    func_spec = get_func_specs(func)
+    func_spec = func.specs
     if func_spec is None:
         result = list(args_dict.values())
         debug.trace(7, f"dict_to_func_args_list(func={func}, args_dict={args_dict}) => {result}")
@@ -877,24 +942,6 @@ def flatten_list(list_to_flatten: list) -> list:
         else:
             result.append(item)
     debug.trace(7, f"flatten_list(list_to_flatten={list_to_flatten}) => {result}")
-    return result
-
-def callable_to_path(func: callable) -> Tuple:
-    """
-    Get the path from callable object
-    ```
-    import some_module
-    callable_to_path(some_module.foo) => "some_module.foo"
-    ```
-    """
-    result = ""
-    if isinstance(func, str):
-        result = func
-    elif func.__module__ == "builtins":
-        result = func.__name__
-    else:
-        result = f"{func.__module__}.{func.__name__}"
-    debug.trace(7, f"callable_to_path(func={func}) => {result}")
     return result
 
 def text_to_comments_node(text: str) -> cst.Comment:
@@ -1077,13 +1124,13 @@ class BaseTransformerStrategy:
     """Transformer base class"""
 
     def __init__(self) -> None:
-        self.eq_calls = []
+        self.unique_eq_calls = []
         """
         List of equivalent calls between Mezcla and standard, with all permutations precalculated
         to avoid recalculating them every time we want to find an equivalent call
         """
-        self.eq_calls = [e.get_permutations() for e in mezcla_to_standard]
-        self.eq_calls = flatten_list(self.eq_calls)
+        self.unique_eq_calls = [e.get_permutations() for e in mezcla_to_standard]
+        self.unique_eq_calls = flatten_list(self.unique_eq_calls)
 
     def insert_extra_params(self, eq_call: EqCall, args: dict) -> dict:
         """
@@ -1154,11 +1201,10 @@ class ToStandard(BaseTransformerStrategy):
 
     def find_eq_call(self, path: str, args: list) -> Optional[EqCall]:
         result = None
-        for eq_call in self.eq_calls:
-            eq_path = callable_to_path(eq_call.target)
-            exactly_coincides = path == eq_path
-            last_parts_coincide = eq_path.endswith("." + path)
-            if exactly_coincides or last_parts_coincide:
+        for eq_call in self.unique_eq_calls:
+            # Unique calls is supposed to have only one target
+            target = eq_call.targets[0]
+            if target.equals_to(path) or target.ends_equals_to(path):
                 if self.is_condition_to_replace_met(eq_call, args):
                     result = eq_call
                     break
@@ -1168,7 +1214,7 @@ class ToStandard(BaseTransformerStrategy):
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         if eq_call.condition is None:
             return True
-        arguments = match_args(eq_call.target, args)
+        arguments = match_args(eq_call.targets[0], args)
         arguments = dict_to_func_args_list(eq_call.condition, arguments)
         if not all_has_fixed_value(arguments):
             debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
@@ -1181,10 +1227,10 @@ class ToStandard(BaseTransformerStrategy):
     def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
         if Features.FORMAT_STRING in eq_call.features:
             args = format_strings_in_args(args)
-        arguments = match_args(eq_call.target, args)
+        arguments = match_args(eq_call.targets[0], args)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
-        arguments = dict_to_func_args_list(eq_call.dest, arguments)
+        arguments = dict_to_func_args_list(eq_call.dests[0], arguments)
         debug.trace(6, f"ToStandard.get_args_replacement(eq_call={eq_call}, args={args}) => {arguments}")
         return arguments
 
@@ -1202,7 +1248,7 @@ class ToStandard(BaseTransformerStrategy):
         return result
 
     def eq_call_to_path(self, eq_call: EqCall) -> str:
-        result = callable_to_path(eq_call.dest)
+        result = eq_call.dests[0].path
         debug.trace(7, f"ToStandard.eq_call_to_path(eq_call={eq_call}) => {result}")
         return result
 
@@ -1211,11 +1257,10 @@ class ToMezcla(BaseTransformerStrategy):
 
     def find_eq_call(self, path: str, args: list) -> Optional[EqCall]:
         result = None
-        for eq_call in self.eq_calls:
-            eq_path = callable_to_path(eq_call.dest)
-            exactly_coincides = path == eq_path
-            last_parts_coincide = eq_path.endswith("." + path)
-            if exactly_coincides or last_parts_coincide:
+        for eq_call in self.unique_eq_calls:
+            # Unique calls is supposed to have only one dest
+            dest = eq_call.dests[0]
+            if dest.equals_to(path) or dest.ends_equals_to(path):
                 if self.is_condition_to_replace_met(eq_call, args):
                     result = eq_call
                     break
@@ -1225,7 +1270,7 @@ class ToMezcla(BaseTransformerStrategy):
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
         if eq_call.condition is None:
             return True
-        arguments = match_args(eq_call.dest, args)
+        arguments = match_args(eq_call.dests[0], args)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = dict_to_func_args_list(eq_call.condition, arguments)
@@ -1238,10 +1283,10 @@ class ToMezcla(BaseTransformerStrategy):
         return result
 
     def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
-        arguments = match_args(eq_call.dest, args)
+        arguments = match_args(eq_call.dests[0], args)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.insert_extra_params(eq_call, arguments)
-        arguments = dict_to_func_args_list(eq_call.target, arguments)
+        arguments = dict_to_func_args_list(eq_call.targets[0], arguments)
         debug.trace(7, f"ToMezcla.get_args_replacement(eq_call={eq_call}, args={args}) => {arguments}")
         return arguments
 
@@ -1259,7 +1304,7 @@ class ToMezcla(BaseTransformerStrategy):
         return result
 
     def eq_call_to_path(self, eq_call: EqCall) -> str:
-        return callable_to_path(eq_call.target)
+        return eq_call.targets[0].path
 
 class StoreMetrics:
     """CST Transformer with metrics utilities"""
