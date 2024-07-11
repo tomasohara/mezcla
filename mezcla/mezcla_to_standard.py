@@ -293,12 +293,24 @@ class EqCall:
         Extra features to be used in the replacement
         """
 
+        self.permutations = []
+        """
+        Memoization of the permutations to avoid recalculating them
+        """
+
     def get_permutations(self) -> list:
         """
-        Get all permutations of the equivalent call,
+        Get all permutations of the equivalent call
 
         This is useful when dealing with multiple targets or destinations
         """
+        # Return previous permutations
+        if len(self.permutations) > 0:
+            debug.trace(7, "EqCall.get_permutations() => memoized")
+            return self.permutations
+
+        # Otherwise calculate the permutations and store them:
+
         # Group all targets
         targets = []
         if isinstance(self.target, tuple):
@@ -327,6 +339,7 @@ class EqCall:
                     extra_params=self.extra_params,
                     features=self.features
                 ))
+        self.permutations = result
         debug.trace(7, f"EqCall.get_permutations() => {result}")
         return result
 
@@ -1063,6 +1076,15 @@ def remove_paths_from_import_cst(
 class BaseTransformerStrategy:
     """Transformer base class"""
 
+    def __init__(self) -> None:
+        self.eq_calls = []
+        """
+        List of equivalent calls between Mezcla and standard, with all permutations precalculated
+        to avoid recalculating them every time we want to find an equivalent call
+        """
+        self.eq_calls = [e.get_permutations() for e in mezcla_to_standard]
+        self.eq_calls = flatten_list(self.eq_calls)
+
     def insert_extra_params(self, eq_call: EqCall, args: dict) -> dict:
         """
         Insert extra parameters as CST arguments nodes
@@ -1132,9 +1154,7 @@ class ToStandard(BaseTransformerStrategy):
 
     def find_eq_call(self, path: str, args: list) -> Optional[EqCall]:
         result = None
-        all_eq_calls = [e.get_permutations() for e in mezcla_to_standard]
-        all_eq_calls = flatten_list(all_eq_calls)
-        for eq_call in all_eq_calls:
+        for eq_call in self.eq_calls:
             eq_path = callable_to_path(eq_call.target)
             exactly_coincides = path == eq_path
             last_parts_coincide = eq_path.endswith("." + path)
@@ -1191,9 +1211,7 @@ class ToMezcla(BaseTransformerStrategy):
 
     def find_eq_call(self, path: str, args: list) -> Optional[EqCall]:
         result = None
-        all_eq_calls = [e.get_permutations() for e in mezcla_to_standard]
-        all_eq_calls = flatten_list(all_eq_calls)
-        for eq_call in all_eq_calls:
+        for eq_call in self.eq_calls:
             eq_path = callable_to_path(eq_call.dest)
             exactly_coincides = path == eq_path
             last_parts_coincide = eq_path.endswith("." + path)
