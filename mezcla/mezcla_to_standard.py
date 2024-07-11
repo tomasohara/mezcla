@@ -210,6 +210,7 @@ TO_STD = "to_standard"
 TO_MEZCLA = "to_mezcla"
 METRICS = "metrics"
 IN_PLACE = "in_place"
+SKIP_WARNINGS = "skip_warnings"
 
 class EqCall:
     """
@@ -1467,7 +1468,7 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer, StoreMetrics)
         debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(updated_node={updated_node}) => {updated_node}")
         return updated_node
 
-def transform(to_module, code: str) -> str:
+def transform(to_module, code: str, skip_warnings=False) -> str:
     """
     Transform the code
 
@@ -1491,7 +1492,7 @@ def transform(to_module, code: str) -> str:
 
     # Replace Mezcla calls with warning if not supported
     warning_transformer = ReplaceMezclaWithWarningTransformer()
-    if isinstance(to_module, ToStandard):
+    if not skip_warnings and isinstance(to_module, ToStandard):
         tree = tree.visit(warning_transformer)
 
     # Convert the tree back to code
@@ -1528,6 +1529,7 @@ class MezclaToStandardScript(Main):
     to_mezcla = False
     metrics = False
     in_place = False
+    skip_warnings = False
 
     def setup(self) -> None:
         """Process arguments"""
@@ -1537,6 +1539,7 @@ class MezclaToStandardScript(Main):
         self.to_mezcla = self.has_parsed_option(TO_MEZCLA)
         self.metrics = self.has_parsed_option(METRICS)
         self.in_place = self.has_parsed_option(IN_PLACE)
+        self.skip_warnings = self.has_parsed_option(SKIP_WARNINGS)
 
     def show_continue_warning(self) -> None:
         """Show warning if user want to continue"""
@@ -1627,7 +1630,11 @@ class MezclaToStandardScript(Main):
             to_module = ToMezcla()
         else:
             to_module = ToStandard()
-        modified_code, metrics = transform(to_module, code)
+        modified_code, metrics = transform(
+            to_module,
+            code,
+            skip_warnings=self.skip_warnings
+        )
         metrics['time'] = time.time() - time_start
         # Output
         if self.metrics:
@@ -1648,7 +1655,8 @@ if __name__ == '__main__':
             (TO_STD, 'Convert Mezcla calls to standard calls'),
             (TO_MEZCLA, 'Convert standard calls to Mezcla calls'),
             (METRICS, 'Show metrics for the conversion'),
-            (IN_PLACE, 'Modify the file in place, useful if you want to compare changes using Git')
+            (IN_PLACE, 'Modify the file in place, useful if you want to compare changes using Git'),
+            (SKIP_WARNINGS, 'Skip warnings'),
         ],
         manual_input = True,
     )
