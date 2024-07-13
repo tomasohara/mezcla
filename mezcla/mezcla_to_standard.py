@@ -1224,7 +1224,7 @@ class ToStandard(BaseTransformerStrategy):
         return result
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
-        if eq_call.condition is None:
+        if eq_call.condition.callable is None:
             return True
         arguments = match_args(eq_call.targets[0], args)
         arguments = dict_to_func_args_list(eq_call.condition, arguments)
@@ -1280,7 +1280,7 @@ class ToMezcla(BaseTransformerStrategy):
         return result
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
-        if eq_call.condition is None:
+        if eq_call.condition.callable is None:
             return True
         arguments = match_args(eq_call.dests[0], args)
         arguments = self.insert_extra_params(eq_call, arguments)
