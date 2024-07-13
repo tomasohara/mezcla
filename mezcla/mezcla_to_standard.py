@@ -185,7 +185,7 @@ import sys
 import logging
 import inspect
 from typing import (
-    Optional, Tuple,
+    Optional, Tuple, List, Union, Callable,
 )
 import tempfile
 from enum import Enum
@@ -212,7 +212,11 @@ METRICS = "metrics"
 IN_PLACE = "in_place"
 SKIP_WARNINGS = "skip_warnings"
 
-def path_to_callable(path: str) -> callable:
+# Types
+StrOrCallable = Union[str, Callable]
+SingleOrMultipleStrOrCallable = Union[StrOrCallable, List[StrOrCallable], Tuple[StrOrCallable]]
+
+def path_to_callable(path: str) -> Callable:
     """
     Converts a string representing a function into the actual callable function.
     
@@ -257,7 +261,7 @@ def get_func_specs(func: callable) -> ArgsSpecs:
                 kwonlydefaults={},
                 annotations={}
             )
-        ## Add here more workarounds for builtins if needed
+        ## NOTE: Add here more workarounds for builtins if needed
     else:
         func_specs = inspect.getfullargspec(func)
         # Separate args from kwargs, based on defaults
@@ -279,7 +283,7 @@ def get_func_specs(func: callable) -> ArgsSpecs:
     debug.trace(7, f"get_func_specs(func={func}) => {result}")
     return result
 
-def callable_to_path(func: callable) -> Tuple:
+def callable_to_path(func: Callable) -> Tuple:
     """
     Get the path from callable object
     ```
@@ -304,7 +308,7 @@ class CallDetails:
     and avoid recalculating them every time
     """
 
-    def __init__(self, func) -> None:
+    def __init__(self, func: StrOrCallable) -> None:
         self.func = func
         # Some local functions as lambda in parameters
         # cannot be converted to path or callable
@@ -323,7 +327,7 @@ class CallDetails:
             self.specs = None
 
     @staticmethod
-    def to_list_of_call_details(funcs) -> list:
+    def to_list_of_call_details(funcs: SingleOrMultipleStrOrCallable) -> List['CallDetails']:
         """
         Convert a list of functions to a list of CallDetails objects
         """
@@ -365,6 +369,30 @@ class CallDetails:
     def __repr__(self) -> str:
         return f"CallDetails: {self.path}"
 
+class Features(Enum):
+    """Features to be used in the EqCall"""
+
+    FORMAT_STRING = "format_string"
+    """
+    Convert arguments to format string
+
+    ```
+        debug.trace_fmt(
+            7,
+            "register_env_option({v}, {dsc}, {dft})",
+            v=var,
+            dsc=description,
+            dft=default
+        )
+    ```
+    to
+    ```
+        logging.debug(
+            "register_env_option({v}, {dsc}, {dft})".format(v=var, dsc=description, dft=default)
+        )
+    ```
+    """
+
 class EqCall:
     """
     Mezcla to standard equivalent call class
@@ -372,12 +400,12 @@ class EqCall:
 
     def __init__(
             self,
-            targets: list,
-            dests: list,
-            condition: Optional[callable] = None,
+            targets: SingleOrMultipleStrOrCallable,
+            dests: SingleOrMultipleStrOrCallable,
+            condition: Optional[StrOrCallable] = None,
             eq_params: Optional[dict] = None,
             extra_params: Optional[dict] = None,
-            features: list = []
+            features: List[Features] = None
         ) -> None:
         self.targets = CallDetails.to_list_of_call_details(targets)
         """
@@ -441,7 +469,7 @@ class EqCall:
         ```
         """
 
-        self.features = features
+        self.features = features if features else []
         """
         Extra features to be used in the replacement
         """
@@ -451,7 +479,7 @@ class EqCall:
         Memoization of the permutations to avoid recalculating them
         """
 
-    def get_permutations(self) -> list:
+    def get_permutations(self) -> List['EqCall']:
         """
         Get all permutations of the equivalent call
 
@@ -484,30 +512,6 @@ class EqCall:
         target_paths = [t.path for t in self.targets] if len(self.targets) > 1 else self.targets[0]
         dest_paths = [d.path for d in self.dests] if len(self.dests) > 1 else self.dests[0]
         return f"EqCall: {target_paths} => {dest_paths}"
-
-class Features(Enum):
-    """Features to be used in the EqCall"""
-
-    FORMAT_STRING = "format_string"
-    """
-    Convert arguments to format string
-
-    ```
-        debug.trace_fmt(
-            7,
-            "register_env_option({v}, {dsc}, {dft})",
-            v=var,
-            dsc=description,
-            dft=default
-        )
-    ```
-    to
-    ```
-        logging.debug(
-            "register_env_option({v}, {dsc}, {dft})".format(v=var, dsc=description, dft=default)
-        )
-    ```
-    """
 
 # Add equivalent calls between Mezcla and standard
 mezcla_to_standard = [
@@ -715,7 +719,7 @@ def cst_to_path(tree: cst.CSTNode) -> str:
         return cst_to_path(tree.value)
     raise ValueError(f"Unsupported node type: {type(tree)}")
 
-def cst_to_paths(tree: cst.CSTNode) -> list:
+def cst_to_paths(tree: cst.CSTNode) -> List[str]:
     """
     Convert CST Tree Node to a list of string paths.
     ```
@@ -803,18 +807,18 @@ def has_fixed_value(arg: cst.Arg) -> bool:
     debug.trace(7, f"has_fixed_value(arg={arg}) => {result}")
     return result
 
-def all_has_fixed_value(args: list) -> bool:
+def all_has_fixed_value(args: List[cst.Arg]) -> bool:
     """Check if any CST argument node has a fixed value"""
     result = all(has_fixed_value(arg) for arg in args)
     debug.trace(7, f"any_has_fixed_value(args={args}) => {result}")
     return result
 
-def args_to_values(args: list) -> list:
+def args_to_values(args: List[cst.Arg]) -> list:
     """Convert a list of CST arguments nodes to a list of values objects"""
     debug.trace(7, "args_to_values(args) => list")
     return [arg_to_value(arg) for arg in args]
 
-def remove_last_comma(args: list) -> list:
+def remove_last_comma(args: List[cst.Arg]) -> List[cst.Arg]:
     """
     Remove the last comma node from a list CST arguments nodes
     ```
@@ -832,7 +836,7 @@ def remove_last_comma(args: list) -> list:
     debug.trace(7, "remove_last_comma(args) => list")
     return args
 
-def match_args(func: CallDetails, cst_arguments: list) -> dict:
+def match_args(func: CallDetails, cst_arguments: List[cst.Arg]) -> dict:
     """
     Match the arguments to the function signature
     ```
@@ -887,7 +891,7 @@ def match_args(func: CallDetails, cst_arguments: list) -> dict:
 
     return matched_args
 
-def dict_to_func_args_list(func: CallDetails, args_dict: dict) -> list:
+def dict_to_func_args_list(func: CallDetails, args_dict: dict) -> List[cst.Arg]:
     """
     Convert a dictionary to a list of CST arguments nodes, this is the opposite of match_args(...)
     ```
@@ -965,7 +969,7 @@ def text_to_comments_node(text: str) -> cst.Comment:
     debug.trace(9, f"text_to_comment_node(text={text}) => {comment}")
     return comment
 
-def get_format_names_in_string(value: str) -> list:
+def get_format_names_in_string(value: str) -> List[str]:
     """
     Return list of format variables names in a string
 
@@ -989,7 +993,7 @@ def get_format_names_in_string(value: str) -> list:
     debug.trace(9, f"get_format_names_in_string(value={value}) => {result}")
     return result
 
-def create_string_dot_format_node(value: str, format_args: list) -> cst.Call:
+def create_string_dot_format_node(value: str, format_args: List[cst.Arg]) -> cst.Call:
     """
     Create a string.format() node
     """
@@ -1012,7 +1016,7 @@ def get_keyword_name(arg: cst.Arg) -> Optional[str]:
         return arg.keyword.value
     return None
 
-def filter_kwargs(kwargs: list, names: list) -> list:
+def filter_kwargs(kwargs: List[cst.Arg], names: List[str]) -> List[cst.Arg]:
     """
     Filter kwargs by the names
     """
@@ -1026,7 +1030,7 @@ def filter_kwargs(kwargs: list, names: list) -> list:
     debug.trace(9, f"filter_kwargs(names={names}) => {result}")
     return result
 
-def format_strings_in_args(args: list) -> dict:
+def format_strings_in_args(args: List[cst.Arg]) -> dict:
     """
     Convert arguments to format strings
 
@@ -1096,7 +1100,7 @@ def path_to_import(path: str) -> cst.SimpleStatementLine:
 
 def remove_paths_from_import_cst(
         cst_import: cst.SimpleStatementLine,
-        paths_to_remove: list
+        paths_to_remove: List[str]
     ) -> cst.SimpleStatementLine:
     """
     Remove paths from an CST Import Node, ignore aliases
@@ -1167,7 +1171,7 @@ class BaseTransformerStrategy:
         debug.trace(6, f"BaseTransformerStrategy.insert_extra_params(args={args}) => {new_args}")
         return new_args
 
-    def get_replacement(self, path: str, args: list) -> Tuple:
+    def get_replacement(self, path: str, args: List[cst.Arg]) -> Tuple:
         """
         Get the function replacement
 
@@ -1188,16 +1192,16 @@ class BaseTransformerStrategy:
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
-    def find_eq_call(self, path: str, args: list) -> Optional[EqCall]:
+    def find_eq_call(self, path: str, args: List[cst.Arg]) -> Optional[EqCall]:
         """Find the equivalent call"""
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
 
-    def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: List[cst.Arg]) -> dict:
         """Transform every argument to the equivalent argument"""
         raise NotImplementedError
 
-    def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
+    def is_condition_to_replace_met(self, eq_call: EqCall, args: List[cst.Arg]) -> bool:
         """Return if the condition to replace is met"""
         # NOTE: must be implemented by the subclass
         raise NotImplementedError
@@ -1210,7 +1214,7 @@ class BaseTransformerStrategy:
 class ToStandard(BaseTransformerStrategy):
     """Mezcla to standard call conversion class"""
 
-    def find_eq_call(self, path: str, args: list) -> Optional[EqCall]:
+    def find_eq_call(self, path: str, args: List[cst.Arg]) -> Optional[EqCall]:
         result = None
         for eq_call in self.unique_eq_calls:
             # Unique calls is supposed to have only one target
@@ -1222,7 +1226,7 @@ class ToStandard(BaseTransformerStrategy):
         debug.trace(6, f"ToStandard.find_eq_call(path={path}, args={args}) => {result}")
         return result
 
-    def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
+    def is_condition_to_replace_met(self, eq_call: EqCall, args: List[cst.Arg]) -> bool:
         if eq_call.condition.callable is None:
             return True
         arguments = match_args(eq_call.targets[0], args)
@@ -1235,7 +1239,7 @@ class ToStandard(BaseTransformerStrategy):
         debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {arguments}")
         return arguments
 
-    def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: List[cst.Arg]) -> dict:
         if Features.FORMAT_STRING in eq_call.features:
             args = format_strings_in_args(args)
         arguments = match_args(eq_call.targets[0], args)
@@ -1266,7 +1270,7 @@ class ToStandard(BaseTransformerStrategy):
 class ToMezcla(BaseTransformerStrategy):
     """Standard to Mezcla call conversion class"""
 
-    def find_eq_call(self, path: str, args: list) -> Optional[EqCall]:
+    def find_eq_call(self, path: str, args: List[cst.Arg]) -> Optional[EqCall]:
         result = None
         for eq_call in self.unique_eq_calls:
             # Unique calls is supposed to have only one dest
@@ -1278,7 +1282,7 @@ class ToMezcla(BaseTransformerStrategy):
         debug.trace(7, f"ToMezcla.find_eq_call(func={path}, args={args}) => {result}")
         return result
 
-    def is_condition_to_replace_met(self, eq_call: EqCall, args: list) -> bool:
+    def is_condition_to_replace_met(self, eq_call: EqCall, args: List[cst.Arg]) -> bool:
         if eq_call.condition.callable is None:
             return True
         arguments = match_args(eq_call.dests[0], args)
@@ -1293,7 +1297,7 @@ class ToMezcla(BaseTransformerStrategy):
         debug.trace(7, f"ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => {result}")
         return result
 
-    def get_args_replacement(self, eq_call: EqCall, args: list) -> dict:
+    def get_args_replacement(self, eq_call: EqCall, args: List[cst.Arg]) -> dict:
         arguments = match_args(eq_call.dests[0], args)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = self.insert_extra_params(eq_call, arguments)
@@ -1349,7 +1353,7 @@ class StoreMetrics:
         replacement_as_str = f"{from_call} --> {to_call}" if to_call else from_call
         self.history.append(replacement_as_str)
 
-    def get_unique_history(self) -> tuple:
+    def get_unique_history(self) -> List[Tuple[str, int]]:
         """Get the sorted history by amount of counts"""
         result = []
         for replacement in set(self.history):
@@ -1542,7 +1546,7 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer, StoreMetrics)
         debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(updated_node={updated_node}) => {updated_node}")
         return updated_node
 
-def transform(to_module, code: str, skip_warnings=False) -> str:
+def transform(to_module, code: str, skip_warnings:bool=False) -> str:
     """
     Transform the code
 
