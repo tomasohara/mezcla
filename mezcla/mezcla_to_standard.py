@@ -359,7 +359,11 @@ class CallDetails:
         return self.path.endswith("." + path)
 
     def __call__(self, *args, **kwargs):
+        assert self.callable, "CallDetails => callable is None"
         return self.callable(*args, **kwargs)
+
+    def __repr__(self) -> str:
+        return f"CallDetails: {self.path}"
 
 class EqCall:
     """
@@ -475,6 +479,11 @@ class EqCall:
         self.permutations = result
         debug.trace(7, f"EqCall.get_permutations() => {result}")
         return result
+
+    def __repr__(self) -> str:
+        target_paths = [t.path for t in self.targets] if len(self.targets) > 1 else self.targets[0]
+        dest_paths = [d.path for d in self.dests] if len(self.dests) > 1 else self.dests[0]
+        return f"EqCall: {target_paths} => {dest_paths}"
 
 class Features(Enum):
     """Features to be used in the EqCall"""
