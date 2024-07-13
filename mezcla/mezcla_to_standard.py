@@ -791,8 +791,7 @@ def arg_to_value(arg: cst.Arg) -> object:
     elif isinstance(arg.value, cst.Name):
         # Check if is Boolean
         if isinstance(arg.value.value, str):
-            if arg.value.value in ("True", "False"):
-                result = system.to_bool(arg.value.value)
+            result = system.to_bool(arg.value.value)
     if result is None:
         raise ValueError(f"Unsupported CST Argument child node type: {type(arg.value)}")
     debug.trace(7, f"arg_to_value({arg}) => {result}")
