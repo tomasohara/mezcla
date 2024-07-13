@@ -30,6 +30,21 @@ RUN_SLOW_TESTS = system.getenv_bool(
     False,
     description="Run tests that can a while to run"
 )
+TEST_GLOB = system.getenv_text(
+    "TEST_GLOB",
+    "",
+    description="Specify which files to test"
+)
+DISABLE_CACHE = system.getenv_bool(
+    "DISABLE_CACHE", 
+    False,
+    description="Clear test caches before running the tests"
+)
+SKIP_WARNINGS = system.getenv_bool(
+    "SKIP_WARNINGS", 
+    False,
+    description="Skip warning comments for tests without standard equivalents"
+)
 
 # Pydantic Class with Base Model
 class ScriptComparison(BaseModel):
@@ -42,7 +57,6 @@ class ScriptComparison(BaseModel):
     lines_removed: int
     lines_warned: int
 
-
 class TestM2SBatchConversion(TestWrapper):
     """Class for batch conversion of test usage of equivalent calls for mezcla_to_standard"""
 
@@ -53,15 +67,17 @@ class TestM2SBatchConversion(TestWrapper):
         """Returns an array of all Python3 scripts in MEZCLA_DIR"""
         return [x for x in os.listdir(MEZCLA_DIR) if x.endswith(".py")]
     
-    def get_mezcla_command_output(self, m2s_path, script_path, option, output_path="/dev/null"):
+    def get_mezcla_command_output(self, m2s_path, script_path, option, skip_warnings=SKIP_WARNINGS, output_path="/dev/null"):
         # Helper Script 2: Get the output of the execution of mezcla_to_standard.py (w/ options)        
         """Executes the mezcla script externally (option: to_standard, metrics)"""
+        warning_option = "--skip_warnings"
         if output_path != "/dev/null":
             output_file = f"{output_path}/_mez2std_{gh.basename(script_path, '.py')}.py"
-            command = f"python3 {m2s_path} --{option} {script_path} | tee {output_file}"
+            command = f"python3 {m2s_path} --{option} {script_path} {warning_option} | tee {output_file}"
         else:
             output_file = ""
             command = f"python3 {m2s_path} --{option} {script_path} > {output_path}"
+        print("\nCommand:", command)
         output = gh.run(command)
         return output, output_file
     
@@ -161,10 +177,14 @@ def test_{function_name}():
         content = system.read_file(file_path)
         return my_re.findall(r"^def (\w+)", content, flags=my_re.MULTILINE)
 
+    @pytest.mark.skipif(not RUN_SLOW_TESTS and not TEST_GLOB, reason="this will take a while")
     def test_m2s_compare_pytest(self):
         # Step 1: Get the basenames of scripts in mezcla
-        scripts = self.get_mezcla_scripts()
+        # Multiple files can be fed to TEST_GLOB by seperating them with a comma (no spaces, just comma)
+        scripts = self.get_mezcla_scripts() if TEST_GLOB=="" else TEST_GLOB.split(",")
+        
         # scripts = scripts[:10]
+        # scripts = ["file_utils.py"]
         
         # scripts = [
         #     "debug.py", "glue_helpers.py", "html_utils.py",
@@ -245,7 +265,6 @@ def test_{function_name}():
             print(f"Pytest Results (Original): {script_path_pytest_org}")
             print(f"Pytest Results (Mezcla): {script_path_pytest_m2s}")
 
-
             # Step 2.7: Count results and assert
             fail_result = False
             total_count = num_failed_validate_mod + num_passed_validate_mod
@@ -261,7 +280,7 @@ def test_{function_name}():
         """Returns an array of all Python3 scripts in MEZCLA_DIR"""
         assert len(self.get_mezcla_scripts()) == MEZCLA_SCRIPTS_COUNT
 
-    @pytest.mark.skip
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="this will take a while")
     def test_mezcla_scripts_compare(self, threshold=0.75):
         # Test 2: Find the differences between the tests and optionally set a threshold for differences
         """Tests for comparing mezcla scripts with the original scripts"""
@@ -292,7 +311,7 @@ def test_{function_name}():
             assert (score >= threshold)
 
     
-    @pytest.mark.skip
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="this will take a while")
     def test_mezcla_scripts_batch_conversion(self):
         """Test for batch conversion of mezcla scripts to standard script"""
         # Test 3: Batch Conversion (from mezcla to standard)
@@ -329,7 +348,7 @@ def test_{function_name}():
         # Assertion: Check if a converted output file exists for each script in mezcla
         assert len(os.listdir(output_path)) == len(scripts)
 
-    @pytest.mark.skip    
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="this will take a while")   
     def test_mezcla_scripts_metrics(self, threshold=0):
         """Tests external scripts through mezcla using metrics option (TODO: Write better description)"""
         debug.trace(6, f"test_exteral_scripts({self})")
@@ -361,4 +380,8 @@ def test_{function_name}():
 
 if __name__ == "__main__":
     debug.trace_current_context()
-    pytest.main([__file__])
+    disable_cache = DISABLE_CACHE
+    if disable_cache:
+        pytest.main([__file__], "--cache-clear")
+    else:
+        pytest.main([__file__])
