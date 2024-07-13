@@ -3,7 +3,7 @@ Tests for mezcla_to_standard module
 """
 
 # Standard packages
-## NOTE: this is empty for now
+import os
 from unittest.mock import patch, MagicMock, ANY
 import logging
 
@@ -76,51 +76,51 @@ class TestCSTFunctions:
             THE_MODULE.arg_to_value(cst.Arg(cst.List([cst.Integer(value=str(i)) for i in value])))
 
 
-        def test_args_to_values(self):
-            """Ensures that args_to_values method works as expected"""
+    def test_args_to_values(self):
+        """Ensures that args_to_values method works as expected"""
 
-            def helper_arg2val(arg):
-                if isinstance(arg.value, cst.SimpleString):
-                    expected_output = arg.value.value.strip('"')
-                elif isinstance(arg.value, cst.Integer):
-                    expected_output = int(arg.value.value)
-                elif isinstance(arg.value, cst.Float):
-                    expected_output = float(arg.value.value)
-                elif isinstance(arg.value, cst.Name) and arg.value.value in ["True", "False"]:
-                    expected_output = arg.value.value == "True"
-                else:
-                    expected_output = None
-                result = THE_MODULE.arg_to_value(arg)
-                return expected_output, result
+        def helper_arg2val(arg):
+            if isinstance(arg.value, cst.SimpleString):
+                expected_output = arg.value.value.strip('"')
+            elif isinstance(arg.value, cst.Integer):
+                expected_output = int(arg.value.value)
+            elif isinstance(arg.value, cst.Float):
+                expected_output = float(arg.value.value)
+            elif isinstance(arg.value, cst.Name) and arg.value.value in ["True", "False"]:
+                expected_output = arg.value.value == "True"
+            else:
+                expected_output = None
+            result = THE_MODULE.arg_to_value(arg)
+            return expected_output, result
 
-            # For simple strings
-            arg = cst.Arg(cst.SimpleString(value='"text"'))
-            expected_output, result = helper_arg2val(arg)
-            assert result == expected_output
+        # For simple strings
+        arg = cst.Arg(cst.SimpleString(value='"text"'))
+        expected_output, result = helper_arg2val(arg)
+        assert result == expected_output
 
-            # For integer
-            arg = cst.Arg(cst.Integer(value="42"))
-            expected_output, result = helper_arg2val(arg)
-            assert result == expected_output
+        # For integer
+        arg = cst.Arg(cst.Integer(value="42"))
+        expected_output, result = helper_arg2val(arg)
+        assert result == expected_output
 
-            # For float
-            arg = cst.Arg(cst.Float(value="3.1416"))
-            expected_output, result = helper_arg2val(arg)
-            assert result == expected_output
+        # For float
+        arg = cst.Arg(cst.Float(value="3.1416"))
+        expected_output, result = helper_arg2val(arg)
+        assert result == expected_output
 
-            # For boolean
-            arg = cst.Arg(cst.Name(value="True"))
-            expected_output, result = helper_arg2val(arg)
-            assert result == expected_output
+        # For boolean
+        arg = cst.Arg(cst.Name(value="True"))
+        expected_output, result = helper_arg2val(arg)
+        assert result == expected_output
 
-            arg = cst.Arg(cst.Name(value="False"))
-            expected_output, result = helper_arg2val(arg)
-            assert result == expected_output
+        arg = cst.Arg(cst.Name(value="False"))
+        expected_output, result = helper_arg2val(arg)
+        assert result == expected_output
 
-            # For unsupported types
-            arg = cst.Arg(cst.List([]))
-            with pytest.raises(ValueError):
-                THE_MODULE.arg_to_value(arg)
+        # For unsupported types
+        arg = cst.Arg(cst.List([]))
+        with pytest.raises(ValueError):
+            THE_MODULE.arg_to_value(arg)
 
     def test_remove_last_comma(self):
         """Ensures that remove_last_comma method works as expected"""
@@ -147,9 +147,14 @@ class TestCSTFunctions:
         def slope(x1, y1, x2, y2):
             return (y2 - y1) / (x2 - x1)
 
-        args = [10, 20, 30, 40]
-        expected_output = {"x1": 10, "y1": 20, "x2": 30, "y2": 40}
-        result = THE_MODULE.match_args(slope, args, {})
+        args = [
+            THE_MODULE.value_to_arg(10),
+            THE_MODULE.value_to_arg(20),
+            THE_MODULE.value_to_arg(30),
+            THE_MODULE.value_to_arg(40)
+        ]
+        expected_output = {"x1": args[0], "y1": args[1], "x2": args[2], "y2": args[4]}
+        result = THE_MODULE.match_args(THE_MODULE.CallDetails(slope), args)
         assert result == expected_output
 
     def test_flatten_list(self):
@@ -159,14 +164,14 @@ class TestCSTFunctions:
         result = THE_MODULE.flatten_list(args)
         assert result == expected_output
 
-    def test_get_module_func(self):
-        """Ensures that get_module_func method works as expected"""
-        # From math
-        from math import sqrt
+    def callable_to_path(self):
+        """Ensures that callable_to_path method works as expected"""
+        assert THE_MODULE.callable_to_path(os.path.join) == "os.path.join"
 
-        func = sqrt
-        expected_output = ("math", "sqrt")
-        result = THE_MODULE.get_module_func(func)
+    def path_to_callable(self):
+        """Ensures that path_to_callable method works as expected"""
+        expected_output = os.path.join
+        result = THE_MODULE.path_to_callable("os.path.join")
         assert result == expected_output
 
 
@@ -176,36 +181,32 @@ class TestBaseTransformerStrategy:
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     # Creating mock functions for testing
-    def slope(x1: int, y1: int, x2: int, y2: int):
+    def slope(self, x1: int, y1: int, x2: int, y2: int):
+        """TODO"""
         return (y2 - y1) / (x2 - x1)
 
-    def distance(x1: int, y1: int, x2: int, y2: int) -> float:
+    def distance(self, x1: int, y1: int, x2: int, y2: int) -> float:
+        """TODO"""
         return round(((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5, 2)
 
     @pytest.mark.xfail  ## TODO: Fix XFAIL (result is weird)
     def test_insert_extra_params(self):
         """Ensures that insert_extra_params method of BaseTransformerStrategy class works as expected"""
         extra_params = {"x1": 3, "y1": 5, "x2": 6}
-        args = {"x1": 10, "y2": 12}
+        args = {
+            "x1": THE_MODULE.value_to_arg(10),
+            "y2": THE_MODULE.value_to_arg(12)
+        }
 
         expected_result = extra_params | args  # Union of dictionary
 
         eqcall = THE_MODULE.EqCall(
-            target=self.slope, dest=None, extra_params=extra_params
+            targets=self.slope, dests=None, extra_params=extra_params
         )
         bts = THE_MODULE.BaseTransformerStrategy()
-        result = bts.insert_extra_params(self, eq_call=eqcall, args=args)
+        result = bts.insert_extra_params(eqcall, args)
         print(result, "=" * 50, expected_result)
         assert result == expected_result
-
-    def test_filter_args_by_function(self):
-        ## OLD: Eqcall._filter_args_by_function
-        """Ensures that filter_args_by_function method of BaseTransformerStrategy class works as expected"""
-        args = {"x1": 23, "x2": 322, "x3": -54, "y1": 12, "y2": -34, "y3": 111}
-        expected_args = {"x1": 23, "y1": 12, "x2": 322, "y2": -34}
-        bts = THE_MODULE.BaseTransformerStrategy
-        result = bts.filter_args_by_function(self, self.slope, args)
-        assert result == expected_args
 
     def test_get_replacement(self):
         ## OLD: Eqcall._filter_args_by_function
@@ -256,34 +257,33 @@ class TestToStandard:
 
     @pytest.fixture
     def setup_to_standard(self):
-        to_standard = THE_MODULE.ToStandard()
-        mezcla_to_standard = [
-            THE_MODULE.EqCall(target=self.sample_func1, dest=self.sample_func1),
-            THE_MODULE.EqCall(target=self.sample_func2, dest=self.sample_func2),
+        THE_MODULE.mezcla_to_standard = [
+            THE_MODULE.EqCall(targets=self.sample_func1, dests=self.sample_func1),
+            THE_MODULE.EqCall(targets=self.sample_func2, dests=self.sample_func2),
         ]
-        to_standard.mezcla_to_standard = mezcla_to_standard
+        # THE_MODULE.ToStandard must be initialized before
+        # setting the mezcla_to_standard list
+        to_standard = THE_MODULE.ToStandard()
         return to_standard
 
     ## find_eq_call does not work as intended (e.g. eq_call = None and None is not None)
     @pytest.mark.xfail
     def test_tostandard_find_eq_call_existing(self, setup_to_standard):
         """Test for finding an existing equivalent call"""
-        module = "mezcla"
-        method = "sample_func1"
+        path = "mezcla.sample_func1"
         args = ["a"]
         to_standard = setup_to_standard
-        eq_call = to_standard.find_eq_call(module=module, func=method, args=args)
+        eq_call = to_standard.find_eq_call(path, args=args)
         assert eq_call is not None
-        assert eq_call.target == self.sample_func1
+        assert eq_call.targets[0].callable == self.sample_func1
 
     def test_tostandard_find_eq_call_non_existing(self, setup_to_standard):
         """Test for trying to find a non-existing equivalent call"""
-        module = "mezcla"
-        method = "no_exist_func"
+        path = "mezcla.no_exist_func"
         args = ["b"]
         to_standard = setup_to_standard
         # Correct assertion, but does not work as intended (no need for XFAIL)
-        eq_call = to_standard.find_eq_call(module=module, func=method, args=args)
+        eq_call = to_standard.find_eq_call(path, args=args)
         assert eq_call is None
 
     # Does not work as intended (Result = None)
@@ -309,7 +309,7 @@ class TestToStandard:
             MockEqCall("other_module", "other_function"),
         ]
         # Assertion for eq_call match
-        result = to_standard.find_eq_call("my_module", "my_function", ["arg1", "arg2"])
+        result = to_standard.find_eq_call("my_module.my_function", ["arg1", "arg2"])
         assert result == mezcla_to_standard[0]
 
     # Static sample functions for is_condition_to_replace_met
@@ -328,10 +328,10 @@ class TestToStandard:
         to_standard = THE_MODULE.ToStandard()
         mezcla_to_standard = [
             THE_MODULE.EqCall(
-                target=self.sample_func1, dest=None, condition=lambda a, b: a > b
+                targets=self.sample_func1, dests=None, condition=lambda a, b: a > b
             ),
             THE_MODULE.EqCall(
-                target=self.sample_func2, dest=None, condition=lambda a, b: a == b
+                targets=self.sample_func2, dests=None, condition=lambda a, b: a == b
             ),
         ]
         to_standard.mezcla_to_standard = mezcla_to_standard
@@ -345,7 +345,7 @@ class TestToStandard:
         to_standard = setup_to_standard
 
         eq_call = THE_MODULE.EqCall(
-            target=self.sample_func1, dest=None, condition=lambda a, b: a > b
+            targets=self.sample_func1, dests=None, condition=lambda a, b: a > b
         )
         args = [4, 3]
         result = to_standard.is_condition_to_replace_met(eq_call, args)
@@ -401,14 +401,14 @@ class TestToMezcla:
         to_mezcla = THE_MODULE.ToMezcla()
         mezcla_to_standard = [
             THE_MODULE.EqCall(
-                target=self.sample_func1,
-                dest=self.standard_func1,
+                targets=self.sample_func1,
+                dests=self.standard_func1,
                 condition=lambda a, b: a > b,
                 eq_params={"a": "src", "b": "dst"},
             ),
             THE_MODULE.EqCall(
-                target=self.sample_func2,
-                dest=self.standard_func2,
+                targets=self.sample_func2,
+                dests=self.standard_func2,
                 condition=lambda a, b: a == b,
                 eq_params={"a": "path"},
             ),
@@ -452,8 +452,8 @@ class TestToMezcla:
         to_mezcla = setup_to_mezcla
 
         eq_call = THE_MODULE.EqCall(
-            target=self.sample_func1,
-            dest=self.standard_func1,
+            targets=self.sample_func1,
+            dests=self.standard_func1,
             condition=lambda a, b: a > b,
             eq_params={"a": "src", "b": "dst"},
         )
@@ -466,8 +466,8 @@ class TestToMezcla:
         assert result is False
 
         eq_call = THE_MODULE.EqCall(
-            target=self.sample_func2,
-            dest=self.standard_func2,
+            targets=self.sample_func2,
+            dests=self.standard_func2,
             condition=lambda a, b: a == b,
             eq_params={"a": "path"},
         )
@@ -484,8 +484,8 @@ class TestToMezcla:
         """Test for get_args_replacement method in ToMezcla class"""
         to_mezcla = setup_to_mezcla
         eq_call = THE_MODULE.EqCall(
-            target=self.sample_func1,
-            dest=self.standard_func1,
+            targets=self.sample_func1,
+            dests=self.standard_func1,
             condition=lambda a, b: a > b,
             eq_params={"a": "src", "b": "dst"},
         )
@@ -503,8 +503,8 @@ class TestToMezcla:
 
         # For multiple arguments in function using single argument (selects first arg)
         eq_call = THE_MODULE.EqCall(
-            target=self.sample_func2,
-            dest=self.standard_func2,
+            targets=self.sample_func2,
+            dests=self.standard_func2,
             condition=lambda a, b: a == b,
             eq_params={"a": "path"},
         )
@@ -522,8 +522,8 @@ class TestToMezcla:
 
         # For multiple arguments
         eq_call = THE_MODULE.EqCall(
-            target=self.sample_func1,
-            dest=self.standard_func1,
+            targets=self.sample_func1,
+            dests=self.standard_func1,
             eq_params={"a": "src", "b": "dst"},
         )
         args = {"src": 4, "dst": 3}
@@ -532,26 +532,24 @@ class TestToMezcla:
 
         # For single argument
         eq_call = THE_MODULE.EqCall(
-            target=self.sample_func2, dest=self.standard_func2, eq_params={"a": "path"}
+            targets=self.sample_func2, dests=self.standard_func2, eq_params={"a": "path"}
         )
         args = {"path": 4}
         result = to_mezcla.replace_args_keys(eq_call, args)
         assert result == {"a": 4}
 
-    ## TEST 6: eq_call_to_module_func
-    def test_eq_call_to_module_func(self, setup_to_mezcla):
-        """Test for eq_call_to_module_func method in ToMezcla class"""
+    ## TEST 6: eq_call_to_path
+    def test_eq_call_to_path(self, setup_to_mezcla):
+        """Test for eq_call_to_path method in ToMezcla class"""
         to_mezcla = setup_to_mezcla
 
-        eq_call = THE_MODULE.EqCall(target=self.sample_func1, dest=self.standard_func1)
-        module, func = to_mezcla.eq_call_to_module_func(eq_call)
-        assert module == self.sample_func1.__module__
-        assert func == self.sample_func1.__name__
+        eq_call = THE_MODULE.EqCall(targets=self.sample_func1, dests=self.standard_func1)
+        path = to_mezcla.eq_call_to_path(eq_call)
+        assert path == "self.sample_func1" ## TODO: check module part of the path
 
-        eq_call = THE_MODULE.EqCall(target=self.sample_func2, dest=self.standard_func2)
-        module, func = to_mezcla.eq_call_to_module_func(eq_call)
-        assert module == self.sample_func2.__module__
-        assert func == self.sample_func2.__name__
+        eq_call = THE_MODULE.EqCall(targets=self.sample_func2, dests=self.standard_func2)
+        path = to_mezcla.eq_call_to_path(eq_call)
+        assert path == "self.sample_func2" ## TODO: check module part of the path
 
 
 @pytest.fixture
@@ -616,7 +614,7 @@ y = new_func_module_a(3, 4)
 z = func3(5, 6)
 """
         # Call transform function
-        transformed_code = THE_MODULE.transform(self.mock_to_module, code)
+        transformed_code, _ = THE_MODULE.transform(self.mock_to_module, code)
         # Assert that the transformed code matches the expected transformed code
         assert transformed_code.strip() == expected_transformed_code.strip()
 
@@ -628,9 +626,9 @@ z = func3(5, 6)
     # Unit Testing I
     @pytest.mark.xfail
     def test_leave_module(self):
-        """Ensures that leave_Module method of CustomVisitor works as expected"""
+        """Ensures that leave_Module method of ReplaceCallsTransformer works as expected"""
 
-        class TestVisitor(THE_MODULE.transform.CustomVisitor):
+        class TestVisitor(THE_MODULE.ReplaceCallsTransformer):
             def __init__(self, to_module):
                 super().__init__(to_module)
 
@@ -656,10 +654,10 @@ x = module_a.func1(1, 2)
         )
 
     # Unit Testing II
-    # Error: AttributeError: 'function' object has no attribute 'CustomVisitor'
+    # Error: AttributeError: 'function' object has no attribute 'ReplaceCallsTransformer'
     @pytest.mark.xfail
     def test_visit_importalias(self):
-        """Ensures that visit_ImportAlias method of CustomVisitor works as expected"""
+        """Ensures that visit_ImportAlias method of ReplaceCallsTransformer works as expected"""
 
         code = """
 import my_module as mm
@@ -670,8 +668,8 @@ from another_module import submodule as sm
         # Parse the code into a CST tree
         tree = cst.parse_module(code)
 
-        # Create an instance of CustomVisitor
-        visitor = THE_MODULE.transform.CustomVisitor(None)
+        # Create an instance of ReplaceCallsTransformer
+        visitor = THE_MODULE.ReplaceCallsTransformer(None)
 
         # Visit the tree with the custom visitor
         tree.visit(visitor)
@@ -682,7 +680,7 @@ from another_module import submodule as sm
     # Unit Testing III
     @pytest.mark.xfail
     def test_leave_call(self):
-        """Ensures that leave_Call method of CustomVisitor works as expected"""
+        """Ensures that leave_Call method of ReplaceCallsTransformer works as expected"""
         original_code = """
 result = old_module.old_function(2, 3)
 """
@@ -690,13 +688,13 @@ result = old_module.old_function(2, 3)
 from new_module import new_function
 result = new_function(2, 3)
 """
-        result = THE_MODULE.transform(self.to_module, original_code)
+        result, _ = THE_MODULE.transform(self.to_module, original_code)
         assert result.strip() == expected_code.strip()
 
     # Unit Testing IV
     @pytest.mark.xfail
     def test_replace_call_if_needed(self):
-        """Ensures that replace_call_if_needed method of CustomVisitor works as expected"""
+        """Ensures that replace_call_if_needed method of ReplaceCallsTransformer works as expected"""
         assert False, "TODO: Implement"
 
 
@@ -707,7 +705,9 @@ class TestUsageM2SEqCall(TestWrapper):
 
     def helper_m2s(self, input_code):
         """Helper function to convert mezcla code to standard equivalent code"""
-        return THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
+        # Metrics are ignored for this test case
+        new_code, _ = THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
+        return new_code
 
     def test_eqcall_gh_get_temp_file(self):
         """Ensures that gh.get_temp_file is equivalent to tempfile.NamedTemporaryFile"""
@@ -1171,7 +1171,10 @@ class TestUsageImportTypes(TestWrapper):
 
     ## TODO: Add a helper function
     def helper_m2s(self, input_code):
-        return THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
+        """TODO"""
+        # Metrics are ignored for this test case
+        new_code, _ = THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
+        return new_code
 
     ## NOTE: When testing code, DO NOT follow the code in this format
     ## NOTE: Instead, DO NOT apply any indentations on code
@@ -1239,7 +1242,7 @@ logging.error("error")
             # result = gh.run(command)
 
             ## ATTEMPT 2: Did not work either
-            result = THE_MODULE.transform(THE_MODULE.ToStandard(), code)
+            result, _ = THE_MODULE.transform(THE_MODULE.ToStandard(), code)
             self.assertEqual(result.strip(), expected_output.strip())
 
     @pytest.mark.xfail
@@ -1304,7 +1307,7 @@ logging.error("error")
 
         for code in code_combinations:
             # Refer from test_import_types
-            result = THE_MODULE.transform(THE_MODULE.ToStandard(), code)
+            result, _ = THE_MODULE.transform(THE_MODULE.ToStandard(), code)
             self.assertEqual(result.strip(), expected_output.strip())
 
 
@@ -1318,7 +1321,7 @@ class TestUsage(TestWrapper):
         # Helper Function A (Conversion m2s)
 
         to_standard = THE_MODULE.ToStandard() if to_standard else THE_MODULE.ToMezcla()
-        result = THE_MODULE.transform(to_module=to_standard, code=input_code)
+        result, _ = THE_MODULE.transform(to_module=to_standard, code=input_code)
         return result
 
     def helper_run_cmd_m2s(self, input_code, to_standard=True) -> str:
