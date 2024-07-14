@@ -2,6 +2,9 @@
 Misc tests for mezcla_to_standard module
 """
 
+## NOTE: To disable caching of pytests, use the PYTEST_ADDOPTS environment variable externally
+## ricekiller@pop-os:~/tomProject/mezcla$ export PYTEST_ADDOPTS="--cache-clear"
+
 # Standard packages
 ## NOTE: this is empty for now
 import os
@@ -34,11 +37,6 @@ TEST_GLOB = system.getenv_text(
     "TEST_GLOB",
     "",
     description="Specify which files to test"
-)
-DISABLE_CACHE = system.getenv_bool(
-    "DISABLE_CACHE", 
-    False,
-    description="Clear test caches before running the tests"
 )
 SKIP_WARNINGS = system.getenv_bool(
     "SKIP_WARNINGS", 
@@ -380,8 +378,14 @@ def test_{function_name}():
 
 if __name__ == "__main__":
     debug.trace_current_context()
-    disable_cache = DISABLE_CACHE
-    if disable_cache:
-        pytest.main([__file__], "--cache-clear")
-    else:
-        pytest.main([__file__])
+    
+    ## OLD: Use PYTEST_ADDOPTS environment variable externally
+    ## $ export PYTEST_ADDOPTS="--cache-clear"
+    
+    # disable_cache = DISABLE_CACHE
+    # if disable_cache:
+    #     pytest.main([__file__], "--cache-clear")
+    # else:
+    #     pytest.main([__file__])
+    
+    pytest.main([__file__])
