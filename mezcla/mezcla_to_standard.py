@@ -313,18 +313,21 @@ class CallDetails:
         # Some local functions as lambda in parameters
         # cannot be converted to path or callable
         # but also is not required, so we ignore them
+        self.callable = None
         try:
             self.callable = path_to_callable(func) if isinstance(func, str) else func
         except Exception:
-            self.callable = None
+            pass
+        self.path = None
         try:
             self.path = func if isinstance(func, str) else callable_to_path(func)
         except Exception:
-            self.path = None
+            pass
+        self.specs = None
         try:
             self.specs = get_func_specs(func)
         except Exception:
-            self.specs = None
+            pass
 
     @staticmethod
     def to_list_of_call_details(funcs: SingleOrMultipleStrOrCallable) -> List['CallDetails']:
