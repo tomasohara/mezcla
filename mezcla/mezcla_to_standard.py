@@ -396,6 +396,21 @@ class Features(Enum):
     ```
     """
 
+    COPY_DEST_SOURCE = "copy_dest_source"
+    """
+    Copy source code equivalent to a Mezcla call,
+
+    this only works when converting Mezcla => Standard
+
+    ```
+    debug.assertion(condition, ...) => "if condition: ..."
+    ```
+    """
+
+## TODO: separate EqCall into different data classes ???
+##       to avoid ambiguity about targets and dests. ???
+##       e.g. MultipleTargetsSingleDest, SingleTargetMultipleDests ???
+##            ToSourceDest ???
 class EqCall:
     """
     Mezcla to standard equivalent call class
@@ -515,6 +530,12 @@ class EqCall:
         target_paths = [t.path for t in self.targets] if len(self.targets) > 1 else self.targets[0]
         dest_paths = [d.path for d in self.dests] if len(self.dests) > 1 else self.dests[0]
         return f"EqCall: {target_paths} => {dest_paths}"
+
+# Custom Function replacements
+
+def assertion_replacement(expression, message=None, assert_level=None):
+    if expression:
+        debug.trace(assert_level, message)
 
 # Add equivalent calls between Mezcla and standard
 mezcla_to_standard = [
@@ -697,6 +718,42 @@ mezcla_to_standard = [
         (system.to_int, system.safe_int),
         int,
     ),
+    EqCall(
+        debug.assertion,
+        dests=assertion_replacement,
+        extra_params={ "assert_level": 1, "message": "debug assertion failed" },
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.getenv,
+        dests=lambda var, default_value: os.environ.get(var) or default_value,
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.getenv_value,
+        dests=lambda var, default: os.environ.get(var) or default,
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.getenv_int,
+        dests=lambda var, default: int(os.environ.get(var)) or default,
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.getenv_bool,
+        dests=lambda var, default: bool(os.environ.get(var)) or default,
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.getenv_text,
+        dests=lambda var, default: str(os.environ.get(var)) or default,
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.getenv_number,
+        dests=lambda var, default: float(os.environ.get(var)) or default,
+        features=[Features.COPY_DEST_SOURCE]
+    ),
 ]
 
 def cst_to_path(tree: cst.CSTNode) -> str:
@@ -720,6 +777,8 @@ def cst_to_path(tree: cst.CSTNode) -> str:
         return cst_to_path(tree.name)
     elif isinstance(tree, cst.Subscript):
         return cst_to_path(tree.value)
+    elif isinstance(tree, cst.Param):
+        return cst_to_path(tree.name)
     raise ValueError(f"Unsupported node type: {type(tree)}")
 
 def cst_to_paths(tree: cst.CSTNode) -> List[str]:
@@ -733,6 +792,8 @@ def cst_to_paths(tree: cst.CSTNode) -> List[str]:
     """
     if isinstance(tree, (cst.Import, cst.ImportFrom)):
         return [cst_to_path(alias) for alias in tree.names]
+    elif isinstance(tree, cst.Parameters):
+        return [cst_to_path(alias) for alias in tree.params]
     raise ValueError(f"Unsupported node type: {type(tree)}")
 
 def path_to_cst(path: str) -> cst.CSTNode:
@@ -857,18 +918,25 @@ def match_args(func: CallDetails, cst_arguments: List[cst.Arg]) -> dict:
     if func_spec is None:
         debug.trace(7, f"match_args(func={func}, cst_arguments={cst_arguments}) => {func_spec}")
         return {}
-    arg_names = func_spec.args
-    varargs_name = func_spec.varargs
-    kwarg_names = func_spec.kwargs
+    arg_names = func_spec.args # name
+    varargs_name = func_spec.varargs # *name
+    kwarg_names = func_spec.kwargs # name = "value"
 
     # Separate between args and kwargs
     args, kwargs = [], []
-    for arg in cst_arguments:
+    for idx, arg in enumerate(cst_arguments):
         if isinstance(arg, cst.Arg):
             if arg.keyword:
                 kwargs.append(arg)
             else:
-                args.append(arg)
+                # Check for positional arguments
+                if len(args) >= len(arg_names) and not varargs_name:
+                    if not kwarg_names:
+                        continue
+                    arg = arg.with_changes(keyword=cst.Name(value=(arg_names+kwarg_names)[idx]))
+                    kwargs.append(arg)
+                else:
+                    args.append(arg)
         else:
             raise ValueError(f"Unsupported argument type: {type(arg)}")
 
@@ -1138,6 +1206,65 @@ def remove_paths_from_import_cst(
     debug.trace(7, f"remove_paths_from_import_cst(cst_import={cst_import}, paths_to_remove={paths_to_remove}) => {result}")
     return result
 
+def skip_module(tree: cst.Module) -> cst.CSTNode:
+    """
+    Skip the module node
+    """
+    assert isinstance(tree, cst.Module), "Expected module node"
+    return tree.body[0]
+
+def skip_assign(tree: cst.CSTNode) -> cst.CSTNode:
+    """
+    Skip the assignment node
+    """
+    if isinstance(tree, cst.SimpleStatementLine):
+        tree = tree.body[0]
+    assert isinstance(tree, cst.Assign), "Expected assignment node"
+    return tree.value
+
+def extract_replaced_body(func: Callable, args: List[cst.Arg]) -> cst.CSTNode:
+    """
+    Extract replaced body from the source code
+    ```
+    func = lambda a, b: f"{a} {b}"
+    args = [Arg(1), Arg(2)]
+    insert_args_in_source(source, args) => 'f"{1} {2}"'
+    ```
+    """
+    # Get source code of func
+    source = inspect.getsource(func)
+    source = source.strip()
+    source = source[:-1] if source.endswith(",") else source
+    # To tree
+    tree = cst.parse_module(source)
+    tree = skip_module(tree)
+    # Lambda functions always is assigned to a variable
+    if not isinstance(tree, cst.FunctionDef):
+        tree = skip_assign(tree)
+        assert isinstance(tree, cst.Lambda)
+    # Extract parameters
+    parameters = cst_to_paths(tree.params)
+    tree = tree.body
+    # Setup arguments
+    args = [arg.value for arg in args]
+    # Replace arguments
+    class ReplaceArgs(cst.CSTTransformer):
+        def leave_Name(self, original_node, updated_node):
+            if original_node.value in parameters:
+                idx = parameters.index(original_node.value)
+                if idx < len(args):
+                    return args[idx]
+            return updated_node
+    tree = tree.visit(ReplaceArgs())
+    # Remove indentation
+    if isinstance(tree, cst.IndentedBlock):
+        tree = tree.body[0]
+    if isinstance(tree, cst.If):
+        # for some reason, If statements always are inserted with bad indent
+        tree = tree.with_changes(leading_lines=[cst.EmptyLine(indent=False)])
+    # Return source
+    return tree
+
 class BaseTransformerStrategy:
     """Transformer base class"""
 
@@ -1174,21 +1301,29 @@ class BaseTransformerStrategy:
         debug.trace(6, f"BaseTransformerStrategy.insert_extra_params(args={args}) => {new_args}")
         return new_args
 
-    def get_replacement(self, path: str, args: List[cst.Arg]) -> Tuple:
+    ## TODO: refactor this returns two different types of values
+    def get_replacement(self, path: str, args: List[cst.Arg]) -> Union[Tuple[str, List[cst.Arg]], cst.CSTNode]:
         """
         Get the function replacement
 
-        Returns tuple of `(new_path, new_args_node)`
+        Returns tuple of `(func_as_str, new_args_node)`
         """
         # Find the equivalent call
         eq_call = self.find_eq_call(path, args)
+        func = ""
+        new_args_nodes = []
         if eq_call is None:
-            return "", []
-        new_path = self.eq_call_to_path(eq_call)
-        # Adapt the arguments
+            return func, new_args_nodes
+        # Replace args
         new_args_nodes = self.get_args_replacement(eq_call, args)
-        debug.trace(5, f"BaseTransformerStrategy.get_replacement(path={path}, args={args}) => {new_path}, {new_args_nodes}")
-        return new_path, new_args_nodes
+        # Replace func
+        if Features.COPY_DEST_SOURCE in eq_call.features:
+            func = extract_replaced_body(eq_call.dests[0].callable, new_args_nodes)
+        else:
+            func = self.eq_call_to_path(eq_call)
+        #
+        debug.trace(5, f"BaseTransformerStrategy.get_replacement(path={path}, args={args}) => {func}, {new_args_nodes}")
+        return func, new_args_nodes
 
     def eq_call_to_path(self, eq_call: EqCall) -> str:
         """Get the path from the equivalent call"""
@@ -1418,6 +1553,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         new_body = list(updated_node.body)
         for module in set(self.to_import):
             new_body = [path_to_import(module)] + new_body
+        self.to_import = []
         result = updated_node.with_changes(body=new_body)
         # Extract import paths of keep/removed references
         def extract_imports(list_of_paths: str) -> str:
@@ -1442,6 +1578,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
                     new_body.append(new_node)
             else:
                 new_body.append(node)
+        self.removed = []
         result = result.with_changes(body=new_body)
         #
         debug.trace(8, f"ReplaceCallsTransformer.leave_Module(original_node={original_node}, updated_node={updated_node}) => {result}")
@@ -1477,29 +1614,36 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
             self.keep.append(path)
             debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => skipping")
             return updated_node
-        # We use the first components on a path is for
-        # the import and the rest is for the function call
-        #
-        # Example path: "mezcla.debug.trace"
-        # New import: from mezcla import debug
-        # New call: debug.trace
-        #
-        if "." in new_path:
-            import_path = ".".join(new_path.split(".")[:-1])
-            call_path = ".".join(new_path.split(".")[-2:])
+        if isinstance(new_path, str):
+            # We use the first components on a path is for
+            # the import and the rest is for the function call
+            #
+            # Example path: "mezcla.debug.trace"
+            # New import: from mezcla import debug
+            # New call: debug.trace
+            #
+            if "." in new_path:
+                import_path = ".".join(new_path.split(".")[:-1])
+                call_path = ".".join(new_path.split(".")[-2:])
+            else:
+                import_path = ""
+                call_path = new_path
+            # Replace CST Call
+            updated_node = updated_node.with_changes(
+                func=path_to_cst(call_path),
+                args=new_args_nodes
+            )
+            # Handle new imports
+            if import_path:
+                self.to_import.append(import_path)
+            self.removed.append(path)
+            self.add_to_history(path, new_path)
+        elif isinstance(new_path, cst.CSTNode):
+            # Replace CST Call directly
+            updated_node = new_path
+            self.add_to_history(path, "embedded code")
         else:
-            import_path = ""
-            call_path = new_path
-        # Replace CST Call
-        updated_node = updated_node.with_changes(
-            func=path_to_cst(call_path),
-            args=new_args_nodes
-        )
-        self.add_to_history(path, new_path)
-        self.removed.append(path)
-        # Handle new and old imports
-        if import_path:
-            self.to_import.append(import_path)
+            raise ValueError(f"Error in replacement: {new_path}")
         debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => {updated_node}")
         return updated_node
 
@@ -1568,7 +1712,9 @@ def transform(to_module, code: str, skip_warnings:bool=False) -> str:
     tree = cst.parse_module(code)
 
     # Replace calls in the tree
+    # Two passes are needed to replace nested calls
     calls_transformer = ReplaceCallsTransformer(to_module)
+    tree = tree.visit(calls_transformer)
     tree = tree.visit(calls_transformer)
 
     # Replace Mezcla calls with warning if not supported
@@ -1627,10 +1773,12 @@ class MezclaToStandardScript(Main):
         print(
             "\033[93m WARNING, THIS OPERATION WILL OVERRIDE:\n",
             f"{self.file}\n",
-            "Make sure you have a backup of the file before proceeding.\n\033[0m",
-            file=sys.stderr
+            "Make sure you have a backup of the file before proceeding.\n\n",
+            "Are you sure you want to continue? (yes/no): \033[0m",
+            file=sys.stderr,
+            end=""
         )
-        want_to_continue = input("Are you sure you want to continue? (yes/no): ").lower()
+        want_to_continue = input().lower()
         # NOTE: we don't use single characters "y" as verification,
         #       because could be accidentally pressed
         if want_to_continue != "yes":
