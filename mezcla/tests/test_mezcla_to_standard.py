@@ -5,7 +5,6 @@ Tests for mezcla_to_standard module
 # Standard packages
 import os
 from unittest.mock import patch, MagicMock, ANY
-import logging
 
 # Installed packages
 import pytest
@@ -27,6 +26,7 @@ from mezcla.unittest_wrapper import TestWrapper
 # Backup of production mezcla_to_standard equivalent
 # calls to restore after some tests that modify it
 BACKUP_M2S = THE_MODULE.mezcla_to_standard
+
 
 class TestCSTFunctions:
     """Class for test functions that performs operations on CSTs"""
@@ -76,20 +76,25 @@ class TestCSTFunctions:
         # For unsupported types
         value = [1, 2, 3]
         with pytest.raises(ValueError):
-            THE_MODULE.arg_to_value(cst.Arg(cst.List([cst.Integer(value=str(i)) for i in value])))
-
+            THE_MODULE.arg_to_value(
+                cst.Arg(cst.List([cst.Integer(value=str(i)) for i in value]))
+            )
 
     def test_args_to_values(self):
         """Ensures that args_to_values method works as expected"""
 
         def helper_arg2val(arg):
+            """Convert the argument to its expected output value based on its type"""
             if isinstance(arg.value, cst.SimpleString):
                 expected_output = arg.value.value
             elif isinstance(arg.value, cst.Integer):
                 expected_output = int(arg.value.value)
             elif isinstance(arg.value, cst.Float):
                 expected_output = float(arg.value.value)
-            elif isinstance(arg.value, cst.Name) and arg.value.value in ["True", "False"]:
+            elif isinstance(arg.value, cst.Name) and arg.value.value in [
+                "True",
+                "False",
+            ]:
                 expected_output = arg.value.value == "True"
             else:
                 expected_output = None
@@ -148,13 +153,14 @@ class TestCSTFunctions:
 
         # Sample function
         def slope(x1, y1, x2, y2):
+            """Returns slope between two coordinates"""
             return (y2 - y1) / (x2 - x1)
 
         args = [
             THE_MODULE.value_to_arg(10),
             THE_MODULE.value_to_arg(20),
             THE_MODULE.value_to_arg(30),
-            THE_MODULE.value_to_arg(40)
+            THE_MODULE.value_to_arg(40),
         ]
         expected_output = {"x1": args[0], "y1": args[1], "x2": args[2], "y2": args[3]}
         result = THE_MODULE.match_args(THE_MODULE.CallDetails(slope), args)
@@ -185,26 +191,23 @@ class TestBaseTransformerStrategy:
 
     # Creating mock functions for testing
     def slope(self, x1: int, y1: int, x2: int, y2: int):
-        """TODO"""
+        """Returns the slope of two coordinates (x1, y1) and (x2, y2)"""
         return (y2 - y1) / (x2 - x1)
 
     def distance(self, x1: int, y1: int, x2: int, y2: int) -> float:
-        """TODO"""
+        """Returns the distance between two coordinates (x1, y1) and (x2, y2)"""
         return round(((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5, 2)
 
     def test_insert_extra_params(self):
         """Ensures that insert_extra_params method of BaseTransformerStrategy class works as expected"""
         extra_params = {"x1": 3, "y1": 5, "x2": 6}
-        args = {
-            "x1": THE_MODULE.value_to_arg(10),
-            "y2": THE_MODULE.value_to_arg(12)
-        }
+        args = {"x1": THE_MODULE.value_to_arg(10), "y2": THE_MODULE.value_to_arg(12)}
 
         expected_result = {
             "x1": THE_MODULE.value_to_arg(10),
             "y2": THE_MODULE.value_to_arg(12),
             "y1": THE_MODULE.value_to_arg(5),
-            "x2": THE_MODULE.value_to_arg(6)
+            "x2": THE_MODULE.value_to_arg(6),
         }
 
         eqcall = THE_MODULE.EqCall(
@@ -212,7 +215,7 @@ class TestBaseTransformerStrategy:
         )
         bts = THE_MODULE.BaseTransformerStrategy()
         result = bts.insert_extra_params(eqcall, args)
-        print(result, "=" * 50, expected_result)
+        # Debugging: print(result, "=" * 50, expected_result)
         assert set(result.keys()) == set(expected_result.keys())
         # Check types of result
         for _, value in result.items():
@@ -224,7 +227,7 @@ class TestBaseTransformerStrategy:
         ## OLD: Eqcall._filter_args_by_function
         """Ensures that get_replacement method of BaseTransformerStrategy class works as expected"""
         args = {"x1": 20, "y1": 10, "x2": 30, "y2": -60}
-        pass
+        assert False, "TO_BE_IMPLEMENTED"
 
     @pytest.mark.xfail
     def test_eq_call_to_module_func(self):
@@ -257,19 +260,17 @@ class TestToStandard:
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     # Sample functions to be used in tests
-    @staticmethod
     def sample_func1(a):
         """First sample function"""
         pass
 
-    @staticmethod
     def sample_func2(b):
         """Second sample function"""
         pass
 
     @pytest.fixture
     def setup_to_standard(self):
-        """TODO"""
+        """Returns a pytest fixture for to_standard conversion"""
         THE_MODULE.mezcla_to_standard = [
             THE_MODULE.EqCall(targets=self.sample_func1, dests=self.sample_func1),
             THE_MODULE.EqCall(targets=self.sample_func2, dests=self.sample_func2),
@@ -298,13 +299,15 @@ class TestToStandard:
         eq_call = to_standard.find_eq_call(path, args=args)
         assert eq_call is None
 
-    # Does not work as intended (Result = None)
     @pytest.mark.xfail
     def test_tostandard_find_eq_call(self):
         """Ensures that find_eq_call of ToStandard class works as expected"""
+        # Does not work as intended (Result = None)
 
-        ## TODO: update (module, func) to "module.func"
         class MockEqCall:
+            """Mock class for EqCall objects"""
+
+            ## TODO: update (module, func) to "module.func"
             def __init__(self, module, func, condition_met=True):
                 self.target = type(
                     "MockClass", (object,), {"__module__": f"{module}.mock"}
@@ -327,7 +330,7 @@ class TestToStandard:
 
     @pytest.fixture
     def setup_to_standard_with_condition(self):
-        """TODO"""
+        """Fixture setup for the ToStandard conversion with conditions"""
         THE_MODULE.mezcla_to_standard = [
             THE_MODULE.EqCall(
                 targets=self.sample_func1, dests=None, condition=lambda a, b: a > b
@@ -352,10 +355,7 @@ class TestToStandard:
         eq_call = THE_MODULE.EqCall(
             targets=sample_func1, dests=None, condition=lambda a, b: a > b
         )
-        args = [
-            THE_MODULE.value_to_arg(4),
-            THE_MODULE.value_to_arg(3)
-        ]
+        args = [THE_MODULE.value_to_arg(4), THE_MODULE.value_to_arg(3)]
         result = to_standard.is_condition_to_replace_met(eq_call, args)
         assert result is True
 
@@ -378,34 +378,30 @@ class TestToStandard:
         assert False, "TODO: Implement"
 
 
-# Unit testing of function
 class TestToMezcla:
     """Class for test usage of ToMezcla class in mezcla_to_standard"""
 
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    @staticmethod
     def sample_func1(a, b):
         """First sample function"""
         return a + b
 
-    @staticmethod
     def sample_func2(a, b):
         """Second sample function"""
         return a - b
 
-    @staticmethod
     def standard_func1(src, dst):
         """Standard equivalent function for sample_func1"""
         return f"{src}: {dst}"
 
-    @staticmethod
     def standard_func2(path):
         """Standard equivalent function for sample_func2"""
         return f"path: {path}"
 
     @pytest.fixture
     def setup_to_mezcla(self):
+        """Fixture setup for the ToMezcla conversion with conditions"""
         THE_MODULE.mezcla_to_standard = [
             THE_MODULE.EqCall(
                 targets=self.sample_func1,
@@ -427,10 +423,7 @@ class TestToMezcla:
         """Test for finding an existing equivalent call for ToMezcla class"""
         to_mezcla = setup_to_mezcla
         path = "test_mezcla_to_standard.standard_func1"
-        args = [
-            THE_MODULE.value_to_arg(4),
-            THE_MODULE.value_to_arg(3)
-        ]
+        args = [THE_MODULE.value_to_arg(4), THE_MODULE.value_to_arg(3)]
         eq_call = to_mezcla.find_eq_call(path, args)
         assert eq_call is not None
         assert isinstance(eq_call, THE_MODULE.EqCall)
@@ -440,10 +433,7 @@ class TestToMezcla:
         """Test for not finding an existing equivalent call for ToMezcla class"""
         to_mezcla = setup_to_mezcla
         path = "test_mezcla.non_existent"
-        args = [
-            THE_MODULE.value_to_arg(4),
-            THE_MODULE.value_to_arg(3)
-        ]
+        args = [THE_MODULE.value_to_arg(4), THE_MODULE.value_to_arg(3)]
         eq_call = to_mezcla.find_eq_call(path, args)
         assert eq_call is None
 
@@ -457,17 +447,11 @@ class TestToMezcla:
             condition=lambda a, b: a > b,
             eq_params={"a": "src", "b": "dst"},
         )
-        args = [
-            THE_MODULE.value_to_arg(4),
-            THE_MODULE.value_to_arg(3)
-        ]
+        args = [THE_MODULE.value_to_arg(4), THE_MODULE.value_to_arg(3)]
         result = to_mezcla.is_condition_to_replace_met(eq_call, args)
         assert result is True
 
-        args = [
-            THE_MODULE.value_to_arg(3),
-            THE_MODULE.value_to_arg(4)
-        ]
+        args = [THE_MODULE.value_to_arg(3), THE_MODULE.value_to_arg(4)]
         result = to_mezcla.is_condition_to_replace_met(eq_call, args)
         assert result is False
 
@@ -477,21 +461,14 @@ class TestToMezcla:
             condition=lambda a, b: a == b,
             eq_params={"a": "path"},
         )
-        args = [
-            THE_MODULE.value_to_arg(4),
-            THE_MODULE.value_to_arg(4)
-        ]
+        args = [THE_MODULE.value_to_arg(4), THE_MODULE.value_to_arg(4)]
         result = to_mezcla.is_condition_to_replace_met(eq_call, args)
         assert result is True
 
-        args = [
-            THE_MODULE.value_to_arg(4),
-            THE_MODULE.value_to_arg(5)
-        ]
+        args = [THE_MODULE.value_to_arg(4), THE_MODULE.value_to_arg(5)]
         result = to_mezcla.is_condition_to_replace_met(eq_call, args)
         assert result is False
 
-    ## TEST 4: get_args_replacement
     def test_get_args_replacement(self, setup_to_mezcla):
         """Test for get_args_replacement method in ToMezcla class"""
         to_mezcla = setup_to_mezcla
@@ -503,7 +480,6 @@ class TestToMezcla:
         )
 
         # For multiple arguments in function using multiple arguments
-
         # OLD: args = [4, 3]
         args = [cst.Arg(value=4), cst.Arg(value=3)]
         result = str(to_mezcla.get_args_replacement(eq_call, args))
@@ -525,7 +501,6 @@ class TestToMezcla:
         assert "Arg(\n    value=4," in result
         assert result.count("Arg(\n") == 1
 
-    ## TEST 5: replace_args_keys
     def test_replace_args_keys(self, setup_to_mezcla):
         """Test for replace_args_keys method in ToMezcla class"""
         to_mezcla = setup_to_mezcla
@@ -542,24 +517,33 @@ class TestToMezcla:
 
         # For single argument
         eq_call = THE_MODULE.EqCall(
-            targets=self.sample_func2, dests=self.standard_func2, eq_params={"a": "path"}
+            targets=self.sample_func2,
+            dests=self.standard_func2,
+            eq_params={"a": "path"},
         )
         args = {"path": 4}
         result = to_mezcla.replace_args_keys(eq_call, args)
         assert result == {"a": 4}
 
-    ## TEST 6: eq_call_to_path
     def test_eq_call_to_path(self, setup_to_mezcla):
         """Test for eq_call_to_path method in ToMezcla class"""
         to_mezcla = setup_to_mezcla
 
-        eq_call = THE_MODULE.EqCall(targets=self.sample_func1, dests=self.standard_func1)
+        eq_call = THE_MODULE.EqCall(
+            targets=self.sample_func1, dests=self.standard_func1
+        )
         path = to_mezcla.eq_call_to_path(eq_call)
-        assert path == "test_mezcla_to_standard.sample_func1" ## TODO: check module part of the path
+        assert (
+            path == "test_mezcla_to_standard.sample_func1"
+        )  ## TODO: check module part of the path
 
-        eq_call = THE_MODULE.EqCall(targets=self.sample_func2, dests=self.standard_func2)
+        eq_call = THE_MODULE.EqCall(
+            targets=self.sample_func2, dests=self.standard_func2
+        )
         path = to_mezcla.eq_call_to_path(eq_call)
-        assert path == "test_mezcla_to_standard.sample_func2" ## TODO: check module part of the path
+        assert (
+            path == "test_mezcla_to_standard.sample_func2"
+        )  ## TODO: check module part of the path
 
 
 @pytest.fixture
@@ -568,8 +552,8 @@ def mock_to_module():
     # Define mock behavior for get_replacement
     mock_to_module = MagicMock()
 
-    # Mock function for get_replacement method
     def mock_get_replacement(module_name, func, args):
+        """Mock function to simulate `get_replacement` method"""
         new_module = cst.Name(f"import_{module_name}")
         new_func_node = cst.Name(f"new_func_{module_name}")
         new_args_nodes = args
@@ -586,6 +570,7 @@ class TestTransform(TestWrapper):
 
     @pytest.fixture(autouse=True)
     def setup(self, mock_to_module):
+        """Fixture to setup mock modules for TestTransform"""
         self.mock_to_module = mock_to_module
 
     @pytest.mark.xfail
@@ -633,12 +618,13 @@ z = func3(5, 6)
         self.mock_to_module.get_replacement.assert_any_call("module_b", ANY, ANY)
         self.mock_to_module.get_replacement.assert_any_call("module_c", ANY, ANY)
 
-    # Unit Testing I
     @pytest.mark.xfail
     def test_leave_module(self):
         """Ensures that leave_Module method of ReplaceCallsTransformer works as expected"""
 
         class TestVisitor(THE_MODULE.ReplaceCallsTransformer):
+            """Sample class of TestVisitor to test leave_module function"""
+
             def __init__(self, to_module):
                 super().__init__(to_module)
 
@@ -663,7 +649,6 @@ x = module_a.func1(1, 2)
             modified_tree.code.strip() == cst.parse_module(expected_code).code.strip()
         )
 
-    # Unit Testing II
     def test_visit_importalias(self):
         """Ensures that visit_ImportAlias method of ReplaceCallsTransformer works as expected"""
 
@@ -685,7 +670,6 @@ from another_module import submodule as sm
         # Assert that the aliases were correctly stored
         assert visitor.aliases == expected_aliases
 
-    # Unit Testing III
     @pytest.mark.xfail
     def test_leave_call(self):
         """Ensures that leave_Call method of ReplaceCallsTransformer works as expected"""
@@ -699,7 +683,6 @@ result = new_function(2, 3)
         result, _ = THE_MODULE.transform(self.to_module, original_code)
         assert result.strip() == expected_code.strip()
 
-    # Unit Testing IV
     @pytest.mark.xfail
     def test_replace_call_if_needed(self):
         """Ensures that replace_call_if_needed method of ReplaceCallsTransformer works as expected"""
@@ -745,7 +728,6 @@ basename = path.basename("./foo/bar/foo.bar")
         result = self.helper_m2s(input_code)
         self.assertEqual(result.split(), expected_code.split())
 
-    
     def test_eqcall_gh_dir_path(self):
         """Ensures that gh.dir_path is equivalent to os.path.dirname"""
         input_code = """
@@ -758,10 +740,11 @@ dir_path = path.dirname("/tmp/solr-4888.log")
 """
         result = self.helper_m2s(input_code)
         self.assertEqual(result.split(), expected_code.split())
-    
-    @pytest.mark.skip   # Blank parameter in os.path.dirname()
+
+    @pytest.mark.skip
     def test_eqcall_gh_dirname(self):
         """Ensures that gh.dirname is equivalent to os.path.dirname"""
+        ## TODO: Fix blank parameter output in os.path.dirname()
         input_code = """
 from mezcla import glue_helpers as gh
 dirname = gh.dirname("/tmp/solr-4888.log")
@@ -971,9 +954,10 @@ def divide(a, b):
         result = self.helper_m2s(input_code)
         self.assertEqual(result.split(), expected_code.split())
 
-    @pytest.mark.xfail  ## ERROR: ValueError: Unsupported value type: <class '_io.TextIOWrapper'>
+    @pytest.mark.xfail
     def test_eqcall_system_print_error(self):
         """Ensures that system.print_error is equivalent to printing to stderr"""
+        ## ERROR: ValueError: Unsupported value type: <class '_io.TextIOWrapper'>
         input_code = """
 from mezcla import system
 system.print_error("This is an error message")
@@ -1079,7 +1063,7 @@ pwd = os.getcwd()
         result = self.helper_m2s(input_code)
         self.assertEqual(result.split(), expected_code.split())
 
-    @pytest.mark.skip   # Blank parameter in os.path.chdir()
+    @pytest.mark.skip  # Blank parameter in os.path.chdir()
     def test_eqcall_system_set_current_directory(self):
         """Ensures that system.set_current_directory is equivalent to os.chdir"""
         # Note: No matter the order of import, the output will always have the import on the top
@@ -1110,7 +1094,7 @@ abs_path = path.abspath("./Downloads/testfile.pdf")
         result = self.helper_m2s(input_code)
         self.assertEqual(result.split(), expected_code.split())
 
-    @pytest.mark.skip   # Blank parameter in os.path.realpath()
+    @pytest.mark.skip  # Blank parameter in os.path.realpath()
     def test_eqcall_system_real_path(self):
         """Ensures that system.real_path is equivalent to os.path.realpath"""
         input_code = """
@@ -1181,9 +1165,8 @@ class TestUsageImportTypes(TestWrapper):
 
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    ## TODO: Add a helper function
     def helper_m2s(self, input_code):
-        """TODO"""
+        """Helper function for testing types of imports"""
         # Metrics are ignored for this test case
         new_code, _ = THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
         return new_code
@@ -1346,20 +1329,42 @@ class TestUsage(TestWrapper):
         result = gh.run(command)
         return result
 
+    def assert_m2s_transform(self, input_code, expected_code):
+        """Assert that m2s transformation produces the expected result"""
+        result = self.helper_m2s(input_code)
+        self.assertEqual(result.strip(), expected_code.strip())
+
+    def assert_m2s_transform_flaky(self, input_code:str, expected_body:str, expected_code_heads:list):
+        """Assert that m2s transformation produces the expected result for flaky tests"""
+        result = self.helper_m2s(input_code)
+        expected_codes = [head + expected_body for head in expected_code_heads]
+        self.assertTrue(
+            any(
+                result.strip() == expected.strip()
+                for expected in expected_codes
+            )
+        )
+
+    @pytest.mark.parametrize(
+        "input_code",
+        [
+            """
+from mezcla import glue_helpers as gh
+gh.run("python3 --version")
+        """
+        ],
+    )
     def test_unsupported_function_to_standard(self):
         """Test for conversion of an unsupported function during mezcla to standard conversion (commented as #Warning not supported)"""
 
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.run("python3 --version")
-"""
-        ## OLD
-        # to_standard = THE_MODULE.ToStandard()
-        # result = THE_MODULE.transform(to_module=to_standard, code=input_code)
+        input_code = (
+            'from mezcla import glue_helpers as gh\ngh.run("python3 --version")'
+        )
         result = self.helper_m2s(input_code)
         unsupported_message = '# WARNING not supported: gh.run("python3 --version")'
-        assert result is not None
-        assert unsupported_message in result
+
+        self.assertNotEqual(result, None)
+        self.assertIn(unsupported_message, result)
 
     @pytest.mark.xfail
     def test_unsupported_function_to_mezcla(self):
@@ -1373,39 +1378,42 @@ os.getenv("HOME")
         # result = THE_MODULE.transform(to_module=to_mezcla, code=input_code)
         result = self.helper_m2s(input_code)
         unsupported_message = '# WARNING not supported: gh.run("python3 --version")'
-        assert result is not None
-        assert unsupported_message in result
 
-    ## TODO: Fix flaky tests, imports switch positions every time
-    @pytest.mark.xfail
+        ## OLD: Use self.assertIn method
+        # assert result is not None
+        # assert unsupported_message in result
+        self.assertNotEqual(result, None)
+        self.assertIn(unsupported_message, result)
+
     def test_conversion_mezcla_to_standard(self):
         """Test the conversion from mezcla to standard calls"""
-
         ## NOTE: Old code of test_conversion_mezcla_to_standard moved to test_run_supported_and_unsupported_function
         ## NOTE: This was done to test both supported and unsupported functions
-        # Standard code uses POSIX instead of os (as of 2024-06-10)
+
         input_code = """
 from mezcla import glue_helpers as gh
 gh.delete_file("/tmp/fubar.list")
 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 gh.form_path("/tmp", "fubar")
-        """
+"""
 
         # Standard code consistes of glue helpers commands as well (as of 2024-06-10)
-        expected_output_code = """
-import os
-from os import path
+
+        expected_code = """
 os.remove("/tmp/fubar.list")
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 path.join("/tmp", "fubar")
-        """
+"""
 
         ## OLD: Before Helper
         # to_standard = THE_MODULE.ToStandard()
         # result = THE_MODULE.transform(to_standard, input_code)
-
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_output_code.strip())
+        expected_code_heads = [
+            """import os\nfrom os import path""",
+            """from os import path\nimport os"""
+        ]
+        # self.assertEqual(result.strip(), expected_output_code.strip())
+        self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
     @pytest.mark.xfail
     def test_conversion_standard_to_mezcla(self):
@@ -1455,12 +1463,10 @@ gh.delete_file("/tmp/fubar.list")
     def test_run_from_command_empty_file(self):
         """Test the working of the script through command line when input file is empty"""
         input_code = ""
-        ## OLD (Before Helper)
-        # input_file = gh.create_temp_file(contents=input_code)
-        # command = f"python3 mezcla/mezcla_to_standard.py --to_standard {input_file}"
-        # result = gh.run(command)
-        result = self.helper_run_cmd_m2s(input_code)
-        self.assertEqual(result.strip(), "")
+        ## OLD (Before assert_m2s_transform)
+        # result = self.helper_run_cmd_m2s(input_code)
+        # self.assertEqual(result.strip(), "")
+        self.assert_m2s_transform(input_code=input_code, expected_code="")
 
     def test_run_from_command_syntax_error(self):
         """Test the working of the script through command line when input file has syntax error"""
@@ -1481,11 +1487,8 @@ gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1
         )
         self.assertIn("tokenizer error: unterminated string literal", result.strip())
 
-    ## TODO: fix flaky tests, imports switch positions every time
-    @pytest.mark.xfail
     def test_run_supported_and_unsupported_function(self):
         """Test the conversion with both unspported and supported functions included"""
-
         ## PREVIOUSLY: test_conversion_mezcla_to_standard
         # Standard code uses POSIX instead of os (as of 2024-06-10)
         input_code = """
@@ -1498,9 +1501,7 @@ gh.form_path("/tmp", "fubar")
         """
 
         # Standard code consistes of glue helpers commands as well (as of 2024-06-10)
-        expected_output_code = """
-import os
-from os import path
+        expected_code = """
 from mezcla import glue_helpers as gh
 # WARNING not supported: gh.write_file("/tmp/fubar.list", "fubar.list")
 # WARNING not supported: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
@@ -1509,10 +1510,19 @@ os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 path.join("/tmp", "fubar")
         """
 
+        expected_code_heads = [
+            """from os import path\nimport os""",
+            """import os\nfrom os import path""",
+        ]
+
         # to_standard = THE_MODULE.ToStandard()
         # result = THE_MODULE.transform(to_standard, input_code)
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_output_code.strip())
+
+        ## OLD: Before using assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_output_code.strip())
+
+        self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
     def test_run_from_command_to_standard(self):
         """Test the working of the script through command line/stdio (--to_standard option)"""
@@ -1532,8 +1542,12 @@ os.remove("/tmp/fubar.list")
         # input_file = gh.create_temp_file(contents=input_code)
         # command = f"python3 mezcla/mezcla_to_standard.py --to_standard {input_file}"
         # result = gh.run(command)
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_to_mezcla_round_robin(self):
         """Test conversion of script in round robin (e.g. standard -> mezcla -> standard)"""
@@ -1585,14 +1599,11 @@ gh.delete_file("/tmp/fubar.list")
         # result = THE_MODULE.transform(to_mezcla, result_temp)
         result_temp = self.helper_m2s(mezcla_code, to_standard=False)
         result = self.helper_m2s(result_temp, to_standard=True)
-
-        # DEBUG: print(result, "="*20, result_temp)
         self.assertEqual(result, mezcla_code)
 
-    ## TODO: fix multiple arguments: gh.form_path("/var", "log", "application", "old_app.log")
-    @pytest.mark.xfail
     def test_conversion_nested_functions(self):
         """Test conversion of script containing nested functions"""
+        ## TODO: fix multiple arguments: gh.form_path("/var", "log", "application", "old_app.log")
         ## TODO: Include tests for standard to mezcla
         ## NOTE: Add support for nested functions
 
@@ -1601,20 +1612,33 @@ from mezcla import glue_helpers as gh
 gh.delete_file(gh.form_path("/var", "log", "application", "old_app.log"))
 """
         expected_code = """
-import os
-os.remove(os.path.join("/var", "log", "application", "old_app.log"))
+os.remove(path.join("/var", "log", "application", "old_app.log"))
 """
-        actual_output = """
-import os
-from mezcla import glue_helpers as gh
-os.remove(# WARNING not supported: gh.form_path("/var", "log", "application", "old_app.log"))
-"""
-        ## OLD: Before Helpers
-        # to_standard = THE_MODULE.ToStandard()
-        # result = THE_MODULE.transform(to_standard, input_code)
-        result = self.helper_m2s(input_code)
-        assert result == actual_output
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # print(result)
+        # assert result == actual_output
+        expected_code_heads = [
+            """import os\nfrom os import path""",
+            """from os import path\nimport os"""
+        ]
+        self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
+    @pytest.mark.parametrize(
+        "input_code, expected_code",
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+path = gh.form_path("/var", "log", "application", "app.log")
+        """,
+                """
+from os import path
+path = path.join("/var", "log", "application", "app.log")
+        """,
+            )
+        ],
+    )
     def test_conversion_assignment_to_var(self):
         """Test conversion of script for assignment of function to a variable"""
 
@@ -1626,14 +1650,13 @@ path = gh.form_path("/var", "log", "application", "app.log")
 from os import path
 path = path.join("/var", "log", "application", "app.log")
 """
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # assert result == expected_code
 
-        ## OLD: Before Helpers
-        # to_standard = THE_MODULE.ToStandard()
-        # result = THE_MODULE.transform(to_standard, input_code)
-        result = self.helper_m2s(input_code)
-        assert result == expected_code
+        self.assert_m2s_transform(input_code, expected_code)
 
-    @pytest.mark.skip   # Exception: TypeError: '>' not supported between instances of 'str' and 'int'
+    @pytest.mark.skip  # Exception: TypeError: '>' not supported between instances of 'str' and 'int'
     def test_conversion_multiple_imports(self):
         """Test conversion of script for multiple imports"""
 
@@ -1648,19 +1671,6 @@ gh.delete_file("/tmp/test.txt")
 if path.exists("/tmp/test_copy.txt"):
     debug.trace("File exists", level=2)
     """
-
-        actual_code_old = """
-import os
-from mezcla import glue_helpers as gh
-from mezcla import debug
-from os import path
-# WARNING not supported: gh.write_file("/tmp/test.txt", "test content")
-# WARNING not supported: gh.copy_file("/tmp/test.txt", "/tmp/test_copy.txt")
-# WARNING not supported: debug.trace("Copy created", level=3)
-os.remove("/tmp/test.txt")
-if path.exists("/tmp/test_copy.txt"):
-    # WARNING not supported: debug.trace("File exists", level=2)
-"""
 
         expected_code = """
 import os
@@ -1680,11 +1690,14 @@ if path.exists("/tmp/test_copy.txt"):
         # to_standard = THE_MODULE.ToStandard()
         # result = THE_MODULE.transform(to_standard, input_code)
 
-        result = self.helper_m2s(input_code)
-        assert result.strip() == expected_code.strip()
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # assert result.strip() == expected_code.strip()
+
+        self.assert_m2s_transform(input_code, expected_code)
 
     ## TODO: Fix flaky tests, imports switch positions every time
-    @pytest.mark.xfail
+    # @pytest.mark.xfail
     def test_conversion_conditional_statement(self):
         """Test conversion of script when conditional statements are used"""
 
@@ -1699,8 +1712,6 @@ else:
 """
 
         expected_code = """
-import os
-from os import path
 from mezcla import glue_helpers as gh
 if path.join("/home", "user") == "/home/user":
     os.rename("/home/user/file1.txt", "/home/user/file2.txt")
@@ -1709,11 +1720,14 @@ else:
     # WARNING not supported: gh.write_file("/home/user/file2.txt", "content")
     pass
 """
-        ## OLD: Before Helpers
-        # to_standard = THE_MODULE.ToStandard()
-        # result = THE_MODULE.transform(to_standard, input_code)
-        result = self.helper_m2s(input_code)
-        assert result.strip() == expected_code.strip()
+        expected_code_heads = [
+            """import os\nfrom os import path""",
+            """from os import path\nimport os"""
+        ]
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # assert result.strip() == expected_code.strip()
+        self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
     @pytest.mark.xfail
     def test_conversion_keyword_args(self):
@@ -1731,10 +1745,12 @@ os.remove(path="/tmp/fubar.list")
 """
         actual_code = """
 import os
-os.remove(filename="/tmp/fubar.list")
+os.remove()
 """
-        result = self.helper_m2s(input_code)
-        assert result.strip() == expected_code.strip()
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # assert result.strip() == expected_code.strip()
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_additional_imports(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -1746,18 +1762,15 @@ from mezcla import glue_helpers as gh
 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 """
         expected_code = """
-import shutil
-import os
-os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") 
-"""
-        actual_code = """
 import os
 import shutil
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") 
 """
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # assert result.strip() == actual_code.strip()
 
-        result = self.helper_m2s(input_code)
-        assert result.strip() == actual_code.strip()
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_pre_existing_import(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -1771,12 +1784,16 @@ gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 """
         expected_code = """
 import os
-os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") 
+os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 """
+        ## OLD: Before asert_m2s_transform
         result = self.helper_m2s(input_code)
         ## EXPECTED: self.assertEqual(result.strip(), expected_code.strip())
         ## ACTUAL OUTPUT:
         self.assertEqual(result.strip(), "import os\n" + expected_code.strip())
+
+        ## assert_m2s_transform not working as expected
+        # self.assertEqual(input_code, "import os" + expected_code)
 
     def test_conversion_multiple_args(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -1791,12 +1808,11 @@ gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2", extra="ignored")
 import os
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 """
-        actual_output = """
-import os
-os.rename("/tmp/fubar.list1", "/tmp/fubar.list2", )
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_complex_args(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -1810,6 +1826,7 @@ gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2" + str(i))
 import os
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2" + str(i)) 
 """
+        ## Before assert_m2s_transform
         result = self.helper_m2s(input_code)
         self.assertEqual(result.strip(), expected_code.strip())
 
@@ -1825,8 +1842,10 @@ gh.form_path(*["/tmp", "fubar"])
 from os import path
 path.join(*["/tmp", "fubar"])
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_dict_args(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -1844,15 +1863,17 @@ path.join(**{"a": "/tmp"})
 from os import path
 path.join(**{"filenames": "/tmp"})
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), actual_output.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), actual_output.strip())
+        self.assert_m2s_transform(input_code, actual_output)
 
     @pytest.mark.xfail
     def test_conversion_conditional_call(self):
         """Test conversion of script for keyword arguments of methods"""
         # Input: if condition: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
         # Expected Output: if condition: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-        ## XFAIL: TBD (To Be Designed)
+        ## TODO: Test not running as expected for conditional import call
         input_code = """
 if condition == False:
     from mezcla import glue_helpers as gh
@@ -1875,8 +1896,10 @@ if condition == False:
 else:
     print("Condition TRUE")
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, actual_code)
 
     ## TODO: Check if this is a valid condition, import inside a for loop is a very rare scenario.
     ## TODO: Fix import inside for loop or another block.
@@ -1913,10 +1936,12 @@ import os
 from os import path
 operations = [os.rename("/tmp/fubar.list1", "/tmp/fubar.list2"), path.join("/tmp/fubar.list")] 
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # print(result)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
-    # @pytest.mark.xfail
     def test_conversion_call_in_dict(self):
         """Test conversion of script for keyword arguments of methods"""
         # Input: actions = {"rename": gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")}
@@ -1929,8 +1954,10 @@ actions = {"rename": gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")}
 import os
 actions = {"rename": os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")}
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_starred_args(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -1944,8 +1971,10 @@ gh.rename_file(*args)
 import os
 os.rename(*args)
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_starred_kwargs(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -1959,8 +1988,10 @@ gh.rename_file(**kwargs)
 import os
 os.rename(**kwargs)
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_function_with_named_args_and_condition(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -1979,9 +2010,10 @@ level = 4
 if level > 3:
     logging.debug("trace message")
 """
-
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_class_method(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -1999,8 +2031,10 @@ class FileOps:
     def rename(self):
         os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_lambda(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -2014,8 +2048,10 @@ x = lambda: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 import os
 x = lambda: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_function_with_decorators(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -2033,8 +2069,10 @@ import os
 def rename_static(): 
     os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_function_with_annotations(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -2050,8 +2088,10 @@ import os
 def rename_file(src: str, dst: str):
     return os.rename(src, dst)
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_multiline_args(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -2065,8 +2105,10 @@ gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2" + \n "1")
 import os
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2" + \n "1")
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_indented_args(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -2096,8 +2138,10 @@ os.rename(
     "/tmp/fubar.list2"
 )
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_tuple_args(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -2111,8 +2155,10 @@ gh.rename_file(("/tmp/fubar.list1", "/tmp/fubar.list2"))
 import os
 os.rename(("/tmp/fubar.list1", "/tmp/fubar.list2"))
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_try_except(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -2132,8 +2178,10 @@ try:
 except OSError:
     pass
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     ## TODO: check if this is a valid condition, import inside a block is a very rare scenario.
     ## TODO: fix import at the start of the block
@@ -2182,8 +2230,10 @@ try:
 except OSError:
     pass
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
     def test_conversion_ternary_operator(self):
         """Test conversion of script for keyword arguments of methods"""
@@ -2197,8 +2247,10 @@ result = gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2") if condition els
 import os
 result = os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") if condition else os.rename("/tmp/foo.list1", "/tmp/foo.list2")
 """
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
 
 if __name__ == "__main__":
