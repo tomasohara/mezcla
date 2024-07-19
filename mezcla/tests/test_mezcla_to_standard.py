@@ -8,6 +8,7 @@ from unittest.mock import patch, MagicMock, ANY
 
 # Installed packages
 import pytest
+import unittest
 import libcst as cst
 
 # Local packages
@@ -26,6 +27,18 @@ from mezcla.unittest_wrapper import TestWrapper
 # Backup of production mezcla_to_standard equivalent
 # calls to restore after some tests that modify it
 BACKUP_M2S = THE_MODULE.mezcla_to_standard
+
+
+# Defining parametrize function as substitution of pytest.parametrize
+def parametrize(parameters):
+    def decorator(func):
+        def wrapper(*args):
+            for parameter_set in parameters:
+                func(*args, *parameter_set)
+
+        return wrapper
+
+    return decorator
 
 
 class TestCSTFunctions:
@@ -1306,7 +1319,7 @@ logging.error("error")
             self.assertEqual(result.strip(), expected_output.strip())
 
 
-class TestUsage(TestWrapper):
+class TestUsage(TestWrapper, unittest.TestCase):
     """Class for several test usages for mezcla_to_standard"""
 
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
@@ -1331,53 +1344,49 @@ class TestUsage(TestWrapper):
 
     def assert_m2s_transform(self, input_code, expected_code):
         """Assert that m2s transformation produces the expected result"""
+        debug.trace(4, f"TestUsage.assert_m2s_transform(); self={self}")
         result = self.helper_m2s(input_code)
         self.assertEqual(result.strip(), expected_code.strip())
 
-    def assert_m2s_transform_flaky(self, input_code:str, expected_body:str, expected_code_heads:list):
+    def assert_m2s_transform_flaky(
+        self, input_code: str, expected_body: str, expected_code_heads: list
+    ):
         """Assert that m2s transformation produces the expected result for flaky tests"""
         result = self.helper_m2s(input_code)
         expected_codes = [head + expected_body for head in expected_code_heads]
         self.assertTrue(
-            any(
-                result.strip() == expected.strip()
-                for expected in expected_codes
-            )
+            any(result.strip() == expected.strip() for expected in expected_codes)
         )
 
-    @pytest.mark.parametrize(
-        "input_code",
+    @parametrize(
         [
-            """
-from mezcla import glue_helpers as gh
-gh.run("python3 --version")
-        """
-        ],
+            (
+                'from mezcla import glue_helpers as gh\ngh.run("python3 --version")',
+                '# WARNING not supported: gh.run("python3 --version")',
+            )
+        ]
     )
-    def test_unsupported_function_to_standard(self):
+    def test_unsupported_function_to_standard(self, input_code, unsupported_message):
         """Test for conversion of an unsupported function during mezcla to standard conversion (commented as #Warning not supported)"""
-
-        input_code = (
-            'from mezcla import glue_helpers as gh\ngh.run("python3 --version")'
-        )
         result = self.helper_m2s(input_code)
-        unsupported_message = '# WARNING not supported: gh.run("python3 --version")'
-
         self.assertNotEqual(result, None)
         self.assertIn(unsupported_message, result)
 
     @pytest.mark.xfail
-    def test_unsupported_function_to_mezcla(self):
+    @parametrize(
+        [
+            (
+                'import os\nos.getenv("HOME")',
+                '# WARNING not supported: gh.run("python3 --version")',
+            )
+        ]
+    )
+    def test_unsupported_function_to_mezcla(self, input_code, unsupported_message):
         """Test for conversion of an unsupported function during standard to mezcla conversion (commented as #Warning not supported)"""
         ## TODO: Wait until the fix: AttributeError: 'list' object has no attribute '__module__'. Did you mean: '__mul__'?
-        input_code = """
-import os
-os.getenv("HOME")
-"""
         # to_mezcla = THE_MODULE.ToMezcla()
         # result = THE_MODULE.transform(to_module=to_mezcla, code=input_code)
         result = self.helper_m2s(input_code)
-        unsupported_message = '# WARNING not supported: gh.run("python3 --version")'
 
         ## OLD: Use self.assertIn method
         # assert result is not None
@@ -1385,74 +1394,111 @@ os.getenv("HOME")
         self.assertNotEqual(result, None)
         self.assertIn(unsupported_message, result)
 
-    def test_conversion_mezcla_to_standard(self):
-        """Test the conversion from mezcla to standard calls"""
-        ## NOTE: Old code of test_conversion_mezcla_to_standard moved to test_run_supported_and_unsupported_function
-        ## NOTE: This was done to test both supported and unsupported functions
-
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 gh.delete_file("/tmp/fubar.list")
 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 gh.form_path("/tmp", "fubar")
-"""
-
-        # Standard code consistes of glue helpers commands as well (as of 2024-06-10)
-
-        expected_code = """
+""",
+                """
 os.remove("/tmp/fubar.list")
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 path.join("/tmp", "fubar")
-"""
+""",
+            )
+        ]
+    )
+    def test_conversion_mezcla_to_standard(self, input_code, expected_code):
+        """Test the conversion from mezcla to standard calls"""
+        ## NOTE: Old code of test_conversion_mezcla_to_standard moved to test_run_supported_and_unsupported_function
+        ## NOTE: This was done to test both supported and unsupported functions
+
+        # Standard code consistes of glue helpers commands as well (as of 2024-06-10)
 
         ## OLD: Before Helper
         # to_standard = THE_MODULE.ToStandard()
         # result = THE_MODULE.transform(to_standard, input_code)
+        # self.assertEqual(result.strip(), expected_output_code.strip())
+
         expected_code_heads = [
             """import os\nfrom os import path""",
-            """from os import path\nimport os"""
+            """from os import path\nimport os""",
         ]
-        # self.assertEqual(result.strip(), expected_output_code.strip())
         self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
     @pytest.mark.xfail
-    def test_conversion_standard_to_mezcla(self):
+    @parametrize(
+        [
+            (
+                """
+import os
+os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+os.remove("/tmp/fubar.list")
+""",
+                """
+import os
+gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+gh.delete_file("/tmp/fubar.list")
+""",
+            )
+        ]
+    )
+    def test_conversion_standard_to_mezcla(self, input_code, expected_code):
         """Test the conversion from standard to mezcla calls"""
         ## NOTE: Does not work as intended (output code is similar to standard code)
         ## ERROR: FAILED mezcla/tests/test_mezcla_to_standard.py::TestUsage::test_conversion_standard_to_mezcla - AttributeError: 'list' object has no attribute '__module__'. Did you mean: '__mul__'?
 
-        input_code = """
-import os
-os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-os.remove("/tmp/fubar.list")
-        """
+        #         input_code = """
+        # import os
+        # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # os.remove("/tmp/fubar.list")
+        #         """
 
-        expected_output_code = """
-import os
-gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-gh.delete_file("/tmp/fubar.list")
-        """
+        #         expected_code = """
+        # import os
+        # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # gh.delete_file("/tmp/fubar.list")
+        #         """
 
         # to_mezcla = THE_MODULE.ToMezcla()
         # result = THE_MODULE.transform(to_mezcla, input_code)
         result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_output_code.strip())
+        self.assertEqual(result.strip(), expected_code.strip())
 
     @pytest.mark.xfail
-    def test_run_from_command_to_mezcla(self):
-        """Test the working of the script through command line/stdio (--to_standard option)"""
-        ## TODO: Fix and implement for command-line like runs
-
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 import os
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 os.remove("/tmp/fubar.list")
-        """
-        expected_code = """
+""",
+                """
 import os
 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 gh.delete_file("/tmp/fubar.list")
-"""
+""",
+            )
+        ]
+    )
+    def test_run_from_command_to_mezcla(self, input_code, expected_code):
+        """Test the working of the script through command line/stdio (--to_standard option)"""
+        ## TODO: Fix and implement for command-line like runs
+
+        #         input_code = """
+        # import os
+        # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # os.remove("/tmp/fubar.list")
+        #         """
+        #         expected_code = """
+        # import os
+        # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # gh.delete_file("/tmp/fubar.list")
+        # """
         ## OLD (Before Helper)
         # input_file = gh.create_temp_file(contents=input_code)
         # command = f"python3 mezcla/mezcla_to_standard.py --to_mezcla {input_file}"
@@ -1460,55 +1506,99 @@ gh.delete_file("/tmp/fubar.list")
         result = self.helper_run_cmd_m2s(input_code, to_standard=False)
         self.assertEqual(result.strip(), expected_code.strip())
 
-    def test_run_from_command_empty_file(self):
+    @parametrize([(" ")])
+    def test_run_from_command_empty_file(self, input_code):
         """Test the working of the script through command line when input file is empty"""
-        input_code = ""
         ## OLD (Before assert_m2s_transform)
         # result = self.helper_run_cmd_m2s(input_code)
         # self.assertEqual(result.strip(), "")
         self.assert_m2s_transform(input_code=input_code, expected_code="")
 
-    def test_run_from_command_syntax_error(self):
-        """Test the working of the script through command line when input file has syntax error"""
-
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 gh.write_file("/tmp/fubar.list", "fubar.list")
 gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1
-        """
+""",
+                [
+                    "Traceback (most recent call last):\n",
+                    "libcst._exceptions.ParserSyntaxError: Syntax Error @ 1:1.",
+                    "tokenizer error: unterminated string literal",
+                ],
+            )
+        ]
+    )
+    def test_run_from_command_syntax_error(self, input_code, expected_line):
+        """Test the working of the script through command line when input file has syntax error"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.write_file("/tmp/fubar.list", "fubar.list")
+        # gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1
+        #         """
+
         ## OLD (Before Helper)
         # input_file = gh.create_temp_file(contents=input_code)
         # command = f"python3 mezcla/mezcla_to_standard.py --to_standard {input_file}"
         # result = gh.run(command)
-        result = self.helper_run_cmd_m2s(input_code)
-        self.assertIn("Traceback (most recent call last):\n", result.strip())
-        self.assertIn(
-            "libcst._exceptions.ParserSyntaxError: Syntax Error @ 1:1.", result.strip()
-        )
-        self.assertIn("tokenizer error: unterminated string literal", result.strip())
 
-    def test_run_supported_and_unsupported_function(self):
-        """Test the conversion with both unspported and supported functions included"""
-        ## PREVIOUSLY: test_conversion_mezcla_to_standard
-        # Standard code uses POSIX instead of os (as of 2024-06-10)
-        input_code = """
+        # self.assertIn("Traceback (most recent call last):\n", result.strip())
+        # self.assertIn(
+        #     "libcst._exceptions.ParserSyntaxError: Syntax Error @ 1:1.", result.strip()
+        # )
+        # self.assertIn("tokenizer error: unterminated string literal", result.strip())
+
+        result = self.helper_run_cmd_m2s(input_code)
+        for line in expected_line:
+            self.assertIn(line, result)
+
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 gh.write_file("/tmp/fubar.list", "fubar.list")
 gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
 gh.delete_file("/tmp/fubar.list")
 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 gh.form_path("/tmp", "fubar")
-        """
-
-        # Standard code consistes of glue helpers commands as well (as of 2024-06-10)
-        expected_code = """
+""",
+                """
 from mezcla import glue_helpers as gh
 # WARNING not supported: gh.write_file("/tmp/fubar.list", "fubar.list")
 # WARNING not supported: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
 os.remove("/tmp/fubar.list")
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 path.join("/tmp", "fubar")
-        """
+""",
+            )
+        ]
+    )
+    def test_run_supported_and_unsupported_function(self, input_code, expected_code):
+        """Test the conversion with both unspported and supported functions included"""
+        ## PREVIOUSLY: test_conversion_mezcla_to_standard
+        # Standard code uses POSIX instead of os (as of 2024-06-10)
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.write_file("/tmp/fubar.list", "fubar.list")
+        # gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
+        # gh.delete_file("/tmp/fubar.list")
+        # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # gh.form_path("/tmp", "fubar")
+        #         """
+
+        #         # Standard code consistes of glue helpers commands as well (as of 2024-06-10)
+        #         expected_code = """
+        # from mezcla import glue_helpers as gh
+        # # WARNING not supported: gh.write_file("/tmp/fubar.list", "fubar.list")
+        # # WARNING not supported: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
+        # os.remove("/tmp/fubar.list")
+        # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # path.join("/tmp", "fubar")
+        #         """
 
         expected_code_heads = [
             """from os import path\nimport os""",
@@ -1524,19 +1614,35 @@ path.join("/tmp", "fubar")
 
         self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
-    def test_run_from_command_to_standard(self):
-        """Test the working of the script through command line/stdio (--to_standard option)"""
-
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 gh.delete_file("/tmp/fubar.list")
-"""
-        expected_code = """
+""",
+                """
 import os
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 os.remove("/tmp/fubar.list")
-"""
+""",
+            )
+        ]
+    )
+    def test_run_from_command_to_standard(self, input_code, expected_code):
+        """Test the working of the script through command line/stdio (--to_standard option)"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # gh.delete_file("/tmp/fubar.list")
+        # """
+        #         expected_code = """
+        # import os
+        # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # os.remove("/tmp/fubar.list")
+        # """
 
         ## OLD: Before Helper
         # input_file = gh.create_temp_file(contents=input_code)
@@ -1549,7 +1655,21 @@ os.remove("/tmp/fubar.list")
 
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_to_mezcla_round_robin(self):
+    @parametrize(
+        [
+            (
+                """
+import os
+os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+os.remove("/tmp/fubar.list")
+""",
+                """
+
+""",
+            )
+        ]
+    )
+    def test_conversion_to_mezcla_round_robin(self, std_code, no_arg):
         """Test conversion of script in round robin (e.g. standard -> mezcla -> standard)"""
 
         ## NOTE: This test passed, however, result_temp is same as result (i.e. to_mezcla not working as expected)
@@ -1565,11 +1685,11 @@ os.remove("/tmp/fubar.list")
         #        """
 
         ## This code returns TypeError: /usr/lib/python3.10/inspect.py:1287: TypeError
-        std_code = """
-import os
-os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-os.remove("/tmp/fubar.list")
-"""
+        #         std_code = """
+        # import os
+        # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # os.remove("/tmp/fubar.list")
+        # """
 
         # to_mezcla = THE_MODULE.ToMezcla()
         # result_temp = THE_MODULE.transform(to_mezcla, std_code)
@@ -1579,18 +1699,32 @@ os.remove("/tmp/fubar.list")
         # result = THE_MODULE.transform(to_standard, result_temp)
         result = self.helper_m2s(result_temp, to_standard=True)
 
-        self.assertEqual(result, std_code)
+        self.assert_m2s_transform(std_code, result)
 
     ## NOTE: This test failed due to ToMezcla class not working as expected
     @pytest.mark.xfail
-    def test_conversion_to_standard_round_robin(self):
-        """Test conversion of script in round robin (e.g. mezcla -> standard -> mezcla)"""
-
-        mezcla_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 gh.delete_file("/tmp/fubar.list")
-        """
+""",
+                """
+
+""",
+            )
+        ]
+    )
+    def test_conversion_to_standard_round_robin(self, mezcla_code, no_arg):
+        """Test conversion of script in round robin (e.g. mezcla -> standard -> mezcla)"""
+
+        #         mezcla_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # gh.delete_file("/tmp/fubar.list")
+        #         """
 
         ## OLD: Before Helpers
         # to_mezcla = THE_MODULE.ToMezcla()
@@ -1601,55 +1735,66 @@ gh.delete_file("/tmp/fubar.list")
         result = self.helper_m2s(result_temp, to_standard=True)
         self.assertEqual(result, mezcla_code)
 
-    def test_conversion_nested_functions(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+gh.delete_file(gh.form_path("/var", "log", "application", "old_app.log"))
+""",
+                """
+os.remove(path.join("/var", "log", "application", "old_app.log"))
+""",
+            )
+        ]
+    )
+    def test_conversion_nested_functions(self, input_code, expected_code):
         """Test conversion of script containing nested functions"""
         ## TODO: fix multiple arguments: gh.form_path("/var", "log", "application", "old_app.log")
         ## TODO: Include tests for standard to mezcla
         ## NOTE: Add support for nested functions
 
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.delete_file(gh.form_path("/var", "log", "application", "old_app.log"))
-"""
-        expected_code = """
-os.remove(path.join("/var", "log", "application", "old_app.log"))
-"""
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.delete_file(gh.form_path("/var", "log", "application", "old_app.log"))
+        # """
+        #         expected_code = """
+        # os.remove(path.join("/var", "log", "application", "old_app.log"))
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # print(result)
         # assert result == actual_output
         expected_code_heads = [
             """import os\nfrom os import path""",
-            """from os import path\nimport os"""
+            """from os import path\nimport os""",
         ]
         self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
-    @pytest.mark.parametrize(
-        "input_code, expected_code",
+    @parametrize(
         [
             (
                 """
 from mezcla import glue_helpers as gh
-path = gh.form_path("/var", "log", "application", "app.log")
-        """,
+path = gh.form_path("/var", "log", "application", "app.log")""",
                 """
 from os import path
 path = path.join("/var", "log", "application", "app.log")
-        """,
+""",
             )
-        ],
+        ]
     )
-    def test_conversion_assignment_to_var(self):
+    def test_conversion_assignment_to_var(self, input_code, expected_code):
         """Test conversion of script for assignment of function to a variable"""
 
-        input_code = """
-from mezcla import glue_helpers as gh
-path = gh.form_path("/var", "log", "application", "app.log")
-"""
-        expected_code = """
-from os import path
-path = path.join("/var", "log", "application", "app.log")
-"""
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # path = gh.form_path("/var", "log", "application", "app.log")
+        # """
+        #         expected_code = """
+        # from os import path
+        # path = path.join("/var", "log", "application", "app.log")
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # assert result == expected_code
@@ -1657,10 +1802,10 @@ path = path.join("/var", "log", "application", "app.log")
         self.assert_m2s_transform(input_code, expected_code)
 
     @pytest.mark.skip  # Exception: TypeError: '>' not supported between instances of 'str' and 'int'
-    def test_conversion_multiple_imports(self):
-        """Test conversion of script for multiple imports"""
-
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 from mezcla import debug
 from os import path
@@ -1670,9 +1815,8 @@ debug.trace("Copy created", level=3)
 gh.delete_file("/tmp/test.txt")
 if path.exists("/tmp/test_copy.txt"):
     debug.trace("File exists", level=2)
-    """
-
-        expected_code = """
+""",
+                """
 import os
 from os import path
 # WARNING not supported: gh.write_file("/tmp/test.txt", "test content")
@@ -1682,7 +1826,36 @@ os.remove("/tmp/test.txt")
 if path.exists("/tmp/test_copy.txt"):
     # WARNING not supported: debug.trace("File exists", level=2)
     pass
-"""
+""",
+            )
+        ]
+    )
+    def test_conversion_multiple_imports(self, input_code, expected_code):
+        """Test conversion of script for multiple imports"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # from mezcla import debug
+        # from os import path
+        # gh.write_file("/tmp/test.txt", "test content")
+        # gh.copy_file("/tmp/test.txt", "/tmp/test_copy.txt")
+        # debug.trace("Copy created", level=3)
+        # gh.delete_file("/tmp/test.txt")
+        # if path.exists("/tmp/test_copy.txt"):
+        #     debug.trace("File exists", level=2)
+        # """
+
+        #         expected_code = """
+        # import os
+        # from os import path
+        # # WARNING not supported: gh.write_file("/tmp/test.txt", "test content")
+        # # WARNING not supported: gh.copy_file("/tmp/test.txt", "/tmp/test_copy.txt")
+        # # WARNING not supported: debug.trace("Copy created", level=3)
+        # os.remove("/tmp/test.txt")
+        # if path.exists("/tmp/test_copy.txt"):
+        #     # WARNING not supported: debug.trace("File exists", level=2)
+        #     pass
+        # """
 
         ## NOTE: Support for logging (debug in case of mezcla) not present
 
@@ -1696,12 +1869,10 @@ if path.exists("/tmp/test_copy.txt"):
 
         self.assert_m2s_transform(input_code, expected_code)
 
-    ## TODO: Fix flaky tests, imports switch positions every time
-    # @pytest.mark.xfail
-    def test_conversion_conditional_statement(self):
-        """Test conversion of script when conditional statements are used"""
-
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 if gh.form_path("/home", "user") == "/home/user":
     gh.rename_file("/home/user/file1.txt", "/home/user/file2.txt")
@@ -1709,9 +1880,8 @@ if gh.form_path("/home", "user") == "/home/user":
 else:
     gh.write_file("/home/user/file2.txt", "content")
     pass
-"""
-
-        expected_code = """
+""",
+                """
 from mezcla import glue_helpers as gh
 if path.join("/home", "user") == "/home/user":
     os.rename("/home/user/file1.txt", "/home/user/file2.txt")
@@ -1719,10 +1889,35 @@ if path.join("/home", "user") == "/home/user":
 else:
     # WARNING not supported: gh.write_file("/home/user/file2.txt", "content")
     pass
-"""
+""",
+            )
+        ]
+    )
+    def test_conversion_conditional_statement(self, input_code, expected_code):
+        """Test conversion of script when conditional statements are used"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # if gh.form_path("/home", "user") == "/home/user":
+        #     gh.rename_file("/home/user/file1.txt", "/home/user/file2.txt")
+        #     gh.delete_file("/home/user/file1.txt")
+        # else:
+        #     gh.write_file("/home/user/file2.txt", "content")
+        #     pass
+        # """
+
+        #         expected_code = """
+        # from mezcla import glue_helpers as gh
+        # if path.join("/home", "user") == "/home/user":
+        #     os.rename("/home/user/file1.txt", "/home/user/file2.txt")
+        #     os.remove("/home/user/file1.txt")
+        # else:
+        #     # WARNING not supported: gh.write_file("/home/user/file2.txt", "content")
+        #     pass
+        # """
         expected_code_heads = [
             """import os\nfrom os import path""",
-            """from os import path\nimport os"""
+            """from os import path\nimport os""",
         ]
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
@@ -1730,62 +1925,110 @@ else:
         self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
     @pytest.mark.xfail
-    def test_conversion_keyword_args(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh 
+gh.delete_file(filename="/tmp/fubar.list")
+""",
+                """
+import os
+os.remove(path="/tmp/fubar.list")
+""",
+            )
+        ]
+    )
+    def test_conversion_keyword_args(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         ## TODO: Add support for keyword args (filename -> path)
         # Input: gh.delete_file(filename="/tmp/fubar.list")
         # Expected Output: os.remove(path="/tmp/fubar.list")
-        input_code = """
-from mezcla import glue_helpers as gh 
-gh.delete_file(filename="/tmp/fubar.list")
-"""
-        expected_code = """
-import os
-os.remove(path="/tmp/fubar.list")
-"""
-        actual_code = """
-import os
-os.remove()
-"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.delete_file(filename="/tmp/fubar.list")
+        # """
+        #         expected_code = """
+        # import os
+        # os.remove(path="/tmp/fubar.list")
+        # """
+        #         actual_code = """
+        # import os
+        # os.remove()
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # assert result.strip() == expected_code.strip()
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_additional_imports(self):
-        """Test conversion of script for keyword arguments of methods"""
-        # Input: import shutil; gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-        # Expected Output: import shutil; os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 import shutil
 from mezcla import glue_helpers as gh
 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-"""
-        expected_code = """
+""",
+                """
 import os
 import shutil
 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") 
-"""
+""",
+            )
+        ]
+    )
+    def test_conversion_additional_imports(self, input_code, expected_code):
+        """Test conversion of script for keyword arguments of methods"""
+        # Input: import shutil; gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # Expected Output: import shutil; os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+
+        #         input_code = """
+        # import shutil
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
+        #         expected_code = """
+        # import os
+        # import shutil
+        # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # assert result.strip() == actual_code.strip()
 
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_pre_existing_import(self):
+    @parametrize(
+        [
+            (
+                """
+import os
+from mezcla import glue_helpers as gh
+gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+""",
+                """
+import os
+os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+""",
+            )
+        ]
+    )
+    def test_conversion_pre_existing_import(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: import os; gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
         # Expected Output: import os; os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
         ## TODO: Add detection of pre_existing import
-        input_code = """
-import os
-from mezcla import glue_helpers as gh
-gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-"""
-        expected_code = """
-import os
-os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-"""
+
+        #         input_code = """
+        # import os
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
+        #         expected_code = """
+        # import os
+        # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
         ## OLD: Before asert_m2s_transform
         result = self.helper_m2s(input_code)
         ## EXPECTED: self.assertEqual(result.strip(), expected_code.strip())
@@ -1795,322 +2038,618 @@ os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
         ## assert_m2s_transform not working as expected
         # self.assertEqual(input_code, "import os" + expected_code)
 
-    def test_conversion_multiple_args(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2", extra="ignored")
+""",
+                """
+import os
+os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+""",
+            )
+        ]
+    )
+    def test_conversion_multiple_args(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2", extra="ignored")
         # Expected Output: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") # extra parameter ignored
         ## TODO: Remove comma after ignoring a parameter (see actual_output)
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2", extra="ignored")
-"""
-        expected_code = """
-import os
-os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-"""
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2", extra="ignored")
+        # """
+        #         expected_code = """
+        # import os
+        # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
 
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_complex_args(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2" + str(i))
+""",
+                """
+import os
+os.rename("/tmp/fubar.list1", "/tmp/fubar.list2" + str(i)) 
+""",
+            )
+        ]
+    )
+    def test_conversion_complex_args(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2" + str(i))
         # Expected Output: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2" + str(i))
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2" + str(i))
-"""
-        expected_code = """
-import os
-os.rename("/tmp/fubar.list1", "/tmp/fubar.list2" + str(i)) 
-"""
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2" + str(i))
+        # """
+        #         expected_code = """
+        # import os
+        # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2" + str(i))
+        # """
         ## Before assert_m2s_transform
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+        self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_list_args(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+gh.form_path(*["/tmp", "fubar"])
+""",
+                """
+from os import path
+path.join(*["/tmp", "fubar"])
+""",
+            )
+        ]
+    )
+    def test_conversion_list_args(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: gh.form_path(*["/tmp", "fubar"])
         # Expected Output: os.path.join(*["/tmp", "fubar"])
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.form_path(*["/tmp", "fubar"])
-"""
-        expected_code = """
-from os import path
-path.join(*["/tmp", "fubar"])
-"""
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.form_path(*["/tmp", "fubar"])
+        # """
+        #         expected_code = """
+        # from os import path
+        # path.join(*["/tmp", "fubar"])
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_dict_args(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+gh.form_path(**{"filenames": "/tmp"})
+""",
+                """
+from os import path
+path.join(**{"filenames": "/tmp"})
+""",
+            )
+        ]
+    )
+    def test_conversion_dict_args(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: gh.form_path(**{"filenames": "/tmp"})
         # Expected Output: os.path.join(**{"a": "/tmp"})
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.form_path(**{"filenames": "/tmp"})
-"""
-        expected_code = """
-from os import path
-path.join(**{"a": "/tmp"})
-"""
-        actual_output = """
-from os import path
-path.join(**{"filenames": "/tmp"})
-"""
+        ## TODO: Actual code is included in the parametrize decorator, change to expected_code after change
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.form_path(**{"filenames": "/tmp"})
+        # """
+        #         expected_code = """
+        # from os import path
+        # path.join(**{"a": "/tmp"})
+        # """
+        #         actual_output = """
+        # from os import path
+        # path.join(**{"filenames": "/tmp"})
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), actual_output.strip())
-        self.assert_m2s_transform(input_code, actual_output)
+        self.assert_m2s_transform(input_code, expected_code)
 
     @pytest.mark.xfail
-    def test_conversion_conditional_call(self):
-        """Test conversion of script for keyword arguments of methods"""
-        # Input: if condition: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-        # Expected Output: if condition: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-        ## TODO: Test not running as expected for conditional import call
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 if condition == False:
     from mezcla import glue_helpers as gh
     gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 else:
     print("Condition TRUE")
-"""
-        expected_code = """
+""",
+                """
 if condition == False:
     import os
     os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 else:
     print("Condition TRUE")
-"""
+""",
+            )
+        ]
+    )
+    def test_conversion_conditional_call(self, input_code, expected_code):
+        """Test conversion of script for keyword arguments of methods"""
+        # Input: if condition: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # Expected Output: if condition: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        ## TODO: Test not running as expected for conditional import call
 
-        actual_code = """
-import os
-if condition == False:
-    os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-else:
-    print("Condition TRUE")
-"""
+        #         input_code = """
+        # if condition == False:
+        #     from mezcla import glue_helpers as gh
+        #     gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # else:
+        #     print("Condition TRUE")
+        # """
+        #         expected_code = """
+        # if condition == False:
+        #     import os
+        #     os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # else:
+        #     print("Condition TRUE")
+        # """
+
+        #         actual_code = """
+        # import os
+        # if condition == False:
+        #     os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # else:
+        #     print("Condition TRUE")
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
-        self.assert_m2s_transform(input_code, actual_code)
+        self.assert_m2s_transform(input_code, expected_code)
 
     ## TODO: Check if this is a valid condition, import inside a for loop is a very rare scenario.
     ## TODO: Fix import inside for loop or another block.
     @pytest.mark.xfail
-    def test_conversion_loop_call(self):
-        """Test conversion of script for keyword arguments of methods"""
-        # Input: for file in files: gh.delete_file(file)
-        # Expected Output: if condition: for file in files: os.remove(file))
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 for i in range(100):
     from mezcla import glue_helpers as gh
     gh.rename_file(f"/tmp/fubar.list{i}", f"/tmp/fubar.list{i}.old")
-"""
-        expected_code = """
+""",
+                """
 import os
 for i in range(100):
     os.rename(f"/tmp/fubar.list{i}", f"/tmp/fubar.list{i}.old")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+""",
+            )
+        ]
+    )
+    def test_conversion_loop_call(self, input_code, expected_code):
+        """Test conversion of script for keyword arguments of methods"""
+        # Input: for file in files: gh.delete_file(file)
+        # Expected Output: if condition: for file in files: os.remove(file))
+
+        #         input_code = """
+        # for i in range(100):
+        #     from mezcla import glue_helpers as gh
+        #     gh.rename_file(f"/tmp/fubar.list{i}", f"/tmp/fubar.list{i}.old")
+        # """
+        #         expected_code = """
+        # import os
+        # for i in range(100):
+        #     os.rename(f"/tmp/fubar.list{i}", f"/tmp/fubar.list{i}.old")
+        # """
+        ## OLD: Before assert_m2s_transform
+        # result = self.helper_m2s(input_code)
+        # self.assertEqual(result.strip(), expected_code.strip())
+
+        self.assert_m2s_transform(input_code, expected_code)
 
     @pytest.mark.xfail
-    def test_conversion_call_in_list(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+operations = [gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2"), gh.form_path(filenames="/tmp/fubar.list")]
+""",
+                """
+operations = [os.rename("/tmp/fubar.list1", "/tmp/fubar.list2"), path.join("/tmp/fubar.list")] 
+""",
+            )
+        ]
+    )
+    def test_conversion_call_in_list(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: operations = [gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")]
         # Expected Output: operations = [os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")]
         ## TODO: gh.form_path does not have a keyword "filenames", so converted path.join() will be empty
-        input_code = """
-from mezcla import glue_helpers as gh
-operations = [gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2"), gh.form_path(filenames="/tmp/fubar.list")]
-"""
-        expected_code = """
-import os
-from os import path
-operations = [os.rename("/tmp/fubar.list1", "/tmp/fubar.list2"), path.join("/tmp/fubar.list")] 
-"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # operations = [gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2"), gh.form_path(filenames="/tmp/fubar.list")]
+        # """
+        #         expected_code = """
+        # import os
+        # from os import path
+        # operations = [os.rename("/tmp/fubar.list1", "/tmp/fubar.list2"), path.join("/tmp/fubar.list")]
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # print(result)
         # self.assertEqual(result.strip(), expected_code.strip())
-        self.assert_m2s_transform(input_code, expected_code)
+        expected_code_heads = [
+            "import os\nfrom os import path",
+            "from os import path\nimport os",
+        ]
+        self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
-    def test_conversion_call_in_dict(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+actions = {"rename": gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")}
+""",
+                """
+import os
+actions = {"rename": os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")}
+""",
+            )
+        ]
+    )
+    def test_conversion_call_in_dict(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: actions = {"rename": gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")}
         # Expected Output: actions = {"rename": os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")}
-        input_code = """
-from mezcla import glue_helpers as gh
-actions = {"rename": gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")}
- """
-        expected_code = """
-import os
-actions = {"rename": os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")}
-"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # actions = {"rename": gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")}
+        #  """
+        #         expected_code = """
+        # import os
+        # actions = {"rename": os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")}
+        # """
+
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_starred_args(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+gh.rename_file(*args)
+""",
+                """
+import os
+os.rename(*args)
+""",
+            )
+        ]
+    )
+    def test_conversion_starred_args(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: gh.rename_file(*args)
         # Expected Output: os.rename(*args)
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.rename_file(*args)
-"""
-        expected_code = """
-import os
-os.rename(*args)
-"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file(*args)
+        # """
+        #         expected_code = """
+        # import os
+        # os.rename(*args)
+        # """
+
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_starred_kwargs(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+gh.rename_file(**kwargs)
+""",
+                """
+import os
+os.rename(**kwargs)
+""",
+            )
+        ]
+    )
+    def test_conversion_starred_kwargs(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: gh.rename_file(**kwargs)
         # Expected Output: os.rename(**kwargs)
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.rename_file(**kwargs)
-"""
-        expected_code = """
-import os
-os.rename(**kwargs)
-"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file(**kwargs)
+        # """
+        #         expected_code = """
+        # import os
+        # os.rename(**kwargs)
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_function_with_named_args_and_condition(self):
-        """Test conversion of script for keyword arguments of methods"""
-        # Input: if level > 3: debug.trace("trace message", text="debug", level=4)
-        # Expected Output: if level > 3: logging.debug("trace message", msg="debug")
-        ## TODO: Check the implementation of debugging methods (I believe I saw some of them in the tests)
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import debug
 level = 4
 if level > 3:
     debug.trace(4, "trace message")
-"""
-        expected_code = """
+""",
+                """
 import logging
 level = 4
 if level > 3:
     logging.debug("trace message")
-"""
+""",
+            )
+        ]
+    )
+    def test_conversion_function_with_named_args_and_condition(
+        self, input_code, expected_code
+    ):
+        """Test conversion of script for keyword arguments of methods"""
+        # Input: if level > 3: debug.trace("trace message", text="debug", level=4)
+        # Expected Output: if level > 3: logging.debug("trace message", msg="debug")
+        ## TODO: Check the implementation of debugging methods (I believe I saw some of them in the tests)
+
+        #         input_code = """
+        # from mezcla import debug
+        # level = 4
+        # if level > 3:
+        #     debug.trace(4, "trace message")
+        # """
+        #         expected_code = """
+        # import logging
+        # level = 4
+        # if level > 3:
+        #     logging.debug("trace message")
+        # """
+
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_class_method(self):
-        """Test conversion of script for keyword arguments of methods"""
-        # Input: class FileOps: def rename(self): gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-        # Expected Output: class FileOps: def rename(self): os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 class FileOps:
     def rename(self):
         gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-"""
-        expected_code = """
+""",
+                """
 import os
 class FileOps:
     def rename(self):
         os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-"""
+""",
+            )
+        ]
+    )
+    def test_conversion_class_method(self, input_code, expected_code):
+        """Test conversion of script for keyword arguments of methods"""
+        # Input: class FileOps: def rename(self): gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # Expected Output: class FileOps: def rename(self): os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # class FileOps:
+        #     def rename(self):
+        #         gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
+        #         expected_code = """
+        # import os
+        # class FileOps:
+        #     def rename(self):
+        #         os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
+
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_lambda(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+x = lambda: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+""",
+                """
+import os
+x = lambda: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+""",
+            )
+        ]
+    )
+    def test_conversion_lambda(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: lambda: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
         # Expected Output: lambda: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-        input_code = """
-from mezcla import glue_helpers as gh
-x = lambda: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-"""
-        expected_code = """
-import os
-x = lambda: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # x = lambda: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
+        #         expected_code = """
+        # import os
+        # x = lambda: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_function_with_decorators(self):
-        """Test conversion of script for keyword arguments of methods"""
-        # Input: @staticmethod def rename_static(): gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-        # Expected Output: @staticmethod def rename_static(): os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 @staticmethod
 def rename_static(): 
     gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-"""
-        expected_code = """
+""",
+                """
 import os
 @staticmethod
 def rename_static(): 
     os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-"""
+""",
+            )
+        ]
+    )
+    def test_conversion_function_with_decorators(self, input_code, expected_code):
+        """Test conversion of script for keyword arguments of methods"""
+        # Input: @staticmethod def rename_static(): gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # Expected Output: @staticmethod def rename_static(): os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # @staticmethod
+        # def rename_static():
+        #     gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
+        #         expected_code = """
+        # import os
+        # @staticmethod
+        # def rename_static():
+        #     os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_function_with_annotations(self):
-        """Test conversion of script for keyword arguments of methods"""
-        # Input: def rename_file(src: str, dst: str): return gh.rename_file(src, dst)
-        # Expected Output: def rename_file(src: str, dst: str): return os.rename(src, dst)
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 def rename_file(src: str, dst: str):
     return gh.rename_file(src, dst)
-"""
-        expected_code = """
+""",
+                """
 import os
 def rename_file(src: str, dst: str):
     return os.rename(src, dst)
-"""
+""",
+            )
+        ]
+    )
+    def test_conversion_function_with_annotations(self, input_code, expected_code):
+        """Test conversion of script for keyword arguments of methods"""
+        # Input: def rename_file(src: str, dst: str): return gh.rename_file(src, dst)
+        # Expected Output: def rename_file(src: str, dst: str): return os.rename(src, dst)
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # def rename_file(src: str, dst: str):
+        #     return gh.rename_file(src, dst)
+        # """
+        #         expected_code = """
+        # import os
+        # def rename_file(src: str, dst: str):
+        #     return os.rename(src, dst)
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_multiline_args(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+def rename_file(src: str, dst: str):
+    return gh.rename_file(src, dst)
+""",
+                """
+import os
+def rename_file(src: str, dst: str):
+    return os.rename(src, dst)
+""",
+            )
+        ]
+    )
+    def test_conversion_multiline_args(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2" + \n "1")
         # Expected Output: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2" + \n "1")
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2" + \n "1")
-"""
-        expected_code = """
-import os
-os.rename("/tmp/fubar.list1", "/tmp/fubar.list2" + \n "1")
-"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2" + \n "1")
+        # """
+        #         expected_code = """
+        # import os
+        # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2" + \n "1")
+        # """
+
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_indented_args(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+gh.rename_file(
+    "/tmp/fubar.list1", 
+    "/tmp/fubar.list2"
+)
+""",
+                """
+import os
+os.rename(
+    "/tmp/fubar.list1", 
+    "/tmp/fubar.list2"
+)
+""",
+            )
+        ]
+    )
+    def test_conversion_indented_args(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         ## Input:
         # gh.rename_file(
@@ -2124,60 +2663,96 @@ os.rename("/tmp/fubar.list1", "/tmp/fubar.list2" + \n "1")
         #   "/tmp/fubar.list2"
         # )
 
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.rename_file(
-    "/tmp/fubar.list1", 
-    "/tmp/fubar.list2"
-)
-"""
-        expected_code = """
-import os
-os.rename(
-    "/tmp/fubar.list1", 
-    "/tmp/fubar.list2"
-)
-"""
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file(
+        #     "/tmp/fubar.list1",
+        #     "/tmp/fubar.list2"
+        # )
+        # """
+        #         expected_code = """
+        # import os
+        # os.rename(
+        #     "/tmp/fubar.list1",
+        #     "/tmp/fubar.list2"
+        # )
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_tuple_args(self):
+    @parametrize(
+        [
+            (
+                """
+from mezcla import glue_helpers as gh
+gh.rename_file(("/tmp/fubar.list1", "/tmp/fubar.list2"))
+""",
+                """
+import os
+os.rename(("/tmp/fubar.list1", "/tmp/fubar.list2"))
+""",
+            )
+        ]
+    )
+    def test_conversion_tuple_args(self, input_code, expected_code):
         """Test conversion of script for keyword arguments of methods"""
         # Input: gh.rename_file(("/tmp/fubar.list1", "/tmp/fubar.list2"))
         # Expected Output: os.rename(("/tmp/fubar.list1", "/tmp/fubar.list2"))
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.rename_file(("/tmp/fubar.list1", "/tmp/fubar.list2"))
-"""
-        expected_code = """
-import os
-os.rename(("/tmp/fubar.list1", "/tmp/fubar.list2"))
-"""
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # gh.rename_file(("/tmp/fubar.list1", "/tmp/fubar.list2"))
+        # """
+        #         expected_code = """
+        # import os
+        # os.rename(("/tmp/fubar.list1", "/tmp/fubar.list2"))
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
 
-    def test_conversion_try_except(self):
-        """Test conversion of script for keyword arguments of methods"""
-        # try: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2") except OSError: pass
-        # Expected Output: try: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") except OSError: pass
-        input_code = """
+    @parametrize(
+        [
+            (
+                """
 from mezcla import glue_helpers as gh
 try:
     gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 except OSError:
     pass
-"""
-        expected_code = """
+""",
+                """
 import os
 try:
     os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 except OSError:
     pass
-"""
+""",
+            )
+        ]
+    )
+    def test_conversion_try_except(self, input_code, expected_code):
+        """Test conversion of script for keyword arguments of methods"""
+        # try: gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2") except OSError: pass
+        # Expected Output: try: os.rename("/tmp/fubar.list1", "/tmp/fubar.list2") except OSError: pass
+
+        #         input_code = """
+        # from mezcla import glue_helpers as gh
+        # try:
+        #     gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # except OSError:
+        #     pass
+        # """
+        #         expected_code = """
+        # import os
+        # try:
+        #     os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
+        # except OSError:
+        #     pass
+        # """
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
