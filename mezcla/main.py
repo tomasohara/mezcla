@@ -456,7 +456,7 @@ class Main(object):
         # EX: self.parsed_args = {"it": False}; self.has_parsed_option("notit") => None
         ## TEMP HACK: if called by a subclass, treate as alias to get_parsed_option
         if (self.__class__ != "__main__.Script"):
-            debug.trace(4, "Warning: deprecated method: has_parsed_option => get_parsed_option")
+            debug.trace(3, "Warning: deprecated method: has_parsed_option => get_parsed_option")
             return self.get_parsed_option(label)
         # Return parsed-arg entry for the option
         name = self.get_option_name(label)
