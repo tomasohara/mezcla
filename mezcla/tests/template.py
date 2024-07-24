@@ -131,6 +131,25 @@ class TestIt(TestWrapper):
         self.do_assert("whatever" in captured, "TODO_whatever trace")
         return
 
+    ## TODO: get pytest.mark.parametrize inside of class
+    ## NOTE: See workaround with test_global_01_table below
+    ## @pytest.mark.parametrize(
+    ##     "TODO_arg1, TODO_arg2",
+    ##     [ (2, 1),
+    ##       (1, 2) ]
+    ##     )
+    ## @staticmethod
+    ## def test_04_table(TODO_arg1, TODO_arg2):
+    ##     """TODO_Tabular test"""
+    ##     debug.trace(4, f"TestIt.test_04_table({arg1}, {arg2})")
+    ##     assert arg1 < arg2
+    ##
+    ## TODO2: -or- define helper with use with global (see below)
+    ## def check_table_args(TODO_arg1, TODO_arg2):
+    ##     """TODO_Tabular test"""
+    ##     debug.trace(4, f"TestIt.test_04_table({arg1}, {arg2})")
+    ##     assert arg1 < arg2
+
     ## TODO: optional cleanup methods
     ##
     ## def tearDown(self):
@@ -145,6 +164,30 @@ class TestIt(TestWrapper):
     ##     super().tearDownClass()
     ##     ...
     ##     return
+
+## TODO: define optional tests with tabular input
+## #................................................................................
+## # Global tests
+## #
+## # Note: @pytest.mark.parametrize doesn't seem to be compatible with classes
+## # based on TestWrapper (or classes in general).
+## # See https://stackoverflow.com/questions/38729007/parametrize-class-tests-with-pytest
+## 
+## @pytest.mark.parametrize(
+##     "TODO_arg1, TODO_arg2",
+##     [ (2, 1),
+##       (1, 2) ]
+## )
+## def test_global_01_table(TODO_arg1, TODO_arg2):
+##     """TODO_Tabular test"""
+##     debug.trace(4, f"TestIt.test_global_01_table({arg1}, {arg2})")
+##     assert arg1 < arg2
+## TODO2: -or- use helper in test class (see above)
+## def test_global_01_table(TODO_arg1, TODO_arg2):
+##     """TODO_Tabular test"""
+##     debug.trace(4, f"TestIt.test_global_01_table({arg1}, {arg2})")
+##     TestIt().check_table_args(TODO_arg1, TODO_arg2))
+##
 
 #------------------------------------------------------------------------
 
