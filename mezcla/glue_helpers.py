@@ -46,9 +46,7 @@ import textwrap
 from mezcla import debug
 from mezcla import system
 from mezcla import tpo_common as tpo
-## OLD: from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
 from mezcla.tpo_common import debug_format, debug_print
-## OLD: from mezcla.main import DISABLE_RECURSIVE_DELETE
 ## TODO3: debug.trace_expr(6, __file__)
 
 # Constants
@@ -373,7 +371,6 @@ def elide(value, max_len=None):
     # NOTE: Make sure compatible with debug.format_value (TODO3: add equivalent to strict argument)
     # TODO2: add support for eliding at word-boundaries
     tpo.debug_print("elide(_, _)", 8)
-    ## OLD: debug.assertion(isinstance(text, (str, type(None))))
     text = value
     if text is None:
         text = ""
@@ -421,7 +418,7 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
     # EX: "root" in run("ls /")
     # Note: Script tracing controlled DEBUG_LEVEL environment variable.
     debug.assertion(isinstance(trace_level, int))
-    debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output}")
+    debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output}", skip_sanity_checks=True)
     global default_subtrace_level
     # Keep track of current debug level setting
     debug_level_env = os.getenv("DEBUG_LEVEL")
@@ -451,7 +448,6 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
     # TODO: check for errors (e.g., "sh: filter_file.py: not found"); make wait explicit
     in_background = command.strip().endswith("&")
     foreground_wait = not in_background
-    ## OLD: debug.assertion(wait or not just_issue)
     debug.trace_expr(5, in_background, in_just_issue)
     debug.assertion(not (in_background and (in_just_issue is False)))
     # Note: Unix supports the '>|' pipe operator (i.e., output with overwrite); but,
@@ -461,8 +457,6 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
     debug.assertion(">|" not in command_line)
     result = None
     ## TODO: if (just_issue or not foreground_wait): ... else: ...
-    ## OLD: result = getoutput(command_line) if foreground_wait else str(os.system(command_line))
-    ## OLD: wait_for_command = (not foreground_wait or not just_issue)
     wait_for_command = (foreground_wait and not just_issue)
     debug.trace_expr(5, foreground_wait, just_issue, wait_for_command)
     ## TODO3: clarify what output is when stdout redirected (e.g., for issue in support of unittest_wrapper.run_script
@@ -544,9 +538,6 @@ def get_hex_dump(text, break_newlines=False):
     debug.trace_fmt(6, "get_hex_dump({t}, {bn})", t=text, bn=break_newlines)
     in_file = get_temp_file() + ".in.list"
     out_file = get_temp_file() + ".out.list"
-    ## BAD:
-    ## write_file(in_file, text)
-    ## run("perl -Ss hexview.perl -newlines {i} > {o}", i=in_file, o=out_file)
     system.write_file(in_file, text, skip_newline=True)
     run("perl -Ss hexview.perl {i} > {o}", i=in_file, o=out_file)
     result = read_file(out_file).rstrip("\n")
@@ -930,7 +921,6 @@ def init():
     Note: This is also used for reinitialize temp-file settings such as for unit tests (e.g., TEMP_FILE from TEMP_BASE)."""
     # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
     debug.trace(5, "glue_helpers.init()")
-    ## OLD: temp_filename = "temp-file.list"
     temp_filename = f"temp-{PID}.list"
     if USE_TEMP_BASE_DIR and TEMP_BASE:
         full_mkdir(TEMP_BASE)
