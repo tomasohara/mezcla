@@ -144,7 +144,7 @@ if __debug__:
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
     trace_level:int = TL.DEFAULT        # typically 3 (1 + WARNING); TODO: global_trace_level
     output_timestamps = False           # prefix output with timestamp
-    output_caller_info = False          # add caller filename and line number to trace
+    ## TODO1: output_caller_info = False          # add caller filename and line number to trace
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
     debug_file = None                   # file for log output
@@ -236,12 +236,13 @@ if __debug__:
         print(text, file=sys.stderr, end=end)
         if debug_file:
             print(text, file=debug_file, end=end)
-    
-    def trace(level, text, empty_arg=None, no_eol=False, indentation=None, skip_sanity_checks=None):
+
+    def trace(level, text:str, empty_arg=None, no_eol=False, indentation=None, skip_sanity_checks=None):
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE
         Noe: Optionally, uses \n unless no_eol, precedes trace with INDENTATION, and
         SKIPs_SANITY_CHECKS (e.g., variables in braces in f-string omission).
         """
+        # TODO1: add exception handling
         # TODO: add option to use format_value
         # Note: trace should not be used with text that gets formatted to avoid
         # subtle errors
@@ -260,22 +261,28 @@ if __debug__:
                     timestamp_time += f" diff={diff}ms"
                     last_trace_time = time.time()
                 do_print(indentation + "[" + timestamp_time + "]", end=": ")
-            # Optionally show filename and line number for caller
-            # Note: This is mainly intended for help in tweaking trace levels, such as to help
-            # identify tracing being done too frequently. This was inspired by loguru.
-            if output_caller_info:
-                pass
+            ## TODO1: 
+            ## # Optionally show filename and line number for caller
+            ## # Note: This is mainly intended for help in tweaking trace levels, such as to help
+            ## # identify tracing being done too frequently. This was inspired by loguru.
+            ## if output_caller_info:
+            ##     pass
             # Print trace, converted to UTF8 if necessary (Python2 only)
             # TODO: add version of assertion that doesn't use trace or trace_fmtd
             ## TODO: assertion(not ???)
+            do_print(indentation, end="")
+            if not isinstance(text, str):
+                if trace_level >= USUAL:
+                    do_print("[Warning: converted non-text to str] ", end="")
+                text = str(text)
             if ((not skip_sanity_checks)
                 and re.search(r"{\S*}", text)
                 and not re.search(r"{{\S*}}", text)):
-                # TODO5: rework indent (pep8 quirk)
+                # TODO3: show caller info; also rework indent (pep8 quirk)
                 if trace_level >= QUITE_DETAILED:
-                    do_print(indentation + "[FYI: f-string issue?] ", end="")
+                    do_print("[FYI: f-string issue?] ", end="")
             end = "\n" if (not no_eol) else ""
-            do_print(indentation + _to_utf8(text), end=end)
+            do_print(_to_utf8(text), end=end)
             if use_logging:
                 # TODO: see if way to specify logging terminator
                 logging.debug(indentation + _to_utf8(text))
@@ -1182,6 +1189,9 @@ if __debug__:
         monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
         if monitor_functions:
             sys.setprofile(profile_function)
+        ## TODO1: (all output_caller_info env. init; also add to trace_expr below)
+        ## global output_caller_info
+        ## output_caller_info = _getenv_bool("OUTPUT_CALLER_INFO", output_caller_info)
         trace_expr(VERBOSE, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
 
         # Show additional information when detailed debugging
