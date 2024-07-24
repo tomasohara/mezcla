@@ -438,11 +438,15 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
         debug.trace_expr(5, PRESERVE_TEMP_FILE)
         debug.trace(5, f"Setting TEMP_FILE to {new_TEMP_FILE}")
         system.setenv("TEMP_FILE", new_TEMP_FILE)
-    # Expand the command template
+    # Expand the command template if brace-style variable reference encountered
+    # NOTE: un-pythonic warnings issued by format so this should not affect anything
     # TODO: make this optional
     command_line = command
-    if re.search("{.*}", command):
+    if (re.search(r"{\S+}", command) or namespace):
         command_line = tpo.format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
+    else:
+        # TODO2: and sanity check for unresolved f-string-like template as with debug.trace
+        pass
     debug_print("issuing: %s" % command_line, trace_level)
     # Run the command
     # TODO: check for errors (e.g., "sh: filter_file.py: not found"); make wait explicit
