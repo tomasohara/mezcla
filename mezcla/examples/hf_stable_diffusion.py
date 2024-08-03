@@ -151,6 +151,9 @@ def init():
         # pylint: disable=import-outside-toplevel, import-error, redefined-outer-name
         from datasets import load_dataset
         import torch
+        # CLEAR CACHE
+        torch.cuda.empty_cache()
+        torch.no_grad()
 
     # Load blacklist for prompt terms
     global word_list
@@ -226,6 +229,7 @@ class StableDiffusion:
         # pylint: disable=import-outside-toplevel
         from diffusers import StableDiffusionPipeline
         model_id = HF_SD_MODEL
+        ###### device = "cuda"
         device = "cuda"
         # TODO2: automatically use LOW_MEMORY if GPU memory below 8gb
         dtype=(torch.float16 if self.low_memory else None)
@@ -637,7 +641,7 @@ def encode_image_data(image_bytes):
     """Convert IMAGE_BYTES to base64 string"""
     debug.assertion(isinstance(image_bytes, bytes))
     result = base64.b64encode(image_bytes).decode()
-    debug.trace(6, f"encode_image_data({gh.elide(image_bytes)}) => {gh.elide(result)}")
+    # debug.trace(6, f"encode_image_data({gh.elide(image_bytes)}) => {gh.elide(result)}")
     return result
 
 
@@ -645,7 +649,7 @@ def encode_image_file(filename):
     """Encode image in FILENAME via base64 string"""
     binary_data = system.read_binary_file(filename)
     result = encode_image_data(binary_data)
-    debug.trace(6, f"encode_image_file({filename}) => {gh.elide(result)}")
+    # debug.trace(6, f"encode_image_file({filename}) => {gh.elide(result)}")
     return result
 
 
@@ -658,7 +662,7 @@ def encode_PIL_image(image):
     image.save(bytes_fh, format="PNG")
     bytes_fh.seek(0)
     result = encode_image_data(bytes_fh.read())
-    debug.trace(6, f"encode_PIL_image({gh.elide(image)}) => {gh.elide(result)}")
+    # debug.trace(6, f"encode_PIL_image({gh.elide(image)}) => {gh.elide(result)}")
     return result
 
 
@@ -666,7 +670,7 @@ def decode_base64_image(image_encoding):
     """Decode IMAGE_ENCODING from base64 returning bytes"""
     # note: "encodes" UTF-8 text of base-64 encoding as bytes object for str, and then decodes into image bytes
     result = base64.decodebytes(image_encoding.encode())
-    debug.trace(6, f"decode_base64_image({gh.elide(image_encoding)}) => {gh.elide(result)}")
+    # debug.trace(6, f"decode_base64_image({gh.elide(image_encoding)}) => {gh.elide(result)}")
     return result
 
 def create_image(image_data):           # TODO1: create_PIL_image
@@ -678,7 +682,7 @@ def create_image(image_data):           # TODO1: create_PIL_image
 
 def write_image_file(filename, image_spec):
     """Write to FILENAME the base64 data in IMAGE_SPEC"""
-    debug.trace(5, f"write_image_file({filename}, {gh.elide(image_spec)})")
+    # debug.trace(5, f"write_image_file({filename}, {gh.elide(image_spec)})")
     system.write_binary_file(filename, decode_base64_image(image_spec))
 
 #-------------------------------------------------------------------------------
