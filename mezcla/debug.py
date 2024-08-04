@@ -367,6 +367,7 @@ if __debug__:
         elif verbose_debugging():
             label += " [" + type_id_label + "]"
         else:
+            debug.assertion(isinstance(label, str))
             pass
         outer_indentation = ""
         if indentation is None:
