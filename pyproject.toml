@@ -29,3 +29,17 @@ author="Tomás O'Hara"
 author-email="tomasohara@gmail.com"
 home-page = "https://github.com/tomasohara/mezcla"
 description-file="README.txt"
+
+[tool.mypy]
+disable_error_code = [
+    "import-untyped",
+    "import-not-found"
+]
+exclude = [
+    "(examples|tests|adhoc|temp)/",
+    "__init__"
+]
+[[tool.mypy.overrides]]
+module = [
+    "mezcla"
+]
