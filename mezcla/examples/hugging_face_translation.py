@@ -31,6 +31,8 @@ from mezcla import misc_utils
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla import glue_helpers as gh
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Constants and Environment options
 TL = debug.TL
@@ -116,12 +118,19 @@ def main():
     mt_task = dummy_app.get_parsed_option(TASK_ARG, MT_TASK)
     mt_model = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL)
 
-    ## Creating language models and tasks in reverse for round-trip translation
-    if round_trip:
-        MT_TASK_REVERSE = f"translation_{target_lang}_to_{source_lang}"                 # pylint: disable=invalid-name
-        MT_MODEL_REVERSE = f"Helsinki-NLP/opus-mt-{target_lang}-{source_lang}"          # pylint: disable=invalid-name  
-        mt_task_reverse = dummy_app.get_parsed_option(TASK_ARG, MT_TASK_REVERSE)
-        mt_model_reverse = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL_REVERSE)
+
+    ## OLD
+    # ## Creating language models and tasks in reverse for round-trip translation
+    # if round_trip:
+    #     MT_TASK_REVERSE = f"translation_{target_lang}_to_{source_lang}"                 # pylint: disable=invalid-name
+    #     MT_MODEL_REVERSE = f"Helsinki-NLP/opus-mt-{target_lang}-{source_lang}"          # pylint: disable=invalid-name  
+    #     mt_task_reverse = dummy_app.get_parsed_option(TASK_ARG, MT_TASK_REVERSE)
+    #     mt_model_reverse = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL_REVERSE)
+    
+    MT_TASK_REVERSE = f"translation_{target_lang}_to_{source_lang}"                 # pylint: disable=invalid-name
+    MT_MODEL_REVERSE = f"Helsinki-NLP/opus-mt-{target_lang}-{source_lang}"          # pylint: disable=invalid-name  
+    mt_task_reverse = dummy_app.get_parsed_option(TASK_ARG, MT_TASK_REVERSE)
+    mt_model_reverse = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL_REVERSE)
 
     # Get input file
     debug.trace_expr(5, dummy_app.input_stream, text, TEXT_FILE)
@@ -149,21 +158,59 @@ def main():
     model = pipeline(task=mt_task, model=mt_model, device=device)
 
     ## Create a model for reverse translation when ROUND_TRIP is true
-    if round_trip:
-        model_reverse = pipeline(task=mt_task_reverse, model=mt_model_reverse)
+    model_reverse = pipeline(task=mt_task_reverse, model=mt_model_reverse)
 
     # Pull up web interface if requested
+    # Pull up web interface if requested
     if use_interface:
-        # TODO2: add language controls
-        import gradio as gr             # pylint: disable=import-outside-toplevel
-        pipeline_if = gr.Interface.from_pipeline(
-            model,
-            title="Machine translation (MT)",
-            ## TODO2: subtitle=f"From: {FROM}; To: {TO}",
-            description=f"From: {FROM}; To: {TO}",
-            ## TODO3: examples=[...]); See example in hf_stable_diffusion.py.
-            )
-        pipeline_if.launch()
+        import gradio as gr
+        from transformers import pipeline
+        model_reverse = pipeline(task=mt_task_reverse, model=mt_model_reverse)
+        
+        def calculate_similarity(text1, text2):
+            """Calculate the cosine similarity between the two strings"""
+            vectorizer = TfidfVectorizer().fit_transform([text1, text2])
+            vectors = vectorizer.toarray()
+            return cosine_similarity(vectors)[0, 1]
+
+        def gradio_translation_input(word_src, is_round_trip):
+            word_dst = model(word_src)[0]["translation_text"].split(".")[0]
+            word_round_trip = model_reverse(word_dst)[0]["translation_text"].split(".")[0] if is_round_trip else ''
+            similarity_score = calculate_similarity(word_src, word_round_trip) if is_round_trip else ""
+            return word_dst, word_round_trip, similarity_score
+        
+        ui = gr.Interface(
+            title="Hugging Face Language Translation (with round-trip similarity score)",
+            description=f"From: {FROM} | To: {TO}",
+            fn=gradio_translation_input,
+            inputs=[
+                gr.Textbox(lines=2, placeholder="Enter text to translate", label="Input Text"),
+                gr.Checkbox(label="Enable Round-trip Translation")
+            ],
+            outputs=[
+                gr.Textbox(label="Translated Text"),
+                gr.Textbox(label="Round-trip Translation"),
+                gr.Number(label="Similarity Score (0 to 1)")
+            ],
+            # description="This tool performs translation and optional round-trip translation, returning a similarity score between the original and round-trip text."
+        )
+
+        ui.launch(share=False)
+
+
+    ## Original Code (uncomment if too much f up)
+    # if use_interface:
+    #     # TODO2: add language controls
+    #     ## TODO: Add option for round trip translation
+    #     import gradio as gr             # pylint: disable=import-outside-toplevel
+    #     pipeline_if = gr.Interface.from_pipeline(
+    #         model,
+    #         title="Machine translation (MT)",
+    #         ## TODO2: subtitle=f"From: {FROM}; To: {TO}",
+    #         description=f"From: {FROM}; To: {TO}",
+    #         ## TODO3: examples=[...]); See example in hf_stable_diffusion.py.
+    #         )
+    #     pipeline_if.launch()
 
     # Otherwise, do translation and output
     else:
