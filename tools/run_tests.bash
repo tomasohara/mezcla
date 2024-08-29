@@ -113,7 +113,7 @@ if [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
     export PYTHONUNBUFFERED=1
     echo -n "Running tests under "
     python3 --version
-    python3 "$dir"/master_test.py
+    python3 "$mezcla"/master_test.py
     python_result="$?"
 fi
 
