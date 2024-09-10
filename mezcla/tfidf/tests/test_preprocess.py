@@ -20,7 +20,8 @@ import mezcla.tfidf.preprocess as THE_MODULE
 
 # ------------------------------------------------------------------------
 
-
+# TODO: add variety to tests
+# TODO: review monkey patching on undoing modifications
 class TestPreprocess(TestWrapper):
     """Class for testcase definition"""
 
@@ -99,7 +100,7 @@ class TestPreprocess(TestWrapper):
         self.monkeypatch.setattr(THE_MODULE, "TFIDF_PRESERVE_CASE", False)
         text_clean_no_preserve_case = THE_MODULE.clean_text(text)
 
-        #restore previous env vars
+        # restore previous env vars
         self.monkeypatch.setattr(THE_MODULE, "TFIDF_PRESERVE_CASE", old_preserve_case)
         self.monkeypatch.setattr(THE_MODULE, "SKIP_WORD_CLEANING", old_skip_cleaning)
 
