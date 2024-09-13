@@ -1101,7 +1101,8 @@ def main():
     use_txt2img = main_app.get_parsed_option(TXT2IMG_ARG, not (use_img2img or use_img2txt))
     ## OLD: input_image_file = main_app.get_parsed_option(IMAGE_ARG)
     denoising_factor = main_app.get_parsed_option(DENOISING_ARG)
-    ## TODO?: debug.assertion(use_txt2img ^ use_img2img)
+    ## TODO?:
+    debug.assertion((use_txt2img ^ use_img2img) or use_img2txt)
     # TODO2: BASENAME and NUM_IMAGES (options)
     ## TODO: x_mode = main_app.get_parsed_option(X_ARG)
     debug.assertion(not (batch_mode and server_mode))
