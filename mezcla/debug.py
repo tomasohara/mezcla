@@ -589,7 +589,8 @@ if __debug__:
                           f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
                 value_spec = format_value(repr(value) if use_repr else value,
                                           max_len=max_len)
-                trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
+                # note: using skip_sanity_checks, because kwargs gives false positive on brace check
+                trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True)
             except:
                 trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
                        exc=sys.exc_info())
