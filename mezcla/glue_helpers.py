@@ -87,9 +87,13 @@ TEMP_SUFFIX = system.getenv_text(
     "TEMP_SUFFIX", "-",
     description="Suffix to use for temp files")
 TEMP_SUFFIX = ("-")
-NTF_ARGS = {'prefix': TEMP_PREFIX,
-            'delete': not debug.detailed_debugging(),
-            'suffix': TEMP_SUFFIX}
+KEEP_TEMP = system.getenv_bool(
+    "KEEP_TEMP", debug.detailed_debugging(),
+    desc="Keep temporary files")
+## OLD:
+## NTF_ARGS = {'prefix': TEMP_PREFIX,
+##             'delete': not debug.detailed_debugging(),
+##             'suffix': TEMP_SUFFIX}
 TEMP_BASE = system.getenv_value(
     "TEMP_BASE", None,
     description="Override for temporary file basename")
@@ -127,7 +131,20 @@ def get_temp_file(delete=None):
     # TODO: allow for overriding other options to NamedTemporaryFile
     if ((delete is None) and debug.detailed_debugging()):
         delete = False
-    temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
+    ## BAD: temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
+    NTF_ARGS = {'prefix': TEMP_PREFIX,
+                ## OLD: 'delete': not debug.detailed_debugging(),
+                'delete': not KEEP_TEMP,
+                'suffix': TEMP_SUFFIX}
+    temp_file_name = TEMP_FILE
+    if not temp_file_name:
+        # note: uses context so not deleted right away if delete=True
+        # TODO2: fix this
+        with tempfile.NamedTemporaryFile(**NTF_ARGS) as temp_file_obj:
+            temp_file_name = temp_file_obj.name
+        # HACK: clear the file
+        if not KEEP_TEMP:
+            system.write_file(temp_file_name, "")
     debug.assertion(not delete, "Support for delete not implemented")
     debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
     return temp_file_name
@@ -139,6 +156,9 @@ def get_temp_dir(delete=None):
     """
     debug.assertion(False, "work-in-progress implementation")
     temp_dir_path = get_temp_file(delete=delete)
+    # HACK: remove non-dir file if exists
+    if system.file_exists(temp_dir_path) and not system.is_directory(temp_dir_path):
+        delete_file(temp_dir_path)
     full_mkdir(temp_dir_path)
     return temp_dir_path
 
