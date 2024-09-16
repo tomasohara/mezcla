@@ -83,6 +83,9 @@ TL = debug.TL
 ##     "KEEP_TEMP", debug.detailed_debugging(),
 ##     desc="Keep temporary files")
 KEEP_TEMP = gh.KEEP_TEMP
+PRUNE_TEMP = system.getenv_bool(
+    "PRUNE_TEMP", False,
+    desc="Delete temporary files ahead of time")
 TODO_FILE = "TODO FILE"
 TODO_MODULE = "TODO MODULE"
 
@@ -380,9 +383,10 @@ class TestWrapper(unittest.TestCase):
         self.temp_file = system.getenv_text(
             "TEMP_FILE", default_temp_file,
             desc="Override for temporary filename")
-        gh.delete_existing_file(f"{self.temp_file}")
-        for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
-            gh.delete_existing_file(f)
+        if PRUNE_TEMP:
+            gh.delete_existing_file(f"{self.temp_file}")
+            for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
+                gh.delete_existing_file(f)
 
         # Start the profiler
         if PROFILE_CODE:
