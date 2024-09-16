@@ -45,6 +45,7 @@ import textwrap
 # Local packages
 from mezcla import debug
 from mezcla import system
+## TODO2: top_common => debug.
 from mezcla import tpo_common as tpo
 from mezcla.tpo_common import debug_format, debug_print
 ## TODO3: debug.trace_expr(6, __file__)
@@ -154,7 +155,7 @@ def get_temp_dir(delete=None):
     """Gets temporary file to use as a directory
     note: Optionally DELETEs directory afterwards
     """
-    debug.assertion(False, "work-in-progress implementation")
+    ## OLD: debug.assertion(False, "work-in-progress implementation")
     temp_dir_path = get_temp_file(delete=delete)
     # note: removes non-dir file if exists
     full_mkdir(temp_dir_path, force=True)
