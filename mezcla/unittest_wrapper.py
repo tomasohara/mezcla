@@ -133,7 +133,7 @@ def get_temp_dir(keep=None, unique=None):
     else:
         dir_path = dir_base
     if not system.is_directory(dir_path):
-        gh.full_mkdir(dir_path)
+        gh.full_mkdir(dir_path, force=True)
     debug.trace(5, f"get_temp_dir() => {dir_path}")
     return dir_path
 
