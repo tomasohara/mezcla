@@ -18,6 +18,7 @@ import os
 ## OLD: from os import path
 from io import StringIO
 import sys
+import tempfile
 
 # Installed packages
 import pytest
@@ -36,6 +37,7 @@ import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 
 class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     """Class for testcase definition"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     ## TEMP
     temp_file = gh.get_temp_file()
 
@@ -47,6 +49,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_remove_extension(self):
         """Ensure remove_extension works as expected"""
         debug.trace(4, "test_remove_extension()")
+        ## TODO2: remove path or use form_path
         assert THE_MODULE.remove_extension("/tmp/solr-4888.log", ".log") == "/tmp/solr-4888"
         assert THE_MODULE.remove_extension("/tmp/fubar.py", ".py") == "/tmp/fubar"
         assert THE_MODULE.remove_extension("/tmp/fubar.py", "py") == "/tmp/fubar."
@@ -120,7 +123,20 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_get_temp_dir(self):
         """Tests get_temp_dir"""
         debug.trace(4, "test_get_temp_dir()")
-        assert False, "TODO: implement"
+        # Make sure new temp dirs used each time unless pre-specified
+        self.monkeypatch.setattr(gh, "TEMP_FILE", None)
+        temp_dir1 = THE_MODULE.get_temp_dir()
+        temp_dir2 = THE_MODULE.get_temp_dir()
+        assert temp_dir1 != temp_dir2
+        assert system.is_directory(temp_dir1)
+        assert system.is_directory(temp_dir2)
+
+        # note: not deleted for debugging purposes
+        static_temp_dir = tempfile.NamedTemporaryFile(delete=False).name
+        self.monkeypatch.setattr(gh, "TEMP_FILE", static_temp_dir)
+        temp_dir3 = THE_MODULE.get_temp_dir()
+        assert temp_dir3 == static_temp_dir
+        assert system.is_directory(temp_dir3)
 
     @pytest.mark.xfail
     def test_real_path(self):
