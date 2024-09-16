@@ -152,6 +152,7 @@ if __debug__:
     para_mode_tracing = False           # multiline tracing functions add blank lines (e.g., for para-mode grep)
     max_trace_value_len = 1024          # maxium length for tracing values
     time_start = 0                      # time of module load
+    include_trace_diagnostics = False   # include trace invocation sanity checks
     #
     try:
         trace_level_text = os.environ.get(DEBUG_LEVEL_LABEL, "")
@@ -276,10 +277,10 @@ if __debug__:
                     do_print("[Warning: converted non-text to str] ", end="")
                 text = str(text)
             if ((not skip_sanity_checks)
-                and re.search(r"{\S*}", text)
-                and not re.search(r"{{\S*}}", text)):
+                and re.search(r"{\S+}", text)
+                and not re.search(r"{{\S+}}", text)):
                 # TODO3: show caller info; also rework indent (pep8 quirk)
-                if trace_level >= QUITE_DETAILED:
+                if include_trace_diagnostics:
                     do_print("[FYI: f-string issue?] ", end="")
             end = "\n" if (not no_eol) else ""
             do_print(_to_utf8(text), end=end)
@@ -310,7 +311,7 @@ if __debug__:
                 try:
                     # TODO: add version of assertion that doesn't use trace or trace_fmtd
                     if (not skip_sanity_checks) and not (re.search(r"{\S*}", text)):
-                        if trace_level >= QUITE_DETAILED:
+                        if include_trace_diagnostics:
                              trace(level, "[FYI: missing {}'s?] ", no_eol=True)
                     ## OLD: assertion("{" in text)
                     ## OLD: trace(level, text.format(**kwargs))
@@ -367,7 +368,7 @@ if __debug__:
         elif verbose_debugging():
             label += " [" + type_id_label + "]"
         else:
-            debug.assertion(isinstance(label, str))
+            assertion(isinstance(label, str))
             pass
         outer_indentation = ""
         if indentation is None:
@@ -463,6 +464,7 @@ if __debug__:
             return
         if para_mode_tracing:
             trace(ALWAYS, "")
+        # note: sets will be coerced to lists
         if not isinstance(collection, (list, dict)):
             if hasattr(collection, '__iter__'):
                 trace(level + 1, "Warning: [trace_values] consuming iterator")
@@ -486,9 +488,9 @@ if __debug__:
                 if use_repr:
                     value = repr(value)
                 trace_fmtd(ALWAYS, "{ind}{k}: {v}", ind=indentation, k=k,
-                           v=format_value(value, max_len=max_len))
+                           v=format_value(value, max_len=max_len, skip_sanity_checks=True))
             except:
-                trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}",
+                trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}: {exc}",
                            k=_to_utf8(k), exc=sys.exc_info())
         trace(ALWAYS, indentation + "}")
         if para_mode_tracing:
@@ -913,7 +915,7 @@ def _getenv_int(name, default_value):
 
 
 @docstring_parameter(max_len=max_trace_value_len)
-def format_value(value, max_len=None, strict=None):
+def format_value(value, max_len=None, strict=None, skip_sanity_checks=None):
     """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines
     Note: With STRICT, MAX_LEN is maximum length ({max_len}) for returned string (i.e., including "...")
     """
@@ -921,7 +923,7 @@ def format_value(value, max_len=None, strict=None):
     # EX: format_value("fubar", max_len=3) => "fub..."
     # EX: format_value("fubar", max_len=3, strict=True) => "..."
     # TODO2: rework with result determined via repr
-    trace(1 + MOST_VERBOSE, f"format_value({value!r}, max_len={max_len})")
+    trace(1 + MOST_VERBOSE, f"format_value({value!r}, max_len={max_len})", skip_sanity_checks=skip_sanity_checks)
     if max_len is None:
         max_len = max_trace_value_len
     if strict is None:
@@ -936,17 +938,17 @@ def format_value(value, max_len=None, strict=None):
         result = result[:-extra] + ellipsis
     else:
         l = 2 + MOST_VERBOSE
-        trace(l, f"0. {result!r}")
+        trace(l, f"0. {result!r}", skip_sanity_checks=skip_sanity_checks)
         extra2 = 0
         if (len(result) - extra + len(ellipsis) > max_len):
             extra2 = (len(result) - extra + len(ellipsis) - max_len)
         trace_expr(l, extra, extra2)
         result = result[:-(extra + extra2)]
-        trace(l, f"1. {result!r}")
+        trace(l, f"1. {result!r}", skip_sanity_checks=skip_sanity_checks)
         result += ellipsis
-        trace(l, f"2. {result!r}")
+        trace(l, f"2. {result!r}", skip_sanity_checks=skip_sanity_checks)
         result = result[:max_len]
-        trace(l, f"3. {result!r}")
+        trace(l, f"3. {result!r}", skip_sanity_checks=skip_sanity_checks)
         assertion(len(result) <= max_len)
     trace(MOST_VERBOSE, f"format_value() => {result!r}")
     return result
@@ -1188,6 +1190,8 @@ if __debug__:
         enable_logging = _getenv_bool("ENABLE_LOGGING", use_logging)
         if enable_logging:
             init_logging()
+        global include_trace_diagnostics
+        include_trace_diagnostics = _getenv_bool("TRACE_DIAGNOSTICS", trace_level >= QUITE_DETAILED)
         monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
         if monitor_functions:
             sys.setprofile(profile_function)
