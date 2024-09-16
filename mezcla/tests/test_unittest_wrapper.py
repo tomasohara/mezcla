@@ -161,10 +161,13 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.xfail
+    ## TODO: skip if not posix
     def test_04_get_temp_dir(self):
         """Tests get_temp_dir"""
         debug.trace(4, f"TestIt.test_04_get_temp_dir(); self={self}")
-        assert False, "TODO: implement"
+        temp_dir = THE_MODULE.get_temp_dir()
+        TMPDIR = system.getenv("TMPDIR", "/tmp")
+        assert TMPDIR in temp_dir
 
     @pytest.mark.xfail
     def test_05_check_temp_part1(self):
@@ -183,7 +186,8 @@ class TestIt(TestWrapper):
         debug.trace(4, f"TestIt.test_06_check_temp_part2(); self={self!r}; id={id(self)}")
         debug.trace_expr(5, self.last_temp_file, self.temp_file)
         assert self.last_temp_file != self.temp_file
-        assert(self.last_temp_file is not None)
+        ## TODO2: assert(self.last_temp_file is not None)
+        debug.assertion(self.last_temp_file is not None)
         global last_self                # TODO4 (use class member)
         # NOTE: The following will fail: apparently each test is run using
         # a separate class instance.
