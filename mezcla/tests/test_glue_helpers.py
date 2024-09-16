@@ -483,6 +483,21 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         THE_MODULE.DISABLE_RECURSIVE_DELETE = old
 
     @pytest.mark.xfail
+    def test_get_temp_file_deletion(self):
+        """Make sure temp file returned properly when TEMP_FILE not set
+        Note: accounts for odd NamedTemporaryFile behavior with delete
+        """
+        self.monkeypatch.setattr(gh, 'TEMP_FILE', None)
+        #
+        self.monkeypatch.setattr(gh, 'KEEP_TEMP', True)
+        temp_file_without_delete = THE_MODULE.get_temp_file(delete=False)
+        assert system.file_exists(temp_file_without_delete)
+        #
+        self.monkeypatch.setattr(gh, 'KEEP_TEMP', False)
+        temp_file_with_delete = THE_MODULE.get_temp_file(delete=True)
+        assert system.file_exists(temp_file_with_delete)
+        
+    @pytest.mark.xfail
     def test_initialization(self):
         """Make sure module initialized OK"""
         # TODO1: add checks for TEMP_BASE and TEMP_FILE, along with PRESERVE_TEMP_FILE
