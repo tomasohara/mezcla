@@ -78,9 +78,11 @@ from mezcla import system
 # Constants (e.g., environment options)
 
 TL = debug.TL
-KEEP_TEMP = system.getenv_bool(
-    "KEEP_TEMP", debug.detailed_debugging(),
-    desc="Keep temporary files")
+## OLD:
+## KEEP_TEMP = system.getenv_bool(
+##     "KEEP_TEMP", debug.detailed_debugging(),
+##     desc="Keep temporary files")
+KEEP_TEMP = gh.KEEP_TEMP
 TODO_FILE = "TODO FILE"
 TODO_MODULE = "TODO MODULE"
 
