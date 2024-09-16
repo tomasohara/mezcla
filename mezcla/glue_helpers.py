@@ -156,10 +156,8 @@ def get_temp_dir(delete=None):
     """
     debug.assertion(False, "work-in-progress implementation")
     temp_dir_path = get_temp_file(delete=delete)
-    # HACK: remove non-dir file if exists
-    if system.file_exists(temp_dir_path) and not system.is_directory(temp_dir_path):
-        delete_file(temp_dir_path)
-    full_mkdir(temp_dir_path)
+    # note: removes non-dir file if exists
+    full_mkdir(temp_dir_path, force=True)
     return temp_dir_path
 
 
@@ -330,13 +328,16 @@ def create_directory(path):
     return
 
 
-def full_mkdir(path):
+def full_mkdir(path, force=False):
     """Issues mkdir to ensure path directory, including parents (assuming Linux like shell)
+    When FORCE true, an existing non-directory is removed first.
     Note: Doesn't handle case when file exists but is not a directory
     """
     debug.trace(6, f"full_mkdir({path!r})")
     ## TODO: os.makedirs(path, exist_ok=True)
     debug.assertion(os.name == "posix")
+    if force and system.file_exists(path) and not system.is_directory(path):
+        delete_file(path)
     if not system.file_exists(path):
         issue('mkdir --parents "{p}"', p=path)
     debug.assertion(is_directory(path))
