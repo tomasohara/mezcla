@@ -898,9 +898,9 @@ def path_separator(sysname=None):
     # EX: path_separator(sysname="???") => "/"
     # TODO: define-tracing-fn path_separator os.path.sep 7
     result = os.path.sep
-    if (sysname != os.uname().sysname):
+    if (sysname != os.name):
         default_sep = "/"
-        result = "\\" if sysname == "Windows" else default_sep
+        result = "\\" if sysname == "nt" else default_sep
     debug.trace(7, f"path_separator() => {result}")
     return result
 #    
