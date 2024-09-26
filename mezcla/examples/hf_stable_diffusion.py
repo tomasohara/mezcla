@@ -104,6 +104,13 @@ CLIP_MODEL = system.getenv_text(
     "CLIP_MODEL", ("ViT-L-14/openai" if REGULAR_CLIP else "ViT-B-16/openai"),
     # TODO4: see https://arxiv.org/pdf/2010.11929.pdf for ViT-S-NN explanation
     description="Model to use for CLIP interrogation")
+OPEN_BUTTON_TOKEN = system.getenv_text(
+    "OPEN_BUTTON_TOKEN", "b88a80e7d073c5c848f6f4d6d1e35491be9f89e2dc5fbf50e356e46b0c3a4329",
+    "OPEN_BUTTON_TOKEN env value for authorization (vast.ai)")
+VERIFY_RESPONSE = system.getenv_bool(
+    "VERIFY_RESPONSE", False,
+    "Set the verify parameter (bool) in response.post method")
+
 #
 BATCH_ARG = "batch"
 SERVER_ARG = "server"
@@ -124,6 +131,21 @@ HTTP_OK = 200
 IMAGES_KEY = "images"
 CAPTION_KEY = "caption"
 
+# Temp: Headers and OPEN_BUTTON_TOKEN
+
+## EXPERIMENTAL: HOW TO USE STABLE DIFFUSION URL (FORMAT OF )
+# SD_URL="https://104.167.17.2:47919/sdapi/v1/txt2img"
+# SD_PORT is optional (port mentioned in the SD URL)
+# PROMPT="anything you like"
+# TODO [DONE]: Include OPEN_BUTTON_TOKEN as environment variable
+# TODO [DONE]: Include VERIFY_RESPONSE as environment variable (to set verify=False for response.post)  
+
+SD_HEADER = {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'Authorization': f'Bearer {OPEN_BUTTON_TOKEN}',
+}
+    
 #--------------------------------------------------------------------------------
 # Globals
 # note: includes support for conditional imports for HF/PyTorch
@@ -357,9 +379,10 @@ class StableDiffusion:
             url = self.server_url
             payload = {'prompt': prompt, 'negative_prompt': negative_prompt, 'scale': scale,
                        'num_images': num_images}
-            images_request = requests.post(url, json=payload, timeout=(5 * 60))
+            images_request = requests.post(url, json=payload, timeout=(5 * 60), verify=VERIFY_RESPONSE, headers=SD_HEADER)
+            # print("\n========\n", images_request.text)
             debug.trace_object(6, images_request)
-            debug.trace_expr(5, payload, images_request, images_request.json(), delim="\n")
+            # debug.trace_expr(5, payload, images_request, images_request.json(), delim="\n")
             for image in images_request.json()[IMAGES_KEY]:
                 image_b64 = image
                 if not skip_img_spec:
@@ -458,7 +481,7 @@ class StableDiffusion:
             url = self.server_url
             payload = {'image_b64': image_b64, 'strength': denoise, 'prompt': prompt, 'negative_prompt': negative_prompt, 'scale': scale,
                        'num_images': num_images}
-            images_request = requests.post(url, json=payload, timeout=(5 * 60))
+            images_request = requests.post(url, json=payload, timeout=(5 * 60), verify=VERIFY_RESPONSE, headers=SD_HEADER)
             debug.trace_object(6, images_request)
             debug.trace_expr(5, payload, images_request, images_request.json(), delim="\n")
             for image in images_request.json()[IMAGES_KEY]:
@@ -506,7 +529,7 @@ class StableDiffusion:
             debug.assertion(self.server_url)
             url = self.server_url
             payload = {'image_b64': image_b64}
-            request_result = requests.post(url, json=payload, timeout=(5 * 60))
+            request_result = requests.post(url, json=payload, timeout=(5 * 60), verify=VERIFY_RESPONSE, headers=SD_HEADER)
             debug.trace_object(6, request_result)
             debug.trace_expr(5, payload, request_result, request_result.json(), delim="\n")
             image_caption = request_result.json()[CAPTION_KEY]
