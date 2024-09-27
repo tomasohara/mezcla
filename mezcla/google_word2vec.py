@@ -22,6 +22,9 @@
 #   ex: model.init_sims(replace=True)
 # - Have option to precompute top-n similarities for common words and save as shelve-like data file (e.g., to cut down on memory usage).
 #
+# TODO2:
+# - Check gensim 4.0 API usage: https://github.com/piskvorky/gensim/wiki/Migrating-from-Gensim-3.x-to-4.
+#
 #------------------------------------------------------------------------
 # Copyright (C) 2012-2018 Thomas P. O'Hara
 #
@@ -65,14 +68,15 @@ def format_related_terms(model, positive_terms, max_num=NUM_TOP):
     # try with the remainder if any.
     all_related_info = []
     try:
-        all_related_info = model.most_similar(positive=positive_terms)
+        ## OLD: all_related_info = model.most_similar(positive=positive_terms)
+        all_related_info = model.wv.most_similar(positive=positive_terms)
     except KeyError:
         missing = [w for w in positive_terms if w not in model]
         tpo.print_stderr("Warning: omitting words not in model: %s" % missing)
         ok_words = tpo.difference(positive_terms, missing)
         if ok_words:
             try:
-                all_related_info = model.most_similar(positive=ok_words)
+                all_related_info = model.wv.most_similar(positive=ok_words)
             except:
                 tpo.print_stderr("Unexpected error in format_related_terms: " + str(sys.exc_info()))
 
@@ -93,12 +97,12 @@ def format_related_terms(model, positive_terms, max_num=NUM_TOP):
 def tokenize(text):
     """Tokenize TEXT according to regex word tokens (i.e., \W+), which defaults to [A-Za-z0-9_]+"""
     # TODO: Allow for tokenization regex to be overwritten
-    token_regex = r"\W+" if not PRESERVE else r"\S+"
+    token_regex = r"(\W+)" if not PRESERVE else r"(\S+)"
     tokens = [t.strip() for t in re.split(token_regex, text) if t.strip()]
     if DOWNCASE:
         tokens = [t.lower() for t in tokens]
         
-    tpo.debug_format("tokenize({txt}) => t", 7, txt=text, t=tokens)
+    tpo.debug_format("tokenize({txt!r}) => {t!r}", 7, txt=text, t=tokens)
     return tokens
 
 
@@ -221,12 +225,16 @@ Notes:
     # Print the vector representations
     # TODO: add option to print word similarity matrix
     if print_vectors:
-        all_words = sorted(model.vocab.keys())
+        ## OLD: all_words = sorted(model.vocab.keys())
+        all_words = sorted(model.wv.key_to_index.keys())
         tpo.debug_format("model={m}", 6, m=model)
         print("Vocaulary terms: %s" % all_words)
         for word in all_words:
-            tpo.debug_format("model[%s]=%s" % (word, model[word]), 5)
-            print("%s\t%s" % (word, model[word]))
+            ## OLD:
+            ## tpo.debug_format("model[%s]=%s" % (word, model[word]), 5)
+            ## print("%s\t%s" % (word, model[word]))
+            tpo.debug_format("model[%s]=%s" % (word, model.wv[word]), 5)
+            print("%s\t%s" % (word, model.wv[word]))
 
     # Show similarity info for terms from input
     # TODO: add better recovery for terms unknown
