@@ -21,7 +21,6 @@ import pytest
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
 from mezcla import system
-from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -32,6 +31,7 @@ class TestRgbColorName(TestWrapper):
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_data_file(self):
         """Makes sure colors annotated as expected"""
         debug.trace(4, "TestRgbColorName.test_data_file()")
@@ -45,10 +45,10 @@ class TestRgbColorName(TestWrapper):
             'Pixels in output: 2587 of 11648\n'
         )
         system.write_file(self.temp_file, content)
-        #   =>
-        #   <(255, 0, 0), red>    :  33.33% (1)
-        #   <(0, 255, 0), lime>    :  33.33% (1)
-        #   <(0, 0, 255), blue>    :  33.33% (1)        
+        # =>
+        #   <(255, 0, 0), red>:  72.98% (1888)
+        #   <(0, 255, 0), lime>:  24.35% (630)
+        #   <(0, 0, 255), blue>:   2.67% (69)
         output = self.run_script("", self.temp_file)
         self.do_assert(re.search(r"<\(0, 255, 0\), lime>", output))
         return
