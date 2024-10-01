@@ -41,6 +41,20 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     ## TEMP
     temp_file = gh.get_temp_file()
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    ## DEBUG: @trap_exception            # TODO: remove when debugged
+    def test_01_data_file(self):
+        """Tests run_script w/ data file"""
+        # Warning: see notes above about potential issues with run_script-based tests.
+        debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
+        data = ["item1", "item2"]
+        system.write_lines(self.temp_file, data)
+        output = self.run_script(options="--help", data_file=self.temp_file)
+        self.do_assert(my_re.search(r"gluing.*scripts", output))
+        captured = self.get_stderr()
+        self.do_assert(my_re.search(r"not.*intended", captured))
+        return
+
     def test_get_temp_file(self):
         """Ensure get_temp_file works as expected"""
         debug.trace(4, "test_get_temp_file()")
