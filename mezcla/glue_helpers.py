@@ -453,7 +453,15 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
         just_issue = False
     save_temp_base = TEMP_BASE
     if TEMP_BASE:
-         system.setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
+        # note: makes sure subprocess TEMP_BASE is dir if main one is
+        if system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/"):
+            system.create_directory(TEMP_BASE)
+            new_TEMP_BASE = form_path(TEMP_BASE, "_subprocess_", create=True)
+            system.setenv("TEMP_BASE", new_TEMP_BASE)
+            ## TEMP
+            system.create_directory(new_TEMP_BASE)
+        else:
+            system.setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
     save_temp_file = TEMP_FILE
     if TEMP_FILE and (PRESERVE_TEMP_FILE is not True):
         new_TEMP_FILE = TEMP_FILE + "_subprocess_"
