@@ -41,13 +41,14 @@ from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
 
+
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
 import mezcla.gpu_utils as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
-if not my_re.search(__file__, r"\btemplate.py$"):
+if not my_re.search(repr(__file__), r"\btemplate.py$"):
     debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 ## TODO:
