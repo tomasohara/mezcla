@@ -18,6 +18,7 @@ import time
 import sys
 import re
 import pickle
+import os
 
 # Installed packages
 import pytest
@@ -389,22 +390,23 @@ class TestSystem(TestWrapper):
         """Ensure read_binary_file works as expected"""
         debug.trace(4, "test_read_binary_file()")
         test_filename = gh.create_temp_file("open binary")
-        assert THE_MODULE.read_binary_file(test_filename) == b"open binary\n"
+        assert THE_MODULE.read_binary_file(test_filename) == bytes("open binary"+os.linesep, "UTF-8")
 
 
     def test_read_directory(self):
         """Ensure read_directory works as expected"""
         debug.trace(4, "test_read_directory()")
-        split = gh.create_temp_file('').split('/')
-        path = '/'.join(split[:-1])
+        split = gh.create_temp_file('').split(THE_MODULE.path_separator())
+        path = THE_MODULE.path_separator().join(split[:-1])
         filename = split[-1]
         assert filename in THE_MODULE.read_directory(path)
 
     def test_get_directory_filenames(self):
         """Ensure get_directory_filenames works as expected"""
         debug.trace(4, "test_get_directory_filenames()")
-        assert "/etc/passwd" in THE_MODULE.get_directory_filenames("/etc")
-        assert "/boot" not in THE_MODULE.get_directory_filenames("/", just_regular_files=True)
+        path = gh.dir_path(__file__)
+        assert gh.form_path(path, "README.md") in THE_MODULE.get_directory_filenames(path)
+        assert gh.form_path(path, "resources") not in THE_MODULE.get_directory_filenames(path, just_regular_files=True)
 
     def test_read_lookup_table(self):
         """Ensure read_lookup_table works as expected"""
@@ -608,12 +610,13 @@ class TestSystem(TestWrapper):
     def test_form_path(self):
         """Ensure form_path works as expected"""
         debug.trace(4, "test_form_path()")
-        assert THE_MODULE.form_path('/usr', 'bin', 'cat') == '/usr/bin/cat'
+        assert THE_MODULE.form_path('usr', 'bin', 'cat') == 'usr' + THE_MODULE.path_separator() + 'bin' + THE_MODULE.path_separator() + 'cat'
+        THE_MODULE.path_separator()
 
     def test_is_directory(self):
         """Ensure is_directory works as expected"""
         debug.trace(4, "test_is_directory()")
-        assert THE_MODULE.is_directory("/etc")
+        assert THE_MODULE.is_directory(THE_MODULE.get_current_directory())
 
     def test_is_regular_file(self):
         """Ensure is_regular_file works as expected"""
@@ -626,8 +629,9 @@ class TestSystem(TestWrapper):
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
         debug.trace(4, "test_create_directory()")
-        path = '/tmp/mezcla_test'
-        THE_MODULE.create_directory('/tmp/mezcla_test')
+        temp_dir = THE_MODULE.getenv('TEMP')
+        path = THE_MODULE.form_path(temp_dir, 'mezcla_test')
+        THE_MODULE.create_directory(path)
         assert THE_MODULE.is_directory(path)
 
     def test_get_current_directory(self):
@@ -640,8 +644,8 @@ class TestSystem(TestWrapper):
         """Ensure set_current_directory works as expected"""
         debug.trace(4, "test_set_current_directory()")
         past_dir = THE_MODULE.get_current_directory()
-        assert THE_MODULE.set_current_directory('/home') is None
-        assert THE_MODULE.get_current_directory() == '/home'
+        assert THE_MODULE.set_current_directory(THE_MODULE.form_path(__file__, '..')) is None
+        assert THE_MODULE.get_current_directory().endswith('tests')
         assert THE_MODULE.get_current_directory() is not past_dir
 
 
@@ -686,14 +690,14 @@ class TestSystem(TestWrapper):
     def test_chomp(self):
         """Ensure chomp works as expected"""
         debug.trace(4, "test_chomp()")
-        assert THE_MODULE.chomp("some\n") == "some"
-        assert THE_MODULE.chomp("abc\n\n") == "abc\n"
+        assert THE_MODULE.chomp("some"+os.linesep) == "some"
+        assert THE_MODULE.chomp("abc"+os.linesep+os.linesep) == "abc"+os.linesep
         assert THE_MODULE.chomp("http://localhost/", "/") == "http://localhost"
 
     def test_normalize_dir(self):
         """Ensure normalize_dir works as expected"""
         debug.trace(4, "test_normalize_dir()")
-        assert THE_MODULE.normalize_dir("/etc/") == "/etc"
+        assert THE_MODULE.normalize_dir(__file__ + THE_MODULE.path_separator()) == __file__
 
     def test_non_empty_file(self):
         """Ensure non_empty_file works as expected"""

@@ -891,7 +891,7 @@ def get_file_size(filename):
     return size
 
 
-def path_separator(sysname=None):
+def path_separator(sysname=os.name):
     """Return text used to separate paths components under current OS (e.g., / or \\).
     This is basically a wrapper around os.path.sep with tracing, added to avoid using non-existent os.path.delim.
     Note: can overide SYSNAME to get separator for another system; see os.uname()"""
