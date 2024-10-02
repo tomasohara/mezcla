@@ -84,7 +84,7 @@ class TestExtractDocumentText(TestWrapper):
         ## test_command_1 = f"../extract_document_text.py {doc_input_temp} {doc_output_temp}"
         ## gh.run(test_command_1)
         ## output = gh.read_file(doc_output_temp)
-        output = self.run_script(env_options="STDOUT=1", data_file=doc_input_temp)
+        output = self.run_script(env_options=["STDOUT=1"], data_file=doc_input_temp)
         
         ## BAD: assert output == DOCUMENT_TEXT
         assert output.strip() == DOCUMENT_TEXT
@@ -102,7 +102,7 @@ class TestExtractDocumentText(TestWrapper):
             ]
         temp_file = self.temp_file + ".html"
         system.write_lines(temp_file, data)
-        output = self.run_script(options="", env_options="STDOUT=1", data_file=temp_file)
+        output = self.run_script(options="", env_options=["STDOUT=1"], data_file=temp_file)
         self.do_assert("Hey" == output.strip())
         return
 

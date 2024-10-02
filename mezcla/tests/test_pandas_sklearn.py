@@ -85,7 +85,7 @@ class TestPandasSklearn(TestWrapper):
     def test_verbose(self):
         """Ensure verbose works as expected"""
         debug.trace(4, "test_normal_usage()")
-        output = self.run_script(env_options='VERBOSE=true', data_file=IRIS_EXAMPLE)
+        output = self.run_script(env_options=['VERBOSE=true'], data_file=IRIS_EXAMPLE)
         assert 'Development test classification report:' in output
         expected_confusion_matrix = (
             'Development test set confusion matrix:\n'
@@ -129,13 +129,13 @@ class TestPandasSklearn(TestWrapper):
             ' 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,'
             ' 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]'
         )
-        output = self.run_script(env_options='SHOW_ABLATION=true', data_file=IRIS_EXAMPLE)
+        output = self.run_script(env_options=['SHOW_ABLATION=true'], data_file=IRIS_EXAMPLE)
         assert 'ablation accuracy:' in output 
         assert expected_ablation_acc in output
 
     def test_precision_recall(self):
         """Ensure precision_recall works as expected"""
-        output = self.run_script(env_options='PRECISION_RECALL=true', data_file=IRIS_EXAMPLE)
+        output = self.run_script(env_options=['PRECISION_RECALL=true'], data_file=IRIS_EXAMPLE)
         expected_content = (
             'precision:\n'
             '\t[]\n'
@@ -149,7 +149,7 @@ class TestPandasSklearn(TestWrapper):
     @pytest.mark.xfail
     def test_micro_average(self):
         """Ensure micro_average works as expected"""
-        output = self.run_script(env_options='PRECISION_RECALL=true MICRO_AVERAGE=true', data_file=IRIS_EXAMPLE)
+        output = self.run_script(env_options=['PRECISION_RECALL=true', 'MICRO_AVERAGE=true'], data_file=IRIS_EXAMPLE)
         expected_content = (
             'precision:\n'
             '\t[array([0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,\n'

@@ -401,7 +401,15 @@ class TestWrapper(unittest.TestCase):
                          env=env_options, stdin=uses_stdin, post=post_options, back=background)
         if options is None:
             options = ""
-        if env_options is None:
+        if env_options is not None:
+            suffix = ' '
+            preffix = ' '
+            if os.name == 'nt':
+                suffix = '&& '
+                preffix = 'SET '
+            env_options = [ f"{preffix}{env}{suffix}" for env in env_options]
+            env_options = " ".join(env_options)
+        else:
             env_options = ""
         if post_options is None:
             post_options = ""
