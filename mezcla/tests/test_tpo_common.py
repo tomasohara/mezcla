@@ -29,6 +29,7 @@
 import sys
 import re
 from datetime import datetime
+import os
 
 # Installed modules
 import pytest
@@ -319,7 +320,7 @@ class TestTpoCommon(TestWrapper):
     def test_chomp(self):
         """Ensure chomp works as expected"""
         debug.trace(4, "test_chomp()")
-        assert THE_MODULE.chomp("abc\n") == "abc"
+        assert THE_MODULE.chomp("abc" + os.linesep) == "abc"
         assert THE_MODULE.chomp("http://localhost/", "/") == "http://localhost"
 
     @trap_exception
