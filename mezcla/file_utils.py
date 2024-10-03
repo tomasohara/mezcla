@@ -71,7 +71,7 @@ def get_directory_listing(path          = '.',
             # Avoid duplicated filenames adding the relative path
             if recursive or long:
                 for item in items:
-                    result_list.append(root + '/' + item)
+                    result_list.append(root + system.path_separator() + item)
             else:
                 result_list = items
 
@@ -186,10 +186,15 @@ def get_permissions(path):
 
 
 # strftime format code list can be found here: https://www.programiz.com/python-programming/datetime/strftime
-def get_modification_date(path, strftime='%b %-d %H:%M'):
+def get_modification_date(path, strftime=None):
     """Get last modification date of file"""
+    if strftime is None:
+        if os.name == 'nt':  # Windows
+            strftime = '%b %#d %H:%M'
+        else:  # Unix-like systems
+            strftime = '%b %-d %H:%M'
+    
     return datetime.fromtimestamp(os.path.getmtime(path)).strftime(strftime).lower() if path_exist(path) else 'error'
-
 
 #-------------------------------------------------------------------------------
 # File conversion
