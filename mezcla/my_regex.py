@@ -17,7 +17,6 @@
 # TODO:
 # - Add examples for group(), groups(), etc.
 # - Clean up script (e.g., regex => regex_wrapper).
-# - Add perl-inspired accessors (e.g., PREMATCH, POSTMATCH).
 #
 
 """Wrapper class for regex match results"""
@@ -113,6 +112,7 @@ class regex_wrapper():
     def __init__(self, ):
         debug.trace_fmtd(4, "my_regex.__init__(): self={s}", s=self)
         self.match_result = None
+        self.search_text = None
         # TODO: self.regex = ""
 
         # HACK: Import attributes from re class
@@ -148,6 +148,7 @@ class regex_wrapper():
                          r=regex, t=text, f=flags, s=self)
         ## OLD: debug.assertion(isinstance(text, six.string_types))
         debug.assertion(isinstance(text, (str, bytes)) and (isinstance(regex, type(text))))
+        self.search_text = text
         self.check_pattern(regex)
         self.match_result = re.search(regex, text, flags)
         if self.match_result:
@@ -162,6 +163,7 @@ class regex_wrapper():
             base_trace_level = self.TRACE_LEVEL
         debug.trace_fmtd((1 + base_trace_level), "my_regex.match({r!r}, {t!r}, {f}): self={s}",
                          r=regex, t=text, f=flags, s=self)
+        self.search_text = text
         self.check_pattern(regex)
         self.match_result = re.match(regex, text, flags)
         if self.match_result:
@@ -240,8 +242,29 @@ class regex_wrapper():
 
     def escape(self, text):
         """Escape special characters in TEXT"""
+        ## TODO3: make static method
         result = re.escape(text)
         debug.trace(self.TRACE_LEVEL + 1, f"escape({text!r}) => {result!r}")
+        return result
+
+    def pre_match(self):
+        """Text preceding the match or None if not defined"""
+        result = None
+        if self.match_result:
+            start = 0
+            end = self.match_result.span(0)[0]
+            result = self.search_text[start: end]
+        debug.trace(self.TRACE_LEVEL, f"pre_match() => {result!r}")
+        return result
+    
+    def post_match(self):
+        """Text following the match or None if not defined"""
+        result = None
+        if self.match_result:
+            start = self.match_result.span(0)[1]
+            end = len(self.search_text)
+            result = self.search_text[start: end]
+        debug.trace(self.TRACE_LEVEL, f"post_match() => {result!r}")
         return result
     
 #...............................................................................
