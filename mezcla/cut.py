@@ -81,9 +81,14 @@ TAB_DIALECT = "tab"                     # dialect option for TSV
 SINGLE_LINE = "single-line"             # collapse multi-line fields into one
 MAX_FIELD_LEN = "max-field-len"         # value length before elided
 ## TODO: TODO_ARG = "TODO-arg"          # TODO: comment
-NEW_FIX = system.getenv_bool("NEW_FIX", False,
-                             "HACK: Fix for --fix bug")
+NEW_FIX = system.getenv_bool(
+    "NEW_FIX", False,
+    desc="HACK: Fix for --fix bug for whitespace to tabs")
 NUM_FN_SHORTCUTS = 9
+CSV_FORMAT = system.getenv_bool(
+    "CSV_FORMAT", False,
+    desc="Use CSV instead of TSV")
+
 
 #...............................................................................
 
@@ -174,7 +179,7 @@ class Script(Main):
     ## OLD: delimiter = TAB
     delimiter = None
     output_delimiter = None
-    csv = False
+    csv = CSV_FORMAT
     csv_reader = None
     all_fields = False
     dialect = None
@@ -199,10 +204,12 @@ class Script(Main):
         FIELDS_DEFAULT = ",".join(self.fields)
         debug.trace_expr(4, FIELDS_DEFAULT)
         fields = self.get_parsed_option(F_OPT, FIELDS_DEFAULT)
-        fields = self.get_parsed_option(FIELDS, fields)
-        if fields:
-            self.fields = self.parse_field_spec(fields)
-        self.all_fields = self.get_parsed_option(ALL_FIELDS, (not fields))
+        self.fields = self.get_parsed_option(FIELDS, fields)
+        ## NOTES: Fields initialization postponed until columns reads to allow ffor symbolic names
+        ## OLD:
+        ## if fields:
+        ##     self.fields = self.parse_field_spec(fields)
+        self.all_fields = self.get_parsed_option(ALL_FIELDS, (not self.fields))
         debug.assertion(not (self.fields and self.all_fields))
         #
         self.fix = self.get_parsed_option(FIX, self.fix)
@@ -262,12 +269,31 @@ class Script(Main):
         debug.trace_object(5, self, label="Script instance")
         return
 
-    def parse_field_spec(self, field_spec):        # pylint: disable=no-self-use
+    def parse_field_spec(self, field_spec, columns):
         """Convert the FIELD_SPEC from string to list of integers. The specification can contain numeric ranges (e.g., "3-5") or comma-separated values (e.g., "7,9,11").
+        Symbolic names can also be used (e.g., "sepal_width,petal_width")
         Note: throws exception if fields are not integers"""
+        ## TODO3: decompose using helper functions
         # EX: self.parse_field_spec("1,2,5-8,3,4") => [1, 2, 5, 6, 7, 8, 3, 4]
-        debug.trace_fmtd(5, "parse_field_spec({fs})", fs=field_spec)
+        debug.trace(5, f"parse_field_spec({field_spec}); self={self}")
 
+        # Convert labels to 1-based offsets (TODO3: find CSV spec and clarify label chars)
+        # NOTE: dashes in field names not supported (TODO2: subsitute non-ascii dash)
+        in_field_spec = field_spec
+        if my_re.search(r"[A-Za-z]", field_spec):
+            ## TODO4: quote fields that should be used as is; add alternative to dash
+            debug.trace(4, "FYI: Fieldnames currently are Python-like Ascii identifiers")
+        while my_re.search(r"([a-z][a-z0-9_]+)", field_spec, flags=my_re.IGNORECASE):
+            field_name = my_re.group(1)
+            if field_name not in columns:
+                system.print_error(f"Error: Unable to resolve {field_name}: {in_field_spec=}")
+                if field_name.lower() in str(field_spec).lower():
+                    debug.trace(4, "Try matching case")
+                break
+            field_pos = (1 + columns.index(field_name))
+            field_spec = my_re.pre_match() + str(field_pos) + my_re.post_match()
+            debug.trace(4, f"Replaced {field_name!r} with {field_pos}")
+        
         # Normalize the field specification
         debug.assertion(not re.search(r"[0-9] [0-9]", field_spec))
         field_spec = field_spec.replace(SPACE, "")
@@ -365,6 +391,7 @@ class Script(Main):
         last_row_length = None
         num_rows = 0
         num_cols = None
+        columns = None
         for i, row in enumerate(self.csv_reader):
             if NEW_FIX and (self.delimiter == TAB):
                 # Strip leading spaces and replace other multiple spaces by a tab
@@ -376,6 +403,10 @@ class Script(Main):
                 line = re.sub(" +", TAB, line)
                 row = line.split(TAB)
                 debug.assertion(not any(SPACE in field for field in row))
+            if i == 0:
+                columns = row
+                if self.fields:
+                    self.fields = self.parse_field_spec(self.fields, columns)
             debug.trace_fmt(6, "R{n}: {r}", n=(i + 1), r=row)
             debug.trace_fmt(5, "R{n}: len(row)={l} [{rspec}]", n=(i + 1), l=len(row), rspec=elide_values(row))
             debug.assertion((len(row) == last_row_length) or (not last_row_length))
