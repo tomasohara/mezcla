@@ -275,7 +275,7 @@ class Script(Main):
         Note: throws exception if fields are not integers"""
         ## TODO3: decompose using helper functions
         # EX: self.parse_field_spec("1,2,5-8,3,4") => [1, 2, 5, 6, 7, 8, 3, 4]
-        debug.trace(5, f"parse_field_spec({field_spec}); self={self}")
+        debug.trace(5, f"parse_field_spec({field_spec}, {columns}); self={self}")
 
         # Convert labels to 1-based offsets (TODO3: find CSV spec and clarify label chars)
         # NOTE: dashes in field names not supported (TODO2: subsitute non-ascii dash)
@@ -286,7 +286,7 @@ class Script(Main):
         while my_re.search(r"([a-z][a-z0-9_]+)", field_spec, flags=my_re.IGNORECASE):
             field_name = my_re.group(1)
             if field_name not in columns:
-                system.print_error(f"Error: Unable to resolve {field_name}: {in_field_spec=}")
+                system.print_error(f"Error: Unable to resolve field {field_name!r}: {in_field_spec=}")
                 if field_name.lower() in str(field_spec).lower():
                     debug.trace(4, "Try matching case")
                 break
