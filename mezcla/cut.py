@@ -88,7 +88,9 @@ NUM_FN_SHORTCUTS = 9
 CSV_FORMAT = system.getenv_bool(
     "CSV_FORMAT", False,
     desc="Use CSV instead of TSV")
-
+MAX_FIELD_SIZE = system.getenv_int(
+    "MAX_FIELD_SIZE", -1,
+    desc="Overide for default max field size (128k)")
 
 #...............................................................................
 
@@ -338,6 +340,13 @@ class Script(Main):
         Note: The fields are 1-based (i.e., first column specified 1 not 0)"""
         debug.trace_fmtd(4, "run_main_step()")
 
+        # Overide the maxium field size if specified
+        if MAX_FIELD_SIZE > -1:
+            old_limit = csv.field_size_limit()
+            debug.assertion(MAX_FIELD_SIZE > old_limit)
+            csv.field_size_limit(MAX_FIELD_SIZE)
+            debug.trace(4, f"Set max field size to {MAX_FIELD_SIZE}; was {old_limit}")
+        
         # If unspecified, try to determine dialect for CSV input automatically
         # Notes: doesn't recognize escapes properly, such as \"); and,
         # sniffer doesn't work for stdin due to python limitation with backtracking.
@@ -404,6 +413,7 @@ class Script(Main):
                 row = line.split(TAB)
                 debug.assertion(not any(SPACE in field for field in row))
             if i == 0:
+                # TODO3: strip BOM; warn about delimiter mismatch
                 columns = row
                 if self.fields:
                     self.fields = self.parse_field_spec(self.fields, columns)
