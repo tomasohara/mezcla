@@ -65,12 +65,27 @@ class TestFileUtils(TestWrapper):
                                          readable = False,
                                          return_string = False)
         """
-        system.write_file(self.temp_file, '')
+        temp_file = self.get_temp_file()
+        system.write_file(temp_file, '')
 
-        ls_result = gh.run(f'ls -l {self.temp_file}')
-        ls_result = re.sub(r'\s+', ' ', ls_result)
-
-        assert THE_MODULE.get_information(self.temp_file, return_string=True).lower() == ls_result.lower()
+        if os.name == 'nt':
+            ls_result = gh.run(f'dir {temp_file} /Q').split('\n')[5].strip()
+            ls_result = re.sub(r'\s+', ' ', ls_result).split(' ')
+            modif_time = ls_result[1]
+            owner = ls_result[3].split('\\')[1]
+            file_name = ls_result[-1]
+            info = THE_MODULE.get_information(temp_file, return_string=False)
+            
+            assert modif_time in info[5]
+            assert owner == info[2]
+            assert file_name in info[-1]
+            assert 'None' == info[3]
+            assert os.stat(temp_file).st_size == int(info[4])
+            # assert ls_result.lower() == info.lower()
+        else:
+            ls_result = gh.run(f'ls -l {temp_file}')
+            ls_result = re.sub(r'\s+', ' ', ls_result)
+            assert THE_MODULE.get_information(temp_file, return_string=True).lower() == ls_result.lower()
 
     def test_get_permissions(self):
         """Tests for get_permissions(path)"""
