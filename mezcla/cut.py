@@ -413,8 +413,12 @@ class Script(Main):
                 row = line.split(TAB)
                 debug.assertion(not any(SPACE in field for field in row))
             if i == 0:
-                # TODO3: strip BOM; warn about delimiter mismatch
+                # note: Byte order mark (BOM) is removed
+                # TODO3: warn about delimiter mismatch
                 columns = row
+                BOM = '\ufeff'
+                if columns and columns[0].startswith(BOM):
+                    columns[0] = columns[0][len(BOM):]
                 if self.fields:
                     self.fields = self.parse_field_spec(self.fields, columns)
             debug.trace_fmt(6, "R{n}: {r}", n=(i + 1), r=row)
