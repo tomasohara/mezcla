@@ -55,6 +55,7 @@
 
 # Standard packages
 import atexit
+from _collections_abc import Mapping
 from datetime import datetime
 import enum
 import inspect
@@ -464,6 +465,11 @@ if __debug__:
             return
         if para_mode_tracing:
             trace(ALWAYS, "")
+        if isinstance(collection, Mapping):
+            try:
+                collection = dict(collection)
+            except:
+                trace_exception(6, "mapping to dict in trace_values")
         # note: sets will be coerced to lists
         if not isinstance(collection, (list, dict)):
             if hasattr(collection, '__iter__'):
@@ -1205,10 +1211,11 @@ if __debug__:
         pre = post = ""
         if para_mode_tracing:
             pre = post = "\n"
-        trace_fmt(DETAILED, "{pre}environment: {{\n\t{env}\n}}{post}",
+        trace_fmt(VERBOSE, "{pre}environment: {{\n\t{env}\n}}{post}",
                   env="\n\t".join([(k + ': ' + format_value(os.environ[k]))
                                    for k in sorted(dict(os.environ))]),
                   pre=pre, post=post, max_len=4096)
+        trace_values(QUITE_DETAILED, os.environ, "os.environ")
 
         # Likewise show additional information during verbose debug tracing
         # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
