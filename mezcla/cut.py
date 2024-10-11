@@ -42,8 +42,11 @@ from mezcla.my_regex import my_re
 from mezcla import system
 
 # Fill out constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
-FIELDS = "fields"                       # field indices (1-based)
+FIELDS = "fields"                       # field indices (1-based or symbolic)
 F_OPT = "f"                             # alias for fields
+EXCLUDE_OPT = "exclude"                 # fields to exclude (1-based or symbolic)
+X_OPT = "x"                             # alias for exclude
+ENCODE_OPT = "encode"                   # use repr for newlines, etc.
 FIX = "fix"                             # convert runs of spaces into a tab
 CSV = "csv"                             # comma-separated value format
 TSV = "tsv"                             # tab-separated value format
@@ -176,7 +179,11 @@ csv.register_dialect("tab", tab_dialect)
 
 class Script(Main):
     """Input processing class"""
+    inclusion_spec = ''
+    exclusion_spec = ''
     fields = []
+    exclude_fields = []
+    encode_values = False
     fix = False
     ## OLD: delimiter = TAB
     delimiter = None
@@ -205,8 +212,13 @@ class Script(Main):
                 self.fields.append(str(i + 1))
         FIELDS_DEFAULT = ",".join(self.fields)
         debug.trace_expr(4, FIELDS_DEFAULT)
-        fields = self.get_parsed_option(F_OPT, FIELDS_DEFAULT)
-        self.fields = self.get_parsed_option(FIELDS, fields)
+        inclusion_spec = self.get_parsed_option(F_OPT, FIELDS_DEFAULT)
+        self.inclusion_spec = self.get_parsed_option(FIELDS, inclusion_spec)
+        EXCLUDE_DEFAULT = ",".join(self.exclude_fields)
+        exclusion_spec = self.get_parsed_option(F_OPT, EXCLUDE_DEFAULT)
+        self.exclusion_spec = self.get_parsed_option(EXCLUDE_OPT, exclusion_spec)
+        debug.assertion(not (self.inclusion_spec and self.exclusion_spec))
+        self.encode_values = self.get_parsed_option(ENCODE_OPT, self.encode_values)
         ## NOTES: Fields initialization postponed until columns reads to allow ffor symbolic names
         ## OLD:
         ## if fields:
@@ -307,6 +319,11 @@ class Script(Main):
 
         # Replace ranges with comma-separated cols (e.g., "5-7" => "5,6,7")
         if "-" in field_spec:
+            # Supply missing first and last column (e.g., "^-3" => "1-3" and "2-$" => "2-3")
+            field_spec = my_re.sub(r"^\-", "1-", field_spec)
+            field_spec = my_re.sub(r"\-$", f"-{len(columns)}", field_spec)
+
+            # Replace ranges
             while my_re.search(r"([0-9]+)\-([0-9]+)", field_spec):
                 range_spec = my_re.group(0)
                 debug.trace_fmtd(4, "Converting range: {r}", r=range_spec)
@@ -419,8 +436,10 @@ class Script(Main):
                 BOM = '\ufeff'
                 if columns and columns[0].startswith(BOM):
                     columns[0] = columns[0][len(BOM):]
-                if self.fields:
-                    self.fields = self.parse_field_spec(self.fields, columns)
+                if self.inclusion_spec:
+                    self.fields = self.parse_field_spec(self.inclusion_spec, columns)
+                if self.exclusion_spec:
+                    self.exclude_fields = self.parse_field_spec(self.exclusion_spec, columns)
             debug.trace_fmt(6, "R{n}: {r}", n=(i + 1), r=row)
             debug.trace_fmt(5, "R{n}: len(row)={l} [{rspec}]", n=(i + 1), l=len(row), rspec=elide_values(row))
             debug.assertion((len(row) == last_row_length) or (not last_row_length))
@@ -433,7 +452,8 @@ class Script(Main):
             # Derive the fields to extract if all to be extracted
             debug.trace_fmt(7, "pre f={f} all={a}", f=self.fields, a=self.all_fields)
             if ((not self.fields) and self.all_fields):
-                self.fields = [(c + 1) for c in range(len(row))]
+                ## OLD: self.fields = [(c + 1) for c in range(len(row))]
+                self.fields = [(c + 1) for c in range(len(row)) if (c + 1) not in self.exclude_fields]
                 if not self.fields:
                     ## OLD: system.print_stderr("Error: No items in header row at line {l}", l=(i + 1))
                     system.print_stderr("Error: No items in row at line {l}", l=(i + 1))
@@ -458,13 +478,16 @@ class Script(Main):
             for f in self.fields:
                 valid_field_number = (1 <= f <= len(row))
                 debug.trace_expr(5, f)
-                debug.assertion(valid_field_number)
+                debug.assertion(valid_field_number, f"field {f}")
                 ## OLD: output_row.append(row[f - 1] if valid_field_number else "")
                 column = row[f - 1] if valid_field_number else ""
                 if self.single_line:
                     column = re.sub(r"\s", SPACE, column)
                 if self.max_field_len:
                     column = gh.elide(column, max_len=self.max_field_len)
+                if self.encode_values:
+                    ## TODO4: maxcount of 1 for left and right
+                    column = repr(column).strip("'")
                 output_row.append(column)
             debug.trace_expr(6, output_row)
             csv_writer.writerow(output_row)
@@ -513,12 +536,17 @@ if __name__ == '__main__':
              (SINGLE_LINE, "Remove embedded newlines from mult-line fields"),
              (TAB_STYLE, "Non-excel TSV conventions (default)"),
              ## (TODO_ARG, "TODO: arg desc").
-             (UNIX_STYLE, "Use Unix conventions for CSV files (see csv python package docs)")]),
+             (UNIX_STYLE, "Use Unix conventions for CSV files (see csv python package docs)"),
+             (ENCODE_OPT, "Output field encoded via repr (i.e., canonical representation)"),
+             ]),
         int_options = [(MAX_FIELD_LEN, "Maximum length per field")],
         text_options=[(DELIM, "Input field separator"),
                       (DIALECT, "CSV module dialect: standard (i.e., excel, excel-tab, or unix) or adhoc (e.g., pyspark, hive)"),
                       (OUTPUT_DIALECT, "dialect for output--defaults to input one"),
-                      (FIELDS, "Field specification (1-based): single column, range of columns, or comma-separated columns"),
+                      (FIELDS, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
                       (F_OPT, "Alias for --fields"),
-                      (OUT_DELIM, "Output field separator")])
+                      (OUT_DELIM, "Output field separator"),
+                      (EXCLUDE_OPT, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
+                      (X_OPT, "Alias for --exclude"),
+                      ])
     app.run()
