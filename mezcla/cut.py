@@ -260,12 +260,13 @@ class Script(Main):
         # Check CSV dialet options
         debug.assertion(system.just_one_non_null([self.get_parsed_option(o, None) for o in 
                                                   [DIALECT, EXCEL_DIALECT, UNIX_DIALECT, PYSPARK_DIALECT, TAB_DIALECT]]))
+        pyspark_style = self.get_parsed_option(PYSPARK_STYLE)
         if self.get_parsed_option(EXCEL_STYLE):
             self.dialect = EXCEL_DIALECT
+        elif pyspark_style:
+            self.dialect = PYSPARK_DIALECT
         elif (self.get_parsed_option(UNIX_STYLE) or (self.delimiter == COMMA)):
             self.dialect = UNIX_DIALECT
-        elif self.get_parsed_option(PYSPARK_STYLE):
-            self.dialect = PYSPARK_DIALECT
         elif (self.get_parsed_option(TAB_STYLE) or (self.delimiter == TAB)):
             self.dialect = TAB_DIALECT
         self.dialect = self.get_parsed_option(DIALECT, self.dialect)
@@ -273,7 +274,7 @@ class Script(Main):
         if (self.output_delimiter == TAB):
             default_output_dialect = TAB_DIALECT
         if (self.output_delimiter == COMMA):
-            default_output_dialect = UNIX_DIALECT
+            default_output_dialect = PYSPARK_DIALECT if pyspark_style else UNIX_DIALECT
         self.output_dialect = self.get_parsed_option(OUTPUT_DIALECT, default_output_dialect)
         # TODO: see if there is an option to determine number of fields (before reading data)
         ## if self.all_fields:
@@ -408,10 +409,12 @@ class Script(Main):
             debug.assertion(not self.other_filenames)
         self.csv_reader = csv.reader(self.input_stream, delimiter=self.delimiter, 
                                      dialect=self.dialect)
-        debug.trace_object(5, self.csv_reader, "csv_reader")
-        debug.trace_object(5, self.csv_reader.dialect, "csv_reader.dialect")
         csv_writer = csv.writer(sys.stdout, delimiter=self.output_delimiter, 
                                 dialect=self.output_dialect)
+        debug.trace_object(5, self.csv_reader, "csv_reader")
+        debug.trace_object(5, self.csv_reader.dialect, "csv_reader.dialect")
+        debug.trace_object(5, csv_writer, "csv_writer")
+        debug.trace_object(5, csv_writer.dialect, "csv_writer.dialect")
 
         # Iterate through the rows, outputting subset of columns
         last_row_length = None
