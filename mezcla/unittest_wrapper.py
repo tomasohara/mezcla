@@ -383,7 +383,7 @@ class TestWrapper(unittest.TestCase):
         return
 
     def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
-                   out_file=None, env_options=None, uses_stdin=None, post_options=None, background=None, skip_stdin=None):
+                   out_file=None, env_options: str=None, uses_stdin=None, post_options=None, background=None, skip_stdin=None):
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
         not specified, they  are derived from self.temp_file. The optional POST_OPTIONS
@@ -407,8 +407,8 @@ class TestWrapper(unittest.TestCase):
             if os.name == 'nt':
                 suffix = '&& '
                 preffix = 'SET '
-            env_options = [ f"{preffix}{env}{suffix}" for env in env_options]
-            env_options = " ".join(env_options)
+            list_options = [ f"{preffix}{option}{suffix}" for option in env_options.split(' ')]
+            env_options = " ".join(list_options)
         else:
             env_options = ""
         if post_options is None:

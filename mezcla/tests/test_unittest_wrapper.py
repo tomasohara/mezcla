@@ -50,7 +50,7 @@ class TestIt(TestWrapper):
         debug.trace(4, f"TestIt.test_01_usage(); self={self}")
         log_file = self.temp_file + ".log"
         ## BAD: output = self.run_script(log_file=log_file)
-        output = self.run_script(env_options=["DEBUG_LEVEL=4"], log_file=log_file)
+        output = self.run_script(env_options="DEBUG_LEVEL=4", log_file=log_file)
         self.do_assert(not output.strip())
         log_contents = system.read_file(log_file)
         debug.trace_expr(5, log_contents)
