@@ -11,9 +11,6 @@
 
 """Tests for cut module"""
 
-# Standard packages
-## NOTE: this is empty for now
-
 # Installed packages
 import pytest
 
@@ -81,6 +78,15 @@ class TestCutScript(TestWrapper):
         script_output = self.run_script(options='--csv --fields symboling-fueltype', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4).strip())
         script_output = self.run_script(options='--csv --fields symboling,CarName,fueltype', data_file=CSV_EXAMPLE)
+        assert (script_output.strip() == system.read_file(FIELDS_2_3_4).strip())
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_exclude_fields(self):
+        """Text exclusion field option (numeric and symbolic)"""
+        # Note: this involves the same test fields as test_fields
+        script_output = self.run_script(options='--csv --exclude 1,5-26', data_file=CSV_EXAMPLE)
+        assert (script_output.strip() == system.read_file(FIELDS_2_3_4).strip())
+        script_output = self.run_script(options='--csv --exclude car_ID,aspiration-price', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4).strip())
         
 
