@@ -36,6 +36,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 # Constants and Environment options
 TL = debug.TL
+TRANSLATION_TEXT = "translation_text"
 
 FROM = system.getenv_text("FROM", "es")
 TO = system.getenv_text("TO", "en")
@@ -69,6 +70,9 @@ USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
 ## NOTE: Round-trip translation: Translating text from one language to another and back to its original form
 ROUND_TRIP = system.getenv_bool("ROUND_TRIP", False, 
                                 "Perform round-trip translation")
+## EXPERIMENT: Dynamic Chunking (disabled by default)
+DYNAMIC_WORD_CHUNKING = system.getenv_bool("DYNAMIC_WORD_CHUNKING", False, 
+                                "(Default: Sentence Chunking) Splits longer text input to chunks based on word count")
 
 #-------------------------------------------------------------------------------
 
@@ -80,9 +84,46 @@ def show_gpu_usage(trace_level=None):
         debug.code(trace_level, lambda: debug.trace(1, gh.run("nvidia-smi")))
     return
 
+def get_split_regex():
+    if USE_PARAGRAPH_MODE:
+        return r"\n\s*\n"
+    elif not DYNAMIC_WORD_CHUNKING:
+        return r'(?<=[.!?]) +'
+    else:
+        return None
+
+def dynamic_chunking(text, max_len=MAX_LENGTH):
+    if DYNAMIC_WORD_CHUNKING:
+        words = text.split()
+        chunks = [" ".join(words[i:i + max_len]) for i in range(0, len(words), max_len)]
+    else:
+        split_regex = get_split_regex()
+        segments = my_re.split(split_regex, text)
+        chunks = []
+        current_chunk = []
+
+        for segment in segments:
+            if len(" ".join(current_chunk + [segment])) <= max_len:
+                current_chunk.append(segment)
+            else:
+                chunks.append(" ".join(current_chunk))
+                current_chunk = [segment]
+
+        if current_chunk:
+            chunks.append(" ".join(current_chunk))
+
+    return chunks
+
+# OLD: Translated Text
 def translated_text(model_obj):
     TRANSLATION_TEXT = "translation_text"
     return model_obj[0][TRANSLATION_TEXT] or ""
+
+def calculate_similarity(text1, text2):
+    """Calculate the cosine similarity between the two strings"""
+    vectorizer = TfidfVectorizer().fit_transform([text1, text2])
+    vectors = vectorizer.toarray()
+    return cosine_similarity(vectors)[0, 1]
 
 def main():
     """Entry point"""
@@ -181,12 +222,6 @@ def main():
         import gradio as gr
         from transformers import pipeline
         model_reverse = pipeline(task=mt_task_reverse, model=mt_model_reverse)
-        
-        def calculate_similarity(text1, text2):
-            """Calculate the cosine similarity between the two strings"""
-            vectorizer = TfidfVectorizer().fit_transform([text1, text2])
-            vectors = vectorizer.toarray()
-            return cosine_similarity(vectors)[0, 1]
 
         def gradio_translation_input(word_src, is_round_trip):
             word_dst = model(word_src)[0]["translation_text"].split(".")[0]
@@ -200,7 +235,9 @@ def main():
             fn=gradio_translation_input,
             inputs=[
                 gr.Textbox(lines=2, placeholder="Enter text to translate", label="Input Text"),
-                gr.Checkbox(label="Enable Round-trip Translation")
+                gr.Checkbox(label="Enable Round-trip Translation"),
+                # gr.Checkbox(label="Split Sentences"),
+                # gr.Checkbox(label="Dynamic Chunking"),
             ],
             outputs=[
                 gr.Textbox(label="Translated Text"),
@@ -228,18 +265,25 @@ def main():
     # Otherwise, do translation and output
     else:
         TRANSLATION_TEXT = "translation_text"
-        split_regex = r"\n\s*\n" if USE_PARAGRAPH_MODE else "\n"
+        
+        ## OLD: Before dynamic chunking (and get_split_regex function)
+        # split_regex = r"\n\s*\n" if USE_PARAGRAPH_MODE else "\n"
         ## Avoid "I'm sorry" bug when reading from stdin
-        segments = my_re.split(split_regex, text)
+        # segments = my_re.split(split_regex, text)
+
+        segments = dynamic_chunking(text)
         # print(segments)
+
         if segments[-1] == "":
             segments = segments[:-1]
         ## OLD:
         # for segment in my_re.split(split_regex, text)
+        
         for segment in segments:
             try:
                 # Translation Level I (FROM -> TO)
                 translation = model(segment, max_length=MAX_LENGTH)
+                ##### ERROR: CURRENT METHOD NOT APPLIED; WORKS WELL WITH 
                 translation_text = translated_text(translation)
                 
                 ## Round-Trip translation uses the reverse model to re-translate back to original form
