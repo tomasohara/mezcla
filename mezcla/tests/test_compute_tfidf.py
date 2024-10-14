@@ -98,6 +98,7 @@ import pytest
 from mezcla import debug
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla.my_regex import my_re
+import mezcla.glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
