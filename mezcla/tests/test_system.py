@@ -604,7 +604,13 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_get_file_size()")
         temp_file = gh.get_temp_file()
         gh.write_file(temp_file, 'content')
-        assert THE_MODULE.get_file_size(temp_file) == 8
+        if os.name == 'nt':
+            # CRLF line-end occupies 1 byte more than LF
+            assert THE_MODULE.get_file_size(temp_file) == 9
+        elif os.name == 'posix':
+            assert THE_MODULE.get_file_size(temp_file) == 8
+        else:
+            assert False, "unsupported OS"
         assert THE_MODULE.get_file_size('non-existent-file.txt') == -1
 
     def test_form_path(self):
@@ -720,12 +726,26 @@ class TestSystem(TestWrapper):
     def test_absolute_path(self):
         """Ensure absolute_path works as expected"""
         debug.trace(4, "test_absolute_path()")
-        assert THE_MODULE.absolute_path("/etc/mtab").startswith("/etc")
+        temp_file = self.create_temp_file('abc')
+        if os.name == 'nt':
+            assert my_re.search(r"[A-Z]:\\", THE_MODULE.absolute_path(temp_file))
+            ## TODO3: .absolute_path(".").startswith(USER_HOME)
+        elif os.name == 'posix':
+            assert "/" in THE_MODULE.absolute_path(temp_file)
+            assert THE_MODULE.absolute_path("/etc/mtab").startswith("/etc")
+        else:
+            assert False, "unsupported OS"
 
     def test_real_path(self):
         """Ensure real_path works as expected"""
         debug.trace(4, "test_real_path()")
-        assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
+        temp_file = self.create_temp_file('abc')
+        if os.name == 'nt':
+            assert my_re.search(r"[A-Z]:\\", THE_MODULE.absolute_path(temp_file))
+            ## TODO3: .absolute_path(".").startswith(USER_HOME)
+        if os.name == 'posix':
+            assert "/" in THE_MODULE.real_path("/etc/mtab")
+            assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
 
     def test_get_module_version(self):
         """Ensure get_module_version works as expected"""
