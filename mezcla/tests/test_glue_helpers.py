@@ -382,7 +382,13 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_file_size()")
         temp_file = gh.get_temp_file()
         gh.write_file(temp_file, 'content')
-        assert THE_MODULE.file_size(temp_file) == 8
+        if os.name == 'nt':
+            # CRLF line-end occupies 1 byte more than LF
+            assert THE_MODULE.file_size(temp_file) == 9
+        elif os.name == 'posix':
+            assert THE_MODULE.file_size(temp_file) == 8
+        else:
+            assert False, "unsupported OS"
         assert THE_MODULE.file_size('non-existent-file.txt') == -1
 
     @pytest.mark.xfail
