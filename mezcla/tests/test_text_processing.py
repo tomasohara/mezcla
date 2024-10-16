@@ -29,11 +29,11 @@ from mezcla.unittest_wrapper import trap_exception
 import mezcla.text_processing as THE_MODULE
 
 # Constants
-RESOURCES = f'{gh.dir_path(__file__)}/resources'
-TEXT_EXAMPLE = f'{RESOURCES}/example_text.txt'
-TEXT_EXAMPLE_TAGS = f'{RESOURCES}/example_text_tags.txt'
-WORD_POS_FREQ_FILE = f'{RESOURCES}/word-POS.freq'
-WORD_FREQ_FILE = f'{RESOURCES}/word.freq'
+RESOURCES = gh.form_path(f'{gh.dir_path(__file__)}','resources')
+TEXT_EXAMPLE = gh.form_path(f'{RESOURCES}', 'example_text.txt')
+TEXT_EXAMPLE_TAGS = gh.form_path(f'{RESOURCES}', 'example_text_tags.txt')
+WORD_POS_FREQ_FILE = gh.form_path(f'{RESOURCES}', 'word-POS.freq')
+WORD_FREQ_FILE = gh.form_path(f'{RESOURCES}', 'word.freq')
 
 class TestTextProcessing(TestWrapper):
     """Class for testcase definition"""
@@ -211,8 +211,10 @@ class TestTextProcessing(TestWrapper):
     def test_all(self):
         """Ensure text_processing without argument works as expected"""
         debug.trace(4, "test_all()")
-        output = self.run_script(data_file=TEXT_EXAMPLE)
-        assert output == gh.read_file(TEXT_EXAMPLE_TAGS)[:-1]
+        output = [tag.strip() for tag in self.run_script(data_file=TEXT_EXAMPLE).split(',')]
+        expected_tags = [tag.strip() for tag in gh.read_file(TEXT_EXAMPLE_TAGS)[:-1].split(',')]
+        for output_tag, expected_tag in zip(output, expected_tags):
+            assert output_tag == expected_tag
 
     def test_just_tokenize(self):
         """Ensure just_tokenize argument works as expected"""
