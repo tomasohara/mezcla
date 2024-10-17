@@ -73,22 +73,41 @@ ROUND_TRIP = system.getenv_bool("ROUND_TRIP", False,
 ## EXPERIMENTAL: Dynamic Chunking (disabled by default)
 DYNAMIC_WORD_CHUNKING = system.getenv_bool("DYNAMIC_WORD_CHUNKING", False, 
                                 "(Default: Sentence Chunking) Splits longer text input to chunks based on word count")
-
 ## EXPERIMENAL: Alternative Gradio Interface for multiple input fields
 ALTERNATIVE_UI = system.getenv_int("ALTERNATIVE_UI", 2, 
                                 "(Alternative to USE_INTERFACE) Use a gradio UI with multiple input sections")
 
 #-------------------------------------------------------------------------------
 
-def show_gpu_usage(trace_level=None):
-    """Show nvidia usage if under GPU"""
+def show_gpu_usage(trace_level:int=None) -> None:
+    """
+    Displays NVIDIA GPU usage information if the device is set to GPU.
+
+    Parameters:
+        trace_level (int, optional): The level of detail for tracing. Defaults to 5 if not provided.
+
+    Returns:
+        None: This function does not return a value, it only prints GPU usage information.
+
+    Example:
+        >>> show_gpu_usage()
+        # Displays the GPU usage information with the default trace level.
+    """
     if trace_level is None:
         trace_level = 5
     if (hf_speechrec.TORCH_DEVICE == "GPU"):
         debug.code(trace_level, lambda: debug.trace(1, gh.run("nvidia-smi")))
     return
 
-def get_split_regex():
+def get_split_regex() -> str:
+    """
+    Get the regex to split the input words according to the environment variables or args
+
+    Parameters: 
+        (none)
+    Returns: 
+        str: A regex for spliting words
+    """
     if USE_PARAGRAPH_MODE:
         return r"\n\s*\n"
     elif not DYNAMIC_WORD_CHUNKING:
@@ -96,11 +115,27 @@ def get_split_regex():
     else:
         return None
 
-def dynamic_chunking(text, max_len=MAX_LENGTH):
+def dynamic_chunking(text:str, max_len:int=MAX_LENGTH) -> list:
+    """
+    Splits the input text into chunks based on word length or specified regex.
+
+    Parameters:
+        text (str): The input text to be chunked.
+        max_len (int): The maximum number of words per chunk. Default is `MAX_LENGTH`.
+
+    Returns:
+        list: A list of text chunks, where each chunk contains words that do not exceed the specified length.
+
+    Example:
+        >>> dynamic_chunking("This is a simple test to demonstrate chunking.", max_len=5)
+        ['This is a simple', 'test to demonstrate', 'chunking.']
+    """
+
     if DYNAMIC_WORD_CHUNKING:
         words = text.split()
         chunks = [" ".join(words[i:i + max_len]) for i in range(0, len(words), max_len)]
     else:
+        # Get a suitable regex if DYNAMIC_WORD_CHUNKING is disabled
         split_regex = get_split_regex()
         segments = my_re.split(split_regex, text)
         chunks = []
@@ -118,13 +153,34 @@ def dynamic_chunking(text, max_len=MAX_LENGTH):
 
     return chunks
 
-# OLD: Translated Text
-def translated_text(model_obj):
+def translated_text(model_obj:list) -> str:
+    """
+    Retrieves the translated text from the model output.
+
+    Parameters:
+        model_obj (list): A list containing the model's output, where the first element
+                          is expected to be a dictionary with a key 'translation_text'.
+
+    Returns:
+        str: The translated text if available; otherwise, an empty string.
+    """
+
     TRANSLATION_TEXT = "translation_text"
     return model_obj[0][TRANSLATION_TEXT] or ""
 
-def calculate_similarity(text1, text2):
-    """Calculate the cosine similarity between the two strings"""
+def calculate_similarity(text1:str, text2:str) -> float:
+    """
+    Calculates the cosine similarity between two strings.
+
+    Parameters:
+        text1 (str): The first string to compare.
+        text2 (str): The second string to compare.
+
+    Returns:
+        float: A similarity score between 0 and 1, where 1 indicates identical strings
+               and 0 indicates no similarity.
+    """
+
     vectorizer = TfidfVectorizer().fit_transform([text1, text2])
     vectors = vectorizer.toarray()
     return cosine_similarity(vectors)[0, 1]
@@ -163,15 +219,6 @@ def main():
     MT_MODEL = f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"          # pylint: disable=invalid-name
     mt_task = dummy_app.get_parsed_option(TASK_ARG, MT_TASK)
     mt_model = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL)
-
-
-    ## OLD
-    # ## Creating language models and tasks in reverse for round-trip translation
-    # if round_trip:
-    #     MT_TASK_REVERSE = f"translation_{target_lang}_to_{source_lang}"                 # pylint: disable=invalid-name
-    #     MT_MODEL_REVERSE = f"Helsinki-NLP/opus-mt-{target_lang}-{source_lang}"          # pylint: disable=invalid-name  
-    #     mt_task_reverse = dummy_app.get_parsed_option(TASK_ARG, MT_TASK_REVERSE)
-    #     mt_model_reverse = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL_REVERSE)
     
     MT_TASK_REVERSE = f"translation_{target_lang}_to_{source_lang}"                 # pylint: disable=invalid-name
     MT_MODEL_REVERSE = f"Helsinki-NLP/opus-mt-{target_lang}-{source_lang}"          # pylint: disable=invalid-name  
@@ -202,8 +249,8 @@ def main():
     device = torch.device(hf_speechrec.TORCH_DEVICE)
     debug.trace_expr(5, device)
     model = pipeline(task=mt_task, model=mt_model, device=device)
-
-    ## Create a model for reverse translation when ROUND_TRIP is true
+    
+    # Create a model for reverse translation when ROUND_TRIP is true
     model_reverse = pipeline(task=mt_task_reverse, model=mt_model_reverse)
 
     # Pull up web interface if requested
@@ -220,20 +267,31 @@ def main():
     # | I hope you are doing well. | Espero que estés bien.       | I hope you are doing well.     | 1.0                  |
     # | Let's meet tomorrow.       | Vamos a vernos mañana.       | Let's meet tomorrow.           | 1.0                  |
 
-
-    ## COMPLETED: Checkbox for round trip translation and comparison score added 
-
-    ## EXPERIMENTAL: Added supoort for alternative UI
-    ## BUG: ValueError occurs for single alphabets (e.g. 'I' as a word) 
-    # ValueError: empty vocabulary; perhaps the documents only contain stop words
-    ## TODO: Include a checkbox to print the tuple in the output instead of a single sentence
-    ## TODO: Include a checkbox to switch separators (either comma or spaces)
-
     if use_interface:
+        
         import gradio as gr
         from transformers import pipeline
 
-        def gradio_translation_input(*words_src, is_round_trip=False):
+        def gradio_translation_input(*words_src:str, is_round_trip:bool=False) -> tuple:
+            """
+            Translates input words and optionally performs round-trip translation with similarity scoring.
+
+            Parameters:
+                words_src (str): Variable-length argument for input words to be translated.
+                is_round_trip (bool): If True, performs round-trip translation and calculates similarity scores.
+
+            Returns:
+                tuple: A tuple containing:
+                    - str: Translated words as a single string.
+                    - str: Round-trip translated words as a single string (if `is_round_trip` is True).
+                    - list: A list of similarity scores corresponding to each input word, 
+                            where each score is between 0 and 1 (if `is_round_trip` is True); otherwise, an empty string.
+            
+            Example:
+                >>> gradio_translation_input("Hello", "World", is_round_trip=True)
+                ('Hola', 'Hello', [1.0, 1.0])
+            """
+
             results = []
 
             for word_src in words_src:
@@ -249,8 +307,13 @@ def main():
             round_trip_words = " ".join([word[1] for word in results])
             similarity_scores = [word[2] for word in results]
 
-            # Return all three values as separate outputs
             return translated_words, round_trip_words, similarity_scores
+
+        ## EXPERIMENTAL: Added supoort for alternative UI
+        ## BUG: ValueError (empty vocabulary) occurs for single alphabets (e.g. 'I' as a word) 
+        # ValueError: empty vocabulary; perhaps the documents only contain stop words
+        ## TODO: Include a checkbox to print the tuple in the output instead of a single sentence
+        ## TODO: Include a checkbox to switch separators (either comma or spaces)
 
         if ALTERNATIVE_UI > 0:
             inputs = [gr.Textbox(label=f"Input {i+1}", lines=2) for i in range(ALTERNATIVE_UI)]
@@ -263,13 +326,16 @@ def main():
 
         inputs.append(gr.Checkbox(label="Enable Round-trip Translation"))
 
-        def interface_fn(*input_args):
+
+        def interface_fn(*input_args: str) -> tuple:
+            """
+            Support function for gr.Interface() for ALTERNATIVE_UI
+            """
             is_round_trip = input_args[-1]
             text_inputs = input_args[:-1]
-            
             return gradio_translation_input(*text_inputs, is_round_trip=is_round_trip)
 
-        # Create the Gradio interface
+        # Create the Gradio interface for ALTERNATIVE_UI
         ui = gr.Interface(
             title="Hugging Face Language Translation",
             description=description,
@@ -283,42 +349,22 @@ def main():
         )
         ui.launch(share=False)
 
-    ## Original Code (uncomment if too much f up)
-    # if use_interface:
-    #     # TODO2: add language controls
-    #     ## TODO: Add option for round trip translation
-    #     import gradio as gr             # pylint: disable=import-outside-toplevel
-    #     pipeline_if = gr.Interface.from_pipeline(
-    #         model,
-    #         title="Machine translation (MT)",
-    #         ## TODO2: subtitle=f"From: {FROM}; To: {TO}",
-    #         description=f"From: {FROM}; To: {TO}",
-    #         ## TODO3: examples=[...]); See example in hf_stable_diffusion.py.
-    #         )
-    #     pipeline_if.launch()
 
-    # Otherwise, do translation and output
     else:
         TRANSLATION_TEXT = "translation_text"
         
-        ## OLD: Before dynamic chunking (and get_split_regex function)
+        ## OLD: Before Dynamic Chunking support
         # split_regex = r"\n\s*\n" if USE_PARAGRAPH_MODE else "\n"
-        ## Avoid "I'm sorry" bug when reading from stdin
+        # # Avoid "I'm sorry" bug when reading from stdin
         # segments = my_re.split(split_regex, text)
-
         segments = dynamic_chunking(text)
-        # print(segments)
-
         if segments[-1] == "":
             segments = segments[:-1]
-        ## OLD:
-        # for segment in my_re.split(split_regex, text)
         
         for segment in segments:
             try:
                 # Translation Level I (FROM -> TO)
                 translation = model(segment, max_length=MAX_LENGTH)
-                ##### ERROR: CURRENT METHOD NOT APPLIED; WORKS WELL WITH 
                 translation_text = translated_text(translation)
                 
                 ## Round-Trip translation uses the reverse model to re-translate back to original form
@@ -359,7 +405,7 @@ def main():
                         print(f"{misc_utils.string_diff(translation_text, translation_round_text) if round_trip_diff_translate else None}")
                 else:
                     print(translation_text)
-            except:
+            except Exception as e:
                 system.print_exception_info("translation")
             
             show_gpu_usage()
