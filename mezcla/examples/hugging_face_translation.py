@@ -25,6 +25,7 @@ USE_INTERFACE=1 {script} -
 # Local modules
 from mezcla import debug
 from mezcla.main import Main, USE_PARAGRAPH_MODE
+
 # TODO2: add new mezcla.hugging_face module for common stuff
 import mezcla.examples.hugging_face_speechrec as hf_speechrec
 from mezcla import misc_utils
@@ -40,16 +41,13 @@ TRANSLATION_TEXT = "translation_text"
 
 FROM = system.getenv_text("FROM", "es")
 TO = system.getenv_text("TO", "en")
-SOURCE_LANG = system.getenv_text("SOURCE_LANG", FROM,
-                                 "Source language")
-TARGET_LANG = system.getenv_text("TARGET_LANG", TO,
-                                 "Target language")
+SOURCE_LANG = system.getenv_text("SOURCE_LANG", FROM, "Source language")
+TARGET_LANG = system.getenv_text("TARGET_LANG", TO, "Target language")
 debug.assertion(SOURCE_LANG != TARGET_LANG)
-SHOW_ELAPSED = system.getenv_bool("SHOW_ELAPSED", False,
-                                  "Show elapsed time")
+SHOW_ELAPSED = system.getenv_bool("SHOW_ELAPSED", False, "Show elapsed time")
 MAX_LENGTH = system.getenv_value(
-    "MAX_LENGTH", None,
-    description="Optional maximum length of tokens")
+    "MAX_LENGTH", None, description="Optional maximum length of tokens"
+)
 
 TEXT_ARG = "text"
 FROM_ARG = "from"
@@ -62,24 +60,30 @@ ROUND_ARG = "round"
 
 USE_GPU = system.getenv_bool("USE_GPU", True, "Uses Torch on GPU if True")
 MAX_LENGTH = system.getenv_int("MAX_LENGTH", 512, "Maximum Length of Tokens")
-TEXT_FILE = system.getenv_text("TEXT_FILE", "-",
-                               "Text file to translate")
-USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
-                                   "Use web-based interface via gradio")
+TEXT_FILE = system.getenv_text("TEXT_FILE", "-", "Text file to translate")
+USE_INTERFACE = system.getenv_bool(
+    "USE_INTERFACE", False, "Use web-based interface via gradio"
+)
 
 ## NOTE: Round-trip translation: Translating text from one language to another and back to its original form
-ROUND_TRIP = system.getenv_bool("ROUND_TRIP", False, 
-                                "Perform round-trip translation")
+ROUND_TRIP = system.getenv_bool("ROUND_TRIP", False, "Perform round-trip translation")
 ## EXPERIMENTAL: Dynamic Chunking (disabled by default)
-DYNAMIC_WORD_CHUNKING = system.getenv_bool("DYNAMIC_WORD_CHUNKING", False, 
-                                "(Default: Sentence Chunking) Splits longer text input to chunks based on word count")
+DYNAMIC_WORD_CHUNKING = system.getenv_bool(
+    "DYNAMIC_WORD_CHUNKING",
+    False,
+    "(Default: Sentence Chunking) Splits longer text input to chunks based on word count",
+)
 ## EXPERIMENAL: Alternative Gradio Interface for multiple input fields
-ALTERNATIVE_UI = system.getenv_int("ALTERNATIVE_UI", 2, 
-                                "(Alternative to USE_INTERFACE) Use a gradio UI with multiple input sections")
+ALTERNATIVE_UI = system.getenv_int(
+    "ALTERNATIVE_UI",
+    2,
+    "(Alternative to USE_INTERFACE) Use a gradio UI with multiple input sections",
+)
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
-def show_gpu_usage(trace_level:int=None) -> None:
+
+def show_gpu_usage(trace_level: int = None) -> None:
     """
     Displays NVIDIA GPU usage information if the device is set to GPU.
 
@@ -95,27 +99,29 @@ def show_gpu_usage(trace_level:int=None) -> None:
     """
     if trace_level is None:
         trace_level = 5
-    if (hf_speechrec.TORCH_DEVICE == "GPU"):
+    if hf_speechrec.TORCH_DEVICE == "GPU":
         debug.code(trace_level, lambda: debug.trace(1, gh.run("nvidia-smi")))
     return
+
 
 def get_split_regex() -> str:
     """
     Get the regex to split the input words according to the environment variables or args
 
-    Parameters: 
+    Parameters:
         (none)
-    Returns: 
+    Returns:
         str: A regex for spliting words
     """
     if USE_PARAGRAPH_MODE:
         return r"\n\s*\n"
     elif not DYNAMIC_WORD_CHUNKING:
-        return r'(?<=[.!?]) +'
+        return r"(?<=[.!?]) +"
     else:
         return None
 
-def dynamic_chunking(text:str, max_len:int=MAX_LENGTH) -> list:
+
+def dynamic_chunking(text: str, max_len: int = MAX_LENGTH) -> list:
     """
     Splits the input text into chunks based on word length or specified regex.
 
@@ -133,7 +139,9 @@ def dynamic_chunking(text:str, max_len:int=MAX_LENGTH) -> list:
 
     if DYNAMIC_WORD_CHUNKING:
         words = text.split()
-        chunks = [" ".join(words[i:i + max_len]) for i in range(0, len(words), max_len)]
+        chunks = [
+            " ".join(words[i : i + max_len]) for i in range(0, len(words), max_len)
+        ]
     else:
         # Get a suitable regex if DYNAMIC_WORD_CHUNKING is disabled
         split_regex = get_split_regex()
@@ -153,7 +161,8 @@ def dynamic_chunking(text:str, max_len:int=MAX_LENGTH) -> list:
 
     return chunks
 
-def translated_text(model_obj:list) -> str:
+
+def translated_text(model_obj: list) -> str:
     """
     Retrieves the translated text from the model output.
 
@@ -168,7 +177,8 @@ def translated_text(model_obj:list) -> str:
     TRANSLATION_TEXT = "translation_text"
     return model_obj[0][TRANSLATION_TEXT] or ""
 
-def calculate_similarity(text1:str, text2:str) -> float:
+
+def calculate_similarity(text1: str, text2: str) -> float:
     """
     Calculates the cosine similarity between two strings.
 
@@ -185,26 +195,30 @@ def calculate_similarity(text1:str, text2:str) -> float:
     vectors = vectorizer.toarray()
     return cosine_similarity(vectors)[0, 1]
 
+
 def main():
     """Entry point"""
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
 
-    
     # Show simple usage if --help given
-    dummy_app = Main(description=__doc__.format(script=gh.basename(__file__)),
-                     skip_input=False, manual_input=True,
-                     boolean_options=[
-                         ## TODO3: (ELAPSED_ARG, "Show elapsed time")],
-                         (UI_ARG, "Invoke user interface"),
-                         (ROUND_ARG, "Enable round-trip translation")
-                         ],
-                     text_options=[
-                         (FROM_ARG, "Source language code"),
-                         (TO_ARG, "Target language code"),
-                         (TASK_ARG, "Translation task"),
-                         (MODEL_ARG, "Model for translation"),
-                         (TEXT_ARG, "Text to translate")])
-    
+    dummy_app = Main(
+        description=__doc__.format(script=gh.basename(__file__)),
+        skip_input=False,
+        manual_input=True,
+        boolean_options=[
+            ## TODO3: (ELAPSED_ARG, "Show elapsed time")],
+            (UI_ARG, "Invoke user interface"),
+            (ROUND_ARG, "Enable round-trip translation"),
+        ],
+        text_options=[
+            (FROM_ARG, "Source language code"),
+            (TO_ARG, "Target language code"),
+            (TASK_ARG, "Translation task"),
+            (MODEL_ARG, "Model for translation"),
+            (TEXT_ARG, "Text to translate"),
+        ],
+    )
+
     debug.trace_object(5, dummy_app)
     debug.assertion(dummy_app.parsed_args)
     text = dummy_app.get_parsed_option(TEXT_ARG)
@@ -215,20 +229,24 @@ def main():
     use_interface = dummy_app.get_parsed_option(UI_ARG, USE_INTERFACE)
     # alternative_ui = dummy_app.get_parsed_option(ALTERNATIVE_UI)
 
-    MT_TASK = f"translation_{source_lang}_to_{target_lang}"                 # pylint: disable=invalid-name
-    MT_MODEL = f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"          # pylint: disable=invalid-name
+    MT_TASK = (
+        f"translation_{source_lang}_to_{target_lang}"  # pylint: disable=invalid-name
+    )
+    MT_MODEL = f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"  # pylint: disable=invalid-name
     mt_task = dummy_app.get_parsed_option(TASK_ARG, MT_TASK)
     mt_model = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL)
-    
-    MT_TASK_REVERSE = f"translation_{target_lang}_to_{source_lang}"                 # pylint: disable=invalid-name
-    MT_MODEL_REVERSE = f"Helsinki-NLP/opus-mt-{target_lang}-{source_lang}"          # pylint: disable=invalid-name  
+
+    MT_TASK_REVERSE = (
+        f"translation_{target_lang}_to_{source_lang}"  # pylint: disable=invalid-name
+    )
+    MT_MODEL_REVERSE = f"Helsinki-NLP/opus-mt-{target_lang}-{source_lang}"  # pylint: disable=invalid-name
     mt_task_reverse = dummy_app.get_parsed_option(TASK_ARG, MT_TASK_REVERSE)
     mt_model_reverse = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL_REVERSE)
 
     # Get input file
     debug.trace_expr(5, dummy_app.input_stream, text, TEXT_FILE)
     text_file = TEXT_FILE
-    if ((text is not None) or use_interface):
+    if (text is not None) or use_interface:
         pass
     elif text_file == "-":
         text_file = dummy_app.temp_file
@@ -242,19 +260,20 @@ def main():
     debug.trace_expr(4, torch)
     if torch is None:
         import torch
+
         debug.trace_expr(4, torch)
-    from transformers import pipeline   
-    
+    from transformers import pipeline
+
     # Load Model
     device = torch.device(hf_speechrec.TORCH_DEVICE)
     debug.trace_expr(5, device)
     model = pipeline(task=mt_task, model=mt_model, device=device)
-    
+
     # Create a model for reverse translation when ROUND_TRIP is true
     model_reverse = pipeline(task=mt_task_reverse, model=mt_model_reverse)
 
     # Pull up web interface if requested
-    ## TODO: Advised by Tom (2024-08-25): Add side by side translation 
+    ## TODO: Advised by Tom (2024-08-25): Add side by side translation
     ## CONTINUE: Keep the input box as it is, show translation in the bottom side-by-side (split sentences)
     ## CONTINUE: Add option (checkbox) to split words [maybe]
     ## CONTINUE: Show the translation in the tabular format (keep the original & translated box as usual)
@@ -268,11 +287,13 @@ def main():
     # | Let's meet tomorrow.       | Vamos a vernos mañana.       | Let's meet tomorrow.           | 1.0                  |
 
     if use_interface:
-        
+
         import gradio as gr
         from transformers import pipeline
 
-        def gradio_translation_input(*words_src:str, is_round_trip:bool=False) -> tuple:
+        def gradio_translation_input(
+            *words_src: str, is_round_trip: bool = False
+        ) -> tuple:
             """
             Translates input words and optionally performs round-trip translation with similarity scoring.
 
@@ -284,9 +305,9 @@ def main():
                 tuple: A tuple containing:
                     - str: Translated words as a single string.
                     - str: Round-trip translated words as a single string (if `is_round_trip` is True).
-                    - list: A list of similarity scores corresponding to each input word, 
+                    - list: A list of similarity scores corresponding to each input word,
                             where each score is between 0 and 1 (if `is_round_trip` is True); otherwise, an empty string.
-            
+
             Example:
                 >>> gradio_translation_input("Hello", "World", is_round_trip=True)
                 ('Hola', 'Hello', [1.0, 1.0])
@@ -295,10 +316,20 @@ def main():
             results = []
 
             for word_src in words_src:
-                if isinstance(word_src, str) and word_src.strip():  # Ensure it's a valid non-empty string
+                if (
+                    isinstance(word_src, str) and word_src.strip()
+                ):  # Ensure it's a valid non-empty string
                     word_dst = model(word_src)[0]["translation_text"].split(".")[0]
-                    word_round_trip = model_reverse(word_dst)[0]["translation_text"].split(".")[0] if is_round_trip else ''
-                    similarity_score = round(calculate_similarity(word_src, word_round_trip), 4) if is_round_trip else ""
+                    word_round_trip = (
+                        model_reverse(word_dst)[0]["translation_text"].split(".")[0]
+                        if is_round_trip
+                        else ""
+                    )
+                    similarity_score = (
+                        round(calculate_similarity(word_src, word_round_trip), 4)
+                        if is_round_trip
+                        else ""
+                    )
                     results.append((word_dst, word_round_trip, similarity_score))
                 else:
                     results.append(("", "", ""))
@@ -310,22 +341,27 @@ def main():
             return translated_words, round_trip_words, similarity_scores
 
         ## EXPERIMENTAL: Added supoort for alternative UI
-        ## BUG: ValueError (empty vocabulary) occurs for single alphabets (e.g. 'I' as a word) 
+        ## BUG: ValueError (empty vocabulary) occurs for single alphabets (e.g. 'I' as a word)
         # ValueError: empty vocabulary; perhaps the documents only contain stop words
         ## TODO: Include a checkbox to print the tuple in the output instead of a single sentence
         ## TODO: Include a checkbox to switch separators (either comma or spaces)
 
         if ALTERNATIVE_UI > 0:
-            inputs = [gr.Textbox(label=f"Input {i+1}", lines=2) for i in range(ALTERNATIVE_UI)]
-            description = f"From: {FROM} | To: {TO} | Alternative UI: {ALTERNATIVE_UI} inputs"
+            inputs = [
+                gr.Textbox(label=f"Input {i+1}", lines=2) for i in range(ALTERNATIVE_UI)
+            ]
+            description = (
+                f"From: {FROM} | To: {TO} | Alternative UI: {ALTERNATIVE_UI} inputs"
+            )
         else:
             inputs = [
-                gr.Textbox(lines=2, placeholder="Enter text to translate", label="Input Text"),
+                gr.Textbox(
+                    lines=2, placeholder="Enter text to translate", label="Input Text"
+                ),
             ]
             description = f"From: {FROM} | To: {TO}"
 
         inputs.append(gr.Checkbox(label="Enable Round-trip Translation"))
-
 
         def interface_fn(*input_args: str) -> tuple:
             """
@@ -344,15 +380,14 @@ def main():
             outputs=[
                 gr.Textbox(label="Translated Text"),
                 gr.Textbox(label="Round-trip Translation"),
-                gr.Number(label="Similarity Score (0 to 1)")
+                gr.Number(label="Similarity Score (0 to 1)"),
             ],
         )
         ui.launch(share=False)
 
-
     else:
         TRANSLATION_TEXT = "translation_text"
-        
+
         ## OLD: Before Dynamic Chunking support
         # split_regex = r"\n\s*\n" if USE_PARAGRAPH_MODE else "\n"
         # # Avoid "I'm sorry" bug when reading from stdin
@@ -360,63 +395,80 @@ def main():
         segments = dynamic_chunking(text)
         if segments[-1] == "":
             segments = segments[:-1]
-        
+
         for segment in segments:
             try:
                 # Translation Level I (FROM -> TO)
                 translation = model(segment, max_length=MAX_LENGTH)
                 translation_text = translated_text(translation)
-                
+
                 ## Round-Trip translation uses the reverse model to re-translate back to original form
                 if round_trip:
                     # Translation Level II (TO -> FROM_AUX)
-                    translation_reverse = model_reverse(translation_text, max_length=MAX_LENGTH)
+                    translation_reverse = model_reverse(
+                        translation_text, max_length=MAX_LENGTH
+                    )
                     translation_reverse_text = translated_text(translation_reverse)
-                    
+
                     # Translation Level III (FROM_AUX -> TO)
-                    translation_round = model(translation_reverse_text, max_length=MAX_LENGTH)
+                    translation_round = model(
+                        translation_reverse_text, max_length=MAX_LENGTH
+                    )
                     translation_round_text = translated_text(translation_round)
 
-                debug.assertion(isinstance(translation, list)
-                                and (TRANSLATION_TEXT in translation[0]))
-                translation_reverse_text = translation_reverse_text if round_trip else ''
-                translation_round_text = translation_round_text if round_trip else ''
+                debug.assertion(
+                    isinstance(translation, list)
+                    and (TRANSLATION_TEXT in translation[0])
+                )
+                translation_reverse_text = (
+                    translation_reverse_text if round_trip else ""
+                )
+                translation_round_text = translation_round_text if round_trip else ""
 
                 ## OLD: Before round-trip translation
                 # print(translation[0].get(TRANSLATION_TEXT) or "")
-                
+
                 ## For round trip translation, print all possible translations along with their language code
                 if round_trip:
                     print(f"\nOriginal      ({FROM}):\n{segment}")
                     print(f"\nTranslate     ({TO}):\n{translation_text}")
                     print(f"\nOriginal  [R]   ({FROM}):\n{translation_reverse_text}")
                     print(f"\nTranslate [R]  ({TO}):\n{translation_round_text}")
-                    round_trip_diff_original =  (segment != translation_reverse_text)
-                    round_trip_diff_translate = (translation_round_text != translation_text)
-                    round_trip_difference = round_trip_diff_original or round_trip_diff_translate
+                    round_trip_diff_original = segment != translation_reverse_text
+                    round_trip_diff_translate = (
+                        translation_round_text != translation_text
+                    )
+                    round_trip_difference = (
+                        round_trip_diff_original or round_trip_diff_translate
+                    )
                     print(f"\nDifference in Translation: {round_trip_difference}\n")
-                    
+
                     ## If there is any difference during round-trip translation, print the difference
                     if round_trip_difference:
-                        print("="*40)
+                        print("=" * 40)
                         print(f"\nDifferences in Original ({FROM}):")
-                        print(f"{misc_utils.string_diff(segment, translation_reverse_text) if round_trip_diff_original else None}")
+                        print(
+                            f"{misc_utils.string_diff(segment, translation_reverse_text) if round_trip_diff_original else None}"
+                        )
                         print(f"Differences in Translated ({TO}):")
-                        print(f"{misc_utils.string_diff(translation_text, translation_round_text) if round_trip_diff_translate else None}")
+                        print(
+                            f"{misc_utils.string_diff(translation_text, translation_round_text) if round_trip_diff_translate else None}"
+                        )
                 else:
                     print(translation_text)
             except Exception as e:
                 system.print_exception_info("translation")
-            
+
             show_gpu_usage()
 
     # Wrap up
     show_gpu_usage()
     return
 
-#-------------------------------------------------------------------------------
 
-if __name__ == '__main__':
+# -------------------------------------------------------------------------------
+
+if __name__ == "__main__":
     elapsed = misc_utils.time_function(main)
     if SHOW_ELAPSED:
         print(f"Elapsed time: {system.round_as_str(elapsed)}ms")
