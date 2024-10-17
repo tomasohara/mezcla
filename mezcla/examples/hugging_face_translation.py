@@ -70,9 +70,13 @@ USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
 ## NOTE: Round-trip translation: Translating text from one language to another and back to its original form
 ROUND_TRIP = system.getenv_bool("ROUND_TRIP", False, 
                                 "Perform round-trip translation")
-## EXPERIMENT: Dynamic Chunking (disabled by default)
+## EXPERIMENTAL: Dynamic Chunking (disabled by default)
 DYNAMIC_WORD_CHUNKING = system.getenv_bool("DYNAMIC_WORD_CHUNKING", False, 
                                 "(Default: Sentence Chunking) Splits longer text input to chunks based on word count")
+
+## EXPERIMENAL: Alternative Gradio Interface for multiple input fields
+ALTERNATIVE_UI = system.getenv_int("ALTERNATIVE_UI", 2, 
+                                "(Alternative to USE_INTERFACE) Use a gradio UI with multiple input sections")
 
 #-------------------------------------------------------------------------------
 
@@ -153,7 +157,8 @@ def main():
     # Round-trip from argument
     round_trip = dummy_app.get_parsed_option(ROUND_ARG, ROUND_TRIP)
     use_interface = dummy_app.get_parsed_option(UI_ARG, USE_INTERFACE)
-    
+    # alternative_ui = dummy_app.get_parsed_option(ALTERNATIVE_UI)
+
     MT_TASK = f"translation_{source_lang}_to_{target_lang}"                 # pylint: disable=invalid-name
     MT_MODEL = f"Helsinki-NLP/opus-mt-{source_lang}-{target_lang}"          # pylint: disable=invalid-name
     mt_task = dummy_app.get_parsed_option(TASK_ARG, MT_TASK)
@@ -218,27 +223,58 @@ def main():
 
     ## COMPLETED: Checkbox for round trip translation and comparison score added 
 
+    ## EXPERIMENTAL: Added supoort for alternative UI
+    ## BUG: ValueError occurs for single alphabets (e.g. 'I' as a word) 
+    # ValueError: empty vocabulary; perhaps the documents only contain stop words
+    ## TODO: Include a checkbox to print the tuple in the output instead of a single sentence
+    ## TODO: Include a checkbox to switch separators (either comma or spaces)
+
     if use_interface:
         import gradio as gr
         from transformers import pipeline
-        model_reverse = pipeline(task=mt_task_reverse, model=mt_model_reverse)
 
-        def gradio_translation_input(word_src, is_round_trip):
-            word_dst = model(word_src)[0]["translation_text"].split(".")[0]
-            word_round_trip = model_reverse(word_dst)[0]["translation_text"].split(".")[0] if is_round_trip else ''
-            similarity_score = calculate_similarity(word_src, word_round_trip) if is_round_trip else ""
-            return word_dst, word_round_trip, similarity_score
-        
-        ui = gr.Interface(
-            title="Hugging Face Language Translation (with round-trip similarity score)",
-            description=f"From: {FROM} | To: {TO}",
-            fn=gradio_translation_input,
-            inputs=[
+        def gradio_translation_input(*words_src, is_round_trip=False):
+            results = []
+
+            for word_src in words_src:
+                if isinstance(word_src, str) and word_src.strip():  # Ensure it's a valid non-empty string
+                    word_dst = model(word_src)[0]["translation_text"].split(".")[0]
+                    word_round_trip = model_reverse(word_dst)[0]["translation_text"].split(".")[0] if is_round_trip else ''
+                    similarity_score = round(calculate_similarity(word_src, word_round_trip), 4) if is_round_trip else ""
+                    results.append((word_dst, word_round_trip, similarity_score))
+                else:
+                    results.append(("", "", ""))
+
+            translated_words = " ".join([word[0] for word in results])
+            round_trip_words = " ".join([word[1] for word in results])
+            similarity_scores = [word[2] for word in results]
+
+            # Return all three values as separate outputs
+            return translated_words, round_trip_words, similarity_scores
+
+        if ALTERNATIVE_UI > 0:
+            inputs = [gr.Textbox(label=f"Input {i+1}", lines=2) for i in range(ALTERNATIVE_UI)]
+            description = f"From: {FROM} | To: {TO} | Alternative UI: {ALTERNATIVE_UI} inputs"
+        else:
+            inputs = [
                 gr.Textbox(lines=2, placeholder="Enter text to translate", label="Input Text"),
-                gr.Checkbox(label="Enable Round-trip Translation"),
-                # gr.Checkbox(label="Split Sentences"),
-                # gr.Checkbox(label="Dynamic Chunking"),
-            ],
+            ]
+            description = f"From: {FROM} | To: {TO}"
+
+        inputs.append(gr.Checkbox(label="Enable Round-trip Translation"))
+
+        def interface_fn(*input_args):
+            is_round_trip = input_args[-1]
+            text_inputs = input_args[:-1]
+            
+            return gradio_translation_input(*text_inputs, is_round_trip=is_round_trip)
+
+        # Create the Gradio interface
+        ui = gr.Interface(
+            title="Hugging Face Language Translation",
+            description=description,
+            fn=interface_fn,
+            inputs=inputs,
             outputs=[
                 gr.Textbox(label="Translated Text"),
                 gr.Textbox(label="Round-trip Translation"),
@@ -246,7 +282,6 @@ def main():
             ],
         )
         ui.launch(share=False)
-
 
     ## Original Code (uncomment if too much f up)
     # if use_interface:
