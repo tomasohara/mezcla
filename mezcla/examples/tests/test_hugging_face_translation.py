@@ -133,6 +133,68 @@ class TestIt(TestWrapper):
         command_output = gh.run(command)
         assert(command_output in target_sentence)
         return
+    
+    ## Test 6 - Tests for Dynamic Word Chunking
+    @pytest.mark.xfail
+    def test_dynamic_chunking(self):
+        """Ensures that dynamic_chunking function works as expected"""
+        debug.trace(4, "test_dynamic_chunking()")
+        source_sentence = "Please just get it to run and shift focus to gradio. Do add a test case though."
+        chunks = THE_MODULE.dynamic_chunking(text=source_sentence, max_len=10)
+        for chunk in chunks:
+            assert isinstance(chunk, str)
+        assert chunks[0] == ""
+        # By default, chunking is performed on the basis of sentences
+        assert len(chunks) == len(source_sentence.split("."))
+
+    ## Test 6.5 - Tests for Dynamic Chunking with Dynamic Word Chunking enabled
+    @pytest.mark.xfail
+    def test_dynamic_chunking_dwc_1(self):
+        """Ensures that dynamic_chunking function works as expected when DYNAMIC_WORD_CHUNKING is enabled"""
+        debug.trace(4, "test_dynamic_chunking_dwc_1()")
+        self.monkeypatch.setattr(THE_MODULE, 'DYNAMIC_WORD_CHUNKING', True)
+        max_len = 5
+        source_sentence = "Please just get it to run and shift focus to gradio. Do add a test case though."
+        chunks = THE_MODULE.dynamic_chunking(text=source_sentence, max_len=max_len)
+        
+        # Test if last chunk is less than or equal to given max_len
+        assert (len(chunks[-1].split())) <= max_len
+        # Test if all other chunks are of max_size
+        for chunk in chunks[:-1]:
+            assert (len(chunk.split())) == max_len
+ 
+    ## Test 7 - Tests for Similarity Scores
+    @pytest.mark.xfail
+    def test_calculate_similarity(self):
+        """Ensures that calculate_similarity function works as expected"""
+        debug.trace(4, "test_calculate_similarity()")
+        
+        def is_desc(arr):
+            return True if all(arr[i] >= arr[i+1] for i in range(len(arr)-1)) else False
+        
+        sentence_pairs = [
+            ("The quick brown dog jumps over the lazy fox.", "The quick brown fox jumps over the lazy dog."),
+            ("A quick brown fox jumps over the lazy dog.", "The quick brown fox jumps over the lazy dog."),
+            ("The quick brown fox jumps over a lazy dog.", "The quick brown fox jumps over the lazy dog."),
+            ("The quick fox jumps over the lazy dog.", "The quick brown fox jumps over the lazy dog."),
+            ("The quick brown fox leaps over the lazy dog.", "The quick brown fox jumps over the lazy dog."),
+            ("The quick brown fox jumps over the lazy cat.", "The quick brown fox jumps over the lazy dog."),
+            ("A fast brown fox jumps over the lazy dog.", "The quick brown fox jumps over the lazy dog."),
+            ("The lazy dog is jumped over by the quick brown fox.", "The quick brown fox jumps over the lazy dog."),
+            ("The fox jumped over the dog.", "The quick brown fox jumps over the lazy dog."),
+        ]
+
+        scores = []
+        for sentence in sentence_pairs:
+            score = THE_MODULE.calculate_similarity(sentence[0], sentence[1])
+            scores.append(round(score, 4))
+
+        assert is_desc(scores)
+    
+
+            
+
+
 
 #------------------------------------------------------------------------
 
