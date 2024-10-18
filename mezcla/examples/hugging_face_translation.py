@@ -229,6 +229,7 @@ def main():
     use_interface = dummy_app.get_parsed_option(UI_ARG, USE_INTERFACE)
     # alternative_ui = dummy_app.get_parsed_option(ALTERNATIVE_UI)
 
+
     MT_TASK = (
         f"translation_{source_lang}_to_{target_lang}"  # pylint: disable=invalid-name
     )
@@ -262,6 +263,7 @@ def main():
         import torch
 
         debug.trace_expr(4, torch)
+
     from transformers import pipeline
 
     # Load Model
@@ -293,52 +295,45 @@ def main():
 
         def gradio_translation_input(
             *words_src: str, is_round_trip: bool = False
-        ) -> tuple:
+        ) -> tuple[str, str, float]:
             """
-            Translates input words and optionally performs round-trip translation with similarity scoring.
+            Translates input words and optionally performs round-trip translation with overall similarity scoring.
 
             Parameters:
                 words_src (str): Variable-length argument for input words to be translated.
-                is_round_trip (bool): If True, performs round-trip translation and calculates similarity scores.
+                is_round_trip (bool): If True, performs round-trip translation and calculates a single similarity score for the entire sentence.
 
             Returns:
                 tuple: A tuple containing:
                     - str: Translated words as a single string.
-                    - str: Round-trip translated words as a single string (if `is_round_trip` is True).
-                    - list: A list of similarity scores corresponding to each input word,
-                            where each score is between 0 and 1 (if `is_round_trip` is True); otherwise, an empty string.
+                    - str: Round-trip translated sentence as a single string (if `is_round_trip` is True).
+                    - float: A similarity score between the original sentence and the round-trip translation,
+                            where the score is between 0 and 1 (if `is_round_trip` is True); otherwise, returns 0.
 
             Example:
                 >>> gradio_translation_input("Hello", "World", is_round_trip=True)
-                ('Hola', 'Hello', [1.0, 1.0])
+                ('Hola Mundo', 'Hello World', 0.98)
             """
 
-            results = []
+            # Join all the input words into a single sentence
+            sentence_src = " ".join(words_src)
 
-            for word_src in words_src:
-                if (
-                    isinstance(word_src, str) and word_src.strip()
-                ):  # Ensure it's a valid non-empty string
-                    word_dst = model(word_src)[0]["translation_text"].split(".")[0]
-                    word_round_trip = (
-                        model_reverse(word_dst)[0]["translation_text"].split(".")[0]
-                        if is_round_trip
-                        else ""
-                    )
-                    similarity_score = (
-                        round(calculate_similarity(word_src, word_round_trip), 4)
-                        if is_round_trip
-                        else ""
-                    )
-                    results.append((word_dst, word_round_trip, similarity_score))
-                else:
-                    results.append(("", "", ""))
+            # Translate the sentence
+            sentence_dst = model(sentence_src)[0]["translation_text"].split(".")[0]
 
-            translated_words = " ".join([word[0] for word in results])
-            round_trip_words = " ".join([word[1] for word in results])
-            similarity_scores = [word[2] for word in results]
+            # Perform round-trip translation if requested
+            if is_round_trip:
+                sentence_round_trip = model_reverse(sentence_dst)[0][
+                    "translation_text"
+                ].split(".")[0]
+                similarity_score = round(
+                    calculate_similarity(sentence_src, sentence_round_trip), 4
+                )
+            else:
+                sentence_round_trip = ""
+                similarity_score = 0.0
 
-            return translated_words, round_trip_words, similarity_scores
+            return sentence_dst, sentence_round_trip, similarity_score
 
         ## EXPERIMENTAL: Added supoort for alternative UI
         ## BUG: ValueError (empty vocabulary) occurs for single alphabets (e.g. 'I' as a word)
