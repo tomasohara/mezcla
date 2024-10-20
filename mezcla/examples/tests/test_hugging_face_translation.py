@@ -188,9 +188,123 @@ class TestIt(TestWrapper):
         for sentence in sentence_pairs:
             score = THE_MODULE.calculate_similarity(sentence[0], sentence[1])
             scores.append(round(score, 4))
-
+            
         assert is_desc(scores)
+
+    ## Test 8 - Tests for gradio_translation_input
+    @pytest.mark.xfail
+    def test_gradio_translation_input(self):
+        """Ensures that gradio_translation_input works as expected"""
+        debug.trace(4, "test_gradio_translation_input()")
+        
+        from transformers import pipeline
+        
+        model = pipeline(
+            task="translation_en_to_es",
+            model="Helsinki-NLP/opus-mt-en-es",
+        )
+        model_reverse = pipeline(
+            task="translation_es_to_en",
+            model="Helsinki-NLP/opus-mt-es-en",
+        )
+        source_words = ("Hello", "World")
+        output = THE_MODULE.gradio_translation_input(
+            source_words[0], source_words[1], is_round_trip=False,
+            model=model, model_reverse=model_reverse
+        )
+
+        assert output[0] == "Hola Mundo"
+
+    ## Test 9 - Tests for round trip translation
+    @pytest.mark.xfail
+    def test_round_trip_translation(self):
+        """Ensures that round trip translation works as expected"""
+        debug.trace(4, "test_round_trip_translation()")
+        
+        from transformers import pipeline
+        
+        model = pipeline(
+            task="translation_en_to_es",
+            model="Helsinki-NLP/opus-mt-en-es",
+        )
+        model_reverse = pipeline(
+            task="translation_es_to_en",
+            model="Helsinki-NLP/opus-mt-es-en",
+        )
+        source_words = ("Hello,", "World")
+        translated = "Hola, Mundo"
+        output = THE_MODULE.gradio_translation_input(
+            source_words[0], source_words[1], is_round_trip=True,
+            model=model, model_reverse=model_reverse
+        )
+
+        assert output[0] == translated
+        assert output[1] == " ".join(source_words)
+        assert output[2] > 0.75
+
+    ## Test 10 - Tests for translated_text
+    @pytest.mark.xfail
+    def test_translated_text(self):
+        """Ensures that translated_text works as expected"""
+        debug.trace(4, "test_translated_text()")
+        
+        from transformers import pipeline
+        
+        source_text = "Hello World"
+        translated_text = "Hola Mundo"
+        model = pipeline(
+            task="translation_en_to_es",
+            model="Helsinki-NLP/opus-mt-en-es",
+        )
+        translation = model(source_text)
+        output = THE_MODULE.translated_text(translation)
+
+        assert output == translated_text
+
+    ## Test 11 - Tests for get_split_regex()
+    @pytest.mark.xfail
+    def test_get_split_regex(self):
+        """Ensures that get_split_regex works as expected"""
+        debug.trace(4, "test_get_split_regex()")
+
+        ## When dynamic chunking is True, no split regex is used (word by word split)
+        self.monkeypatch.setattr(THE_MODULE, 'DYNAMIC_WORD_CHUNKING', True)        
+        output = THE_MODULE.get_split_regex()
+        assert output is None
+
+        ## When dynamic chunking is False, split is performed sentence wise
+        self.monkeypatch.setattr(THE_MODULE, 'DYNAMIC_WORD_CHUNKING', False)        
+        output = THE_MODULE.get_split_regex()
+        assert output == r'(?<=[.!?]) +'
+
+        ## When paragraph mode is set, split is performed according to new line
+        self.monkeypatch.setattr(THE_MODULE, 'USE_PARAGRAPH_MODE', True)        
+        output = THE_MODULE.get_split_regex()
+        assert output == r'\n\s*\n'
+
+    ## Test 12 - Tests for show_gpu_usage
+    @pytest.mark.xfail
+    def test_show_gpu_usage(self):
+        """Ensures that show_gpu_usage works as expected"""
+        debug.trace(4, "test_show_gpu_usage()")
+
+        ## TODO: Find more test cases (function returns None so test case passes)
+        output = THE_MODULE.show_gpu_usage()
+        assert output is None
+
+        ## For USE_GPU enabled
+        self.monkeypatch.setattr(THE_MODULE, 'USE_GPU', True)        
+        output = THE_MODULE.show_gpu_usage()
+        assert output is None
+
+
+
+
+
     
+
+        
+        
 
             
 
