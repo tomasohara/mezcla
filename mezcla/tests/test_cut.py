@@ -32,8 +32,10 @@ CUTTED_TSV_LEN_3 = f'{RESOURCES}/cars-tsv-len-3.txt'
 CUTTED_CSV_LEN_3 = f'{RESOURCES}/cars-csv-len-3.txt'
 FIELDS_2_3_4 = f'{RESOURCES}/cars-fields-2-3-4.txt'
 
-class TestCutUtils:
+class TestCutUtils(TestWrapper):
     """Class for testcase definition of utility functions"""
+    script_file = TestWrapper.get_module_file_path(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__)
 
     def test_elide_values(self):
         """Ensure elide_values works as expected"""
@@ -88,6 +90,21 @@ class TestCutScript(TestWrapper):
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4).strip())
         script_output = self.run_script(options='--csv --exclude car_ID,aspiration-price', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4).strip())
+        ## TODO2: check for invalid field spec (e.g., with car_ID renamed to car-ID)
+        ## script_output = self.run_script(options='--csv --exclude 1-car-ID', data_file=CSV_EXAMPLE)
+        ## (script_output.strip() != "")
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_empty_row(self):
+        """Text handling of empty rows"""
+        csv_data = """
+        "fubar?",
+        "no",
+        "",
+        """
+        temp_file = self.create_temp_file(csv_data)
+        script_output = self.run_script(options='--csv --exclude 1,5-26', data_file=temp_file)
+        assert (script_output.strip() != "")
         
 
 if __name__ == '__main__':
