@@ -493,7 +493,11 @@ class Script(Main):
                     column = repr(column).strip("'")
                 output_row.append(column)
             debug.trace_expr(6, output_row)
-            csv_writer.writerow(output_row)
+            try:
+                csv_writer.writerow(output_row)
+            except:
+                ## TODO2: add ignore-errors option
+                system.print_exception_info("row output")
 
         # Do sanity checks
         # Note: this compares row extraction against Pandas dataframe
