@@ -34,6 +34,7 @@ from mezcla import system
 from mezcla import glue_helpers as gh
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+import gradio as gr
 
 # Constants and Environment options
 TL = debug.TL
@@ -73,11 +74,18 @@ DYNAMIC_WORD_CHUNKING = system.getenv_bool(
     False,
     "(Default: Sentence Chunking) Splits longer text input to chunks based on word count",
 )
-## EXPERIMENAL: Alternative Gradio Interface for multiple input fields
+## EXPERIMENTAL: Alternative Gradio Interface for multiple input fields
 ALTERNATIVE_UI = system.getenv_int(
     "ALTERNATIVE_UI",
-    2,
+    3,
     "(Alternative to USE_INTERFACE) Use a gradio UI with multiple input sections",
+)
+
+## EXPERIMENTAL: Use of Parallel Processing for an array of str
+PARALLEL_PROCESS = system.getenv_bool(
+    "PARALLEL_PROCESS",
+    False,
+    "Perform translations using concurrent threads",
 )
 
 # -------------------------------------------------------------------------------
@@ -212,23 +220,17 @@ def gradio_translation_input(
             - str: Round-trip translated sentence as a single string (if `is_round_trip` is True).
             - float: A similarity score between the original sentence and the round-trip translation,
                     where the score is between 0 and 1 (if `is_round_trip` is True); otherwise, returns 0.
-
-    Example:
-        >>> gradio_translation_input("Hello", "World", is_round_trip=True)
-        ('Hola Mundo', 'Hello World', 0.98)
     """
 
     # Join all the input words into a single sentence
     sentence_src = " ".join(words_src)
 
     # Translate the sentence
-    sentence_dst = model(sentence_src)[0]["translation_text"].split(".")[0]
+    sentence_dst = model(sentence_src)[0]["translation_text"]
 
     # Perform round-trip translation if requested
     if is_round_trip:
-        sentence_round_trip = model_reverse(sentence_dst)[0]["translation_text"].split(
-            "."
-        )[0]
+        sentence_round_trip = model_reverse(sentence_dst)[0]["translation_text"]
         similarity_score = round(
             calculate_similarity(sentence_src, sentence_round_trip), 4
         )
@@ -237,6 +239,153 @@ def gradio_translation_input(
         similarity_score = 0.0
 
     return sentence_dst, sentence_round_trip, similarity_score
+
+
+def parallel_process(texts: list[str]) -> list[str]:
+    """
+    Processes a list of text strings in parallel using concurrent threads for translation.
+
+    Parameters:
+        texts (list of str): A list of input strings to be processed (e.g., translated) in parallel.
+
+    Returns:
+        list of str: A list of processed strings corresponding to the input texts, with each string processed (e.g., translated) concurrently.
+
+    Example:
+        >>> parallel_process(["Hello", "World"])
+        ['Hola', 'Mundo']
+    """
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        translations_parallel = list(executor.map(translated_text, texts))
+
+    return translations_parallel
+
+
+# Define 3 functions for three different tabs + 1 final interface
+# Use: gr.Tabs() [gr.TabbedInterface is deprecated]
+# UI Function for normal translation (write 2 functions, one for ui and anoter for func)
+
+
+class TranslationUI:
+    def __init__(self, model=None, model_rev=None, ui_count=3):
+        self.app = gr.Blocks()
+        self.model = model
+        self.model_rev = model_rev
+        self.ui_count = ui_count
+        self.create_ui()
+
+    def create_ui(self):
+        with self.app:
+            self.machine_translation_ui()
+            self.round_trip_translation_ui()
+            self.alternative_ui()
+
+    def fn_machine_translation(self, input):
+        result = gradio_translation_input(input, model=self.model)
+        return result[0]
+
+    def fn_round_trip_translation(self, input):
+        result = gradio_translation_input(
+            input, model=self.model, model_reverse=self.model_rev, is_round_trip=True
+        )
+        return result
+
+    def fn_alternative_ui(self, *input_args) -> tuple:
+        is_round_trip = input_args[-1]  # Last argument is the round-trip flag
+        text_inputs = input_args[:-1]  # All other arguments are text inputs
+        result = gradio_translation_input(
+            *text_inputs,
+            is_round_trip=is_round_trip,
+            model=self.model,
+            model_reverse=self.model_rev,
+        )
+        return result
+
+    def machine_translation_ui(self):
+        with gr.Tab("Machine Translation"):
+            gr.Markdown("<h3>Machine Translation (One Way)</h3>")
+            gr.Markdown(f"Translation: FROM {SOURCE_LANG} TO {TARGET_LANG}")
+
+            with gr.Row():
+                input_one = gr.Textbox(label=f"Input Text ({SOURCE_LANG})")
+                output_one = gr.Textbox(
+                    label=f"Output ({TARGET_LANG})", interactive=False
+                )
+
+            gr.Button("Submit", elem_id="button_1").click(
+                fn=self.fn_machine_translation, inputs=input_one, outputs=output_one
+            )
+
+    def round_trip_translation_ui(self):
+        with gr.Tab("Round Trip Translation"):
+            gr.Markdown("<h3>Round Trip Translation</h3>")
+            gr.Markdown(
+                f"Translation: FROM {SOURCE_LANG} TO {TARGET_LANG} BACK_TO {SOURCE_LANG}"
+            )
+
+            with gr.Group():
+                input_two = gr.Textbox(label=f"Input ({SOURCE_LANG})")
+
+            with gr.Group():
+                output_1 = gr.Textbox(
+                    label=f"Output ({TARGET_LANG})", interactive=False
+                )
+                output_2 = gr.Textbox(
+                    label=f"Round Trip ({SOURCE_LANG})", interactive=False
+                )
+                output_3 = gr.Textbox(label="Similarity Score", interactive=False)
+
+            def process_input(input_text):
+                output_values = self.fn_round_trip_translation(input_text)
+                return output_values
+
+            gr.Button("Submit").click(
+                process_input, inputs=input_two, outputs=[output_1, output_2, output_3]
+            )
+
+    def alternative_ui(self):
+        with gr.Tab("Alternative UI"):
+            gr.Markdown("<h3>Alternative UI</h3>")
+            gr.Markdown(f"Translation: FROM {SOURCE_LANG} TO {TARGET_LANG}")
+            gr.Markdown(f"Number of Inputs: {self.ui_count}")
+
+            num_of_inputs = self.ui_count  # Predefined number of split inputs
+
+            with gr.Group():
+                gr.Markdown(f"###\tInput Section ({SOURCE_LANG})")
+                # Creating the input boxes based on predefined input count
+                input_boxes = [
+                    gr.Textbox(label=f"Input #{i+1}") for i in range(num_of_inputs)
+                ]
+                enable_round_trip = gr.Checkbox(label="Enable Round Trip", value=False)
+
+            with gr.Group():
+                gr.Markdown(f"###\tOutput Section ({TARGET_LANG})")
+                output_1 = gr.Textbox(label="Output 1: Translated", interactive=False)
+                output_2 = gr.Textbox(label="Output 2: Round Trip", interactive=False)
+                output_3 = gr.Textbox(
+                    label="Output 3: Similarity Score", interactive=False
+                )
+
+            def process_all_inputs(*inputs):
+                is_round_trip = inputs[-1]  # Extract the checkbox value separately
+                text_inputs = inputs[:-1]  # The rest are the text inputs
+                output_values = self.fn_alternative_ui(
+                    *text_inputs, is_round_trip
+                )  # Pass inputs and round-trip flag correctly
+                return output_values
+
+            gr.Button("Process All Inputs").click(
+                process_all_inputs,
+                inputs=input_boxes + [enable_round_trip],
+                outputs=[output_1, output_2, output_3],
+            )
+
+    def launch(self):
+        self.app.launch()
+
 
 def main():
     """Entry point"""
@@ -331,53 +480,60 @@ def main():
 
     if use_interface:
 
-        import gradio as gr
-        from transformers import pipeline
-
-        ## EXPERIMENTAL: Added supoort for alternative UI
-        ## BUG: ValueError (empty vocabulary) occurs for single alphabets (e.g. 'I' as a word)
-        # ValueError: empty vocabulary; perhaps the documents only contain stop words
-        ## TODO: Include a checkbox to print the tuple in the output instead of a single sentence
-        ## TODO: Include a checkbox to switch separators (either comma or spaces)
-
-        if ALTERNATIVE_UI > 0:
-            inputs = [
-                gr.Textbox(label=f"Input {i+1}", lines=2) for i in range(ALTERNATIVE_UI)
-            ]
-            description = (
-                f"From: {FROM} | To: {TO} | Alternative UI: {ALTERNATIVE_UI} inputs"
-            )
-        else:
-            inputs = [
-                gr.Textbox(
-                    lines=2, placeholder="Enter text to translate", label="Input Text"
-                ),
-            ]
-            description = f"From: {FROM} | To: {TO}"
-
-        inputs.append(gr.Checkbox(label="Enable Round-trip Translation"))
-
-        def interface_fn(*input_args: str) -> tuple:
-            """
-            Support function for gr.Interface() for ALTERNATIVE_UI
-            """
-            is_round_trip = input_args[-1]
-            text_inputs = input_args[:-1]
-            return gradio_translation_input(*text_inputs, is_round_trip=is_round_trip, model=model, model_reverse=model_reverse)
-
-        # Create the Gradio interface for ALTERNATIVE_UI
-        ui = gr.Interface(
-            title="Hugging Face Language Translation",
-            description=description,
-            fn=interface_fn,
-            inputs=inputs,
-            outputs=[
-                gr.Textbox(label="Translated Text"),
-                gr.Textbox(label="Round-trip Translation"),
-                gr.Number(label="Similarity Score (0 to 1)"),
-            ],
+        ui = TranslationUI(
+            model=model, model_rev=model_reverse, ui_count=ALTERNATIVE_UI
         )
-        ui.launch(share=False)
+        ui.launch()
+
+        ## OLD: Before three tabs interface
+
+        # import gradio as gr
+        # from transformers import pipeline
+
+        # ## EXPERIMENTAL: Added supoort for alternative UI
+        # ## BUG: ValueError (empty vocabulary) occurs for single alphabets (e.g. 'I' as a word)
+        # # ValueError: empty vocabulary; perhaps the documents only contain stop words
+        # ## TODO: Include a checkbox to print the tuple in the output instead of a single sentence
+        # ## TODO: Include a checkbox to switch separators (either comma or spaces)
+
+        # if ALTERNATIVE_UI > 0:
+        #     inputs = [
+        #         gr.Textbox(label=f"Input {i+1}", lines=2) for i in range(ALTERNATIVE_UI)
+        #     ]
+        #     description = (
+        #         f"From: {FROM} | To: {TO} | Alternative UI: {ALTERNATIVE_UI} inputs"
+        #     )
+        # else:
+        #     inputs = [
+        #         gr.Textbox(
+        #             lines=2, placeholder="Enter text to translate", label="Input Text"
+        #         ),
+        #     ]
+        #     description = f"From: {FROM} | To: {TO}"
+
+        # inputs.append(gr.Checkbox(label="Enable Round-trip Translation"))
+
+        # def interface_fn(*input_args: str) -> tuple:
+        #     """
+        #     Support function for gr.Interface() for ALTERNATIVE_UI
+        #     """
+        #     is_round_trip = input_args[-1]
+        #     text_inputs = input_args[:-1]
+        #     return gradio_translation_input(*text_inputs, is_round_trip=is_round_trip, model=model, model_reverse=model_reverse)
+
+        # # Create the Gradio interface for ALTERNATIVE_UI
+        # ui = gr.Interface(
+        #     title="Hugging Face Language Translation",
+        #     description=description,
+        #     fn=interface_fn,
+        #     inputs=inputs,
+        #     outputs=[
+        #         gr.Textbox(label="Translated Text"),
+        #         gr.Textbox(label="Round-trip Translation"),
+        #         gr.Number(label="Similarity Score (0 to 1)"),
+        #     ],
+        # )
+        # ui.launch(share=False)
 
     else:
         TRANSLATION_TEXT = "translation_text"
