@@ -166,6 +166,7 @@ Notes:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--save", default=False, action='store_true', help="Save model to disk")
     parser.add_argument("--load", default=False, action='store_true', help="Load model from disk")
+    parser.add_argument("--list-terms", default=False, action='store_true', help="Print vocabulary")
     parser.add_argument("--print", default=False, action='store_true', help="Print vectors on standard output")
     parser.add_argument("filename", default=None, help="Input data filename (or basename when loading previously saved model); if a directory all files within are processed")
     parser.add_argument("--output-basename", default=None, help="Basename to use for output (by default input file without .txt extension)")
@@ -176,6 +177,7 @@ Notes:
     filename = args['filename']
     save = args['save']
     load = args['load']
+    list_terms = args['list_terms']
     print_vectors = args['print']
     show_similarity = args['show_similarity']
     output_basename = args['output_basename']
@@ -222,6 +224,11 @@ Notes:
         if (save):
             model.save(output_basename + WORD2VEC_MODEL_EXT)
 
+    # Print the vocabulary
+    if list_terms:
+        all_words = sorted(model.wv.key_to_index.keys())
+        print("\n".join(all_words))
+            
     # Print the vector representations
     # TODO: add option to print word similarity matrix
     if print_vectors:
