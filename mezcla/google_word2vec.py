@@ -40,9 +40,13 @@ import logging
 import multiprocessing
 
 from gensim.models import Word2Vec
-
-import tpo_common as tpo
-import glue_helpers as gh
+from mezcla import file_utils
+from mezcla import glue_helpers as gh
+from mezcla import system
+from mezcla import tpo_common as tpo
+## OLD:
+## import tpo_common as tpo
+## import glue_helpers as gh
 
 WORD2VEC_MODEL_EXT = ".word2vec"
 NUM_TOP = tpo.getenv_integer("NUM_TOP", 5, "Maximum number of related terms to display")
@@ -61,6 +65,13 @@ DOWNCASE = tpo.getenv_boolean("DOWNCASE", not PRESERVE,
                               "Convert text to lowercase")
 SKIP_INDIVIDUAL = tpo.getenv_boolean("SKIP_INDIVIDUAL", False,
                                      "Omit similarity for individual tokens in input sentences")
+## TODO:
+## JSON_FORMAT = system.getenv_bool(
+##     "JSON_FORMAT", False,
+##     desc="USe JSON format for output such as similarity")
+SIM_OUTPUT_FILE = system.getenv_value(
+    "SIM_OUTPUT_FILE", None,
+    desc="Output file for similarity info for all terms")
 
 def format_related_terms(model, positive_terms, max_num=NUM_TOP):
     """Determine related terms from MODEL for POSITIVE_TERMS, returning at most MAX_NUM entries each."""
@@ -95,7 +106,7 @@ def format_related_terms(model, positive_terms, max_num=NUM_TOP):
     return ", ".join(related_specs)
 
 def tokenize(text):
-    """Tokenize TEXT according to regex word tokens (i.e., \W+), which defaults to [A-Za-z0-9_]+"""
+    r"""Tokenize TEXT according to regex word tokens (i.e., \W+), which defaults to [A-Za-z0-9_]+"""
     # TODO: Allow for tokenization regex to be overwritten
     token_regex = r"(\W+)" if not PRESERVE else r"(\S+)"
     tokens = [t.strip() for t in re.split(token_regex, text) if t.strip()]
@@ -136,7 +147,7 @@ class MySentences(object):
                 tpo.debug_format("Warning: skipping subdirectory {f}", tpo.WARNING, f=file_name)
                 continue
             tpo.debug_format("Processing file {f}", tpo.DETAILED, f=file_name)
-            for line in open(file_name):
+            for line in system.open_file(file_name):
                 ## OLD: tokens = line.split()
                 tokens = tokenize(line)
                 tpo.debug_format("MySentences.__iter__: yielding {t}", 6, t=tokens)
@@ -264,6 +275,11 @@ Notes:
                 print("")
             except KeyError:
                 tpo.print_stderr("Error: %s" % str(sys.exc_info()))
+    if SIM_OUTPUT_FILE:
+        sim_info = {}
+        for term in sorted(model.wv.key_to_index.keys()):
+            sim_info[term] = model.wv.most_similar(positive=[term])
+        file_utils.write_json(SIM_OUTPUT_FILE, sim_info, default=str)
     return
 
 #------------------------------------------------------------------------
