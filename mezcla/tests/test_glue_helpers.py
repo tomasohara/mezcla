@@ -21,6 +21,7 @@ import sys
 
 # Installed packages
 import pytest
+import atexit
 
 # Local packages
 from mezcla import debug
@@ -105,7 +106,13 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
         debug.trace(4, "test_create_directory()")
-        assert False, "TODO: implement"
+        test_dir = THE_MODULE.dir_path(__file__)
+        res_2_dir = THE_MODULE.form_path(test_dir, "resources_2")
+        res_dir = THE_MODULE.form_path(test_dir, "resources")
+        THE_MODULE.create_directory(res_2_dir)
+        # cleanup created directory
+        atexit.register(THE_MODULE.delete_directory, res_2_dir)
+        assert THE_MODULE.is_directory(res_2_dir)
 
     @pytest.mark.xfail
     def test_full_mkdir(self):
@@ -120,7 +127,9 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_get_temp_dir(self):
         """Tests get_temp_dir"""
         debug.trace(4, "test_get_temp_dir()")
-        assert False, "TODO: implement"
+        temp_dir = THE_MODULE.get_temp_dir()
+        assert THE_MODULE.is_directory(temp_dir)
+        ## TODO: test delete when implemented
 
     @pytest.mark.xfail
     def test_real_path(self):
@@ -167,8 +176,21 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_disable_subcommand_tracing(self):
         """Ensure disable_subcommand_tracing works as expected"""
         debug.trace(4, "test_disable_subcommand_tracing()")
-        assert False, "TODO: implement"
+        ## TODO: fix monkeypatching
+        # self.monkeypatch.setenv("DEBUG_LEVEL", "6")
+        # test_dir = THE_MODULE.dirname(__file__)
+        # resource_dir = THE_MODULE.form_path(test_dir, "resources", "example_text.txt")
+        # command = f"python -m mezcla.extract_document_text {resource_dir}"
+        # THE_MODULE.issue(command)
+        # std = self.get_stderr()
+        # assert __file__ in std
 
+        # THE_MODULE.disable_subcommand_tracing()
+        # THE_MODULE.run(command)
+        # stderr = self.get_stderr()
+        # assert __file__ not in stderr
+        assert(False)
+        
     @pytest.mark.xfail
     def test_run(self):
         """Ensure run works as expected"""
@@ -395,13 +417,25 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_get_matching_files(self):
         """Ensure get_matching_files works as expected"""
         debug.trace(4, "test_get_matching_files()")
-        assert False, "TODO: implement"
+        test_dir = THE_MODULE.dirname(__file__)
+        system.set_current_directory(test_dir)
+        assert THE_MODULE.basename(__file__) in THE_MODULE.get_matching_files("test_*.py")
+        
+        empty_match = THE_MODULE.get_matching_files(pattern="non-existent-file", warn=True)
+        stderr = self.get_stderr()
+        assert "Warning: no matching files for non-existent-file" in stderr
 
     @pytest.mark.xfail
     def test_get_files_matching_specs(self):
         """Ensure get_files_matching_specs works as expected"""
         debug.trace(4, "test_get_files_matching_specs()")
-        assert False, "TODO: implement"
+        test_dir = THE_MODULE.dirname(__file__)
+        system.set_current_directory(test_dir)
+        matches = THE_MODULE.get_files_matching_specs([f"{test_dir}/test_*.py", "resources", "*.batspp"])
+        assert THE_MODULE.basename(__file__)
+        assert "regression.batspp" in matches
+        assert "resources" in matches
+
 
     @pytest.mark.xfail
     def test_get_directory_listing(self):
