@@ -485,56 +485,6 @@ def main():
         )
         ui.launch()
 
-        ## OLD: Before three tabs interface
-
-        # import gradio as gr
-        # from transformers import pipeline
-
-        # ## EXPERIMENTAL: Added supoort for alternative UI
-        # ## BUG: ValueError (empty vocabulary) occurs for single alphabets (e.g. 'I' as a word)
-        # # ValueError: empty vocabulary; perhaps the documents only contain stop words
-        # ## TODO: Include a checkbox to print the tuple in the output instead of a single sentence
-        # ## TODO: Include a checkbox to switch separators (either comma or spaces)
-
-        # if ALTERNATIVE_UI > 0:
-        #     inputs = [
-        #         gr.Textbox(label=f"Input {i+1}", lines=2) for i in range(ALTERNATIVE_UI)
-        #     ]
-        #     description = (
-        #         f"From: {FROM} | To: {TO} | Alternative UI: {ALTERNATIVE_UI} inputs"
-        #     )
-        # else:
-        #     inputs = [
-        #         gr.Textbox(
-        #             lines=2, placeholder="Enter text to translate", label="Input Text"
-        #         ),
-        #     ]
-        #     description = f"From: {FROM} | To: {TO}"
-
-        # inputs.append(gr.Checkbox(label="Enable Round-trip Translation"))
-
-        # def interface_fn(*input_args: str) -> tuple:
-        #     """
-        #     Support function for gr.Interface() for ALTERNATIVE_UI
-        #     """
-        #     is_round_trip = input_args[-1]
-        #     text_inputs = input_args[:-1]
-        #     return gradio_translation_input(*text_inputs, is_round_trip=is_round_trip, model=model, model_reverse=model_reverse)
-
-        # # Create the Gradio interface for ALTERNATIVE_UI
-        # ui = gr.Interface(
-        #     title="Hugging Face Language Translation",
-        #     description=description,
-        #     fn=interface_fn,
-        #     inputs=inputs,
-        #     outputs=[
-        #         gr.Textbox(label="Translated Text"),
-        #         gr.Textbox(label="Round-trip Translation"),
-        #         gr.Number(label="Similarity Score (0 to 1)"),
-        #     ],
-        # )
-        # ui.launch(share=False)
-
     else:
         TRANSLATION_TEXT = "translation_text"
 
