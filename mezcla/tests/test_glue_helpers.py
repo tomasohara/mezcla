@@ -176,20 +176,20 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_disable_subcommand_tracing(self):
         """Ensure disable_subcommand_tracing works as expected"""
         debug.trace(4, "test_disable_subcommand_tracing()")
-        ## TODO: fix monkeypatching
-        # self.monkeypatch.setenv("DEBUG_LEVEL", "6")
-        # test_dir = THE_MODULE.dirname(__file__)
-        # resource_dir = THE_MODULE.form_path(test_dir, "resources", "example_text.txt")
-        # command = f"python -m mezcla.extract_document_text {resource_dir}"
-        # THE_MODULE.issue(command)
-        # std = self.get_stderr()
-        # assert __file__ in std
 
-        # THE_MODULE.disable_subcommand_tracing()
-        # THE_MODULE.run(command)
-        # stderr = self.get_stderr()
-        # assert __file__ not in stderr
-        assert(False)
+        test_dir = THE_MODULE.dirname(__file__)
+        resource_dir = THE_MODULE.form_path(test_dir, "resources", "example_text.txt")
+        command = f"python -m mezcla.extract_document_text {resource_dir}"
+        THE_MODULE.issue(command, trace_level=6, subtrace_level=6)
+        stderr_1 = self.get_stderr()
+
+        THE_MODULE.disable_subcommand_tracing()
+        THE_MODULE.issue(command, trace_level=6)
+        stderr_2 = self.get_stderr()
+        
+        assert my_re.search(r"getenv_int\(SUB_DEBUG_LEVEL, 3\) => 6", stderr_1)
+        assert my_re.search(r"setenv\(DEBUG_LEVEL, 0\)", stderr_2)
+
         
     @pytest.mark.xfail
     def test_run(self):
