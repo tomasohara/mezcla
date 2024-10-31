@@ -18,10 +18,10 @@ import os
 ## OLD: from os import path
 from io import StringIO
 import sys
+import atexit
 
 # Installed packages
 import pytest
-import atexit
 
 # Local packages
 from mezcla import debug
@@ -95,7 +95,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
                == "/home/User/Desktop/file.txt")
         ## TEMP:
         self.temp_file += "-test_form_path"
-        # Make sure can create directory        
+        # Make sure can create directory
         test_temp_dir = THE_MODULE.form_path(self.temp_file, "test_dir")
         test_temp_file = THE_MODULE.form_path(test_temp_dir, "test_file",
                                               create=True)
@@ -108,7 +108,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_create_directory()")
         test_dir = THE_MODULE.dir_path(__file__)
         res_2_dir = THE_MODULE.form_path(test_dir, "resources_2")
-        res_dir = THE_MODULE.form_path(test_dir, "resources")
+        _ = THE_MODULE.form_path(test_dir, "resources")
         THE_MODULE.create_directory(res_2_dir)
         # cleanup created directory
         atexit.register(THE_MODULE.delete_directory, res_2_dir)
@@ -186,11 +186,11 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         THE_MODULE.disable_subcommand_tracing()
         THE_MODULE.issue(command, trace_level=6)
         stderr_2 = self.get_stderr()
-        
+
         assert my_re.search(r"getenv_int\(SUB_DEBUG_LEVEL, 3\) => 6", stderr_1)
         assert my_re.search(r"setenv\(DEBUG_LEVEL, 0\)", stderr_2)
 
-        
+
     @pytest.mark.xfail
     def test_run(self):
         """Ensure run works as expected"""
@@ -420,8 +420,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         test_dir = THE_MODULE.dirname(__file__)
         system.set_current_directory(test_dir)
         assert THE_MODULE.basename(__file__) in THE_MODULE.get_matching_files("test_*.py")
-        
-        empty_match = THE_MODULE.get_matching_files(pattern="non-existent-file", warn=True)
+
+        _ = THE_MODULE.get_matching_files(pattern="non-existent-file", warn=True)
         stderr = self.get_stderr()
         assert "Warning: no matching files for non-existent-file" in stderr
 
@@ -431,7 +431,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_get_files_matching_specs()")
         test_dir = THE_MODULE.dirname(__file__)
         system.set_current_directory(test_dir)
-        matches = THE_MODULE.get_files_matching_specs([f"{test_dir}/test_*.py", "resources", "*.batspp"])
+        matches = THE_MODULE.get_files_matching_specs(
+            [f"{test_dir}/test_*.py", "resources", "*.batspp"])
         assert THE_MODULE.basename(__file__)
         assert "regression.batspp" in matches
         assert "resources" in matches
@@ -465,7 +466,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.set_level(7)
         self.monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
         # This avoids flaky tpo.stderr due to other tests
-        ## TODO: fix tpo.restore_stderr() to work with pytest 
+        ## TODO: fix tpo.restore_stderr() to work with pytest
         tpo.stderr = sys.stderr
         THE_MODULE.getenv_filename('TEST_ENV_FILENAME')
         captured = self.get_stderr() # Note: capfd must be used instead of capsys to capture stderr
@@ -482,7 +483,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         temp_dir = '/tmp/test_copy_dir_'
         system.create_directory(f'{temp_dir}1')
         system.write_file(f'{temp_dir}1/test_file', "copy")
-        assert 'test_file' in system.read_directory(THE_MODULE.copy_directory(f'{temp_dir}1', f'{temp_dir}2'))
+        assert 'test_file' in system.read_directory(
+            THE_MODULE.copy_directory(f'{temp_dir}1', f'{temp_dir}2'))
         assert 'copy' in system.read_file(f'{temp_dir}2/test_file')
 
     @pytest.mark.xfail
@@ -527,8 +529,35 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         """Make sure module initialized OK"""
         # TODO1: add checks for TEMP_BASE and TEMP_FILE, along with PRESERVE_TEMP_FILE
         # TODO3: add checks for TEMP_LOG_FILE and TEMP_SCRIPT_FILE
-        assert False, "TODO: implement"
-        
+
+        # attrs that won't be changed
+        self.monkeypatch.setattr('mezcla.glue_helpers.PID', 1)
+
+        # CASE of USE_TEMP_BASE_DIR False but TEMP_BASE
+        self.monkeypatch.setattr('mezcla.glue_helpers.USE_TEMP_BASE_DIR', False)
+        self.monkeypatch.setattr('mezcla.glue_helpers.PRESERVE_TEMP_FILE', False)
+        # delete TEMP_FILE to check use of temp_file_default
+        self.monkeypatch.delenv('TEMP_FILE', raising=False)
+        if THE_MODULE.TEMP_BASE is None:
+            temp_dir = system.getenv_text("TMP_DIR")
+            self.monkeypatch.setattr(
+                'mezcla.glue_helpers.TEMP_BASE', system.form_path(temp_dir,"test_init"))
+        THE_MODULE.init()
+        assert not system.is_directory(THE_MODULE.TEMP_BASE)
+        assert THE_MODULE.TEMP_FILE == f"{THE_MODULE.TEMP_BASE}-temp-1.list"
+
+        # CASE of USE_TEMP_BASE_DIR True
+        self.monkeypatch.setattr('mezcla.glue_helpers.USE_TEMP_BASE_DIR', True)
+        self.monkeypatch.setattr('mezcla.glue_helpers.TEMP_FILE', None)
+        self.monkeypatch.delenv('TEMP_LOG_FILE', raising=False)
+        self.monkeypatch.delenv('TEMP_SCRIPT_FILE', raising=False)
+        THE_MODULE.init()
+        atexit.register(THE_MODULE.delete_directory, THE_MODULE.TEMP_BASE) # cleanup
+        assert system.is_directory(THE_MODULE.TEMP_BASE)
+        assert THE_MODULE.TEMP_FILE == system.form_path(THE_MODULE.TEMP_BASE, "temp-1.list")
+        assert THE_MODULE.TEMP_LOG_FILE.split('-')[0] == THE_MODULE.TEMP_SCRIPT_FILE.split('-')[0]
+
+
 if __name__ == '__main__':
     debug.trace_current_context()
     pytest.main([__file__])
