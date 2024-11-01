@@ -642,7 +642,7 @@ def format_index_html(base_url=None):
         """
     #
     # TODO: define text area dimensions based on browser window size
-    html_template += """
+    html_template += """        
             <!-- Form for entering text for categorization -->
             <hr>
             <form action="{base_url}/categorize" method="get">
@@ -651,8 +651,7 @@ def format_index_html(base_url=None):
                 <textarea id="textarea1" rows="10" cols="100" name="text"></textarea>
                 <br>
                 <input type="submit">
-            </form>            
-    """
+            </form>"""
     #
     html_template += """
             <!-- Form for entering text for textcat probability distribution -->
@@ -663,9 +662,8 @@ def format_index_html(base_url=None):
                 <textarea id="textarea2" rows="10" cols="100" name="text"></textarea>
                 <br>
                 <input type="submit">
-            </form>
-    """
-    html_template += """          
+            </form>"""
+    html_template += """
         </body>
     </html>
     """
