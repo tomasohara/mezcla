@@ -12,7 +12,6 @@ Refined version of hugging_face_translation.py using OOP
 ## TODO: import json
 
 # Installed modules
-import gradio as gr
 
 # Local modules
 from mezcla import debug
@@ -29,8 +28,12 @@ FROM = system.getenv_text("FROM", "es")
 TO = system.getenv_text("TO", "en")
 SOURCE_LANG = system.getenv_text("SOURCE_LANG", FROM, "Source language")
 TARGET_LANG = system.getenv_text("TARGET_LANG", TO, "Target language")
-MT_TASK = system.getenv_text("MT_TASK", f"translation_{FROM}_to_{TO}", "Machine Translation Task")
-MT_MODEL = system.getenv_text("MT_MODEL", f"Helsinki-NLP/opus-mt-{FROM}-{TO}", "Machine Translation Model")
+MT_TASK = system.getenv_text(
+    "MT_TASK", f"translation_{FROM}_to_{TO}", "Machine Translation Task"
+)
+MT_MODEL = system.getenv_text(
+    "MT_MODEL", f"Helsinki-NLP/opus-mt-{FROM}-{TO}", "Machine Translation Model"
+)
 MAX_LENGTH = system.getenv_int(
     "MAX_LENGTH", 512, description="Optional maximum length of tokens"
 )
@@ -67,6 +70,7 @@ TL = debug.TL
 TRANSLATION_TEXT = "translation_text"
 debug.assertion(SOURCE_LANG != TARGET_LANG)
 
+
 class TranslationArgsProcessing(Main):
     """Arguments processing class"""
 
@@ -81,8 +85,8 @@ class TranslationArgsProcessing(Main):
         self.text_file = self.get_parsed_option(FILE_ARG)
         self.source_lang = self.get_parsed_option(FROM_ARG, SOURCE_LANG)
         self.target_lang = self.get_parsed_option(TO_ARG, TARGET_LANG)
-        self.mt_task = self.get_parsed_option(TASK_ARG)
-        self.mt_model = self.get_parsed_option(MODEL_ARG)
+        self.mt_task = self.get_parsed_option(TASK_ARG, MT_TASK)
+        self.mt_model = self.get_parsed_option(MODEL_ARG, MT_MODEL)
         self.show_elapsed = self.get_parsed_option(ELAPSED_ARG)
         self.round_trip = self.get_parsed_option(ROUND_ARG, ROUND_TRIP)
         self.use_interface = self.get_parsed_option(UI_ARG, USE_INTERFACE)
@@ -90,7 +94,9 @@ class TranslationArgsProcessing(Main):
 
         # Pre-read the text file if provided
         if self.text_file and self.text_file != "-":
-            self.text = system.read_file(self.text_file)  # Assume `system.read_file` correctly reads file content
+            self.text = system.read_file(
+                self.text_file
+            )  # Assume `system.read_file` correctly reads file content
 
     def run_main_step(self):
         """Process the main step to obtain translation output"""
@@ -100,11 +106,15 @@ class TranslationArgsProcessing(Main):
             dest_lang=self.target_lang,
             round_trip=self.round_trip,
             text_file=self.text_file,
+            mt_model=self.mt_model,
+            mt_task=self.mt_task,
+            use_interface=self.use_interface
         )
 
         # Store the results in self.result for later access
         self.result = translation_logic.return_results()
-        print(self.result)
+        if not self.use_interface:
+            print(self.result)
 
 
 class TranslationLogic:
@@ -120,6 +130,7 @@ class TranslationLogic:
         mt_task=MT_TASK,
         mt_model=MT_MODEL,
         use_gpu=USE_GPU,
+        use_interface=USE_INTERFACE,
         parallel_process=PARALLEL_PROCESS,
         max_length=MAX_LENGTH,
         show_elapsed=SHOW_ELAPSED,
@@ -135,6 +146,7 @@ class TranslationLogic:
         self.parallel_process = parallel_process
         self.max_length = max_length
         self.show_elapsed = show_elapsed
+        self.use_interface = use_interface
         self.dynamic_chunking = dynamic_chunking
         self.use_gpu = use_gpu
         self.device = self._get_device()
@@ -143,25 +155,30 @@ class TranslationLogic:
     def _get_device(self):
         """Sets device to CUDA if available or USE_GPU is True, otherwise CPU."""
         import torch
+
         return torch.device(
             "cuda" if (torch.cuda.is_available() and self.use_gpu) else "cpu"
         )
 
     def _load_models(self):
-        """Loads translation models for forward and reverse translation."""
+        """Loads translation models for forward and reverse translation, allowing overrides via arguments."""
         from transformers import pipeline
 
-        mt_model_reverse = self.mt_model.replace(f"{FROM}-{TO}", f"{TO}-{FROM}")
-        mt_task_reverse = self.mt_task.replace(f"{FROM}_to_{TO}", f"{TO}_to_{FROM}")
+        ## TODO: Fix support for --model and --task argument
+        forward_task = f"translation_{self.source_lang}_to_{self.dest_lang}"
+        forward_model = f"Helsinki-NLP/opus-mt-{self.source_lang}-{self.dest_lang}"
 
+        reverse_task = f"translation_{self.dest_lang}_to_{self.source_lang}"
+        reverse_model =  f"Helsinki-NLP/opus-mt-{self.dest_lang}-{self.source_lang}"
+        
         model = pipeline(
-            task=self.mt_task,
-            model=self.mt_model,
+            task=forward_task,
+            model=forward_model,
             device=self.device,
         )
         model_reverse = pipeline(
-            task=mt_task_reverse,
-            model=mt_model_reverse,
+            task=reverse_task,
+            model=reverse_model,
             device=self.device,
         )
 
@@ -225,9 +242,11 @@ class TranslationLogic:
         return translated_texts
 
     def _get_text_input(self):
-        """Read input from a text file"""
-        # if self.text_file != "-":
-        #     self.text = system.read_file(self.text_file)
+        """Read input from a text file or text argument, if not using the UI."""
+        # If UI mode is active, skip this function's checks
+        if self.use_interface:
+            return
+        
         if self.text:
             self.text = self.text
         elif self.text_file and self.text_file != "-":
@@ -235,10 +254,10 @@ class TranslationLogic:
         else:
             raise ValueError("No valid text input provided. Use --text or --file.")
 
-
     def _translate_text(self):
         """Translates text by chunk (one-way translation only)."""
-        self._get_text_input()
+        if not self.use_interface:
+            self._get_text_input()
         chunks = self._chunk_text(self.text)
 
         # Use parallel processing if specified
@@ -270,20 +289,57 @@ class TranslationLogic:
         )
         similarity_score = self._get_similarity_score(self.text, reverse_translations)
         return translated_text, reverse_translations, similarity_score
+    
+    def _helper_translation_ui(self, text):
+        """Helper function to perform translation on input from the Gradio UI."""
+        self.text = text
+        return self._translate_text()
+    
+    def _translation_ui(self):
+        """Translation UI (Simple)""" 
+        
+        import gradio as gr
+
+        with gr.Blocks() as ui:
+            with gr.Tab("Machine Translation UI"):
+                gr.Markdown("<h2>Machine Translation</h2>")
+                gr.Markdown(f"<h3>FROM: {FROM}") 
+                gr.Markdown(f"<h3>TO: {TO}")
+                gr.Markdown(
+                    "This function takes an input and returns a formatted string."
+                )
+
+                with gr.Row():
+                    input_box = gr.Textbox(label="Input for Machine Translation")
+                    output_box = gr.Textbox(label="Output", interactive=False)
+
+                gr.Button("Submit", elem_id="button_1").click(
+                    fn=self._helper_translation_ui, inputs=input_box, outputs=output_box
+                )
+
+        ui.launch()
 
     def return_results(self, jsonify=False):
-        """Public class to return results based on parameters passed"""
-        ## TODO: Add extended JSON result when jsonify = True
+        """Public method to return results based on parameters passed"""
+        if self.use_interface:
+            # Launch UI if specified by the user without needing --text or --file
+            return self._translation_ui()
+
         if self.show_elapsed:
             return self._get_elapsed_time()
-        elif self.round_trip:
+        
+        if self.round_trip:
             return self._round_trip_translation()
-        else:
-            return self._translate_text()
+        
+        return self._translate_text()
 
 
 class TranslationUI:
-    def __init__(self):
+    def __init__(
+        self,
+        model=None,
+        model_rev=None,
+    ):
         pass
 
 
@@ -296,14 +352,14 @@ if __name__ == "__main__":
             (TASK_ARG, "task"),
             (MODEL_ARG, "model"),
             (TEXT_ARG, "Input text for translation"),
-            (FILE_ARG, "Input text file for translation")
+            (FILE_ARG, "Input text file for translation"),
         ],
         boolean_options=[
             (ELAPSED_ARG, "Show elapsed time"),
             (ROUND_ARG, "Perform round-trip translation"),
             (UI_ARG, "Enable Gradio Interface"),
-            (VERBOSE_ARG, "Verbose Mode")
+            (VERBOSE_ARG, "Verbose Mode"),
         ],
-        manual_input=True
+        manual_input=True,
     )
     app.run()
