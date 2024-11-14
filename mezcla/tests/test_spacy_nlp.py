@@ -86,7 +86,21 @@ class TestSpacyNlpUtils(TestWrapper):
     def test_get_char_span(self):
         """Ensure get_char_span works as expected"""
         debug.trace(4, "test_get_char_span()")
-        self.do_assert(False, "TODO: code test")
+        doc = THE_MODULE.SpacyHelper().nlp("the quick brown fox")
+        # contract mode
+        assert THE_MODULE.get_char_span(doc, 4, 19).text == "quick brown fox"
+        assert THE_MODULE.get_char_span(doc, 4, 18).text == "quick brown"
+        assert THE_MODULE.get_char_span(doc, 4, 20) is None
+
+        # expand mode
+        assert THE_MODULE.get_char_span(doc, 16, 16).text == "fox"
+        assert THE_MODULE.get_char_span(doc, 14, 17).text == "brown fox"
+
+        # adjusted span
+        assert doc.text[15] == ' ' # make sure we're starting at a space
+        assert THE_MODULE.get_char_span(doc, 15, 16).text == "fox"
+        assert THE_MODULE.get_char_span(doc, 15, 15).text == "brown"
+
 
     @pytest.mark.xfail
     ## TODO: @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
