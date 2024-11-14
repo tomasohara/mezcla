@@ -16,7 +16,6 @@ Refined version of hugging_face_translation.py using OOP
 # Local modules
 from mezcla import debug
 from mezcla.main import Main, USE_PARAGRAPH_MODE
-import mezcla.examples.hugging_face_speechrec as hf_speechrec
 from mezcla import misc_utils
 from mezcla.my_regex import my_re
 from mezcla import system
@@ -64,6 +63,7 @@ UI_ARG = "ui"
 ROUND_ARG = "round"
 FILE_ARG = "file"
 VERBOSE_ARG = "verbose"
+PARALLEL_ARG = "parallel"
 
 # Misc Constants
 TL = debug.TL
@@ -72,15 +72,47 @@ debug.assertion(SOURCE_LANG != TARGET_LANG)
 
 
 class TranslationArgsProcessing(Main):
-    """Arguments processing class"""
+    """
+    TranslationArgsProcessing class is responsible for parsing and managing arguments for the translation process.
+    It sets up configurations for translation based on command-line arguments, and it initiates translation by 
+    interfacing with the TranslationLogic class.
+
+    Attributes:
+    - result: Stores the output of the translation process for later retrieval.
+    """
 
     def __init__(self, *args, **kwargs):
+        """
+        Initializes the TranslationArgsProcessing instance and sets up a `result` attribute to store translation output.
+        
+        Parameters:
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments.
+        """
         super().__init__(*args, **kwargs)
-        self.result = None  # Initialize result attribute to store output
+        self.result = ''
 
     def setup(self):
-        """Process arguments and pre-read the input file if specified"""
-        # Process standard arguments
+        """
+        Processes command-line arguments and reads the input file if specified. Sets up configurations such as
+        source and target languages, model details, and processing options (e.g., round-trip, parallel processing).
+
+        Arguments Processed:
+            - text: Direct text input for translation.
+            - text_file: Path to an input text file for translation.
+            - source_lang: Source language code.
+            - target_lang: Target language code.
+            - mt_task: Task for translation model (e.g., "translation_en_to_fr").
+            - mt_model: Model name (e.g., "Helsinki-NLP/opus-mt-en-fr").
+            - show_elapsed: Option to display elapsed time for translation.
+            - round_trip: Boolean indicating if round-trip translation should be performed.
+            - use_interface: Boolean indicating if the Gradio UI should be used.
+            - parallel_process: Boolean for enabling parallel processing of text chunks.
+            - verbose: Option for detailed logging.
+
+        Raises:
+            ValueError: If both `text` and `text_file` are empty or invalid.
+        """
         self.text = self.get_parsed_option(TEXT_ARG)
         self.text_file = self.get_parsed_option(FILE_ARG)
         self.source_lang = self.get_parsed_option(FROM_ARG, SOURCE_LANG)
@@ -90,16 +122,24 @@ class TranslationArgsProcessing(Main):
         self.show_elapsed = self.get_parsed_option(ELAPSED_ARG)
         self.round_trip = self.get_parsed_option(ROUND_ARG, ROUND_TRIP)
         self.use_interface = self.get_parsed_option(UI_ARG, USE_INTERFACE)
+        self.parallel_process = self.get_parsed_argument(PARALLEL_ARG, PARALLEL_PROCESS)
         self.verbose = self.get_parsed_option(VERBOSE_ARG)
 
-        # Pre-read the text file if provided
         if self.text_file and self.text_file != "-":
-            self.text = system.read_file(
-                self.text_file
-            )  # Assume `system.read_file` correctly reads file content
+            self.text = system.read_file(self.text_file)
 
     def run_main_step(self):
-        """Process the main step to obtain translation output"""
+        """
+        Executes the main translation step by creating an instance of TranslationLogic with the parsed arguments.
+        It stores the translation result in the `result` attribute for later retrieval.
+
+        Creates:
+            - An instance of TranslationLogic to perform the translation.
+            - Stores the output in `self.result` for easy access.
+        
+        Prints:
+            The result if `use_interface` is set to False.
+        """
         translation_logic = TranslationLogic(
             text=self.text,
             source_lang=self.source_lang,
@@ -108,17 +148,37 @@ class TranslationArgsProcessing(Main):
             text_file=self.text_file,
             mt_model=self.mt_model,
             mt_task=self.mt_task,
+            show_elapsed=self.show_elapsed,
+            parallel_process=self.parallel_process,
             use_interface=self.use_interface
         )
 
-        # Store the results in self.result for later access
         self.result = translation_logic.return_results()
         if not self.use_interface:
             print(self.result)
 
 
 class TranslationLogic:
-    """Translated a"""
+    """
+    TranslationLogic class performs machine translation tasks, with support for forward and 
+    round-trip translation, text chunking, parallel processing, and similarity scoring. It can
+    operate in both command-line mode and Gradio UI.
+
+    Parameters:
+    - text (str): The text to be translated.
+    - source_lang (str): Source language code.
+    - dest_lang (str): Target language code.
+    - round_trip (bool): Whether to perform round-trip translation.
+    - text_file (str): Path to a text file containing input text.
+    - mt_task (str): Task for the translation model (e.g., "translation_en_to_fr").
+    - mt_model (str): Model name for translation (e.g., "Helsinki-NLP/opus-mt-en-fr").
+    - use_gpu (bool): Whether to use GPU for translation.
+    - use_interface (bool): If True, uses a Gradio-based UI for translation.
+    - parallel_process (bool): If True, enables parallel translation of text chunks.
+    - max_length (int): Maximum length of each text chunk.
+    - show_elapsed (bool): If True, displays elapsed time for translation.
+    - dynamic_chunking (bool): If True, enables dynamic chunking of text.
+    """
 
     def __init__(
         self,
@@ -153,7 +213,12 @@ class TranslationLogic:
         self.model, self.model_reverse = self._load_models()
 
     def _get_device(self):
-        """Sets device to CUDA if available or USE_GPU is True, otherwise CPU."""
+        """
+        Sets the device to CUDA if a GPU is available and `use_gpu` is True; otherwise, defaults to CPU.
+        
+        Returns:
+            torch.device: The device object for either CUDA (GPU) or CPU.
+        """
         import torch
 
         return torch.device(
@@ -161,16 +226,21 @@ class TranslationLogic:
         )
 
     def _load_models(self):
-        """Loads translation models for forward and reverse translation, allowing overrides via arguments."""
+        """
+        Loads translation models for both forward and reverse translation tasks, 
+        allowing for custom task and model overrides via parameters.
+
+        Returns:
+            tuple: Contains the forward translation model and the reverse translation model.
+        """
         from transformers import pipeline
 
-        ## TODO: Fix support for --model and --task argument
-        forward_task = f"translation_{self.source_lang}_to_{self.dest_lang}"
-        forward_model = f"Helsinki-NLP/opus-mt-{self.source_lang}-{self.dest_lang}"
+        forward_task = self.mt_task or f"translation_{self.source_lang}_to_{self.dest_lang}"
+        forward_model = self.mt_model or f"Helsinki-NLP/opus-mt-{self.source_lang}-{self.dest_lang}"
 
         reverse_task = f"translation_{self.dest_lang}_to_{self.source_lang}"
-        reverse_model =  f"Helsinki-NLP/opus-mt-{self.dest_lang}-{self.source_lang}"
-        
+        reverse_model = f"Helsinki-NLP/opus-mt-{self.dest_lang}-{self.source_lang}"
+
         model = pipeline(
             task=forward_task,
             model=forward_model,
@@ -185,11 +255,26 @@ class TranslationLogic:
         return model, model_reverse
 
     def _get_split_regex(self) -> str:
-        """Returns a regex pattern for splitting text based on environment settings."""
+        """
+        Returns a regex pattern for splitting text into paragraphs or sentences based on configuration.
+
+        Returns:
+            str: Regex pattern for splitting text based on the configured mode.
+        """
         return r"\n\s*\n" if USE_PARAGRAPH_MODE else r"(?<=[.!?]) +"
 
     def _chunk_text(self, text, dynamic_chunking=False) -> list:
-        """Splits text into chunks based on regex or word count."""
+        """
+        Splits text into manageable chunks either by word count (dynamic chunking) or 
+        by splitting using a regex pattern (default).
+
+        Parameters:
+            text (str): The text to be chunked.
+            dynamic_chunking (bool): If True, splits by word count; otherwise, by regex.
+
+        Returns:
+            list: List of text chunks based on the chosen splitting method.
+        """
         if dynamic_chunking:
             words = text.split()
             return [
@@ -214,13 +299,31 @@ class TranslationLogic:
         return chunks
 
     def _get_translated_text(self, model_obj: list) -> str:
-        """Extracts translated text from model output."""
+        """
+        Extracts the translated text from the model's output.
+
+        Parameters:
+            model_obj (list): The model's output containing translated text.
+
+        Returns:
+            str: The translated text string.
+        """
         return model_obj[0]["translation_text"] if model_obj else ""
 
     def _get_similarity_score(
         self, text1: str, text2: str, floating_point: int = 4
     ) -> float:
-        """Calculates cosine similarity between two strings."""
+        """
+        Calculates the cosine similarity score between two text strings.
+
+        Parameters:
+            text1 (str): The first text for comparison.
+            text2 (str): The second text for comparison.
+            floating_point (int): Number of decimal places for rounding.
+
+        Returns:
+            float: Cosine similarity score between text1 and text2.
+        """
         from sklearn.feature_extraction.text import TfidfVectorizer
         from sklearn.metrics.pairwise import cosine_similarity
 
@@ -230,7 +333,15 @@ class TranslationLogic:
         return score if floating_point < 0 else round(score, floating_point)
 
     def _get_parallel_translation(self, texts: list[str]) -> list[str]:
-        """Translates a list of texts in parallel."""
+        """
+        Translates multiple chunks of text in parallel using a thread pool.
+
+        Parameters:
+            texts (list): List of text chunks to be translated.
+
+        Returns:
+            list: List of translated text chunks.
+        """
         import concurrent.futures
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -242,7 +353,13 @@ class TranslationLogic:
         return translated_texts
 
     def _get_text_input(self):
-        """Read input from a text file or text argument, if not using the UI."""
+        """
+        Reads the input text either from the `text` attribute or from a specified text file.
+        Throws an error if neither input is provided and the UI is not active.
+
+        Raises:
+            ValueError: If no valid input is provided when the UI is not in use.
+        """
         # If UI mode is active, skip this function's checks
         if self.use_interface:
             return
@@ -255,7 +372,13 @@ class TranslationLogic:
             raise ValueError("No valid text input provided. Use --text or --file.")
 
     def _translate_text(self):
-        """Translates text by chunk (one-way translation only)."""
+        """
+        Translates the text by splitting it into chunks and translating each chunk.
+        Enables parallel processing if configured.
+
+        Returns:
+            str: The full translated text as a single string.
+        """
         if not self.use_interface:
             self._get_text_input()
         chunks = self._chunk_text(self.text)
@@ -271,47 +394,57 @@ class TranslationLogic:
         return " ".join(translated_chunks)
 
     def _get_elapsed_time(self):
-        """Calculates and returns the elapsed time for translation."""
-        import time
+        """
+        Measures and returns the time taken for the translation process.
 
-        start_time = time.time()
-        translated_text = self._translate_text()
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-
-        return translated_text, elapsed_time
-
+        Returns:
+            tuple: Contains the translated text and the elapsed time in seconds.
+        """
+        result = round(misc_utils.time_function(TranslationLogic) / 1000.0, 2)
+        return result
+    
     def _round_trip_translation(self):
-        """Performs round-trip translation and returns the translated text and similarity score."""
+        """
+        Performs round-trip translation, translating text from source to target language,
+        then back to the source language, and calculates similarity.
+
+        Returns:
+            tuple: Contains the forward translation, reverse translation, and similarity score.
+        """
         translated_text = self._translate_text()
-        reverse_translations = self._get_translated_text(
-            self.model_reverse(translated_text)
-        )
+        reverse_translations = self._get_translated_text(self.model_reverse(translated_text))
         similarity_score = self._get_similarity_score(self.text, reverse_translations)
         return translated_text, reverse_translations, similarity_score
     
     def _helper_translation_ui(self, text):
-        """Helper function to perform translation on input from the Gradio UI."""
+        """
+        Helper function for performing translation from Gradio UI input.
+
+        Parameters:
+            text (str): Input text from Gradio UI.
+
+        Returns:
+            str: Translated text as a single string.
+        """
         self.text = text
         return self._translate_text()
     
     def _translation_ui(self):
-        """Translation UI (Simple)""" 
+        """
+        Creates a simple Gradio UI for machine translation, allowing users to input text
+        and view translations interactively.
+        """
         
         import gradio as gr
 
         with gr.Blocks() as ui:
             with gr.Tab("Machine Translation UI"):
-                gr.Markdown("<h2>Machine Translation</h2>")
-                gr.Markdown(f"<h3>FROM: {FROM}") 
-                gr.Markdown(f"<h3>TO: {TO}")
-                gr.Markdown(
-                    "This function takes an input and returns a formatted string."
-                )
+                gr.Markdown(f"<h2>Machine Translation: {self.source_lang} TO {self.dest_lang}</h2>")
+                gr.Markdown("This function takes an input and returns a formatted string.")
 
                 with gr.Row():
-                    input_box = gr.Textbox(label="Input for Machine Translation")
-                    output_box = gr.Textbox(label="Output", interactive=False)
+                    input_box = gr.Textbox(label=f"Input for Machine Translation ({self.source_lang})")
+                    output_box = gr.Textbox(label=f"Translated Output ({self.dest_lang})", interactive=False)
 
                 gr.Button("Submit", elem_id="button_1").click(
                     fn=self._helper_translation_ui, inputs=input_box, outputs=output_box
@@ -320,17 +453,25 @@ class TranslationLogic:
         ui.launch()
 
     def return_results(self, jsonify=False):
-        """Public method to return results based on parameters passed"""
-        if self.use_interface:
-            # Launch UI if specified by the user without needing --text or --file
-            return self._translation_ui()
+        """
+        Returns translation results based on user-specified parameters. Selects UI mode, 
+        elapsed time, or round-trip mode based on configuration.
 
-        if self.show_elapsed:
-            return self._get_elapsed_time()
+        Parameters:
+            jsonify (bool): If True, returns results as JSON format.
+
+        Returns:
+            str or dict: Translation results, optionally in JSON format.
+        """
+        if self.use_interface:
+            return self._translation_ui()
         
         if self.round_trip:
             return self._round_trip_translation()
         
+        if self.show_elapsed:
+            return (self._translate_text(), self._get_elapsed_time())
+
         return self._translate_text()
 
 
@@ -342,24 +483,26 @@ class TranslationUI:
     ):
         pass
 
-
 if __name__ == "__main__":
     app = TranslationArgsProcessing(
-        description="Improved translation script with argument processing.",
+        description="Translation tool with argument handling and optional UI.",
         text_options=[
-            (FROM_ARG, "source language"),
-            (TO_ARG, "target language"),
-            (TASK_ARG, "task"),
-            (MODEL_ARG, "model"),
-            (TEXT_ARG, "Input text for translation"),
-            (FILE_ARG, "Input text file for translation"),
+            (FROM_ARG, "Source language code (default: es)"),
+            (TO_ARG, "Target language code (default: en)"),
+            (TASK_ARG, "Translation task"),
+            (MODEL_ARG, "Translation model"),
+            (TEXT_ARG, "Text to translate"),
+            (FILE_ARG, "File with text to translate (override if --text specified)"),
         ],
         boolean_options=[
-            (ELAPSED_ARG, "Show elapsed time"),
-            (ROUND_ARG, "Perform round-trip translation"),
-            (UI_ARG, "Enable Gradio Interface"),
-            (VERBOSE_ARG, "Verbose Mode"),
+            (ELAPSED_ARG, "Show time taken"),
+            (ROUND_ARG, "Use round-trip translation"),
+            (UI_ARG, "Enable Gradio UI"),
+            (PARALLEL_ARG, "Use parallel processing"),
+            (VERBOSE_ARG, "Enable detailed logging"),
         ],
         manual_input=True,
     )
     app.run()
+    
+
