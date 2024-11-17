@@ -20,6 +20,7 @@
 
 # Standard packages
 import sys
+from datetime import datetime
 
 # Installed packages
 import pytest
@@ -45,7 +46,7 @@ TEST_TBD = system.getenv_bool("TEST_TBD", False,
                               description="Test features to be designed: TBD")
 
 
-class TestDebug:
+class TestDebug(TestWrapper):
     """Class for test case definitions"""
     # Note: TestWrapper not used due to conflict with capsys
     stdout_text = None
@@ -86,21 +87,21 @@ class TestDebug:
         THE_MODULE.set_output_timestamps('some-test-value')
         assert THE_MODULE.output_timestamps == 'some-test-value'
 
-    def test_trace(self, capsys):
+    def test_trace(self):
         """Ensure trace works as expected"""
         debug.trace(4, f"test_trace(): self={self}")
         THE_MODULE.output_timestamps = True
 
         THE_MODULE.trace(-1, 'error foobar', indentation=' -> ')
-        captured = capsys.readouterr()
-        assert " -> error foobar" in captured.err
-        assert not captured.out
+        out,err  = self.get_stdout_stderr()
+        assert " -> error foobar" in err
+        assert not out
 
         # Test debug_file
         THE_MODULE.debug_file = sys.stdout
         THE_MODULE.trace(-1, 'some text to test debug file')
-        captured = capsys.readouterr()
-        assert 'some text to test debug file' in captured.out
+        out,err  = self.get_stdout_stderr()
+        assert 'some text to test debug file' in out
         THE_MODULE.debug_file = None
 
         THE_MODULE.output_timestamps = False
@@ -117,7 +118,7 @@ class TestDebug:
         debug.trace(4, f"test_trace_object(): self={self}")
         assert(False)
 
-    def test_trace_values(self, capsys):
+    def test_trace_values(self):
         """Ensure trace_values works as expected"""
         debug.trace(4, f"test_trace_values(): self={self}")
         # Level -1 is used to ensure that always will run
@@ -130,26 +131,26 @@ class TestDebug:
 
         # Test normal usage
         THE_MODULE.trace_values(-1, collection_test)
-        captured = capsys.readouterr()
+        err = self.get_stderr()
         for element in collection_test:
-            assert f": {element}" in captured.err
+            assert f": {element}" in err
 
         # Test indentation
         THE_MODULE.trace_values(-1, collection_test, indentation=' -> ')
-        captured = capsys.readouterr()
+        err = self.get_stderr()
         for i, element in enumerate(collection_test):
-            assert f" -> {i}: {element}" in captured.err
+            assert f" -> {i}: {element}" in err
 
         # Test non list collection (string)
         THE_MODULE.trace_values(-1, "somevalue")
-        captured = capsys.readouterr()
+        err = self.get_stderr()
         for char in "somevalue":
-            assert f": {char}" in captured.err
+            assert f": {char}" in err
 
         # Test non list collection (tuple)
         THE_MODULE.trace_values(-1, 123)
-        captured = capsys.readouterr()
-        assert ": 123" in captured.err
+        err = self.get_stderr()
+        assert ": 123" in err
 
         # Test use_repr parameter
         class Person:
@@ -159,28 +160,28 @@ class TestDebug:
             def __repr__(self):
                 return f'Person("{self.name}")'
         THE_MODULE.trace_values(-1, [Person("Kiran")], use_repr=True)
-        captured = capsys.readouterr()
-        assert 'Person("Kiran")' in captured.err
+        err = self.get_stderr()
+        assert 'Person("Kiran")' in err
 
-    def test_trace_expr(self, capsys):
+    def test_trace_expr(self):
         """Make sure trace_expr shows 'expr1=value1; expr2=value2'"""
         var1 = 3
         var2 = 6
         THE_MODULE.trace_expr(debug.get_level(), var1, var2)
-        captured = capsys.readouterr()
-        assert "var1=3;var2=6" in my_re.sub(r"\s+", "", captured.err)
+        err = self.get_stderr()
+        assert "var1=3;var2=6" in my_re.sub(r"\s+", "", err)
 
     @pytest.mark.xfail
     @pytest.mark.skipif(not TEST_TBD, reason="Ignoring feature to be designed")
-    def test_trace_expr_expression(self, capsys):
+    def test_trace_expr_expression(self):
         """Make sure trace_expr expression resolved when split across lines"""
         var1 = 3
         var2 = 6
         THE_MODULE.trace_expr(debug.get_level(),
                               var1,
                               var2)
-        captured = capsys.readouterr()
-        assert "var1=3.*var2=6" in my_re.sub(r"\s+", "", captured.err)
+        err = self.get_stderr()
+        assert "var1=3.*var2=6" in my_re.sub(r"\s+", "", err)
         
     @pytest.mark.xfail
     def test_trace_current_context(self):
@@ -200,29 +201,29 @@ class TestDebug:
         debug.trace(4, f"test_raise_exception(): self={self}")
         assert(False)
 
-    def test_assertion(self, capsys):
+    def test_assertion(self):
         """Ensure assertion works as expected"""
         debug.trace(4, f"test_assertion(): self={self}")
         # Not prints in stderr
         THE_MODULE.assertion((2 + 2 + 1) == 5)
-        captured = capsys.readouterr()
-        assert 'failed' not in captured.err
+        err = self.get_stderr()
+        assert 'failed' not in err
         # Prints assertion failed in stderr
         THE_MODULE.assertion((2 + 2) == 5)
-        captured = capsys.readouterr()
-        assert "failed" in captured.err
-        assert "(2 + 2) == 5" in captured.err
+        err = self.get_stderr()
+        assert "failed" in err
+        assert "(2 + 2) == 5" in err
 
     @pytest.mark.xfail
     @pytest.mark.skipif(not TEST_TBD, reason="Ignoring feature to be designed")
-    def test_assertion_expression(self, capsys):
+    def test_assertion_expression(self):
         """Make sure assertion expression split across lines resolved"""
         debug.trace(4, f"test_assertion_expression(): self={self}")
         THE_MODULE.assertion(2 +
                              2 ==
                              5)
-        captured = capsys.readouterr()
-        assert "2+2==5" in my_re.sub(r"\s+", "", captured.err)
+        err = self.get_stderr()
+        assert "2+2==5" in my_re.sub(r"\s+", "", err)
 
     def test_val(self):
         """Ensure val works as expected"""
@@ -262,7 +263,10 @@ class TestDebug:
     def test_timestamp(self):
         """Ensure timestamp works as expected"""
         debug.trace(4, f"test_timestamp(): self={self}")
-        assert(False)
+        debug_timestamp = THE_MODULE.timestamp()
+        new_timestamp = str(datetime.now())
+        assert debug_timestamp == new_timestamp
+        
 
     def test_debugging(self):
         """Ensure debugging works as expected"""
@@ -322,7 +326,7 @@ class TestDebug:
         assert(format_value_strict("123456", max_len=1) == ".")
         assert(format_value_strict("123456", max_len=0) == "")
 
-    def test_xor(self, capsys):
+    def test_xor(self):
         """Ensure xor works as expected"""
         debug.trace(4, f"test_xor(): self={self}")
         THE_MODULE.set_level(7)
@@ -332,10 +336,10 @@ class TestDebug:
         assert THE_MODULE.xor(1, 0.0)
         assert not THE_MODULE.xor(1, 1.0)
         # Test stderr
-        captured = capsys.readouterr()
-        assert "xor" in captured.err
+        err = self.get_stderr()
+        assert "xor" in err
 
-    def test_xor3(self, capsys):
+    def test_xor3(self):
         """Ensure xor3 works as expected"""
         debug.trace(4, f"test_xor3(): self={self}")
         THE_MODULE.set_level(7)
@@ -349,14 +353,38 @@ class TestDebug:
         assert not THE_MODULE.xor3(1, 1, 0)
         assert not THE_MODULE.xor3(1, 1, 1)
         # Test stderr
-        captured = capsys.readouterr()
-        assert "xor3" in captured.err
+        err = self.get_stderr()
+        assert "xor3" in err
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_init_logging(self):
         """Ensure init_logging works as expected"""
         debug.trace(4, f"test_init_logging(): self={self}")
-        assert(False)
+        
+        # Test init_logging with env not GLOBAL_LOGGING
+        self.monkeypatch.setenv("GLOBAL_LOGGING", 'False')
+        THE_MODULE.init_logging()
+        stderr_1 = self.get_stderr()
+        assert "init_logging" in stderr_1
+        assert "Setting root logger level " not in stderr_1
+        
+        # Test init_logging with env GLOBAL_LOGGING and detailed_debugging()
+        self.clear_stdout_stderr()
+        self.monkeypatch.setenv("GLOBAL_LOGGING", 'True')
+        THE_MODULE.init_logging()
+        new_level = THE_MODULE.logging.root.getEffectiveLevel()
+        stderr_2 = self.get_stderr()
+        assert "init_logging" in stderr_2
+        assert "Setting root logger level " in stderr_2
+        assert new_level == 10
+        
+        # Test init_logging with env GLOBAL_LOGGING and not detailed_debugging()
+        self.clear_stdout_stderr()
+        self.monkeypatch.setenv("GLOBAL_LOGGING", 'True')
+        self.monkeypatch.setattr("mezcla.debug.trace_level", 3)
+        THE_MODULE.init_logging()
+        new_level = THE_MODULE.logging.root.getEffectiveLevel()
+        assert new_level == 20
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_profile_function(self):
@@ -394,41 +422,42 @@ class TestDebug:
         debug.trace(4, f"test_display_ending_time_etc(): self={self}")
         assert(False)
 
-    def test_visible_simple_trace(self, capsys):
+    def test_visible_simple_trace(self):
         """Make sure level-1 trace outputs to stderr"""
-        debug.trace(4, f"test_visible_simple_trace({capsys})")
+        debug.trace(4, f"test_visible_simple_trace()")
         self.setup_simple_trace()
         if not __debug__:
             self.expected_stderr_trace = ""
-        pre_captured = capsys.readouterr()
+        pre_out, pre_err = self.get_stdout_stderr()
         save_trace_level = THE_MODULE.get_level()
         THE_MODULE.set_level(4)
         print(self.stdout_text)
         THE_MODULE.trace(3, self.stderr_text)
         THE_MODULE.set_level(save_trace_level)
-        captured = capsys.readouterr()
-        assert(captured.out == self.expected_stdout_trace)
-        assert(captured.err == self.expected_stderr_trace)
-        THE_MODULE.trace_expr(6, pre_captured, captured)
+        out, err = self.get_stdout_stderr()
+        assert(self.expected_stdout_trace in out)
+        assert(self.expected_stderr_trace in err)
+        THE_MODULE.trace_expr(6, (pre_out, pre_err), (out,err))
 
-    def test_hidden_simple_trace(self, capsys):
+    def test_hidden_simple_trace(self):
         """Make sure level-N+1 trace doesn't output to stderr"""
-        debug.trace(4, f"test_hidden_simple_trace({capsys})")
+        debug.trace(4, f"test_hidden_simple_trace()")
         self.setup_simple_trace()
         ## TEST
         ## capsys.stop_capturing()
         ## capsys.start_capturing()
-        pre_captured = capsys.readouterr()
+        pre_out, pre_err = self.get_stdout_stderr()
         self.expected_stderr_trace = ""
         save_trace_level = THE_MODULE.get_level()
         THE_MODULE.set_level(0)
         print(self.stdout_text)
         THE_MODULE.trace(1, self.stderr_text)
-        captured = capsys.readouterr()
+        out, err = self.get_stdout_stderr()
         THE_MODULE.set_level(save_trace_level)
-        assert captured.out == self.expected_stdout_trace
-        assert captured.err == self.expected_stderr_trace
-        THE_MODULE.trace_expr(6, pre_captured, captured)
+        assert self.expected_stdout_trace in out
+        assert self.expected_stderr_trace in err
+        THE_MODULE.trace_expr(6, (pre_out, pre_err), (out,err))
+
 
 
 class TestDebug2(TestWrapper):
