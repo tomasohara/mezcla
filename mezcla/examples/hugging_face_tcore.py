@@ -51,6 +51,11 @@ DYNAMIC_CHUNKING = system.getenv_bool(
 PARALLEL_PROCESS = system.getenv_bool(
     "PARALLEL_PROCESS", False, "Perform translations using concurrent threads"
 )
+# Experimental
+EXTENDED_UI = system.getenv_bool("EXTENDED_UI", False, "Generates extended UI options")
+JSONIFY_OUTPUT = system.getenv_bool(
+    "JSONIFY_OUTPUT", False, "Generates output in JSON format"
+)
 
 # Argument Constants
 TEXT_ARG = "text"
@@ -120,13 +125,19 @@ class TranslationArgsProcessing(Main):
         self.text_file = self.get_parsed_option(FILE_ARG)
         self.source_lang = self.get_parsed_option(FROM_ARG, SOURCE_LANG)
         self.target_lang = self.get_parsed_option(TO_ARG, TARGET_LANG)
-        self.mt_task = self.get_parsed_option(TASK_ARG) or f"translation_{self.source_lang}_to_{self.target_lang}"
-        self.mt_model = self.get_parsed_option(MODEL_ARG) or f"Helsinki-NLP/opus-mt-{self.source_lang}-{self.target_lang}"
+        self.mt_task = (
+            self.get_parsed_option(TASK_ARG)
+            or f"translation_{self.source_lang}_to_{self.target_lang}"
+        )
+        self.mt_model = (
+            self.get_parsed_option(MODEL_ARG)
+            or f"Helsinki-NLP/opus-mt-{self.source_lang}-{self.target_lang}"
+        )
         self.show_elapsed = self.get_parsed_option(ELAPSED_ARG)
         self.round_trip = self.get_parsed_option(ROUND_ARG, ROUND_TRIP)
         self.use_interface = self.get_parsed_option(UI_ARG, USE_INTERFACE)
-        self.parallel_process = self.get_parsed_argument(PARALLEL_ARG, PARALLEL_PROCESS)
-        self.dynamic_chunking = self.get_parsed_argument(DYNAMIC_ARG, DYNAMIC_CHUNKING)
+        self.parallel_process = self.get_parsed_option(PARALLEL_ARG, PARALLEL_PROCESS)
+        self.dynamic_chunking = self.get_parsed_option(DYNAMIC_ARG, DYNAMIC_CHUNKING)
         self.verbose = self.get_parsed_option(VERBOSE_ARG)
 
         if self.text_file and self.text_file != "-":
@@ -145,7 +156,11 @@ class TranslationArgsProcessing(Main):
             The result if `use_interface` is set to False.
         """
         # debug.trace(7, f"TranslationArgsProcessing.run_main_setup({self})")
-        debug.trace_object(5, self.run_main_step, label = "TranslationArgsProcessing.run_main_setup")
+        debug.trace_object(
+            5, self.run_main_step, label="TranslationArgsProcessing.run_main_setup"
+        )
+
+        # Add option for
 
         translation_logic = TranslationLogic(
             text=self.text,
@@ -159,6 +174,21 @@ class TranslationArgsProcessing(Main):
             parallel_process=self.parallel_process,
             use_interface=self.use_interface,
         )
+
+        if self.use_interface:
+            ui = TranslationUI(
+                text=self.text,
+                source_lang=self.source_lang,
+                target_lang=self.target_lang,
+                round_trip=self.round_trip,
+                text_file=self.text_file,
+                mt_model=self.mt_model,
+                mt_task=self.mt_task,
+                show_elapsed=self.show_elapsed,
+                parallel_process=self.parallel_process,
+                use_interface=self.use_interface,
+            )
+            ui.launch()
 
         self.result = translation_logic.return_results()
         if not self.use_interface:
@@ -194,8 +224,8 @@ class TranslationLogic:
         target_lang=TARGET_LANG,
         round_trip=ROUND_TRIP,
         text_file=TEXT_FILE,
-        mt_task='',
-        mt_model='',
+        mt_task="",
+        mt_model="",
         use_gpu=USE_GPU,
         use_interface=USE_INTERFACE,
         parallel_process=PARALLEL_PROCESS,
@@ -205,7 +235,7 @@ class TranslationLogic:
     ):
         """Class identifier"""
         debug.trace_object(5, self, label="\nTranslationLogic instance")
-        
+
         self.text = text
         self.source_lang = source_lang
         self.target_lang = target_lang
@@ -251,14 +281,20 @@ class TranslationLogic:
         # TODO: Add support for round trip translations for models imported from --model option
         # Swap source and target language substrings
         def swap_substrings(original_str, substring1, substring2):
-            return original_str.replace(substring1, "#TEMP#").replace(substring2, substring1).replace("#TEMP#", substring2)
-        
+            return (
+                original_str.replace(substring1, "#TEMP#")
+                .replace(substring2, substring1)
+                .replace("#TEMP#", substring2)
+            )
+
         forward_task = self.mt_task
         forward_model = self.mt_model
 
         # Reverse translation task and model
         reverse_task = swap_substrings(forward_task, self.source_lang, self.target_lang)
-        reverse_model = swap_substrings(forward_model, self.source_lang, self.target_lang)
+        reverse_model = swap_substrings(
+            forward_model, self.source_lang, self.target_lang
+        )
 
         # Load pipelines
         model = pipeline(
@@ -272,7 +308,10 @@ class TranslationLogic:
             device=self.device,
         )
 
-        debug.trace(5, f"\nTranslationLogic._load_models({self}) => {model}: {forward_model}, {model_reverse}: {reverse_model}\n")
+        debug.trace(
+            5,
+            f"\nTranslationLogic._load_models({self}) => {model}: {forward_model}, {model_reverse}: {reverse_model}\n",
+        )
         return model, model_reverse
 
     def _get_split_regex(self) -> str:
@@ -282,7 +321,7 @@ class TranslationLogic:
         Returns:
             str: Regex pattern for splitting text based on the configured mode.
         """
-        result =  r"\n\s*\n" if USE_PARAGRAPH_MODE else r"(?<=[.!?]) +"
+        result = r"\n\s*\n" if USE_PARAGRAPH_MODE else r"(?<=[.!?]) +"
         debug.trace(5, f"\nTranslationLogic._get_split_regex({self}) => {result}")
         return result
 
@@ -304,7 +343,10 @@ class TranslationLogic:
                 " ".join(words[i : i + self.max_length])
                 for i in range(0, len(words), self.max_length)
             ]
-            debug.trace(5, f"\nTranslationLogic._chunk_text({self}, text={text}, dynamic_chunking={self.dynamic_chunking}) => {result}")
+            debug.trace(
+                5,
+                f"\nTranslationLogic._chunk_text({self}, text={text}, dynamic_chunking={self.dynamic_chunking}) => {result}",
+            )
             return result
 
         split_regex = self._get_split_regex()
@@ -321,7 +363,10 @@ class TranslationLogic:
         if current_chunk:
             chunks.append(" ".join(current_chunk))
 
-        debug.trace(5, f"\nTranslationLogic._chunk_text({self}, text={text}, dynamic_chunking={self.dynamic_chunking}) => {chunks}")
+        debug.trace(
+            5,
+            f"\nTranslationLogic._chunk_text({self}, text={text}, dynamic_chunking={self.dynamic_chunking}) => {chunks}",
+        )
         return chunks
 
     def _get_translated_text(self, model_obj: list) -> str:
@@ -335,7 +380,10 @@ class TranslationLogic:
             str: The translated text string.
         """
         result = model_obj[0]["translation_text"] if model_obj else ""
-        debug.trace(5, f"\nTranslationLogic._get_translated_text({self}, model_obj={model_obj}) => {result}")
+        debug.trace(
+            5,
+            f"\nTranslationLogic._get_translated_text({self}, model_obj={model_obj}) => {result}",
+        )
         return result
 
     def _get_similarity_score(
@@ -359,7 +407,10 @@ class TranslationLogic:
         vectors = vectorizer.toarray()
         score = cosine_similarity(vectors)[0, 1]
         result = score if floating_point < 0 else round(score, floating_point)
-        debug.trace(5, f"\nTranslationLogic._get_similarity_score({self}, text1={text1}, text2={text2}, floating_point={floating_point}) => {result}")
+        debug.trace(
+            5,
+            f"\nTranslationLogic._get_similarity_score({self}, text1={text1}, text2={text2}, floating_point={floating_point}) => {result}",
+        )
         return result
 
     def _get_parallel_translation(self, texts: list[str]) -> list[str]:
@@ -380,7 +431,10 @@ class TranslationLogic:
                     lambda chunk: self._get_translated_text(self.model(chunk)), texts
                 )
             )
-        debug.trace(5, f"\nTranslationLogic._get_parallel_translation({self}, texts={texts}) => {translated_texts}")
+        debug.trace(
+            5,
+            f"\nTranslationLogic._get_parallel_translation({self}, texts={texts}) => {translated_texts}",
+        )
         return translated_texts
 
     def _get_text_input(self):
@@ -392,7 +446,10 @@ class TranslationLogic:
             ValueError: If no valid input is provided when the UI is not in use.
         """
         # If UI mode is active, skip this function's checks
-        debug.trace(5, f"TranslationLogc._get_text_input({self}): self.use_interface={self.use_interface}, self.text={self.text}, self.text_file={self.text_file}")
+        debug.trace(
+            5,
+            f"TranslationLogc._get_text_input({self}): self.use_interface={self.use_interface}, self.text={self.text}, self.text_file={self.text_file}",
+        )
         if self.use_interface:
             return
 
@@ -447,59 +504,17 @@ class TranslationLogic:
             tuple: Contains the forward translation, reverse translation, and similarity score.
         """
         translated_text = self._translate_text()
-        reverse_translations = self._get_translated_text(self.model_reverse(translated_text))
+        reverse_translations = self._get_translated_text(
+            self.model_reverse(translated_text)
+        )
         similarity_score = self._get_similarity_score(self.text, reverse_translations)
         result = (translated_text, reverse_translations, similarity_score)
-        debug.trace(5, f"\nTranslationLogic._round_trip_translation({self}) => {result}")
+        debug.trace(
+            5, f"\nTranslationLogic._round_trip_translation({self}) => {result}"
+        )
         return result
 
-    def _helper_translation_ui(self, text):
-        """
-        Helper function for performing translation from Gradio UI input.
-
-        Parameters:
-            text (str): Input text from Gradio UI.
-
-        Returns:
-            str: Translated text as a single string.
-        """
-        self.text = text
-        result = self._translate_text()
-        debug.trace(5, f"\nTranslationLogic._helper_translation_ui({self}, text={text}) => {result}")
-        return result
-
-    def _translation_ui(self):
-        """
-        Creates a simple Gradio UI for machine translation, allowing users to input text
-        and view translations interactively.
-        """
-        debug.trace(5, f"\nTranslationLogic.__translation_ui({self})")
-        import gradio as gr
-
-        with gr.Blocks() as ui:
-            with gr.Tab("Machine Translation UI"):
-                gr.Markdown(
-                    f"<h2>Machine Translation: {self.source_lang} TO {self.target_lang}</h2>"
-                )
-                gr.Markdown(
-                    "This function takes an input and returns a formatted string."
-                )
-
-                with gr.Row():
-                    input_box = gr.Textbox(
-                        label=f"Input for Machine Translation ({self.source_lang})"
-                    )
-                    output_box = gr.Textbox(
-                        label=f"Translated Output ({self.target_lang})", interactive=False
-                    )
-
-                gr.Button("Submit", elem_id="button_1").click(
-                    fn=self._helper_translation_ui, inputs=input_box, outputs=output_box
-                )
-
-        ui.launch()
-
-    def return_results(self, jsonify=False):
+    def return_results(self, jsonify=JSONIFY_OUTPUT):
         """
         Returns translation results based on user-specified parameters.
 
@@ -509,43 +524,171 @@ class TranslationLogic:
         Returns:
             str or dict: Translation results, optionally in JSON format.
         """
-        # Determine which method to call based on flags
-        # if self.use_interface:
-        #     result = self._translation_ui()
-        #     debug.trace(5, f"\nTranslationLogic.return_results({self}) => {result}")
-        #     return result
-        # elif self.round_trip:
-        #     result = self._round_trip_translation()
-        #     debug.trace(5, f"\nTranslationLogic.return_results({self}) => {result}")
-        #     return result
-        # elif self.show_elapsed:
-        #     result = (self._translate_text(), self._get_elapsed_time())
-        #     debug.trace(5, f"\nTranslationLogic.return_results({self}) => {result}")
-        #     return result
-        # else:
-        #     result = self._translate_text()
-        #     debug.trace(5, f"\nTranslationLogic.return_results({self}) => {result}")
-        #     return result
-
-        if self.use_interface:
-            result = self._translation_ui()
-        elif self.round_trip:
-            result = self._round_trip_translation()
-        elif self.show_elapsed:
-            result = (self._translate_text(), self._get_elapsed_time())
+        if jsonify:
+            result = {}
+            result["text_file"] = self.text_file
+            result["from"] = self.source_lang
+            result["to"] = self.target_lang
+            result["input_text"] = self.text
+            result["translated_text"] = (
+                self._translate_text()
+                if not self.round_trip
+                else self._round_trip_translation[0]
+            )
+            result["round_trip"] = self.round_trip
+            result["round_trip_text"] = (
+                None if not self.round_trip else self._round_trip_translation[1]
+            )
+            result["similarity_score"] = (
+                None if not self.round_trip else self._round_trip_translation[2]
+            )
+            result["model"] = self.mt_model
+            result["task"] = self.mt_task
         else:
-            result = self._translate_text()
+            if self.round_trip:
+                result = self._round_trip_translation()
+            elif self.show_elapsed:
+                result = (self._translate_text(), self._get_elapsed_time())
+            else:
+                result = self._translate_text()
 
         debug.trace(5, f"\nTranslationLogic.return_results({self}) => {result}")
         return result
-        
-class TranslationUI:
+
+
+## Add Translation UI class here
+## TODO: Find a way to implement translation logic or create a logic within
+
+
+class TranslationUI(TranslationLogic):
     def __init__(
         self,
-        model=None,
-        model_rev=None,
+        text="",
+        source_lang=SOURCE_LANG,
+        target_lang=TARGET_LANG,
+        round_trip=ROUND_TRIP,
+        text_file=TEXT_FILE,
+        mt_task="",
+        mt_model="",
+        use_gpu=USE_GPU,
+        use_interface=USE_INTERFACE,
+        parallel_process=PARALLEL_PROCESS,
+        max_length=MAX_LENGTH,
+        show_elapsed=SHOW_ELAPSED,
+        dynamic_chunking=DYNAMIC_CHUNKING,
     ):
-        pass
+        """Initialize the TranslationUI class by passing arguments to TranslationLogic"""
+        super().__init__(
+            text=text,
+            source_lang=source_lang,
+            target_lang=target_lang,
+            round_trip=round_trip,
+            text_file=text_file,
+            mt_task=mt_task,
+            mt_model=mt_model,
+            use_gpu=use_gpu,
+            use_interface=use_interface,
+            parallel_process=parallel_process,
+            max_length=max_length,
+            show_elapsed=show_elapsed,
+            dynamic_chunking=dynamic_chunking,
+        )
+
+        import gradio as gr
+
+        self.app = gr.Blocks()
+        self.create_ui()
+
+    def create_ui(self):
+        """Sets up the user interface"""
+        with self.app:
+            if EXTENDED_UI:
+                self.round_trip_translation_ui()
+            else:
+                self.machine_translation_ui()
+
+    def _helper_machine_translation_ui(self, input_text):
+        """Helper method for one-way MT user interface"""
+        self.text = input_text
+        result = self.return_results(jsonify=False)
+        debug.trace(
+            5,
+            f"TranslationUI._helper_machine_translation_ui({self}, input_text={input_text}) => ({result})",
+        )
+        return result if isinstance(result, str) else result[0]
+
+    def machine_translation_ui(self):
+        """
+        Creates a simple Gradio UI for machine translation, allowing users to input text
+        and view translations interactively.
+        """
+        import gradio as gr
+
+        debug.trace(5, f"\nTranslationUI.machine_translation_ui({self})")
+        with gr.Tab("Machine Translation UI"):
+            gr.Markdown(
+                f"<h2>Machine Translation: {self.source_lang} TO {self.target_lang}</h2>"
+            )
+            gr.Markdown("This tool allows you to translate text interactively.")
+
+            with gr.Row():
+                input_box = gr.Textbox(
+                    label=f"Input Text ({self.source_lang})",
+                    placeholder="Enter text here...",
+                )
+                output_box = gr.Textbox(
+                    label=f"Translated Output ({self.target_lang})",
+                    interactive=False,
+                )
+
+            gr.Button("Submit").click(
+                fn=self._helper_machine_translation_ui,
+                inputs=input_box,
+                outputs=output_box,
+            )
+
+    def _helper_round_trip_translation_ui(self, input_text):
+        """Helper method for round robin MT user interface"""
+        self.text = input_text
+        self.round_trip = True
+        result = self.return_results(jsonify=False)
+        debug.trace(
+            5,
+            f"TranslationUI._helper_machine_translation_ui({self}, input_text={input_text}) => ({result})",
+        )
+        return result
+
+    def round_trip_translation_ui(self):
+        """UI for round trip translation (launched under alternative UIs)"""
+        import gradio as gr
+
+        with gr.Tab("Round Trip Translation"):
+            gr.Markdown(
+                f"<h2>Round Trip Translation: {self.source_lang} TO {self.target_lang}</h2>"
+            )
+            gr.Markdown(
+                "This function takes a single input and provides multiple outputs."
+            )
+
+            with gr.Group():
+                input_two = gr.Textbox(label="Input for Round Trip Translation")
+
+            with gr.Group():
+                gr.Markdown("### Output Section")
+                output_1 = gr.Textbox(label="Output", interactive=False)
+                output_2 = gr.Textbox(label="Round Trip Translation", interactive=False)
+                output_3 = gr.Textbox(label="Similarity Score", interactive=False)
+
+            gr.Button("Submit").click(
+                fn=self._helper_round_trip_translation_ui,
+                inputs=input_two,
+                outputs=[output_1, output_2, output_3],
+            )
+
+    def launch(self):
+        """Launch the Gradio application"""
+        self.app.launch()
+
 
 if __name__ == "__main__":
     app = TranslationArgsProcessing(
