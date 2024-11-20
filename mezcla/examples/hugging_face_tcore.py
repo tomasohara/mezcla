@@ -160,8 +160,6 @@ class TranslationArgsProcessing(Main):
             5, self.run_main_step, label="TranslationArgsProcessing.run_main_setup"
         )
 
-        # Add option for
-
         translation_logic = TranslationLogic(
             text=self.text,
             source_lang=self.source_lang,
@@ -193,7 +191,6 @@ class TranslationArgsProcessing(Main):
         self.result = translation_logic.return_results()
         if not self.use_interface:
             print(self.result)
-
 
 class TranslationLogic:
     """
@@ -251,6 +248,12 @@ class TranslationLogic:
         self.use_gpu = use_gpu
         self.device = self._get_device()
         self.model, self.model_reverse = self._load_models()
+
+    def _show_gpu_usage(self, trace_level = 5):
+        device = self._get_device()
+        if device == "cuda":
+            debug.code(trace_level, lambda: debug.trace(1, gh.run("nvidia-smi")))
+        return
 
     def _get_device(self):
         """
@@ -350,7 +353,7 @@ class TranslationLogic:
             return result
 
         split_regex = self._get_split_regex()
-        segments = my_re.split(split_regex, text)
+        segments = my_re.split(pattern=split_regex, string=text)
         chunks, current_chunk = [], []
 
         for segment in segments:
@@ -542,6 +545,7 @@ class TranslationLogic:
             result["similarity_score"] = (
                 None if not self.round_trip else self._round_trip_translation[2]
             )
+            result["elapsed_time"] = None if not self.show_elapsed else self._get_elapsed_time()
             result["model"] = self.mt_model
             result["task"] = self.mt_task
         else:
@@ -604,8 +608,10 @@ class TranslationUI(TranslationLogic):
         with self.app:
             if EXTENDED_UI:
                 self.round_trip_translation_ui()
+                self.paragraph_mode_ui()
             else:
                 self.machine_translation_ui()
+                
 
     def _helper_machine_translation_ui(self, input_text):
         """Helper method for one-way MT user interface"""
@@ -684,6 +690,93 @@ class TranslationUI(TranslationLogic):
                 inputs=input_two,
                 outputs=[output_1, output_2, output_3],
             )
+
+    def _helper_paragraph_mode_ui(self, *segments):
+        translated_segments = []
+        for segment in segments:
+            self.text = segment
+            translated_segment = self.return_results()
+            translated_segments.append(translated_segment) 
+        return translated_segments
+
+    @staticmethod
+    def split_text(text, split_method, regex, num_paragraphs):
+        if not text:
+            return []
+
+        if split_method == "Split by Regex":
+            try:
+                segments = my_re.split(regex, text)
+            except my_re.error:
+                return ["Invalid regex pattern"]
+        else:
+            sentences = my_re.split(r'(?<=[.!?]) +', text)  # Split by sentences
+            total_sentences = len(sentences)
+
+            # Ensure at least one sentence per paragraph
+            segment_size = total_sentences // num_paragraphs
+            remainder = total_sentences % num_paragraphs
+
+            segments = []
+            start = 0
+            for i in range(num_paragraphs):
+                end = start + segment_size + (1 if i < remainder else 0)
+                segments.append(" ".join(sentences[start:end]))
+                start = end
+
+        return segments
+    
+    def paragraph_mode_ui(self):
+        """Set up the Paragraph Mode UI within the app"""
+        import gradio as gr
+        with gr.Tab("Paragraph Mode UI"):
+            gr.Markdown("<h3>Paragraph Mode UI</h3>")
+            input_text = gr.Textbox(label="Input Text", placeholder="Enter text to split")
+            split_method = gr.Radio(
+                choices=["Split by Regex", "Specify Number of Paragraphs"],
+                value="Split by Regex",
+                label="Choose Splitting Method",
+            )
+            split_regex_input = gr.Textbox(
+                label="Regex Pattern", value=r"\n", placeholder="Enter regex pattern"
+            )
+            num_paragraphs_input = gr.Number(
+                value=2, label="Number of Paragraphs", visible=False
+            )
+
+            def update_input_visibility(method):
+                return (
+                    gr.update(visible=(method == "Split by Regex")),
+                    gr.update(visible=(method == "Specify Number of Paragraphs")),
+                )
+
+            split_method.change(
+                fn=update_input_visibility,
+                inputs=split_method,
+                outputs=[split_regex_input, num_paragraphs_input],
+            )
+
+            @gr.render(inputs=[input_text, split_method, split_regex_input, num_paragraphs_input])
+            def process_and_display(text, method, regex, paragraphs):
+                segments = self.split_text(text, method, regex, paragraphs)
+                segment_textboxes = []
+                translated_textboxes = []
+
+                for seg in segments:
+                    with gr.Row():
+                        segment_textbox = gr.Textbox(value=seg, interactive=False)
+                        translated_output = gr.Textbox(interactive=False)
+                        segment_textboxes.append(segment_textbox)
+                        translated_textboxes.append(translated_output)
+
+                translate_button = gr.Button("Translate")
+                translate_button.click(
+                    fn=self._helper_paragraph_mode_ui,
+                    inputs=segment_textboxes,
+                    outputs=translated_textboxes,
+                )
+
+                return segment_textboxes + translated_textboxes
 
     def launch(self):
         """Launch the Gradio application"""
