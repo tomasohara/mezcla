@@ -294,12 +294,18 @@ def is_close(value1, value2, epsilon=VALUE_EPSILON):
     return result
 
 
-def get_formatted_date(date=None, fmt=None, sep=None):
+def get_formatted_date(date=None, fmt=None, sep=None, timestamp=None):
     """Return (today's) date in DD MMM YY format (e.g., 10 oct 22)
-    Note: uses optional SEP between components or FMT"""
-    ## EX: get_formatted_date(datetime.date(0)) => "01 jan 70"
+    Note: uses optional SEP between components or FMT
+    Use TIMESTAMP to specify date as integer
+    """
+    ## EX: get_formatted_date(datetime.datetime.fromtimestamp(0)) => "31 dec 69"
+    ## BAD: ## EX: get_formatted_date(datetime.date(0)) => "01 jan 70"
     ## TODO3: rename as get_formatted_date
     in_date = date
+    if timestamp is not None:
+        debug.assertion(date is None)
+        date = datetime.datetime.fromtimestamp(timestamp)
     if date is None:
         date = datetime.date.today()
     if sep is None:
@@ -311,12 +317,13 @@ def get_formatted_date(date=None, fmt=None, sep=None):
     except:
         system.print_exception_info("get_today_ddmmmyy")
         result = "???"
-    debug.trace(6, f"get_formatted_date({in_date}) => {result}")
+    debug.trace(6, f"get_formatted_date({in_date}, ts={timestamp}) => {result}")
     return result
 
 def get_date_ddmmmyy(date=None):
     """Return (today's) date in DDMMMYY format (e.g., 10oct22)"""
-    ## EX: get_date_ddmmmyy(datetime.date(0)) => "01jan70"
+    ## EX: get_date_ddmmmyy(datetime.datetime.fromtimestamp(0)) => "31dec69"
+    ## BAD: ## EX: get_date_ddmmmyy(datetime.date(0)) => "01jan70"
     result = get_formatted_date(date).replace(" ", "")
     debug.trace(6, f"get_date_ddmmmyy({date}) => {result}")
     return result

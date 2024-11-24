@@ -55,6 +55,7 @@
 
 # Standard packages
 import atexit
+from _collections_abc import Mapping
 from datetime import datetime
 import enum
 import inspect
@@ -80,16 +81,16 @@ import time
 #
 class TraceLevel(enum.IntEnum):
     """Constants for use in tracing"""
-    ALWAYS = 0
-    ERROR = 1
-    WARNING = 2                         # typically always shown
-    DEFAULT = WARNING
+    ALWAYS = 0                          # no filtering; added mainly for completeness
+    ERROR = 1                           # definite errors; typically shown
+    WARNING = 2                         # possible errors; typically shown
+    DEFAULT = WARNING                   # by default just warnings and errors
     USUAL = 3                           # usual in sense of debugging purposes
-    DETAILED = 4
-    VERBOSE = 5
+    DETAILED = 4                        # info useful for flow of control, etc.
+    VERBOSE = 5                         # useful stuff for debugging
     QUITE_DETAILED = 6                  # detailed I/O
-    QUITE_VERBOSE = 7
-    MOST_DETAILED = 8
+    QUITE_VERBOSE = 7                   # usually for I/O, etc. by helper functions
+    MOST_DETAILED = 8                   # for high-frequency helpers like to_float
     MOST_VERBOSE = 9                    # for internal debugging
 #
 TL = TraceLevel
@@ -115,18 +116,24 @@ INDENT = INDENT1
 MISSING_LINE = "???"
 
 # Globals
-max_trace_value_len = 1024
+# note: See below (n.b., __debug__ only)
 
 #...............................................................................
 # Utility functions
 
 def docstring_parameter(**kwargs):
     """Decorator to reformat docstring using specified KWARGS"""
+    # Note: Docstrings should not contain extraneous braces (e.g., "avoid {}'s")
     # based on https://stackoverflow.com/questions/10307696/how-to-put-a-variable-into-python-docstring/71377925#71377925
-    def dec(obj):
-        obj.__doc__ = obj.__doc__.format(**kwargs)
+    def decorator(obj):
+        new_doc = obj.__doc__
+        try:
+            new_doc = obj.__doc__.format(**kwargs)
+        except:
+            _print_exception_info("docstring_parameter")
+        obj.__doc__ = new_doc
         return obj
-    return dec
+    return decorator
 
 #...............................................................................
 
@@ -136,13 +143,17 @@ if __debug__:
     # Initialize debug tracing level
     # TODO: mark as "private" (e.g., trace_level => _trace_level)
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
-    trace_level:int = TL.DEFAULT            # typically same as TL.WARNING (2); TODO: global_trace_level
+    trace_level:int = TL.DEFAULT        # typically 3 (1 + WARNING); TODO: global_trace_level
     output_timestamps = False           # prefix output with timestamp
+    ## TODO1: output_caller_info = False          # add caller filename and line number to trace
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
     debug_file = None                   # file for log output
     debug_file_hack = False             # work around concurrent writes by reopening after each trace
     para_mode_tracing = False           # multiline tracing functions add blank lines (e.g., for para-mode grep)
+    max_trace_value_len = 1024          # maxium length for tracing values
+    time_start = 0                      # time of module load
+    include_trace_diagnostics = False   # include trace invocation sanity checks
     #
     try:
         trace_level_text = os.environ.get(DEBUG_LEVEL_LABEL, "")
@@ -227,9 +238,13 @@ if __debug__:
         print(text, file=sys.stderr, end=end)
         if debug_file:
             print(text, file=debug_file, end=end)
-    
-    def trace(level, text, empty_arg=None, no_eol=False, indentation=None):
-        """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE"""
+
+    def trace(level, text:str, empty_arg=None, no_eol=False, indentation=None, skip_sanity_checks=None):
+        """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE
+        Noe: Optionally, uses \n unless no_eol, precedes trace with INDENTATION, and
+        SKIPs_SANITY_CHECKS (e.g., variables in braces in f-string omission).
+        """
+        # TODO1: add exception handling
         # TODO: add option to use format_value
         # Note: trace should not be used with text that gets formatted to avoid
         # subtle errors
@@ -248,11 +263,28 @@ if __debug__:
                     timestamp_time += f" diff={diff}ms"
                     last_trace_time = time.time()
                 do_print(indentation + "[" + timestamp_time + "]", end=": ")
+            ## TODO1: 
+            ## # Optionally show filename and line number for caller
+            ## # Note: This is mainly intended for help in tweaking trace levels, such as to help
+            ## # identify tracing being done too frequently. This was inspired by loguru.
+            ## if output_caller_info:
+            ##     pass
             # Print trace, converted to UTF8 if necessary (Python2 only)
             # TODO: add version of assertion that doesn't use trace or trace_fmtd
-            ## TODO: assertion(not(re.search(r"{\S*}", text)))
+            ## TODO: assertion(not ???)
+            do_print(indentation, end="")
+            if not isinstance(text, str):
+                if trace_level >= USUAL:
+                    do_print("[Warning: converted non-text to str] ", end="")
+                text = str(text)
+            if ((not skip_sanity_checks)
+                and re.search(r"{\S+}", text)
+                and not re.search(r"{{\S+}}", text)):
+                # TODO3: show caller info; also rework indent (pep8 quirk)
+                if include_trace_diagnostics:
+                    do_print("[FYI: f-string issue?] ", end="")
             end = "\n" if (not no_eol) else ""
-            do_print(indentation + _to_utf8(text), end=end)
+            do_print(_to_utf8(text), end=end)
             if use_logging:
                 # TODO: see if way to specify logging terminator
                 logging.debug(indentation + _to_utf8(text))
@@ -267,16 +299,21 @@ if __debug__:
     def trace_fmtd(level, text, **kwargs):
         """Print TEXT with formatting using optional format KWARGS if at trace LEVEL or higher, including newline
         Note: Use MAX_LEN keyword argument to override the maximum length ({max_len}) of traced text (see format_value).
+        Also, use SKIP_SANITY_CHECKS to avoid checks for missing braces (e.g., trace could be used).
         """
         # Note: To avoid interpolated text as being interpreted as variable
         # references, this function does the formatting.
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
         if (trace_level >= level):
+            # Note: checks alternative keyword first, so False ones not misintepretted
             max_len = kwargs.get('_max_len') or kwargs.get('max_len')
+            skip_sanity_checks = kwargs.get('_skip_sanity_checks') or kwargs.get('skip_sanity_checks')
             try:
                 try:
                     # TODO: add version of assertion that doesn't use trace or trace_fmtd
-                    ## TODO: assertion(re.search(r"{\S*}", text))
+                    if (not skip_sanity_checks) and not (re.search(r"{\S*}", text)):
+                        if include_trace_diagnostics:
+                             trace(level, "[FYI: missing {}'s?] ", no_eol=True)
                     ## OLD: assertion("{" in text)
                     ## OLD: trace(level, text.format(**kwargs))
                     ## OLD: kwargs_unicode = {k: _to_unicode(_to_string(v)) for (k, v) in list(kwargs.items())}
@@ -332,6 +369,7 @@ if __debug__:
         elif verbose_debugging():
             label += " [" + type_id_label + "]"
         else:
+            assertion(isinstance(label, str))
             pass
         outer_indentation = ""
         if indentation is None:
@@ -427,6 +465,12 @@ if __debug__:
             return
         if para_mode_tracing:
             trace(ALWAYS, "")
+        if isinstance(collection, Mapping):
+            try:
+                collection = dict(collection)
+            except:
+                trace_exception(6, "mapping to dict in trace_values")
+        # note: sets will be coerced to lists
         if not isinstance(collection, (list, dict)):
             if hasattr(collection, '__iter__'):
                 trace(level + 1, "Warning: [trace_values] consuming iterator")
@@ -450,9 +494,9 @@ if __debug__:
                 if use_repr:
                     value = repr(value)
                 trace_fmtd(ALWAYS, "{ind}{k}: {v}", ind=indentation, k=k,
-                           v=format_value(value, max_len=max_len))
+                           v=format_value(value, max_len=max_len, skip_sanity_checks=True))
             except:
-                trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}",
+                trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}: {exc}",
                            k=_to_utf8(k), exc=sys.exc_info())
         trace(ALWAYS, indentation + "}")
         if para_mode_tracing:
@@ -530,6 +574,7 @@ if __debug__:
             # Remove trailing comma (e.g., if split across lines)
             statement = re.sub(r",?\s*$", "", statement)
             # Skip first argument (level)
+            # note: to avoid splitting array entries, etc. omit space after , (e.g., m[i,j] not m[i, j])
             expressions = re.split(", +", statement)[1:]
             trace(9, f"expressions={expressions!r}\nvalues={values!r}")
         except:
@@ -552,7 +597,8 @@ if __debug__:
                           f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
                 value_spec = format_value(repr(value) if use_repr else value,
                                           max_len=max_len)
-                trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
+                # note: using skip_sanity_checks, because kwargs gives false positive on brace check
+                trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True)
             except:
                 trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
                        exc=sys.exc_info())
@@ -718,6 +764,19 @@ if __debug__:
             result = function(*args, **kwargs)
         return result
 
+
+    def get_elapsed_time():
+        """Get elapsed (debugging) time in seconds from import time
+        Note: convenience function for use in notebooks for quick-and-dirty timing.
+        Also used to avoid blank cell when executing last cell.
+        Typical usage:
+           debug.trace(3, f"done: elapsed={debug.get_elapsed_time()}s")
+        """
+        time_end = time.time()
+        elapsed = round(time_end - time_start, 3)
+        trace(QUITE_VERBOSE, f"get_elapsed_time() = {elapsed}; {time_start=} {time_end=}")
+        return elapsed
+
 else:
 
     trace_level = 0
@@ -761,6 +820,8 @@ else:
 
     call = non_debug_stub
 
+    get_elapsed_time = non_debug_stub
+    
     ## TODO?:
     ## val = non_debug_stub
     ##
@@ -860,7 +921,7 @@ def _getenv_int(name, default_value):
 
 
 @docstring_parameter(max_len=max_trace_value_len)
-def format_value(value, max_len=None, strict=None):
+def format_value(value, max_len=None, strict=None, skip_sanity_checks=None):
     """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines
     Note: With STRICT, MAX_LEN is maximum length ({max_len}) for returned string (i.e., including "...")
     """
@@ -868,7 +929,7 @@ def format_value(value, max_len=None, strict=None):
     # EX: format_value("fubar", max_len=3) => "fub..."
     # EX: format_value("fubar", max_len=3, strict=True) => "..."
     # TODO2: rework with result determined via repr
-    trace(1 + MOST_VERBOSE, f"format_value({value!r}, max_len={max_len})")
+    trace(1 + MOST_VERBOSE, f"format_value({value!r}, max_len={max_len})", skip_sanity_checks=skip_sanity_checks)
     if max_len is None:
         max_len = max_trace_value_len
     if strict is None:
@@ -883,17 +944,17 @@ def format_value(value, max_len=None, strict=None):
         result = result[:-extra] + ellipsis
     else:
         l = 2 + MOST_VERBOSE
-        trace(l, f"0. {result!r}")
+        trace(l, f"0. {result!r}", skip_sanity_checks=skip_sanity_checks)
         extra2 = 0
         if (len(result) - extra + len(ellipsis) > max_len):
             extra2 = (len(result) - extra + len(ellipsis) - max_len)
         trace_expr(l, extra, extra2)
         result = result[:-(extra + extra2)]
-        trace(l, f"1. {result!r}")
+        trace(l, f"1. {result!r}", skip_sanity_checks=skip_sanity_checks)
         result += ellipsis
-        trace(l, f"2. {result!r}")
+        trace(l, f"2. {result!r}", skip_sanity_checks=skip_sanity_checks)
         result = result[:max_len]
-        trace(l, f"3. {result!r}")
+        trace(l, f"3. {result!r}", skip_sanity_checks=skip_sanity_checks)
         assertion(len(result) <= max_len)
     trace(MOST_VERBOSE, f"format_value() => {result!r}")
     return result
@@ -1094,10 +1155,10 @@ if __debug__:
         # Open fresh
         open_debug_file()
         return
-                        
 
     def debug_init():
         """Debug-only initialization"""
+        global time_start
         time_start = time.time()
         trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
         ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
@@ -1135,9 +1196,14 @@ if __debug__:
         enable_logging = _getenv_bool("ENABLE_LOGGING", use_logging)
         if enable_logging:
             init_logging()
+        global include_trace_diagnostics
+        include_trace_diagnostics = _getenv_bool("TRACE_DIAGNOSTICS", trace_level >= QUITE_DETAILED)
         monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
         if monitor_functions:
             sys.setprofile(profile_function)
+        ## TODO1: (all output_caller_info env. init; also add to trace_expr below)
+        ## global output_caller_info
+        ## output_caller_info = _getenv_bool("OUTPUT_CALLER_INFO", output_caller_info)
         trace_expr(VERBOSE, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
 
         # Show additional information when detailed debugging
@@ -1145,10 +1211,11 @@ if __debug__:
         pre = post = ""
         if para_mode_tracing:
             pre = post = "\n"
-        trace_fmt(DETAILED, "{pre}environment: {{\n\t{env}\n}}{post}",
+        trace_fmt(VERBOSE, "{pre}environment: {{\n\t{env}\n}}{post}",
                   env="\n\t".join([(k + ': ' + format_value(os.environ[k]))
                                    for k in sorted(dict(os.environ))]),
                   pre=pre, post=post, max_len=4096)
+        trace_values(QUITE_DETAILED, os.environ, "os.environ")
 
         # Likewise show additional information during verbose debug tracing
         # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
@@ -1163,7 +1230,7 @@ if __debug__:
             trace_object(QUITE_VERBOSE, sys.stderr)
             if sys.stderr.closed:       # pylint: disable=using-constant-test
                 return
-            elapsed = round(time.time() - time_start, 3)
+            elapsed = get_elapsed_time()
             trace_fmtd(DETAILED, "[{f}] unloaded at {t}; elapsed={e}s",
                        f=module_file, t=timestamp(), e=elapsed)
             if monitor_functions:

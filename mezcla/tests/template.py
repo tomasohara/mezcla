@@ -48,10 +48,14 @@ from mezcla import system
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
-## TODO (vvv): insert new module name in commented out template teo lines below
-THE_MODULE = None         ## TODO: remove this line: avoids <module> syntax error in next)
-## import mezcla.<module> as THE_MODULE   ## TODO: uncomment this line (<<<)
-## TODO (^^^): use modified line above
+THE_MODULE = None
+try:
+    ## TODO: import mezcla.<module> as THE_MODULE
+    pass                                ## TODO: delete
+except:
+    system.print_exception_info("<module> import") 
+## 
+## TODO: make sure import above syntactically valid
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(__file__, r"\btemplate.py$"):
@@ -127,20 +131,63 @@ class TestIt(TestWrapper):
         self.do_assert("whatever" in captured, "TODO_whatever trace")
         return
 
+    ## TODO: get pytest.mark.parametrize inside of class
+    ## NOTE: See workaround with test_global_01_table below
+    ## @pytest.mark.parametrize(
+    ##     "TODO_arg1, TODO_arg2",
+    ##     [ (2, 1),
+    ##       (1, 2) ]
+    ##     )
+    ## @staticmethod
+    ## def test_04_table(TODO_arg1, TODO_arg2):
+    ##     """TODO_Tabular test"""
+    ##     debug.trace(4, f"TestIt.test_04_table({arg1}, {arg2})")
+    ##     assert arg1 < arg2
+    ##
+    ## TODO2: -or- define helper with use with global (see below)
+    ## def check_table_args(TODO_arg1, TODO_arg2):
+    ##     """TODO_Tabular test"""
+    ##     debug.trace(4, f"TestIt.test_04_table({arg1}, {arg2})")
+    ##     assert arg1 < arg2
+
     ## TODO: optional cleanup methods
     ##
     ## def tearDown(self):
     ##     debug.trace(6, f"TestIt.tearDown(); self={self}")
-    ##     super().tearDownClass()
+    ##     super().tearDown()
     ##     ...
     ##     return
     ##
     ## @classmethod
     ## def tearDownClass(cls):
     ##     debug.trace(6, f"TestIt.tearDownClass(); cls={cls}")
-    ##     super().tearDown()
+    ##     super().tearDownClass()
     ##     ...
     ##     return
+
+## TODO: define optional tests with tabular input
+## #................................................................................
+## # Global tests
+## #
+## # Note: @pytest.mark.parametrize doesn't seem to be compatible with classes
+## # based on TestWrapper (or classes in general).
+## # See https://stackoverflow.com/questions/38729007/parametrize-class-tests-with-pytest
+## 
+## @pytest.mark.parametrize(
+##     "TODO_arg1, TODO_arg2",
+##     [ (2, 1),
+##       (1, 2) ]
+## )
+## def test_global_01_table(TODO_arg1, TODO_arg2):
+##     """TODO_Tabular test"""
+##     debug.trace(4, f"TestIt.test_global_01_table({arg1}, {arg2})")
+##     assert arg1 < arg2
+## TODO2: -or- use helper in test class (see above)
+## def test_global_01_table(TODO_arg1, TODO_arg2):
+##     """TODO_Tabular test"""
+##     debug.trace(4, f"TestIt.test_global_01_table({arg1}, {arg2})")
+##     TestIt().check_table_args(TODO_arg1, TODO_arg2))
+##
 
 #------------------------------------------------------------------------
 

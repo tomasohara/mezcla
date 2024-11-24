@@ -237,13 +237,14 @@ def jsonl_to_json(in_path, out_path):
 # Miscellanous
 #
 
-def write_json(filename, obj, indent=None):
+def write_json(filename, obj, indent=None, default=None):
     """Create FILENAME using JSON representation of OBJ
-    Note: Uses prettyprinting unless indent 0
+    Note: Uses prettyprinting unless INDENT 0;
+    Use DEFAULT=str to handle serialization issues
     """
     if indent is None:
         indent = 2
-    system.write_file(filename, json.dumps(obj, indent=indent))
+    system.write_file(filename, json.dumps(obj, indent=indent, default=default))
 
 
 def read_yaml(filename):

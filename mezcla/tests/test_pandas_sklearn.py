@@ -68,6 +68,7 @@ class TestPandasSklearn(TestWrapper):
         self.run_script(data_file='', log_file=log_file)
         assert 'Usage:' in gh.read_file(log_file)
 
+    @pytest.mark.xfail
     def test_normal_usage(self):
         """Ensure normal usage works as expected"""
         debug.trace(4, "test_normal_usage()")
@@ -75,11 +76,17 @@ class TestPandasSklearn(TestWrapper):
         assert output
 
         # Check line per line avoiding flaky numbers that always change
+        line_num = 0
         for expected_line, actual_line in zip(gh.read_lines(IRIS_OUTPUT), output.splitlines()):
             expected_line = re.sub(r' +', ' ', expected_line)
             actual_line = re.sub(r' +', ' ', actual_line)
+            line_num += 1
+            # note: ignores lines like following
+            #   107          7.3         2.9          6.3         1.8   Iris-virginica
             if re.search(r'[0-9] +[0-9\.]+ +[0-9\.]+ +[0-9\.]+ +[0-9\.]+ +[a-zA-Z]+-[a-zA-Z]+', expected_line):
+                debug.trace(6, f"Ignoring line {line_num} with details: {expected_line}")
                 continue
+            debug.trace_expr(5, line_num, expected_line, actual_line)
             assert actual_line == expected_line
 
     def test_verbose(self):

@@ -42,8 +42,11 @@ from mezcla.my_regex import my_re
 from mezcla import system
 
 # Fill out constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
-FIELDS = "fields"                       # field indices (1-based)
+FIELDS = "fields"                       # field indices (1-based or symbolic)
 F_OPT = "f"                             # alias for fields
+EXCLUDE_OPT = "exclude"                 # fields to exclude (1-based or symbolic)
+X_OPT = "x"                             # alias for exclude
+ENCODE_OPT = "encode"                   # use repr for newlines, etc.
 FIX = "fix"                             # convert runs of spaces into a tab
 CSV = "csv"                             # comma-separated value format
 TSV = "tsv"                             # tab-separated value format
@@ -81,9 +84,16 @@ TAB_DIALECT = "tab"                     # dialect option for TSV
 SINGLE_LINE = "single-line"             # collapse multi-line fields into one
 MAX_FIELD_LEN = "max-field-len"         # value length before elided
 ## TODO: TODO_ARG = "TODO-arg"          # TODO: comment
-NEW_FIX = system.getenv_bool("NEW_FIX", False,
-                             "HACK: Fix for --fix bug")
+NEW_FIX = system.getenv_bool(
+    "NEW_FIX", False,
+    desc="HACK: Fix for --fix bug for whitespace to tabs")
 NUM_FN_SHORTCUTS = 9
+CSV_FORMAT = system.getenv_bool(
+    "CSV_FORMAT", False,
+    desc="Use CSV instead of TSV")
+MAX_FIELD_SIZE = system.getenv_int(
+    "MAX_FIELD_SIZE", -1,
+    desc="Overide for default max field size (128k)")
 
 #...............................................................................
 
@@ -169,12 +179,16 @@ csv.register_dialect("tab", tab_dialect)
 
 class Script(Main):
     """Input processing class"""
+    inclusion_spec = ''
+    exclusion_spec = ''
     fields = []
+    exclude_fields = []
+    encode_values = False
     fix = False
     ## OLD: delimiter = TAB
     delimiter = None
     output_delimiter = None
-    csv = False
+    csv = CSV_FORMAT
     csv_reader = None
     all_fields = False
     dialect = None
@@ -198,11 +212,18 @@ class Script(Main):
                 self.fields.append(str(i + 1))
         FIELDS_DEFAULT = ",".join(self.fields)
         debug.trace_expr(4, FIELDS_DEFAULT)
-        fields = self.get_parsed_option(F_OPT, FIELDS_DEFAULT)
-        fields = self.get_parsed_option(FIELDS, fields)
-        if fields:
-            self.fields = self.parse_field_spec(fields)
-        self.all_fields = self.get_parsed_option(ALL_FIELDS, (not fields))
+        inclusion_spec = self.get_parsed_option(F_OPT, FIELDS_DEFAULT)
+        self.inclusion_spec = self.get_parsed_option(FIELDS, inclusion_spec)
+        EXCLUDE_DEFAULT = ",".join(self.exclude_fields)
+        exclusion_spec = self.get_parsed_option(F_OPT, EXCLUDE_DEFAULT)
+        self.exclusion_spec = self.get_parsed_option(EXCLUDE_OPT, exclusion_spec)
+        debug.assertion(not (self.inclusion_spec and self.exclusion_spec))
+        self.encode_values = self.get_parsed_option(ENCODE_OPT, self.encode_values)
+        ## NOTES: Fields initialization postponed until columns reads to allow ffor symbolic names
+        ## OLD:
+        ## if fields:
+        ##     self.fields = self.parse_field_spec(fields)
+        self.all_fields = self.get_parsed_option(ALL_FIELDS, (not self.fields))
         debug.assertion(not (self.fields and self.all_fields))
         #
         self.fix = self.get_parsed_option(FIX, self.fix)
@@ -239,12 +260,13 @@ class Script(Main):
         # Check CSV dialet options
         debug.assertion(system.just_one_non_null([self.get_parsed_option(o, None) for o in 
                                                   [DIALECT, EXCEL_DIALECT, UNIX_DIALECT, PYSPARK_DIALECT, TAB_DIALECT]]))
+        pyspark_style = self.get_parsed_option(PYSPARK_STYLE)
         if self.get_parsed_option(EXCEL_STYLE):
             self.dialect = EXCEL_DIALECT
+        elif pyspark_style:
+            self.dialect = PYSPARK_DIALECT
         elif (self.get_parsed_option(UNIX_STYLE) or (self.delimiter == COMMA)):
             self.dialect = UNIX_DIALECT
-        elif self.get_parsed_option(PYSPARK_STYLE):
-            self.dialect = PYSPARK_DIALECT
         elif (self.get_parsed_option(TAB_STYLE) or (self.delimiter == TAB)):
             self.dialect = TAB_DIALECT
         self.dialect = self.get_parsed_option(DIALECT, self.dialect)
@@ -252,7 +274,7 @@ class Script(Main):
         if (self.output_delimiter == TAB):
             default_output_dialect = TAB_DIALECT
         if (self.output_delimiter == COMMA):
-            default_output_dialect = UNIX_DIALECT
+            default_output_dialect = PYSPARK_DIALECT if pyspark_style else UNIX_DIALECT
         self.output_dialect = self.get_parsed_option(OUTPUT_DIALECT, default_output_dialect)
         # TODO: see if there is an option to determine number of fields (before reading data)
         ## if self.all_fields:
@@ -262,12 +284,31 @@ class Script(Main):
         debug.trace_object(5, self, label="Script instance")
         return
 
-    def parse_field_spec(self, field_spec):        # pylint: disable=no-self-use
+    def parse_field_spec(self, field_spec, columns):
         """Convert the FIELD_SPEC from string to list of integers. The specification can contain numeric ranges (e.g., "3-5") or comma-separated values (e.g., "7,9,11").
+        Symbolic names can also be used (e.g., "sepal_width,petal_width")
         Note: throws exception if fields are not integers"""
+        ## TODO3: decompose using helper functions
         # EX: self.parse_field_spec("1,2,5-8,3,4") => [1, 2, 5, 6, 7, 8, 3, 4]
-        debug.trace_fmtd(5, "parse_field_spec({fs})", fs=field_spec)
+        debug.trace(5, f"parse_field_spec({field_spec}, {columns}); self={self}")
 
+        # Convert labels to 1-based offsets (TODO3: find CSV spec and clarify label chars)
+        # NOTE: dashes in field names not supported (TODO2: subsitute non-ascii dash)
+        in_field_spec = field_spec
+        if my_re.search(r"[A-Za-z]", field_spec):
+            ## TODO4: quote fields that should be used as is; add alternative to dash
+            debug.trace(4, "FYI: Fieldnames currently are Python-like Ascii identifiers")
+        while my_re.search(r"([a-z][a-z0-9_]+)", field_spec, flags=my_re.IGNORECASE):
+            field_name = my_re.group(1)
+            if field_name not in columns:
+                system.print_error(f"Error: Unable to resolve field {field_name!r}: {in_field_spec=}")
+                if field_name.lower() in str(field_spec).lower():
+                    debug.trace(4, "Try matching case")
+                break
+            field_pos = (1 + columns.index(field_name))
+            field_spec = my_re.pre_match() + str(field_pos) + my_re.post_match()
+            debug.trace(4, f"Replaced {field_name!r} with {field_pos}")
+        
         # Normalize the field specification
         debug.assertion(not re.search(r"[0-9] [0-9]", field_spec))
         field_spec = field_spec.replace(SPACE, "")
@@ -279,6 +320,11 @@ class Script(Main):
 
         # Replace ranges with comma-separated cols (e.g., "5-7" => "5,6,7")
         if "-" in field_spec:
+            # Supply missing first and last column (e.g., "^-3" => "1-3" and "2-$" => "2-3")
+            field_spec = my_re.sub(r"^\-", "1-", field_spec)
+            field_spec = my_re.sub(r"\-$", f"-{len(columns)}", field_spec)
+
+            # Replace ranges
             while my_re.search(r"([0-9]+)\-([0-9]+)", field_spec):
                 range_spec = my_re.group(0)
                 debug.trace_fmtd(4, "Converting range: {r}", r=range_spec)
@@ -312,6 +358,13 @@ class Script(Main):
         Note: The fields are 1-based (i.e., first column specified 1 not 0)"""
         debug.trace_fmtd(4, "run_main_step()")
 
+        # Overide the maxium field size if specified
+        if MAX_FIELD_SIZE > -1:
+            old_limit = csv.field_size_limit()
+            debug.assertion(MAX_FIELD_SIZE > old_limit)
+            csv.field_size_limit(MAX_FIELD_SIZE)
+            debug.trace(4, f"Set max field size to {MAX_FIELD_SIZE}; was {old_limit}")
+        
         # If unspecified, try to determine dialect for CSV input automatically
         # Notes: doesn't recognize escapes properly, such as \"); and,
         # sniffer doesn't work for stdin due to python limitation with backtracking.
@@ -356,15 +409,18 @@ class Script(Main):
             debug.assertion(not self.other_filenames)
         self.csv_reader = csv.reader(self.input_stream, delimiter=self.delimiter, 
                                      dialect=self.dialect)
-        debug.trace_object(5, self.csv_reader, "csv_reader")
-        debug.trace_object(5, self.csv_reader.dialect, "csv_reader.dialect")
         csv_writer = csv.writer(sys.stdout, delimiter=self.output_delimiter, 
                                 dialect=self.output_dialect)
+        debug.trace_object(5, self.csv_reader, "csv_reader")
+        debug.trace_object(5, self.csv_reader.dialect, "csv_reader.dialect")
+        debug.trace_object(5, csv_writer, "csv_writer")
+        debug.trace_object(5, csv_writer.dialect, "csv_writer.dialect")
 
         # Iterate through the rows, outputting subset of columns
         last_row_length = None
         num_rows = 0
         num_cols = None
+        columns = None
         for i, row in enumerate(self.csv_reader):
             if NEW_FIX and (self.delimiter == TAB):
                 # Strip leading spaces and replace other multiple spaces by a tab
@@ -376,6 +432,17 @@ class Script(Main):
                 line = re.sub(" +", TAB, line)
                 row = line.split(TAB)
                 debug.assertion(not any(SPACE in field for field in row))
+            if i == 0:
+                # note: Byte order mark (BOM) is removed
+                # TODO3: warn about delimiter mismatch
+                columns = row
+                BOM = '\ufeff'
+                if columns and columns[0].startswith(BOM):
+                    columns[0] = columns[0][len(BOM):]
+                if self.inclusion_spec:
+                    self.fields = self.parse_field_spec(self.inclusion_spec, columns)
+                if self.exclusion_spec:
+                    self.exclude_fields = self.parse_field_spec(self.exclusion_spec, columns)
             debug.trace_fmt(6, "R{n}: {r}", n=(i + 1), r=row)
             debug.trace_fmt(5, "R{n}: len(row)={l} [{rspec}]", n=(i + 1), l=len(row), rspec=elide_values(row))
             debug.assertion((len(row) == last_row_length) or (not last_row_length))
@@ -388,7 +455,8 @@ class Script(Main):
             # Derive the fields to extract if all to be extracted
             debug.trace_fmt(7, "pre f={f} all={a}", f=self.fields, a=self.all_fields)
             if ((not self.fields) and self.all_fields):
-                self.fields = [(c + 1) for c in range(len(row))]
+                ## OLD: self.fields = [(c + 1) for c in range(len(row))]
+                self.fields = [(c + 1) for c in range(len(row)) if (c + 1) not in self.exclude_fields]
                 if not self.fields:
                     ## OLD: system.print_stderr("Error: No items in header row at line {l}", l=(i + 1))
                     system.print_stderr("Error: No items in row at line {l}", l=(i + 1))
@@ -413,16 +481,23 @@ class Script(Main):
             for f in self.fields:
                 valid_field_number = (1 <= f <= len(row))
                 debug.trace_expr(5, f)
-                debug.assertion(valid_field_number)
+                debug.assertion(valid_field_number, f"field {f}")
                 ## OLD: output_row.append(row[f - 1] if valid_field_number else "")
                 column = row[f - 1] if valid_field_number else ""
                 if self.single_line:
                     column = re.sub(r"\s", SPACE, column)
                 if self.max_field_len:
                     column = gh.elide(column, max_len=self.max_field_len)
+                if self.encode_values:
+                    ## TODO4: maxcount of 1 for left and right
+                    column = repr(column).strip("'")
                 output_row.append(column)
             debug.trace_expr(6, output_row)
-            csv_writer.writerow(output_row)
+            try:
+                csv_writer.writerow(output_row)
+            except:
+                ## TODO2: add ignore-errors option
+                system.print_exception_info("row output")
 
         # Do sanity checks
         # Note: this compares row extraction against Pandas dataframe
@@ -468,12 +543,17 @@ if __name__ == '__main__':
              (SINGLE_LINE, "Remove embedded newlines from mult-line fields"),
              (TAB_STYLE, "Non-excel TSV conventions (default)"),
              ## (TODO_ARG, "TODO: arg desc").
-             (UNIX_STYLE, "Use Unix conventions for CSV files (see csv python package docs)")]),
+             (UNIX_STYLE, "Use Unix conventions for CSV files (see csv python package docs)"),
+             (ENCODE_OPT, "Output field encoded via repr (i.e., canonical representation)"),
+             ]),
         int_options = [(MAX_FIELD_LEN, "Maximum length per field")],
         text_options=[(DELIM, "Input field separator"),
                       (DIALECT, "CSV module dialect: standard (i.e., excel, excel-tab, or unix) or adhoc (e.g., pyspark, hive)"),
                       (OUTPUT_DIALECT, "dialect for output--defaults to input one"),
-                      (FIELDS, "Field specification (1-based): single column, range of columns, or comma-separated columns"),
+                      (FIELDS, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
                       (F_OPT, "Alias for --fields"),
-                      (OUT_DELIM, "Output field separator")])
+                      (OUT_DELIM, "Output field separator"),
+                      (EXCLUDE_OPT, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
+                      (X_OPT, "Alias for --exclude"),
+                      ])
     app.run()

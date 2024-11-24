@@ -17,6 +17,10 @@
 # - Use token quoting consistent with Gensim topic display (i.e., double).
 # - Work around quirk requiring the model to be saved prior to similarity calculations.
 # 
+# TODO2:
+# - Check gensim 4.0 API usage: https://github.com/piskvorky/gensim/wiki/Migrating-from-Gensim-3.x-to-4.
+# - Fix similarity when user doc ID's provided.
+# 
 
 """Interface into Gensim package for vector-based text analysis (e.g., document similarity)"""
 

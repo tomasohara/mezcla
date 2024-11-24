@@ -34,6 +34,7 @@ import pickle
 import re
 import sys
 import time
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Installed packages
 import six
@@ -42,13 +43,13 @@ import six
 from mezcla import debug
 from mezcla.debug import UTF8
 ## TODO3: debug.trace_expr(6, __file__)
-## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Constants
 STRING_TYPES = six.string_types
 MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
 TEMP_DIR = None
+ENCODING = "encoding"
 
 ## TODO: debug.assertion(python_maj_min_version() >= 3.8, "Require Python 3.8+ for function def's with '/' or '*'")
 ## See https://stackoverflow.com/questions/9079036/how-do-i-detect-the-python-version-at-runtime
@@ -210,18 +211,27 @@ def getenv_value(var, default=None, description=None, desc=None, update=None):
 
 DEFAULT_GETENV_BOOL = False
 #
-def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, update=None):
+def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, allow_none=False, update=None):
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note:
     - "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)
     - In general, it is best to use False as default instead of True, because getenv_bool is meant for environment overrides, not defaults.
+    - TODO2: Return is a bool unless ALLOW_NONE; defaults to False.
     """
     # EX: getenv_bool("bad env var", None) => False
+    # EX: getenv_bool("bad env var", None, allow_none=True) => True
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
     value_text = getenv_value(var, description=description, desc=desc, default=default, update=update)
     if (isinstance(value_text, str) and value_text.strip()):
         bool_value = to_bool(value_text)
+    if not isinstance(bool_value, bool):
+        if (bool_value is None):
+            bool_value = False if (not allow_none) else None
+        else:
+            debug.assertion(bool_value != default, f"Check {var!r} default {default!r}")
+            bool_value = to_bool(bool_value)
+    debug.assertion(isinstance(bool_value, bool) or allow_none)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
                      v=var, d=default, r=bool_value)
     return (bool_value)
@@ -229,8 +239,11 @@ def getenv_bool(var, default=DEFAULT_GETENV_BOOL, description=None, desc=None, u
 getenv_boolean = getenv_bool
 
 
-def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, update=None):
-    """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE"""
+def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, allow_none=False, update=None):
+    """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
+    Note: Return is a float unless ALLOW_NONE; defaults to -1.0
+    """
+    # EX: getenv_float("?", default=1.5) => 1.5
     # TODO: def getenv_number(...) -> Optional(float):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
@@ -238,6 +251,8 @@ def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, 
     if (isinstance(value, str) and value.strip()):
         debug.assertion(is_number(value))
         num_value = to_float(value)
+    if (not ((num_value is None) and allow_none)):
+        num_value = to_float(num_value)
     trace_level = 6 if helper else 5
     debug.trace_fmtd(trace_level, "getenv_number({v}, {d}) => {r}",
                      v=var, d=default, r=num_value)
@@ -246,15 +261,15 @@ def getenv_number(var, default=-1.0, description=None, desc=None, helper=False, 
 getenv_float = getenv_number
 
 
-
 def getenv_int(var, default=-1, description=None, desc=None, allow_none=False, update=None):
     """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
-    Note: Return is an integer unless ALLOW_NONE
+    Note: Return is an integer unless ALLOW_NONE; defaults to -1
     """
-    # EX: getenv_int("?", 1.5) => 1
-    value = getenv_number(var, description=description, desc=desc, default=default, helper=True, update=update)
+    # EX: getenv_int("?", default=1.5) => 1
+    value = getenv_number(var, description=description, desc=desc, default=default, allow_none=allow_none, helper=True, update=update)
     if (not isinstance(value, int)):
-        if ((value is not None) or allow_none):
+        ## OLD: if ((value is not None) and (not allow_none)):
+        if (not ((value is None) and allow_none)):
             value = to_int(value)
     debug.trace_fmtd(5, "getenv_int({v}, {d}) => {r}",
                      v=var, d=default, r=value)
@@ -410,6 +425,7 @@ def open_file(filename, /, mode="r", *, encoding=None, errors=None, **kwargs):
     try:
         # pylint: disable=consider-using-with; note: bogus 'Bad option value' warning
         ## BAD: result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
+        # pylint: disable=unspecified-encoding
         result = open(filename, mode=mode, errors=errors, **kwargs)
     except IOError:
         debug.trace_fmtd(3, "Unable to open {f!r}: {exc}", f=filename, exc=get_exception())
@@ -566,11 +582,11 @@ def read_entire_file(filename, **kwargs):
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
-        ENCODING = "encoding"
         if kwargs.get(ENCODING) is None:
             kwargs[ENCODING] = "UTF-8"
         ## TODO: with open_file(filename, **kwargs) as f:
         ## BAD: with open(filename, encoding="UTF-8", **kwargs) as f:
+        # pylint: disable=unspecified-encoding
         with open(filename, **kwargs) as f:
             data = f.read()
     except (AttributeError, IOError):
@@ -679,7 +695,7 @@ def read_lookup_table(filename, skip_header=False, delim=None, retain_case=False
                     delim_spec = ("\\t" if (delim == "\t") else delim)
                     debug.trace_fmt(2, "Warning: Ignoring line {n} w/o delim ({d}): {l}", 
                                     n=line_num, d=delim_spec, l=line)
-    except (AttributeError, IOError, ValueError):
+    except (AttributeError, IOError, TypeError, ValueError):
         debug.trace_fmtd(1, "Error creating lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmtd(7, "read_lookup_table({f}) => {r}", f=filename, r=hash_table)
@@ -712,7 +728,7 @@ def create_boolean_lookup_table(filename, delim=None, retain_case=False, ignore_
                 if delim in key:
                     key = key.split(delim)[0]
                 lookup_hash[key] = True
-    except (AttributeError, IOError, ValueError):
+    except (AttributeError, IOError, TypeError, ValueError):
         debug.trace_fmtd(1, "Error: Creating boolean lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmt(7, "create_boolean_lookup_table => {h}", h=lookup_hash)
@@ -1260,6 +1276,7 @@ def round_num(value, precision=None):
 def round_as_str(value, precision=PRECISION):
     """Returns round_num(VALUE, PRECISION) as string"""
     # EX: round_as_str(3.15914, 3) => "3.159"
+    ## TODO3: add separate argument for number of digits after decimal point
     result = f"{round_num(value, precision):.{precision}f}"
     debug.trace_fmtd(8, "round_as_str({v}, [prec={p}]) => {r}",
                      v=value, p=precision, r=result)
@@ -1317,7 +1334,7 @@ def make_wrapper(function_name, function, trace_level=6):
     """Creates wrapper around FUNCTION with NAME"""
     debug.trace(7, f"make_wrapper{(function_name, function, trace_level)}")
     # EX: make_wrapper("get_process_id", os.getpid).__doc__ => "Wrapper around posix.getpid"
-    # TODO3: resolve module used in refernce so that docstring more intuitive (e.g., posix.getpid => os.getpid)
+    # TODO3: resolve module used in reference so that docstring more intuitive (e.g., posix.getpid => os.getpid)
     #
     def wrapper(*args, **kwargs):
         """placeholder docstring"""

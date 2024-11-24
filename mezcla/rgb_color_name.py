@@ -51,6 +51,10 @@ Sample usage:
 """
 #
 ## TODO3: modernize extract_document_text.py (e.g., --html --stdout)
+##
+## TODO4: add extcolors-style one-liner:
+##    $ rgb_color_name.py - <<<"(39, 39, 39)   :  24.35% (630)"
+##    <(39, 39, 39), darkslategray>   :  24.35% (630
 
 # Standard packages
 ## OLD: import re

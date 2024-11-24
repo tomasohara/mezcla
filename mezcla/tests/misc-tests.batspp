@@ -33,3 +33,30 @@ $ echo $'1,2,3,4' | cut.py --csv --fields="3,4" --output-tsv -
 
 $ echo '"img2img_background_color": "#ffffff",' | rgb_color_name.py --hex6 - 2> /dev/null
 "img2img_background_color": "<#ffffff", white>",
+
+#-------------------------------------------------------------------------------
+
+# Make sure convert_emoticons.py runs OK
+#
+## $ echo hey | convert_emoticons.py -
+## Traceback (most recent call last):
+##   File "/home/tomohara/mezcla-tom/convert_emoticons.py", line 157, in <module>
+##     main()
+##   File "/home/tomohara/mezcla-tom/convert_emoticons.py", line 149, in main
+##     for line in main_app.read_entire_input().splitlines():
+## AttributeError: 'Main' object has no attribute 'read_entire_input'
+
+#-------------------------------------------------------------------------------
+# Make sure mezcla runs OK
+
+## $ ./mezcla 
+## Traceback (most recent call last):
+##   File "./mezcla", line 15, in <module>
+##     from mezcla.__main__ import main as mezcla_main
+## ModuleNotFoundError: No module named 'mezcla.__main__'
+## 
+## $ pwd-host-info 
+## /home/tomohara/mezcla-tom
+## hw2
+## hwsrv-592788.hostwindsdns.com
+## 

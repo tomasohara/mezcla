@@ -18,12 +18,13 @@ Adhoc usage:
 Tom O'Hara
 Feb 2022
 """
-version = "1.3.9.9"
+version = "1.4.0.3"
 __VERSION__ = version
 __version__ = __VERSION__
 
 # Standard module(s)
 import sys
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Note: requires python 3 or higher
 PYTHON3_PLUS = (sys.version_info[0] >= 3)
