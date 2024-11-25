@@ -56,6 +56,9 @@ EXTENDED_UI = system.getenv_bool("EXTENDED_UI", False, "Generates extended UI op
 JSONIFY_OUTPUT = system.getenv_bool(
     "JSONIFY_OUTPUT", False, "Generates output in JSON format"
 )
+SHOW_GPU_USAGE = system.getenv_bool(
+    "SHOW_GPU_USAGE", False, "Shows GPU usage if CUDA used"
+)
 
 # Argument Constants
 TEXT_ARG = "text"
@@ -68,6 +71,7 @@ UI_ARG = "ui"
 ROUND_ARG = "round"
 DYNAMIC_ARG = "dynamic"
 FILE_ARG = "file"
+GPU_ARG = "gpu"
 VERBOSE_ARG = "verbose"
 PARALLEL_ARG = "parallel"
 
@@ -138,7 +142,9 @@ class TranslationArgsProcessing(Main):
         self.use_interface = self.get_parsed_option(UI_ARG, USE_INTERFACE)
         self.parallel_process = self.get_parsed_option(PARALLEL_ARG, PARALLEL_PROCESS)
         self.dynamic_chunking = self.get_parsed_option(DYNAMIC_ARG, DYNAMIC_CHUNKING)
+        self.use_gpu = self.get_parsed_option(GPU_ARG, USE_GPU)
         self.verbose = self.get_parsed_option(VERBOSE_ARG)
+
 
         if self.text_file and self.text_file != "-":
             self.text = system.read_file(self.text_file)
@@ -168,6 +174,7 @@ class TranslationArgsProcessing(Main):
             text_file=self.text_file,
             mt_model=self.mt_model,
             mt_task=self.mt_task,
+            use_gpu=self.use_gpu,
             show_elapsed=self.show_elapsed,
             parallel_process=self.parallel_process,
             use_interface=self.use_interface,
@@ -189,8 +196,26 @@ class TranslationArgsProcessing(Main):
             ui.launch()
 
         self.result = translation_logic.return_results()
+
         if not self.use_interface:
-            print(self.result)
+            print(f"Machine Translation: {self.source_lang} TO {self.target_lang}")
+            print(f"Original Text: {self.text}")
+            
+            if self.round_trip:
+                rt_translated, rt_roundtrip, rt_score = self.result
+                print(f"Translated Text: {rt_translated}")
+                print(f"Round Trip Text: {rt_roundtrip}")
+                print(f"Similarity Score: {rt_score}")
+                print(f"\nDifferences in Original ({FROM}):")
+                print(f"{misc_utils.string_diff(self.text, rt_roundtrip)}")
+            print("Translated:", self.result)
+            
+            # if self.show_elapsed:
+            #     print("Elapsed Time:", translation_logic._get_elapsed_time())
+        
+        if SHOW_GPU_USAGE:
+            print(f"\nGPU Usage:\n{translation_logic.show_gpu_usage()}\n")
+
 
 class TranslationLogic:
     """
@@ -244,16 +269,10 @@ class TranslationLogic:
         self.max_length = max_length
         self.show_elapsed = show_elapsed
         self.use_interface = use_interface
-        self.dynamic_chunking = dynamic_chunking
         self.use_gpu = use_gpu
         self.device = self._get_device()
+        self.dynamic_chunking = dynamic_chunking
         self.model, self.model_reverse = self._load_models()
-
-    def _show_gpu_usage(self, trace_level = 5):
-        device = self._get_device()
-        if device == "cuda":
-            debug.code(trace_level, lambda: debug.trace(1, gh.run("nvidia-smi")))
-        return
 
     def _get_device(self):
         """
@@ -551,18 +570,30 @@ class TranslationLogic:
         else:
             if self.round_trip:
                 result = self._round_trip_translation()
-            elif self.show_elapsed:
-                result = (self._translate_text(), self._get_elapsed_time())
+            # elif self.show_elapsed:
+            #     result = (self._translate_text(), self._get_elapsed_time())
             else:
                 result = self._translate_text()
 
         debug.trace(5, f"\nTranslationLogic.return_results({self}) => {result}")
         return result
 
+    def show_gpu_usage(self, trace_level = 5):
+        """Displays GPU usage when USE_GPU is True"""
+        device = self._get_device()
+        if device.type == "cuda":
+            try:
+                result = gh.run("nvidia-smi")
+                debug.code(trace_level, lambda: debug.trace(1, result))
+                return result
+            except Exception as e:
+                debug.trace(1, f"Error fetching GPU usage: {str(e)}")
+                return f"Error fetching GPU usage: {str(e)}"
+        return "GPU not in usage"
+
 
 ## Add Translation UI class here
 ## TODO: Find a way to implement translation logic or create a logic within
-
 
 class TranslationUI(TranslationLogic):
     def __init__(
@@ -730,7 +761,7 @@ class TranslationUI(TranslationLogic):
         """Set up the Paragraph Mode UI within the app"""
         import gradio as gr
         with gr.Tab("Paragraph Mode UI"):
-            gr.Markdown("<h3>Paragraph Mode UI</h3>")
+            gr.Markdown(f"<h2>Split Translation: {self.source_lang} TO {self.target_lang}</h2>")
             input_text = gr.Textbox(label="Input Text", placeholder="Enter text to split")
             split_method = gr.Radio(
                 choices=["Split by Regex", "Specify Number of Paragraphs"],
@@ -798,6 +829,7 @@ if __name__ == "__main__":
             (ELAPSED_ARG, "Show time taken"),
             (ROUND_ARG, "Use round-trip translation"),
             (UI_ARG, "Enable Gradio UI"),
+            (GPU_ARG, "Use CUDA if installed"),
             (PARALLEL_ARG, "Use parallel processing"),
             (DYNAMIC_ARG, "Enable Dynamic Word Chunking"),
             (VERBOSE_ARG, "Enable detailed logging"),
