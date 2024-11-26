@@ -236,7 +236,13 @@ class Script(Main):
         tsv = self.get_parsed_option(TSV, not self.csv)
         if tsv:
             self.delimiter = TAB
-        self.delimiter = self.get_parsed_option(DELIM, self.delimiter)
+        
+        # OLD: self.delimiter = self.get_parsed_option(DELIM, self.delimiter)
+        explicit_delim = self.get_parsed_option(DELIM, self.delimiter)
+        # print("ASCII of Explicit Delim:", ord(explicit_delim))
+        if explicit_delim:
+            self.delimiter = explicit_delim
+            self.csv = False
         #
         debug.assertion(self.output_delimiter is None)
         if self.get_parsed_option(OUTPUT_CSV):
