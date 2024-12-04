@@ -21,6 +21,7 @@
 # Standard packages
 import sys
 from datetime import datetime
+import inspect
 
 # Installed packages
 import pytest
@@ -32,6 +33,7 @@ from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
+import mezcla.glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
@@ -116,7 +118,33 @@ class TestDebug(TestWrapper):
     def test_trace_object(self):
         """Ensure trace_object works as expected"""
         debug.trace(4, f"test_trace_object(): self={self}")
-        assert(False)
+        class Test_class: 
+            """Test class"""
+            alive: bool = True
+            age: int = 0
+            __debt: int = 0
+            
+            def age_up(self) -> None:
+                """Increase age"""
+                self.age += 1
+            
+            def __has_debt(self) -> bool:
+                return self.__debt > 0
+                
+        obj = Test_class()
+        THE_MODULE.trace_object(level=1, obj=obj, show_all=True)
+        err = self.get_stderr()
+        assert "Test_class__debt: 0" in err
+        assert "Test_class__has_debt:" in err
+        assert "age_up:"
+        assert "age: 0" in err
+        assert "age_up: " in err
+        
+        self.clear_stdout_stderr()
+        THE_MODULE.trace_object(level=1, obj=Test_class(), show_all=False, show_methods_etc=False, show_private=False)
+        err_2 = self.get_stderr()
+        assert "Test_class__has_debt:" not in err_2
+        assert "Test_class__debt: 0" in err_2
 
     def test_trace_values(self):
         """Ensure trace_values works as expected"""
@@ -187,19 +215,32 @@ class TestDebug(TestWrapper):
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
-        assert(False)
+        number: int = 9
+        THE_MODULE.trace_current_context(4)
+        err = self.get_stderr()
+        assert "test_debug.TestDebug testMethod=test_trace_current_context" in err  # name of current function
+        assert "\'number\': 9" in err   # variable created in current function
+        assert "\'__name__\': \'test_debug\'" in err    # name of file
+        assert "\'__doc__\': \'Tests for debug module\'" in err # docstring of file
+        assert __file__ in err  # path of file
 
     @pytest.mark.xfail
     def test_trace_exception(self):
         """Ensure trace_exception works as expected"""
         debug.trace(4, f"test_trace_exception(): self={self}")
-        assert(False)
-
+        with pytest.raises(RuntimeError):
+            raise RuntimeError("debug.trace failed")
+        THE_MODULE.trace_exception(4, "debug.trace")
+        err = self.get_stderr()
+        assert "Exception during debug.trace" in err
+        
     @pytest.mark.xfail
     def test_raise_exception(self):
         """Ensure raise_exception works as expected"""
         debug.trace(4, f"test_raise_exception(): self={self}")
-        assert(False)
+        with pytest.raises(Exception):
+            THE_MODULE.raise_exception()
+        THE_MODULE.raise_exception(10)
 
     def test_assertion(self):
         """Ensure assertion works as expected"""
@@ -257,7 +298,18 @@ class TestDebug(TestWrapper):
     def test_debug_print(self):
         """Ensure debug_print works as expected"""
         debug.trace(4, f"test_debug_print(): self={self}")
-        assert(False)
+        self.monkeypatch.setattr("mezcla.debug.output_timestamps", True)
+
+        THE_MODULE.debug_print('error foobar', -1)
+        out,err  = self.get_stdout_stderr()
+        assert "error foobar" in err
+        assert not out
+
+        # Test debug_file
+        self.monkeypatch.setattr("mezcla.debug.debug_file", sys.stdout)
+        THE_MODULE.debug_print('some text to test debug file', -1)
+        out,err  = self.get_stdout_stderr()
+        assert 'some text to test debug file' in out
 
     @pytest.mark.xfail
     def test_timestamp(self):
@@ -390,13 +442,29 @@ class TestDebug(TestWrapper):
     def test_profile_function(self):
         """Ensure profile_function works as expected"""
         debug.trace(4, f"test_profile_function(): self={self}")
-        assert(False)
-
+        frame = inspect.currentframe()
+        
+        # test function call
+        THE_MODULE.profile_function(frame, 'test_profile_function call', 'something') 
+        err = self.get_stderr()
+        assert "test_profile_function call" in err
+        assert "in: test_debug:test_profile_function(something)" in err
+        
+        # test function return
+        self.clear_stderr()
+        THE_MODULE.profile_function(frame, 'test_profile_function return', 'None') 
+        err_2 = self.get_stderr()
+        assert "out: test_debug:test_profile_function => None" in err_2
+        
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_reference_var(self):
         """Ensure reference_var works as expected"""
         debug.trace(4, f"test_reference_var(): self={self}")
-        assert(False)
+        self.monkeypatch.setattr("mezcla.debug.trace_level", 10)
+        THE_MODULE.reference_var("\'a\'")
+
+        stderr = self.get_stderr()
+        assert 'reference_var("\'a\'",)' in stderr
 
     def test_clip_value(self):
         """Ensure clip_value works as expected"""
@@ -408,18 +476,49 @@ class TestDebug(TestWrapper):
     def test_read_line(self):
         """Ensure read_line works as expected"""
         debug.trace(4, f"test_read_line(): self={self}")
-        assert(False)
+        content = """line1
+        line2
+        line3
+"""
+        
+        temp_file = self.get_temp_file()
+        system.write_file(temp_file, content)
+        line_1 = THE_MODULE.read_line(temp_file, 1)
+        line_2 = THE_MODULE.read_line(temp_file, 2)
+        line_3 = THE_MODULE.read_line(temp_file, 3)
+        assert (line_1 + line_2 + line_3) == content
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_debug_init(self):
         """Ensure debug_init works as expected"""
         debug.trace(4, f"test_debug_init(): self={self}")
-        assert(False)
+        self.monkeypatch.setenv("DEBUG_FILE", "tmp_debug.txt")
+        self.monkeypatch.setenv("ENABLE_LOGGING", "True")
+        # NOTE: Setting MONITOR_FUNCTIONS to True breaks tests on windows
+        today = str(datetime.now()).split(' ')[0]
+        THE_MODULE.debug_init()
+        err = self.get_stderr()
+        err_file = system.form_path(gh.dirname(__file__), "err.txt")
+        system.write_file(err_file, err)
+
+        assert "debug_filename=tmp_debug.txt" in err
+        assert "debug_file=<_io.TextIOWrapper name=\'tmp_debug.txt\'" in err
+        assert f"[{THE_MODULE.__file__}] loaded at {today}" in err
+        assert "Setting logger level to 10" in err
+        assert "DEBUG_FILE: tmp_debug.txt" in err
+        assert "ENABLE_LOGGING: True" in err
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_display_ending_time_etc(self):
         """Ensure display_ending_time_etc works as expected"""
         debug.trace(4, f"test_display_ending_time_etc(): self={self}")
+        self.monkeypatch.setenv("SKIP_ATEXIT", "False")
+        self.monkeypatch.delenv("DEBUG_FILE", raising=False)
+        self.monkeypatch.setattr("mezcla.debug.debug_file", None)
+        THE_MODULE.debug_init()
+        err = self.get_stderr()
+        err_file = system.form_path(gh.dirname(__file__), "err.txt")
+        system.write_file(err_file, err)
         assert(False)
 
     def test_visible_simple_trace(self):
