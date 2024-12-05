@@ -258,26 +258,40 @@ class CutArgsProcessing(Main):
 
     def _process_delimiter_options(self):
         """Processes delimiter-related options."""
-        debug.trace_expr(5, self.delimiter, label="Parsed delimiter")
-
-        # Explicitly set delimiter
-        explicit_delim = self.get_parsed_option(DELIM, None)
+        # Check delimiter options
+        # Note: output delimiter defaults to input unless convert specified
+        self.csv = self.get_parsed_option(CSV, self.csv)
+        if self.csv:
+            self.delimiter = COMMA
+        tsv = self.get_parsed_option(TSV, not self.csv)
+        if tsv:
+            self.delimiter = TAB
+        
+        # OLD: self.delimiter = self.get_parsed_option(DELIM, self.delimiter)
+        explicit_delim = self.get_parsed_option(DELIM, self.delimiter)
+        # print("ASCII of Explicit Delim:", ord(explicit_delim))
         if explicit_delim:
             self.delimiter = explicit_delim
-        else:
-            # Default to CSV/TSV style based on options
-            if self.get_parsed_option(CSV, self.csv):
-                self.delimiter = COMMA
-            elif self.get_parsed_option(TSV, False):
-                self.delimiter = TAB
-
-        # Output delimiter fallback
-        self.output_delimiter = self.get_parsed_option(OUT_DELIM, self.delimiter or COMMA)
-
-        # Other delimiter-related options
+            self.csv = False
+        #
+        debug.assertion(self.output_delimiter is None)
+        if self.get_parsed_option(OUTPUT_CSV):
+            self.output_delimiter = COMMA
+        if self.get_parsed_option(OUTPUT_TSV):
+            self.output_delimiter = TAB
+        if self.output_delimiter is None:
+            self.output_delimiter = self.delimiter
+        if self.get_parsed_option(CONVERT_DELIM):
+            self.output_delimiter = TAB if (self.delimiter == COMMA) else COMMA
+        if (self.output_delimiter is None):
+            self.output_delimiter = self.delimiter
+        #
         self.run_sniffer = self.get_parsed_option(SNIFFER_ARG, self.run_sniffer)
+        debug.assertion(not (self.csv and (self.delimiter != COMMA)))
+        self.output_delimiter = self.get_parsed_option(OUT_DELIM, (self.output_delimiter or self.delimiter))
         self.single_line = self.get_parsed_option(SINGLE_LINE, self.single_line)
         self.max_field_len = self.get_parsed_option(MAX_FIELD_LEN, self.max_field_len)
+        # self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
 
     def _process_csv_dialect_options(self):
         """Processes CSV dialect options."""
@@ -358,7 +372,12 @@ class CutArgsProcessing(Main):
             num_cols = num_cols or last_row_length
 
             output_row = self.cut_logic.extract_fields(row)
-            self.cut_logic.csv_writer.writerow(output_row)
+            
+            try:
+                debug.trace(5, f"Output Rows at run_main_step = {output_row}")
+                self.cut_logic.csv_writer.writerow(output_row)
+            except Exception as e:
+                system.print_exception_info("Row Output")
 
         self.cut_logic.perform_sanity_checks(self.cut_logic.filename, num_rows, num_cols)
         debug.trace_expr(5, self.cut_logic.delimiter, label="Parsed Delimiter")
@@ -569,20 +588,21 @@ class CutLogic:
             return row
 
         output_row = []
-        for f in fields:
-            if not (1 <= f <= len(row)):
-                debug.trace(
-                    3, f"Invalid field {f} for row with length {len(row)}: {row}"
-                )
-                raise ValueError(f"Field {f} out of range for row: {row}")
-            column = row[f - 1]
+        for f in self.fields:
+            valid_field_number = (1 <= f <= len(row))
+            debug.trace_expr(5, f)
+            debug.assertion(valid_field_number, f"field {f}")
+            ## OLD: output_row.append(row[f - 1] if valid_field_number else "")
+            column = row[f - 1] if valid_field_number else ""
             if self.single_line:
                 column = re.sub(r"\s", SPACE, column)
             if self.max_field_len:
                 column = gh.elide(column, max_len=self.max_field_len)
             if self.encode_values:
+                ## TODO4: maxcount of 1 for left and right
                 column = repr(column).strip("'")
             output_row.append(column)
+        debug.trace_expr(6, output_row)
 
         return output_row
 
