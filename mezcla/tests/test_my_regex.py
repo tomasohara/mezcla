@@ -41,61 +41,118 @@ class TestMyRegex(TestWrapper):
     def test_search(self):
         """Ensure search() works as expected"""
         debug.trace(4, "test_search()")
-        assert(False)
+        pattern = r'\d+'
+        string = 'There are 123 in this string.'
+        match = self.my_re.search(pattern, string)
+        assert match is not None
+        assert match.group() == '123'
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_match(self):
         """Ensure match() works as expected"""
         debug.trace(4, "test_match()")
-        assert(False)
+        pattern = r'\d+'
+        string = '123 numbers in this string.'
+        match = self.my_re.match(pattern, string)
+        assert match is not None
+        assert match.group() == '123'
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_match(self):
         """Ensure get_match() works as expected"""
         debug.trace(4, "test_get_match()")
-        assert(False)
+        pattern = r'(\d+)\s(\w+)'
+        string = '123 numbers'
+        match = self.my_re.match(pattern, string)
+        assert match is not None
+        assert self.my_re.get_match().group() == '123 numbers'
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_group(self):
         """Ensure group() works as expected"""
         debug.trace(4, "test_group()")
-        assert(False)
+        pattern = r'(\d+)\s(\w+)'
+        string = '123 numbers'
+        match = self.my_re.match(pattern, string)
+        assert match is not None
+        assert match.group(1) == '123'
+        assert match.group(2) == 'numbers'
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_groups(self):
         """Ensure groups() works as expected"""
         debug.trace(4, "test_groups()")
-        assert(False)
+        pattern = r'(\d+)\s(\w+)'
+        string = '123 numbers'
+        match = self.my_re.match(pattern, string)
+        assert match is not None
+        assert self.my_re.groups() == ('123', 'numbers')
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_grouping(self):
         """Ensure grouping() works as expected"""
         debug.trace(4, "test_grouping()")
-        assert(False)
+        pattern = r'(\d+)\s(\w+)'
+        string = '123 numbers'
+        match = self.my_re.match(pattern, string)
+        assert match is not None
+        assert self.my_re.grouping() == ('123', 'numbers')
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_start(self):
         """Ensure start() works as expected"""
         debug.trace(4, "test_start()")
-        assert(False)
+        pattern = r'(\d+)\s(\w+)'
+        string = '123 numbers'
+        _ = self.my_re.match(pattern, string)
+        assert self.my_re.start(1) == 0
+        assert self.my_re.start(2) == 4
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_end(self):
         """Ensure end() works as expected"""
         debug.trace(4, "test_end()")
-        assert(False)
+        pattern = r'(\d+)\s(\w+)'
+        string = '123 numbers'
+        _ = self.my_re.match(pattern, string)
+        assert self.my_re.end(1) == 3
+        assert self.my_re.end(2) == 11
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_sub(self):
         """Ensure sub() works as expected"""
         debug.trace(4, "test_sub()")
-        assert(False)
+        pattern = r'\d+'
+        repl = '456'
+        string = 'There are 123 numbers in this string.'
+        result = self.my_re.sub(pattern, repl, string)
+        assert result == 'There are 456 numbers in this string.'
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_span(self):
         """Ensure span() works as expected"""
         debug.trace(4, "test_span()")
-        assert(False)
+        pattern = r'\d+'
+        string = 'There are 123 numbers in this string.'
+        match = self.my_re.search(pattern, string)
+        assert match is not None
+        assert match.span() == (10, 13)
+        
+    def test_findall(self):
+        """Ensure findall() works as expected"""
+        debug.trace(4, "test_findall()")
+        pattern = r'\s+'
+        string = 'This is a test string'
+        result = self.my_re.split(pattern, string)
+        assert result == ['This', 'is', 'a', 'test', 'string']
+        
+    def test_split(self):
+        """Ensure split() works as expected"""
+        debug.trace(4, "test_split()")
+        pattern = r'\d+'
+        string = 'There are 123 numbers in this string, and 456 more here.'
+        result = self.my_re.findall(pattern, string)
+        assert result == ['123', '456']
 
     @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
