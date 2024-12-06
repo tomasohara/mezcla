@@ -339,14 +339,6 @@ class CutArgsProcessing(Main):
         # Initialize CSV processing
         self.cut_logic.initialize_csv_processing()
 
-        # Fallback for no processing options
-        if not any([self.inclusion_spec, self.exclusion_spec, self.fix]):
-            debug.trace(3, "No processing options provided. Echoing file content.")
-            if self.cut_logic.csv_reader is not None:
-                for row in self.cut_logic.csv_reader:
-                    print(self.cut_logic.delimiter.join(row))
-            return
-
         # Normal CSV processing
         self.cut_logic.determine_dialect(self.run_sniffer, SNIFFER_LOOKAHEAD)
 
@@ -519,7 +511,7 @@ class CutLogic:
             raise ValueError(
                 "Filename is not set. Please provide a valid input file or use standard input."
             )
-
+        
         if self.filename == "-": 
             debug.trace(3, "Using standard input as the data source.")
             self.input_stream = sys.stdin
@@ -552,6 +544,25 @@ class CutLogic:
         debug.trace_object(5, self.csv_writer, "csv_writer")
         debug.trace_object(5, self.csv_writer.dialect, "csv_writer.dialect")
 
+    def fallback_logic(self):
+        """Fallback logic to output all rows without modifications."""
+        debug.trace(3, "No processing options provided. Returning all rows.")
+        rows = []
+
+        if self.csv_reader is not None:
+            for row in self.csv_reader:
+                rows.append(row)
+
+        # Print rows using the specified output delimiter
+        for row in rows:
+            rows.append(self.output_delimiter.join(row))  # Format row with output delimiter
+
+        # Update row and column counts to avoid assertion issues
+        num_rows = len(rows)
+        num_cols = len(rows[0]) if rows else 0
+        debug.trace(3, f"Fallback processed {num_rows} rows and {num_cols} columns.")
+        return rows
+
     def sanitize_row(self, row):
         """Sanitize row data."""
         line = TAB.join(row)
@@ -564,18 +575,38 @@ class CutLogic:
         columns = row
         BOM = "\ufeff"
         if columns and columns[0].startswith(BOM):
-            columns[0] = columns[0][len(BOM) :]
+            columns[0] = columns[0][len(BOM):]
+
+        # Process inclusion specification
         if inclusion_spec:
             self.fields = self.parse_field_spec(inclusion_spec, columns)
+        # else:
+        #     self.fields = []
+
+        # Process exclusion specification
         if exclusion_spec:
             self.exclude_fields = self.parse_field_spec(exclusion_spec, columns)
+        # else:
+        #     self.exclude_fields = []
+
+        # Adjust self.fields based on exclusions if both are provided
+        if self.exclude_fields:
+            if not self.fields:  # If no inclusion fields are specified, start with all fields
+                self.fields = list(range(1, len(columns) + 1))
+            self.fields = [f for f in self.fields if f not in self.exclude_fields]
+
 
     def extract_fields(self, row):
-        """Extract specified fields from a row."""
+        """Extract specified fields from a row or return the entire row if no fields are specified."""
 
         debug.trace_expr(5, self.fields, label="Fields before processing")
         debug.trace_expr(5, len(row), label="Row length")
         debug.trace_expr(5, row, label="Row content")
+
+        # If no fields are specified, return the entire row
+        if not self.fields:
+            # debug.trace(3, "No fields specified. Returning the entire row as-is.")
+            return row
 
         # Sanitize the row
         row = [col.strip() for col in row if col.strip()]
@@ -583,25 +614,27 @@ class CutLogic:
         # Convert fields into integers
         fields = [int(f) for f in self.fields]
 
-        # Return entire row if no fields specified
-        if not fields:
-            return row
-
         output_row = []
-        for f in self.fields:
+        for f in fields:
             valid_field_number = (1 <= f <= len(row))
             debug.trace_expr(5, f)
             debug.assertion(valid_field_number, f"field {f}")
-            ## OLD: output_row.append(row[f - 1] if valid_field_number else "")
             column = row[f - 1] if valid_field_number else ""
+            
+            # Handle single line logic
             if self.single_line:
                 column = re.sub(r"\s", SPACE, column)
+            
+            # Truncate field length if required
             if self.max_field_len:
                 column = gh.elide(column, max_len=self.max_field_len)
+            
+            # Encode values if required
             if self.encode_values:
-                ## TODO4: maxcount of 1 for left and right
                 column = repr(column).strip("'")
+            
             output_row.append(column)
+
         debug.trace_expr(6, output_row)
 
         return output_row
