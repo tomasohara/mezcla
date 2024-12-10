@@ -416,7 +416,7 @@ class Script(Main):
         self.csv_reader = csv.reader(self.input_stream, delimiter=self.delimiter, 
                                      dialect=self.dialect)
         csv_writer = csv.writer(sys.stdout, delimiter=self.output_delimiter, 
-                                dialect=self.output_dialect)
+                                dialect=self.output_dialect, quoting=csv.QUOTE_ALL)
         debug.trace_object(5, self.csv_reader, "csv_reader")
         debug.trace_object(5, self.csv_reader.dialect, "csv_reader.dialect")
         debug.trace_object(5, csv_writer, "csv_writer")
@@ -505,6 +505,9 @@ class Script(Main):
             except:
                 ## TODO2: add ignore-errors option
                 system.print_exception_info("row output")
+            finally:
+                debug.trace_fmt(8, "Processed row: {r}", r=row)
+
 
         # Do sanity checks
         # Note: this compares row extraction against Pandas dataframe
