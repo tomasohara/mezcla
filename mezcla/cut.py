@@ -113,7 +113,6 @@ def elide_values(in_list, max_len=MAX_VALUE_LEN):
     )
     return new_list
 
-
 def flatten_list_of_strings(list_of_str):
     """Flatten out LIST_OF_STR"""
     # EX: flatten_list_of_strings([["l1i1", "l1i2"], ["l2i1"]]) => ["l1i1", "l1i2", "l2i1"]
@@ -227,6 +226,7 @@ class CutArgsProcessing(Main):
         self.cut_logic.filename = self.filename
         self.cut_logic.delimiter = self.delimiter or COMMA  # Default to comma if not set
         self.cut_logic.output_delimiter = self.output_delimiter or self.cut_logic.delimiter
+        self.cut_logic.max_field_len = self.max_field_len
 
         # Trace final instance state
         self._trace_instance()
@@ -531,12 +531,13 @@ class CutLogic:
         # Proceed with CSV processing if a delimiter is set
         debug.trace(3, f"Using delimiter: {self.delimiter}")
         debug.trace(3, f"Output delimiter: {self.output_delimiter}")
+        debug.trace(3, f"max-field-len: {self.max_field_len}")
 
         self.csv_reader = csv.reader(
             self.input_stream, delimiter=self.delimiter, dialect=self.dialect
         )
         self.csv_writer = csv.writer(
-            sys.stdout, delimiter=self.output_delimiter, dialect=self.output_dialect
+            sys.stdout, delimiter=self.output_delimiter, dialect=self.output_dialect, quoting=csv.QUOTE_ALL
         )
 
         debug.trace_object(5, self.csv_reader, "csv_reader")
@@ -555,7 +556,7 @@ class CutLogic:
 
         # Print rows using the specified output delimiter
         for row in rows:
-            rows.append(self.output_delimiter.join(row))  # Format row with output delimiter
+            rows.append(self.output_delimiter.join(row))
 
         # Update row and column counts to avoid assertion issues
         num_rows = len(rows)
@@ -597,46 +598,27 @@ class CutLogic:
 
 
     def extract_fields(self, row):
-        """Extract specified fields from a row or return the entire row if no fields are specified."""
-
+        """
+        Extract specified fields from a row or truncate the entire row if max_field_len is provided.
+        """
         debug.trace_expr(5, self.fields, label="Fields before processing")
         debug.trace_expr(5, len(row), label="Row length")
         debug.trace_expr(5, row, label="Row content")
 
-        # If no fields are specified, return the entire row
+        # Apply truncation to the entire row if max_field_len is set
+        if self.max_field_len:
+            debug.trace(4, f"Applying truncation with max_field_len={self.max_field_len}")
+            row = elide_values(row, self.max_field_len)
+            debug.trace_expr(5, row, label="Row after truncation")
+
         if not self.fields:
-            # debug.trace(3, "No fields specified. Returning the entire row as-is.")
             return row
 
-        # Sanitize the row
-        row = [col.strip() for col in row if col.strip()]
-
-        # Convert fields into integers
+        # Extract and return specified fields
         fields = [int(f) for f in self.fields]
-
-        output_row = []
-        for f in fields:
-            valid_field_number = (1 <= f <= len(row))
-            debug.trace_expr(5, f)
-            debug.assertion(valid_field_number, f"field {f}")
-            column = row[f - 1] if valid_field_number else ""
-            
-            # Handle single line logic
-            if self.single_line:
-                column = re.sub(r"\s", SPACE, column)
-            
-            # Truncate field length if required
-            if self.max_field_len:
-                column = gh.elide(column, max_len=self.max_field_len)
-            
-            # Encode values if required
-            if self.encode_values:
-                column = repr(column).strip("'")
-            
-            output_row.append(column)
-
-        debug.trace_expr(6, output_row)
-
+        debug.trace_expr(4, fields, label="Parsed fields")
+        output_row = [row[f - 1] if 1 <= f <= len(row) else "" for f in fields]
+        debug.trace_expr(6, output_row, label="Output Row")
         return output_row
 
     def perform_sanity_checks(self, filename, num_rows, num_cols):
