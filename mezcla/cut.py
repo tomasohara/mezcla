@@ -94,6 +94,8 @@ CSV_FORMAT = system.getenv_bool("CSV_FORMAT", False, desc="Use CSV instead of TS
 MAX_FIELD_SIZE = system.getenv_int(
     "MAX_FIELD_SIZE", -1, desc="Overide for default max field size (128k)"
 )
+## EXPERIMENTAL ENV OPTIONS
+FORCE_QUOTING = system.getenv_bool("FORCE_QUOTING", False, desc="(Legacy) Force apply double quotes around elements")
 
 # ...............................................................................
 
@@ -154,37 +156,30 @@ def flatten_list_of_strings(list_of_str):
 
 class pyspark_dialect(csv.Dialect):
     """CSV module dialect for Pyspark CSV files."""
-
-    delimiter = ","
+    delimiter = ','
     quotechar = '"'
-    doublequote = False  # uses escaped double quote when embedded
-    escapechar = "\\"
+    doublequote = False          # uses escaped double quote when embedded
+    escapechar = '\\'
     skipinitialspace = False
-    lineterminator = "\n"
+    lineterminator = '\n'
     quoting = csv.QUOTE_MINIMAL  # only delimiter, double quote or end-of-line
-
-
 #
 csv.register_dialect("pyspark", pyspark_dialect)
 #
 # note: Uses hive as alias for pyspark.
 csv.register_dialect("hive", pyspark_dialect)
 
-
 class tab_dialect(csv.Dialect):
     """TSV module dialect for tab-separated values (non-Excel)."""
-
     delimiter = TAB
     ## OLD: quotechar = ''               # default of '"' leads to multiline rows
-    quotechar = '"' if not FORCE_SINGLE_LINE else ""
-    doublequote = False  # uses escaped double quote when embedded
+    quotechar = ('"' if not FORCE_SINGLE_LINE else '')
+    doublequote = False          # uses escaped double quote when embedded
     # TODO: use special Unicode space-like character
-    escapechar = "\\"
-    skipinitialspace = False  # keep leaing space afer delimiter
-    lineterminator = "\n"
-    quoting = csv.QUOTE_NONE  # no special processing for quotes
-
-
+    escapechar = '\\'
+    skipinitialspace = False     # keep leaing space afer delimiter
+    lineterminator = '\n'
+    quoting = csv.QUOTE_NONE     # no special processing for quotes
 #
 csv.register_dialect("tab", tab_dialect)
 
@@ -245,8 +240,7 @@ class CutArgsProcessing(Main):
 
         # Process exclusion fields
         exclude_default = ",".join(self.exclude_fields)
-        self.exclusion_spec = self.get_parsed_option(EXCLUDE_OPT, exclude_default)
-
+        self.exclusion_spec = self.get_parsed_option(EXCLUDE_OPT, exclude_default) or self.get_parsed_option(X_OPT, exclude_default)
         # Validate inclusion and exclusion options
         if self.inclusion_spec and self.exclusion_spec:
             raise ValueError("Cannot specify both inclusion and exclusion fields.")
@@ -505,7 +499,7 @@ class CutLogic:
 
     def initialize_csv_processing(self):
         """Initialize CSV reader and writer, or return file contents as lines if no delimiter is set."""
-        debug.trace(3, f"Filename before opening: {self.filename}")
+        debug.trace(5, f"Filename before opening: {self.filename}")
 
         if not self.filename:
             raise ValueError(
@@ -523,21 +517,21 @@ class CutLogic:
 
         if self.delimiter is None:
             # Read the contents of the file as lines and return them
-            debug.trace(3, "No delimiter set. Returning file contents as lines.")
+            debug.trace(5, "No delimiter set. Returning file contents as lines.")
             lines = self.input_stream.readlines()
             self.input_stream.seek(0)  # Reset the stream for potential further use
             return lines  # Return the file contents as a list of lines
 
         # Proceed with CSV processing if a delimiter is set
-        debug.trace(3, f"Using delimiter: {self.delimiter}")
-        debug.trace(3, f"Output delimiter: {self.output_delimiter}")
-        debug.trace(3, f"max-field-len: {self.max_field_len}")
+        debug.trace(5, f"Using delimiter: {self.delimiter}")
+        debug.trace(5, f"Output delimiter: {self.output_delimiter}")
+        debug.trace(5, f"max-field-len: {self.max_field_len}")
 
         self.csv_reader = csv.reader(
             self.input_stream, delimiter=self.delimiter, dialect=self.dialect
         )
         self.csv_writer = csv.writer(
-            sys.stdout, delimiter=self.output_delimiter, dialect=self.output_dialect, quoting=csv.QUOTE_ALL
+            sys.stdout, delimiter=self.output_delimiter, dialect=self.output_dialect, quoting=csv.QUOTE_ALL if FORCE_QUOTING else csv.QUOTE_MINIMAL
         )
 
         debug.trace_object(5, self.csv_reader, "csv_reader")
