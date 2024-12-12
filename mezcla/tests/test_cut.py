@@ -68,7 +68,7 @@ class TestCutScript(TestWrapper):
 
     def test_03_csv_max_field_len(self):
         """Test for CSV file with max_field_len option"""
-        script_output = self.run_script(options='--csv --max-field-len 3', data_file=CSV_EXAMPLE, env_options="FORCE_QUOTING=1")
+        script_output = self.run_script(options='--csv --max-field-len 3', data_file=CSV_EXAMPLE)
         assert script_output
         assert script_output + '\n' == system.read_file(CUTTED_CSV_LEN_3)
 
@@ -81,10 +81,13 @@ class TestCutScript(TestWrapper):
     def test_05_fields(self):
         """Ensure fields parameter works as expected"""
         # Test for CSV files
-        script_output = self.run_script(options='--csv --fields 2-4', data_file=CSV_EXAMPLE, env_options="FORCE_QUOTING=1")
+        script_output = self.run_script(options='--csv --fields 2-4', data_file=CSV_EXAMPLE)
         assert script_output
         assert script_output + '\n' == system.read_file(FIELDS_2_3_4_CSV)
-        script_output = self.run_script(options='--csv --fields 2,3,4', data_file=CSV_EXAMPLE, env_options="FORCE_QUOTING=1")
+        script_output = self.run_script(options='--csv --fields 2,3,4', data_file=CSV_EXAMPLE)
+        assert script_output
+        assert script_output + '\n' == system.read_file(FIELDS_2_3_4_CSV)
+        script_output = self.run_script(options='--csv --F2 --F3 --F4', data_file=CSV_EXAMPLE)
         assert script_output
         assert script_output + '\n' == system.read_file(FIELDS_2_3_4_CSV)
         
@@ -95,34 +98,37 @@ class TestCutScript(TestWrapper):
         script_output = self.run_script(options='--tsv --fields 2,3,4', data_file=TSV_EXAMPLE)
         assert script_output
         assert script_output + '\n' == system.read_file(FIELDS_2_3_4_TSV)
+        script_output = self.run_script(options='--tsv --F2 --F3 --F4', data_file=TSV_EXAMPLE)
+        assert script_output
+        assert script_output + '\n' == system.read_file(FIELDS_2_3_4_TSV)
 
     def test_06_symbolic_fields(self):
         """Ensure symbolic field names resolved"""
         # Note: this involves the same test fields as test_fields
-        script_output = self.run_script(options='--csv --fields symboling-fueltype', data_file=CSV_EXAMPLE, env_options="FORCE_QUOTING=1")
+        script_output = self.run_script(options='--csv --fields symboling-fueltype', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4_CSV).strip())
-        script_output = self.run_script(options='--csv --fields symboling,CarName,fueltype', data_file=CSV_EXAMPLE, env_options="FORCE_QUOTING=1")
+        script_output = self.run_script(options='--csv --fields symboling,CarName,fueltype', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4_CSV).strip())
 
     def test_07_output_delimiter(self):
         """Test for output delimiter"""
         # Test for CSV files
-        script_output = self.run_script(options='--csv  --output-delim=";"', data_file=CSV_EXAMPLE, env_options="FORCE_QUOTING=1")
+        script_output = self.run_script(options='--csv  --output-delim=";"', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
         assert script_output
         assert script_output + '\n' == system.read_file(CSV_SEMICOLON)
         # Test for TSV files
-        script_output = self.run_script(options='--tsv  --output-delim=";"', data_file=TSV_EXAMPLE, env_options="FORCE_QUOTING=1")
+        script_output = self.run_script(options='--tsv  --output-delim=";"', data_file=TSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
         assert script_output
         assert script_output + '\n' == system.read_file(CSV_SEMICOLON)
 
     def test_08_exclude_fields(self):
         """Text exclusion field option (numeric and symbolic)"""
         # Note: this involves the same test fields as test_fields
-        script_output = self.run_script(options='--csv --exclude 1,5-26', data_file=CSV_EXAMPLE, env_options="FORCE_QUOTING=1")
+        script_output = self.run_script(options='--csv --exclude 1,5-26', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4_CSV).strip())
-        script_output = self.run_script(options='--csv --x 1,5-26', data_file=CSV_EXAMPLE, env_options="FORCE_QUOTING=1")
+        script_output = self.run_script(options='--csv --x 1,5-26', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4_CSV).strip())
-        script_output = self.run_script(options='--csv --exclude car_ID,aspiration-price', data_file=CSV_EXAMPLE, env_options="FORCE_QUOTING=1")
+        script_output = self.run_script(options='--csv --exclude car_ID,aspiration-price', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4_CSV).strip())
         ## TODO2: check for invalid field spec (e.g., with car_ID renamed to car-ID)
         script_output = self.run_script(options='--csv --exclude 1-car-ID', data_file=CSV_EXAMPLE)
@@ -143,9 +149,36 @@ class TestCutScript(TestWrapper):
             self.assertNotEqual(item, r"^[a-zA-Z0-9]+$")
             self.assertEqual(len(item), 2)
 
+    def test_10_output_options(self):
+        """Test for output options (--output-csv, --output-tsv)"""
+        script_output = self.run_script(options='--csv --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        assert (script_output.strip() == system.read_file(TSV_EXAMPLE).strip())
+        script_output = self.run_script(options='--tsv --output-csv', data_file=TSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        assert (script_output.strip() == system.read_file(CSV_EXAMPLE).strip())
+
+    def test_11_convert_delim(self):
+        """Test for convert delim option (--convert-delim)"""
+        script_output = self.run_script(options='--csv --convert-delim', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        assert (script_output.strip() == system.read_file(TSV_EXAMPLE).strip())
+        script_output = self.run_script(options='--tsv --convert-delim', data_file=TSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        assert (script_output.strip() == system.read_file(CSV_EXAMPLE).strip())
+
+    def test_12_explicit_delim(self):
+        """Test for explicit delim option (--delim)"""
+        # In case of wrong delimiter used, the default output is provided even when output option is provided
+        script_output = self.run_script(options='--delim=";" --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        self.assertNotEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
+        self.assertEqual(script_output.strip(), system.read_file(CSV_EXAMPLE).strip())
+        # Conversion to CSV using right delimiter
+        script_output = self.run_script(options='--delim="," --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        self.assertEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
+
+
 class TestCutLogic(TestWrapper):
     """Unit tests for CutLogic class in cut.py"""
-    pass
+    script_file = TestWrapper.get_module_file_path(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__)
+
 
 if __name__ == '__main__':
     debug.trace_current_context()
