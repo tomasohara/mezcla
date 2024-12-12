@@ -95,7 +95,7 @@ MAX_FIELD_SIZE = system.getenv_int(
     "MAX_FIELD_SIZE", -1, desc="Overide for default max field size (128k)"
 )
 ## EXPERIMENTAL ENV OPTIONS
-FORCE_QUOTING = system.getenv_bool("FORCE_QUOTING", False, desc="(Legacy) Force apply double quotes around elements")
+DISABLE_QUOTING = system.getenv_bool("DISABLE_QUOTING", False, desc="(Legacy) Force disable double quotes around elements")
 
 # ...............................................................................
 
@@ -222,6 +222,8 @@ class CutArgsProcessing(Main):
         self.cut_logic.delimiter = self.delimiter or COMMA  # Default to comma if not set
         self.cut_logic.output_delimiter = self.output_delimiter or self.cut_logic.delimiter
         self.cut_logic.max_field_len = self.max_field_len
+        self.cut_logic.dialect = self.dialect
+        self.cut_logic.output_dialect = self.output_dialect
 
         # Trace final instance state
         self._trace_instance()
@@ -236,7 +238,8 @@ class CutArgsProcessing(Main):
                 self.fields.append(str(i + 1))
         
         fields_default = ",".join(self.fields)
-        self.inclusion_spec = self.get_parsed_option(FIELDS, fields_default)
+        ## OLD: self.inclusion_spec = self.get_parsed_option(FIELDS, fields_default)
+        self.inclusion_spec = self.get_parsed_option(FIELDS, fields_default) or self.get_parsed_option(F_OPT, fields_default)
 
         # Process exclusion fields
         exclude_default = ",".join(self.exclude_fields)
@@ -530,9 +533,20 @@ class CutLogic:
         self.csv_reader = csv.reader(
             self.input_stream, delimiter=self.delimiter, dialect=self.dialect
         )
-        self.csv_writer = csv.writer(
-            sys.stdout, delimiter=self.output_delimiter, dialect=self.output_dialect, quoting=csv.QUOTE_ALL if FORCE_QUOTING else csv.QUOTE_MINIMAL
-        )
+
+        if DISABLE_QUOTING:
+            self.csv_writer = csv.writer(
+                sys.stdout,
+                delimiter=self.output_delimiter,
+                dialect=self.output_dialect,
+                quoting=csv.QUOTE_NONE
+            )
+        else:
+            self.csv_writer = csv.writer(
+                sys.stdout,
+                delimiter=self.output_delimiter,
+                dialect=self.output_dialect,
+            )
 
         debug.trace_object(5, self.csv_reader, "csv_reader")
         debug.trace_object(5, self.csv_reader.dialect, "csv_reader.dialect")
@@ -660,8 +674,8 @@ if __name__ == "__main__":
                     ),
                 ),
                 (TSV, "Tab-separated values"),
-                OUTPUT_CSV,
-                OUTPUT_TSV,
+                (OUTPUT_CSV, "Return output in CSV format"),
+                (OUTPUT_TSV, "Return output in TSV format"),
                 (CONVERT_DELIM, "Convert csv to tsv (or vice versa)"),
                 (SNIFFER_ARG, "Detect csv dialect by lookahead (file-input only)"),
                 ## TODO: INPUT_CSV, OUTPUT_CSV, INPUT_TSV, OUTPUT_TSV,
