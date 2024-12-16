@@ -112,7 +112,15 @@ class TestDebug(TestWrapper):
     def test_trace_fmtd(self):
         """Ensure trace_fmtd works as expected"""
         debug.trace(4, f"test_trace_fmtd(): self={self}")
-        assert(False)
+        
+        THE_MODULE.trace_fmtd(4, "trace_{fmtd}", **{"max_len": 5, "fmtd": "formatted"})
+        stderr = self.get_stderr()
+        assert "trace_forma..." in stderr
+        
+        self.clear_stderr()
+        THE_MODULE.trace_fmtd(4, "trace_{fmtd}", **{"fmtd": "formatted"})
+        stderr_2 = self.get_stderr()
+        assert "trace_formatted" in stderr_2
 
     @pytest.mark.xfail
     def test_trace_object(self):
