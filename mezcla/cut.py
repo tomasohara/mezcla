@@ -32,6 +32,7 @@ import sys
 ## OLD: import more_itertools
 import functools
 import operator
+import pandas as pd
 
 # Local modules
 from mezcla import data_utils as du
@@ -54,11 +55,13 @@ OUTPUT_CSV = "output-csv"  # CSV for output
 OUTPUT_TSV = "output-tsv"  # TSV for output
 CONVERT_DELIM = "convert-delim"  # convert input csv to tsv (or vice versa)
 SNIFFER_ARG = "sniffer"  # run CSV sniffer to detect dialect
+PANDAS_OPT = "pandas"
 ## TODO
 ## INPUT_CSV = "input-csv"
 ## OUTPUT_CSV = "output-csv"
 ## INPUT_TSV = "input-tsv"
 ## OUTPUT_TSV = "output-tsv"
+PANDAS = "pandas"
 DELIM = "delim"  # input delimiter
 OUT_DELIM = "output-delim"  # output delimiter if not same for input
 ALL_FIELDS = "all-fields"  # use all fields in output (e.g., for delimiter conversion)
@@ -96,6 +99,7 @@ MAX_FIELD_SIZE = system.getenv_int(
 )
 ## EXPERIMENTAL ENV OPTIONS
 DISABLE_QUOTING = system.getenv_bool("DISABLE_QUOTING", False, desc="(Legacy) Force disable double quotes around elements")
+USE_PANDAS = system.getenv_bool("USE_PANDAS", False, desc="Use pandas based processing")
 
 # ...............................................................................
 
@@ -206,6 +210,7 @@ class CutArgsProcessing(Main):
     single_line = False
     max_field_len = None
     filename = None
+    use_pandas = False
 
     def setup(self):
         """Centralized setup method."""
@@ -216,17 +221,39 @@ class CutArgsProcessing(Main):
         self._process_delimiter_options()
         self._process_csv_dialect_options()
 
-        # Initialize CutLogic object
-        self.cut_logic = CutLogic()
-        self.cut_logic.filename = self.filename
-        self.cut_logic.delimiter = self.delimiter or COMMA  # Default to comma if not set
-        self.cut_logic.output_delimiter = self.output_delimiter or self.cut_logic.delimiter
-        self.cut_logic.max_field_len = self.max_field_len
-        self.cut_logic.dialect = self.dialect
-        self.cut_logic.output_dialect = self.output_dialect
+        ## OLD: Initializing CutLogic object (no support for Pandas)
+        # # Initialize CutLogic object
+        # self.cut_logic = CutLogic()
+        # self.cut_logic.filename = self.filename
+        # self.cut_logic.delimiter = self.delimiter or COMMA  # Default to comma if not set
+        # self.cut_logic.output_delimiter = self.output_delimiter or self.cut_logic.delimiter
+        # self.cut_logic.max_field_len = self.max_field_len
+        # self.cut_logic.dialect = self.dialect
+        # self.cut_logic.output_dialect = self.output_dialect
+        
+        attributes = {
+            "filename": self.filename,
+            "delimiter": self.delimiter or COMMA,
+            "output_delimiter": self.output_delimiter or self.delimiter or COMMA,
+            "max_field_len": self.max_field_len,
+            "dialect": self.dialect,
+            "output_dialect": self.output_dialect
+        }
+
+        if self.use_pandas:
+            self.cut_logic = self._initialize_logic_object(PandasCutLogic, attributes)
+        
+        self.cut_logic = self._initialize_logic_object(CutLogic, attributes)       
 
         # Trace final instance state
         self._trace_instance()
+
+    def _initialize_logic_object(self, logic_class, attributes:dict):
+        """Dynamically initialize and assign attributes to a logic object."""
+        logic_object = logic_class()
+        for key, value in attributes.items():
+            setattr(logic_object, key, value)
+        return logic_object
 
     def _process_field_options(self):
         """Processes field-related command-line options."""
@@ -244,7 +271,7 @@ class CutArgsProcessing(Main):
         # Process exclusion fields
         exclude_default = ",".join(self.exclude_fields)
         self.exclusion_spec = self.get_parsed_option(EXCLUDE_OPT, exclude_default) or self.get_parsed_option(X_OPT, exclude_default)
-        # Validate inclusion and exclusion options
+
         if self.inclusion_spec and self.exclusion_spec:
             raise ValueError("Cannot specify both inclusion and exclusion fields.")
 
@@ -322,21 +349,13 @@ class CutArgsProcessing(Main):
         """Logs the current state of the instance for debugging."""
         debug.trace_object(5, self, label="Script instance")
 
-    def run_main_step(self):
-        """Main processing step."""
-        debug.trace_fmtd(4, "run_main_step()")
-
+    def _main_step_cut_logic(self):
         # Ensure CutLogic is set up
         if not hasattr(self, 'cut_logic'):
             raise RuntimeError("CutLogic is not initialized. Call setup() first.")
 
-        # Override field size
         self.cut_logic.override_field_size(MAX_FIELD_SIZE)
-
-        # Initialize CSV processing
-        self.cut_logic.initialize_csv_processing()
-
-        # Normal CSV processing
+        self.cut_logic.initialize_io_processing()
         self.cut_logic.determine_dialect(self.run_sniffer, SNIFFER_LOOKAHEAD)
 
         if self.fix:
@@ -371,7 +390,33 @@ class CutArgsProcessing(Main):
         self.cut_logic.perform_sanity_checks(self.cut_logic.filename, num_rows, num_cols)
         debug.trace_expr(5, self.cut_logic.delimiter, label="Parsed Delimiter")
 
+    def _main_step_pandas_cut_logic(self):
+        
+        if not hasattr(self, 'cut_logic'):
+            raise RuntimeError("PandasCutLogic is not initialized. Call setup() first.")
+        
+        self.cut_logic.override_field_size(MAX_FIELD_SIZE)
+        self.cut_logic.initialize_io_processing()
 
+        try:
+            extracted_df = self.cut_logic.extract_fields()
+            result = self.cut_logic.return_formatted_output(extracted_df)
+            print(result)
+            debug.trace_expr(5, extracted_df.shape, label="Extracted DataFrame Shape")
+        except Exception as e:
+            system.print_exception_info("Field Extraction")
+            raise e
+        
+    def run_main_step(self):
+        """Main processing step."""
+        debug.trace_fmtd(4, "run_main_step()")
+        if self.use_pandas:
+            self._main_step_pandas_cut_logic()
+        else:
+            self._main_step_cut_logic()
+        
+
+        
 class CutLogic:
     def __init__(self):
         # Initialization code for CutLogic
@@ -461,7 +506,8 @@ class CutLogic:
         field_list = [int(f) for f in field_spec.split(",")] if field_spec else []
         debug.assertion(field_list, "Field specification resulted in an empty list.")
         debug.trace_fmtd(4, "parse_field_spec() => {fl}", fl=field_list)
-        return field_list
+        result = sorted(field_list)
+        return list(set(result))
 
     def override_field_size(self, max_field_size):
         """Override maximum field size if specified."""
@@ -500,15 +546,22 @@ class CutLogic:
         self.input_stream = system.open_file(temp_file, mode="r")
         sys.stdin = self.input_stream
 
-    def initialize_csv_processing(self):
-        """Initialize CSV reader and writer, or return file contents as lines if no delimiter is set."""
+    def initialize_io_processing(self):
+        """
+        Initialize input/output processing for CSV or raw line processing.
+        - Opens the input file or uses standard input if specified.
+        - Initializes CSV reader and writer if a delimiter is set.
+        - Returns file contents as lines if no delimiter is set.
+        """
         debug.trace(5, f"Filename before opening: {self.filename}")
 
+        # Ensure a filename or valid input source is provided
         if not self.filename:
             raise ValueError(
                 "Filename is not set. Please provide a valid input file or use standard input."
             )
-        
+
+        # Handle standard input or open the specified file
         if self.filename == "-": 
             debug.trace(3, "Using standard input as the data source.")
             self.input_stream = sys.stdin
@@ -518,14 +571,14 @@ class CutLogic:
             except FileNotFoundError:
                 raise FileNotFoundError(f"File '{self.filename}' does not exist.")
 
+        # Return raw file contents as lines if no delimiter is set
         if self.delimiter is None:
-            # Read the contents of the file as lines and return them
             debug.trace(5, "No delimiter set. Returning file contents as lines.")
             lines = self.input_stream.readlines()
-            self.input_stream.seek(0)  # Reset the stream for potential further use
-            return lines  # Return the file contents as a list of lines
+            self.input_stream.seek(0)
+            return lines
 
-        # Proceed with CSV processing if a delimiter is set
+        # Initialize CSV reader with the specified delimiter and dialect
         debug.trace(5, f"Using delimiter: {self.delimiter}")
         debug.trace(5, f"Output delimiter: {self.output_delimiter}")
         debug.trace(5, f"max-field-len: {self.max_field_len}")
@@ -534,43 +587,40 @@ class CutLogic:
             self.input_stream, delimiter=self.delimiter, dialect=self.dialect
         )
 
-        if DISABLE_QUOTING:
-            self.csv_writer = csv.writer(
-                sys.stdout,
-                delimiter=self.output_delimiter,
-                dialect=self.output_dialect,
-                quoting=csv.QUOTE_NONE
-            )
-        else:
-            self.csv_writer = csv.writer(
-                sys.stdout,
-                delimiter=self.output_delimiter,
-                dialect=self.output_dialect,
-            )
+        # Initialize CSV writer with or without quoting based on settings
+        quoting_option = csv.QUOTE_NONE if DISABLE_QUOTING else csv.QUOTE_MINIMAL
+        self.csv_writer = csv.writer(
+            sys.stdout,
+            delimiter=self.output_delimiter,
+            dialect=self.output_dialect,
+            quoting=quoting_option
+        )
 
+        # Debugging trace logs
         debug.trace_object(5, self.csv_reader, "csv_reader")
         debug.trace_object(5, self.csv_reader.dialect, "csv_reader.dialect")
         debug.trace_object(5, self.csv_writer, "csv_writer")
         debug.trace_object(5, self.csv_writer.dialect, "csv_writer.dialect")
 
-    def fallback_logic(self):
-        """Fallback logic to output all rows without modifications."""
-        debug.trace(3, "No processing options provided. Returning all rows.")
-        rows = []
+    ## OLD: Logic not being used
+    # def return_unmodified_rows(self):
+    #     """Fallback logic to output all rows without modifications."""
+    #     debug.trace(3, "No processing options provided. Returning all rows.")
+    #     rows = []
 
-        if self.csv_reader is not None:
-            for row in self.csv_reader:
-                rows.append(row)
+    #     if self.csv_reader is not None:
+    #         for row in self.csv_reader:
+    #             rows.append(row)
 
-        # Print rows using the specified output delimiter
-        for row in rows:
-            rows.append(self.output_delimiter.join(row))
+    #     # Print rows using the specified output delimiter
+    #     for row in rows:
+    #         rows.append(self.output_delimiter.join(row))
 
-        # Update row and column counts to avoid assertion issues
-        num_rows = len(rows)
-        num_cols = len(rows[0]) if rows else 0
-        debug.trace(3, f"Fallback processed {num_rows} rows and {num_cols} columns.")
-        return rows
+    #     # Update row and column counts to avoid assertion issues
+    #     num_rows = len(rows)
+    #     num_cols = len(rows[0]) if rows else 0
+    #     debug.trace(3, f"Fallback processed {num_rows} rows and {num_cols} columns.")
+    #     return rows
 
     def sanitize_row(self, row):
         """Sanitize row data."""
@@ -589,21 +639,16 @@ class CutLogic:
         # Process inclusion specification
         if inclusion_spec:
             self.fields = self.parse_field_spec(inclusion_spec, columns)
-        # else:
-        #     self.fields = []
 
         # Process exclusion specification
         if exclusion_spec:
             self.exclude_fields = self.parse_field_spec(exclusion_spec, columns)
-        # else:
-        #     self.exclude_fields = []
 
         # Adjust self.fields based on exclusions if both are provided
         if self.exclude_fields:
-            if not self.fields:  # If no inclusion fields are specified, start with all fields
+            if not self.fields:
                 self.fields = list(range(1, len(columns) + 1))
             self.fields = [f for f in self.fields if f not in self.exclude_fields]
-
 
     def extract_fields(self, row):
         """
@@ -628,6 +673,9 @@ class CutLogic:
         output_row = [row[f - 1] if 1 <= f <= len(row) else "" for f in fields]
         debug.trace_expr(6, output_row, label="Output Row")
         return output_row
+    
+    def return_formatted_output(self):
+        pass
 
     def perform_sanity_checks(self, filename, num_rows, num_cols):
         """Perform sanity checks on the processed data."""
@@ -650,6 +698,61 @@ class CutLogic:
                 debug.assertion(num_rows == df_num_rows)
                 debug.assertion(num_cols == df_num_cols)
 
+class PandasCutLogic(CutLogic):
+    """Child class based on CutLogic for pandas based processing"""
+    def __init__(self):
+        super().__init__()
+        self.dataframe = None
+    
+    def initialize_io_processing(self):
+        """
+        Override to use pandas for input processing.
+        - Load the CSV into a pandas DataFrame.
+        """
+        debug.trace(5, f"Filename before opening: {self.filename}")
+
+        if not self.filename:
+            raise ValueError(
+                "Filename is not set. Please provide a valid input file or use standard input."
+            )
+
+        try:
+            self.dataframe = pd.read_csv(
+                self.filename if self.filename != "-" else sys.stdin,
+                delimiter=self.delimiter,
+                dialect=self.dialect,
+                encoding="utf-8"
+            )
+            debug.trace(3, f"Loaded DataFrame with shape {self.dataframe.shape}")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"File '{self.filename}' does not exist.")
+
+    def extract_fields(self):
+        """
+        Extract specified fields using pandas.
+        If a row is not provided, operates on the entire DataFrame.
+        """
+        if self.dataframe is None:
+            raise ValueError("Dataframe is not initialized. Call initialize_io_processing first.")
+
+        if self.fields:
+            selected_columns = [self.dataframe.columns[f - 1] for f in self.fields]
+            result_df = self.dataframe[selected_columns]
+        else:
+            result_df = self.dataframe
+
+        if self.max_field_len:
+            result_df = result_df.applymap(
+                lambda x: x[:self.max_field_len] if isinstance(x, str) else x
+            )
+
+        debug.trace(3, f"Extracted fields DataFrame with shape {result_df.shape}")
+        return result_df
+
+    def return_formatted_output(self, result_df):
+        result_df = result_df.reset_index(drop=True)
+        # return result_df.to_csv(sep=self.output_delimiter, index=False)
+        return result_df.to_csv(sep="|", index=False)
 
 if __name__ == "__main__":
     debug.trace_current_context()
@@ -673,10 +776,12 @@ if __name__ == "__main__":
                         xls=EXCEL_STYLE
                     ),
                 ),
+                
                 (TSV, "Tab-separated values"),
                 (OUTPUT_CSV, "Return output in CSV format"),
                 (OUTPUT_TSV, "Return output in TSV format"),
                 (CONVERT_DELIM, "Convert csv to tsv (or vice versa)"),
+                (PANDAS_OPT, "Use pandas based processing"),
                 (SNIFFER_ARG, "Detect csv dialect by lookahead (file-input only)"),
                 ## TODO: INPUT_CSV, OUTPUT_CSV, INPUT_TSV, OUTPUT_TSV,
                 (
