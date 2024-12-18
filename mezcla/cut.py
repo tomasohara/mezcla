@@ -240,10 +240,7 @@ class CutArgsProcessing(Main):
             "output_dialect": self.output_dialect
         }
 
-        if self.use_pandas:
-            self.cut_logic = self._initialize_logic_object(PandasCutLogic, attributes)
-        
-        self.cut_logic = self._initialize_logic_object(CutLogic, attributes)       
+        self.cut_logic = self._initialize_logic_object(PandasCutLogic, attributes) if self.use_pandas else self._initialize_logic_object(CutLogic, attributes)     
 
         # Trace final instance state
         self._trace_instance()
@@ -279,6 +276,7 @@ class CutArgsProcessing(Main):
         self.encode_values = self.get_parsed_option(ENCODE_OPT, self.encode_values)
         self.all_fields = self.get_parsed_option(ALL_FIELDS, not self.fields)
         self.fix = self.get_parsed_option(FIX, self.fix)
+        self.use_pandas = self.get_parsed_option(PANDAS_OPT, self.use_pandas)
 
     def _process_delimiter_options(self):
         """Processes delimiter-related options."""
@@ -397,11 +395,13 @@ class CutArgsProcessing(Main):
         
         self.cut_logic.override_field_size(MAX_FIELD_SIZE)
         self.cut_logic.initialize_io_processing()
+        self.cut_logic.initialize_fields(self.inclusion_spec, self.exclusion_spec)
 
         try:
             extracted_df = self.cut_logic.extract_fields()
             result = self.cut_logic.return_formatted_output(extracted_df)
-            print(result)
+            ## NOTE: end="" prevents the formation of newline at the end
+            print(result, end="")
             debug.trace_expr(5, extracted_df.shape, label="Extracted DataFrame Shape")
         except Exception as e:
             system.print_exception_info("Field Extraction")
@@ -414,8 +414,6 @@ class CutArgsProcessing(Main):
             self._main_step_pandas_cut_logic()
         else:
             self._main_step_cut_logic()
-        
-
         
 class CutLogic:
     def __init__(self):
@@ -673,9 +671,6 @@ class CutLogic:
         output_row = [row[f - 1] if 1 <= f <= len(row) else "" for f in fields]
         debug.trace_expr(6, output_row, label="Output Row")
         return output_row
-    
-    def return_formatted_output(self):
-        pass
 
     def perform_sanity_checks(self, filename, num_rows, num_cols):
         """Perform sanity checks on the processed data."""
@@ -704,6 +699,11 @@ class PandasCutLogic(CutLogic):
         super().__init__()
         self.dataframe = None
     
+    def _elide_values(self, value, max_len):
+        if isinstance(value, str):
+            return value[:max_len]  # Truncate string to max_len
+        return value 
+
     def initialize_io_processing(self):
         """
         Override to use pandas for input processing.
@@ -727,6 +727,36 @@ class PandasCutLogic(CutLogic):
         except FileNotFoundError:
             raise FileNotFoundError(f"File '{self.filename}' does not exist.")
 
+    def initialize_fields(self, inclusion_spec=None, exclusion_spec=None):
+        """
+        Initialize fields and exclusions based on the DataFrame columns.
+        Args:
+            dataframe (pd.DataFrame): The input DataFrame with column headers.
+            inclusion_spec (str): Specification for columns to include.
+            exclusion_spec (str): Specification for columns to exclude.
+        """
+
+        columns = list(self.dataframe.columns)
+        BOM = "\ufeff"
+        
+        if columns and columns[0].startswith(BOM):
+            columns[0] = columns[0][len(BOM):]
+
+        if inclusion_spec:
+            self.fields = self.parse_field_spec(inclusion_spec, columns)
+
+        if exclusion_spec:
+            self.exclude_fields = self.parse_field_spec(exclusion_spec, columns)
+
+        if self.exclude_fields:
+            if not self.fields:
+                self.fields = list(range(1, len(columns) + 1))  # Default to all columns (1-based indexing)
+            self.fields = [f for f in self.fields if f not in self.exclude_fields]
+
+        debug.trace(3, f"Initialized fields: {self.fields}")
+        debug.trace(3, f"Excluded fields: {self.exclude_fields}")
+
+
     def extract_fields(self):
         """
         Extract specified fields using pandas.
@@ -737,22 +767,26 @@ class PandasCutLogic(CutLogic):
 
         if self.fields:
             selected_columns = [self.dataframe.columns[f - 1] for f in self.fields]
-            result_df = self.dataframe[selected_columns]
         else:
-            result_df = self.dataframe
+            selected_columns = self.dataframe.columns
+
+        elided_columns = [elide_values([col], self.max_field_len)[0] for col in selected_columns]
+
+        result_df = self.dataframe[selected_columns] if self.fields else self.dataframe
 
         if self.max_field_len:
-            result_df = result_df.applymap(
-                lambda x: x[:self.max_field_len] if isinstance(x, str) else x
+            result_df = result_df.map(
+                lambda x: elide_values([str(x)], self.max_field_len)[0] if isinstance(x, (str, int, float)) else x
             )
+
+        result_df.columns = elided_columns
 
         debug.trace(3, f"Extracted fields DataFrame with shape {result_df.shape}")
         return result_df
 
     def return_formatted_output(self, result_df):
         result_df = result_df.reset_index(drop=True)
-        # return result_df.to_csv(sep=self.output_delimiter, index=False)
-        return result_df.to_csv(sep="|", index=False)
+        return result_df.to_csv(sep=self.output_delimiter, index=False)
 
 if __name__ == "__main__":
     debug.trace_current_context()
