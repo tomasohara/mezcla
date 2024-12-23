@@ -233,7 +233,9 @@ class CutArgsProcessing(Main):
         
         attributes = {
             "filename": self.filename,
-            "delimiter": self.delimiter or COMMA,
+            # "delimiter": self.delimiter or COMMA,
+            "delimiter": self.delimiter,
+            # "output_delimiter": self.output_delimiter or self.delimiter or COMMA,
             "output_delimiter": self.output_delimiter or self.delimiter or COMMA,
             "max_field_len": self.max_field_len,
             "dialect": self.dialect,
@@ -320,33 +322,6 @@ class CutArgsProcessing(Main):
         """Processes CSV dialect options."""
         debug.trace_fmtd(5, "Processing CSV dialect options.")
 
-        # Check for exclusive dialect options
-        dialects = [DIALECT, EXCEL_DIALECT, UNIX_DIALECT, PYSPARK_DIALECT, TAB_DIALECT]
-        debug.assertion(
-            system.just_one_non_null(
-                [self.get_parsed_option(o, None) for o in dialects]
-            )
-        )
-
-        # Set dialect based on options
-        pyspark_style = self.get_parsed_option(PYSPARK_STYLE)
-        if self.get_parsed_option(EXCEL_STYLE):
-            self.dialect = EXCEL_DIALECT
-        elif pyspark_style:
-            self.dialect = PYSPARK_DIALECT
-        elif self.get_parsed_option(UNIX_STYLE) or self.delimiter == COMMA:
-            self.dialect = UNIX_DIALECT
-        elif self.get_parsed_option(TAB_STYLE) or self.delimiter == TAB:
-            self.dialect = TAB_DIALECT
-
-        # Output dialect defaults
-        self.output_dialect = self.get_parsed_option(
-            OUTPUT_DIALECT, self.dialect or UNIX_DIALECT
-        )
-    def _process_csv_dialect_options(self):
-        """Processes CSV dialect options."""
-        debug.trace_fmtd(5, "Processing CSV dialect options.")
-
         # Ensure that the run_sniffer flag is set correctly based on user input
         self.run_sniffer = self.get_parsed_option(SNIFFER_ARG, self.run_sniffer)
 
@@ -393,6 +368,16 @@ class CutArgsProcessing(Main):
         debug.trace(3, "About to call determine_dialect")
         self.cut_logic.determine_dialect(self.run_sniffer, SNIFFER_LOOKAHEAD)
 
+        # Ensure Sniffer results are applied
+        debug.trace_expr(3, self.cut_logic.delimiter, label="Detected Delimiter")
+        if self.run_sniffer:
+            debug.trace(3, "Applying Sniffer detected delimiter to CSV reader.")
+            self.cut_logic.csv_reader = csv.reader(
+                self.cut_logic.input_stream, delimiter=self.cut_logic.delimiter
+            )
+        else:
+            debug.trace(3, "Using predefined delimiter.")
+
         if self.fix:
             self.cut_logic.fix_input(self.temp_file)
 
@@ -401,8 +386,15 @@ class CutArgsProcessing(Main):
         last_row_length = None
 
         for i, row in enumerate(self.cut_logic.csv_reader):
+            # Handle rows that might not be split correctly
+            if isinstance(row, list) and len(row) == 1:
+                debug.trace(5, f"Row before splitting: {row}")
+                row = row[0].split(self.cut_logic.delimiter)
+                debug.trace(5, f"Row after splitting: {row}")
+
             if NEW_FIX and self.cut_logic.delimiter == TAB:
                 row = self.cut_logic.sanitize_row(row)
+
             if i == 0:
                 self.cut_logic.initialize_fields(row, self.inclusion_spec, self.exclusion_spec)
 
@@ -415,7 +407,7 @@ class CutArgsProcessing(Main):
             num_cols = num_cols or last_row_length
 
             output_row = self.cut_logic.extract_fields(row)
-            
+
             try:
                 debug.trace(5, f"Output Rows at run_main_step = {output_row}")
                 self.cut_logic.csv_writer.writerow(output_row)
@@ -436,6 +428,7 @@ class CutArgsProcessing(Main):
         
         self.cut_logic.override_field_size(MAX_FIELD_SIZE)
         self.cut_logic.initialize_io_processing()
+        self.cut_logic.determine_dialect(self.run_sniffer, SNIFFER_LOOKAHEAD)
         self.cut_logic.initialize_fields(self.inclusion_spec, self.exclusion_spec)
 
         try:
@@ -558,79 +551,33 @@ class CutLogic:
             csv.field_size_limit(max_field_size)
             debug.trace(4, f"Set max field size to {max_field_size}; was {old_limit}")
 
-        ### TODO: Fix why tf is not the sniffer working at all ###
     def determine_dialect(self, run_sniffer, lookahead):
-        """Determine dialect for CSV input with advanced debugging."""
+        """Determine dialect for CSV input."""
+        debug.trace(3, f"determine_dialect.run_sniffer: {run_sniffer}")
         
-        # Ensure the input is not from stdin when sniffing is enabled
-        if self.input_stream == sys.stdin:
-            debug.trace(5, "determine_dialect: Input is from stdin. Sniffer may not work as expected.")
-        
-        # If delimiter is COMMA, no dialect is set, and run_sniffer is True
-        if run_sniffer:
-            debug.trace(5, f"determine_dialect: Using sniffer with lookahead {lookahead} to detect dialect.")
-            
-            try:
-                # Read the first 'lookahead' characters from the input stream
-                sample = self.input_stream.read(lookahead)
-                debug.trace(5, f"determine_dialect: Sniffing sample data (first {lookahead} characters): {repr(sample)}")
-                
-                if not sample:
-                    raise ValueError("No data read for sniffing. Check the input stream.")
-                
-                # Log the state of the sniffer
-                sniffer = csv.Sniffer()
-                debug.trace(5, "determine_dialect: Initialized Sniffer.")
+        if not run_sniffer:
+            debug.trace(3, "Sniffer is disabled. Skipping dialect determination.")
+            return
 
-                # Use the Sniffer to detect the dialect
-                self.dialect = sniffer.sniff(sample)
-                self.delimiter = self.dialect.delimiter
-                debug.trace_object(4, self.dialect, "csv sniffer")
+        debug.trace(3, f"Sniffing the dialect with a lookahead of {lookahead} bytes.")
+        try:
 
-            except (csv.Error, ValueError) as e:
-                debug.trace(5, f"determine_dialect: Sniffer failed to detect dialect: {e}")
-                self.dialect = csv.excel()  # Default to excel dialect if sniffing fails
-                self.delimiter = self.dialect.delimiter
-                debug.trace(5, f"determine_dialect: Using default dialect (csv.excel) with delimiter: {repr(self.delimiter)}")
+            sample = self.input_stream.read(lookahead)
+            self.input_stream.seek(0)
 
-            finally:
-                # Reset the input stream to the start after sniffing
-                try:
-                    self.input_stream.seek(0)
-                    debug.trace(5, "determine_dialect: Input stream reset to the start after sniffing.")
-                except io.UnsupportedOperation:
-                    debug.trace(5, "determine_dialect: Stream does not support seeking, no reset performed.")
-                
-                # If the output dialect is not set, use the detected dialect
-                if self.output_dialect is None:
-                    self.output_dialect = self.dialect
-                    debug.trace(5, f"determine_dialect: Output dialect set to: {self.output_dialect}")
+            sniffer = csv.Sniffer()
+            dialect = sniffer.sniff(sample)
 
-        # Handle case when sniffer isn't run or other situations
-        elif self.dialect is None:
-            # If no dialect is set, fall back to the default (csv.excel)
-            debug.trace(5, "determine_dialect: No dialect found, defaulting to csv.excel.")
-            self.dialect = csv.excel()
-            self.delimiter = self.dialect.delimiter
-            if self.output_dialect is None:
-                self.output_dialect = self.dialect  # Set the output dialect to the default one if necessary
-            debug.trace(5, f"determine_dialect: Using default dialect. Final delimiter: {repr(self.delimiter)}")
+            self.dialect = dialect
+            self.delimiter = dialect.delimiter
+            self.output_dialect = dialect
 
-        else:
-            # If a dialect is already set, we log it for debugging purposes
-            debug.trace(5, f"determine_dialect: Using existing dialect: {self.dialect} with delimiter: {repr(self.delimiter)}")
-        
-        # Final debug trace to log the result
-        debug.trace(5, f"determine_dialect: Final dialect set to: {self.dialect}")
-        debug.trace(5, f"determine_dialect: Final delimiter set to: {repr(self.delimiter)} with ASCII: {ord(self.delimiter)}")
-
-        # Additional trace for the sniffer and stream status
-        debug.trace(5, f"determine_dialect: Sniffer used: {run_sniffer}")
-        debug.trace(5, f"determine_dialect: Lookahead value: {lookahead}")
-        if self.input_stream:
-            debug.trace(5, "determine_dialect: Input stream status: Stream available")
-        else:
-            debug.trace(5, "determine_dialect: Input stream status: No stream available")
+            debug.trace(3, f"Sniffer detected delimiter: {self.delimiter}")
+        except Exception as e:
+            debug.trace(1, f"Sniffer failed: {e}")
+            if not self.delimiter:
+                raise ValueError(f"Sniffer failed to detect delimiter, and no fallback delimiter is provided: {e}")
+            debug.trace(3, f"Using fallback delimiter: {self.delimiter}.")
 
     def initialize_io_processing(self):
         """
@@ -648,7 +595,12 @@ class CutLogic:
 
         if self.filename == "-":
             debug.trace(3, "initialize_io_processing: Using standard input as the data source.")
+            ## OLD: Does not support stdin input for sniffing
             self.input_stream = sys.stdin
+            if self.run_sniffer:
+                import io
+                self.input_stream = io.StringIO(sys.stdin.read())
+            
         else:
             try:
                 debug.trace(5, f"initialize_io_processing: Opening file '{self.filename}'")
@@ -795,9 +747,6 @@ class PandasCutLogic(CutLogic):
             debug.trace(3, f"Loaded DataFrame with shape {self.dataframe.shape}")
         except FileNotFoundError:
             raise FileNotFoundError(f"File '{self.filename}' does not exist.")
-
-    def determine_input_delimiter(self):
-        pass
 
     def initialize_fields(self, inclusion_spec=None, exclusion_spec=None):
         """
