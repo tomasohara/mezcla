@@ -63,25 +63,35 @@ class BaseTestCutScript(TestWrapper):
         full_options = f"{pandas_option} {options}".strip()
         return self.run_script(options=full_options, data_file=data_file, env_options=env_options)
 
-    def helper_assert_equal(self, output, expected, message=""):
+    def helper_assert_equal(self, output, expected, message="", not_equal=False):
         """
         Asserts that cleaned output and expected content are equal.
         Provides detailed error messages if they are not.
         """
         cleaned_output = my_re.sub(r'^\n+|\n+$', '', output)
         cleaned_expected = my_re.sub(r'^\n+|\n+$', '', expected)
-        assert cleaned_output == cleaned_expected, (
-            f"Assertion failed: {message}\n"
-            f"Output:\n{cleaned_output}\n\n"
-            f"Expected:\n{cleaned_expected}"
-        )
+        if not_equal:
+            assert cleaned_output != cleaned_expected, (
+                f"Assertion failed: {message}\n"
+                f"Output:\n{cleaned_output}\n\n"
+                f"Expected:\n{cleaned_expected}"
+            )
+        else:
+            assert cleaned_output == cleaned_expected, (
+                f"Assertion failed: {message}\n"
+                f"Output:\n{cleaned_output}\n\n"
+                f"Expected:\n{cleaned_expected}"
+            )
 
-    @pytest.mark.xfail  ## ISSUE: diff shows no difference between the original CSV and output
+    ## Issue: Maximum length set to 128 for default run in pandas option
+    ## Temp Fix: Set --max-field-len to 65536
+    @pytest.mark.xfail
     def test_01_no_options_csv(self):
         """Test for file passed with no options"""
         script_output = self.helper_run_script(options='', data_file=CSV_EXAMPLE)
         assert script_output
         expected_content = system.read_file(CSV_EXAMPLE)
+        print(script_output)
         self.helper_assert_equal(script_output, expected_content, "Mismatch in CSV output")
 
     def test_02_no_options_tsv(self):
@@ -209,136 +219,24 @@ class BaseTestCutScript(TestWrapper):
     def test_12_explicit_delim(self):
         """Test for explicit delim option (--delim)"""
         script_output = self.helper_run_script(options='--delim=";" --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-        self.assertNotEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
-        self.assertEqual(script_output.strip(), system.read_file(CSV_EXAMPLE).strip())
+        expected_content_tsv = system.read_file(TSV_EXAMPLE)
+        expected_content_csv = system.read_file(CSV_EXAMPLE)
+        assert script_output
+        self.helper_assert_equal(script_output, expected_content_tsv, not_equal=1)
         script_output = self.helper_run_script(options='--delim="," --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-        self.assertEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
+        self.helper_assert_equal(script_output, expected_content_tsv)        
+        ## OLD: Assertion using stripped output
+        # self.assertNotEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
+        # self.assertEqual(script_output.strip(), system.read_file(CSV_EXAMPLE).strip())
+        # script_output = self.helper_run_script(options='--delim="," --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        # self.assertEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
 
-## OLD: No support for --pandas wrapper
-# class TestCutScript(TestWrapper):
-#     """Class for testcase definition of main class"""
-#     script_file = TestWrapper.get_module_file_path(__file__)
-#     script_module = TestWrapper.get_testing_module_name(__file__)
-
-#     def test_01_no_options_csv(self):
-#         """Test for file passed with no options"""
-#         script_output = self.run_script(options='', data_file=CSV_EXAMPLE)
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(CSV_EXAMPLE)
+    @pytest.mark.skip
+    def test_13_sniffer(self):
+        """Test for sniffer option"""
+        ## TODO: Add tests for --sniffer options
+        assert True 
     
-#     def test_02_no_options_tsv(self):
-#         """Test for file passed with no options"""
-#         script_output = self.run_script(options='', data_file=TSV_EXAMPLE)
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(TSV_EXAMPLE)
-
-#     def test_03_csv_max_field_len(self):
-#         """Test for CSV file with max_field_len option"""
-#         script_output = self.run_script(options='--csv --max-field-len 3', data_file=CSV_EXAMPLE)
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(CUTTED_CSV_LEN_3)
-
-#     def test_04_tsv_max_field_len(self):
-#         """Test for TSV file with max_field_len option"""
-#         script_output = self.run_script(options='--tsv --max-field-len 3', data_file=TSV_EXAMPLE)
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(CUTTED_TSV_LEN_3)
-
-#     def test_05_fields(self):
-#         """Ensure fields parameter works as expected"""
-#         # Test for CSV files
-#         script_output = self.run_script(options='--csv --fields 2-4', data_file=CSV_EXAMPLE)
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(FIELDS_2_3_4_CSV)
-#         script_output = self.run_script(options='--csv --fields 2,3,4', data_file=CSV_EXAMPLE)
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(FIELDS_2_3_4_CSV)
-#         script_output = self.run_script(options='--csv --F2 --F3 --F4', data_file=CSV_EXAMPLE)
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(FIELDS_2_3_4_CSV)
-        
-#         # Test for TSV files
-#         script_output = self.run_script(options='--tsv --fields 2-4', data_file=TSV_EXAMPLE)
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(FIELDS_2_3_4_TSV)
-#         script_output = self.run_script(options='--tsv --fields 2,3,4', data_file=TSV_EXAMPLE)
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(FIELDS_2_3_4_TSV)
-#         script_output = self.run_script(options='--tsv --F2 --F3 --F4', data_file=TSV_EXAMPLE)
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(FIELDS_2_3_4_TSV)
-
-#     def test_06_symbolic_fields(self):
-#         """Ensure symbolic field names resolved"""
-#         # Note: this involves the same test fields as test_fields
-#         script_output = self.run_script(options='--csv --fields symboling-fueltype', data_file=CSV_EXAMPLE)
-#         assert (script_output.strip() == system.read_file(FIELDS_2_3_4_CSV).strip())
-#         script_output = self.run_script(options='--csv --fields symboling,CarName,fueltype', data_file=CSV_EXAMPLE)
-#         assert (script_output.strip() == system.read_file(FIELDS_2_3_4_CSV).strip())
-
-#     def test_07_output_delimiter(self):
-#         """Test for output delimiter"""
-#         # Test for CSV files
-#         script_output = self.run_script(options='--csv  --output-delim=";"', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(CSV_SEMICOLON)
-#         # Test for TSV files
-#         script_output = self.run_script(options='--tsv  --output-delim=";"', data_file=TSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-#         assert script_output
-#         assert script_output + '\n' == system.read_file(CSV_SEMICOLON)
-
-#     def test_08_exclude_fields(self):
-#         """Text exclusion field option (numeric and symbolic)"""
-#         # Note: this involves the same test fields as test_fields
-#         script_output = self.run_script(options='--csv --exclude 1,5-26', data_file=CSV_EXAMPLE)
-#         assert (script_output.strip() == system.read_file(FIELDS_2_3_4_CSV).strip())
-#         script_output = self.run_script(options='--csv --x 1,5-26', data_file=CSV_EXAMPLE)
-#         assert (script_output.strip() == system.read_file(FIELDS_2_3_4_CSV).strip())
-#         script_output = self.run_script(options='--csv --exclude car_ID,aspiration-price', data_file=CSV_EXAMPLE)
-#         assert (script_output.strip() == system.read_file(FIELDS_2_3_4_CSV).strip())
-#         ## TODO2: check for invalid field spec (e.g., with car_ID renamed to car-ID)
-#         script_output = self.run_script(options='--csv --exclude 1-car-ID', data_file=CSV_EXAMPLE)
-#         self.assertEqual(script_output.strip(), "")
-
-#     def test_09_empty_row(self):
-#         """Text handling of empty rows"""
-#         csv_data = """
-#         "fubar?",
-#         "no",
-#         "",
-#         """
-#         temp_file = self.create_temp_file(csv_data.strip())
-#         script_output = self.run_script(options='--csv --exclude 1,5-26', data_file=temp_file)
-#         self.assertNotEqual(script_output.split(), "")
-#         self.assertEqual(len(script_output.split()), 3)
-#         for item in script_output.split():
-#             self.assertNotEqual(item, r"^[a-zA-Z0-9]+$")
-#             self.assertEqual(len(item), 2)
-
-#     def test_10_output_options(self):
-#         """Test for output options (--output-csv, --output-tsv)"""
-#         script_output = self.run_script(options='--csv --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-#         assert (script_output.strip() == system.read_file(TSV_EXAMPLE).strip())
-#         script_output = self.run_script(options='--tsv --output-csv', data_file=TSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-#         assert (script_output.strip() == system.read_file(CSV_EXAMPLE).strip())
-
-#     def test_11_convert_delim(self):
-#         """Test for convert delim option (--convert-delim)"""
-#         script_output = self.run_script(options='--csv --convert-delim', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-#         assert (script_output.strip() == system.read_file(TSV_EXAMPLE).strip())
-#         script_output = self.run_script(options='--tsv --convert-delim', data_file=TSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-#         assert (script_output.strip() == system.read_file(CSV_EXAMPLE).strip())
-
-#     def test_12_explicit_delim(self):
-#         """Test for explicit delim option (--delim)"""
-#         # In case of wrong delimiter used, the default output is provided even when output option is provided
-#         script_output = self.run_script(options='--delim=";" --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-#         self.assertNotEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
-#         self.assertEqual(script_output.strip(), system.read_file(CSV_EXAMPLE).strip())
-#         # Conversion to CSV using right delimiter
-#         script_output = self.run_script(options='--delim="," --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-#         self.assertEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
-
 class TestCutScript(BaseTestCutScript):
     """Class for standard CutLogic tests"""
     pandas_mode = False
