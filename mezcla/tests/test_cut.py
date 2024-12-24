@@ -231,11 +231,13 @@ class BaseTestCutScript(TestWrapper):
         # script_output = self.helper_run_script(options='--delim="," --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
         # self.assertEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
 
-    @pytest.mark.skip
+    # @pytest.mark.skip
     def test_13_sniffer(self):
         """Test for sniffer option"""
-        ## TODO: Add tests for --sniffer options
-        assert True 
+        script_output = self.helper_run_script(options='--sniffer --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        expected_output = system.read_file(TSV_EXAMPLE)
+        assert script_output
+        self.helper_assert_equal(script_output, expected_output)
     
 class TestCutScript(BaseTestCutScript):
     """Class for standard CutLogic tests"""
