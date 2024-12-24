@@ -99,12 +99,12 @@ MAX_FIELD_SIZE = system.getenv_int(
 )
 ## EXPERIMENTAL ENV OPTIONS
 DISABLE_QUOTING = system.getenv_bool("DISABLE_QUOTING", False, desc="(Legacy) Force disable double quotes around elements")
-USE_PANDAS = system.getenv_bool("USE_PANDAS", False, desc="Use pandas based processing")
 
+USE_PANDAS = system.getenv_bool("USE_PANDAS", False, desc="Use pandas based processing")
+ENABLE_SNIFFER = system.getenv_bool("SNIFF_INPUT", False, desc="Enable sniffing of input files")
 # ...............................................................................
 
 MAX_VALUE_LEN = 128
-
 
 #
 def elide_values(in_list, max_len=MAX_VALUE_LEN):
@@ -422,23 +422,20 @@ class CutArgsProcessing(Main):
         debug.trace_expr(3, self.cut_logic.output_dialect, label="output_dialect")
 
     def _main_step_pandas_cut_logic(self):
-        
         if not hasattr(self, 'cut_logic'):
             raise RuntimeError("PandasCutLogic is not initialized. Call setup() first.")
-        
-        self.cut_logic.override_field_size(MAX_FIELD_SIZE)
-        self.cut_logic.initialize_io_processing()
+
         self.cut_logic.determine_dialect(self.run_sniffer, SNIFFER_LOOKAHEAD)
+        self.cut_logic.initialize_io_processing()
         self.cut_logic.initialize_fields(self.inclusion_spec, self.exclusion_spec)
 
         try:
             extracted_df = self.cut_logic.extract_fields()
             result = self.cut_logic.return_formatted_output(extracted_df)
-            ## NOTE: end="" prevents the formation of newline at the end
             print(result, end="")
             debug.trace_expr(5, extracted_df.shape, label="Extracted DataFrame Shape")
         except Exception as e:
-            system.print_exception_info("Field Extraction")
+            system.print_exception_info(f"Field Extraction: {e}")
             raise e
         
     def run_main_step(self):
@@ -543,13 +540,24 @@ class CutLogic:
         result = sorted(field_list)
         return list(set(result))
 
+    # def override_field_size(self, max_field_size):
+    #     """Override maximum field size if specified."""
+    #     if max_field_size > -1:
+    #         old_limit = csv.field_size_limit()
+    #         debug.assertion(max_field_size > old_limit)
+    #         csv.field_size_limit(max_field_size)
+    #         debug.trace(4, f"Set max field size to {max_field_size}; was {old_limit}")
+    
     def override_field_size(self, max_field_size):
         """Override maximum field size if specified."""
         if max_field_size > -1:
             old_limit = csv.field_size_limit()
-            debug.assertion(max_field_size > old_limit)
-            csv.field_size_limit(max_field_size)
-            debug.trace(4, f"Set max field size to {max_field_size}; was {old_limit}")
+            if max_field_size > old_limit:
+                csv.field_size_limit(max_field_size)
+                debug.trace(4, f"Set max field size to {max_field_size}; was {old_limit}")
+            else:
+                debug.trace(4, f"Field size limit ({max_field_size}) is not greater than the current limit ({old_limit}). Skipping.")
+
 
     def determine_dialect(self, run_sniffer, lookahead):
         """Determine dialect for CSV input."""
@@ -597,7 +605,7 @@ class CutLogic:
             debug.trace(3, "initialize_io_processing: Using standard input as the data source.")
             ## OLD: Does not support stdin input for sniffing
             self.input_stream = sys.stdin
-            if self.run_sniffer:
+            if self.run_sniffer or ENABLE_SNIFFER:
                 import io
                 self.input_stream = io.StringIO(sys.stdin.read())
             
@@ -726,22 +734,19 @@ class PandasCutLogic(CutLogic):
         self.dataframe = None
 
     def initialize_io_processing(self):
-        """
-        Override to use pandas for input processing.
-        - Load the CSV into a pandas DataFrame.
-        """
+        """Initialize io processing"""
         debug.trace(5, f"Filename before opening: {self.filename}")
 
         if not self.filename:
-            raise ValueError(
-                "Filename is not set. Please provide a valid input file or use standard input."
-            )
+            raise ValueError("Filename is not set. Please provide a valid input file or use standard input.")
+
+        if not self.delimiter:
+            raise ValueError("Delimiter is not set. Ensure `determine_dialect` has set it or provide a fallback delimiter.")
 
         try:
             self.dataframe = pd.read_csv(
                 self.filename if self.filename != "-" else sys.stdin,
                 delimiter=self.delimiter,
-                dialect=self.dialect,
                 encoding="utf-8"
             )
             debug.trace(3, f"Loaded DataFrame with shape {self.dataframe.shape}")
@@ -777,35 +782,72 @@ class PandasCutLogic(CutLogic):
         debug.trace(3, f"Initialized fields: {self.fields}")
         debug.trace(3, f"Excluded fields: {self.exclude_fields}")
 
+    
+    def determine_dialect(self, run_sniffer, lookahead):
+        """Determine dialect for CSV input."""
+        debug.trace(3, f"determine_dialect.run_sniffer: {run_sniffer}")
 
+        if not run_sniffer:
+            debug.trace(3, "Sniffer is disabled. Skipping dialect determination.")
+            return
+
+        if self.filename == "-":
+            raise ValueError("Filename must be provided for sniffer to work.")
+
+        try:
+            sample = system.read_file(self.filename)
+
+            sniffer = csv.Sniffer()
+            dialect = sniffer.sniff(sample)
+
+            self.dialect = dialect
+            self.delimiter = dialect.delimiter
+            self.output_dialect = dialect
+
+            debug.trace(3, f"Sniffer detected delimiter: {self.delimiter}")
+        except Exception as e:
+            debug.trace(1, f"Sniffer failed: {e}")
+            if not self.delimiter:
+                raise ValueError(
+                    f"Sniffer failed to detect delimiter, and no fallback delimiter is provided: {e}"
+                )
+            debug.trace(3, f"Using fallback delimiter: {self.delimiter}")
+
+            
     def extract_fields(self):
         """
-        Extract specified fields using pandas.
-        If a row is not provided, operates on the entire DataFrame.
+        Extracts specified fields from the dataframe, truncates column names and values 
+        to the specified maximum length if provided.
         """
         if self.dataframe is None:
             raise ValueError("Dataframe is not initialized. Call initialize_io_processing first.")
 
         if self.fields:
-            selected_columns = [self.dataframe.columns[f - 1] for f in self.fields]
+            selected_columns = [
+                self.dataframe.columns[f - 1] for f in self.fields if f - 1 < len(self.dataframe.columns)
+            ]
         else:
             selected_columns = self.dataframe.columns
 
-        elided_columns = [elide_values([col], self.max_field_len)[0] for col in selected_columns]
-
-        result_df = self.dataframe[selected_columns] if self.fields else self.dataframe
+        result_df = self.dataframe[selected_columns]
 
         if self.max_field_len:
+            truncated_columns = elide_values(list(result_df.columns), self.max_field_len)
+
+            if len(truncated_columns) != len(result_df.columns):
+                debug.trace(1, f"Warning: Number of truncated column names does not match the number of columns. Truncated columns: {len(truncated_columns)}, Original columns: {len(result_df.columns)}")
+            
+            result_df.columns = truncated_columns
+
             result_df = result_df.map(
                 lambda x: elide_values([str(x)], self.max_field_len)[0] if isinstance(x, (str, int, float)) else x
             )
-
-        result_df.columns = elided_columns
 
         debug.trace(3, f"Extracted fields DataFrame with shape {result_df.shape}")
         return result_df
 
     def return_formatted_output(self, result_df):
+        """Returns formatted delimiter with index dropped for output"""
         result_df = result_df.reset_index(drop=True)
         return result_df.to_csv(sep=self.output_delimiter, index=False)
 
