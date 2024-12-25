@@ -33,6 +33,7 @@ import sys
 import functools
 import operator
 import pandas as pd
+import inspect
 
 # Local modules
 from mezcla import data_utils as du
@@ -125,6 +126,12 @@ def flatten_list_of_strings(list_of_str):
     result = functools.reduce(operator.concat, list_of_str)
     debug.trace(5, f"flatten_list_of_strings({list_of_str}) => {result}")
     return result
+
+# def return_source_code(function):
+#     """Display the code section within a function"""
+#     result = inspect.getsource(function)
+#     debug.trace(5, f"return_source_code({function}) => {result}")
+#     return result
 
 
 # ...............................................................................
@@ -433,6 +440,7 @@ class CutArgsProcessing(Main):
             extracted_df = self.cut_logic.extract_fields()
             result = self.cut_logic.return_formatted_output(extracted_df)
             print(result, end="")
+            debug.trace(3, f"Verbose Code: {self.cut_logic.simplified_code}")
             debug.trace_expr(5, extracted_df.shape, label="Extracted DataFrame Shape")
         except Exception as e:
             system.print_exception_info(f"Field Extraction: {e}")
@@ -447,6 +455,7 @@ class CutArgsProcessing(Main):
             self._main_step_cut_logic()
         
 class CutLogic:
+    """Class for implementation of Cut Logic"""
     def __init__(self):
         # Initialization code for CutLogic
         self.fields = []
@@ -539,14 +548,6 @@ class CutLogic:
         ## OLD: return field_list
         result = sorted(field_list)
         return list(set(result))
-
-    # def override_field_size(self, max_field_size):
-    #     """Override maximum field size if specified."""
-    #     if max_field_size > -1:
-    #         old_limit = csv.field_size_limit()
-    #         debug.assertion(max_field_size > old_limit)
-    #         csv.field_size_limit(max_field_size)
-    #         debug.trace(4, f"Set max field size to {max_field_size}; was {old_limit}")
     
     def override_field_size(self, max_field_size):
         """Override maximum field size if specified."""
@@ -557,7 +558,6 @@ class CutLogic:
                 debug.trace(4, f"Set max field size to {max_field_size}; was {old_limit}")
             else:
                 debug.trace(4, f"Field size limit ({max_field_size}) is not greater than the current limit ({old_limit}). Skipping.")
-
 
     def determine_dialect(self, run_sniffer, lookahead):
         """Determine dialect for CSV input."""
@@ -732,6 +732,50 @@ class PandasCutLogic(CutLogic):
     def __init__(self):
         super().__init__()
         self.dataframe = None
+        self.simplified_code = []
+
+    def _add_to_verbose_code(self, *code):
+        """Initialize simplified code for --verbose"""
+        for c in code:
+            self.simplified_code.append(c)
+
+    def determine_dialect(self, run_sniffer, lookahead):
+        """Determine dialect for CSV input."""
+        debug.trace(3, f"determine_dialect.run_sniffer: {run_sniffer}")
+
+        if not run_sniffer:
+            debug.trace(3, "Sniffer is disabled. Skipping dialect determination.")
+            return
+
+        if self.filename == "-":
+            raise ValueError("Filename must be provided for sniffer to work.")
+
+        try:
+            sample = system.read_file(self.filename)
+
+            sniffer = csv.Sniffer()
+            dialect = sniffer.sniff(sample)
+
+            self.dialect = dialect
+            self.delimiter = dialect.delimiter
+            self.output_dialect = dialect
+
+            debug.trace(3, f"Sniffer detected delimiter: {self.delimiter}")
+            ## EXPERIMENTAL: Initial run for _add_to_verbose_code
+            self._add_to_verbose_code(
+                "import pandas as pd",
+                "import csv",
+                f"FILENAME = '{self.filename}'",
+                f"DELIMITER, OUTPUT_DELIMITER = '{self.delimiter}', '{self.output_delimiter}'"
+            )
+
+        except Exception as e:
+            debug.trace(1, f"Sniffer failed: {e}")
+            if not self.delimiter:
+                raise ValueError(
+                    f"Sniffer failed to detect delimiter, and no fallback delimiter is provided: {e}"
+                )
+            debug.trace(3, f"Using fallback delimiter: {self.delimiter}")
 
     def initialize_io_processing(self):
         """Initialize io processing"""
@@ -750,6 +794,12 @@ class PandasCutLogic(CutLogic):
                 encoding="utf-8"
             )
             debug.trace(3, f"Loaded DataFrame with shape {self.dataframe.shape}")
+            
+            # Verbose code to create dataframe
+            self._add_to_verbose_code(
+                "df = pd.read_csv(FILENAME, delimiter=DELIMITER)"
+            )
+        
         except FileNotFoundError:
             raise FileNotFoundError(f"File '{self.filename}' does not exist.")
 
@@ -779,77 +829,113 @@ class PandasCutLogic(CutLogic):
                 self.fields = list(range(1, len(columns) + 1))
             self.fields = [f for f in self.fields if f not in self.exclude_fields]
 
+        ## TBD: Adding included field to the code    
+        # self._add_to_verbose_code(
+        #     f"included_field = {self.fields}",
+        #     f"excluded_field = {self.exclude_fields or []}"
+        # )
+
         debug.trace(3, f"Initialized fields: {self.fields}")
         debug.trace(3, f"Excluded fields: {self.exclude_fields}")
 
-    
-    def determine_dialect(self, run_sniffer, lookahead):
-        """Determine dialect for CSV input."""
-        debug.trace(3, f"determine_dialect.run_sniffer: {run_sniffer}")
+         
+    # def extract_fields(self):
+    #     """
+    #     Extracts specified fields from the dataframe, truncates column names and values 
+    #     to the specified maximum length if provided.
+    #     """
+    #     if self.dataframe is None:
+    #         raise ValueError("Dataframe is not initialized. Call initialize_io_processing first.")
 
-        if not run_sniffer:
-            debug.trace(3, "Sniffer is disabled. Skipping dialect determination.")
-            return
+    #     if self.fields:
+    #         selected_columns = [
+    #             self.dataframe.columns[f - 1] for f in self.fields if f - 1 < len(self.dataframe.columns)
+    #         ]
+    #     else:
+    #         selected_columns = self.dataframe.columns
 
-        if self.filename == "-":
-            raise ValueError("Filename must be provided for sniffer to work.")
+    #     result_df = self.dataframe[selected_columns]
 
-        try:
-            sample = system.read_file(self.filename)
+    #     if self.max_field_len:
+    #         truncated_columns = elide_values(list(result_df.columns), self.max_field_len)
 
-            sniffer = csv.Sniffer()
-            dialect = sniffer.sniff(sample)
-
-            self.dialect = dialect
-            self.delimiter = dialect.delimiter
-            self.output_dialect = dialect
-
-            debug.trace(3, f"Sniffer detected delimiter: {self.delimiter}")
-        except Exception as e:
-            debug.trace(1, f"Sniffer failed: {e}")
-            if not self.delimiter:
-                raise ValueError(
-                    f"Sniffer failed to detect delimiter, and no fallback delimiter is provided: {e}"
-                )
-            debug.trace(3, f"Using fallback delimiter: {self.delimiter}")
-
+    #         if len(truncated_columns) != len(result_df.columns):
+    #             debug.trace(1, f"Warning: Number of truncated column names does not match the number of columns. Truncated columns: {len(truncated_columns)}, Original columns: {len(result_df.columns)}")
             
+    #         result_df.columns = truncated_columns
+
+    #         result_df = result_df.map(
+    #             lambda x: elide_values([str(x)], self.max_field_len)[0] if isinstance(x, (str, int, float)) else x
+    #         )
+
+    #     debug.trace(3, f"Extracted fields DataFrame with shape {result_df.shape}")
+    #     return result_df
     def extract_fields(self):
         """
         Extracts specified fields from the dataframe, truncates column names and values 
-        to the specified maximum length if provided.
+        to the specified maximum length if provided, and returns simplified Pandas code.
         """
         if self.dataframe is None:
             raise ValueError("Dataframe is not initialized. Call initialize_io_processing first.")
 
+        # Handle field selection
         if self.fields:
             selected_columns = [
                 self.dataframe.columns[f - 1] for f in self.fields if f - 1 < len(self.dataframe.columns)
             ]
-        else:
-            selected_columns = self.dataframe.columns
+            selected_indices = [f - 1 for f in self.fields if f - 1 < len(self.dataframe.columns)]
 
+
+            # Adding included field to the code    
+            self._add_to_verbose_code(
+                f"included_fields = {self.fields}",
+            )
+
+            ## Add column selection commands
+            # simplified_code.append(
+            #     f"df = df[{selected_columns}]  # Select specific columns by name"
+            # )
+            # simplified_code.append(
+            #     f"df = df.iloc[:, {selected_indices}]  # Select specific columns by index"
+            # )
+
+        else:
+            selected_columns = list(self.dataframe.columns)
+            self._add_to_verbose_code("# No specific fields selected; all columns retained.")
+
+        # Select the relevant columns
         result_df = self.dataframe[selected_columns]
 
+        # Apply truncation if max_field_len is set
         if self.max_field_len:
+            self._add_to_verbose_code(f"MAX_FIELD_LEN = {self.max_field_len}")
             truncated_columns = elide_values(list(result_df.columns), self.max_field_len)
-
-            if len(truncated_columns) != len(result_df.columns):
-                debug.trace(1, f"Warning: Number of truncated column names does not match the number of columns. Truncated columns: {len(truncated_columns)}, Original columns: {len(result_df.columns)}")
-            
             result_df.columns = truncated_columns
 
             result_df = result_df.map(
                 lambda x: elide_values([str(x)], self.max_field_len)[0] if isinstance(x, (str, int, float)) else x
             )
+            self._add_to_verbose_code(
+                f"df = df.map(lambda col: col.astype(str).str[:{self.max_field_len}] if col.dtype == 'object' else col)  # Truncate values"
+            )
 
+        # Debug trace
         debug.trace(3, f"Extracted fields DataFrame with shape {result_df.shape}")
+
         return result_df
 
     def return_formatted_output(self, result_df):
         """Returns formatted delimiter with index dropped for output"""
         result_df = result_df.reset_index(drop=True)
-        return result_df.to_csv(sep=self.output_delimiter, index=False)
+        self._add_to_verbose_code(
+            "df = df.reset_index(drop=True)"
+        )
+        result = result_df.to_csv(sep=self.output_delimiter, index=False)
+        self._add_to_verbose_code(
+            "result = df.to_csv(sep=OUTPUT_DELIMITER, index=False)"
+        )
+        debug.trace(3, "Formatted DataFrame for output.")
+        return result
 
 if __name__ == "__main__":
     debug.trace_current_context()
