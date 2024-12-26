@@ -34,6 +34,7 @@ CUTTED_CSV_LEN_3 = f'{RESOURCES}/cars-csv-len-3.txt'
 FIELDS_2_3_4_CSV = f'{RESOURCES}/cars-fields-2-3-4-csv.txt'
 FIELDS_2_3_4_TSV = f'{RESOURCES}/cars-fields-2-3-4-tsv.txt'
 CSV_SEMICOLON = f'{RESOURCES}/cars-csv-output-delim-semicolon.txt'
+VERBOSE_CODE_EXAMPLE = f'{RESOURCES}/cars-verbose-code-example.txt'
 
 class TestCutUtils(TestWrapper):
     """Class for testcase definition of utility functions"""
@@ -239,6 +240,15 @@ class BaseTestCutScript(TestWrapper):
         assert script_output
         self.helper_assert_equal(script_output, expected_output)
     
+    @pytest.mark.xfail              # Verbose Option not supported fot pandas
+    def test_14_verbose_output(self):
+        """Test for verbose option"""
+        script_output = self.helper_run_script(options='--sniffer --output-tsv --pandas --verbose --fields 2-6,9', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        expected_code = system.read_file(VERBOSE_CODE_EXAMPLE)
+        assert script_output
+        self.assertIn(expected_code, script_output)
+        
+
 class TestCutScript(BaseTestCutScript):
     """Class for standard CutLogic tests"""
     pandas_mode = False

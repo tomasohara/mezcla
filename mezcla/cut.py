@@ -33,7 +33,6 @@ import sys
 import functools
 import operator
 import pandas as pd
-import inspect
 
 # Local modules
 from mezcla import data_utils as du
@@ -853,11 +852,11 @@ class PandasCutLogic(CutLogic):
 
             # Add column selection commands
             self._add_to_verbose_code(
-                f"df = df[{selected_columns}]  # Select specific columns by name"
+                f"df = df[{selected_columns}"
             )
             ## NOTE: Uncomment to add index based dataframe extraction
             # self._add_to_verbose_code(
-            #     f"df = df.iloc[:, {selected_indices}]  # Select specific columns by index"
+            #     f"df = df.iloc[:, {selected_indices}]"
             # )
 
         else:
