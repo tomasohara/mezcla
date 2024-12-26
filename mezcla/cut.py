@@ -852,7 +852,7 @@ class PandasCutLogic(CutLogic):
 
             # Add column selection commands
             self._add_to_verbose_code(
-                f"df = df[{selected_columns}"
+                f"df = df[{selected_columns}]"
             )
             ## NOTE: Uncomment to add index based dataframe extraction
             # self._add_to_verbose_code(
