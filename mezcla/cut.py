@@ -57,6 +57,7 @@ OUTPUT_TSV = "output-tsv"  # TSV for output
 CONVERT_DELIM = "convert-delim"  # convert input csv to tsv (or vice versa)
 SNIFFER_ARG = "sniffer"  # run CSV sniffer to detect dialect
 PANDAS_OPT = "pandas"
+VERBOSE_OPT = "verbose"
 ## TODO
 ## INPUT_CSV = "input-csv"
 ## OUTPUT_CSV = "output-csv"
@@ -218,6 +219,7 @@ class CutArgsProcessing(Main):
     max_field_len = None
     filename = None
     use_pandas = False
+    verbose = False
 
     def setup(self):
         """Centralized setup method."""
@@ -247,7 +249,7 @@ class CutArgsProcessing(Main):
             "max_field_len": self.max_field_len,
             "dialect": self.dialect,
             "output_dialect": self.output_dialect,
-            "run_sniffer": self.run_sniffer
+            "run_sniffer": self.run_sniffer,
         }
 
         self.cut_logic = self._initialize_logic_object(PandasCutLogic, attributes) if self.use_pandas else self._initialize_logic_object(CutLogic, attributes)     
@@ -287,6 +289,7 @@ class CutArgsProcessing(Main):
         self.all_fields = self.get_parsed_option(ALL_FIELDS, not self.fields)
         self.fix = self.get_parsed_option(FIX, self.fix)
         self.use_pandas = self.get_parsed_option(PANDAS_OPT, self.use_pandas)
+        self.verbose = self.get_parsed_option(VERBOSE_OPT, self.verbose)
 
     def _process_delimiter_options(self):
         """Processes delimiter-related options."""
@@ -440,7 +443,11 @@ class CutArgsProcessing(Main):
             extracted_df = self.cut_logic.extract_fields()
             result = self.cut_logic.return_formatted_output(extracted_df)
             print(result, end="")
-            debug.trace(3, f"Verbose Code: {self.cut_logic.simplified_code}")
+            # debug.trace(3, f"Verbose Code: {self.cut_logic.simplified_code}")
+            if self.verbose:
+                print(F"\nVerbose Code\n{'='*15}")
+                for x in self.cut_logic.simplified_code:
+                    print(x)
             debug.trace_expr(5, extracted_df.shape, label="Extracted DataFrame Shape")
         except Exception as e:
             system.print_exception_info(f"Field Extraction: {e}")
@@ -761,13 +768,6 @@ class PandasCutLogic(CutLogic):
             self.output_dialect = dialect
 
             debug.trace(3, f"Sniffer detected delimiter: {self.delimiter}")
-            ## EXPERIMENTAL: Initial run for _add_to_verbose_code
-            self._add_to_verbose_code(
-                "import pandas as pd",
-                "import csv",
-                f"FILENAME = '{self.filename}'",
-                f"DELIMITER, OUTPUT_DELIMITER = '{self.delimiter}', '{self.output_delimiter}'"
-            )
 
         except Exception as e:
             debug.trace(1, f"Sniffer failed: {e}")
@@ -796,8 +796,12 @@ class PandasCutLogic(CutLogic):
             debug.trace(3, f"Loaded DataFrame with shape {self.dataframe.shape}")
             
             # Verbose code to create dataframe
+            delimiter_literal = (
+                self.delimiter.replace("\t", "\\t") if self.delimiter == "\t" else self.delimiter
+            )
             self._add_to_verbose_code(
-                "df = pd.read_csv(FILENAME, delimiter=DELIMITER)"
+                "import pandas as pd",
+                f"df = pd.read_csv('{self.filename}', delimiter='{delimiter_literal}')"
             )
         
         except FileNotFoundError:
@@ -829,47 +833,9 @@ class PandasCutLogic(CutLogic):
                 self.fields = list(range(1, len(columns) + 1))
             self.fields = [f for f in self.fields if f not in self.exclude_fields]
 
-        ## TBD: Adding included field to the code    
-        # self._add_to_verbose_code(
-        #     f"included_field = {self.fields}",
-        #     f"excluded_field = {self.exclude_fields or []}"
-        # )
-
         debug.trace(3, f"Initialized fields: {self.fields}")
         debug.trace(3, f"Excluded fields: {self.exclude_fields}")
 
-         
-    # def extract_fields(self):
-    #     """
-    #     Extracts specified fields from the dataframe, truncates column names and values 
-    #     to the specified maximum length if provided.
-    #     """
-    #     if self.dataframe is None:
-    #         raise ValueError("Dataframe is not initialized. Call initialize_io_processing first.")
-
-    #     if self.fields:
-    #         selected_columns = [
-    #             self.dataframe.columns[f - 1] for f in self.fields if f - 1 < len(self.dataframe.columns)
-    #         ]
-    #     else:
-    #         selected_columns = self.dataframe.columns
-
-    #     result_df = self.dataframe[selected_columns]
-
-    #     if self.max_field_len:
-    #         truncated_columns = elide_values(list(result_df.columns), self.max_field_len)
-
-    #         if len(truncated_columns) != len(result_df.columns):
-    #             debug.trace(1, f"Warning: Number of truncated column names does not match the number of columns. Truncated columns: {len(truncated_columns)}, Original columns: {len(result_df.columns)}")
-            
-    #         result_df.columns = truncated_columns
-
-    #         result_df = result_df.map(
-    #             lambda x: elide_values([str(x)], self.max_field_len)[0] if isinstance(x, (str, int, float)) else x
-    #         )
-
-    #     debug.trace(3, f"Extracted fields DataFrame with shape {result_df.shape}")
-    #     return result_df
     def extract_fields(self):
         """
         Extracts specified fields from the dataframe, truncates column names and values 
@@ -885,30 +851,23 @@ class PandasCutLogic(CutLogic):
             ]
             selected_indices = [f - 1 for f in self.fields if f - 1 < len(self.dataframe.columns)]
 
-
-            # Adding included field to the code    
+            # Add column selection commands
             self._add_to_verbose_code(
-                f"included_fields = {self.fields}",
+                f"df = df[{selected_columns}]  # Select specific columns by name"
             )
-
-            ## Add column selection commands
-            # simplified_code.append(
-            #     f"df = df[{selected_columns}]  # Select specific columns by name"
-            # )
-            # simplified_code.append(
+            ## NOTE: Uncomment to add index based dataframe extraction
+            # self._add_to_verbose_code(
             #     f"df = df.iloc[:, {selected_indices}]  # Select specific columns by index"
             # )
 
         else:
             selected_columns = list(self.dataframe.columns)
-            self._add_to_verbose_code("# No specific fields selected; all columns retained.")
 
         # Select the relevant columns
         result_df = self.dataframe[selected_columns]
 
         # Apply truncation if max_field_len is set
         if self.max_field_len:
-            self._add_to_verbose_code(f"MAX_FIELD_LEN = {self.max_field_len}")
             truncated_columns = elide_values(list(result_df.columns), self.max_field_len)
             result_df.columns = truncated_columns
 
@@ -916,9 +875,9 @@ class PandasCutLogic(CutLogic):
                 lambda x: elide_values([str(x)], self.max_field_len)[0] if isinstance(x, (str, int, float)) else x
             )
             self._add_to_verbose_code(
-                f"df = df.map(lambda col: col.astype(str).str[:{self.max_field_len}] if col.dtype == 'object' else col)  # Truncate values"
+                f"df.columns = [(col[:{self.max_field_len}] + '...') if len(col) > {self.max_field_len} col for col in df.columns]",
+                f"df = df.map(lambda x: (str(x)[:{self.max_field_len}] + '...') if isinstance(x, (str, int, float)) and len(str(x)) > {self.max_field_len} else x)"
             )
-
         # Debug trace
         debug.trace(3, f"Extracted fields DataFrame with shape {result_df.shape}")
 
@@ -927,12 +886,13 @@ class PandasCutLogic(CutLogic):
     def return_formatted_output(self, result_df):
         """Returns formatted delimiter with index dropped for output"""
         result_df = result_df.reset_index(drop=True)
-        self._add_to_verbose_code(
-            "df = df.reset_index(drop=True)"
+        ## NOTE: To overcome printing of \t as whitespace
+        output_delimiter_literal = (
+        self.output_delimiter.replace("\t", "\\t") if self.output_delimiter == "\t" else self.output_delimiter
         )
         result = result_df.to_csv(sep=self.output_delimiter, index=False)
         self._add_to_verbose_code(
-            "result = df.to_csv(sep=OUTPUT_DELIMITER, index=False)"
+            f"print(df.to_csv(sep='{output_delimiter_literal}', index=False))"
         )
         debug.trace(3, "Formatted DataFrame for output.")
         return result
@@ -965,6 +925,7 @@ if __name__ == "__main__":
                 (OUTPUT_TSV, "Return output in TSV format"),
                 (CONVERT_DELIM, "Convert csv to tsv (or vice versa)"),
                 (PANDAS_OPT, "Use pandas based processing"),
+                (VERBOSE_OPT, "Use verbose mode"),
                 (SNIFFER_ARG, "Detect csv dialect by lookahead (file-input only)"),
                 ## TODO: INPUT_CSV, OUTPUT_CSV, INPUT_TSV, OUTPUT_TSV,
                 (
