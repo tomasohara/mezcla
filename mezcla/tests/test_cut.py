@@ -185,7 +185,12 @@ class BaseTestCutScript(TestWrapper):
         script_output = self.helper_run_script(options='--csv --exclude 1-car-ID', data_file=CSV_EXAMPLE)
         self.assertEqual(script_output.strip(), "")
 
-    @pytest.mark.xfail  ## ISSUE: Assertion error {self.assertEqual(len(script_output.split()), 3) => (4 != 3)}
+    ## ISSUE: Assertion Error for --pandas option, header-less CSV files return Unnamed:1
+    ## ricekiller@pop-os:~/tomProject/mezcla$ DEBUG_LEVEL=0 python3 mezcla/cut.py --csv csvempty.csv --exclude 1,5-26 --pandas
+    ## Unnamed: 1
+    ## ""
+    ## ""
+    @pytest.mark.xfail
     def test_09_empty_row(self):
         """Text handling of empty rows"""
         csv_data = """
@@ -197,7 +202,13 @@ class BaseTestCutScript(TestWrapper):
         script_output = self.helper_run_script(options='--csv --exclude 1,5-26', data_file=temp_file)
         self.assertNotEqual(script_output.split(), "")
         assert script_output
-        self.assertEqual(len(script_output.split()), 3)
+        non_empty_lines = [
+            line 
+            for line in script_output.split('\n')
+            if line.strip()
+        ]
+        print(non_empty_lines)
+        self.assertEqual(len(non_empty_lines), 3)
         for item in script_output.split():
             self.assertNotEqual(item, r"^[a-zA-Z0-9]+$")
             self.assertEqual(len(item), 2)
@@ -240,15 +251,25 @@ class BaseTestCutScript(TestWrapper):
         assert script_output
         self.helper_assert_equal(script_output, expected_output)
     
-    @pytest.mark.xfail              # Verbose Option not supported fot pandas
+     ## NOTE: --verbose option supported for --pandas option only
+     ## NOTE: Test passed for non --pandas option
+    @pytest.mark.xfail             
     def test_14_verbose_output(self):
         """Test for verbose option"""
-        script_output = self.helper_run_script(options='--sniffer --output-tsv --pandas --verbose --fields 2-6,9', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        script_output = self.helper_run_script(
+            options='--sniffer --output-tsv --pandas --verbose --fields 2-6,9',
+            data_file=CSV_EXAMPLE,
+            env_options='DISABLE_QUOTING=1'
+        )
         expected_code = system.read_file(VERBOSE_CODE_EXAMPLE)
-        assert script_output
-        self.assertIn(expected_code, script_output)
-        
+        pattern = r"df = pd\.read_csv\('.*?cars\.csv', delimiter=','\)"
+        normalized_output = my_re.sub(pattern, "df = pd.read_csv('mezcla/tests/resources/cars.csv', delimiter=',')", script_output)
+        normalized_expected = my_re.sub(pattern, "df = pd.read_csv('mezcla/tests/resources/cars.csv', delimiter=',')", expected_code)
 
+        assert script_output, "Script output is empty."
+        self.assertIn(normalized_expected, normalized_output, "Expected verbose code not found in the script output.")
+
+        
 class TestCutScript(BaseTestCutScript):
     """Class for standard CutLogic tests"""
     pandas_mode = False
