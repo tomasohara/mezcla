@@ -9,6 +9,7 @@ from unittest.mock import patch, MagicMock, ANY
 # Installed packages
 import pytest
 import libcst as cst
+import unittest_parametrize
 
 # Local packages
 import mezcla.mezcla_to_standard as THE_MODULE
@@ -664,7 +665,7 @@ z = func3(5, 6)
     def test_leave_module(self):
         """Ensures that leave_Module method of ReplaceCallsTransformer works as expected"""
         debug.trace(5, f"TestTransform.test_leave_module(); self={self}")
-        
+
         class TestVisitor(THE_MODULE.ReplaceCallsTransformer):
             """Sample class of TestVisitor to test leave_module function"""
 
@@ -735,7 +736,7 @@ result = new_function(2, 3)
         assert False, "TODO: Implement"
 
 
-class TestUsageM2SEqCall(TestWrapper):
+class TestUsageM2SEqCall(TestWrapper, unittest_parametrize.ParametrizedTestCase):
     """Class for test usage of equivalent calls for mezcla_to_standard"""
 
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
@@ -748,493 +749,208 @@ class TestUsageM2SEqCall(TestWrapper):
         new_code, _ = THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
         return new_code
 
-    def test_eqcall_gh_get_temp_file(self):
-        """Ensures that gh.get_temp_file is equivalent to tempfile.NamedTemporaryFile"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_get_temp_file(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-temp_file = gh.get_temp_file()
-"""
-        expected_code = """
-import tempfile
-temp_file = tempfile.NamedTemporaryFile()
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_basename(self):
-        """Ensures that gh.basename is equivalent to os.path.basename"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_basename(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-basename = gh.basename("./foo/bar/foo.bar")
-"""
-        expected_code = """
-from os import path
-basename = path.basename("./foo/bar/foo.bar")
-"""
-
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_dir_path(self):
-        """Ensures that gh.dir_path is equivalent to os.path.dirname"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_dir_path(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-dir_path = gh.dir_path("/tmp/solr-4888.log")
-"""
-        expected_code = """
-from os import path
-dir_path = path.dirname("/tmp/solr-4888.log")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    @pytest.mark.skip
-    def test_eqcall_gh_dirname(self):
-        """Ensures that gh.dirname is equivalent to os.path.dirname"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_dirname(); self={self}")
-        ## TODO: Fix blank parameter output in os.path.dirname()
-        input_code = """
-from mezcla import glue_helpers as gh
-dirname = gh.dirname("/tmp/solr-4888.log")
-"""
-        expected_code = """
-from os import path
-dirname = path.dirname("/tmp/solr-4888.log")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_file_exists(self):
-        """Ensures that gh.file_exists is equivalent to os.path.exists"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_file_exists(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-file_exists = gh.file_exists("/tmp/solr-4888.log")
-"""
-        expected_code = """
-from os import path
-file_exists = path.exists("/tmp/solr-4888.log")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_form_path(self):
-        """Ensures that gh.form_path is equivalent to os.path.join"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_form_path(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-temp_path = gh.form_path("/tmp/logs/")
-"""
-        expected_code = """
-from os import path
-temp_path = path.join("/tmp/logs/")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_is_directory(self):
-        """Ensures that gh.is_directory is equivalent to os.path.isdir"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_is_directory(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-is_dir = gh.is_directory("/tmp/logs/")
-"""
-        expected_code = """
-from os import path
-is_dir = path.isdir("/tmp/logs/")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_create_directory(self):
-        """Ensures that gh.create_directory is equivalent to os.mkdir"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_create_directory(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-is_dir = gh.is_directory("/tmp/logs/")
-"""
-        expected_code = """
-from os import path
-is_dir = path.isdir("/tmp/logs/")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_rename_file(self):
-        """Ensures that gh.rename_file is equivalent to os.rename"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_rename_file(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.rename_file("foo.txt", "bar.txt")
-"""
-        expected_code = """
-import os
-os.rename("foo.txt", "bar.txt")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_delete_file(self):
-        """Ensures that gh.delete_file is equivalent to os.remove"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_delete_file(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.delete_file("foo.txt")
-"""
-        expected_code = """
-import os
-os.remove("foo.txt")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_delete_existing_file(self):
-        """Ensures that gh.delete_exisiting_file is equivalent to os.remove"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_delete_existing_file(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-gh.delete_existing_file("foo.txt")
-"""
-        expected_code = """
-import os
-os.remove("foo.txt")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_file_size(self):
-        """Ensures that gh.file_size is equivalent to os.path.getsize"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_file_size(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-foo_size = gh.file_size("foo.txt")
-"""
-        expected_code = """
-from os import path
-foo_size = path.getsize("foo.txt")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_gh_get_directory_listing(self):
-        """Ensures that gh.get_directory_listing is equivalent to os.listdir"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_gh_get_directory_listing(); self={self}")
-        input_code = """
-from mezcla import glue_helpers as gh
-is_dir = gh.get_directory_listing("/tmp")
-"""
-        # NOTE: "path" keyword is added because some
-        #       os.listdir method use "path = None"
-        #       as keyword with default value
-        expected_code = """
-import os
-is_dir = os.listdir(path = "/tmp")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_debug_trace_all(self):
-        """Ensures that debug.trace is equivalent to appropriate logging based on conditions"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_debug_trace_all(); self={self}")
-        # OLD: Same as test_import_debug_all() from TestUsageImportTypes
-        input_code_lvl_4 = """
-from mezcla import debug
-debug.trace(4, "DEBUG")
-"""
-        expected_lvl_4 = """
-import logging
-logging.debug("DEBUG")
-"""
-
-        input_code_lvl_3 = """
-from mezcla import debug
-debug.trace(3, "INFO")
-"""
-        expected_lvl_3 = """
-import logging
-logging.info("INFO")
-"""
-
-        input_code_lvl_2 = """
-from mezcla import debug
-debug.trace(2, "WARNING")
-"""
-        expected_lvl_2 = """
-import logging
-logging.warning("WARNING")
-"""
-
-        input_code_lvl_1 = """
-from mezcla import debug
-debug.trace(1, "ERROR")
-"""
-        expected_lvl_1 = """
-import logging
-logging.error("ERROR")
-"""
-
-        input_codes = [
-            input_code_lvl_4,
-            input_code_lvl_3,
-            input_code_lvl_2,
-            input_code_lvl_1,
-        ]
-        expected_outputs = [
-            expected_lvl_4,
-            expected_lvl_3,
-            expected_lvl_2,
-            expected_lvl_1,
-        ]
-        zipped_codes = zip(input_codes, expected_outputs)
-
-        for input_code, expected_output in zipped_codes:
-            result = self.helper_m2s(input_code)
-            self.assertEqual(result.strip(), expected_output.strip())
-
-    def test_eqcall_system_get_exception(self):
-        """Ensures that system.test_eqcall_system_get_exception is equivalent to sys.exc_info"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_debug_trace_all(); self={self}")
-        input_code = """
-from mezcla import system
+    @unittest_parametrize.parametrize(
+        argnames="input_code, expected_code",
+        argvalues=[
+            unittest_parametrize.param(
+                "from mezcla import glue_helpers as gh\ntemp_file = gh.get_temp_file()\n",
+                "import tempfile\ntemp_file = tempfile.NamedTemporaryFile()\n",
+                id="test_eqcall_gh_get_temp_file",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\nbasename = gh.basename("./foo/bar/foo.bar")\n',
+                'from os import path\nbasename = path.basename("./foo/bar/foo.bar")\n',
+                id="test_eqcall_gh_basename",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\ndir_path = gh.dir_path("/tmp/solr-4888.log")\n',
+                'from os import path\ndir_path = path.dirname("/tmp/solr-4888.log")\n',
+                id="test_eqcall_gh_dir_path",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\ndirname = gh.dirname("/tmp/solr-4888.log")\n',
+                'from os import path\ndirname = path.dirname("/tmp/solr-4888.log")\n',
+                id="test_eqcall_gh_dirname",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\nfile_exists = gh.file_exists("/tmp/solr-4888.log")\n',
+                'from os import path\nfile_exists = path.exists("/tmp/solr-4888.log")\n',
+                id="test_eqcall_gh_file_exists",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\ntemp_path = gh.form_path("tmp","logs")\n',
+                'from os import path\ntemp_path = path.join("tmp","logs")\n',
+                id="test_eqcall_form_path",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\nis_dir = gh.is_directory("/tmp/logs")\n',
+                'from os import path\nis_dir = path.isdir("/tmp/logs")\n',
+                id="test_eqcall_gh_is_directory",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\ngh.create_directory("/tmp/logs")\n',
+                'import os\nos.mkdir("/tmp/logs")',
+                id="test_eqcall_gh_create_directory",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\ngh.rename_file("foo.txt", "bar.txt")\n',
+                'import os\nos.rename("foo.txt", "bar.txt")\n',
+                id="test_eqcall_rename_file",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\ngh.delete_file("foo.txt")\n',
+                'import os\nos.remove("foo.txt")\n',
+                id="test_eqcall_delete_file",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\ngh.delete_existing_file("foo.txt")\n',
+                'import os\nos.remove("foo.txt")\n',
+                id="test_eqcall_gh_delete_existing_file",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\nfoo_size = gh.file_size("foo.txt")\n',
+                'from os import path\nfoo_size = path.getsize("foo.txt")\n',
+                id="test_eqcall_gh_file_size",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import glue_helpers as gh\ndirs = gh.get_directory_listing("/tmp")\n',
+                'import os\ndirs = os.listdir(path = "/tmp")\n',
+                id="test_eqcall_gh_get_directory_listing",
+            ),
+            unittest_parametrize.param(
+                [
+                    'from mezcla import debug\ndebug.trace(4, "DEBUG")',
+                    'from mezcla import debug\ndebug.trace(3, "INFO")',
+                    'from mezcla import debug\ndebug.trace(2, "WARNING")',
+                    'from mezcla import debug\ndebug.trace(1, "ERROR")',
+                ],
+                [
+                    'import logging\nlogging.debug("DEBUG")',
+                    'import logging\nlogging.info("INFO")',
+                    'import logging\nlogging.warning("WARNING")',
+                    'import logging\nlogging.error("ERROR")',
+                ],
+                id="test_eqcall_debug_trace_all",
+            ),
+            unittest_parametrize.param(
+                """from mezcla import system
 def divide(a, b):
     try:
         result = a / b
     except ZeroDivisionError:
         exc_type, exc_value, exc_traceback = system.get_exception()
-"""
-        expected_code = """
+""",
+                """
 import sys
 def divide(a, b):
     try:
         result = a / b
     except ZeroDivisionError:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    @pytest.mark.xfail
-    def test_eqcall_system_print_error(self):
-        """Ensures that system.print_error is equivalent to printing to stderr"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_print_error(); self={self}")
-        ## ERROR: ValueError: Unsupported value type: <class '_io.TextIOWrapper'>
-        input_code = """
-from mezcla import system
-system.print_error("This is an error message")
-"""
-        expected_code = """
-print("This is an error message", file=sys.stderr)
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_exit(self):
-        """Ensures that system.exit is equivalent to sys.exit"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_exit(); self={self}")
-        input_code = """
-from mezcla import system
-system.exit()
-"""
-        expected_code = """
-import sys
-sys.exit()
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_open_file(self):
-        """Ensures that system.open_file is equivalent to open"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_open_file(); self={self}")
-        input_code = """
+""",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import system\nsystem.print_error("This is an error message")',
+                'print("This is an error message", file = sys.stderr)',
+                id="test_eqcall_system_print_error",
+            ),
+            unittest_parametrize.param(
+                "from mezcla import system\nsystem.exit()",
+                "import sys\nsys.exit()",
+                id="test_eqcall_system_exit",
+            ),
+            unittest_parametrize.param(
+                """
 from mezcla import system
 with system.open_file("example.txt") as f:
     content = f.read()
     print(content)
-"""
-        expected_code = """
+""",
+                """
 import io
 with io.open("example.txt") as f:
     content = f.read()
     print(content)
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_read_directory(self):
-        """Ensures that system.read_directory is equivalent to os.listdir"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_read_directory(); self={self}")
-        input_code = """
-from mezcla import system
-dir_files = system.read_directory("/tmp")
-"""
-        expected_code = """
-import os
-dir_files = os.listdir(path = "/tmp")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_form_path(self):
-        """Ensures that system.form_path is equivalent to os.path.join"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_form_path(); self={self}")
-        input_code = """
-from mezcla import system
-system.form_path("/tmp/foo/bar")
-"""
-        expected_code = """
-from os import path
-path.join("/tmp/foo/bar")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_is_regular_file(self):
-        """Ensures that system.is_regular_file is equivalent to os.path.isfile"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_is_regular_file(); self={self}")
-        input_code = """
-from mezcla import system
-is_regular = system.is_regular_file("/tmp/foo.txt")
-"""
-        expected_code = """
-from os import path
-is_regular = path.isfile("/tmp/foo.txt")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_create_directory(self):
-        """Ensures that system.create_directory is equivalent to os.mkdir"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_create_directory(); self={self}")
-        input_code = """
-from mezcla import system
-system.create_directory("foo")
-"""
-        expected_code = """
-import os
-os.mkdir("foo")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_get_current_directory(self):
-        """Ensures that system.get_current_directory is equivalent to os.getcwd"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_get_current_directory(); self={self}")
-        input_code = """
-from mezcla import system
-pwd = system.get_current_directory()
-"""
-        expected_code = """
-import os
-pwd = os.getcwd()
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    @pytest.mark.skip  # Blank parameter in os.path.chdir()
-    def test_eqcall_system_set_current_directory(self):
-        """Ensures that system.set_current_directory is equivalent to os.chdir"""
-        # Note: No matter the order of import, the output will always have the import on the top
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_set_current_directory(); self={self}")
-        input_code = """
-from mezcla import system
-PATH = "/home/ricekiller/Downloads"
-system.set_current_directory(PATH)
-"""
-        expected_code = """
-import os
-PATH = "/home/ricekiller/Downloads"
-os.chdir(PATH)
-"""
-        result = self.helper_m2s(input_code)
-        print(result)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_absolute_path(self):
-        """Ensures that system.absolute_path is equivalent to os.path.abspath"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_absolute_path(); self={self}")
-        input_code = """
-from mezcla import system
-abs_path = system.absolute_path("./Downloads/testfile.pdf")
-"""
-        expected_code = """
-from os import path
-abs_path = path.abspath("./Downloads/testfile.pdf")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    @pytest.mark.skip  # Blank parameter in os.path.realpath()
-    def test_eqcall_system_real_path(self):
-        """Ensures that system.real_path is equivalent to os.path.realpath"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_real_path(); self={self}")
-        input_code = """
-from mezcla import system
-real_path = system.real_path("./Downloads/testfile.pdf")
-"""
-        expected_code = """
-from os import path
-real_path = path.realpath("./Downloads/testfile.pdf")
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_round_num(self):
-        """Ensures that system.round_num is equivalent to rounding with ndigits=6"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_round_num(); self={self}")
-        input_code = """
-from mezcla import system
-round_val = system.round_num(1738.4423425357457131)
-"""
-        expected_code = """
-round_val = round(1738.4423425357457131, 6)
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_round3(self):
-        """Ensures that system.round3 is equivalent to rounding with ndigits=3"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_round3(); self={self}")
-        input_code = """
-from mezcla import system
-round_val_3 = system.round3(1738.4423425357457131)
-"""
-        expected_code = """
-round_val_3 = round(1738.4423425357457131, 3)
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    def test_eqcall_system_sleep(self):
-        """Ensures that system.sleep is equivalent to time.sleep"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_sleep(); self={self}")
-        input_code = """
-from mezcla import system
-system.sleep(60)
-"""
-        expected_code = """
-import time
-time.sleep(60)
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
-
-    @pytest.mark.xfail  ## AttributeError: 'list' object has no attribute '__module__'. Did you mean: '__mul__'
-    def test_eqcall_system_get_args(self):
-        """Ensures that system.get_args is equivalent to sys.argv"""
-        debug.trace(5, f"TestUsageM2SEqCall.test_eqcall_system_get_args(); self={self}")
-        input_code = """
-from mezcla import system
-system.get_args()
-"""
-        expected_code = """
-import sys
-sys.argv
-"""
-        result = self.helper_m2s(input_code)
-        self.assertEqual(result.split(), expected_code.split())
+""",
+                id="test_eqcall_system_open_file",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import system\ndir_file = system.read_directory("/tmp")',
+                'import os\ndir_file = os.listdir(path = "/tmp")',
+                id="test_eqcall_system_read_directory",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import system\nsystem.form_path("tmp","logs")',
+                'from os import path\npath.join("tmp","logs")',
+                id="test_eqcall_system_form_path",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import system\nis_regular = system.is_regular_file("foo.txt")',
+                'from os import path\nis_regular = path.isfile("foo.txt")',
+                id="test_eqcall_system_is_regular_file",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import system\nsystem.create_directory("/tmp/logs")',
+                'import os\nos.mkdir("/tmp/logs")',
+                id="test_eqcall_system_create_directory",
+            ),
+            unittest_parametrize.param(
+                "from mezcla import system\npwd = system.get_current_directory()",
+                "import os\npwd = os.getcwd()",
+                id="test_eqcall_system_get_current_directory",
+            ),
+            unittest_parametrize.param(
+                "from mezcla import system\n"
+                'PATH = "/home/ricekiller/Downloads"\nsystem.set_current_directory(PATH)',
+                "import os\n" 'PATH = "/home/ricekiller/Downloads"\nos.chdir(PATH)',
+                id="test_eqcall_system_set_current_directory",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import system\nabs_path = system.absolute_path("./Downloads/testfile.pdf")',
+                'from os import path\nabs_path = path.abspath("./Downloads/testfile.pdf")',
+                id="test_eqcall_system_absolute_path",
+            ),
+            unittest_parametrize.param(
+                'from mezcla import system\nreal_path = system.real_path("./Downloads/testfile.pdf")',
+                'from os import path\nreal_path = path.realpath("./Downloads/testfile.pdf")',
+                id="test_eqcall_system_real_path",
+            ),
+            unittest_parametrize.param(
+                "from mezcla import system\nround_val = system.round_num(1738.4423425357457131)",
+                "round_val = round(1738.4423425357457131, 6)",
+                id="test_eqcall_system_round_num",
+            ),
+            unittest_parametrize.param(
+                "from mezcla import system\nround_val_3 = system.round3(1738.4423425357457131)",
+                "round_val_3 = round(1738.4423425357457131, 3)",
+                id="test_eqcall_system_round3",
+            ),
+            unittest_parametrize.param(
+                "from mezcla import system\nsystem.sleep(5)",
+                "import time\ntime.sleep(5)",
+                id="test_eqcall_system_sleep",
+            ),
+            unittest_parametrize.param(
+                "from mezcla import system\nsystem.get_args()",
+                "import sys\nsys.argv",
+                id="test_eqcall_system_get_args",
+            ),
+        ],
+    )
+    def test_eqCall(self, input_code, expected_code):
+        """Ensures that different Eqcall targets are equal to their dests"""
+        debug.trace(
+            5,
+            f"TestUsageM2SEqCall.test_eqcall(); self={self}, input_code={input_code}, expected_code={expected_code}",
+        )
+        if isinstance(input_code, list) and isinstance(expected_code, list):
+            zipped_codes = zip(input_code, expected_code)
+            for input, output in zipped_codes:
+                result = self.helper_m2s(input)
+                self.assertEqual(result.strip(), output.strip())
+        else:
+            result = self.helper_m2s(input_code)
+            self.assertEqual(result.split(), expected_code.split())
 
 
 class TestUsageImportTypes(TestWrapper):
@@ -1267,123 +983,55 @@ gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 """
         result = self.helper_m2s(input_code)
         self.assertEqual(result.strip(), input_code.strip())
+        
 
-    @pytest.mark.xfail
-    def test_import_types(self):
-        """Usage test for conversion of various mezcla import styles to standard import (VANILLA: no comments or multiline imports)"""
-        debug.trace(5, f"TestUsageImportTypes.test_import_types(); self={self}")
-        ## XFAIL: code_direc_import and code_import are not currently supported (TO BE DESIGNED)
-        # 4 Styles of import: Direct, using alias, from ... import, import
-        code_direct_import = """
-from mezcla.debug import trace
-trace(1, "error")
-"""
-
-        code_alias_import = """
-from mezcla import debug as dbg
-dbg.trace(1, "error")
-"""
-
-        code_from_import = """
-from mezcla import debug
-debug.trace(1, "error")
-"""
-
-        code_import = """
-import mezcla
-mezcla.debug.trace(1, "error")
-"""
-
-        expected_output = """
-import logging
-logging.error("error")
-"""
-
-        ## TEMP_HALT (Not all code import styles are currently supported)
-        code_combinations = [
-            code_direct_import,
-            code_alias_import,
-            code_from_import,
-            code_import,
-        ]
-        # OLD (For debugging): code_combinations = [code_from_import, code_alias_import]
-
-        # Writing code to input file/function and transforming it for assertion
-        for code in code_combinations:
-
-            ## ATTEMPT 1: Did not work as expected
-            # temp_file = gh.create_temp_file(contents=code)
-            # command = f"python3 mezcla/mezcla_to_standard.py --to_standard {temp_file}"
-            # result = gh.run(command)
-
-            ## ATTEMPT 2: Did not work either
+    @unittest_parametrize.parametrize(
+        argnames="original_code, expected_output, msg",
+        argvalues=[
+            unittest_parametrize.param(
+                ['import logging\nlogging.error("error")\n'],
+                'import logging\nlogging.error("error")\n',
+                None,
+                id="test_import_no_transformation",
+            ),
+            unittest_parametrize.param(
+                [
+                    'from mezcla.debug import trace, log\ntrace(1, "error")\nlog("info", "message")\n'
+                ],
+                'import logging\nlogging.error("error")\nlogging.info("message")\n',
+                "TODO: Implement",
+                id="test_import_multiple",
+            ),
+            unittest_parametrize.param(
+                [
+                    '# This is a comment\nfrom mezcla.debug import trace\ntrace(1, "error")\n'
+                ],
+                '# This is a comment\nimport logging\nlogging.error("error")\n',
+                None,
+                id="test_import_with_comments",
+            ),
+            unittest_parametrize.param(
+                [
+                    'from mezcla.debug import trace\ntrace(1, "error")\n',
+                    'from mezcla import debug as dbg\ndbg.trace(1, "error")\n',
+                    'from mezcla import debug\ndebug.trace(1, "error")\n',
+                    'import mezcla\nmezcla.debug.trace(1, "error")\n',
+                ],
+                'import logging\nlogging.error("error")\n',
+                None,
+                id="test_import_types",
+            ),
+        ],
+    )
+    def test_import_transformation(self, original_code: list, expected_output, msg):
+        """Usage test for conversion of various mezcla imoprt styles to standard import (WITH_COMMENTS: comments)"""
+        debug.trace(
+            5,
+            f"TestUsageImportTypes.test_import_transformation(); original_code={original_code}, expected_output={expected_output}, msg={msg}",
+        )
+        for code in original_code:
             result, _ = THE_MODULE.transform(THE_MODULE.ToStandard(), code)
-            self.assertEqual(result.strip(), expected_output.strip())
-
-    @pytest.mark.xfail
-    def test_import_with_comments(self):
-        """Usage test for conversion of various mezcla import styles to standard import (WITH_COMMENTS: comments)"""
-        debug.trace(5, f"TestUsageImportTypes.test_import_with_comments(); self={self}")
-        code_with_comment = """
-# This is a comment
-from mezcla.debug import trace
-trace(1, "error")
-"""
-
-        expected_output = """
-# This is a comment
-import logging
-logging.error("error")
-"""
-
-        code_combinations = [code_with_comment]
-
-        for code in code_combinations:
-            result = THE_MODULE.transform(THE_MODULE.ToStandard(), code)
-            # Refer from test_import_types
-            self.assertEqual(result, expected_output, "TODO: Implement")
-
-    @pytest.mark.xfail
-    def test_import_multiple(self):
-        """Usage test for conversion of various mezcla import styles to standard import (MULTIPLE: import of more than one module, class, function)"""
-        debug.trace(5, f"TestUsageImportTypes.test_import_multiple(); self={self}")
-        code_multiple_imports = """
-from mezcla.debug import trace, log
-trace(1, "error")
-log("info", "message")
-"""
-
-        expected_output = """
-import logging  
-logging.error("error")
-logging.info("message")
-"""
-
-        code_combinations = [code_multiple_imports]
-
-        for code in code_combinations:
-            # Refer from test_import_types
-            self.assertEqual(code, None, "TODO: Implement")
-
-    def test_import_no_transformation(self):
-        """Usage test for conversion of various mezcla import styles to standard import (NO_TRANSFORMATION: Input code written with standard module)"""
-        debug.trace(5, f"TestUsageImportTypes.test_import_no_transformation(); self={self}")
-        code_no_transformation = """
-import logging
-logging.error("error")
-"""
-
-        expected_output = """
-import logging
-logging.error("error")
-"""
-
-        code_combinations = [code_no_transformation]
-
-        for code in code_combinations:
-            # Refer from test_import_types
-            result, _ = THE_MODULE.transform(THE_MODULE.ToStandard(), code)
-            self.assertEqual(result.strip(), expected_output.strip())
+            self.assertEqual(result.strip(), expected_output.strip(), msg)
 
 
 class TestUsage(TestWrapper):
@@ -1428,48 +1076,29 @@ class TestUsage(TestWrapper):
             any(result.strip() == expected.strip() for expected in expected_codes)
         )
 
-    @parametrize(
-        [
-            (
+    @unittest_parametrize.parametrize(
+        argnames="input_code, unsupported_message",
+        argvalues=[
+            unittest_parametrize.param(
                 'from mezcla import glue_helpers as gh\ngh.run("python3 --version")',
                 '# WARNING not supported: gh.run("python3 --version")',
-            )
-        ]
-    )
-    def test_unsupported_function_to_standard(self, input_code, unsupported_message):
-        """Test for conversion of an unsupported function during mezcla to standard conversion (commented as #Warning not supported)"""
-        debug.trace(
-            5,
-            f"TestUsage.test_unsupported_function_to_standard(input_code={input_code}, unsupported_message={unsupported_message}); self={self}",
-        )
-        result = self.helper_m2s(input_code)
-        self.assertNotEqual(result, None)
-        self.assertIn(unsupported_message, result)
-
-    @pytest.mark.xfail
-    @parametrize(
-        [
-            (
+                id="unsupported_function_to_standard",
+            ),
+            unittest_parametrize.param(
                 'import os\nos.getenv("HOME")',
-                '# WARNING not supported: gh.run("python3 --version")',
-            )
-        ]
+                '# WARNING not supported: os.getenv("HOME")',
+                id="unsupported_function_to_mezcla",
+            ),
+        ],
     )
-    def test_unsupported_function_to_mezcla(self, input_code, unsupported_message):
-        """Test for conversion of an unsupported function during standard to mezcla conversion (commented as #Warning not supported)"""
+    def test_unsupported(self, input_code, unsupported_message):
+        """Test for conversion of unsupported function (commented as # WARNING not supported)"""
         debug.trace(
             5,
-            f"TestUsage.test_unsupported_function_to_mezcla(input_code={input_code}, unsupported_message={unsupported_message}); self={self}",
+            f"TestUsage.test_unsupported(input_code={input_code}, unsupported_message={unsupported_message}); self={self}",
         )
-        ## TODO: Wait until the fix: AttributeError: 'list' object has no attribute '__module__'. Did you mean: '__mul__'?
-        # to_mezcla = THE_MODULE.ToMezcla()
-        # result = THE_MODULE.transform(to_module=to_mezcla, code=input_code)
         result = self.helper_m2s(input_code)
-
-        ## OLD: Use self.assertIn method
-        # assert result is not None
-        # assert unsupported_message in result
-        self.assertNotEqual(result, None)
+        self.assertNotEqual(result,None)
         self.assertIn(unsupported_message, result)
 
     @parametrize(
