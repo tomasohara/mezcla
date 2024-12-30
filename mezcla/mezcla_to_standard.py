@@ -3,13 +3,13 @@
 # Mezcla to Standard call conversion script
 #
 # TODO3: Look into making this table driven. Can't eval() be used to generate the EqCall specifications?
-# TODO4: Try to create a table covering more of system.py and glue_helper.py.  
+# TODO4: Try to create a table covering more of system.py and glue_helper.py.
 #
-#--------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
 # Sample input and output:
 #
 # - input
-#   
+#
 #   $ cat _simple_glue_helper_samples.py
 #   from mezcla import glue_helpers as gh
 #   gh.write_file("/tmp/fubar.list", "fubar.list")
@@ -17,9 +17,9 @@
 #   gh.delete_file("/tmp/fubar.list")
 #   gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
 #   gh.form_path("/tmp", "fubar")
-#   
+#
 # - output
-#   
+#
 #   from mezcla import glue_helpers as gh
 #   import os
 #   # WARNING not supported: gh.write_file("/tmp/fubar.list", "fubar.list")
@@ -28,7 +28,7 @@
 #   os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 #   os.path.join("/tmp", "fubar")
 #
-#--------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
 # Example illustrating the transformations being made
 #
 # - Original code
@@ -171,7 +171,7 @@
 #   import os
 #   os.path.join("/tmp", "fubar")
 #
-#--------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
 #
 
 """
@@ -193,6 +193,8 @@ import collections
 # Imports used to convert string to callable
 # pylint: disable=unused-import
 import os
+import json
+import ast
 
 # Installed module
 import libcst as cst
@@ -283,7 +285,7 @@ def get_func_specs(func: callable) -> ArgsSpecs:
     debug.trace(7, f"get_func_specs(func={func}) => {result}")
     return result
 
-def callable_to_path(func: Callable) -> Tuple:
+def callable_to_path(func: Callable) -> str:
     """
     Get the path from callable object
     ```
@@ -530,6 +532,105 @@ class EqCall:
         target_paths = [t.path for t in self.targets] if len(self.targets) > 1 else self.targets[0]
         dest_paths = [d.path for d in self.dests] if len(self.dests) > 1 else self.dests[0]
         return f"EqCall: {target_paths} => {dest_paths}"
+
+
+class EqCallParser:
+    """
+    EqCallParser is responsible for reading a configuration file and creating
+    instances of the EQclass defined within it.
+    Attributes:
+        config_path (str): The path to the configuration file.
+        eq_classes (list): A list to store instances of EQclass.
+    Methods:
+        parse_config(): Reads the configuration file and creates EQclass instances.
+    """
+
+    config_path: str = ""
+    eq_classes: list = []
+
+    def __init__(self, config_path: str) -> None:
+        assert system.file_exists(config_path), f"Config file not found: {config_path}"
+        self.config_path = config_path
+        self.parse_config()
+
+    def parse_config(self) -> None:
+        """
+        Parses the config file in `config_path` and creates instences of EQclass for each element in it
+        """
+        with open(self.config_path, "r") as file:
+            with json.load(file) as config:
+                for eq_call in config:
+                    targets = eq_call.get("targets")
+                    # if lambda in dest, compile and check
+                    # for co.names
+                    dests = eq_call.get("dests")
+                    dests = self._parse_dests(dests)
+                    # compile only if lambda,
+                    # eval without locals, globals or builtins
+                    condition = eq_call.get("condition", None)
+                    if condition is not None:
+                        condition = self._parse_condition(condition)
+                    eq_params = eq_call.get("eq_params", None)
+                    extra_params = eq_call.get("extra_params", None)
+                    # parse list and add features
+                    features = eq_call.get("features", None)
+                    features = self._parse_features(features)
+                    self.eq_classes.append(
+                        EqCall(
+                            targets, dests, condition, eq_params, extra_params, features
+                        )
+                    )
+        return
+
+    def _parse_dests(self, dests:SingleOrMultipleStrOrCallable ) -> SingleOrMultipleStrOrCallable:
+        """
+        Parse the destination list and return a list of CallDetails objects
+        """
+        allowed_names = {"os.environ.get": os.environ.get}
+        results = []
+        def _parse_dest(dest:StrOrCallable) -> StrOrCallable:
+            result = dest
+            if isinstance(dest, str) and "lambda" in dest:
+                code = compile(dest, "<string>", "eval")
+                for name in code.co_names:
+                    if name not in allowed_names:
+                        raise NameError(f"Use of {name} not allowed")
+                result = eval(code, {"__builtins__": {}}, allowed_names)
+            return result
+
+        if isinstance(dests, list) or isinstance(dests, tuple):
+            for dest in dests:
+                results.append(_parse_dest(dest))
+        else:
+            results.append(_parse_dest(dests))
+        return results
+
+    def _parse_condition(self, condition:StrOrCallable) -> StrOrCallable:
+        """
+        Parse the condition and return a CallDetails object
+        """
+        result = condition
+        if isinstance(condition, str) and "lambda" in condition:
+            code = compile(condition, "<string>", "eval")
+            if len(code.co_names) > 0:
+                raise NameError(f"Use of {code.co_names[0]} not allowed")
+            result = eval(code, {"__builtins__": {}}, {})
+        return result
+    
+    def _parse_features(self, features:List[str]) -> List[Features]:
+        """
+        Parse the features list and return a list of Features objects
+        """
+        results = []
+        for feature in features:
+            if feature.endswith("FORMAT_STRING"):
+                results.append(Features.FORMAT_STRING)
+            elif feature.endswith("COPY_DEST_SOURCE"):
+                results.append(Features.COPY_DEST_SOURCE)
+            else:
+                raise ValueError(f"Unsupported feature: {feature}")
+        return results
+        
 
 # Custom Function replacements
 
@@ -1017,7 +1118,7 @@ def dict_to_func_args_list(func: CallDetails, args_dict: dict) -> List[cst.Arg]:
     debug.trace(7, f"dict_to_func_args_list(func={func}, args_dict={args_dict}) => {result}")
     return result
 
-def flatten_list(list_to_flatten: list) -> list:
+def flatten_list(list_to_flatten: list[list]) -> list:
     """Flatten a list"""
     result = []
     for item in list_to_flatten:
@@ -1269,13 +1370,12 @@ class BaseTransformerStrategy:
     """Transformer base class"""
 
     def __init__(self) -> None:
-        self.unique_eq_calls = []
+        self.unique_eq_calls: list[EqCall] = []
         """
         List of equivalent calls between Mezcla and standard, with all permutations precalculated
         to avoid recalculating them every time we want to find an equivalent call
         """
-        self.unique_eq_calls = [e.get_permutations() for e in mezcla_to_standard]
-        self.unique_eq_calls = flatten_list(self.unique_eq_calls)
+        self.unique_eq_calls = flatten_list([e.get_permutations() for e in mezcla_to_standard])
 
     def insert_extra_params(self, eq_call: EqCall, args: dict) -> dict:
         """
@@ -1693,7 +1793,7 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer, StoreMetrics)
         debug.trace(7, f"ReplaceMezclaWithWarningTransformer.replace_with_warning_if_needed(updated_node={updated_node}) => {updated_node}")
         return updated_node
 
-def transform(to_module, code: str, skip_warnings:bool=False) -> str:
+def transform(to_module, code: str, skip_warnings:bool=False) -> tuple[str,dict]:
     """
     Transform the code
 
