@@ -35,6 +35,9 @@ from mezcla import system
 
 # Constants
 Location = namedtuple('Location', ['document', 'start', 'end'])
+ADD_DUMMY_LOCATION = system.getenv_boolean(
+    "ADD_DUMMY_LOCATION", False,
+    desc="Add dummy location for debugging purposes")
 
 
 class DocKeyword(object):
@@ -44,6 +47,11 @@ class DocKeyword(object):
     def __init__(self, text, document=None, start=None, end=None):
         self.locations = set()
         self.text = text
+        if ADD_DUMMY_LOCATION:
+            if (start is None):
+                start = -1
+            if (end is None):
+                end = -1
         if (start is not None) and (end is not None):
             self.locations.add(Location(document, start, end))
         ## DEBUG: debug.trace_object(BDL + 4, self, "DocKeyword instance", show_all=False)
