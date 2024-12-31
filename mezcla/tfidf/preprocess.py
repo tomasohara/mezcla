@@ -424,7 +424,9 @@ class Preprocessor(object):
 
         vectorizer = CountVectorizer(ngram_range=(self.min_ngram_size, self.gramsize))
         analyzer = vectorizer.build_analyzer()
+        ## DEBUG: debug.trace_expr(8, analyzer)
         for ngram in analyzer(raw_text):
+            ## DEBUG: debug.trace_expr(9, ngram)
             yield DocKeyword(ngram, document=document)
         return
 
