@@ -292,49 +292,49 @@ class CutArgsProcessing(Main):
 
     def _process_delimiter_options(self):
         """Processes delimiter-related options."""
-        # Check delimiter options
-        # Note: output delimiter defaults to input unless convert specified
         self.csv = self.get_parsed_option(CSV, self.csv)
         if self.csv:
             self.delimiter = COMMA
+
         tsv = self.get_parsed_option(TSV, not self.csv)
         if tsv:
             self.delimiter = TAB
-        
-        # OLD: self.delimiter = self.get_parsed_option(DELIM, self.delimiter)
+
         explicit_delim = self.get_parsed_option(DELIM, self.delimiter)
-        # print("ASCII of Explicit Delim:", ord(explicit_delim))
         if explicit_delim:
             self.delimiter = explicit_delim
-            self.csv = False
-        #
-        debug.assertion(self.output_delimiter is None)
-        if self.get_parsed_option(OUTPUT_CSV):
-            self.output_delimiter = COMMA
-        if self.get_parsed_option(OUTPUT_TSV):
-            self.output_delimiter = TAB
-        if self.output_delimiter is None:
-            self.output_delimiter = self.delimiter
-        if self.get_parsed_option(CONVERT_DELIM):
-            self.output_delimiter = TAB if (self.delimiter == COMMA) else COMMA
-        if (self.output_delimiter is None):
-            self.output_delimiter = self.delimiter
-        #
+            self.csv = False  # Explicit delimiter overrides CSV default
+
+        # Handle output delimiter with proper priority
+        self.output_delimiter = self.get_parsed_option(OUT_DELIM, None)
+        if self.output_delimiter is None:  # If not explicitly set
+            if self.get_parsed_option(OUTPUT_CSV):
+                self.output_delimiter = COMMA
+            elif self.get_parsed_option(OUTPUT_TSV):
+                self.output_delimiter = TAB
+            elif self.get_parsed_option(CONVERT_DELIM):
+                self.output_delimiter = TAB if self.delimiter == COMMA else COMMA
+            else:
+                self.output_delimiter = self.delimiter  # Default to input delimiter
+
         self.run_sniffer = self.get_parsed_option(SNIFFER_ARG, self.run_sniffer)
+
+        # Assertions and debug tracing
         debug.assertion(not (self.csv and (self.delimiter != COMMA)))
-        self.output_delimiter = self.get_parsed_option(OUT_DELIM, (self.output_delimiter or self.delimiter))
         self.single_line = self.get_parsed_option(SINGLE_LINE, self.single_line)
         self.max_field_len = self.get_parsed_option(MAX_FIELD_LEN, self.max_field_len)
-        # self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
-    
+
+        debug.trace_expr(5, self.delimiter, label="Input Delimiter")
+        debug.trace_expr(5, self.output_delimiter, label="Output Delimiter")
+
+
     def _process_csv_dialect_options(self):
         """Processes CSV dialect options."""
         debug.trace_fmtd(5, "Processing CSV dialect options.")
 
-        # Ensure that the run_sniffer flag is set correctly based on user input
         self.run_sniffer = self.get_parsed_option(SNIFFER_ARG, self.run_sniffer)
 
-        # Check for exclusive dialect options
+        # Assert only one dialect is explicitly specified
         dialects = [DIALECT, EXCEL_DIALECT, UNIX_DIALECT, PYSPARK_DIALECT, TAB_DIALECT]
         debug.assertion(
             system.just_one_non_null(
@@ -342,24 +342,25 @@ class CutArgsProcessing(Main):
             )
         )
 
-        # Set dialect based on options if sniffer isn't running
-        if not self.dialect:  # Only set the sniffer if no dialect is already set
-            pyspark_style = self.get_parsed_option(PYSPARK_STYLE)
+        # Determine input dialect
+        if not self.dialect:
             if self.get_parsed_option(EXCEL_STYLE):
                 self.dialect = EXCEL_DIALECT
-            elif pyspark_style:
+            elif self.get_parsed_option(PYSPARK_STYLE):
                 self.dialect = PYSPARK_DIALECT
             elif self.get_parsed_option(UNIX_STYLE) or self.delimiter == COMMA:
                 self.dialect = UNIX_DIALECT
             elif self.get_parsed_option(TAB_STYLE) or self.delimiter == TAB:
                 self.dialect = TAB_DIALECT
 
-        # Output dialect defaults if not set
-        self.output_dialect = self.get_parsed_option(
-            OUTPUT_DIALECT, self.dialect or UNIX_DIALECT
-        )
+        # Handle output dialect with proper default logic
+        if not self.get_parsed_option(OUT_DELIM, None):  # Only if no output delimiter
+            self.output_dialect = self.get_parsed_option(
+                OUTPUT_DIALECT, self.dialect or UNIX_DIALECT
+            )
+        else:
+            self.output_dialect = None
 
-        # Debug trace for dialect options
         debug.trace_expr(5, self.dialect, label="Dialect")
         debug.trace_expr(5, self.output_dialect, label="Output Dialect")
 
@@ -374,18 +375,18 @@ class CutArgsProcessing(Main):
 
         self.cut_logic.override_field_size(MAX_FIELD_SIZE)
         self.cut_logic.initialize_io_processing()
-        debug.trace(3, "About to call determine_dialect")
-        self.cut_logic.determine_dialect(self.run_sniffer, SNIFFER_LOOKAHEAD)
+        debug.trace(5, "About to call determine_dialect")
+        # self.cut_logic.determine_dialect(self.run_sniffer, SNIFFER_LOOKAHEAD)
 
         # Ensure Sniffer results are applied
-        debug.trace_expr(3, self.cut_logic.delimiter, label="Detected Delimiter")
+        debug.trace_expr(5, self.cut_logic.delimiter, label="Detected Delimiter")
         if self.run_sniffer:
-            debug.trace(3, "Applying Sniffer detected delimiter to CSV reader.")
+            debug.trace(5, "Applying Sniffer detected delimiter to CSV reader.")
             self.cut_logic.csv_reader = csv.reader(
                 self.cut_logic.input_stream, delimiter=self.cut_logic.delimiter
             )
         else:
-            debug.trace(3, "Using predefined delimiter.")
+            debug.trace(5, "Using predefined delimiter.")
 
         if self.fix:
             self.cut_logic.fix_input(self.temp_file)
@@ -424,11 +425,11 @@ class CutArgsProcessing(Main):
                 system.print_exception_info("Row Output")
 
         self.cut_logic.perform_sanity_checks(self.cut_logic.filename, num_rows, num_cols)
-        debug.trace_expr(3, self.cut_logic.run_sniffer, label="run_sniffer")
-        debug.trace_expr(3, self.cut_logic.delimiter, label="delimiter")
-        debug.trace_expr(3, self.cut_logic.output_delimiter, label="output_delimiter")
-        debug.trace_expr(3, self.cut_logic.dialect, label="dialect")
-        debug.trace_expr(3, self.cut_logic.output_dialect, label="output_dialect")
+        debug.trace_expr(5, self.cut_logic.run_sniffer, label="run_sniffer")
+        debug.trace_expr(5, self.cut_logic.delimiter, label="delimiter")
+        debug.trace_expr(5, self.cut_logic.output_delimiter, label="output_delimiter")
+        debug.trace_expr(5, self.cut_logic.dialect, label="dialect")
+        debug.trace_expr(5, self.cut_logic.output_dialect, label="output_dialect")
 
     def _main_step_pandas_cut_logic(self):
         if not hasattr(self, 'cut_logic'):
@@ -466,8 +467,8 @@ class CutLogic:
         # Initialization code for CutLogic
         self.fields = []
         self.exclude_fields = []
-        self.delimiter = COMMA
-        self.output_delimiter = COMMA
+        self.delimiter = None
+        self.output_delimiter = None
         self.dialect = None
         self.output_dialect = None
         self.filename = ""
@@ -607,27 +608,17 @@ class CutLogic:
                 "Filename is not set. Please provide a valid input file or use standard input."
             )
 
+        # Open input stream
         if self.filename == "-":
             debug.trace(3, "initialize_io_processing: Using standard input as the data source.")
-            ## OLD: Does not support stdin input for sniffing
-            self.input_stream = sys.stdin
-            if self.run_sniffer or ENABLE_SNIFFER:
-                import io
-                self.input_stream = io.StringIO(sys.stdin.read())
-            
+            import io
+            self.input_stream = io.StringIO(sys.stdin.read())
         else:
             try:
                 debug.trace(5, f"initialize_io_processing: Opening file '{self.filename}'")
                 self.input_stream = system.open_file(self.filename, newline="")
             except FileNotFoundError:
                 raise FileNotFoundError(f"initialize_io_processing: File '{self.filename}' does not exist.")
-
-        if self.delimiter is None:
-            debug.trace(5, "initialize_io_processing: No delimiter set. Returning file contents as lines.")
-            lines = self.input_stream.readlines()
-            self.input_stream.seek(0)
-            debug.trace(5, f"initialize_io_processing: Read {len(lines)} lines from the input stream.")
-            return lines
 
         debug.trace(5, f"initialize_io_processing: Using delimiter: {self.delimiter}")
         debug.trace(5, f"initialize_io_processing: Output delimiter: {self.output_delimiter}")
@@ -639,22 +630,25 @@ class CutLogic:
             self.input_stream, delimiter=self.delimiter, dialect=self.dialect
         )
         debug.trace_object(5, self.csv_reader, "initialize_io_processing: csv_reader")
-        debug.trace_object(5, self.csv_reader.dialect, "initialize_io_processing: csv_reader.dialect")
 
-        # Ensure output_dialect is set, default to csv.excel() if not
-        if not self.output_dialect:
-            debug.trace(3, "initialize_io_processing: Output dialect is not set. Using default csv.excel() dialect.")
-            self.output_dialect = csv.excel()
-
-        # Initialize CSV writer with or without quoting based on settings
+        # Initialize CSV writer
         debug.trace(5, "initialize_io_processing: Initializing CSV writer.")
-        quoting_option = csv.QUOTE_NONE if DISABLE_QUOTING else csv.QUOTE_MINIMAL
-        self.csv_writer = csv.writer(
-            sys.stdout,
-            delimiter=self.output_delimiter,
-            dialect=self.output_dialect,
-            quoting=quoting_option
-        )
+
+        # Build arguments for csv.writer
+        writer_args = {}
+        if self.output_dialect:
+            debug.trace(5, f"initialize_io_processing: Using output_dialect: {self.output_dialect}")
+            writer_args["dialect"] = self.output_dialect
+        elif self.output_delimiter:
+            debug.trace(5, f"initialize_io_processing: Using output_delimiter: {self.output_delimiter}")
+            writer_args["delimiter"] = self.output_delimiter
+
+        # Apply DISABLE_QUOTING logic
+        writer_args["quoting"] = csv.QUOTE_NONE if DISABLE_QUOTING else csv.QUOTE_MINIMAL
+
+        # Initialize the writer with built arguments
+        self.csv_writer = csv.writer(sys.stdout, **writer_args)
+
         debug.trace_object(5, self.csv_writer, "initialize_io_processing: csv_writer")
         debug.trace_object(5, self.csv_writer.dialect, "initialize_io_processing: csv_writer.dialect")
 
@@ -712,6 +706,7 @@ class CutLogic:
         debug.trace_expr(6, output_row, label="Output Row")
         return output_row
 
+
     def perform_sanity_checks(self, filename, num_rows, num_cols):
         """Perform sanity checks on the processed data."""
         if debug.debugging() and (self.input_stream != sys.stdin):
@@ -747,10 +742,10 @@ class PandasCutLogic(CutLogic):
 
     def determine_dialect(self, run_sniffer, lookahead):
         """Determine dialect for CSV input."""
-        debug.trace(3, f"determine_dialect.run_sniffer: {run_sniffer}")
+        debug.trace(5, f"determine_dialect.run_sniffer: {run_sniffer}")
 
         if not run_sniffer:
-            debug.trace(3, "Sniffer is disabled. Skipping dialect determination.")
+            debug.trace(5, "Sniffer is disabled. Skipping dialect determination.")
             return
 
         if self.filename == "-":
@@ -766,7 +761,7 @@ class PandasCutLogic(CutLogic):
             self.delimiter = dialect.delimiter
             self.output_dialect = dialect
 
-            debug.trace(3, f"Sniffer detected delimiter: {self.delimiter}")
+            debug.trace(5, f"Sniffer detected delimiter: {self.delimiter}")
 
         except Exception as e:
             debug.trace(1, f"Sniffer failed: {e}")
@@ -774,7 +769,7 @@ class PandasCutLogic(CutLogic):
                 raise ValueError(
                     f"Sniffer failed to detect delimiter, and no fallback delimiter is provided: {e}"
                 )
-            debug.trace(3, f"Using fallback delimiter: {self.delimiter}")
+            debug.trace(5, f"Using fallback delimiter: {self.delimiter}")
 
     def initialize_io_processing(self):
         """Initialize io processing"""
@@ -792,7 +787,7 @@ class PandasCutLogic(CutLogic):
                 delimiter=self.delimiter,
                 encoding="utf-8"
             )
-            debug.trace(3, f"Loaded DataFrame with shape {self.dataframe.shape}")
+            debug.trace(5, f"Loaded DataFrame with shape {self.dataframe.shape}")
             
             # Verbose code to create dataframe
             delimiter_literal = (
@@ -832,8 +827,8 @@ class PandasCutLogic(CutLogic):
                 self.fields = list(range(1, len(columns) + 1))
             self.fields = [f for f in self.fields if f not in self.exclude_fields]
 
-        debug.trace(3, f"Initialized fields: {self.fields}")
-        debug.trace(3, f"Excluded fields: {self.exclude_fields}")
+        debug.trace(5, f"Initialized fields: {self.fields}")
+        debug.trace(5, f"Excluded fields: {self.exclude_fields}")
 
     def extract_fields(self):
         """
@@ -843,7 +838,6 @@ class PandasCutLogic(CutLogic):
         if self.dataframe is None:
             raise ValueError("Dataframe is not initialized. Call initialize_io_processing first.")
 
-        # Handle field selection
         if self.fields:
             selected_columns = [
                 self.dataframe.columns[f - 1] for f in self.fields if f - 1 < len(self.dataframe.columns)
@@ -854,6 +848,7 @@ class PandasCutLogic(CutLogic):
             self._add_to_verbose_code(
                 f"df = df[{selected_columns}]"
             )
+            
             ## NOTE: Uncomment to add index based dataframe extraction
             # self._add_to_verbose_code(
             #     f"df = df.iloc[:, {selected_indices}]"
@@ -862,10 +857,8 @@ class PandasCutLogic(CutLogic):
         else:
             selected_columns = list(self.dataframe.columns)
 
-        # Select the relevant columns
         result_df = self.dataframe[selected_columns]
 
-        # Apply truncation if max_field_len is set
         if self.max_field_len:
             truncated_columns = elide_values(list(result_df.columns), self.max_field_len)
             result_df.columns = truncated_columns
@@ -877,8 +870,8 @@ class PandasCutLogic(CutLogic):
                 f"df.columns = [(col[:{self.max_field_len}] + '...') if len(col) > {self.max_field_len} col for col in df.columns]",
                 f"df = df.map(lambda x: (str(x)[:{self.max_field_len}] + '...') if isinstance(x, (str, int, float)) and len(str(x)) > {self.max_field_len} else x)"
             )
-        # Debug trace
-        debug.trace(3, f"Extracted fields DataFrame with shape {result_df.shape}")
+
+        debug.trace(5, f"Extracted fields DataFrame with shape {result_df.shape}")
 
         return result_df
 
@@ -893,8 +886,9 @@ class PandasCutLogic(CutLogic):
         self._add_to_verbose_code(
             f"print(df.to_csv(sep='{output_delimiter_literal}', index=False))"
         )
-        debug.trace(3, "Formatted DataFrame for output.")
+        debug.trace(5, "Formatted DataFrame for output.")
         return result
+
 
 if __name__ == "__main__":
     debug.trace_current_context()
