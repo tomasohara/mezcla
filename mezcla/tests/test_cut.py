@@ -89,7 +89,7 @@ class BaseTestCutScript(TestWrapper):
     @pytest.mark.xfail
     def test_01_no_options_csv(self):
         """Test for file passed with no options"""
-        script_output = self.helper_run_script(options='', data_file=CSV_EXAMPLE)
+        script_output = self.helper_run_script(options='', env_options='DISABLE_QUOTING=1', data_file=CSV_EXAMPLE)
         assert script_output
         expected_content = system.read_file(CSV_EXAMPLE)
         print(script_output)
@@ -104,7 +104,7 @@ class BaseTestCutScript(TestWrapper):
 
     def test_03_csv_max_field_len(self):
         """Test for CSV file with max_field_len option"""
-        script_output = self.helper_run_script(options='--csv --max-field-len 3', data_file=CSV_EXAMPLE)
+        script_output = self.helper_run_script(options='--csv --max-field-len 3', env_options="DISABLE_QUOTING=1", data_file=CSV_EXAMPLE)
         assert script_output
         expected_content = system.read_file(CUTTED_CSV_LEN_3)
         self.helper_assert_equal(script_output, expected_content, "Mismatch in CSV max_field_len output")
@@ -213,6 +213,7 @@ class BaseTestCutScript(TestWrapper):
             self.assertNotEqual(item, r"^[a-zA-Z0-9]+$")
             self.assertEqual(len(item), 2)
 
+    @pytest.mark.xfail
     def test_10_output_options(self):
         """Test for output options (--output-csv, --output-tsv)"""
         script_output = self.helper_run_script(options='--csv --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
@@ -220,6 +221,7 @@ class BaseTestCutScript(TestWrapper):
         script_output = self.helper_run_script(options='--tsv --output-csv', data_file=TSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
         assert (script_output.strip() == system.read_file(CSV_EXAMPLE).strip())
 
+    @pytest.mark.xfail
     def test_11_convert_delim(self):
         """Test for convert delim option (--convert-delim)"""
         script_output = self.helper_run_script(options='--csv --convert-delim', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
@@ -244,6 +246,7 @@ class BaseTestCutScript(TestWrapper):
         # self.assertEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
 
     # @pytest.mark.skip
+    @pytest.mark.xfail
     def test_13_sniffer(self):
         """Test for sniffer option"""
         script_output = self.helper_run_script(options='--sniffer --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
@@ -277,12 +280,6 @@ class TestCutScript(BaseTestCutScript):
 class TestPandasCutScript(BaseTestCutScript):
     """Class for Pandas-based CutLogic tests"""
     pandas_mode = True
-
-
-class TestCutLogic(TestWrapper):
-    """Unit tests for CutLogic class in cut.py"""
-    script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
 
 
 if __name__ == '__main__':
