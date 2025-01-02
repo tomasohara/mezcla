@@ -867,7 +867,7 @@ class PandasCutLogic(CutLogic):
                 lambda x: elide_values([str(x)], self.max_field_len)[0] if isinstance(x, (str, int, float)) else x
             )
             self._add_to_verbose_code(
-                f"df.columns = [(col[:{self.max_field_len}] + '...') if len(col) > {self.max_field_len} col for col in df.columns]",
+                f"df.columns = [(col[:{self.max_field_len}] + '...') if len(col) > {self.max_field_len} else col for col in df.columns]",
                 f"df = df.map(lambda x: (str(x)[:{self.max_field_len}] + '...') if isinstance(x, (str, int, float)) and len(str(x)) > {self.max_field_len} else x)"
             )
 
