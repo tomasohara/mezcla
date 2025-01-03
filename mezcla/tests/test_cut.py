@@ -84,12 +84,9 @@ class BaseTestCutScript(TestWrapper):
                 f"Expected:\n{cleaned_expected}"
             )
 
-    ## Issue: Maximum length set to 128 for default run in pandas option
-    ## Temp Fix: Set --max-field-len to 65536
-    @pytest.mark.xfail
     def test_01_no_options_csv(self):
         """Test for file passed with no options"""
-        script_output = self.helper_run_script(options='', env_options='DISABLE_QUOTING=1', data_file=CSV_EXAMPLE)
+        script_output = self.helper_run_script(options='', data_file=CSV_EXAMPLE)
         assert script_output
         expected_content = system.read_file(CSV_EXAMPLE)
         print(script_output)
@@ -190,28 +187,6 @@ class BaseTestCutScript(TestWrapper):
     ## Unnamed: 1
     ## ""
     ## ""
-    @pytest.mark.xfail
-    def test_09_empty_row(self):
-        """Text handling of empty rows"""
-        csv_data = """
-        "fubar?",
-        "no",
-        "",
-        """
-        temp_file = self.create_temp_file(csv_data.strip())
-        script_output = self.helper_run_script(options='--csv --exclude 1,5-26', data_file=temp_file)
-        self.assertNotEqual(script_output.split(), "")
-        assert script_output
-        non_empty_lines = [
-            line 
-            for line in script_output.split('\n')
-            if line.strip()
-        ]
-        print(non_empty_lines)
-        self.assertEqual(len(non_empty_lines), 3)
-        for item in script_output.split():
-            self.assertNotEqual(item, r"^[a-zA-Z0-9]+$")
-            self.assertEqual(len(item), 2)
 
     @pytest.mark.xfail
     def test_10_output_options(self):
@@ -255,7 +230,7 @@ class BaseTestCutScript(TestWrapper):
         self.helper_assert_equal(script_output, expected_output)
     
     ## NOTE: --verbose option supported for --pandas option only
-    ## NOTE: Test passed for non --pandas option
+    ## NOTE/ISSUE: Test passed for non --pandas option
     @pytest.mark.xfail             
     def test_14_verbose_output(self):
         """Test for verbose option"""
@@ -276,11 +251,32 @@ class TestCutScript(BaseTestCutScript):
     """Class for standard CutLogic tests"""
     pandas_mode = False
 
+    def test_b1_empty_row(self):
+        """Text handling of empty rows"""
+        csv_data = """
+        "fubar?",
+        "no",
+        "",
+        """
+        temp_file = self.create_temp_file(csv_data.strip())
+        script_output = self.helper_run_script(options='--csv --exclude 1,5-26', data_file=temp_file)
+        self.assertNotEqual(script_output.split(), "")
+        assert script_output
+        non_empty_lines = [
+            line 
+            for line in script_output.split('\n')
+            if line.strip()
+        ]
+        self.assertEqual(len(non_empty_lines), 3)
+        for item in script_output.split():
+            self.assertNotEqual(item, r"^[a-zA-Z0-9]+$")
+            self.assertEqual(len(item), 2)
+
 class TestPandasCutScript(BaseTestCutScript):
     """Class for Pandas-based CutLogic tests"""
     pandas_mode = True
 
-    def helper_e1_snippet_output(self, text):
+    def helper_p1_snippet_output(self, text):
         snippet = text.split("===\n", 1)[1]
         temp_file = gh.create_temp_file(contents=snippet)
         output = gh.run(f"python3 {temp_file}")
@@ -297,7 +293,7 @@ class TestPandasCutScript(BaseTestCutScript):
             env_options='DISABLE_QUOTING=1'
         )
 
-    def test_e1_verbose_snippet_vs_actual(self):
+    def test_p1_verbose_snippet_vs_actual(self):
         """Test output from actual file vs snippets for --verbose --pandas option"""
         options=['--csv', '--csv --fields 2-6,9', '--tsv --output-delim="|"', '--tsv --max-field-len 3', '--csv --output-tsv', '--sniffer --x car_ID,symboling,fueltype', '--delim=";" --output-delim="|" --x car_ID,symboling,fueltype']
         data_file=[CSV_EXAMPLE, CSV_EXAMPLE, TSV_EXAMPLE, TSV_EXAMPLE, CSV_EXAMPLE, CSV_SEMICOLON, CSV_SEMICOLON]
@@ -305,8 +301,28 @@ class TestPandasCutScript(BaseTestCutScript):
         for opt, data in zipped_options_datafile:
             script_output = self.helper_run_script_with_verbose(opt, data, add_verbose=False)
             script_output_verbose = self.helper_run_script_with_verbose(opt, data, add_verbose=True)
-            snippet_output = self.helper_e1_snippet_output(script_output_verbose)
+            snippet_output = self.helper_p1_snippet_output(script_output_verbose)
             self.assertEqual(snippet_output, script_output+"\n")
+
+    def test_p2_empty_row(self):
+        """Check if a row is empty under --pandas"""
+        """Text handling of empty rows"""
+        csv_data = """
+        "fubar?",
+        "no",
+        "",
+        """
+        temp_file = self.create_temp_file(csv_data.strip())
+        script_output = self.helper_run_script(options='--csv --exclude 1,5-26', data_file=temp_file)
+        self.assertNotEqual(script_output.split(), "")
+        assert script_output
+        non_empty_lines = [
+            line 
+            for line in script_output.split('\n')
+            if line.strip()
+        ]
+        self.assertEqual(len(non_empty_lines), 3)
+        self.assertIn("Unnamed: 1", script_output.split("\n"))
 
 if __name__ == '__main__':
     debug.trace_current_context()
