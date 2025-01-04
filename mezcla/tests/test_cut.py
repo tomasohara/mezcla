@@ -51,7 +51,6 @@ class TestCutUtils(TestWrapper):
         debug.trace(4, "test_flatten_list_of_strings()")
         assert THE_MODULE.flatten_list_of_strings([["l1i1", "l1i2"], ["l2i1"]]) == ["l1i1", "l1i2", "l2i1"]
 
-## NEW: Use of Base Test Script, to test with pandas enabled and disabled
 class BaseTestCutScript(TestWrapper):
     """Base class for shared test logic of cut.py"""
     script_file = TestWrapper.get_module_file_path(__file__)
@@ -182,14 +181,8 @@ class BaseTestCutScript(TestWrapper):
         script_output = self.helper_run_script(options='--csv --exclude 1-car-ID', data_file=CSV_EXAMPLE)
         self.assertEqual(script_output.strip(), "")
 
-    ## ISSUE: Assertion Error for --pandas option, header-less CSV files return Unnamed:1
-    ## ricekiller@pop-os:~/tomProject/mezcla$ DEBUG_LEVEL=0 python3 mezcla/cut.py --csv csvempty.csv --exclude 1,5-26 --pandas
-    ## Unnamed: 1
-    ## ""
-    ## ""
-
     @pytest.mark.xfail
-    def test_10_output_options(self):
+    def test_09_output_options(self):
         """Test for output options (--output-csv, --output-tsv)"""
         script_output = self.helper_run_script(options='--csv --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
         assert (script_output.strip() == system.read_file(TSV_EXAMPLE).strip())
@@ -197,43 +190,41 @@ class BaseTestCutScript(TestWrapper):
         assert (script_output.strip() == system.read_file(CSV_EXAMPLE).strip())
 
     @pytest.mark.xfail
-    def test_11_convert_delim(self):
+    def test_10_convert_delim(self):
         """Test for convert delim option (--convert-delim)"""
         script_output = self.helper_run_script(options='--csv --convert-delim', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
         assert (script_output.strip() == system.read_file(TSV_EXAMPLE).strip())
         script_output = self.helper_run_script(options='--tsv --convert-delim', data_file=TSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
         assert (script_output.strip() == system.read_file(CSV_EXAMPLE).strip())
 
-    @pytest.mark.xfail  # TODO: Use helper function for comparison instead of comparisons of strip()
-    def test_12_explicit_delim(self):
-        """Test for explicit delim option (--delim)"""
-        script_output = self.helper_run_script(options='--delim=";" --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+    def test_11_explicit_delim(self):
+        """Test for explicit delim option (--delim)"""        
         expected_content_tsv = system.read_file(TSV_EXAMPLE)
-        expected_content_csv = system.read_file(CSV_EXAMPLE)
-        assert script_output
+
+        # Test A: Delimiter in CSV_EXAMPLE (COMMA) != --delim option (SEMICOLON)
+        # The script output (not affected by --output-tsv, similar to CSV_EXAMPLE) is not equal to TSV_EXAMPLE        
+        script_output = self.helper_run_script(options='--delim=";" --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        # not_equal parameter in self.helper_assert_equal checks whether two values are unequal
         self.helper_assert_equal(script_output, expected_content_tsv, not_equal=1)
+        
+        # Test B: Delimiter in CSV_EXAMPLE (COMMA) == --delim option (COMMA)
+        # The script output (affected by --output-tsv, as correct delimiter is detected) is equal to TSV_EXAMPLE        
         script_output = self.helper_run_script(options='--delim="," --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
         self.helper_assert_equal(script_output, expected_content_tsv)        
-        ## OLD: Assertion using stripped output
-        # self.assertNotEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
-        # self.assertEqual(script_output.strip(), system.read_file(CSV_EXAMPLE).strip())
-        # script_output = self.helper_run_script(options='--delim="," --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
-        # self.assertEqual(script_output.strip(), system.read_file(TSV_EXAMPLE).strip())
 
-    # @pytest.mark.skip
     @pytest.mark.xfail
-    def test_13_sniffer(self):
+    def test_12_sniffer(self):
         """Test for sniffer option"""
         script_output = self.helper_run_script(options='--sniffer --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
         expected_output = system.read_file(TSV_EXAMPLE)
         assert script_output
         self.helper_assert_equal(script_output, expected_output)
     
-    ## NOTE: --verbose option supported for --pandas option only
-    ## NOTE/ISSUE: Test passed for non --pandas option
     @pytest.mark.xfail             
-    def test_14_verbose_output(self):
+    def test_13_verbose_output(self):
         """Test for verbose option"""
+        ## NOTE: --verbose option supported for --pandas option only
+        ## NOTE/ISSUE: Test passed for non --pandas option
         script_output = self.helper_run_script(
             options='--sniffer --output-tsv --pandas --verbose --fields 2-6,9',
             data_file=CSV_EXAMPLE,
@@ -295,9 +286,12 @@ class TestPandasCutScript(BaseTestCutScript):
 
     def test_p1_verbose_snippet_vs_actual(self):
         """Test output from actual file vs snippets for --verbose --pandas option"""
+        
+        ## NOTE: Creation of test cases for ipynb code snippets
         options=['--csv', '--csv --fields 2-6,9', '--tsv --output-delim="|"', '--tsv --max-field-len 3', '--csv --output-tsv', '--sniffer --x car_ID,symboling,fueltype', '--delim=";" --output-delim="|" --x car_ID,symboling,fueltype']
         data_file=[CSV_EXAMPLE, CSV_EXAMPLE, TSV_EXAMPLE, TSV_EXAMPLE, CSV_EXAMPLE, CSV_SEMICOLON, CSV_SEMICOLON]
         zipped_options_datafile = zip(options, data_file)
+        
         for opt, data in zipped_options_datafile:
             script_output = self.helper_run_script_with_verbose(opt, data, add_verbose=False)
             script_output_verbose = self.helper_run_script_with_verbose(opt, data, add_verbose=True)
@@ -306,7 +300,7 @@ class TestPandasCutScript(BaseTestCutScript):
 
     def test_p2_empty_row(self):
         """Check if a row is empty under --pandas"""
-        """Text handling of empty rows"""
+        ## NOTE: --pandas returns "Unnamed: 1" instead of 3 empty rows compared to test_e1_empty_rows
         csv_data = """
         "fubar?",
         "no",
