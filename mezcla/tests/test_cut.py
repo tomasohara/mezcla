@@ -215,6 +215,15 @@ class BaseTestCutScript(TestWrapper):
     @pytest.mark.xfail
     def test_12_sniffer(self):
         """Test for sniffer option"""
+
+        # Test A: See if sniff returns the same output as the example used
+        script_output = self.helper_run_script(options='--sniffer', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
+        expected_output = system.read_file(CSV_EXAMPLE)
+        assert script_output
+        self.helper_assert_equal(script_output, expected_output)
+
+
+        # Test B: If the delimiter is sniffed, the output-tsv option will return the tab styled output, irrespective of input delim
         script_output = self.helper_run_script(options='--sniffer --output-tsv', data_file=CSV_EXAMPLE, env_options='DISABLE_QUOTING=1')
         expected_output = system.read_file(TSV_EXAMPLE)
         assert script_output
