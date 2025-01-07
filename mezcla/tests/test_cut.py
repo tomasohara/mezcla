@@ -247,6 +247,25 @@ class BaseTestCutScript(TestWrapper):
         assert script_output, "Script output is empty."
         self.assertIn(normalized_expected, normalized_output, "Expected verbose code not found in the script output.")
 
+    @pytest.mark.xfail
+    def test_14_output_dialect(self):
+        """Test if output-dialect option works as expected"""
+        ## TODO: Add more dialect options and their respective outputs
+        ## ISSUE: 
+        DIALECT_OPTIONS = ['pyspark', 'tab']
+        OUTPUT_FILES = [CSV_EXAMPLE, TSV_EXAMPLE]
+        zipped_dialect_outputs = zip(DIALECT_OPTIONS, OUTPUT_FILES)
+        
+        for dialect, output_file in zipped_dialect_outputs:
+            script_output = self.helper_run_script(
+                options=f'--csv --output-dialect="{dialect}"',
+                data_file=CSV_EXAMPLE,
+                env_options='DISABLE_QUOTING=1'
+            )
+            expected_output = system.read_file(output_file)
+            assert script_output, "Script output is empty"
+            self.helper_assert_equal(script_output, expected_output)
+
 class TestCutScript(BaseTestCutScript):
     """Class for standard CutLogic tests"""
     pandas_mode = False
