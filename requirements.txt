@@ -79,7 +79,7 @@ wheel
 #   python -m spacy download en_core_web_lg
 # - install bash kernel
 #   python -m bash_kernel.install
-# - add '#opt#deprecated#' (e,.g., useful for deprecated functions/modules)
+# - add '#opt#deprecated#' (e.g., useful for deprecated functions/modules)
 # NOTE:
 # - tensorflow and related not installed by default due to size of repo and C compilation overhead.
 # - ipython, pylint, etc. used for setting up development environment
@@ -95,6 +95,7 @@ wheel
 #opt# ibm_cloud_sdk_core
 #opt# ipython
 #opt# jupyter
+#opt# libcst
 #opt# librosa
 #opt# pocketsphinx
 #opt# pylint
@@ -102,6 +103,8 @@ wheel
 #opt# scispacy
 #opt# selenium
 #opt# Sphinx
+## TODO?: make unittest_parametrize regular dependency
+#opt# unittest_parametrize
 #
 ## OLD: #opt# spacy>=3.0.0
 ## TODO:
