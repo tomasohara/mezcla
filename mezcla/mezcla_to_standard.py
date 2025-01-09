@@ -10,23 +10,24 @@
 #
 # - input
 #
-#   $ cat _simple_glue_helper_samples.py
+#   """Simple file manipulation"""
 #   from mezcla import glue_helpers as gh
-#   gh.write_file("/tmp/fubar.list", "fubar.list")
+#   gh.write_file("/tmp/fubar.list", ["line1", "line2"])
 #   gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
 #   gh.delete_file("/tmp/fubar.list")
 #   gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
-#   gh.form_path("/tmp", "fubar")
+#   print(gh.form_path("/tmp", "fubar"))
 #
 # - output
 #
-#   from mezcla import glue_helpers as gh
+#   """Simple file manipulation"""
 #   import os
-#   # WARNING not supported: gh.write_file("/tmp/fubar.list", "fubar.list")
-#   # WARNING not supporte: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
+#   from mezcla import glue_helpers as gh
+#   # WARNING not supported: gh.write_file("/tmp/fubar.list", ["line1", "line2"])
+#   # WARNING not supported: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
 #   os.remove("/tmp/fubar.list")
 #   os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
-#   os.path.join("/tmp", "fubar")
+#   print(os.path.join("/tmp", "fubar"))
 #
 # --------------------------------------------------------------------------------
 # Example illustrating the transformations being made
@@ -208,11 +209,11 @@ from mezcla import tpo_common as tpo
 
 # Arguments
 FILE = "file"
-TO_STD = "to_standard"
-TO_MEZCLA = "to_mezcla"
+TO_STD = "to-standard"
+TO_MEZCLA = "to-mezcla"
 METRICS = "metrics"
-IN_PLACE = "in_place"
-SKIP_WARNINGS = "skip_warnings"
+IN_PLACE = "in-place"
+SKIP_WARNINGS = "skip-warnings"
 
 # Types
 StrOrCallable = Union[str, Callable]
@@ -247,6 +248,7 @@ def get_func_specs(func: callable) -> ArgsSpecs:
     """
     Get the function signature
     """
+    ## TODO3: callable => StrOrCallable in type hint above
     if isinstance(func, str):
         func = path_to_callable(func)
     result = None
@@ -338,7 +340,8 @@ class CallDetails:
         """
         # Convert to list
         if isinstance(funcs, list):
-            funcs = funcs
+            ## OLD: funcs = funcs
+            pass
         elif isinstance(funcs, tuple):
             funcs = list(funcs)
         else:
@@ -603,6 +606,7 @@ class EqCallParser:
                 results.append(_parse_dest(dest))
         else:
             results.append(_parse_dest(dests))
+        debug.trace(7, "_parse_dests({dests!r}) => {results!r}")
         return results
 
     def _parse_condition(self, condition:StrOrCallable) -> StrOrCallable:
@@ -837,7 +841,9 @@ mezcla_to_standard = [
     ),
     EqCall(
         system.getenv_int,
-        dests=lambda var, default: int(os.environ.get(var)) or default,
+        ## BAD: dests=lambda var, default: int(os.environ.get(var)) or default,
+        ## TODO1: fix similar issues with other getenv_xyz conversions
+        dests=lambda var, default: int(os.environ.get(var) or default),
         features=[Features.COPY_DEST_SOURCE]
     ),
     EqCall(
