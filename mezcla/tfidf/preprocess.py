@@ -203,7 +203,7 @@ class Preprocessor(object):
 
     def __init__(self, min_ngram_size=None, max_ngram_size=None,
                  language=None, stopwords_file=None, stemmer=None,
-                 gramsize=None, all_ngrams=None):
+                 gramsize=None, all_ngrams=None, use_sklearn_counter=None):
         """Preprocessor must be initalized for use if using stopwords.
 
         stopwords_file (filename): contains stopwords, one per line
@@ -252,8 +252,11 @@ class Preprocessor(object):
         if stemmer:
             self.__stemmer = stemmer
         if not self.__stemmer:
-            debug.trace(BDL + -2, "Warning: defining no-op stemmer in Preprocessor")
+            debug.trace(BDL - 2, "Warning: defining no-op stemmer in Preprocessor")
             self.__stemmer = lambda x: x  # no change to word
+        if use_sklearn_counter is None:
+            use_sklearn_counter = USE_SKLEARN_COUNTER
+        self.use_sklearn_counter = USE_SKLEARN_COUNTER
         debug.assertion(not (gramsize and max_ngram_size))
         debug.assertion(not (all_ngrams and min_ngram_size))
         self.__gramsize = (max_ngram_size or gramsize or 1)
@@ -343,7 +346,7 @@ class Preprocessor(object):
             ['all', 'the', 'car', 'were', 'honk', 'their', 'horn']
         """
         ## TODO: yield_method = self.slow_yield_keywords if not USE_SKLEARN_COUNTER else self.yield_sklearn_keywords
-        if USE_SKLEARN_COUNTER:
+        if self.use_sklearn_counter:
             result = self.quick_yield_keywords(raw_text, document=document)
         else:
             result = self.full_yield_keywords(raw_text, document=document)
@@ -466,7 +469,7 @@ def main():
     """Entry point for script: just runs a simple test"""
     text = "my man fran is not a man"
     p = Preprocessor(gramsize=2)
-    debug.trace_object(BDL + -2, p)
+    debug.trace_object(BDL - 2, p)
     ngrams = list(p.text for p in p.yield_keywords(text))
     debug.trace_expr(3, text, ngrams)
     debug.assertion("my man" in ngrams)
