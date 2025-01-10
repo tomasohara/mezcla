@@ -4,16 +4,14 @@
 # - This is work-in-progress code in much need of improvement.
 # - For example, the code was adapted from type hinting checks,
 #   but not sufficiently update (see type-hinting-integration repo).
+# - To disable caching of pytests, use the PYTEST_ADDOPTS environment variable externally
+#   $ export PYTEST_ADDOPTS="--cache-clear"
 
 """
-Misc tests for mezcla_to_standard module
+Miscellaneous tests for mezcla_to_standard module
 """
-
-## NOTE: To disable caching of pytests, use the PYTEST_ADDOPTS environment variable externally
-## ricekiller@pop-os:~/tomProject/mezcla$ export PYTEST_ADDOPTS="--cache-clear"
 
 # Standard packages
-## NOTE: this is empty for now
 import os
 import difflib
 from typing import List
@@ -23,7 +21,6 @@ import pytest
 from pydantic import BaseModel
 
 # Local packages
-## OLD: import mezcla.mezcla_to_standard as THE_MODULE
 from mezcla import system, debug, glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla.unittest_wrapper import TestWrapper
@@ -33,7 +30,6 @@ from mezcla.tests.common_module import RUN_SLOW_TESTS
 MEZCLA_DIR = gh.form_path(gh.dir_path(__file__), "..")
 MEZCLA_SCRIPTS_COUNT = 58
 LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
-## OLD: DECORATOR_VALIDATION_CALL = "@validate_call\ndef"
 
 # Environment Variables
 TEST_GLOB = system.getenv_value(
@@ -62,7 +58,6 @@ class ScriptComparison(BaseModel):
 class TestM2SBatchConversion(TestWrapper):
     """Class for batch conversion of test usage of equivalent calls for mezcla_to_standard"""
 
-    ## TODO: script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     script_module = "mezcla.mezcla_to_standard"
     
     def get_mezcla_scripts(self):
@@ -404,14 +399,4 @@ def test_{function_name}():
 
 if __name__ == "__main__":
     debug.trace_current_context()
-    
-    ## OLD: Use PYTEST_ADDOPTS environment variable externally
-    ## $ export PYTEST_ADDOPTS="--cache-clear"
-    
-    # disable_cache = DISABLE_CACHE
-    # if disable_cache:
-    #     pytest.main([__file__], "--cache-clear")
-    # else:
-    #     pytest.main([__file__])
-    
     pytest.main([__file__])
