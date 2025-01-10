@@ -164,35 +164,75 @@ def flatten_list_of_strings(list_of_str):
 # - Both double a double quote if embedded (e.g., "I said ""Hey!"" then.")
 #
 
+## OLD: Replaced by CSVDialectRegistry class
+# class PysparkDialect(csv.Dialect):
+#     """CSV module dialect for Pyspark CSV files."""
+#     delimiter = ','
+#     quotechar = '"'
+#     doublequote = False          # uses escaped double quote when embedded
+#     escapechar = '\\'
+#     skipinitialspace = False
+#     lineterminator = '\n'
+#     quoting = csv.QUOTE_MINIMAL  # only delimiter, double quote or end-of-line
+# #
+# csv.register_dialect("pyspark", PysparkDialect)
+# #
+# # note: Uses hive as alias for pyspark.
+# csv.register_dialect("hive", PysparkDialect)
 
-class PysparkDialect(csv.Dialect):
-    """CSV module dialect for Pyspark CSV files."""
-    delimiter = ','
-    quotechar = '"'
-    doublequote = False          # uses escaped double quote when embedded
-    escapechar = '\\'
-    skipinitialspace = False
-    lineterminator = '\n'
-    quoting = csv.QUOTE_MINIMAL  # only delimiter, double quote or end-of-line
-#
-csv.register_dialect("pyspark", PysparkDialect)
-#
-# note: Uses hive as alias for pyspark.
-csv.register_dialect("hive", PysparkDialect)
+# class TabDialect(csv.Dialect):
+#     """TSV module dialect for tab-separated values (non-Excel)."""
+#     delimiter = TAB
+#     ## OLD: quotechar = ''               # default of '"' leads to multiline rows
+#     quotechar = ('"' if not FORCE_SINGLE_LINE else '')
+#     doublequote = False          # uses escaped double quote when embedded
+#     # TODO: use special Unicode space-like character
+#     escapechar = '\\'
+#     skipinitialspace = False     # keep leaing space afer delimiter
+#     lineterminator = '\n'
+#     quoting = csv.QUOTE_NONE     # no special processing for quotes
+# #
+# csv.register_dialect("tab", TabDialect)
 
-class TabDialect(csv.Dialect):
-    """TSV module dialect for tab-separated values (non-Excel)."""
-    delimiter = TAB
-    ## OLD: quotechar = ''               # default of '"' leads to multiline rows
-    quotechar = ('"' if not FORCE_SINGLE_LINE else '')
-    doublequote = False          # uses escaped double quote when embedded
-    # TODO: use special Unicode space-like character
-    escapechar = '\\'
-    skipinitialspace = False     # keep leaing space afer delimiter
-    lineterminator = '\n'
-    quoting = csv.QUOTE_NONE     # no special processing for quotes
-#
-csv.register_dialect("tab", TabDialect)
+class CSVDialectRegistry:
+    """Handles registration of custom CSV dialects."""
+
+    @staticmethod
+    def register_pyspark_dialect():
+        """Register Pyspark CSV dialect."""
+        class PysparkDialect(csv.Dialect):
+            """CSV module dialect for Pyspark CSV files."""
+            delimiter = ','
+            quotechar = '"'
+            doublequote = False          # uses escaped double quote when embedded
+            escapechar = '\\'
+            skipinitialspace = False
+            lineterminator = '\n'
+            quoting = csv.QUOTE_MINIMAL  # only delimiter, double quote or end-of-line
+
+        csv.register_dialect("pyspark", PysparkDialect)
+        csv.register_dialect("hive", PysparkDialect)  # Uses hive as alias for pyspark
+
+    @staticmethod
+    def register_tab_dialect():
+        """Register TSV (Tab) CSV dialect."""
+        class TabDialect(csv.Dialect):
+            """TSV module dialect for tab-separated values (non-Excel)."""
+            delimiter = '\t'  # TAB
+            quotechar = ('"' if not FORCE_SINGLE_LINE else '')
+            doublequote = False  # uses escaped double quote when embedded
+            escapechar = '\\'
+            skipinitialspace = False  # keep leading space after delimiter
+            lineterminator = '\n'
+            quoting = csv.QUOTE_NONE  # no special processing for quotes
+
+        csv.register_dialect("tab", TabDialect)
+
+    @classmethod
+    def register_all_dialects(cls):
+        """Register all custom CSV dialects."""
+        cls.register_pyspark_dialect()
+        cls.register_tab_dialect()
 
 # ...............................................................................
 
@@ -206,13 +246,13 @@ class CutArgsProcessing(Main):
     exclude_fields = []
     encode_values = False
     fix = False
-    delimiter = None
-    output_delimiter = None
+    delimiter = COMMA
+    output_delimiter = COMMA
     csv = CSV_FORMAT
     csv_reader = None
     all_fields = False
-    dialect = None
-    output_dialect = None
+    dialect = UNIX_DIALECT
+    output_dialect = UNIX_DIALECT
     run_sniffer = False
     single_line = False
     max_field_len = None
@@ -223,6 +263,9 @@ class CutArgsProcessing(Main):
     def setup(self):
         """Centralized setup method."""
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
+
+        # Register dialects
+        CSVDialectRegistry.register_all_dialects()
 
         # Process individual configuration options
         self._process_csv_dialect_options()
@@ -453,8 +496,8 @@ class CutArgsProcessing(Main):
         if self.use_pandas:
             self._main_step_pandas_cut_logic()
         else:
-            self._main_step_cut_logic()
-        
+            self._main_step_cut_logic()   
+
 class CutLogic:
     """Class for implementation of Cut Logic"""
     def __init__(self):
