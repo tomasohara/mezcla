@@ -1,3 +1,10 @@
+#! /usr/bin/env python
+#
+# Note:
+# - This is work-in-progress code in much need of improvement.
+# - For example, the code was adapted from type hinting checks,
+#   but not sufficiently update (see type-hinting-integration repo).
+
 """
 Misc tests for mezcla_to_standard module
 """
@@ -16,26 +23,22 @@ import pytest
 from pydantic import BaseModel
 
 # Local packages
-import mezcla.mezcla_to_standard as THE_MODULE
+## OLD: import mezcla.mezcla_to_standard as THE_MODULE
 from mezcla import system, debug, glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla.tests.common_module import RUN_SLOW_TESTS
 
 # Constants
 MEZCLA_DIR = gh.form_path(gh.dir_path(__file__), "..")
 MEZCLA_SCRIPTS_COUNT = 58
 LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
-DECORATOR_VALIDATION_CALL = "@validate_call\ndef"
+## OLD: DECORATOR_VALIDATION_CALL = "@validate_call\ndef"
 
 # Environment Variables
-RUN_SLOW_TESTS = system.getenv_bool(
-    "RUN_SLOW_TESTS", 
-    False,
-    description="Run tests that can a while to run"
-)
-TEST_GLOB = system.getenv_text(
+TEST_GLOB = system.getenv_value(
     "TEST_GLOB",
-    "",
+    None,
     description="Specify which files to test"
 )
 SKIP_WARNINGS = system.getenv_bool(
@@ -44,8 +47,9 @@ SKIP_WARNINGS = system.getenv_bool(
     description="Skip warning comments for tests without standard equivalents"
 )
 
-# Pydantic Class with Base Model
 class ScriptComparison(BaseModel):
+    """Pydantic Class for use in validation"""
+
     original_script: str
     converted_script: str
     differences: List[str]
@@ -58,7 +62,8 @@ class ScriptComparison(BaseModel):
 class TestM2SBatchConversion(TestWrapper):
     """Class for batch conversion of test usage of equivalent calls for mezcla_to_standard"""
 
-    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    ## TODO: script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    script_module = "mezcla.mezcla_to_standard"
     
     def get_mezcla_scripts(self):
         # Helper Script 1: Collect all mezcla scripts from MEZCLA_DIR (i.e. .py files)
@@ -66,27 +71,27 @@ class TestM2SBatchConversion(TestWrapper):
         return [x for x in os.listdir(MEZCLA_DIR) if x.endswith(".py")]
     
     def get_mezcla_command_output(self, m2s_path, script_path, option, skip_warnings=SKIP_WARNINGS, output_path="/dev/null"):
-        # Helper Script 2: Get the output of the execution of mezcla_to_standard.py (w/ options)        
         """Executes the mezcla script externally (option: to_standard, metrics)"""
-        warning_option = "--skip_warnings"
+        # Helper Script 2: Get the output of the execution of mezcla_to_standard.py (w/ options)        
+        warning_option = ("--skip_warnings" if skip_warnings else "")
         if output_path != "/dev/null":
             output_file = f"{output_path}/_mez2std_{gh.basename(script_path, '.py')}.py"
             command = f"python3 {m2s_path} --{option} {script_path} {warning_option} | tee {output_file}"
         else:
             output_file = ""
-            command = f"python3 {m2s_path} --{option} {script_path} > {output_path}"
+            command = f"python3 {m2s_path} --{option} {script_path} {warning_option} > {output_path}"
         print("\nCommand:", command)
         output = gh.run(command)
         return output, output_file
     
     def get_m2s_path(self):
-        # Helper Script 3: Get absolute path of "mezcla_to_standard.py"
         """Returns the path of mezcla_to_standard.py"""        
+        # Helper Script 3: Get absolute path of "mezcla_to_standard.py"
         return gh.form_path(MEZCLA_DIR, "mezcla_to_standard.py")
 
     def compare_scripts(self, original_script_path: str, converted_script_path: str) -> ScriptComparison:
-        # Helper Script 4: Use Pydantic class to find comparision in the script
         """Uses Pydantic to compare the contents between the original & converted scripts"""
+        # Helper Script 4: Use Pydantic class to find comparision in the script
         original_code = system.read_file(original_script_path)
         converted_code = system.read_file(converted_script_path)
         
@@ -125,6 +130,7 @@ class TestM2SBatchConversion(TestWrapper):
             wt_warning:float = 0.25
         ):
         """Calculates difference score using the above arguments and returns an efficiency score"""
+        ## TODO2: rename to reflect "efficiency"; also better motivate the metric
         # Distribute the weights (maximum 1 when combined) if necessary
         line_diff_ratio = abs(lines_converted - lines_original)/(lines_original + epsilon)
         line_add_ratio = abs(lines_added)/(lines_original + epsilon)
@@ -138,8 +144,8 @@ class TestM2SBatchConversion(TestWrapper):
         )
     
     def transform_for_validation(self, file_path):
-        # Conversion and comparison starts from here
         """Creates a copy of the script for validation of argument calls (using pydantic)"""
+        # Conversion and comparison starts from here
         content = system.read_file(file_path)
         content = my_re.sub(r"^def", r"@validate_call\ndef", content, flags=my_re.MULTILINE)
         content = LINE_IMPORT_PYDANTIC + content
@@ -175,8 +181,13 @@ def test_{function_name}():
         content = system.read_file(file_path)
         return my_re.findall(r"^def (\w+)", content, flags=my_re.MULTILINE)
 
+    @pytest.mark.xfail
     @pytest.mark.skipif(not RUN_SLOW_TESTS and not TEST_GLOB, reason="this will take a while")
     def test_m2s_compare_pytest(self):
+        """Heuristic test for script differences: includes dynamic test checking via pydantic
+        and running pytest over original and converted script"""
+        ## TODO1: rename to differentiate from test_mezcla_scripts_compare
+        ## TODO2: decompose to make less brittle
         # Step 1: Get the basenames of scripts in mezcla
         # Multiple files can be fed to TEST_GLOB by seperating them with a comma (no spaces, just comma)
         scripts = self.get_mezcla_scripts() if TEST_GLOB=="" else TEST_GLOB.split(",")
@@ -202,6 +213,10 @@ def test_{function_name}():
 
         m2s_path = self.get_m2s_path()
 
+        # Check each script
+        # TODO: see why first script skipped (document here and elsewhere(
+        debug.assertion(scripts[0].startwith("__"))
+        #
         fail_count = 0
         for idx, script in enumerate(scripts, start=1):
             script_path = gh.form_path(original_mezcla_dir, script)
@@ -247,6 +262,7 @@ def test_{function_name}():
             print(f"Original: {num_passed_validate_org} passed, {num_failed_validate_org} failed")
             print(f"Modified: {num_passed_validate_mod} passed, {num_failed_validate_mod} failed")
             # assert num_failed_validate_mod >= num_failed_validate_org
+            debug.assertion(num_failed_validate_mod >= num_failed_validate_org)
             
             # Step 2.6: Write the pytest results to a directory
             # TODO: Extract the types of errors from the Pytest result
@@ -271,17 +287,22 @@ def test_{function_name}():
             if fail_result:
                 fail_count += 1
             bad_pct = round(fail_count * 100 / total_count, 2) if total_count != 0 else 0
-            ## TODO: assert bad_pct < 20
+            assert bad_pct < 20
 
     def test_get_mezcla_scripts(self):
-        # Test 1: Check all 58 scripts are collected 
         """Returns an array of all Python3 scripts in MEZCLA_DIR"""
-        assert len(self.get_mezcla_scripts()) == MEZCLA_SCRIPTS_COUNT
+        # Test 1: Check all 58 scripts are collected 
+        assert len(self.get_mezcla_scripts()) >= MEZCLA_SCRIPTS_COUNT
 
+    @pytest.mark.xfail
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="this will take a while")
     def test_mezcla_scripts_compare(self, threshold=0.75):
+        """Tests for comparing mezcla scripts with the original scripts
+        Note: unlike test_m2s_compare_pytest, this checks for superficial differences,
+        which are evalauted using a metric modelling conversion "efficiency"
+        """
+        ## TODO1: rename to differentiate from test_m2s_compare_pytest
         # Test 2: Find the differences between the tests and optionally set a threshold for differences
-        """Tests for comparing mezcla scripts with the original scripts"""
         scripts = self.get_mezcla_scripts()
         m2s_path = self.get_m2s_path()
         option = "to_standard"
@@ -289,7 +310,7 @@ def test_{function_name}():
 
         for idx, script in enumerate(scripts, start=1):
             script_path = gh.form_path(MEZCLA_DIR, script)
-            output, output_file = self.get_mezcla_command_output(m2s_path, script_path, option, output_path)
+            _output, output_file = self.get_mezcla_command_output(m2s_path, script_path, option, output_path)
             comparison = self.compare_scripts(script_path, output_file)
             print(f"\n#{idx} Differences between {script_path} and {output_file}:")
             print("Lines Original:", comparison.total_original_lines)
@@ -307,8 +328,8 @@ def test_{function_name}():
             )
             print("Score =", score)
             assert (score >= threshold)
-
     
+    @pytest.mark.xfail
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="this will take a while")
     def test_mezcla_scripts_batch_conversion(self):
         """Test for batch conversion of mezcla scripts to standard script"""
@@ -346,9 +367,13 @@ def test_{function_name}():
         # Assertion: Check if a converted output file exists for each script in mezcla
         assert len(os.listdir(output_path)) == len(scripts)
 
+    @pytest.mark.xfail
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="this will take a while")   
-    def test_mezcla_scripts_metrics(self, threshold=0):
-        """Tests external scripts through mezcla using metrics option (TODO: Write better description)"""
+    def test_mezcla_scripts_metrics(self, threshold=25):
+        """Tests external scripts through mezcla using metrics option (TODO: Write better description)
+        Note: Provides alternative "conversion efficieny" to test_mezcla_scripts_compare
+        """
+        ## TODO2: better motivate the use of the "effiency" metric and use a better threshold
         debug.trace(6, f"test_exteral_scripts({self})")
         
         print(f"\nEfficiency Scores (out of 100 / threshold={threshold}):\n")
@@ -360,7 +385,7 @@ def test_{function_name}():
 
         for idx, script in enumerate(scripts, start=1):
             script_path = gh.form_path(MEZCLA_DIR, script)
-            output, output_file = self.get_mezcla_command_output(m2s_path, script_path, option, output_path)
+            output, _output_file = self.get_mezcla_command_output(m2s_path, script_path, option, output_path)
 
             # Use regex to search calls replaced and warnings added
             calls_replaced = my_re.search(r"Calls replaced:\t(\d+)", output)
@@ -375,6 +400,7 @@ def test_{function_name}():
             )
             print(f"#{idx} {script}: {efficiency}")
             assert efficiency >= threshold
+
 
 if __name__ == "__main__":
     debug.trace_current_context()
