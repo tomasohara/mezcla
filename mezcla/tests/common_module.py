@@ -36,6 +36,12 @@ RUN_SLOW_TESTS = system.getenv_bool(
     "RUN_SLOW_TESTS", 
     not SKIP_SLOW_TESTS,
     description="Alias for not[-]SKIP_SLOW_TESTS")
+SKIP_UNIMPLEMENTED_TESTS = system.getenv_bool(
+    # Note: used to avoid clutter due to (so many) unimplemented tests, such as
+    # when using --runxfail for better test failure diagnostics.
+    "SKIP_UNIMPLEMENTED_TESTS", 
+    False,
+    description="Skip tests not yet implemented")
 
 if __name__ == "__main__":
     debug.trace_current_context()
