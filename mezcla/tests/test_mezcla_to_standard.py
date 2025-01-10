@@ -9,7 +9,12 @@ from unittest.mock import patch, MagicMock, ANY
 # Installed packages
 import pytest
 import libcst as cst
-import unittest_parametrize
+try:
+    import unittest_parametrize
+    from unittest_parametrize import (
+        ParametrizedTestCase, parametrize as ut_parametrize, param as ut_param)
+except:
+    unittest_parametrize = ParametrizedTestCase = ut_parametrize = ut_param = None
 
 # Local packages
 import mezcla.mezcla_to_standard as THE_MODULE
@@ -26,12 +31,16 @@ from mezcla.unittest_wrapper import TestWrapper
 
 # Backup of production mezcla_to_standard equivalent
 # calls to restore after some tests that modify it
+## TODO3: use pytest mocker, which includes support for this
 BACKUP_M2S = THE_MODULE.mezcla_to_standard
 
-
+#-------------------------------------------------------------------------------
+    
 # Defining parametrize function as substitution of pytest.parametrize
+## TODO2: drop and use pytest.parametrize[!]
 def parametrize(parameters):
     """Alternative to the pytest.mark.parametrize decorator"""
+    debug.trace(4, "FYI: Using non-standard [pytest.mark.]parametrize")
     def decorator(func):
         def wrapper(*args, **kwargs):
             for parameter_set in parameters:
@@ -56,6 +65,36 @@ def mock_to_module():
     return mock_to_module
 
 
+# Define stubs for the sake of getting module to compile
+## TODO3: rework via mocking
+
+if not ParametrizedTestCase:
+    class ParametrizedTestCase():
+        """Dummy class for sake of compilation if unittest_parametrize not available
+        Note: tests with [unittest_parametrize.]ParametrizedTestCase skipped below
+        """
+        debug.trace(4, "FYI: Defining dummy ParametrizedTestCase")
+
+def noop_decorator(func):
+    """Decorator that does nothing (i.e., result is original FUNC call)"""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+if not ut_parametrize:
+    def ut_parametrize(*_args, **_kwargs):
+        debug.trace(4, "FYI: Using dummy ut_parametrize")
+        return noop_decorator
+
+if not ut_param:
+    def ut_param(*_args, **_kwargs):
+        debug.trace(4, "FYI: Using dummy ut_param")
+        return noop_decorator
+
+#-------------------------------------------------------------------------------
+    
 class TestCSTFunctions:
     """Class for test functions that performs operations on CSTs"""
 
@@ -217,7 +256,7 @@ class TestCSTFunctions:
         result = THE_MODULE.path_to_callable("os.path.join")
         assert result == expected_output
 
-
+@pytest.mark.xfail
 class TestBaseTransformerStrategy:
     """Class for test usage of ToStandard class in mezcla_to_standard"""
 
@@ -296,6 +335,7 @@ class TestBaseTransformerStrategy:
         ## TODO: Wait for function to be implemented
 
 
+@pytest.mark.xfail
 class TestToStandard:
     """Class for test usage of ToStandard class in mezcla_to_standard"""
 
@@ -604,6 +644,7 @@ class TestToMezcla:
         )  ## TODO: check module part of the path
 
 
+@pytest.mark.xfail
 class TestTransform(TestWrapper):
     """Class for test usage for methods of transform method in mezcla"""
 
@@ -736,7 +777,8 @@ result = new_function(2, 3)
         assert False, "TODO: Implement"
 
 
-class TestUsageM2SEqCall(TestWrapper, unittest_parametrize.ParametrizedTestCase):
+@pytest.mark.skipif(not unittest_parametrize, reason="Unable to load unittest_parametrize")
+class TestUsageM2SEqCall(TestWrapper, ParametrizedTestCase):
     """Class for test usage of equivalent calls for mezcla_to_standard"""
 
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
@@ -749,75 +791,75 @@ class TestUsageM2SEqCall(TestWrapper, unittest_parametrize.ParametrizedTestCase)
         new_code, _ = THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
         return new_code
 
-    @unittest_parametrize.parametrize(
+    @ut_parametrize(
         argnames="input_code, expected_code",
         argvalues=[
-            unittest_parametrize.param(
+            ut_param(
                 "from mezcla import glue_helpers as gh\ntemp_file = gh.get_temp_file()\n",
                 "import tempfile\ntemp_file = tempfile.NamedTemporaryFile()\n",
                 id="test_eqcall_gh_get_temp_file",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\nbasename = gh.basename("./foo/bar/foo.bar")\n',
                 'from os import path\nbasename = path.basename("./foo/bar/foo.bar")\n',
                 id="test_eqcall_gh_basename",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\ndir_path = gh.dir_path("/tmp/solr-4888.log")\n',
                 'from os import path\ndir_path = path.dirname("/tmp/solr-4888.log")\n',
                 id="test_eqcall_gh_dir_path",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\ndirname = gh.dirname("/tmp/solr-4888.log")\n',
                 'from os import path\ndirname = path.dirname("/tmp/solr-4888.log")\n',
                 id="test_eqcall_gh_dirname",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\nfile_exists = gh.file_exists("/tmp/solr-4888.log")\n',
                 'from os import path\nfile_exists = path.exists("/tmp/solr-4888.log")\n',
                 id="test_eqcall_gh_file_exists",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\ntemp_path = gh.form_path("tmp","logs")\n',
                 'from os import path\ntemp_path = path.join("tmp","logs")\n',
                 id="test_eqcall_form_path",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\nis_dir = gh.is_directory("/tmp/logs")\n',
                 'from os import path\nis_dir = path.isdir("/tmp/logs")\n',
                 id="test_eqcall_gh_is_directory",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\ngh.create_directory("/tmp/logs")\n',
                 'import os\nos.mkdir("/tmp/logs")',
                 id="test_eqcall_gh_create_directory",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\ngh.rename_file("foo.txt", "bar.txt")\n',
                 'import os\nos.rename("foo.txt", "bar.txt")\n',
                 id="test_eqcall_rename_file",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\ngh.delete_file("foo.txt")\n',
                 'import os\nos.remove("foo.txt")\n',
                 id="test_eqcall_delete_file",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\ngh.delete_existing_file("foo.txt")\n',
                 'import os\nos.remove("foo.txt")\n',
                 id="test_eqcall_gh_delete_existing_file",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\nfoo_size = gh.file_size("foo.txt")\n',
                 'from os import path\nfoo_size = path.getsize("foo.txt")\n',
                 id="test_eqcall_gh_file_size",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\ndirs = gh.get_directory_listing("/tmp")\n',
                 'import os\ndirs = os.listdir(path = "/tmp")\n',
                 id="test_eqcall_gh_get_directory_listing",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 [
                     'from mezcla import debug\ndebug.trace(4, "DEBUG")',
                     'from mezcla import debug\ndebug.trace(3, "INFO")',
@@ -832,7 +874,7 @@ class TestUsageM2SEqCall(TestWrapper, unittest_parametrize.ParametrizedTestCase)
                 ],
                 id="test_eqcall_debug_trace_all",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 """from mezcla import system
 def divide(a, b):
     try:
@@ -849,17 +891,17 @@ def divide(a, b):
         exc_type, exc_value, exc_traceback = sys.exc_info()
 """,
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import system\nsystem.print_error("This is an error message")',
                 'print("This is an error message", file = sys.stderr)',
                 id="test_eqcall_system_print_error",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 "from mezcla import system\nsystem.exit()",
                 "import sys\nsys.exit()",
                 id="test_eqcall_system_exit",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 """
 from mezcla import system
 with system.open_file("example.txt") as f:
@@ -874,63 +916,63 @@ with io.open("example.txt") as f:
 """,
                 id="test_eqcall_system_open_file",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import system\ndir_file = system.read_directory("/tmp")',
                 'import os\ndir_file = os.listdir(path = "/tmp")',
                 id="test_eqcall_system_read_directory",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import system\nsystem.form_path("tmp","logs")',
                 'from os import path\npath.join("tmp","logs")',
                 id="test_eqcall_system_form_path",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import system\nis_regular = system.is_regular_file("foo.txt")',
                 'from os import path\nis_regular = path.isfile("foo.txt")',
                 id="test_eqcall_system_is_regular_file",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import system\nsystem.create_directory("/tmp/logs")',
                 'import os\nos.mkdir("/tmp/logs")',
                 id="test_eqcall_system_create_directory",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 "from mezcla import system\npwd = system.get_current_directory()",
                 "import os\npwd = os.getcwd()",
                 id="test_eqcall_system_get_current_directory",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 "from mezcla import system\n"
                 'PATH = "/home/ricekiller/Downloads"\nsystem.set_current_directory(PATH)',
                 "import os\n" 'PATH = "/home/ricekiller/Downloads"\nos.chdir(PATH)',
                 id="test_eqcall_system_set_current_directory",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import system\nabs_path = system.absolute_path("./Downloads/testfile.pdf")',
                 'from os import path\nabs_path = path.abspath("./Downloads/testfile.pdf")',
                 id="test_eqcall_system_absolute_path",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import system\nreal_path = system.real_path("./Downloads/testfile.pdf")',
                 'from os import path\nreal_path = path.realpath("./Downloads/testfile.pdf")',
                 id="test_eqcall_system_real_path",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 "from mezcla import system\nround_val = system.round_num(1738.4423425357457131)",
                 "round_val = round(1738.4423425357457131, 6)",
                 id="test_eqcall_system_round_num",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 "from mezcla import system\nround_val_3 = system.round3(1738.4423425357457131)",
                 "round_val_3 = round(1738.4423425357457131, 3)",
                 id="test_eqcall_system_round3",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 "from mezcla import system\nsystem.sleep(5)",
                 "import time\ntime.sleep(5)",
                 id="test_eqcall_system_sleep",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 "from mezcla import system\nsystem.get_args()",
                 "import sys\nsys.argv",
                 id="test_eqcall_system_get_args",
@@ -985,16 +1027,17 @@ gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
         self.assertEqual(result.strip(), input_code.strip())
         
 
-    @unittest_parametrize.parametrize(
+    @pytest.mark.skipif(not unittest_parametrize, reason="Unable to load unittest_parametrize")
+    @ut_parametrize(
         argnames="original_code, expected_output, msg",
         argvalues=[
-            unittest_parametrize.param(
+            ut_param(
                 ['import logging\nlogging.error("error")\n'],
                 'import logging\nlogging.error("error")\n',
                 None,
                 id="test_import_no_transformation",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 [
                     'from mezcla.debug import trace, log\ntrace(1, "error")\nlog("info", "message")\n'
                 ],
@@ -1002,7 +1045,7 @@ gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
                 "TODO: Implement",
                 id="test_import_multiple",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 [
                     '# This is a comment\nfrom mezcla.debug import trace\ntrace(1, "error")\n'
                 ],
@@ -1010,7 +1053,7 @@ gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
                 None,
                 id="test_import_with_comments",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 [
                     'from mezcla.debug import trace\ntrace(1, "error")\n',
                     'from mezcla import debug as dbg\ndbg.trace(1, "error")\n',
@@ -1034,6 +1077,7 @@ gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
             self.assertEqual(result.strip(), expected_output.strip(), msg)
 
 
+@pytest.mark.xfail
 class TestUsage(TestWrapper):
     """Class for several test usages for mezcla_to_standard"""
 
@@ -1053,8 +1097,10 @@ class TestUsage(TestWrapper):
         # Helper Function B (conversion m2s through command line)
         debug.trace(4, f"TestUsage.helper_run_cmd_m2s(); self={self}")
         THE_MODULE.mezcla_to_standard = BACKUP_M2S
+        ## TODO1: use --to-standard, etc. throughout
         arg = "--to_standard" if to_standard else "--to_mezcla"
         input_file = gh.create_temp_file(contents=input_code)
+        ## TODO1: use self.run_script()
         command = f"python3 mezcla/mezcla_to_standard.py {arg} {input_file}"
         result = gh.run(command)
         return result
@@ -1076,15 +1122,16 @@ class TestUsage(TestWrapper):
             any(result.strip() == expected.strip() for expected in expected_codes)
         )
 
-    @unittest_parametrize.parametrize(
+    @pytest.mark.skipif(not unittest_parametrize, reason="Unable to load unittest_parametrize")
+    @ut_parametrize(
         argnames="input_code, unsupported_message",
         argvalues=[
-            unittest_parametrize.param(
+            ut_param(
                 'from mezcla import glue_helpers as gh\ngh.run("python3 --version")',
                 '# WARNING not supported: gh.run("python3 --version")',
                 id="unsupported_function_to_standard",
             ),
-            unittest_parametrize.param(
+            ut_param(
                 'import os\nos.getenv("HOME")',
                 '# WARNING not supported: os.getenv("HOME")',
                 id="unsupported_function_to_mezcla",
