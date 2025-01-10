@@ -952,9 +952,9 @@ def get_current_directory():
     return current_dir
 
 
-def set_current_directory(PATH):
+def set_current_directory(path):
     """Tracing wrapper around os.chdir(PATH)"""
-    result = os.chdir(PATH)
+    result = os.chdir(path)
     debug.trace_fmt(6, "set_current_directory({p}) => {r}", r=result)
     return result
 
