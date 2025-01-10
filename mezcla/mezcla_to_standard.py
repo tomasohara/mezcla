@@ -174,6 +174,22 @@
 #
 # --------------------------------------------------------------------------------
 #
+# TODO1:
+# - Add a bunch of sanity checks (e.g., via debug.assertion).
+# - Use high-level AST tools to validate the transformation. See
+#   Exploring the Python AST Ecosystem video by Chase Stevens
+#   [https://www.youtube.com/watch?v=Yq3wTWkoaYY].
+#
+# TODO2:
+# - Consolidate ToMezcla and ToStandard because too much duplicated code.
+#
+# TODO3:
+# - Write pretty printer for CST tree for sake of more understandable tracing
+#
+# TODO4:
+#- Move or drop the 'pylint: disable=invalid-name' specifications (e.g., via pylint call).
+#  Note: comments immediately preceding function defs disrupt flow.
+#
 
 """
 Mezcla to Standard call conversion script
@@ -320,18 +336,18 @@ class CallDetails:
         self.callable = None
         try:
             self.callable = path_to_callable(func) if isinstance(func, str) else func
-        except Exception:
-            pass
+        except:
+            debug.trace(4, f"FYI: Exception deriving callable {sys.exc_info()}")
         self.path = None
         try:
             self.path = func if isinstance(func, str) else callable_to_path(func)
-        except Exception:
-            pass
+        except:
+            debug.trace(4, f"FYI: Exception deriving module path {sys.exc_info()}")
         self.specs = None
         try:
             self.specs = get_func_specs(func)
-        except Exception:
-            pass
+        except:
+            debug.trace(4, f"FYI: Exception deriving function specification {sys.exc_info()}")
 
     @staticmethod
     def to_list_of_call_details(funcs: SingleOrMultipleStrOrCallable) -> List['CallDetails']:
@@ -510,7 +526,7 @@ class EqCall:
         """
         # Return previous permutations
         if len(self.permutations) > 0:
-            debug.trace(7, "EqCall.get_permutations() => memoized")
+            debug.trace(7, "[early exit] EqCall.get_permutations() => memoized")
             return self.permutations
 
         # Otherwise calculate the permutations and store them:
@@ -560,7 +576,8 @@ class EqCallParser:
         """
         Parses the config file in `config_path` and creates instences of EQclass for each element in it
         """
-        with open(self.config_path, "r") as file:
+        ## TODO3: use with system.open_file(self.config_path): ...
+        with open(self.config_path, "r", encoding="UTF-8") as file:
             with json.load(file) as config:
                 for eq_call in config:
                     targets = eq_call.get("targets")
@@ -598,10 +615,12 @@ class EqCallParser:
                 for name in code.co_names:
                     if name not in allowed_names:
                         raise NameError(f"Use of {name} not allowed")
+                # TODO3: why are builtins disabled? (likewise in other eval call)
+                # pylint: disable=eval-used
                 result = eval(code, {"__builtins__": {}}, allowed_names)
             return result
 
-        if isinstance(dests, list) or isinstance(dests, tuple):
+        if isinstance(dests, (list, tuple)):
             for dest in dests:
                 results.append(_parse_dest(dest))
         else:
@@ -618,6 +637,7 @@ class EqCallParser:
             code = compile(condition, "<string>", "eval")
             if len(code.co_names) > 0:
                 raise NameError(f"Use of {code.co_names[0]} not allowed")
+            # pylint: disable=eval-used
             result = eval(code, {"__builtins__": {}}, {})
         return result
     
@@ -639,6 +659,8 @@ class EqCallParser:
 # Custom Function replacements
 
 def assertion_replacement(expression, message=None, assert_level=None):
+    """Replacement for debug.assertion"""
+    ## TODO3: Encoding directly via lambda in the EqCall
     if expression:
         debug.trace(assert_level, message)
 
@@ -772,6 +794,8 @@ mezcla_to_standard = [
     EqCall(
         system.set_current_directory,
         "os.chdir",
+        ## TEST:
+        ## eq_params={ "directory": "path" }
     ),
     EqCall(
         system.absolute_path,
@@ -780,6 +804,12 @@ mezcla_to_standard = [
     EqCall(
         system.real_path,
         "os.path.realpath",
+    ),
+    EqCall(
+        system.get_args,
+        ## TODO: "sys.argv", w/ [Features.non-function]
+        dests=lambda: sys.argv,
+        features=[Features.COPY_DEST_SOURCE]        
     ),
     EqCall(
         system.round_num,
@@ -872,6 +902,8 @@ def cst_to_path(tree: cst.CSTNode) -> str:
     cst_to_path(tree) =>"foo.bar.baz"
     ```
     """
+    ## TODO3: restructure w/ result = ... result = ... return result
+    # pylint: disable=no-else-return
     if isinstance(tree, cst.Attribute):
         return f"{cst_to_path(tree.value)}.{tree.attr.value}"
     elif isinstance(tree, cst.Call):
@@ -897,6 +929,8 @@ def cst_to_paths(tree: cst.CSTNode) -> List[str]:
     cst_to_paths(tree) => ["os.path", "os.remove"]
     ```
     """
+    ## TODO3: restructure final return using result var
+    # pylint: disable=no-else-return
     if isinstance(tree, (cst.Import, cst.ImportFrom)):
         return [cst_to_path(alias) for alias in tree.names]
     elif isinstance(tree, cst.Parameters):
@@ -1023,7 +1057,7 @@ def match_args(func: CallDetails, cst_arguments: List[cst.Arg]) -> dict:
     # Extract function signature
     func_spec = func.specs
     if func_spec is None:
-        debug.trace(7, f"match_args(func={func}, cst_arguments={cst_arguments}) => {func_spec}")
+        debug.trace(7, f"[early exit] match_args(func={func}, cst_arguments={cst_arguments}) => {func_spec}")
         return {}
     arg_names = func_spec.args # name
     varargs_name = func_spec.varargs # *name
@@ -1093,7 +1127,7 @@ def dict_to_func_args_list(func: CallDetails, args_dict: dict) -> List[cst.Arg]:
     func_spec = func.specs
     if func_spec is None:
         result = list(args_dict.values())
-        debug.trace(7, f"dict_to_func_args_list(func={func}, args_dict={args_dict}) => {result}")
+        debug.trace(7, f"[early exit] dict_to_func_args_list(func={func}, args_dict={args_dict}) => {result}")
         return result
 
     # Match positional arguments
@@ -1102,7 +1136,13 @@ def dict_to_func_args_list(func: CallDetails, args_dict: dict) -> List[cst.Arg]:
         if arg_name in args_dict:
             result.append(args_dict[arg_name])
         else:
-            break
+            ## OLD: break
+            ## TEMP:
+            debug.trace(2, f"Warning: unable to match {arg_name} in {func.func}: args_dict.keys={list(args_dict.keys())}")
+            pass
+    if func_spec.args and not result:
+        debug.trace(3, f"FYI: Applying func_spec.args hack")
+        result = list(args_dict.values())
 
     # Handle *args
     if func_spec.varargs in args_dict:
@@ -1225,6 +1265,7 @@ def format_strings_in_args(args: List[cst.Arg]) -> dict:
     ```
     """
     if not args:
+        debug.trace(7, f"[early exit] format_strings_in_args(args={args}) => []")
         return []
     args = list(args)
     result = []
@@ -1307,6 +1348,7 @@ def remove_paths_from_import_cst(
             new_names.append(name)
     #
     if not new_names:
+        debug.trace(7, f"[early exit] remove_paths_from_import_cst(cst_import={cst_import}, paths_to_remove={paths_to_remove}) => None")
         return None
     # Store the new names
     result = cst_import.with_changes(names=new_names)
@@ -1356,7 +1398,9 @@ def extract_replaced_body(func: Callable, args: List[cst.Arg]) -> cst.CSTNode:
     args = [arg.value for arg in args]
     # Replace arguments
     class ReplaceArgs(cst.CSTTransformer):
+        """Class for replacing arguments in function expansions"""
         def leave_Name(self, original_node, updated_node):
+            """Replace ORIGINAL_NODE parameter name with UPDATED_NODE argument value"""
             if original_node.value in parameters:
                 idx = parameters.index(original_node.value)
                 if idx < len(args):
@@ -1400,6 +1444,7 @@ class BaseTransformerStrategy:
         """
         new_args = args.copy()
         if eq_call.extra_params is None:
+            debug.trace(6, f"[early exit] BaseTransformerStrategy.insert_extra_params(args={args}) => {new_args}")
             return args
         for key, value in eq_call.extra_params.items():
             if key not in args:
@@ -1419,6 +1464,7 @@ class BaseTransformerStrategy:
         func = ""
         new_args_nodes = []
         if eq_call is None:
+            debug.trace(5, f"[early exit] BaseTransformerStrategy.get_replacement(path={path}, args={args}) => {func}, {new_args_nodes}")
             return func, new_args_nodes
         # Replace args
         new_args_nodes = self.get_args_replacement(eq_call, args)
@@ -1472,11 +1518,12 @@ class ToStandard(BaseTransformerStrategy):
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: List[cst.Arg]) -> bool:
         if eq_call.condition.callable is None:
+            debug.trace(6, f"[early exit] ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => missing callable condition")
             return True
         arguments = match_args(eq_call.targets[0], args)
         arguments = dict_to_func_args_list(eq_call.condition, arguments)
         if not all_has_fixed_value(arguments):
-            debug.trace(6, f"ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
+            debug.trace(6, f"[early exit] ToStandard.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
             return True
         arguments = args_to_values(arguments)
         arguments = eq_call.condition(*arguments)
@@ -1494,8 +1541,14 @@ class ToStandard(BaseTransformerStrategy):
         return arguments
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
+        ## TODO3: restructure w/ single return call
+        # pylint: disable=no-else-return
         result = {}
+        ## TEST:
         if eq_call.eq_params is None:
+            eq_call.eq_params = {}
+        if eq_call.eq_params is None:
+            debug.trace(7, f"[early exit] ToStandard.replace_args_keys(eq_call={eq_call}, args={args}) => {args}")
             return args
         else:
             for key, value in args.items():
@@ -1528,13 +1581,14 @@ class ToMezcla(BaseTransformerStrategy):
 
     def is_condition_to_replace_met(self, eq_call: EqCall, args: List[cst.Arg]) -> bool:
         if eq_call.condition.callable is None:
+            debug.trace(6, f"[early exit] ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => missing condition callable")
             return True
         arguments = match_args(eq_call.dests[0], args)
         arguments = self.insert_extra_params(eq_call, arguments)
         arguments = self.replace_args_keys(eq_call, arguments)
         arguments = dict_to_func_args_list(eq_call.condition, arguments)
         if not all_has_fixed_value(arguments):
-            debug.trace(6, f"ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
+            debug.trace(6, f"[early exit] ToMezcla.is_condition_to_replace_met(eq_call={eq_call}, args={args}) => an CST argument node has not fixed or valid value")
             return True
         arguments = args_to_values(arguments)
         result = eq_call.condition(*arguments)
@@ -1551,6 +1605,9 @@ class ToMezcla(BaseTransformerStrategy):
 
     def replace_args_keys(self, eq_call: EqCall, args: dict) -> dict:
         result = {}
+        ## TEST
+        if eq_call.eq_params is None:
+            eq_call.eq_params = {}
         if eq_call.eq_params is None:
             result = args
         else:
@@ -1707,7 +1764,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         ) -> cst.Call:
         """Replace the call if needed"""
         if not isinstance(updated_node.func.value, (cst.Attribute, cst.Name, cst.SimpleString)):
-            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => skipping")
+            debug.trace(7, f"[early exit] ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => skipping")
             return updated_node
         # Get module and method names
         path = cst_to_path(updated_node.func)
@@ -1718,7 +1775,7 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         )
         if not new_path:
             self.keep.append(path)
-            debug.trace(7, f"ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => skipping")
+            debug.trace(7, f"[early exit] ReplaceCallsTransformer.replace_call_if_needed(updated_node={updated_node}) => skipping")
             return updated_node
         if isinstance(new_path, str):
             # We use the first components on a path is for
@@ -1773,6 +1830,7 @@ class ReplaceMezclaWithWarningTransformer(StoreAliasesTransformer, StoreMetrics)
     # pylint: disable=invalid-name
     def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
         """Leave a Call node"""
+        ## TODO3: document better: what is being done? why leave_Call?
         new_node = updated_node
         if isinstance(updated_node.func, cst.Attribute):
             new_node = self.replace_with_warning_if_needed(updated_node)
@@ -1814,6 +1872,7 @@ def transform(to_module, code: str, skip_warnings:bool=False) -> tuple[str,dict]
     \"\"\"
     ```
     """
+    ## TODO2: put this in a new class (e.g., MezclaToStandard)
     # Parse the code into a CST tree
     tree = cst.parse_module(code)
 
@@ -1854,9 +1913,11 @@ def transform(to_module, code: str, skip_warnings:bool=False) -> tuple[str,dict]
 
 class MezclaToStandardScript(Main):
     """Argument processing class to MezclaToStandard"""
+    ## TODO2: Put non-argument processing in a separate class (e.g., MezclaToStandard)
 
     # Class-level member variables for arguments
     # (avoids need for class constructor)
+    ## TODO2: use Main's self.filename
     file = ""
     to_std = False
     to_mezcla = False
@@ -1877,6 +1938,7 @@ class MezclaToStandardScript(Main):
     def show_continue_warning(self) -> None:
         """Show warning if user want to continue"""
         print(
+            ## TODO3: make ansi escapes optional
             "\033[93m WARNING, THIS OPERATION WILL OVERRIDE:\n",
             f"{self.file}\n",
             "Make sure you have a backup of the file before proceeding.\n\n",
