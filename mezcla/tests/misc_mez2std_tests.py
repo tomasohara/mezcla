@@ -20,13 +20,16 @@
 # - This is good for one's pre-commit checklist (e.g., along with running python-lint).
 #
 # TODO2:
-# - Avoid numbering steps, because it becomes a maintenance issue.
-# - Similarly, avoid references like "script 1", etc.
+# - Try to make output easier to review for pytest summary.
 #
 # TODO3:
 # - Keep most comments focused on high-level, covering the intention of the code.
 #   Avoid getting into the nitty-gritty details unless it is a tricky algorithm.
 #   (Moreover, tricky algorithms in general should be avoided unless critical.)
+#
+# TODO4:
+# - Avoid numbering steps, because it becomes a maintenance issue.
+# - Similarly, avoid references like "script 1", etc.
 #
 
 """
