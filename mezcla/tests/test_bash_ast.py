@@ -62,7 +62,12 @@ from mezcla import system
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
-import mezcla.bash_ast as THE_MODULE
+try:
+    ## TEST: raise RuntimeError
+    import mezcla.bash_ast as THE_MODULE
+except:
+    THE_MODULE = None
+    debug.trace_exception(4, "bash_ast import")
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(__file__, r"\btemplate.py$"):
@@ -70,6 +75,7 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 
 #------------------------------------------------------------------------
 
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
