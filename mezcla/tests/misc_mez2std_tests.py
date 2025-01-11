@@ -3,14 +3,14 @@
 # Note:
 # - This is work-in-progress code in much need of improvement.
 # - For example, the code was adapted from type hinting checks,
-#   but not sufficiently update (see type-hinting-integration repo).
+#   but not sufficiently updated (see type-hinting-integration repo).
 # - To disable caching of pytests, use the PYTEST_ADDOPTS environment variable externally
 #   $ export PYTEST_ADDOPTS="--cache-clear"
 #
 # TODO0:
 # - Rework the tests to be less brittle. This might be added to Github actions with
 #   other code check scripts to be run once a week or so. Therefore, a single failure
-#   should not cause the tst suite to fail. Instead, use percentage thresholds.
+#   should not cause the test suite to fail. Instead, use percentage thresholds.
 #
 # TODO1:
 # - Remember to check for mezcla wrappers before calling functions directly (e.g., for
@@ -25,7 +25,7 @@
 #
 # TODO3:
 # - Keep most comments focused on high-level, covering the intention of the code.
-#   Avoid getting into the nitty gritty details unless it is a tricky algorithm.
+#   Avoid getting into the nitty-gritty details unless it is a tricky algorithm.
 #   (Moreover, tricky algorithms in general should be avoided unless critical.)
 #
 
@@ -129,7 +129,7 @@ class TestM2SBatchConversion(TestWrapper):
 
     def compare_scripts(self, original_script_path: str, converted_script_path: str) -> ScriptComparison:
         """Uses Pydantic to compare the contents between the original & converted scripts"""
-        # Helper Script 4: Use Pydantic class to find comparision in the script
+        # Helper Script 4: Use Pydantic class to find comparison in the script
         original_code = system.read_file(original_script_path)
         converted_code = system.read_file(converted_script_path)
         
@@ -232,9 +232,11 @@ class TestM2SBatchConversion(TestWrapper):
         and running pytest over original and converted script"""
         ## TODO1: rename to differentiate from test_mezcla_scripts_compare
         ## TODO2: decompose to make less brittle
+        ## TODO3: Disable type hinting support; it is probably best to remove because type hinting
+        ## is independent of which packages are used for supporting code (e.g., system vs sys).
 
         # Step 1: Get the basenames of scripts in mezcla
-        # Multiple files can be fed to TEST_GLOB by seperating them with a comma (no spaces, just comma)
+        # Multiple files can be fed to TEST_GLOB by separating them with a comma (no spaces, just comma)
         ## BAD: scripts = self.get_mezcla_scripts() if TEST_GLOB=="" else TEST_GLOB.split(",")
         ## Note: (proper) globbing down by helper
         scripts = self.get_mezcla_scripts()
@@ -264,6 +266,7 @@ class TestM2SBatchConversion(TestWrapper):
         # Check each script
         # note: start is for enumeration index, not the sequence
         fail_count = 0
+        num_scripts = len(scripts)
         for idx, script_path in enumerate(scripts, start=1):
             script = gh.basename(script_path)
             
@@ -333,7 +336,9 @@ class TestM2SBatchConversion(TestWrapper):
             if fail_result:
                 fail_count += 1
             bad_pct = round(fail_count * 100 / total_count, 2) if total_count != 0 else 0
-            assert bad_pct < 20
+            debug.assertion(bad_pct < 20)
+        overall_bad_pct = round(fail_count * 100 / num_scripts, 2) if num_scripts else 0
+        assert overall_bad_pct < 10
 
     def test_get_mezcla_scripts(self):
         """Returns an array of all Python3 scripts in MEZCLA_DIR"""
@@ -347,7 +352,7 @@ class TestM2SBatchConversion(TestWrapper):
     def test_mezcla_scripts_compare(self, threshold=0.75):
         """Tests for comparing mezcla scripts with the original scripts
         Note: unlike test_m2s_compare_pytest, this checks for superficial differences,
-        which are evalauted using a metric modelling conversion "efficiency"
+        which are evaluated using a metric modeling conversion "efficiency"
         """
         ## TODO1: rename to differentiate from test_m2s_compare_pytest
         # Test 2: Find the differences between the tests and optionally set a threshold for differences
@@ -423,9 +428,9 @@ class TestM2SBatchConversion(TestWrapper):
     @pytest.mark.skipif(OMIT_SLOW_TESTS, reason=OMIT_SLOW_REASON)   
     def test_mezcla_scripts_metrics(self, threshold=25):
         """Tests external scripts through mezcla using metrics option (TODO: Write better description)
-        Note: Provides alternative "conversion efficieny" to test_mezcla_scripts_compare
+        Note: Provides alternative "conversion efficiency" to test_mezcla_scripts_compare
         """
-        ## TODO2: better motivate the use of the "effiency" metric and use a better threshold
+        ## TODO2: better motivate the use of the "efficiency" metric and use a better threshold
         debug.trace(6, f"test_exteral_scripts({self})")
         
         print(f"\nEfficiency Scores (out of 100 / threshold={threshold}):\n")
