@@ -45,7 +45,8 @@ import mezcla.mezcla_to_standard as THE_MODULE
 from mezcla import system, debug, glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla.unittest_wrapper import TestWrapper
-from mezcla.tests.common_module import SKIP_UNIMPLEMENTED_TESTS
+from mezcla.tests.common_module import (
+    SKIP_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON)
 
 # Pylint configurations
 
@@ -127,25 +128,6 @@ if not ut_param:
         debug.trace(4, "FYI: Using dummy ut_param")
         return noop_decorator
 
-#-------------------------------------------------------------------------------
-
-def fix_indent(code):
-    """Make sure CODE indented proper if it is a string;
-    however, list input is returned as is.
-    Note: this accounts for code defined with index triple-quote strings
-    
-    >>> fix_indent('''
-                   print("ok")
-                   ''')
-    'print("ok")'
-    """
-    result = code
-    if isinstance(result, str) and my_re.search(r"^\n( +)", result):
-        indentation = my_re.group(1)
-        result = my_re.sub(fr"^{indentation}", "", result, flags=my_re.MULTILINE)
-    debug.trace(8, f"fix_indent{code!r} => {result!r}")
-    return result
-    
 #-------------------------------------------------------------------------------
     
 class TestCSTFunctions:
@@ -351,7 +333,7 @@ class TestBaseTransformerStrategy:
             assert isinstance(value, cst.Arg)
             assert value.value and isinstance(value.value, cst.Integer)
 
-    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason="Ignoring unimplemented")
+    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
     @pytest.mark.xfail
     def test_get_replacement(self):
         ## OLD: Eqcall._filter_args_by_function
@@ -360,7 +342,7 @@ class TestBaseTransformerStrategy:
         ## TODO: args = {"x1": 20, "y1": 10, "x2": 30, "y2": -60}
         assert False, "TO_BE_IMPLEMENTED"
 
-    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason="Ignoring unimplemented")
+    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
     @pytest.mark.xfail
     def test_eq_call_to_module_func(self):
         """Ensures that eq_call_to_module_func method of BaseTransformerStrategy class works as expected"""
@@ -368,7 +350,7 @@ class TestBaseTransformerStrategy:
         assert False, "NOT_IMPLEMENTED_IN_FILE"
         ## TODO: Wait for function to be implemented
 
-    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason="Ignoring unimplemented")
+    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
     @pytest.mark.xfail
     def test_find_eq_call(self):
         """Ensures that find_eq_call method of BaseTransformerStrategy class works as expected"""
@@ -376,7 +358,7 @@ class TestBaseTransformerStrategy:
         assert False, "NOT_IMPLEMENTED_IN_FILE"
         ## TODO: Wait for function to be implemented
 
-    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason="Ignoring unimplemented")
+    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
     @pytest.mark.xfail
     def test_get_args_replacement(self):
         """Ensures that get_args_replacement_func method of BaseTransformerStrategy class works as expected"""
@@ -384,7 +366,7 @@ class TestBaseTransformerStrategy:
         assert False, "NOT_IMPLEMENTED_IN_FILE"
         ## TODO: Wait for function to be implemented
 
-    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason="Ignoring unimplemented")
+    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
     @pytest.mark.xfail
     def test_is_condition_to_replace_met(self):
         """Ensures that is_condition_to_replace_met method of BaseTransformerStrategy class works as expected"""
@@ -509,7 +491,7 @@ class TestToStandard:
         result = to_standard.is_condition_to_replace_met(eq_call, args)
         assert result is True
 
-    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason="Ignoring unimplemented")
+    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
     @pytest.mark.xfail
     def test_get_args_replacement(self):
         """Ensures that get_args_replacement method of ToStandard class works as expected"""
@@ -517,7 +499,7 @@ class TestToStandard:
         ## TODO: result = THE_MODULE.ToStandard.get_args_replacement()
         assert False, "TODO: Implement"
 
-    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason="Ignoring unimplemented")
+    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
     @pytest.mark.xfail
     def test_replace_args_keys(self):
         """Ensures that replace_args_keys method of ToStandard class works as expected"""
@@ -525,7 +507,7 @@ class TestToStandard:
         ## TODO: result = THE_MODULE.ToStandard.replace_args_keys()
         assert False, "TODO: Implement"
 
-    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason="Ignoring unimplemented")
+    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
     @pytest.mark.xfail
     def test_eq_call_to_module_func(self):
         """Ensures that eq_call_to_module_func method of ToStandard class works as expected"""
@@ -848,7 +830,7 @@ class TestTransform(TestWrapper):
         result, _ = THE_MODULE.transform(self.mocked_to_module, original_code)
         assert result.strip() == expected_code.strip()
 
-    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason="Ignoring unimplemented")
+    @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
     @pytest.mark.xfail
     def test_replace_call_if_needed(self):
         """Ensures that replace_call_if_needed method of ReplaceCallsTransformer works as expected"""
