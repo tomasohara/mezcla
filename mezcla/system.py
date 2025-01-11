@@ -49,6 +49,7 @@ STRING_TYPES = six.string_types
 MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
 TEMP_DIR = None
+ENCODING = "encoding"
 
 ## TODO: debug.assertion(python_maj_min_version() >= 3.8, "Require Python 3.8+ for function def's with '/' or '*'")
 ## See https://stackoverflow.com/questions/9079036/how-do-i-detect-the-python-version-at-runtime
@@ -566,7 +567,6 @@ def read_entire_file(filename, **kwargs):
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
-        ENCODING = "encoding"
         if kwargs.get(ENCODING) is None:
             kwargs[ENCODING] = "UTF-8"
         ## TODO: with open_file(filename, **kwargs) as f:
