@@ -13,6 +13,7 @@
 
 # Local modules
 from mezcla import debug
+from mezcla.my_regex import my_re
 from mezcla import system
 
 # Environment options
@@ -28,20 +29,42 @@ HOME = system.getenv_bool(
 UNDER_RUNNER = system.getenv_bool(
     "UNDER_RUNNER", HOME == "/home/runner",
     description="Whether running under Github actions")
-SKIP_SLOW_TESTS = system.getenv_bool(
-    "SKIP_SLOW_TESTS",
-    (not UNDER_RUNNER),
-    description="Omit tests that can a while to run")
 RUN_SLOW_TESTS = system.getenv_bool(
     "RUN_SLOW_TESTS", 
-    not SKIP_SLOW_TESTS,
     description="Alias for not[-]SKIP_SLOW_TESTS")
+SKIP_SLOW_TESTS = system.getenv_bool(
+    "SKIP_SLOW_TESTS",
+    (not (UNDER_RUNNER or RUN_SLOW_TESTS)),
+    description="Omit tests that can a while to run")
+SKIP_SLOW_REASON="Ignoring slow test"
 SKIP_UNIMPLEMENTED_TESTS = system.getenv_bool(
     # Note: used to avoid clutter due to (so many) unimplemented tests, such as
     # when using --runxfail for better test failure diagnostics.
     "SKIP_UNIMPLEMENTED_TESTS", 
     False,
     description="Skip tests not yet implemented")
+SKIP_UNIMPLEMENTED_REASON = "Ignoring unimplemented test"
+
+#-------------------------------------------------------------------------------
+
+def fix_indent(code):
+    """Make sure CODE indented proper if it is a string;
+    however, list input is returned as is.
+    Note: this accounts for code defined with index triple-quote strings
+    
+    >>> fix_indent('''
+                   print("ok")
+                   ''')
+    'print("ok")'
+    """
+    result = code
+    if isinstance(result, str) and my_re.search(r"^\n( +)", result):
+        indentation = my_re.group(1)
+        result = my_re.sub(fr"^{indentation}", "", result, flags=my_re.MULTILINE)
+    debug.trace(8, f"fix_indent{code!r} => {result!r}")
+    return result
+
+#-------------------------------------------------------------------------------
 
 if __name__ == "__main__":
     debug.trace_current_context()
