@@ -2,6 +2,23 @@
 #
 # Mezcla to Standard call conversion script
 #
+# This is a 2to3-like tool for converting scripts using mezcla packages into
+# ones based mainly on the Python standard library (PSL) packages. For example,
+# calls to file access wrappers are replaced with the os.path equivalent.
+# In addition, calls to debug.trace, etc. are replaced with logging statements.
+#
+# As with 2to3, the goal is achieve the bulk of the transformations needed,
+# with warnings indicating cases not supported. The transformations are just
+# based on static code analysis, so it is not guaranteed to produce equivalent
+# code. The test set includes before and after comparisons using pytest and
+# other checks, which can be adapted to testing non-repo scripts.
+#
+# Not all mezcla packages are supported. For example, this won't convert usages
+# of main.py's Script class. Likewise, unit tests with unittest_wrapper.py
+# won't be modified. In addition, the focus is on system.py and glue_helpers.py,
+# which have the majority of thin wrappers around PSL calls. The debugging
+# support is also included as a bit idiosyncratic.
+#
 # TODO3: Look into making this table driven. Can't eval() be used to generate the EqCall specifications?
 # TODO4: Try to create a table covering more of system.py and glue_helper.py.
 #
@@ -29,6 +46,15 @@
 #   os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
 #   print(os.path.join("/tmp", "fubar"))
 #
+#--------------------------------------------------------------------------------
+# Note:
+# - This uses libCST which in turn is based on Python AST's; see
+#   -- https://libcst.readthedocs.io: compromise between an Abstract Syntax Tree (AST)
+#      and a traditional Concrete Syntax Tree (CST)
+#   -- https://greentreesnakes.readthedocs.io: "field guide" for working with ASTs
+# - By the way, lib2to3 is a CST used in Black, see following:
+#   https://libcst.readthedocs.io/en/latest/why_libcst.html
+# - The code is still very much work in progress.
 # --------------------------------------------------------------------------------
 # Example illustrating the transformations being made
 #
@@ -182,6 +208,7 @@
 #
 # TODO2:
 # - Consolidate ToMezcla and ToStandard because too much duplicated code.
+# - Block usage under admin-like users, as in shell-scripts repo's batspp_report.py.
 #
 # TODO3:
 # - Write pretty printer for CST tree for sake of more understandable tracing
@@ -247,6 +274,7 @@ def path_to_callable(path: str) -> Callable:
     """
     components = path.split('.')
     # Get the base module from the global namespace
+    ## TODO3: use sandbox globals dict
     module = globals()[components[0]]
     # Iterate through the components to get the desired attribute
     for component in components[1:]:
@@ -259,21 +287,27 @@ ArgsSpecs = collections.namedtuple('Specs',
 """
 Same as `inspect.FullArgSpec`, but separated `args` from `kwargs`
 """
+## TODO4: rework using offset of first kwarg (to maintain compatibility with inspect version:
+##    ex: class AltFullArgSpec:  spec: FullArgSpec;  kw_offset: int
 
 def get_func_specs(func: callable) -> ArgsSpecs:
     """
     Get the function signature
     """
-    ## TODO3: callable => StrOrCallable in type hint above
+    ## TODO3: change callable => StrOrCallable in type hint above
     if isinstance(func, str):
         func = path_to_callable(func)
     result = None
     if func.__module__ == "builtins":
         # Workaround for builtins
+        # Note: inspect.getfullargspec(print) yields error:
+        #     ValueError: no signature found for builtin <built-in function print>
+        # See https://stackoverflow.com/questions/11343191/python-inspect-getargspec-with-built-in-function.
         if func.__name__ == "print":
             result = ArgsSpecs(
                 args=[],
                 kwargs=["sep", "end", "file", "flush"],
+                ## TODO4: varargs="value",
                 varargs="values",
                 varkw=None,
                 defaults=[],
@@ -288,8 +322,12 @@ def get_func_specs(func: callable) -> ArgsSpecs:
         new_args = func_specs.args
         new_kwargs = []
         if func_specs.defaults:
-            new_kwargs = func_specs.args[-len(func_specs.defaults):]
-            new_args = func_specs.args[:-len(func_specs.defaults)]
+            ## OLD:
+            ## new_kwargs = func_specs.args[-len(func_specs.defaults):]
+            ## new_args = func_specs.args[:-len(func_specs.defaults)]
+            args_count = len(func_specs.args) - len(func_specs.defaults)
+            new_args = func_specs.args[0: args_count]
+            new_kwargs = func_specs.args[args_count:]
         result = ArgsSpecs(
             args=new_args,
             kwargs=new_kwargs,
@@ -373,6 +411,7 @@ class CallDetails:
 
     def equals_to(self, path: str) -> bool:
         """Compare if the path is equal to the call details path"""
+        ## TODO4: use debug.assertion unless critical (likewise below)
         assert self.path, "CallDetails => path is None"
         return self.path == path
 
@@ -380,13 +419,15 @@ class CallDetails:
         """
         Compare if the path ends with the call details path
         ```
-        "glue_helpers.get_temp_file" == "os.path.get_temp_file"
+        "glue_helpers.basename" == "os.path.basename"
         ```
         """
         assert self.path, "CallDetails => path is None"
         return self.path.endswith("." + path)
 
     def __call__(self, *args, **kwargs):
+        ## TODO4: drop (unless being invoked)
+        debug.trace(9, f"CallDetails.__call__(); self={self}")
         assert self.callable, "CallDetails => callable is None"
         return self.callable(*args, **kwargs)
 
@@ -450,7 +491,7 @@ class EqCall:
         """
         Mezcla method to be replaced.
         ```
-        target = gh.get_temp_file
+        targets = gh.get_temp_file
         ```
         """
 
@@ -458,12 +499,12 @@ class EqCall:
         """
         Standard method to be replaced.
         ```
-        dest = tempfile.NamedTemporaryFile
+        dests = tempfile.NamedTemporaryFile
         ```
         NOTE: some standard modules like `os` are loaded as `posix`,
         or `os.path` as `posixpath`, to fix this, you can set dest as string:
         ```
-        dest = 'os.path.getsize'
+        dests = 'os.path.getsize'
         ```
         """
 
@@ -556,10 +597,10 @@ class EqCall:
 class EqCallParser:
     """
     EqCallParser is responsible for reading a configuration file and creating
-    instances of the EQclass defined within it.
+    instances of the EqCall defined within it.
     Attributes:
         config_path (str): The path to the configuration file.
-        eq_classes (list): A list to store instances of EQclass.
+        eq_classes (list): A list to store instances of EqCall.
     Methods:
         parse_config(): Reads the configuration file and creates EQclass instances.
     """
@@ -574,7 +615,7 @@ class EqCallParser:
 
     def parse_config(self) -> None:
         """
-        Parses the config file in `config_path` and creates instences of EQclass for each element in it
+        Parses the config file in `config_path` and creates instences of EqCall for each element in it
         """
         ## TODO3: use with system.open_file(self.config_path): ...
         with open(self.config_path, "r", encoding="UTF-8") as file:
@@ -647,6 +688,8 @@ class EqCallParser:
         """
         results = []
         for feature in features:
+            ## TODO4: use dict lookup for better maintenance
+            ##    ex: feature_name_to_value = {"Features.FORMAT_STRING": Features.FORMAT_STRING, ...}
             if feature.endswith("FORMAT_STRING"):
                 results.append(Features.FORMAT_STRING)
             elif feature.endswith("COPY_DEST_SOURCE"):
@@ -659,14 +702,19 @@ class EqCallParser:
 # Custom Function replacements
 
 def assertion_replacement(expression, message=None, assert_level=None):
-    """Replacement for debug.assertion"""
-    ## TODO3: Encoding directly via lambda in the EqCall
+    ## TODO2: """Replacement for debug.assertion"""
+    ##  NOTE: The above comment breaks replacement which assumes single line of code
+    ## TODO3: Encode directly via lambda in the EqCall
+    ##    ex: dests=lambda expression, message=None, assert_level=None: (debug.trace(assert_level, message) if expression else None)
     if expression:
         debug.trace(assert_level, message)
 
 # Add equivalent calls between Mezcla and standard
+## TODO4: drop support for multiple targets (i.e., at expense of a little redundancy);
+##    ex: EqCall(targets=(fu, bar), dests=fubar) => EqCall(targets=fu, dests=fubar) & EqCall(targets=bar, dests=fubar)
 mezcla_to_standard = [
     EqCall(
+        ## TODO4: use full name (glue_helpers)
         gh.get_temp_file,
         tempfile.NamedTemporaryFile,
     ),
@@ -686,6 +734,7 @@ mezcla_to_standard = [
         eq_params={ "file_path": "filename" }
     ),
     EqCall(
+        ## TODO4: treat targets separately
         (gh.file_exists, system.file_exists),
         "os.path.exists",
         eq_params={ "filename": "path" }
@@ -693,6 +742,8 @@ mezcla_to_standard = [
     EqCall(
         (gh.form_path, system.form_path),
         "os.path.join",
+        ## TODO3: condition=lambda: not create [for gh.form_path]
+        ##    where extra_params = { "create": False },
         eq_params = { "filenames": "a" }
     ),
     EqCall(
@@ -724,8 +775,10 @@ mezcla_to_standard = [
         eq_params = { "dir_name": "path" }
     ),
     EqCall(
+        ## TODO4: drop tpo as obsolete; -or- use full name (tpo_common)
         tpo.debug_print,
         logging.debug,
+        ## TODO4: condition = lambda level: level > 3,
         eq_params = { "text": "msg" },
         extra_params = { "level": 1 },
     ),
@@ -776,6 +829,7 @@ mezcla_to_standard = [
     EqCall(
         system.open_file,
         open,
+        ## TODO4: extra_params={ "encoding": "UTF-8" },
         eq_params={ "filename": "file" }
     ),
     EqCall(
@@ -835,6 +889,7 @@ mezcla_to_standard = [
         eq_params={ "num_seconds": "seconds" }
     ),
     EqCall(
+        ## TODO3: separate: get_exception just returns tuple
         (system.print_exception_info, system.get_exception),
         sys.exc_info,
     ),
@@ -847,6 +902,7 @@ mezcla_to_standard = [
     ),
     EqCall(
         (system.to_float, system.safe_float),
+        ## TODO4: dest=lambda: try: ... except: ...???
         float,
     ),
     EqCall(
@@ -866,6 +922,7 @@ mezcla_to_standard = [
     ),
     EqCall(
         system.getenv_value,
+        ## TODO4: warn that ignoring description, etc. (likewise below)
         dests=lambda var, default: os.environ.get(var) or default,
         features=[Features.COPY_DEST_SOURCE]
     ),
@@ -963,6 +1020,7 @@ def value_to_arg(value: object) -> cst.Arg:
     result = None
     if isinstance(value, str):
         # OLD: result = cst.Arg(cst.SimpleString(value=value))
+        ## TODO3: (value=f'"{value!r}"')?
         result = cst.Arg(cst.SimpleString(value=f'"{value}"'))
     elif isinstance(value, int):
         result = cst.Arg(cst.Integer(value=str(value)))
@@ -972,6 +1030,7 @@ def value_to_arg(value: object) -> cst.Arg:
         # OLD: result = cst.Arg(cst.Name(value=str(value)))
         result = cst.Arg(cst.Name(value='True' if value else 'False'))
     elif isinstance(value, io.TextIOWrapper):
+        ## TODO3: what about sys.stdin and sys.stdout?
         result = cst.Arg(cst.Attribute(
             value=cst.Name(value='sys'),
             attr=cst.Name(value='stderr')
@@ -986,8 +1045,8 @@ def arg_to_value(arg: cst.Arg) -> object:
     Convert a CST tree argument node to a value object
 
     ```
-    arg = cst.Arg(cst.SimpleString(value='text'))
-    arg_to_value(arg) => 'text'
+    arg = cst.Arg(cst.SimpleString(value=r'"text"'))
+    arg_to_value(arg) => '"text"'
     ```
     """
     result = None
@@ -999,6 +1058,7 @@ def arg_to_value(arg: cst.Arg) -> object:
         result = float(arg.value.value)
     elif isinstance(arg.value, cst.Name):
         # Check if is Boolean
+        ## TODO3: handle None, sys, etc.
         if isinstance(arg.value.value, str):
             result = system.to_bool(arg.value.value)
     if result is None:
@@ -1014,6 +1074,7 @@ def has_fixed_value(arg: cst.Arg) -> bool:
 
 def all_has_fixed_value(args: List[cst.Arg]) -> bool:
     """Check if any CST argument node has a fixed value"""
+    ## TODO4:   ^^^ each
     result = all(has_fixed_value(arg) for arg in args)
     debug.trace(7, f"any_has_fixed_value(args={args}) => {result}")
     return result
