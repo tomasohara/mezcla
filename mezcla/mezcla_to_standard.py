@@ -179,11 +179,14 @@ Mezcla to Standard call conversion script
 """
 
 # Standard modules
+import pickle
+import datetime
 import io
 import time
 import sys
 import logging
 import inspect
+import urllib.parse
 from typing import (
     Optional, Tuple, List, Union, Callable,
 )
@@ -198,13 +201,15 @@ import ast
 
 # Installed module
 import libcst as cst
-
+import spacy as spacy
 # Local modules
 from mezcla.main import Main
 from mezcla import system
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import tpo_common as tpo
+from mezcla import misc_utils
+from mezcla import spacy_nlp
 
 # Arguments
 FILE = "file"
@@ -743,6 +748,13 @@ mezcla_to_standard = [
         features=[Features.FORMAT_STRING],
     ),
     EqCall(
+        debug.trace_expr,
+        # should we use Icrecream.ic() here?
+        dests= print,
+        eq_params={ "values": "values" },
+        extra_params={ "file": sys.stderr },
+        ),
+    EqCall(
         system.exit,
         sys.exit,
         eq_params={ "message": "status" }
@@ -780,19 +792,25 @@ mezcla_to_standard = [
     EqCall(
         system.round_num,
         round,
-        eq_params={ "value": "number" },
+        eq_params={ 
+                   "value": "number",
+                   "precision": "ndigits"},
         extra_params={ "ndigits": 6 }
     ),
     EqCall(
         system.round3,
         round,
-        eq_params={ "num": "number" },
+        eq_params={ 
+                   "value": "number",
+                   "precision": "ndigits"},
         extra_params={ "ndigits": 3 }
     ),
     EqCall(
         tpo.round_num,
         round,
-        eq_params={ "num": "number" },
+        eq_params={ 
+                   "value": "number",
+                   "precision": "ndigits"},
         extra_params={ "ndigits": 3 }
     ),
     EqCall(
@@ -807,7 +825,8 @@ mezcla_to_standard = [
     EqCall(
         (
             system.to_string, system.to_str, system.to_unicode,
-            tpo.normalize_unicode, tpo.ensure_unicode,
+            tpo.normalize_unicode, tpo.ensure_unicode, system.to_utf8,
+            system.from_utf8
         ),
         str,
     ),
@@ -820,41 +839,132 @@ mezcla_to_standard = [
         int,
     ),
     EqCall(
-        debug.assertion,
+        (debug.assertion, gh.assertion),
         dests=assertion_replacement,
         extra_params={ "assert_level": 1, "message": "debug assertion failed" },
         features=[Features.COPY_DEST_SOURCE]
     ),
     EqCall(
-        system.getenv,
+        (system.getenv, system.getenv_value),
         dests=lambda var, default_value: os.environ.get(var) or default_value,
+        eq_params={"var": "var", "default": "default_value"},
         features=[Features.COPY_DEST_SOURCE]
     ),
     EqCall(
-        system.getenv_value,
-        dests=lambda var, default: os.environ.get(var) or default,
+        (system.getenv_int, system.getenv_integer),
+        dests=lambda var, default_value: int(os.environ.get(var)) or default_value,
+        eq_params={"var": "var", "default": "default_value"},
         features=[Features.COPY_DEST_SOURCE]
     ),
     EqCall(
-        system.getenv_int,
-        dests=lambda var, default: int(os.environ.get(var)) or default,
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        system.getenv_bool,
-        dests=lambda var, default: bool(os.environ.get(var)) or default,
+        (system.getenv_bool, system.getenv_boolean),
+        dests=lambda var, default_value: bool(os.environ.get(var)) or default_value,
+        eq_params={"var": "var", "default": "default_value"},
         features=[Features.COPY_DEST_SOURCE]
     ),
     EqCall(
         system.getenv_text,
-        dests=lambda var, default: str(os.environ.get(var)) or default,
+        dests=lambda var, default_value: str(os.environ.get(var)) or default_value,
+        eq_params={"var": "var", "default": "default_value"},
         features=[Features.COPY_DEST_SOURCE]
     ),
     EqCall(
-        system.getenv_number,
-        dests=lambda var, default: float(os.environ.get(var)) or default,
+        (system.getenv_number, system.getenv_float),
+        dests=lambda var, default_value: float(os.environ.get(var)) or default_value,
+        eq_params={"var": "var", "default": "default_value"},
         features=[Features.COPY_DEST_SOURCE]
     ),
+    # 
+    # NEW CALLS
+    #
+    EqCall(
+        system.setenv,
+        dests=lambda var, value: os.environ.update({var: value}),
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.quote_url_text,
+        dests=urllib.parse.quote_plus
+    ),
+    EqCall(
+        system.unquote_url_text,
+        dests=urllib.parse.unquote_plus
+    ),
+    EqCall(
+        (system.non_empty_file, gh.non_empty_file),
+        dests=lambda path: os.path.exists(path) and os.path.getsize(path) > 0,
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        (system.read_file, system.read_entire_file),
+        dests=lambda path: open(path).read(),
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.write_file,
+        dests=lambda path, text: open(path, "w").write(text),
+        eq_params={ "filename": "path", "text": "text" },
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        gh.full_mkdir,
+        dests=os.makedirs,
+    ),
+    EqCall(
+        gh.elide,
+        dests=lambda text, max_length: text[:max_length] + "..." if len(text) > max_length else text,
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        debug.reference_var,
+        dests=lambda var: ...,
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        (debug.debugging, debug.detailed_debugging, debug.verbose_debugging),
+        dests=lambda : False,
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.chomp,
+        dests=lambda text: text.rstrip(os.linesep),
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+     system.save_object,
+     dests=lambda obj,filename: pickle.dump(obj, open(filename, "wb")),
+     eq_params={ "obj": "obj", "file_name": "filename" },
+     features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.load_object,
+        dests=lambda filename: pickle.load(open(filename, "rb")),
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        system.round_as_str,
+        dests=lambda value: str(round(value)),
+        features=[Features.COPY_DEST_SOURCE],
+        extra_params={ "precision": 6 }
+    ),
+    EqCall(
+        misc_utils.sort_weighted_hash,
+        dests=lambda hash: sorted(hash.items(), key=lambda x: x[1], reverse=True),
+        features=[Features.COPY_DEST_SOURCE]
+    ),
+    EqCall(
+        gh.resolve_path,
+        dests=os.path.realpath,
+    ),
+    EqCall(
+        debug.timestamp,
+        dests=datetime.now,
+    ),
+    EqCall(
+        spacy_nlp.Chunker,
+        dests=spacy.load,
+        eq_params={"model": "name"},
+    )
 ]
 
 def cst_to_path(tree: cst.CSTNode) -> str:
