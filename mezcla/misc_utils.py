@@ -78,11 +78,12 @@ def read_tabular_data(filename):
 
 
 def extract_string_list(text):
-    """Extract a list of values from text using spaces and/or commas as delimiters"""
+    """Extract a list of values from text using whitespace and/or commas as delimiters"""
     # EX: extract_string_list("1  2,3") => [1, 2, 3]
-    trimmed_text = re.sub("  +", " ", text.strip())
+    # TODO: Add support for quoted values to allow for embedded spaces
+    trimmed_text = re.sub("\s+", " ", text.strip())
     values = trimmed_text.replace(" ", ",").split(",")
-    debug.trace_fmtd(5, "extract_string_list({t}) => {v}", t=text, v=values)
+    debug.trace_fmtd(5, "extract_string_list({t!r}) => {v!r}", t=text, v=values)
     return values
 
 

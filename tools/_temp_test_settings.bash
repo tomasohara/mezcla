@@ -26,9 +26,10 @@ if [ "$DEPLOYMENT_BASEPATH" == "/opt/runner" ]; then
 fi
 DEBUG_LEVEL="${DEBUG_LEVEL:-0}"
 if [ "$DEBUG_LEVEL" -lt "$MIN_DEBUG_LEVEL" ]; then
-    export DEBUG_LEVEL=MIN_DEBUG_LEVEL
+    export DEBUG_LEVEL=$MIN_DEBUG_LEVEL
 fi
 if [ "$DEBUG_LEVEL" -ge 4 ]; then
     export PYTEST_OPTIONS="-v -s"
 fi
-export TEST_REGEX=unittest_wrapper
+## TEST: export TEST_REGEX=unittest_wrapper
+

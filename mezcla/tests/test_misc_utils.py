@@ -67,7 +67,8 @@ class TestMiscUtils(TestWrapper):
     def test_extract_string_list(self):
         """Ensure extract_string_list works as expected"""
         debug.trace(4, "test_extract_string_list()")
-        assert THE_MODULE.extract_string_list("1  2,3") == ['1', '2', '3']
+        assert THE_MODULE.extract_string_list("  a  b,c") == ['a', 'b', 'c']
+        assert THE_MODULE.extract_string_list("a\nb\tc") == ['a', 'b', 'c']
 
     def test_is_prime(self):
         """Ensure is_prime works as expected"""
