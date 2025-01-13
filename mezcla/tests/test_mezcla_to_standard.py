@@ -46,7 +46,7 @@ from mezcla import system, debug, glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla.tests.common_module import (
-    SKIP_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON)
+    SKIP_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON, fix_indent)
 
 # Pylint configurations
 
