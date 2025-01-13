@@ -31,9 +31,6 @@ fi
 
 # Get directory locations
 dir=$(dirname "${BASH_SOURCE[0]}")
-## OLD:
-## tools="$(dirname "$(realpath -s "$0")")"
-## base="$tools/.."
 base="$dir/.."
 mezcla="$base/mezcla"
 tests="$mezcla/tests"
@@ -54,7 +51,8 @@ fi
 echo "DEBUG_LEVEL=$DEBUG_LEVEL"
 
 # Get tests to run
-TEST_REGEX="${TEST_REGEX:-"."}"
+DEFAULT_TEST_REGEX="."
+TEST_REGEX="${TEST_REGEX:-$DEFAULT_TEST_REGEX}"
 # Note: TEST_REGEX is for only running the specified tests, 
 # and, FILTER_REGEX is for disabling particular tests.
 # Both are meant as expedients, not long-term solutions.
@@ -62,20 +60,16 @@ TEST_REGEX="${TEST_REGEX:-"."}"
 DEFAULT_FILTER_REGEX="(not-a-real-test.py)"
 FILTER_REGEX="${FILTER_REGEX:-"$DEFAULT_FILTER_REGEX"}"
 # shellcheck disable=SC2010
-if [[ ("$TEST_REGEX" != ".") || ("$FILTER_REGEX" != "") ]]; then
-    ## OLD:
-    ## tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX")
-    ## example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX")
+if [[ ("$TEST_REGEX" != "$DEFAULT_TEST_REGEX") || ("$FILTER_REGEX" != "$DEFAULT_FILTER_REGEX") ]]; then
     tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
     example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
 fi
 #
-## OLD: echo -e "Running tests on $tests; also running $example_tests\n"
 echo -n "Running tests on $tests"
 if [ "$example_tests" == "" ]; then
-    echo "Running no example tests"
+    echo "; running no example tests"
 else
-    echo "Also running $example_tests"
+    echo "; also running $example_tests"
 fi
 echo ""
 echo -n "via "
@@ -102,7 +96,6 @@ if [ "$1" == "--coverage" ]; then
     coverage html
     test_result="$?"
 else
-    ## OLD: pytest $tests $example_tests
     pytest_options="${PYTEST_OPTIONS:-}"
     pytest $pytest_options $tests $example_tests
     test_result="$?"
