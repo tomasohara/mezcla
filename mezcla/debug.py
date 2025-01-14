@@ -67,6 +67,7 @@ import re
 import six
 import sys
 import time
+import traceback
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Local packages
@@ -602,11 +603,10 @@ if __debug__:
         return
 
 
-    ## TODO
-    ## def trace_stack(level=VERBOSE):
-    ##     """Output stack trace to stderr (if at trace LEVEL or higher)"""
-    ##     system-ish.print_full_stack()
-    ##     return
+    def trace_stack(level=VERBOSE):
+        """Output stack trace to stderr (if at trace LEVEL or higher)"""
+        traceback.print_stack(file=sys.stderr)
+        return
 
 
     def trace_exception(level, task):
@@ -621,9 +621,9 @@ if __debug__:
 
     
     def raise_exception(level=1):
-        """Raise an exception if debugging (at specified trace LEVEL)"""
-        # Note: For producing full stacktrace in except clause when debugging.
-        # TODO: elaborate
+        """Raise an exception if debugging (at specified trace LEVEL)
+        Note: useful to re-raise exceptions normally ignored when not debugging
+        """
         if __debug__ and (level <= trace_level):
             raise                       # pylint: disable=misplaced-bare-raise
         return
