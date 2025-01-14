@@ -43,7 +43,7 @@ except:
 # Local packages
 import mezcla.mezcla_to_standard as THE_MODULE
 from mezcla import system, debug, glue_helpers as gh
-from mezcla.my_regex import my_re
+## TOO: from mezcla.my_regex import my_re
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla.tests.common_module import (
     SKIP_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON, fix_indent)
@@ -74,7 +74,7 @@ SKIP_EXPECTED_ERRORS = system.getenv_bool(
 ## TODO2: drop and use pytest.parametrize[!]
 def parametrize(parameters):
     """Alternative to the pytest.mark.parametrize decorator"""
-    debug.trace(4, "FYI: Using non-standard [pytest.mark.]parametrize")
+    debug.trace(6, "FYI: Using non-standard [pytest.mark.]parametrize")
     def decorator(func):
         def wrapper(*args, **kwargs):
             for parameter_set in parameters:
@@ -409,13 +409,15 @@ class TestToStandard:
     def test_tostandard_find_eq_call_existing(self, setup_to_standard):
         """Test for finding an existing equivalent call"""
         debug.trace(5, f"TestToStandard.test_tostandard_find_eq_call_existing({setup_to_standard}); self={self}") 
+        ## TODO3: rework test to be independent of test filename (likewise below)
         path = "test_mezcla_to_standard.sample_func1"
         args = [THE_MODULE.value_to_arg("a")]
         to_standard = setup_to_standard
         eq_call = to_standard.find_eq_call(path, args)
         assert eq_call is not None
         assert isinstance(eq_call, THE_MODULE.EqCall)
-        assert eq_call.targets[0].path == path
+        ## OLD: assert eq_call.targets[0].path == path
+        assert path in eq_call.targets[0].path
 
     def test_tostandard_find_eq_call_non_existing(self, setup_to_standard):
         """Test for trying to find a non-existing equivalent call"""
@@ -428,35 +430,45 @@ class TestToStandard:
         assert eq_call is None
 
     @pytest.mark.xfail
-    def test_tostandard_find_eq_call(self):
-        """Ensures that find_eq_call of ToStandard class works as expected"""
-        debug.trace(5, f"TestToStandard.test_tostandard_find_eq_call(); self={self}") 
+    def test_tostandard_find_eq_call_mocked(self):
+        """Ensures that find_eq_call of ToStandard class works with mocked up example"""
+        debug.trace(5, f"TestToStandard.test_tostandard_find_eq_call_mocked(); self={self}") 
         # Does not work as intended (Result = None)
 
-        class MockEqCall:
-            """Mock class for EqCall objects"""
-
-            ## TODO: update (module, func) to "module.func"
-            def __init__(self, module, func, condition_met=True):
-                self.target = type(
-                    "MockClass", (object,), {"__module__": f"{module}.mock"}
-                )()
-                self.target.__name__ = func
-                self.condition_met = condition_met
-
-            def is_condition_to_replace_met(self, _args):
-                """Returned mocked condition status"""
-                return self.condition_met
+        ## OLD:
+        ## class MockEqCall(THE_MODULE.EqCall):
+        ##     """Mock class for EqCall objects"""
+        ##
+        ##     ## TODO: update (module, func) to "module.func"
+        ##     def __init__(self, module, func, condition_met=True):
+        ##         self.targets = type(
+        ##             "MockClass", (object,), {"__module__": f"{module}.mock"}
+        ##         )()
+        ##         self.targets.__name__ = func
+        ##         self.condition_met = condition_met
+        ##
+        ##     def is_condition_to_replace_met(self, _args):
+        ##         """Returned mocked condition status"""
+        ##         return self.condition_met
+        ##
+        ## TODO3: use monkey_patch or mocked.path
+        setattr(THE_MODULE, "my_module",  MagicMock(spec=["my_function"]))
+        setattr(THE_MODULE, "other_module", MagicMock(spec=["other_function"]))
 
         # Create a ToStandard instance
-        to_standard = THE_MODULE.ToStandard()
         mezcla_to_standard = [
-            MockEqCall("my_module", "my_function"),
-            MockEqCall("other_module", "other_function"),
+            THE_MODULE.EqCall(
+                targets="my_module.my_function", dests=None,
+            ),
+            THE_MODULE.EqCall(
+                targets="other_module.other_function", dests=None,
+            ),
         ]
+        to_standard = THE_MODULE.ToStandard(eq_call_table=mezcla_to_standard)
         # Assertion for eq_call match
         result = to_standard.find_eq_call("my_module.my_function", ["arg1", "arg2"])
-        assert result == mezcla_to_standard[0]
+        assert str(mezcla_to_standard[0].targets[0]) in str(result)
+        assert str(mezcla_to_standard[1].targets[0]) not in str(result)
 
     @pytest.fixture
     def setup_to_standard_with_condition(self):
@@ -522,23 +534,24 @@ class TestToMezcla:
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     @staticmethod
-    def sample_func1(a, b):
+    def alt_sample_func1(a, b):
         """First sample function"""
+        ## TODO4: put sample functions outside of class and reuss
         return a + b
 
     @staticmethod
-    def sample_func2(a, b):
+    def alt_sample_func2(a, b):
         """Second sample function"""
         return a - b
 
     @staticmethod
     def standard_func1(src, dst):
-        """Standard equivalent function for sample_func1"""
+        """Standard equivalent function for alt_sample_func1"""
         return f"{src}: {dst}"
 
     @staticmethod
     def standard_func2(path):
-        """Standard equivalent function for sample_func2"""
+        """Standard equivalent function for alt_sample_func2"""
         return f"path: {path}"
 
     @pytest.fixture
@@ -547,13 +560,13 @@ class TestToMezcla:
         debug.trace(5, f"TestToMezcla.setup_to_mezcla(); self={self}")        
         THE_MODULE.mezcla_to_standard = [
             THE_MODULE.EqCall(
-                targets=self.sample_func1,
+                targets=self.alt_sample_func1,
                 dests=self.standard_func1,
                 condition=lambda a, b: a > b,
                 eq_params={"a": "src", "b": "dst"},
             ),
             THE_MODULE.EqCall(
-                targets=self.sample_func2,
+                targets=self.alt_sample_func2,
                 dests=self.standard_func2,
                 condition=lambda a: isinstance(a, str),
                 eq_params={"a": "path"},
@@ -564,14 +577,15 @@ class TestToMezcla:
 
     def test_tomezcla_find_eq_call_existing(self, setup_to_mezcla):
         """Test for finding an existing equivalent call for ToMezcla class"""
-        debug.trace(5, f"TestToMezcla.test_tomezcla_find_eq_call_existing({setup_to_mezcla}); self={self}") 
+        debug.trace(5, f"TestToMezcla.test_tomezcla_find_eq_call_existing({setup_to_mezcla}); self={self}")
         to_mezcla = setup_to_mezcla
         path = "test_mezcla_to_standard.standard_func1"
         args = [THE_MODULE.value_to_arg(4), THE_MODULE.value_to_arg(3)]
         eq_call = to_mezcla.find_eq_call(path, args)
         assert eq_call is not None
         assert isinstance(eq_call, THE_MODULE.EqCall)
-        assert eq_call.targets[0].path == "test_mezcla_to_standard.sample_func1"
+        ## OLD: assert eq_call.targets[0].path == "test_mezcla_to_standard.alt_sample_func1"
+        assert "test_mezcla_to_standard.alt_sample_func1" in eq_call.targets[0].path
 
     def test_tomezcla_find_eq_call_non_existing(self, setup_to_mezcla):
         """Test for not finding an existing equivalent call for ToMezcla class"""
@@ -588,7 +602,7 @@ class TestToMezcla:
         to_mezcla = setup_to_mezcla
 
         eq_call = THE_MODULE.EqCall(
-            targets=self.sample_func1,
+            targets=self.alt_sample_func1,
             dests=self.standard_func1,
             condition=lambda a, b: a > b,
             eq_params={"a": "src", "b": "dst"},
@@ -602,8 +616,8 @@ class TestToMezcla:
         assert result is False
 
         eq_call = THE_MODULE.EqCall(
-            targets=self.sample_func2,
-            dests=self.sample_func2,
+            targets=self.alt_sample_func2,
+            dests=self.alt_sample_func2,
             condition=lambda a, b: a == b,
             eq_params={"a": "path"},
         )
@@ -620,7 +634,7 @@ class TestToMezcla:
         debug.trace(5, f"TestToMezcla.test_get_args_replacement({setup_to_mezcla}); self={self}")
         to_mezcla = setup_to_mezcla
         eq_call = THE_MODULE.EqCall(
-            targets=self.sample_func1,
+            targets=self.alt_sample_func1,
             dests=self.standard_func1,
             condition=lambda a, b: a > b,
             eq_params={"a": "src", "b": "dst"},
@@ -637,7 +651,7 @@ class TestToMezcla:
 
         # For multiple arguments in function using single argument (selects first arg)
         eq_call = THE_MODULE.EqCall(
-            targets=self.sample_func2,
+            targets=self.alt_sample_func2,
             dests=self.standard_func2,
             condition=lambda a, b: a == b,
             eq_params={"a": "path"},
@@ -655,7 +669,7 @@ class TestToMezcla:
 
         # For multiple arguments
         eq_call = THE_MODULE.EqCall(
-            targets=self.sample_func1,
+            targets=self.alt_sample_func1,
             dests=self.standard_func1,
             eq_params={"a": "src", "b": "dst"},
         )
@@ -665,7 +679,7 @@ class TestToMezcla:
 
         # For single argument
         eq_call = THE_MODULE.EqCall(
-            targets=self.sample_func2,
+            targets=self.alt_sample_func2,
             dests=self.standard_func2,
             eq_params={"a": "path"},
         )
@@ -675,23 +689,26 @@ class TestToMezcla:
 
     def test_eq_call_to_path(self, setup_to_mezcla):
         """Test for eq_call_to_path method in ToMezcla class"""
+        ## TODO3: add better test failure diagnostics
         debug.trace(5, f"TestToMezcla.test_eq_call_to_path({setup_to_mezcla}); self={self}")
         to_mezcla = setup_to_mezcla
 
-        eq_call = THE_MODULE.EqCall(
-            targets=self.sample_func1, dests=self.standard_func1
+        eq_call1 = THE_MODULE.EqCall(
+            targets=self.alt_sample_func1, dests=self.standard_func1
         )
-        path = to_mezcla.eq_call_to_path(eq_call)
+        path1 = to_mezcla.eq_call_to_path(eq_call1)
         assert (
-            path == "test_mezcla_to_standard.sample_func1"
+            ## OLD: path1 == "test_mezcla_to_standard.alt_sample_func1"
+            "test_mezcla_to_standard.alt_sample_func1" in path1
         )  ## TODO: check module part of the path
 
-        eq_call = THE_MODULE.EqCall(
-            targets=self.sample_func2, dests=self.standard_func2
+        eq_call2 = THE_MODULE.EqCall(
+            targets=self.alt_sample_func2, dests=self.standard_func2
         )
-        path = to_mezcla.eq_call_to_path(eq_call)
+        path2 = to_mezcla.eq_call_to_path(eq_call2)
         assert (
-            path == "test_mezcla_to_standard.sample_func2"
+            ## OLD: path2 == "test_mezcla_to_standard.alt_sample_func2"
+            "test_mezcla_to_standard.alt_sample_func2" in path2
         )  ## TODO: check module part of the path
 
 
@@ -2944,6 +2961,15 @@ class TestUsage(TestWrapper):
         # result = self.helper_m2s(input_code)
         # self.assertEqual(result.strip(), expected_code.strip())
         self.assert_m2s_transform(input_code, expected_code)
+
+    @pytest.mark.xfail
+    def test_regression(self):
+        """Make sure known conversions work
+        Note: isolated to just be a small number"""
+        ## NOTE: never worked
+        self.assert_m2s_transform(
+            "from mezcla import system\nsystem.setenv('ABC', 'abc')",
+            "import os\nos.putenv('ABC', 'abc')")
 
     @pytest.mark.xfail
     def test_adhoc(self):
