@@ -27,7 +27,10 @@ from unittest.mock import MagicMock, ANY
 
 # Installed packages
 import pytest
-import libcst as cst
+try:
+    import libcst as cst
+except:
+    cst = None
 try:
     # Note: To avoid making unittest_parametrize a required dependency, the tests that
     # use it are skipped if not available. We should put optional dependencies in a
@@ -41,7 +44,10 @@ except:
     unittest_parametrize = ParametrizedTestCase = ut_parametrize = ut_param = None
 
 # Local packages
-import mezcla.mezcla_to_standard as THE_MODULE
+try:
+    import mezcla.mezcla_to_standard as THE_MODULE
+except:
+    THE_MODULE = None
 from mezcla import system, debug, glue_helpers as gh
 ## TOO: from mezcla.my_regex import my_re
 from mezcla.unittest_wrapper import TestWrapper
@@ -58,7 +64,7 @@ from mezcla.tests.common_module import (
 # Backup of production mezcla_to_standard equivalent
 # calls to restore after some tests that modify it
 ## TODO3: use pytest mocker, which includes support for this
-BACKUP_M2S = THE_MODULE.mezcla_to_standard
+BACKUP_M2S = THE_MODULE.mezcla_to_standard if THE_MODULE else None
 
 # Environment options
 SKIP_EXPECTED_ERRORS = system.getenv_bool(
@@ -130,6 +136,7 @@ if not ut_param:
 
 #-------------------------------------------------------------------------------
     
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 class TestCSTFunctions:
     """Class for test functions that performs operations on CSTs"""
 
@@ -375,6 +382,7 @@ class TestBaseTransformerStrategy:
         ## TODO: Wait for function to be implemented
 
 
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 @pytest.mark.xfail
 class TestToStandard:
     """Class for test usage of ToStandard class in mezcla_to_standard"""
@@ -528,6 +536,7 @@ class TestToStandard:
         assert False, "TODO: Implement"
 
 
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 class TestToMezcla:
     """Class for test usage of ToMezcla class in mezcla_to_standard"""
 
@@ -712,6 +721,7 @@ class TestToMezcla:
         )  ## TODO: check module part of the path
 
 
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 @pytest.mark.xfail
 class TestTransform(TestWrapper):
     """Class for test usage for methods of transform method in mezcla"""
@@ -855,6 +865,7 @@ class TestTransform(TestWrapper):
         assert False, "TODO: Implement"
 
 
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 @pytest.mark.skipif(not unittest_parametrize, reason="Unable to load unittest_parametrize")
 class TestUsageM2SEqCall(TestWrapper, ParametrizedTestCase):
     """Class for test usage of equivalent calls for mezcla_to_standard"""
@@ -1087,6 +1098,7 @@ class TestUsageM2SEqCall(TestWrapper, ParametrizedTestCase):
             self.assertEqual(result.strip(), expected_code.strip())
 
 
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 class TestUsageImportTypes(TestWrapper):
     """Class for test usage for several methods of import in mezcla_to_standard"""
 
@@ -1174,6 +1186,7 @@ class TestUsageImportTypes(TestWrapper):
             self.assertEqual(result.strip(), expected_output.strip(), msg)
 
 
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 @pytest.mark.xfail
 class TestUsage(TestWrapper):
     """Class for several test usages for mezcla_to_standard"""
