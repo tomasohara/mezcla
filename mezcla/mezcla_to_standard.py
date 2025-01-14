@@ -249,10 +249,10 @@ import ast
 
 # Installed module
 import libcst as cst
-import spacy as spacy
 ## TEMP:
 import libcst.tool as cst_tool
 ## TODO?: import libcst.tool.dump as cst_dump
+import spacy as spacy
 
 # Local modules
 from mezcla.main import Main
@@ -1058,12 +1058,12 @@ mezcla_to_standard = [
     ),
     EqCall(
         (system.read_file, system.read_entire_file),
-        dests=lambda path: open(path).read(),
+        dests=lambda path: open(path, encoding="UTF-8").read(),
         features=[Features.COPY_DEST_SOURCE]
     ),
     EqCall(
         system.write_file,
-        dests=lambda path, text: open(path, "w").write(text),
+        dests=lambda path, text: open(path, "w", encoding="UTF-8").write(text),
         eq_params={ "filename": "path", "text": "text" },
         features=[Features.COPY_DEST_SOURCE]
     ),
@@ -1119,7 +1119,7 @@ mezcla_to_standard = [
     ),
     EqCall(
         debug.timestamp,
-        dests=datetime.now,
+        dests=datetime.datetime.now,
     ),
     EqCall(
         spacy_nlp.Chunker,
