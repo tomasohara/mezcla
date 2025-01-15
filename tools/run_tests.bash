@@ -12,6 +12,10 @@
 #   SC2046: Quote this to prevent word splitting.
 #   SC2086: Double quote to prevent globbing and word splitting.
 #
+# TODO2:
+# - Document environment variables (e.g. overrides in _temp_test_settings.bash):
+#   DEBUG_LEVEL, TRACE, VERBOSE, TEST_REGEX, FILTER_REGEX
+#
 # Usage:
 # $ ./tools/run_tests.bash
 # $ ./tools/run_tests.bash --coverage
@@ -75,6 +79,12 @@ echo ""
 echo -n "via "
 python3 --version
 
+# Just echo command if dry run
+pre_cmd=""
+if [ "${DRY_RUN:-0}" == 1 ]; then
+   pre_cmd="echo"
+fi
+
 # Remove mezcla package if running under Docker (or act)
 # TODO2: check with Bruno whether still needed
 if [ "$USER" == "docker" ]; then
@@ -88,16 +98,16 @@ export PYTHONPATH="$mezcla/:$PYTHONPATH"
 test_result=0
 # shellcheck disable=SC2046,SC2086
 if [ "$1" == "--coverage" ]; then
-    export COVERAGE_RCFILE="$base/.coveragerc"
-    export CHECK_COVERAGE='true'
-    coverage erase
-    coverage run -m pytest $tests $example_tests
-    coverage combine
-    coverage html
+    $pre_cmd export COVERAGE_RCFILE="$base/.coveragerc"
+    $pre_cmd export CHECK_COVERAGE='true'
+    $pre_cmd coverage erase
+    $pre_cmd coverage run -m pytest $tests $example_tests
+    $pre_cmd coverage combine
+    $pre_cmd coverage html
     test_result="$?"
 else
     pytest_options="${PYTEST_OPTIONS:-}"
-    pytest $pytest_options $tests $example_tests
+    $pre_cmd pytest $pytest_options $tests $example_tests
     test_result="$?"
 fi
 
