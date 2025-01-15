@@ -31,7 +31,10 @@ fi
 if [ "$DEBUG_LEVEL" -ge 4 ]; then
     export PYTEST_OPTIONS="-v -s"
 fi
-## TEST: export TEST_REGEX=unittest_wrapper
+## NOTE: Until we integrate a testing framework with thresholds, we
+## will need to select tests via TEST_REGEX and FILTER_REGEX
+## TEST:
+export TEST_REGEX="debug|glue_helpers|mezcla_to_standard|system"
 ##
 ## TEMP: don't run tests starting with misc, template, __, or config
 ##   ex: excludes misc_doctests.py, template.py, __init__.py, and conftest.py
