@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 #
 # Bash file for making temporary settings for the tests. This is intended
-# for adhoc debugging and avoids having to specify settings seperately
+# for adhoc debugging and avoids having to specify settings separately
 # for Docker images vs. Github VM runners. This get sourced via run_tests.bash.
 #
 # Warning:
@@ -32,4 +32,11 @@ if [ "$DEBUG_LEVEL" -ge 4 ]; then
     export PYTEST_OPTIONS="-v -s"
 fi
 ## TEST: export TEST_REGEX=unittest_wrapper
-
+##
+## TEMP: don't run tests starting with misc, template, __, or config
+##   ex: excludes misc_doctests.py, template.py, __init__.py, and conftest.py
+## NOTE: The intention is just to run test_*.py
+## TEST:
+export FILTER_REGEX="/(misc|template|__|config|common_module)"
+## TODO: "/?<!(test_)*.py", which uses negative lookbehind
+## export FILTER_REGEX="/?<!(test_).*.py"
