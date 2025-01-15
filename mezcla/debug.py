@@ -70,6 +70,7 @@ import time
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Local packages
+from mezcla.introspection import intro
 ## OLD:
 ## # note: The following redefines sys.version_info to be python3 compatible;
 ## # this is used in _to_utf8, which should be reworked via six-based wrappers.
@@ -512,58 +513,61 @@ if __debug__:
             prefix = ""
         trace(9, f"sep={sep!r}, del={delim!r}, noe={no_eol}, rep={use_repr}, len={max_len}, pre={prefix!r} suf={suffix!r}")
 
+        expression = intro.format(*values, arg_offset=1)
+
         # Get symbolic expressions for the values
         # TODO2: handle cases split across lines
-        try:
-            # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
-            caller = inspect.stack()[1]
-            (_frame, filename, line_number, _function, context, _index) = caller
-            trace(9, f"filename={filename!r}, context={context!r}")
-            statement = read_line(filename, line_number).strip()
-            if statement == MISSING_LINE:
-                statement = str(context).replace("\\n']", "")
-            # Extract list of argument expressions (removing optional comment)
-            statement = re.sub(r"#.*$", "", statement)
-            statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
-            # Remove trailing paren with optional semicolon
-            statement = re.sub(r"\)\s*;?\s*$", "", statement)
-            # Remove trailing comma (e.g., if split across lines)
-            statement = re.sub(r",?\s*$", "", statement)
-            # Skip first argument (level)
-            expressions = re.split(", +", statement)[1:]
-            trace(9, f"expressions={expressions!r}\nvalues={values!r}")
-        except:
-            trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
-                       exc=sys.exc_info())
-            expressions = []
+        # try:
+        #     # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
+        #     caller = inspect.stack()[1]
+        #     (_frame, filename, line_number, _function, context, _index) = caller
+        #     trace(9, f"filename={filename!r}, context={context!r}")
+        #     statement = read_line(filename, line_number).strip()
+        #     if statement == MISSING_LINE:
+        #         statement = str(context).replace("\\n']", "")
+        #     # Extract list of argument expressions (removing optional comment)
+        #     statement = re.sub(r"#.*$", "", statement)
+        #     statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
+        #     # Remove trailing paren with optional semicolon
+        #     statement = re.sub(r"\)\s*;?\s*$", "", statement)
+        #     # Remove trailing comma (e.g., if split across lines)
+        #     statement = re.sub(r",?\s*$", "", statement)
+        #     # Skip first argument (level)
+        #     expressions = re.split(", +", statement)[1:]
+        #     trace(9, f"expressions={expressions!r}\nvalues={values!r}")
+        # except:
+        #     trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
+        #                exc=sys.exc_info())
+        #     expressions = []
 
-        # Output initial text
-        if prefix:
-            trace(level, prefix, no_eol=no_eol)
+        # # Output initial text
+        # if prefix:
+        #     trace(level, prefix, no_eol=no_eol)
 
-        # Output each expression value
-        for expression, value in zip_longest(expressions, values):
-            try:
-                # Exclude kwarg params
-                match = re.search(r"^(\w+)=", str(expression))
-                if (match and match.group(1) in kwargs):
-                    continue
-                assertion((not ((value is not None) and (expression is None))),
-                          f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
-                value_spec = format_value(repr(value) if use_repr else value,
-                                          max_len=max_len)
-                trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
-            except:
-                trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
-                       exc=sys.exc_info())
+        # # Output each expression value
+        # for expression, value in zip_longest(expressions, values):
+        #     try:
+        #         # Exclude kwarg params
+        #         match = re.search(r"^(\w+)=", str(expression))
+        #         if (match and match.group(1) in kwargs):
+        #             continue
+        #         assertion((not ((value is not None) and (expression is None))),
+        #                   f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
+        #         value_spec = format_value(repr(value) if use_repr else value,
+        #                                   max_len=max_len)
+        #         trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
+        #     except:
+        #         trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
+        #                exc=sys.exc_info())
 
-        # Output final text
-        if suffix:
-            trace(level, suffix, no_eol=False)
-        elif (no_eol and (delim != "\n")):
-            trace(level, "", no_eol=False)
-        else:
-             trace(9, "No final text to output")
+        # # Output final text
+        # if suffix:
+        #     trace(level, suffix, no_eol=False)
+        # elif (no_eol and (delim != "\n")):
+        #     trace(level, "", no_eol=False)
+        # else:
+        #      trace(9, "No final text to output")
+        trace(level,expression)
         return
 
     
@@ -656,16 +660,7 @@ if __debug__:
                 trace(8, f"filename={filename!r}, context={context!r}")
                 # Read statement in file and extract assertion expression
                 # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
-                statement = read_line(filename, line_number).strip()
-                if statement == MISSING_LINE:
-                    ## OLD: statement = str(context).replace(")\\n']", "")
-                    statement = str(context).replace("\\n']", "")
-                # Format expression and message
-                # note: removes comments, along with the assertion call prefix and suffix
-                statement = re.sub("#.*$", "", statement)
-                statement = re.sub(r"^(\S*)assertion\(", "", statement)
-                expression = re.sub(r"\);?\s*$", "", statement)
-                expression = re.sub(r",\s*$", "", statement)
+                expression = intro.format(expression)
                 expression_text = expression
                 qualification_spec = (": " + message) if message else ""
                 # Output information
@@ -857,7 +852,6 @@ def _getenv_int(name, default_value):
     except:
         _print_exception_info("_getenv_int")
     return result
-
 
 @docstring_parameter(max_len=max_trace_value_len)
 def format_value(value, max_len=None, strict=None):
