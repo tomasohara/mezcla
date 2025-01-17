@@ -26,10 +26,13 @@ from mezcla import debug
 #    THE_MODULE:	    global module object
 import mezcla.my_regex as THE_MODULE
 
+# Constants
+MEZCLA_REGEX = "M[e]zcl[a]"
+
 class TestMyRegex(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
-    my_re = THE_MODULE.my_re
+    my_re = THE_MODULE.my_re            # TODO3: make global to cut down self usages
 
     ## OLD:
     ## @pytest.fixture(autouse=True)
@@ -37,9 +40,9 @@ class TestMyRegex(TestWrapper):
     ##     """Gets capsys"""
     ##     self.capsys = capsys
 
-    @pytest.mark.xfail
     def helper_my_regex(self, regex, text, is_match=0):
         """Helper functions for my_regex"""
+        ## TODO2: rename as get_regex_search_result
         if is_match:
             self.my_re.match(regex, text, 0)
         else:
@@ -56,6 +59,16 @@ class TestMyRegex(TestWrapper):
         output = self.helper_my_regex(regex, text)
         assert (output.group() == "quick" and output.span() == (4, 9))
     
+    def test_search_alt(self):
+        """Test search()"""
+        debug.trace(4, f"test_search(); self={self}")
+        self.do_assert(not self.my_re.search(MEZCLA_REGEX, "EZC"))
+        debug.assertion("E" not in MEZCLA_REGEX)
+        debug.assertion("e" in MEZCLA_REGEX)
+        self.my_re.search(MEZCLA_REGEX, "EZC", flags=re.IGNORECASE)
+        self.my_re.search(MEZCLA_REGEX, "ezc")
+        self.do_assert(self.my_re.search_text == "ezc")
+
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_match(self):
         """Ensure match() works as expected"""
@@ -65,6 +78,12 @@ class TestMyRegex(TestWrapper):
         output = self.helper_my_regex(regex, text, is_match=1)
         assert(output.group() == "1" and output.span() == (0, 1))
         ## TODO: return the matched value (solved: use group() after my_re.get_match())
+        debug.assertion("M" in MEZCLA_REGEX)
+        debug.assertion("m" not in MEZCLA_REGEX)
+        self.do_assert(not self.my_re.match(MEZCLA_REGEX, "MEZC"))
+        self.my_re.match(MEZCLA_REGEX, "MEZC", flags=re.IGNORECASE)
+        self.my_re.match(MEZCLA_REGEX, "Mezc")
+        self.do_assert(self.my_re.search_text == "Mezc")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_match(self):
@@ -179,24 +198,31 @@ class TestMyRegex(TestWrapper):
     @trap_exception
     def test_f_string(self):
         """Ensure warning given about f-string like regex"""
-        debug.trace(4, "in test_f_string()")
+        debug.trace(4, f"in test_f_string(); self={self}")
         self.my_re.search("{fubar}", "foobar")
         # TODO2: change usages elsewhere to make godawful pytest default more intuitive
         captured_stderr = self.get_stderr()
         debug.trace_expr(4, captured_stderr, max_len=4096)
         self.do_assert(self.my_re.search("Warning:.*f-string", captured_stderr))
         ## TEST: print(f"{self.my_re=}")
-        debug.trace(5, "out test_f_string()")
+        debug.trace(5, "out test_f_string(); self={self}")
 
     def test_simple_regex(self):
         """"Test regex search with capturing"""
-        debug.trace(4, "test_simple_regex()")
-        if not self.my_re.search(r"(\w+)\W+(\w+)", ">scrap ~!@\n#$ yard<",
-                                 re.MULTILINE):
-            assert False, "simple regex search failed"
-        assert self.my_re.group(1) == "scrap"
-        assert self.my_re.group(2) == "yard"
+        debug.trace(4, f"test_simple_regex(); self={self}")
+        self.do_assert(self.my_re.search(r"(\w+)\W+(\w+)", ">scrap ~!@\n#$ yard<",
+                                         re.MULTILINE))
+        self.do_assert(self.my_re.group(1) == "scrap")
+        self.do_assert(self.my_re.group(2) == "yard")
         return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_pre_and_post_match(self):
+        """Test pre/post_match() functions"""
+        debug.trace(4, f"test_pre_and_post_match(); self={self}")
+        self.my_re.search(r"[dD]ef", "abc_def_ghi")
+        self.do_assert(self.my_re.pre_match() == "abc_")
+        self.do_assert(self.my_re.post_match() == "_ghi")
 
 #------------------------------------------------------------------------
 
