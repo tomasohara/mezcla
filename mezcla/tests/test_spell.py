@@ -21,6 +21,9 @@
 #       """Run spelling over TEXT in TEXT looking for BAD words""
 #       output = self.run_script(env_options=f"SPELL_LANG={lang}", data_file=gh.create_temp_file(text))
 #       assert(system.intersection(text.split(), bad.split()))
+# TODO4:
+# - Reword "This test can take some time or may have missing libraries" so that just
+#   covers RUN_SLOW_TESTS; Check separately for missing libraries.
 #
 
 """Tests for spell module"""
@@ -46,6 +49,7 @@ try:
     import mezcla.spell as THE_MODULE
 except:
     THE_MODULE = None
+    system.print_exception_info("spell import")
 
 # Since importing doesn't work properly, a temporary fix is specifying the path
 # import mezcla.spell as THE_MODULE
@@ -145,7 +149,7 @@ class SpellFiles(TestWrapper):
     #     return output
     
     # @pytest.mark.skip
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_default(self):
         """Ensure test_spell_default [English] works as expected"""
         debug.trace(4, f"\ntest_spell_default(); self={self}")
@@ -157,7 +161,7 @@ class SpellFiles(TestWrapper):
         debug.trace_expr(5, output, test_phrase_error)
         assert (output == test_phrase_error and len(output) != 0)
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     # @trap_exception                      # TODO: remove when debugged
     # @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_EN(self):
@@ -174,9 +178,8 @@ class SpellFiles(TestWrapper):
         assert (output in test_phrase_error and len(output) != 0)
         return
 
-    ## OLD: @pytest.mark.xfail
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")               
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")               
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_ES(self):
         """Ensure test_spell_ES [Spanish] works as expected"""
         debug.trace(4, f"\ntest_spell_ES(); self={self}")
@@ -190,8 +193,8 @@ class SpellFiles(TestWrapper):
         assert (output in test_phrase and len(output) != 0)
         return
 
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")               
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")               
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_NE(self):
         """Ensure test_spell_NE y[Nepali] works as expected"""
         debug.trace(4, f"\ntest_spell_NE(); self={self}")
@@ -205,8 +208,8 @@ class SpellFiles(TestWrapper):
         assert (output in test_phrase and len(output) != 0)
         return
 
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_AR(self):
         """Ensure test_spell_AR [Arabic] works as expected"""
         debug.trace(4, f"test_spell_AR(); self={self}")
@@ -219,8 +222,8 @@ class SpellFiles(TestWrapper):
         assert (output in test_phrase and len(output)!=0)
         return
     
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_RU(self):
         """Ensure test_spell_RU [Russian] works as expected"""
         debug.trace(4, f"test_spell_RU(); self={self}")
@@ -233,8 +236,7 @@ class SpellFiles(TestWrapper):
         assert (output in test_phrase and len(output) != 0)
         return
     
-    ## OLD: Marked as slow test (takes a lot of time on pytest)
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
     def test_spell_query_EN(self):
         """Ensure test_spell_query_EN works as expected"""
         debug.trace(4, f"test_spell_query_EN(); self={self}")
@@ -248,8 +250,7 @@ class SpellFiles(TestWrapper):
         assert (output == test_phrase_error and len(output) != 0)
         return
 
-    ## OLD: Marked as slow test (takes a lot of time on pytest)
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
     def test_spell_query_ES(self):
         """Ensure test_spell_query_ES works as expected"""
         debug.trace(4, f"test_spell_query_ES(); self={self}")
@@ -264,8 +265,7 @@ class SpellFiles(TestWrapper):
         assert (output == test_phrase_error and len(output) != 0)
         return
 
-    ## OLD: Marked as slow test (takes a lot of time on pytest)
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
     def test_spell_query_NE(self):
         """Ensure test_spell_query_NE works as expected"""
         debug.trace(4, f"test_spell_query_NE(); self={self}")
@@ -279,9 +279,8 @@ class SpellFiles(TestWrapper):
         assert (output in test_phrase and len(output) != 0)
         return
 
-    # Marked as slow test (takes a lot of time on pytest)
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_default_batch(self):
         """Ensure test_spell_default_batch [English] works as expected"""
         debug.trace(4, f"test_spell_default_branch(); self={self}")
@@ -293,8 +292,8 @@ class SpellFiles(TestWrapper):
         assert (output != [] and len(output) > 5)
         return
     
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_ES_batch(self):
         """Ensure test_spell_ES_batch [Spanish] works as expected"""
         debug.trace(4, f"test_spell_ES_batch(); self={self}")
@@ -307,8 +306,8 @@ class SpellFiles(TestWrapper):
         assert (output != [] and len(output) > 3)
         return
     
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_RU_batch(self):
         """Ensure test_spell_RU_batch [Russian] works as expected"""
         debug.trace(4, f"test_spell_RU_batch(); self={self}")
@@ -321,8 +320,8 @@ class SpellFiles(TestWrapper):
         assert (output != [] and len(output) > 3)
         return
     
-    # @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="This test can take some time or may have missing libraries")
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_spell_AR_batch(self):
         """Ensure test_spell_AR_batch [Arabic] works as expected"""
         debug.trace(4, f"test_spell_AR_batch(); self={self}")
