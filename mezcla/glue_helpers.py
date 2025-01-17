@@ -14,6 +14,9 @@
 #   facilate debugging, two environment variables allow for overriding this
 #      TEMP_FILE: fixed temporary file to use
 #      TEMP_BASE: basename for temporary files (or a directory if USE_TEMP_BASE_DIR)
+# - Uses str as return type instead of Optional[str] for string functions like basename
+#   or get_temp_dir where "" is an invalid value (e.g., no need for None).
+# - Avoids adding assert for mypy unless trapped.
 #
 # TODO:
 # - Add more functions to facilitate command-line scripting (check bash scripts for commonly used features).
@@ -43,6 +46,7 @@ from typing import (
 )
 from types import FrameType
 from io import TextIOWrapper
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Installed packages
 import textwrap
@@ -50,11 +54,9 @@ import textwrap
 # Local packages
 from mezcla import debug
 from mezcla import system
+## TODO2: top_common => debug.
 from mezcla import tpo_common as tpo
-## OLD: from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
 from mezcla.tpo_common import debug_format, debug_print
-## OLD: from mezcla.main import DISABLE_RECURSIVE_DELETE
-## DEBUG: sys.stderr.write(f"{__file__=}\n")
 ## TODO3: debug.trace_expr(6, __file__)
 from mezcla.validate_arguments_types import (
     FileDescriptorOrPath, StrOrBytesPath
@@ -98,20 +100,25 @@ TEMP_SUFFIX = system.getenv_text(
     "TEMP_SUFFIX", "-",
     description="Suffix to use for temp files")
 TEMP_SUFFIX = ("-")
+KEEP_TEMP = system.getenv_bool(
+    "KEEP_TEMP", debug.detailed_debugging(),
+    desc="Keep temporary files")
+## OLD:
+## NTF_ARGS = {'prefix': TEMP_PREFIX,
+##             'delete': not debug.detailed_debugging(),
+##             'suffix': TEMP_SUFFIX}
 TEMP_BASE = system.getenv_value(
     "TEMP_BASE", None,
     description="Override for temporary file basename")
-TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and
-                         (system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")))
+USE_TEMP_BASE_DIR_DEFAULT = bool(
+    TEMP_BASE and (system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")))
 USE_TEMP_BASE_DIR = system.getenv_bool(
-    "USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
+    "USE_TEMP_BASE_DIR", USE_TEMP_BASE_DIR_DEFAULT,
     description="Whether TEMP_BASE should be a dir instead of prefix")
 DISABLE_RECURSIVE_DELETE = system.getenv_value(
     "DISABLE_RECURSIVE_DELETE", None,
     description="Disable use of potentially dangerous rm -r style recursive deletions")
-PRESERVE_TEMP_FILE = system.getenv_value(
-    "PRESERVE_TEMP_FILE", None,
-    desc="Retain value of TEMP_FILE even if TEMP_BASE set--see INFER_TEMP_FILE")
+PRESERVE_TEMP_FILE = None
 
 # Globals
 # note:
@@ -137,28 +144,38 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
     # TODO: allow for overriding other options to NamedTemporaryFile
     if ((delete is None) and debug.detailed_debugging()):
         delete = False
-    alt_temp_file = tempfile.NamedTemporaryFile(
-        prefix=TEMP_PREFIX,
-        delete=not debug.detailed_debugging(), ## TODO: implement delete ???
-        suffix=TEMP_SUFFIX
-    ).name
-    temp_file_name = (TEMP_FILE or alt_temp_file)
+    ## BAD: temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
+    NTF_ARGS = {'prefix': TEMP_PREFIX,
+                ## OLD: 'delete': not debug.detailed_debugging(),
+                'delete': not KEEP_TEMP,
+                'suffix': TEMP_SUFFIX}
+    temp_file_name = TEMP_FILE
+    if not temp_file_name:
+        # note: uses context so not deleted right away if delete=True
+        # TODO2: fix this
+        with tempfile.NamedTemporaryFile(**NTF_ARGS) as temp_file_obj:
+            temp_file_name = temp_file_obj.name
+        # HACK: clear the file
+        if not KEEP_TEMP:
+            system.write_file(temp_file_name, "")
+    temp_file_name = temp_file_name or ""
     debug.assertion(not delete, "Support for delete not implemented")
-    debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
+    debug_format("get_temp_file() => {r!r}", 5, r=temp_file_name)
     return temp_file_name
 
 
-def get_temp_dir(delete=None):
+def get_temp_dir(delete=None) -> str:
     """Gets temporary file to use as a directory
     note: Optionally DELETEs directory afterwards
     """
-    debug.assertion(False, "work-in-progress implementation")
+    ## OLD: debug.assertion(False, "work-in-progress implementation")
     temp_dir_path = get_temp_file(delete=delete)
-    full_mkdir(temp_dir_path)
+    # note: removes non-dir file if exists
+    full_mkdir(temp_dir_path, force=True)
     return temp_dir_path
 
 
-def create_temp_file(contents: Any, binary: bool = False) -> Optional[str]:
+def create_temp_file(contents: Any, binary: bool = False) -> str:
     """Create temporary file with CONTENTS and return full path"""
     temp_filename = get_temp_file()
     system.write_file(temp_filename, contents, binary=binary)
@@ -166,12 +183,12 @@ def create_temp_file(contents: Any, binary: bool = False) -> Optional[str]:
     return temp_filename
 
 
-def basename(filename: str, extension: Optional[str] = None) -> Optional[str]:
+def basename(filename: str, extension: Optional[str] = None) -> str:
     """Remove directory from FILENAME along with optional EXTENSION, as with Unix basename command. Note: the period in the extension must be explicitly supplied (e.g., '.data' not 'data')"""
     # EX: basename("fubar.py", ".py") => "fubar"
     # EX: basename("fubar.py", "py") => "fubar."
     # EX: basename("/tmp/solr-4888.log", ".log") => "solr-4888"
-    base = os.path.basename(filename)
+    base = os.path.basename(filename) or ""
     if extension is not None:
         pos = base.find(extension)
         if pos > -1:
@@ -210,8 +227,9 @@ def dir_path(filename: str, explicit: bool = False) -> str:
     # TODO: add realpath (i.e., canonical path)
     if not explicit:
         base = basename(filename)
-        # TODO: debug.assertion
-        assert isinstance(base, str)
+        ## OLD:
+        ## # TODO: debug.assertion
+        ## assert isinstance(base, str)
         debug.assertion(form_path(path, base) == filename)
     return path
 
@@ -256,22 +274,20 @@ def resolve_path(
             frame = None
             try:
                 frame = inspect.currentframe()
-                # TODO: debug.assertion
                 assert isinstance(frame, FrameType)
                 frame = frame.f_back
-                # TODO: debug.assertion
                 assert isinstance(frame, FrameType)
                 calling_filename = frame.f_globals['__file__']
                 base_dir = os.path.dirname(calling_filename)
                 debug.trace_expr(4, calling_filename, base_dir)
-            except (AttributeError, KeyError):
+            except (AssertionError, AttributeError, KeyError):
                 base_dir = ""
                 debug_print("Error: Exception during resolve_path: " + str(sys.exc_info()), 5)
             finally:
                 if frame:
                     del frame
-        # TODO: debug.assertion
-        assert isinstance(base_dir, str)
+        if not isinstance(base_dir, str):
+            base_dir = str(base_dir)
         
         # Check calling directory (TODO2: add more check dirs such as children)
         dirs_to_check = [base_dir]
@@ -287,7 +303,7 @@ def resolve_path(
         debug.trace(4, "FYI: resolve_path falling back to find")
         debug.assertion(" " not in path)
         debug.assertion(base_dir)
-        path = run(f"find {base_dir or '.'} -name '{path!r}'")
+        path = run(f"find {base_dir or '.'} -name '{path}'")
             
     debug_format("resolve_path({f}) => {p}", 4, f=filename, p=path)
     return path
@@ -312,7 +328,7 @@ def form_path(*filenames: str, create: bool = False) -> str:
 
 
 def is_directory(path: FileDescriptorOrPath) -> bool:
-    """Determins whether PATH represents a directory"""
+    """Determines whether PATH represents a directory"""
     is_dir = os.path.isdir(path)
     debug_format("is_dir({p}) => {r}", 6, p=path, r=is_dir)
     return is_dir
@@ -339,13 +355,16 @@ def create_directory(path: StrOrBytesPath) -> None:
     return
 
 
-def full_mkdir(path: FileDescriptorOrPath) -> None:
+def full_mkdir(path: FileDescriptorOrPath, force: bool = False) -> None:
     """Issues mkdir to ensure path directory, including parents (assuming Linux like shell)
+    When FORCE true, an existing non-directory is removed first.
     Note: Doesn't handle case when file exists but is not a directory
     """
     debug.trace(6, f"full_mkdir({path!r})")
     ## TODO: os.makedirs(path, exist_ok=True)
     debug.assertion(os.name == "posix")
+    if force and system.file_exists(path) and not system.is_directory(path):
+        delete_file(path)
     if not system.file_exists(path):
         issue('mkdir --parents "{p}"', p=path)
     debug.assertion(is_directory(path))
@@ -357,7 +376,9 @@ def real_path(path: FileDescriptorOrPath) -> str:
     Note: Use version in system instead"""
     # EX: re.search("vmlinuz.*\d.\d", real_path("/vmlinuz"))
     ## TODO: result = system.real_path(path)
-    result = run(f'realpath "{path!r}"')
+    ## TODO3: check outher modules for over-applicaiton of !r-formatting
+    ## BAD: result = run(f'realpath "{path!r}"')
+    result = run(f'realpath "{path}"')
     debug.trace(6, "Warning: obsolete: use system.real_path instead")
     debug.trace(7, f"real_path({path!r}) => {result}")
     return result
@@ -400,7 +421,6 @@ def elide(value: Optional[Any], max_len: Optional[int] = None) -> str:
     # NOTE: Make sure compatible with debug.format_value (TODO3: add equivalent to strict argument)
     # TODO2: add support for eliding at word-boundaries
     tpo.debug_print("elide(_, _)", 8)
-    ## OLD: debug.assertion(isinstance(text, (str, type(None))))
     text = value
     if text is None:
         text = ""
@@ -441,7 +461,7 @@ def run(
         output: bool = False,
         **namespace
     ) -> str:
-    """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
+    """Invokes COMMAND via system shell (e.g., os.system), using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
    Notes:
    - The result includes stderr, so direct if not desired (see issue):
          run("ls /tmp/fubar 2> /dev/null")
@@ -455,7 +475,7 @@ def run(
     # EX: "root" in run("ls /")
     # Note: Script tracing controlled DEBUG_LEVEL environment variable.
     debug.assertion(isinstance(trace_level, int))
-    debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output}")
+    debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output}", skip_sanity_checks=True)
     global default_subtrace_level
     # Keep track of current debug level setting
     debug_level_env = os.getenv("DEBUG_LEVEL")
@@ -468,21 +488,35 @@ def run(
         just_issue = False
     save_temp_base = TEMP_BASE
     if TEMP_BASE:
-         system.setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
+        # note: makes sure subprocess TEMP_BASE is dir if main one is
+        if system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/"):
+            system.create_directory(TEMP_BASE)
+            new_TEMP_BASE = form_path(TEMP_BASE, "_subprocess_", create=True)
+            system.setenv("TEMP_BASE", new_TEMP_BASE)
+            ## TEMP
+            system.create_directory(new_TEMP_BASE)
+        else:
+            system.setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
     save_temp_file = TEMP_FILE
     if TEMP_FILE and (PRESERVE_TEMP_FILE is not True):
-        system.setenv("TEMP_FILE", TEMP_FILE + "_subprocess_")
-    # Expand the command template
+        new_TEMP_FILE = TEMP_FILE + "_subprocess_"
+        debug.trace_expr(5, PRESERVE_TEMP_FILE)
+        debug.trace(5, f"Setting TEMP_FILE to {new_TEMP_FILE}")
+        system.setenv("TEMP_FILE", new_TEMP_FILE)
+    # Expand the command template if brace-style variable reference encountered
+    # NOTE: un-pythonic warnings issued by format so this should not affect anything
     # TODO: make this optional
     command_line = command
-    if re.search("{.*}", command):
+    if (re.search(r"{\S+}", command) or namespace):
         command_line = tpo.format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
+    else:
+        # TODO2: and sanity check for unresolved f-string-like template as with debug.trace
+        pass
     debug_print("issuing: %s" % command_line, trace_level)
     # Run the command
     # TODO: check for errors (e.g., "sh: filter_file.py: not found"); make wait explicit
     in_background = command.strip().endswith("&")
     foreground_wait = not in_background
-    ## OLD: debug.assertion(wait or not just_issue)
     debug.trace_expr(5, in_background, in_just_issue)
     debug.assertion(not (in_background and (in_just_issue is False)))
     # Note: Unix supports the '>|' pipe operator (i.e., output with overwrite); but,
@@ -492,8 +526,6 @@ def run(
     debug.assertion(">|" not in command_line)
     result = None
     ## TODO: if (just_issue or not foreground_wait): ... else: ...
-    ## OLD: result = getoutput(command_line) if foreground_wait else str(os.system(command_line))
-    ## OLD: wait_for_command = (not foreground_wait or not just_issue)
     wait_for_command = (foreground_wait and not just_issue)
     debug.trace_expr(5, foreground_wait, just_issue, wait_for_command)
     ## TODO3: clarify what output is when stdout redirected (e.g., for issue in support of unittest_wrapper.run_script
@@ -504,7 +536,8 @@ def run(
     system.setenv("DEBUG_LEVEL", debug_level_env or "")
     system.setenv("TEMP_BASE", save_temp_base or "")
     if save_temp_file and (PRESERVE_TEMP_FILE is not True):
-        system.setenv("TEMP_FILE", save_temp_file or "")
+        debug.trace(5, f"Resetting TEMP_FILE to {save_temp_file}")
+        system.setenv("TEMP_FILE", save_temp_file)
     debug_print("run(_) => {\n%s\n}" % indent_lines(result), (trace_level + 1))
     return result
 
@@ -584,9 +617,6 @@ def get_hex_dump(text: Any, break_newlines: bool = False) -> str:
     debug.trace_fmt(6, "get_hex_dump({t}, {bn})", t=text, bn=break_newlines)
     in_file = get_temp_file() + ".in.list"
     out_file = get_temp_file() + ".out.list"
-    ## BAD:
-    ## write_file(in_file, text)
-    ## run("perl -Ss hexview.perl -newlines {i} > {o}", i=in_file, o=out_file)
     system.write_file(in_file, text, skip_newline=True)
     run("perl -Ss hexview.perl {i} > {o}", i=in_file, o=out_file)
     result = read_file(out_file).rstrip("\n")
@@ -771,12 +801,11 @@ def write_lines(
     try:
         mode = 'a' if append else 'w'
         f = system.open_file(filename, mode=mode)
-        # TODO: debug.assertion
         assert isinstance(f, TextIOWrapper)
         for line in text_lines:
             line = tpo.normalize_unicode(line)
             f.write(line + "\n")
-    except IOError:
+    except (AssertionError, IOError):
         debug_print(f"Warning: Exception writing file {filename!r}: {sys.exc_info()}", 2)
     finally:
         if f:
@@ -819,7 +848,6 @@ def copy_file(source: str, target: str) -> None:
         target_file = target
     else:
         base = basename(source)
-        # TODO: debug.assertion
         assert isinstance(base, str)
         target_file = form_path(target, base)
     ## TODO: debug.assertion(file_size(source) == file_size(target_file))
@@ -972,6 +1000,7 @@ if __debug__:
     def assertion(condition: bool) -> None:
         """Issues warning if CONDITION doesn't hold
         Note: deprecated function--use debug.assertion instead"""
+        ## TODO2: rework as wrapper around debug.assertion
         global assertion_deprecation_shown
         if not assertion_deprecation_shown:
             debug.trace(3, "Warning: glue_helpers.assertion() is deprecated")
@@ -986,10 +1015,8 @@ if __debug__:
             frame = None
             try:
                 frame = inspect.currentframe()
-                # TODO: debug.assertion
                 assert isinstance(frame, FrameType)
                 frame = frame.f_back
-                # TODO: debug.assertion
                 assert isinstance(frame, FrameType)
                 tpo.debug_trace("frame=%s", frame, level=8)
                 tpo.trace_object(frame, 9, "frame")
@@ -997,6 +1024,9 @@ if __debug__:
                 if filename and filename.endswith(".pyc"):
                     filename = filename[:-1]
                 line_num = frame.f_lineno
+            except:
+                debug.trace_fmt(TL.ALWAYS, "Exception formatting assertion: {exc}",
+                                exc=sys.exc_info())
             finally:
                 if frame:
                     del frame
@@ -1026,24 +1056,30 @@ else:
         return
 
 def init() -> None:
-    """Work around for Python quirk"""
+    """Work around for Python quirk
+    Note: This is also used for reinitialize temp-file settings such as for unit tests (e.g., TEMP_FILE from TEMP_BASE)."""
     # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
     debug.trace(5, "glue_helpers.init()")
-    global TEMP_FILE
-    ## OLD: temp_filename = "temp-file.list"
     temp_filename = f"temp-{PID}.list"
     if USE_TEMP_BASE_DIR and TEMP_BASE:
         full_mkdir(TEMP_BASE)
-    #
-    ## BAD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
-    ## BAD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}" if TEMP_BASE else temp_filename)
-    ## OLD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}" if TEMP_BASE else None)
+
+    # Re-initialize flag blocking TEMP_FILE init from TEMP_BASE
+    global PRESERVE_TEMP_FILE
+    PRESERVE_TEMP_FILE = system.getenv_bool(
+        "PRESERVE_TEMP_FILE", None, allow_none=True,
+        desc="Retain value of TEMP_FILE even if TEMP_BASE set--see run and init below as well as unittest_wrapper.py")
+        
     # note: Normally TEMP_FILE gets overriden when TEMP_BASE set. However,
     # this complicates preserving test-specific test files (see unittest_wrapper.py).
+    # Further compications are due to the implicit module loading due to __init__.py.
+    # See tests/test_unittest_wrapper.py for some diagnosis tips.
     temp_file_default = None
     if TEMP_BASE and not PRESERVE_TEMP_FILE:
         temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
+        debug.trace(4, f"FYI: Inferred TEMP_FILE default: {temp_file_default!r}")
     debug.trace_expr(5, system.getenv("TEMP_FILE"))
+    global TEMP_FILE
     TEMP_FILE = system.getenv_value(
         "TEMP_FILE", temp_file_default,
         description="Override for temporary filename")
