@@ -28,10 +28,10 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla.my_regex import my_re
-from mezcla import system
+## OLD: from mezcla.my_regex import my_re
+## OLD: from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
-from mezcla.unittest_wrapper import trap_exception
+## OLD: from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
@@ -42,6 +42,8 @@ class TestFormatProfile(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     use_temp_base_dir = True    # treat TEMP_BASE as directory
+    testing_script = gh.resolve_path("test_glue_helpers.py", heuristic=True)
+    
     # For testing, let the dir be ./mezcla/mezcla/tests
     # TODO: Find a way to denote a random number in SAMPLE OUTPUT which may differ in each execution
 
@@ -92,8 +94,6 @@ class TestFormatProfile(TestWrapper):
 
     #     return
     
-    # Test Helper method
-    # @pytest.mark.skip
     def helper_format_profile(
         self,
         key_arg,
@@ -112,9 +112,10 @@ class TestFormatProfile(TestWrapper):
         # output = gh.read_file(empty_file)
         # return output
 
-        profile_log = gh.get_temp_file()
+        ## OLD: profile_log = gh.get_temp_file()
+        profile_log = self.get_temp_file()
         command_cprofile = f"python3 -m cProfile -o {profile_log} {testing_script}"
-        cprofile_output = gh.run(command_cprofile)
+        _cprofile_output = gh.run(command_cprofile)
         output = self.run_script(
             env_options=f"PROFILE_KEYS={key_arg}",
             data_file=profile_log,
@@ -122,30 +123,30 @@ class TestFormatProfile(TestWrapper):
         assert("Ordered by:" in output)
         return output
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     # @trap_exception                      # TODO: remove when debugged
     def test_formatprofile_PK_calls(self):
         """Ensures that PROFILE_KEY=calls works as expected"""
 
         key_arg = "calls"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         ## OLD: SAMPLE_OUTPUT = ["1    0.001    0.000    0.000    0.000 cacheprovider.py:307(pytest_report_collectionfinish)", "{method 'popleft' of 'collections.deque' objects}"]
         SAMPLE_OUTPUT = [
             "test_glue_helpers.py:232(test_heuristic_resolve_paths)",
             "1    0.000    0.000    0.000    0.000 tempfile.py:800(SpooledTemporaryFile)", 
         ]
         debug.trace(4, f"test_formatprofile_PK_calls(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         # print(output)
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
         
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_cumulative(self):
         """Ensures that PROFILE_KEY=cumulative works as expected"""
 
         key_arg = "cumulative"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         # OLD: SAMPLE_OUTPUT = ["<frozen importlib._bootstrap>:211(_call_with_frames_removed)q", "2    0.000    0.000    0.000    0.000 logging.py:128(_get_auto_indent)"]
         SAMPLE_OUTPUT = [
             "<frozen importlib._bootstrap_externals>:877(exec_module)", 
@@ -160,18 +161,18 @@ class TestFormatProfile(TestWrapper):
         # gh.run(test_command_1)
         # gh.run(test_command_2)
         # output = gh.read_file(empty_file1)
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         # print(output)
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
     
-    ## TODO: Find other input sample
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_cumtime(self):
         """Ensures that PROFILE_KEY=cumtime works as expected"""
+        ## TODO: Find other input sample
         debug.trace(4, f"test_formatprofile_PK_cumtime(); self={self}")
         key_arg = "cumtime"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
             "test_glue_helper.py:1(<module>)", # Incorrect Line 
             "1    0.000    0.000    0.000    0.000 {method 'fileno' of '_io.BufferedWriter' objects}"
@@ -190,17 +191,17 @@ class TestFormatProfile(TestWrapper):
         # gh.run(test_command_2)
 
         # output = gh.read_file(empty_file1)
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         # print(output)
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         # return
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_file(self):
         """Ensures that PROFILE_KEY=file works as expected"""
 
         key_arg = "file"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
             "<frozen importlib._bootstraps>:391(cached)", 
             "1    0.000    0.000    0.000    0.000 {method 'union' of 'frozenset' objects}"
@@ -214,19 +215,19 @@ class TestFormatProfile(TestWrapper):
 
         # gh.run(test_command_1)
         # gh.run(test_command_2)
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
 
         # output = gh.read_file(empty_file1)
         # print(output)
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         # return
     
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_filename(self):
         """Ensures that PROFILE_KEY=filename works as expected"""
 
         key_arg = "filename"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
             "1    0.000    0.000    0.000    0.000 :1(ReprEntryNativeAttributes)", 
             "6768    0.000    0.000    0.000    0.000 :1(ReprEntryAttributes)"
@@ -245,16 +246,16 @@ class TestFormatProfile(TestWrapper):
 
         # output = gh.read_file(empty_file1)
 
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] not in output)
         return
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_module(self):
         """Ensures that PROFILE_KEY=module works as expected"""
 
         key_arg = "module"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         # OLD: SAMPLE_OUTPUT = ["1    0.000    0.000    0.000    0.000 :1(ExceptionChainReprAttributes)"]
         SAMPLE_OUTPUT = [
             "ElementTree.pytest:1771(C14NWriterTarget)",
@@ -262,7 +263,7 @@ class TestFormatProfile(TestWrapper):
         ]
 
         debug.trace(4, f"test_formatprofile_PK_module(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         # empty_file1 = gh.get_temp_file()
         # profile_log  = gh.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
@@ -274,13 +275,13 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         # return
 
-    ## TODO: Find other input sample
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_ncalls(self):
         """Ensures that PROFILE_KEY=ncalls works as expected"""
+        ## TODO: Find other input sample
 
         key_arg = "ncalls"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
             "{method 'extend' of 'collections.deque' objections}", 
             "1    0.000    0.000    0.000    0.000 test_glue_helpers.py:385(test_get_files_matching_specs)"
@@ -296,24 +297,24 @@ class TestFormatProfile(TestWrapper):
         # gh.run(test_command_1)
         # gh.run(test_command_2)
         # output = gh.read_file(empty_file1)
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         # print (output)
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_pcalls(self):
         """Ensures that PROFILE_KEY=pcalls works as expected"""
 
         key_arg = "pcalls"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
             "unix_events.py:1022(SafestChildWatcher)",
             "1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:294(_module_repr)"
         ]
 
         debug.trace(4, f"test_formatprofile_PK_pcalls(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         # SAMPLE_OUTPUT = ["{method 'extend' of 'collections.deque' objects}", "typing.py:321(__hash__)"]
         # empty_file1 = gh.get_temp_file()
         # profile_log  = gh.get_temp_file()
@@ -327,19 +328,19 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         # return
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_line(self):
         """Ensures that PROFILE_KEY=line works as expected"""
 
         key_arg = "line"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
             "{method 'with_traceback' of 'BaseExceptions' objects}", 
             "1    0.000    0.000    0.000    0.000 {method 'rjust' of 'str' objects}"
         ]
         debug.trace(4, f"test_formatprofile_PK_line(); self={self}")
 
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
 
         ## OLD
         # SAMPLE_OUTPUT = ["0.000    0.000    0.000    0.000 {method 'with_traceback' of 'BaseException' objects}", "0.000    0.000    0.000    0.000 {method 'replace' of 'kode' objects}"]
@@ -359,14 +360,14 @@ class TestFormatProfile(TestWrapper):
         """Ensures that PROFILE_KEY=name works as expected"""
 
         key_arg = "name"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
             "{method 'fileno' of '_io.BufferedReaders' objects}", 
             "6    0.000    0.000    0.000    0.000 {method 'pop' of 'collections.deque' objects}"
         ]
 
         debug.trace(4, f"test_formatprofile_PK_name(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         # SAMPLE_OUTPUT = ["{built-in method _csv.reader}", "{built-in method _sre.compiler}"]
         # empty_file1 = gh.get_temp_file()
         # profile_log  = gh.get_temp_file()
@@ -379,12 +380,12 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_nfl(self):
         """Ensures that PROFILE_KEY=nfl works as expected"""
 
         key_arg = "nfl"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         
         SAMPLE_OUTPUT = [
             "{built-in methods _imp.is_frozen}",
@@ -401,7 +402,7 @@ class TestFormatProfile(TestWrapper):
         # gh.run(test_command_1)
         # gh.run(test_command_2)
         # output = gh.read_file(empty_file1)
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         # print(output)
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         # return
@@ -428,12 +429,12 @@ class TestFormatProfile(TestWrapper):
     ##     assert (SAMPLE_OUTPUT[0] in output and SAMPLE_OUTPUT[1] not in output)
     ##     return
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_stdname(self):
         """Ensures that PROFILE_KEY=stdname works as expected"""
 
         key_arg = "stdname"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
 
         SAMPLE_OUTPUT = [
             "zipperfile.py:1(<module>)", 
@@ -455,17 +456,17 @@ class TestFormatProfile(TestWrapper):
         # gh.run(test_command_2)
         # output = gh.read_file(empty_file1)
 
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         # print(output)
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
 
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_time(self):
         """Ensures that PROFILE_KEY=time works as expected"""
 
         key_arg = "time"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
 
         SAMPLE_OUTPUT = [
             "<frozen importlibrary._bootstrap_external>:380(cache_from_source)", 
@@ -473,7 +474,7 @@ class TestFormatProfile(TestWrapper):
         ]
 
         debug.trace(4, f"test_formatprofile_PK_time(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         
         ## OLD
         # SAMPLE_OUTPUT = [
@@ -491,13 +492,13 @@ class TestFormatProfile(TestWrapper):
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
 
-    ## TODO: Find other input sample
-    # @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_tottime(self):
         """Ensures that PROFILE_KEY=tottime works as expected"""
+        ## TODO: Find other input sample
         
         key_arg = "tottime"
-        testing_script = "test_glue_helpers.py"
+        ## OLD: testing_script = "test_glue_helpers.py"
         SAMPLE_OUTPUT = [
             "{method 'split' of 're.Pattern' objections}", 
             "1    0.000    0.000    0.000    0.000 cacheprovider.py:390(pytest_sessionfinish)"
@@ -513,7 +514,7 @@ class TestFormatProfile(TestWrapper):
         # gh.run(test_command_1)
         # gh.run(test_command_2)
         # output = gh.read_file(empty_file1)
-        output = self.helper_format_profile(key_arg, testing_script)
+        output = self.helper_format_profile(key_arg, self.testing_script)
         # print(output)
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         return
