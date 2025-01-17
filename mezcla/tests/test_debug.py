@@ -445,11 +445,29 @@ class TestDebug2(TestWrapper):
     @pytest.mark.xfail
     def test_level(self):
         """"Make sure set_level honored (provided __debug__)"""
+        debug.trace(4, f"test_level(): self={self}")
         old_level = debug.get_level()
         new_level = old_level + 1
         debug.set_level(new_level)
         expected_level = (new_level if __debug__ else old_level)
-        self.do_assert(debug.get_level() == expected_level)
+        level_set_ok = (debug.get_level() == expected_level)
+        debug.set_level(old_level)
+        self.do_assert(level_set_ok)
+
+    @pytest.mark.xfail
+    def test_trace_exceptions(self):
+        """"Make sure debug.trace doesn't produce exceptions"""
+        debug.trace(4, f"test_trace_exceptions(): self={self}")
+        old_level = debug.get_level()
+        debug.set_level(max(1, old_level))
+        no_exception = True
+        try:
+            THE_MODULE.trace(1, 666)
+        except:
+            no_exception = False
+            debug.trace_exception(5, "test_trace_exceptions")
+        debug.set_level(old_level)
+        self.do_assert(no_exception)
 
 #------------------------------------------------------------------------
 

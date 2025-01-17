@@ -66,7 +66,7 @@ TODO_FUBAR = system.getenv_bool(
 ## 
 ##     def __init__(self, ...):
 ##         """Initializer: ..."""
-##         debug.trace_fmtd(TL.VERBOSE, "Helper.__init__(): self={s}", s=self)
+##         debug.trace(TL.VERBOSE, f"Helper.__init__(): self={self}")
 ##         self.TODO = None
 ##         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 ## 
@@ -93,7 +93,7 @@ class Script(Main):
 
     def setup(self):
         """Check results of command line processing"""
-        debug.trace_fmtd(TL.VERBOSE, "Script.setup(): self={s}", s=self)
+        debug.trace(TL.VERBOSE, f"Script.setup(): self={self}")
         ## TODO: extract argument values
         self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
         ## TODO:
@@ -118,7 +118,7 @@ class Script(Main):
     ##
     ## def run_main_step(self):
     ##     """Main processing step (n.b., assumes self.manual_input)"""
-    ##     debug.trace_fmtd(5, "Script.run_main_step(): self={s}", s=self)
+    ##     debug.trace(5, f"Script.run_main_step(): self={self}")
     ##
 
     ## TODO:

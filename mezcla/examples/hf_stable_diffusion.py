@@ -1,17 +1,20 @@
 #! /usr/bin/env python
 #
 # Illustrates how to use Stable Diffusion via Hugging Face (HF) diffusers package,
-# including gradio-based UI.
+# including gradio-based UI for txt2img and img2img. This also uses the clip_interrogator
+# package for img2txt.
 #
-# via https://huggingface.co/spaces/stabilityai/stable-diffusion
-# also uses https://huggingface.co/CompVis/stable-diffusion-v1-4
-# and https://stackoverflow.com/questions/48273205/accessing-incoming-post-data-in-flask
+# Details:
+# - via https://huggingface.co/spaces/stabilityai/stable-diffusion
+#   also uses https://huggingface.co/CompVis/stable-diffusion-v1-4
+#   and https://stackoverflow.com/questions/48273205/accessing-incoming-post-data-in-flask
 #
-# This was designed originally for text-to-image (i.e., from prompt to image).
-# However, it has been adapted to support image-to-image as well, which includes an image
-# input along the prompt(s).
+# - This was designed originally for text-to-image (i.e., from prompt to image).
+#   However, it has been adapted to support image-to-image as well, which includes an image
+#   input along the prompt(s).
 #
-# Support is also included for clip interrogation, which is not yet part of a HF API
+# - Support is also included for clip interrogation for image-to-text, which is not yet
+#   part of the HF diffusers API.
 #
 # Note:
 # - For tips on parameter settings, see
@@ -57,7 +60,7 @@ PROMPT = system.getenv_text("PROMPT", "your favorite politician in a tutu",
                             "Textual prompt describing image")
 NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
                             "Negative tips for image")
-GUIDANCE_HELP = "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)--higher for more"
+GUIDANCE_HELP = "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)--higher for more; aka Classifier Free Guidance (CFG)"
 GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
                                    description=GUIDANCE_HELP)
 SD_URL = system.getenv_value("SD_URL", None,
@@ -1101,7 +1104,8 @@ def main():
     use_txt2img = main_app.get_parsed_option(TXT2IMG_ARG, not (use_img2img or use_img2txt))
     ## OLD: input_image_file = main_app.get_parsed_option(IMAGE_ARG)
     denoising_factor = main_app.get_parsed_option(DENOISING_ARG)
-    ## TODO?: debug.assertion(use_txt2img ^ use_img2img)
+    ## TODO?:
+    debug.assertion((use_txt2img ^ use_img2img) or use_img2txt)
     # TODO2: BASENAME and NUM_IMAGES (options)
     ## TODO: x_mode = main_app.get_parsed_option(X_ARG)
     debug.assertion(not (batch_mode and server_mode))
