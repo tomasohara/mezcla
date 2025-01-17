@@ -466,10 +466,10 @@ class Main(object):
                          l=label, r=option_value)
         return option_value
 
-    ## TEMP
     def convert_option_value(self, label, value):
         """Convert the option LABEL's text VALUE into its type
         Note: boolean options account for symbolic ones like False and off."""
+        ## NOTE: added to support type-specific values from environment
         ## TODO2: encode type in tuple associated with each option
         typed_value = value
         for option_info, option_type in [(self.boolean_options, bool),
