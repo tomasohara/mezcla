@@ -17,7 +17,7 @@
 # of main.py's Script class. Likewise, unit tests with unittest_wrapper.py
 # won't be modified. In addition, the focus is on system.py and glue_helpers.py,
 # which have the majority of thin wrappers around PSL calls. The debugging
-# support is also included as a bit idiosyncratic.
+# support in debug.py is also included as a bit idiosyncratic.
 #
 # TODO3: Look into making this table driven. Can't eval() be used to generate the EqCall specifications?
 # TODO4: Try to create a table covering more of system.py and glue_helper.py.
@@ -786,6 +786,7 @@ def assertion_replacement(expression, message=None, assert_level=None):   # pyli
         debug.trace(assert_level, message)
 
 # Add equivalent calls between Mezcla and standard
+# Note: put new additions at the end (see comments undew NEW CALLS).
 ## TODO4: drop support for multiple targets (i.e., at expense of a little redundancy);
 ##    ex: EqCall(targets=(fu, bar), dests=fubar) => EqCall(targets=fu, dests=fubar) & EqCall(targets=bar, dests=fubar)
 mezcla_to_standard = [
@@ -1038,11 +1039,20 @@ mezcla_to_standard = [
     # 
     # NEW CALLS
     #
-    EqCall(
-        system.setenv,
-        dests=lambda var, value: os.environ.update({var: value}),
-        features=[Features.COPY_DEST_SOURCE]
-    ),
+    # Note:
+    # - The goal is to provide coverage for the most commonly used functions,
+    #   not all of mezcla. This would mostly include debug.py, system.py, and
+    #   glue_helpers.py.
+    # - Exceptions would be the deprecated tpo_common.py and the complex main.py.
+    # - In addition, testing support is not included (e.g., unittest_wrapper.py).
+    #
+    ## OLD:
+    ## Note: supercede by simpler version with os.putenv
+    ## EqCall(
+    ##     system.setenv,
+    ##     dests=lambda var, value: os.environ.update({var: value}),
+    ##     features=[Features.COPY_DEST_SOURCE]
+    ## ),
     EqCall(
         system.quote_url_text,
         dests=urllib.parse.quote_plus
@@ -1130,7 +1140,11 @@ mezcla_to_standard = [
         targets="system.setenv",
         dests="os.putenv",
     ),
+    ## TODO2: Make sure new additions are for commonly used functions.
+    ## For tips, see header comments and notes above under "NEW CALLS".
 ]
+
+#-------------------------------------------------------------------------------
 
 def cst_to_path(tree: cst.CSTNode) -> str:
     """
@@ -1159,6 +1173,7 @@ def cst_to_path(tree: cst.CSTNode) -> str:
         return cst_to_path(tree.name)
     raise ValueError(f"Unsupported node type: {type(tree)}")
 
+
 def cst_to_paths(tree: cst.CSTNode) -> List[str]:
     """
     Convert CST Tree Node to a list of string paths.
@@ -1176,6 +1191,7 @@ def cst_to_paths(tree: cst.CSTNode) -> List[str]:
         return [cst_to_path(alias) for alias in tree.params]
     raise ValueError(f"Unsupported node type: {type(tree)}")
 
+
 def path_to_cst(path: str) -> cst.CSTNode:
     """
     Convert a string path to CST Tree Node.
@@ -1190,6 +1206,7 @@ def path_to_cst(path: str) -> cst.CSTNode:
         value=path_to_cst(".".join(parts[:-1])),
         attr=cst.Name(parts[-1])
     )
+
 
 def value_to_arg(value: object) -> cst.Arg:
     """
@@ -1222,6 +1239,7 @@ def value_to_arg(value: object) -> cst.Arg:
     debug.trace(7, f"value_to_arg({value}) => {result}")
     return result
 
+
 def arg_to_value(arg: cst.Arg) -> object:
     """
     Convert a CST tree argument node to a value object
@@ -1248,11 +1266,13 @@ def arg_to_value(arg: cst.Arg) -> object:
     debug.trace(7, f"arg_to_value({arg}) => {result}")
     return result
 
+
 def has_fixed_value(arg: cst.Arg) -> bool:
     """Check if an CST argument node has a fixed value"""
     result = isinstance(arg.value, (cst.SimpleString, cst.Integer, cst.Float, cst.Name))
     debug.trace(7, f"has_fixed_value(arg={arg}) => {result}")
     return result
+
 
 def all_has_fixed_value(args: List[cst.Arg]) -> bool:
     """Check if any CST argument node has a fixed value"""
@@ -1261,10 +1281,12 @@ def all_has_fixed_value(args: List[cst.Arg]) -> bool:
     debug.trace(7, f"any_has_fixed_value(args={args}) => {result}")
     return result
 
+
 def args_to_values(args: List[cst.Arg]) -> list:
     """Convert a list of CST arguments nodes to a list of values objects"""
     debug.trace(7, "args_to_values(args) => list")
     return [arg_to_value(arg) for arg in args]
+
 
 def remove_last_comma(args: List[cst.Arg]) -> List[cst.Arg]:
     """
@@ -1309,20 +1331,21 @@ def match_args(func: CallDetails, cst_arguments: List[cst.Arg]) -> dict:
     # Separate between args and kwargs
     args, kwargs = [], []
     for idx, arg in enumerate(cst_arguments):
-        if isinstance(arg, cst.Arg):
-            if arg.keyword:
+        if not isinstance(arg, cst.Arg):
+            raise ValueError(f"Unsupported argument type: {type(arg)}")
+            
+        if arg.keyword:
+            kwargs.append(arg)
+        else:
+            # Check for positional arguments
+            if len(args) >= len(arg_names) and not varargs_name:
+                if not kwarg_names:
+                    debug.trace(6, f"FYI: Ignoring arg {idx + 1}: {arg!r}")
+                    continue
+                arg = arg.with_changes(keyword=cst.Name(value=(arg_names+kwarg_names)[idx]))
                 kwargs.append(arg)
             else:
-                # Check for positional arguments
-                if len(args) >= len(arg_names) and not varargs_name:
-                    if not kwarg_names:
-                        continue
-                    arg = arg.with_changes(keyword=cst.Name(value=(arg_names+kwarg_names)[idx]))
-                    kwargs.append(arg)
-                else:
-                    args.append(arg)
-        else:
-            raise ValueError(f"Unsupported argument type: {type(arg)}")
+                args.append(arg)
 
     # Match positional arguments
     matched_args = {}
@@ -1339,18 +1362,27 @@ def match_args(func: CallDetails, cst_arguments: List[cst.Arg]) -> dict:
 
     # Match keyword arguments
     for kwarg in kwargs:
-        if not kwarg.keyword:
-            continue
-        if kwarg.keyword.value in kwarg_names:
+        if kwarg.keyword and kwarg.keyword.value in kwarg_names:
             matched_args[kwarg.keyword.value] = kwarg
+        else:
+            debug.trace(6, f"FYI: Ignoring kwarg {kwarg!r}")      
 
-    debug.trace(7, f"match_args(func={func}, cst_arguments={cst_arguments}) => {matched_args}")
+    debug.trace(7, f"match_args(func={func!r}, cst_arguments={cst_arguments!r}) => {matched_args!r}")
     return matched_args
+
 
 def dict_to_func_args_list(func: CallDetails, args_dict: dict,
                            eq_call: EqCall, other_func: Optional[CallDetails] = None) -> List[cst.Arg]:
     """
-    Convert a dictionary to a list of CST arguments nodes, this is the opposite of match_args(...)
+    Convert a dictionary to a list of CST arguments nodes, this is the opposite of match_args(...).
+    This uses the FUNC specification and the ARGS_DICT of matching arguments. The EQ_CALL argument 
+    correspondence is just used to determine whether certain hueristics apply (e.g., only if empty).
+    It is also used to help determine whether function argument matching should be skipped, which
+    alleviates need for such correspondence specifications, which can be tedious. In addition, 
+    the optional OTHER_FUNC is used in case the original specification is not available, which
+    happens with certain builtin functions (e.g., C-based). 
+
+    Example:
     ```
     def foo(a, b=None):
         ...
@@ -1367,14 +1399,14 @@ def dict_to_func_args_list(func: CallDetails, args_dict: dict,
         Arg(2, keyword="b")
     ]
     ```
-    As you can see, this method remove extra arguments
+    As you can see, this method removes extra arguments.
     """
     debug.trace(7, f"in dict_to_func_args_list({func=}, {args_dict=}, {eq_call=})")
     # Extract function signature
     func_specs = func.specs
     if func_specs is None:
         result = list(args_dict.values())
-        debug.trace(7, f"[early exit] dict_to_func_args_list(_) => {result}")
+        debug.trace(7, f"[early exit] dict_to_func_args_list(_) => {result}!r")
         return result
     func_specs_args = func_specs.args
     if (not func_specs_args) and (other_func is not None) and not eq_call.eq_params:
@@ -1390,10 +1422,7 @@ def dict_to_func_args_list(func: CallDetails, args_dict: dict,
             if arg_name in args_dict:
                 result.append(args_dict[arg_name])
             else:
-                ## OLD: break
-                ## TEMP:
                 debug.trace(2, f"Warning: unable to match {arg_name!r} in {func.func!r}: args_dict.keys={list(args_dict.keys())}")
-                pass
     if func_specs_args and not result:
         debug.trace(3, "FYI: Applying func_specs_args workaround")
         result = list(args_dict.values())
@@ -1418,6 +1447,7 @@ def dict_to_func_args_list(func: CallDetails, args_dict: dict,
     debug.trace(6, f"dict_to_func_args_list(_) => {result!r}")
     return result
 
+
 def flatten_list(list_to_flatten: list[list]) -> list:
     """Flatten a list"""
     result = []
@@ -1428,8 +1458,9 @@ def flatten_list(list_to_flatten: list[list]) -> list:
             result += list(item)
         else:
             result.append(item)
-    debug.trace(7, f"flatten_list(list_to_flatten={list_to_flatten}) => {result}")
+    debug.trace(7, f"flatten_list(list_to_flatten={list_to_flatten!r}) => {result!r}")
     return result
+
 
 def text_to_comments_node(text: str) -> cst.Comment:
     """Convert text into a comment node"""
@@ -1438,8 +1469,9 @@ def text_to_comments_node(text: str) -> cst.Comment:
     # confusion if those lines are next to other comments
     text = text.replace("\n", " ")
     comment = cst.Comment(value=f"# {text}")
-    debug.trace(9, f"text_to_comment_node(text={text}) => {comment}")
+    debug.trace(9, f"text_to_comment_node(text={text!r}) => {comment!r}")
     return comment
+
 
 def get_format_names_in_string(value: str) -> List[str]:
     """
@@ -1455,15 +1487,18 @@ def get_format_names_in_string(value: str) -> List[str]:
         ["user", "place"]
     ```
     """
+    ## TODO4: rework in terms of libcst parsing, given complexity of format strings
     result = []
     for name in value.split("{"):
         if "}" in name:
+            ## TODO3: ignore double braces (e.g., "values={{\n...\n}}")
             name = name.split("}")[0].strip()
             name = name.split("!")[0]
             name = name.split(":")[0]
             result.append(name)
-    debug.trace(9, f"get_format_names_in_string(value={value}) => {result}")
+    debug.trace(7, f"get_format_names_in_string(value={value!r}) => {result!r}")
     return result
+
 
 def create_string_dot_format_node(value: str, format_args: List[cst.Arg]) -> cst.Call:
     """
@@ -1477,16 +1512,18 @@ def create_string_dot_format_node(value: str, format_args: List[cst.Arg]) -> cst
         func=format_node,
         args=format_args
     )
-    debug.trace(9, f"create_string_dot_format_node(value={value}, format_args={format_args}) => {call_node}")
+    debug.trace(7, (f"create_string_dot_format_node(value={value!r}, " +
+                    f"format_args={format_args!r}) => {call_node!r}"))
     return call_node
+
 
 def get_keyword_name(arg: cst.Arg) -> Optional[str]:
     """
     Get the keyword name from the argument node
     """
-    if arg.keyword:
-        return arg.keyword.value
-    return None
+    result = arg.keyword.value if arg.keyword else None
+    return result
+
 
 def filter_kwargs(kwargs: List[cst.Arg], names: List[str]) -> List[cst.Arg]:
     """
@@ -1495,12 +1532,11 @@ def filter_kwargs(kwargs: List[cst.Arg], names: List[str]) -> List[cst.Arg]:
     result = []
     for kwarg in kwargs:
         keyword = get_keyword_name(kwarg)
-        if not keyword:
-            continue
-        if keyword in names:
+        if keyword and keyword in names:
             result.append(kwarg)
-    debug.trace(9, f"filter_kwargs(names={names}) => {result}")
+    debug.trace(9, f"filter_kwargs(names={names!r}) => {result!r}")
     return result
+
 
 def format_strings_in_args(args: List[cst.Arg]) -> dict:
     """
@@ -1519,8 +1555,8 @@ def format_strings_in_args(args: List[cst.Arg]) -> dict:
     ```
     """
     if not args:
-        debug.trace(7, f"[early exit] format_strings_in_args(args={args}) => []")
-        return []
+        debug.trace(7, f"[early exit] format_strings_in_args(args={args}) => {args}")
+        return args
     args = list(args)
     result = []
     args_to_skip = []
@@ -1543,8 +1579,9 @@ def format_strings_in_args(args: List[cst.Arg]) -> dict:
                 result.append(arg)
         else:
             result.append(arg)
-    debug.trace(7, f"format_strings_in_args(args={args}) => {result}")
+    debug.trace(7, f"format_strings_in_args(args={args!r}) => {result!r}")
     return result
+
 
 def path_to_import(path: str) -> cst.SimpleStatementLine:
     """
@@ -1568,8 +1605,9 @@ def path_to_import(path: str) -> cst.SimpleStatementLine:
     result = cst.SimpleStatementLine(
         body=[result]
     )
-    debug.trace(7, f"path_to_import(path={path}) => {result}")
+    debug.trace(7, f"path_to_import(path={path!r}) => {result!r}")
     return result
+
 
 def remove_paths_from_import_cst(
         cst_import: cst.SimpleStatementLine,
@@ -1606,8 +1644,9 @@ def remove_paths_from_import_cst(
         return None
     # Store the new names
     result = cst_import.with_changes(names=new_names)
-    debug.trace(7, f"remove_paths_from_import_cst(cst_import={cst_import}, paths_to_remove={paths_to_remove}) => {result}")
+    debug.trace(7, f"remove_paths_from_import_cst(cst_import={cst_import!r}, paths_to_remove={paths_to_remove!r}) => {result!r}")
     return result
+
 
 def skip_module(tree: cst.Module) -> cst.CSTNode:
     """
@@ -1615,6 +1654,7 @@ def skip_module(tree: cst.Module) -> cst.CSTNode:
     """
     assert isinstance(tree, cst.Module), "Expected module node"
     return tree.body[0]
+
 
 def skip_assign(tree: cst.CSTNode) -> cst.CSTNode:
     """
@@ -1625,26 +1665,29 @@ def skip_assign(tree: cst.CSTNode) -> cst.CSTNode:
     assert isinstance(tree, cst.Assign), "Expected assignment node"
     return tree.value
 
+
 def extract_replaced_body(func: Callable, args: List[cst.Arg]) -> cst.CSTNode:
     """
     Extract replaced body from the source code
     ```
     func = lambda a, b: f"{a} {b}"
     args = [Arg(1), Arg(2)]
-    insert_args_in_source(source, args) => 'f"{1} {2}"'
+    extract_replaced_body(source, args) => 'f"{1} {2}"'
     ```
     """
     # Get source code of func
     source = inspect.getsource(func)
     source = source.strip()
     source = source[:-1] if source.endswith(",") else source
-    # To tree
+
+    # To tree (TODO4: omitting leading module node)
     tree = cst.parse_module(source)
     tree = skip_module(tree)
     # Lambda functions always is assigned to a variable
     if not isinstance(tree, cst.FunctionDef):
         tree = skip_assign(tree)
         assert isinstance(tree, cst.Lambda)
+        
     # Extract parameters
     parameters = cst_to_paths(tree.params)
     tree = tree.body
@@ -1661,14 +1704,18 @@ def extract_replaced_body(func: Callable, args: List[cst.Arg]) -> cst.CSTNode:
                     return args[idx]
             return updated_node
     tree = tree.visit(ReplaceArgs())
+
     # Remove indentation
     if isinstance(tree, cst.IndentedBlock):
         tree = tree.body[0]
     if isinstance(tree, cst.If):
         # for some reason, If statements always are inserted with bad indent
         tree = tree.with_changes(leading_lines=[cst.EmptyLine(indent=False)])
+
     # Return source
     return tree
+
+#-------------------------------------------------------------------------------
 
 class BaseTransformerStrategy:
     """Transformer base class"""
