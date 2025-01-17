@@ -7,11 +7,11 @@
 #   1. Usual
 #      pip install -r requirements.txt
 #   2. Optional (i.e., including most optional):
-#      pip install --verbose $(perl -pe 's/^#opt#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
-#   3. Full (i.e., including all optional):
-#      pip install --verbose $(perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
-#      # TODO2: --ignore-errors [maldito pip]; set pip-update check
-#      perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#' | xargs -I '{}' pip install '{}'
+#      perl -pe 's/^#opt#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | egrep -v '^(#|$)' > _opt-requirements.list
+#      pip install --verbose --upgrade --requirement _opt-requirements.list
+#   3. Full (i.e., including all optional), done one-by-one to avoid pip quirk:
+#      perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | egrep -v '^(#|$)' > _all-requirements.list
+#      cat _all-requirements.list | xargs -I '{}' pip install --verbose --upgrade '{}' 
 # - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
 # - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
 #
@@ -88,6 +88,7 @@ wheel
 #opt# SpeechRecognition
 #opt# accelerate
 #opt# bash_kernel
+#opt# bashlex
 #opt# colout
 #opt# coverage
 #opt# flit

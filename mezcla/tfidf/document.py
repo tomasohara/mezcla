@@ -202,7 +202,7 @@ def main():
     """Entry point for script: just runs a simple test"""
     text = "my man fran is not a man"
     d = Document(text, Preprocessor(gramsize=1, stemmer=lambda x: x))
-    debug.trace_expr(BDL + -1, [d.tf_freq(t) for t in text.split()])
+    debug.trace_expr(BDL - 1, [d.tf_freq(t) for t in text.split()])
     debug.assertion(d.tf_freq("man") > d.tf_freq("fran"))
     
 #-------------------------------------------------------------------------------

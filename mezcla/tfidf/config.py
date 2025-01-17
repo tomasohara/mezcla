@@ -18,7 +18,7 @@ BDL = BASE_DEBUG_LEVEL
 
 def main():
     """Entry point for script"""
-    debug.trace(BDL + -2, "Warning: Unimplemented main")
+    debug.trace(BDL - 2, "Warning: Unimplemented main")
 
 #-------------------------------------------------------------------------------
     
