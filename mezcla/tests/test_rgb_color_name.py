@@ -8,6 +8,10 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_rgb_color_name.py
 #
+# TODO2:
+# - Bite the bullet and drop the xfail's.
+# - Likewise remove long-in-place xfail's in other test files (unless brittle).
+#
 
 """Tests for rgb_color_name module"""
 
@@ -20,8 +24,8 @@ import pytest
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
-from mezcla import system
 from mezcla import glue_helpers as gh
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -30,10 +34,10 @@ import mezcla.rgb_color_name as THE_MODULE
 class TestRgbColorName(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    ## NOTE: All the tests are passing, thus keeping the xfail mark
     def helper_rgb_color_name(self, cmd_option:str, file_content:str):
+        """Runs script over FILE_CONTENT using CMD_OPTION"""
         data_file = gh.create_temp_file(contents=file_content)
         output = self.run_script(options=cmd_option, data_file=data_file)
         return output
@@ -52,10 +56,10 @@ class TestRgbColorName(TestWrapper):
             'Pixels in output: 2587 of 11648\n'
         )
         system.write_file(self.temp_file, content)
-        #   =>
-        #   <(255, 0, 0), red>    :  33.33% (1)
-        #   <(0, 255, 0), lime>    :  33.33% (1)
-        #   <(0, 0, 255), blue>    :  33.33% (1)        
+        # =>
+        #   <(255, 0, 0), red>:  72.98% (1888)
+        #   <(0, 255, 0), lime>:  24.35% (630)
+        #   <(0, 0, 255), blue>:   2.67% (69)
         output = self.run_script("", self.temp_file)
         self.do_assert(re.search(r"<\(0, 255, 0\), lime>", output))
         return
@@ -76,7 +80,7 @@ class TestRgbColorName(TestWrapper):
         # rgb_regex_val = r'\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)'
         # option = f'--rgb-regex {rgb_regex_val}'
 
-        option = f"--rgb-regex '\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)'"
+        option = "--rgb-regex '\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)'"
         color_tuple = "(0, 255, 0)"
         color = "lime"
         helper_output = self.helper_rgb_color_name(
