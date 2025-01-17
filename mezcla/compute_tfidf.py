@@ -63,6 +63,9 @@ TERM_WIDTH = system.getenv_int("TERM_WIDTH", 32,
                                "Width of term column in output")
 SCORE_WIDTH = system.getenv_int("SCORE_WIDTH", PRECISION + 6,
                                 "Width of each score column in output (e.g., up to 12 for default precision of 6 as in 1.855712e-03)")
+MAX_FIELD_SIZE = system.getenv_int(
+    "MAX_FIELD_SIZE", -1,
+    desc="Overide for default max field size (128k)")
 
 # Option names and defaults
 NGRAM_SIZE_OPT = "--ngram-size"
@@ -218,6 +221,13 @@ def main():
     stemmer_fn = None if INCLUDE_STEMMING else (lambda x: x)
     my_pp = tfidf_preprocessor(language=LANGUAGE, gramsize=max_ngram_size, min_ngram_size=MIN_NGRAM_SIZE, all_ngrams=False, stemmer=stemmer_fn)
     corpus = tfidf_corpus(gramsize=max_ngram_size, min_ngram_size=MIN_NGRAM_SIZE, all_ngrams=False, preprocessor=my_pp)
+
+    # Overide the maxium field size if specified
+    if MAX_FIELD_SIZE > -1:
+        old_limit = csv.field_size_limit()
+        debug.assertion(MAX_FIELD_SIZE > old_limit)
+        csv.field_size_limit(MAX_FIELD_SIZE)
+        debug.trace(4, f"Set max field size to {MAX_FIELD_SIZE}; was {old_limit}")
 
     # Process each of the arguments
     doc_filenames = {}

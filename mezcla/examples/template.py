@@ -50,10 +50,12 @@ def main():
 
     # Parse command line options, show usage if --help given
     # TODO: manual_input=True; short_options=True
-    main_app = Main(description=__doc__.format(script=gh.basename(__file__)),
-                    ## TODO: boolean_options=[(TODO_BOOL_OPT1, "TODO desc1")]
-                    ## TODO: boolean_options=[(TODO_TEXT_OPT1, "TODO desc1")]
-                    skip_input=False)
+    # Note: Uses Main without subclassing, so some methods are stubs (e.g., run_main_step).
+    main_app = Main(
+        description=__doc__.format(script=gh.basename(__file__)),
+        ## TODO: boolean_options=[(TODO_BOOL_OPT1, "TODO desc1")],
+        ## TODO: text_options=[(TODO_TEXT_OPT1, "TODO desc1")],
+    )
     debug.assertion(main_app.parsed_args)
     ## TODO_OPT1 = main_app.get_parsed_option(TODO_OPT1)
 
