@@ -5,7 +5,7 @@
 # opened. Then, the input stream is feed line-by-line into the process_line
 # method.
 #
-# Usage exmple:
+# Usage example:
 #    from main import Main
 #
 #    class MyMain(Main):
@@ -72,6 +72,7 @@
 # - Add function for getting temp_base as dir:
 #       dummy_app = Main([], use_temp_base_dir=True)
 #       temp_wav_path = gh.form_path(dummy_app.temp_base, "sample.wav")
+# - Remove obsolete pylint disable specs (e.g., unbalanced-tuple-unpacking).
 #
 
 """Module for encapsulating main() processing"""
@@ -87,6 +88,7 @@ from typing import (
     Optional, List, Tuple, Any, Union,
     Generator, Dict, TextIO,
 )
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Local packages
 from mezcla import debug
@@ -95,7 +97,6 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla.my_regex import my_re
 from mezcla.system import getenv_bool
-## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Constants
 HELP_ARG = "--help"
@@ -156,9 +157,11 @@ INPUT_ERROR_OPTION = "input_error"
 INPUT_ERROR = system.getenv_value(
     INPUT_ERROR_OPTION.upper(), None,
     description="Override for strict input processing error handling")
-DISABLE_RECURSIVE_DELETE = system.getenv_value(
-    "DISABLE_RECURSIVE_DELETE", None,
-    description="Disable use of potentially dangerous rm -r style recursive deletions")
+## OLD:
+## DISABLE_RECURSIVE_DELETE = system.getenv_value(
+##     "DISABLE_RECURSIVE_DELETE", None,
+##     description="Disable use of potentially dangerous rm -r style recursive deletions")
+DISABLE_RECURSIVE_DELETE = gh.DISABLE_RECURSIVE_DELETE
 
 #-------------------------------------------------------------------------------
 
@@ -211,7 +214,7 @@ class Main(object):
             debug.trace_expr(level, runtime_args, description, skip_args, multiple_files, use_temp_base_dir, usage_notes, program, paragraph_mode, track_pages, file_input_mode, newlines, boolean_options, text_options, int_options, float_options, positional_options, positional_arguments, skip_input, manual_input, skip_stdin, auto_help, brief_usage, short_options, kwargs, prefix=f"{label}: {{", delim="\n\t", suffix="}")
         #
         debug.trace(4, f"Main.__init__(): self={self}")
-        trace_args(5, "input")
+        trace_args(5, "input main args")
         self.description = "TODO: what the script does"   # *** DONT'T MODIFY: default TODO note for client
         self.boolean_options: List[Tuple[str, str]] = []
         self.text_options: List[Tuple[str, str]] = []
@@ -282,7 +285,7 @@ class Main(object):
         if skip_args is None:
             # note: skip_args useful for testing scripts to avoid argument parsine
             skip_args = False
-        trace_args(6, "redux")
+        trace_args(6, "redux main args")
 
         # Check miscellaneous options
         BINARY_INPUT_OPTION = "binary_input"
@@ -290,18 +293,18 @@ class Main(object):
         bad_options = system.difference(list(kwargs.keys()), [BINARY_INPUT_OPTION, PERL_SWITCH_PARSING_OPTION, INPUT_ERROR_OPTION])
         debug.assertion(not bad_options, f"Extraneous kwargs: {bad_options}")
         self.binary_input = kwargs.get(BINARY_INPUT_OPTION, False)
-        self.input_error = kwargs.get(INPUT_ERROR_OPTION, INPUT_ERROR)
+        self.input_error_mode = kwargs.get(INPUT_ERROR_OPTION, INPUT_ERROR)
 
         # Setup temporary file and/or base directory
-        # Note: Uses NamedTemporaryFile (hence ntf_args)
         # TODO: allow temp_base handling to be overridable by constructor options
         # TODO: reconcile with unittest_wrapper.py.get_temp_dir
         prefix = (FILE_BASE + "-")
-        alt_temp_base = tempfile.NamedTemporaryFile(
-            prefix=prefix,
-            delete=not debug.detailed_debugging(),
-            ## TODO: "suffix": "-"
-        ).name
+        alt_temp_base = (
+            tempfile.NamedTemporaryFile(
+                prefix=prefix,
+                delete=not debug.detailed_debugging(),
+                ## TODO: "suffix": "-"
+            ).name)
         self.temp_base = (TEMP_BASE or alt_temp_base)
         # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
         # -or-: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
@@ -420,7 +423,7 @@ class Main(object):
         and the parentheses can be omitted if just the label is given. For example,
              ("--num-eggs", "Number of eggs", 2)
         If POSITIONAL, the option prefix (--) is omitted and OPTION_SPEC
-        includes an optional nargs component, such as"
+        includes an optional nargs component, such as:
              ("other-files", "Other file names", ["f1", "f2", "f3"], "+")
         """
         # EX: label, _desc, _default = Main.convert_option("--mucho-backflips"); label => "--mucho-backflips"
@@ -445,7 +448,6 @@ class Main(object):
             if len(option_components) > 3 and positional:
                 debug.assertion(positional)
                 opt_nargs = option_components[3]
-                debug.assertion(positional)
         else:
             opt_label = opt_prefix + tpo.to_string(option_spec)
         debug.assertion(not " " in opt_label)
@@ -492,7 +494,7 @@ class Main(object):
         # EX: self.parsed_args = {"it": False}; self.has_parsed_option("notit") => None
         ## TEMP HACK: if called by a subclass, treate as alias to get_parsed_option
         if (self.__class__ != "__main__.Script"):
-            debug.trace(4, "Warning: deprecated method: has_parsed_option => get_parsed_option")
+            debug.trace(3, "Warning: deprecated method: has_parsed_option => get_parsed_option")
             return self.get_parsed_option(label)
         # Return parsed-arg entry for the option
         name = self.get_option_name(label)
@@ -707,8 +709,7 @@ class Main(object):
         # note: not trapped to allow for early exit
         self.parsed_args = vars(parser.parse_args(runtime_args))
         debug.trace(5, f"parsed_args = {self.parsed_args}")
-        self.verbose = bool(self.get_parsed_option("verbose")
-)
+        self.verbose = bool(self.get_parsed_option("verbose"))
         # Get filename unless input ignored and fixup if returned as list
         # TODO: add an option to retain self.filename as is
         if not self.skip_input:
@@ -766,17 +767,19 @@ class Main(object):
                 if not (self.manual_input and self.skip_input):
                     debug.assertion(os.path.exists(self.filename))
                     mode = ("r" if (not self.binary_input) else "rb")
-                    self.input_stream = system.open_file(self.filename, mode=mode, errors=self.input_error)
+                    self.input_stream = system.open_file(self.filename, mode=mode,
+                                                         errors=self.input_error_mode)
                     debug.assertion(self.input_stream)
         # Optionally reopen stream to change built-in settings
-        error_handling_change = (self.input_error and self.input_stream and (self.input_error != self.input_stream.errors))
+        error_handling_change = (self.input_error_mode
+                                 and (self.input_error_mode != self.input_stream.errors))
         reopen_stream = (error_handling_change or self.newlines)
         if reopen_stream and self.input_stream:
             if self.newlines:
                 debug.trace(4, f"Changing input stream newlines from {self.input_stream.newlines!r} to {self.newlines!r}")
             if error_handling_change:
-                debug.trace(4, f"Changing input stream error handling from {self.input_stream.errors!r} to {self.input_error!r}")
-            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=self.input_error, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
+                debug.trace(4, f"Changing input stream error handling from {self.input_stream.errors!r} to {self.input_error_mode!r}")
+            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=self.input_error_mode, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
             debug.trace_object(4, self.input_stream)
     
     def run(self) -> None:
@@ -862,7 +865,7 @@ class Main(object):
                          input=self.input_stream)
 
         if not self.input_stream:
-            debug.trace(4, "Warning: No input stream")
+            debug.trace(4, "Warning: No input stream in read_input")
             return
 
         # Optionally return input all at once
