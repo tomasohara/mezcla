@@ -36,12 +36,12 @@ import sys
 import time
 from typing import (
     Any, IO, Optional, Union, overload, List,
-    Tuple, Callable, TextIO,
+    Tuple, Callable,
 )
 from io import TextIOWrapper
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Installed packages
-from numpy import unicode_
 import six
 
 # Local packages
@@ -58,6 +58,7 @@ STRING_TYPES = six.string_types
 MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
 TEMP_DIR = None
+ENCODING = "encoding"
 
 ## TODO: debug.assertion(python_maj_min_version() >= 3.8, "Require Python 3.8+ for function def's with '/' or '*'")
 ## See https://stackoverflow.com/questions/9079036/how-do-i-detect-the-python-version-at-runtime
@@ -249,19 +250,29 @@ def getenv_bool(
         default: bool = DEFAULT_GETENV_BOOL,
         description: str = "",
         desc: str = "",
+        allow_none: Optional[bool] = False, 
         update: Optional[bool] = None
     ) -> bool:
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note:
     - "0" or "False" is interpreted as False, and any other explicit value as True (e.g., None => None)
     - In general, it is best to use False as default instead of True, because getenv_bool is meant for environment overrides, not defaults.
+    - TODO2: Return is a bool unless ALLOW_NONE; defaults to False.
     """
     # EX: getenv_bool("bad env var", None) => False
+    # EX: getenv_bool("bad env var", None, allow_none=True) => True
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
     value_text = getenv_value(var, description=description, desc=desc, default=default, update=update)
     if (isinstance(value_text, str) and value_text.strip()):
         bool_value = to_bool(value_text)
+    if not isinstance(bool_value, bool):
+        if (bool_value is None):
+            bool_value = False if (not allow_none) else None
+        else:
+            debug.assertion(bool_value != default, f"Check {var!r} default {default!r}")
+            bool_value = to_bool(bool_value)
+    debug.assertion(isinstance(bool_value, bool) or allow_none)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
                      v=var, d=default, r=bool_value)
     return (bool_value)
@@ -274,10 +285,14 @@ def getenv_number(
         default: float = -1.0,
         description: str = "",
         desc: str = "",
+        allow_none: Optional[bool] = False, 
         helper: bool = False,
         update: Optional[bool] = None
     ) -> float:
-    """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE"""
+    """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
+    Note: Return is a float unless ALLOW_NONE; defaults to -1.0
+    """
+    # EX: getenv_float("?", default=1.5) => 1.5
     # TODO: def getenv_number(...) -> Optional(float):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
@@ -285,13 +300,14 @@ def getenv_number(
     if (isinstance(value, str) and value.strip()):
         debug.assertion(is_number(value))
         num_value = to_float(value)
+    if (not ((num_value is None) and allow_none)):
+        num_value = to_float(num_value)
     trace_level = 6 if helper else 5
     debug.trace_fmtd(trace_level, "getenv_number({v}, {d}) => {r}",
                      v=var, d=default, r=num_value)
     return (num_value)
 #
 getenv_float = getenv_number
-
 
 
 def getenv_int(
@@ -303,12 +319,13 @@ def getenv_int(
         update: Optional[bool] = None
     ) -> int:
     """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
-    Note: Return is an integer unless ALLOW_NONE
+    Note: Return is an integer unless ALLOW_NONE; defaults to -1
     """
-    # EX: getenv_int("?", 1.5) => 1
-    value = getenv_number(var, description=description, desc=desc, default=default, helper=True, update=update)
+    # EX: getenv_int("?", default=1.5) => 1
+    value = getenv_number(var, description=description, desc=desc, default=default, allow_none=allow_none, helper=True, update=update)
     if (not isinstance(value, int)):
-        if ((value is not None) or allow_none):
+        ## OLD: if ((value is not None) and (not allow_none)):
+        if (not ((value is None) and allow_none)):
             value = to_int(value)
     debug.trace_fmtd(5, "getenv_int({v}, {d}) => {r}",
                      v=var, d=default, r=value)
@@ -367,6 +384,7 @@ def print_stderr(text: str, **kwargs) -> None:
         print_error(text)
     else:
         print_stderr_fmt(text, **kwargs)
+    return
 
 
 def print_exception_info(task: str, show_stack: Optional[bool] = None) -> None:
@@ -383,8 +401,10 @@ def print_exception_info(task: str, show_stack: Optional[bool] = None) -> None:
     return
 
 
-# pylint: disable=redefined-builtin
-def exit(message: str = "", status_code: Optional[int] = None, **namespace) -> None:
+def exit(                               # pylint: disable=redefined-builtin
+        message: str = "",
+        status_code: Optional[int] = None,
+        **namespace) -> None:
     """Display error MESSAGE to stderr and then exit, using optional
     NAMESPACE for format. The STATUS_CODE can be overrided (n.b., 0 if None)."""
     # EX: exit("Error: {reason}!", status_code=123, reason="Whatever")
@@ -471,6 +491,7 @@ def open_file(
     try:
         # pylint: disable=consider-using-with; note: bogus 'Bad option value' warning
         ## BAD: result = open(filename, mode=mode, encoding=encoding, errors=errors, **kwargs)
+        # pylint: disable=unspecified-encoding
         result = open(filename, mode=mode, errors=errors, **kwargs)
     except IOError:
         debug.trace_fmtd(3, "Unable to open {f!r}: {exc}", f=filename, exc=get_exception())
@@ -500,15 +521,14 @@ def load_object(file_name: FileDescriptorOrPath, ignore_error: bool = False) -> 
     obj = None
     try:
         with open(file_name, mode='rb') as f:
-            try:
-                obj = pickle.load(f)
-            except (UnicodeDecodeError):
-                if (sys.version_info.major > 2):
-                    # note: treats strings in python2-pickled files as bytes (not Ascii)
-                    obj = pickle.load(f, encoding='bytes') 
-    except (AttributeError, IOError, TypeError, ValueError):
+            obj = pickle.load(f)
+    except (AttributeError, IOError, TypeError, UnicodeDecodeError, ValueError):
         if (not ignore_error):
             print_stderr(f"Error: Unable to load object from {file_name!r}: {get_exception()}")
+        else:
+            debug.trace_fmtd(8, "Problem loading object in {f!r}: {exc!r}",
+                             f=file_name, exc=get_exception())
+            
     debug.trace_fmtd(7, "load_object({f}) => {o}", f=file_name, o=obj)
     return obj
 
@@ -525,6 +545,7 @@ def quote_url_text(text: str, unquote: bool = False) -> str:
     try:
         proceed = True
         if proceed:
+            ## NOTE: This evolved out of code supporting Python 2.
             ## TODO: debug.trace_object(6, "urllib", urllib, show_all=True)
             ## TODO: debug.trace_object(6, "urllib.parse", urllib.parse, show_all=True)
             import urllib.parse   # pylint: disable=redefined-outer-name, import-outside-toplevel
@@ -575,11 +596,7 @@ class stdin_reader(object):
         debug.trace_fmtd(5, "Script.__init__({a}): keywords={kw}; self={s}",
                          a=",".join(args), kw=kwargs, s=self)
         self.delimiter = kwargs.get('delimiter', "\t")
-        if (sys.version_info.major > 2):
-            super().__init__(*args, **kwargs)
-        else:
-            # pylint: disable=super-with-arguments; gives 'Bad option value' warning
-            super(stdin_reader, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
     
     def __iter__(self):
         """Returns first line in stdin iteration (empty string upon EOF)"""
@@ -622,11 +639,11 @@ def read_entire_file(filename: FileDescriptorOrPath, **kwargs) -> str:
     # EX: write_file("/tmp/fu123", "1\n2\n3\n"); read_entire_file("/tmp/fu123") => "1\n2\n3\n"
     data = ""
     try:
-        ENCODING = "encoding"
         if kwargs.get(ENCODING) is None:
             kwargs[ENCODING] = "UTF-8"
         ## TODO: with open_file(filename, **kwargs) as f:
         ## BAD: with open(filename, encoding="UTF-8", **kwargs) as f:
+        # pylint: disable=unspecified-encoding
         with open(filename, **kwargs) as f:
             data = f.read()
     except (AttributeError, IOError):
@@ -735,7 +752,6 @@ def read_lookup_table(
     try:
         # TODO: use csv.reader
         file_obj = open_file(filename)
-        # TODO: debug.assertion
         assert isinstance(file_obj, TextIOWrapper)
         with file_obj as f:
             for line in f:
@@ -754,7 +770,7 @@ def read_lookup_table(
                     delim_spec = ("\\t" if (delim == "\t") else delim)
                     debug.trace_fmt(2, "Warning: Ignoring line {n} w/o delim ({d}): {l}", 
                                     n=line_num, d=delim_spec, l=line)
-    except (AttributeError, IOError, ValueError):
+    except (AssertionError, AttributeError, IOError, TypeError, ValueError):
         debug.trace_fmtd(1, "Error creating lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmtd(7, "read_lookup_table({f}) => {r}", f=filename, r=hash_table)
@@ -783,7 +799,6 @@ def create_boolean_lookup_table(
     lookup_hash = defaultdict(bool)
     try:
         file_obj = open_file(filename, **kwargs)
-        # TODO: debug.assertion
         assert isinstance(file_obj, TextIOWrapper)
         with file_obj as f:
             for line in f:
@@ -795,7 +810,7 @@ def create_boolean_lookup_table(
                 if delim in key:
                     key = key.split(delim)[0]
                 lookup_hash[key] = True
-    except (AttributeError, IOError, ValueError):
+    except (AssertionError, AttributeError, IOError, TypeError, ValueError):
         debug.trace_fmtd(1, "Error: Creating boolean lookup from '{f}': {exc}",
                          f=filename, exc=get_exception())
     debug.trace_fmt(7, "create_boolean_lookup_table => {h}", h=lookup_hash)
@@ -888,10 +903,13 @@ def write_lines(
 
 def write_temp_file(filename: FileDescriptorOrPath, text: str) -> None:
     """Create FILENAME in temp. directory using TEXT"""
-    # TODO: debug.assertion
-    assert isinstance(TEMP_DIR, str) and TEMP_DIR != "", "TEMP_DIR not defined"
-    temp_path = form_path(TEMP_DIR, filename)
-    return write_file(temp_path, text)
+    try:
+        assert isinstance(TEMP_DIR, str) and TEMP_DIR != "", "TEMP_DIR not defined"
+        temp_path = form_path(TEMP_DIR, filename)
+        write_file(temp_path, text)
+    except:
+        print_exception_info("write_temp_file")
+    return 
 
 
 def get_file_modification_time(
@@ -1060,6 +1078,7 @@ def to_utf8(text: str) -> str:
     """obsolete no-op: Convert TEXT to UTF-8 (e.g., for I/O)"""
     # EX: to_utf8(u"\ufeff") => "\xEF\xBB\xBF"
     result = text
+    ## OLD: ... result = result.encode(UTF8, 'ignore')
     debug.trace_fmtd(8, "to_utf8({t}) => {r}", t=text, r=result)
     return result
 
@@ -1088,6 +1107,7 @@ def to_unicode(text: str, encoding: Optional[str] = None):
     # EX: to_unicode("\xEF\xBB\xBF") => u"\ufeff"
     # TODO: rework from_utf8 in terms of this
     result = text
+    ## OLD: ... result = result.decode(encoding, 'ignore')
     debug.trace_fmtd(8, "to_unicode({t}, [{e}]) => {r}", t=text, e=encoding, r=result)
     return result
 
@@ -1096,6 +1116,7 @@ def from_unicode(text: str, encoding: Optional[str] = None):
     """Convert TEXT to ENCODING from Unicode, such as to the default UTF8"""
     # TODO: rework to_utf8 in terms of this
     result = text
+    ## OLD: ... result = result.decode(encoding, 'ignore')
     debug.trace_fmtd(8, "from_unicode({t}, [{e}]) => {r}", t=text, e=encoding, r=result)
     return result
 
@@ -1346,6 +1367,7 @@ def round_num(value: float, precision: Optional[int] = None) -> float:
 def round_as_str(value: float, precision: Optional[int] = PRECISION) -> str:
     """Returns round_num(VALUE, PRECISION) as string"""
     # EX: round_as_str(3.15914, 3) => "3.159"
+    ## TODO3: add separate argument for number of digits after decimal point
     result = f"{round_num(value, precision):.{precision}f}"
     debug.trace_fmtd(8, "round_as_str({v}, [prec={p}]) => {r}",
                      v=value, p=precision, r=result)
@@ -1403,7 +1425,7 @@ def make_wrapper(function_name, function, trace_level=6):
     """Creates wrapper around FUNCTION with NAME"""
     debug.trace(7, f"make_wrapper{(function_name, function, trace_level)}")
     # EX: make_wrapper("get_process_id", os.getpid).__doc__ => "Wrapper around posix.getpid"
-    # TODO3: resolve module used in refernce so that docstring more intuitive (e.g., posix.getpid => os.getpid)
+    # TODO3: resolve module used in reference so that docstring more intuitive (e.g., posix.getpid => os.getpid)
     #
     def wrapper(*args, **kwargs):
         """placeholder docstring"""
