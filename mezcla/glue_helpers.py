@@ -538,7 +538,7 @@ def run(
     if save_temp_file and (PRESERVE_TEMP_FILE is not True):
         debug.trace(5, f"Resetting TEMP_FILE to {save_temp_file}")
         system.setenv("TEMP_FILE", save_temp_file)
-    debug_print("run(_) => {\n%s\n}" % indent_lines(result), (trace_level + 1))
+    debug.trace_fmt((trace_level + 1), "run(_) => {{\n{r}\n}}", r=indent_lines(result))
     return result
 
 
