@@ -12,6 +12,8 @@
 #
 # TODO2: Put on a new low-priority script with respect to testing coverage.
 #
+# TODO3: define class for color name conversion proper (e.g., decompose Script
+# into option parsing class and color conversion class)
 #--------------------------------------------------------------------------------
 # Sample input (based on extcolors):
 #
@@ -51,6 +53,10 @@ Sample usage:
 """
 #
 ## TODO3: modernize extract_document_text.py (e.g., --html --stdout)
+##
+## TODO4: add extcolors-style one-liner:
+##    $ rgb_color_name.py - <<<"(39, 39, 39)   :  24.35% (630)"
+##    <(39, 39, 39), darkslategray>   :  24.35% (630
 
 # Standard packages
 ## OLD: import re
@@ -111,7 +117,19 @@ class Script(Main):
 
         # Populate color names into spatial name database
         # TODO2: isolate into helper class
-        hexnames = webcolors.CSS3_HEX_TO_NAMES
+        ## OLD:
+        if hasattr(webcolors, "CSS3_HEX_TO_NAMES"):
+            hexnames = webcolors.CSS3_HEX_TO_NAMES
+        else:
+            ## TODO3: try to find non-private way to get list (without iterating
+            ## through 16 million!)
+            try:
+                hexnames = webcolors._definitions._CSS3_HEX_TO_NAMES
+            except:
+                hexnames = {}
+        if not hexnames:
+            system.error("Error: unable to resolve hexname from webcolors")
+            
         debug.trace_values(6, hexnames)
         debug.trace_expr(5, hexnames, max_len=2**16)
         self.color_names = []
