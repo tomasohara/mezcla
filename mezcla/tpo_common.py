@@ -484,7 +484,8 @@ def debug_format(text, level=1, skip_newline=False, **namespace):
     """Version of debug_print that expands TEXT using format.
     Note: Exceptions are ignored (to encourage tracing, not discourage)."
     """
-    debug.trace(6, f"tpo.debug_format({text}, {skip_newline}, ...)")
+    debug.trace(6, f"tpo.debug_format({text}, {skip_newline}, ...)",
+                skip_sanity_checks=True)
     ## TODO: return debug.trace(no_eol=skip_newline, level, text, **namespace)
     # NOTE: String values from namespace need to be in UTF-8 format.
     # TODO: rename as debug_print_format as not just formatting the text

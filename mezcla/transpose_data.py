@@ -44,13 +44,19 @@ from mezcla.system import print_stderr
 from mezcla import system
 from mezcla.glue_helpers import read_lines
 
+# Constants
+CSV_FORMAT = system.getenv_bool(
+    "CSV_FORMAT", False,
+    desc="Use CSV instead of TSV")
+
+
 def main():
     """Entry point for script"""
     # Check command-line arguments
     parser = argparse.ArgumentParser(description="Transpose a table from input")
     parser.add_argument("--header", help="File with field names")
     parser.add_argument("--delim", help="Delimiter for fields")
-    parser.add_argument("--csv", action='store_true', default=False, help="Comma separated value input")
+    parser.add_argument("--csv", action='store_true', default=CSV_FORMAT, help="Comma separated value input")
     parser.add_argument("--encode-newlines", action='store_true', default=False, help="Encode embedded newlines as <EOL>")
     parser.add_argument("--dialect", help="CVS dialect (e.g., excel or unix)")
     parser.add_argument("--elide", dest='elide_fields', action='store_true', default=False, help="Replace repeated values by .'s")

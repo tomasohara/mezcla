@@ -50,6 +50,8 @@ class TestDataUtils:
         df['petal_length'] = [1.4, 1.4, 1.3, 1.5, 1.4]
         df['petal_width'] = [0.2, 0.2, 0.2, 0.2, 0.2]
         df['class'] = ['Iris-setosa', 'Iris-virginica', 'Iris-versicolor', 'Iris-setosa', 'Iris-setosa']
+        # TODO2: track down exception
+        #  Exception during write_csv: (<class 'TypeError'>, TypeError('"delimiter" must be string, not NoneType'), <traceback object at 0x7f49885f3880>)
         THE_MODULE.to_csv(temp_file, df)
         df.to_csv(temp_file, index=False)
         # Test

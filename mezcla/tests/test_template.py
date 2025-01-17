@@ -30,7 +30,7 @@ import mezcla.template as THE_MODULE
 class TestTemplate(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_01_data_file(self):
         """Makes sure to-do grep works as expected"""

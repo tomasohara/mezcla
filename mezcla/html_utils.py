@@ -57,13 +57,17 @@ import html
 import re
 import sys
 import time
+import traceback
 import urllib.request
 from urllib.error import HTTPError, URLError
 from http.client import HTTPMessage
 try:
     from typing_extensions import Any, Callable, Dict, List, Optional, Union
 except:
-    sys.stderr.write("Error importing extensions: {sys.exc_info}\n")
+    ## TODO: debug.raise()
+    ## TEMP:
+    traceback.print_exc(file=sys.stderr)
+    sys.stderr.write(f"Error importing extensions: {sys.exc_info()}\n")
     sys.exit("Error: html_utils.py requires Python typing_extensions >= 4.7.0 (backport limitations with typing_extensions)")
 
 # Installed packages

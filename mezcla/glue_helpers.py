@@ -14,6 +14,9 @@
 #   facilate debugging, two environment variables allow for overriding this
 #      TEMP_FILE: fixed temporary file to use
 #      TEMP_BASE: basename for temporary files (or a directory if USE_TEMP_BASE_DIR)
+# - Uses str as return type instead of Optional[str] for string functions like basename
+#   or get_temp_dir where "" is an invalid value (e.g., no need for None).
+# - Avoids adding assert for mypy unless trapped.
 #
 # TODO:
 # - Add more functions to facilitate command-line scripting (check bash scripts for commonly used features).
@@ -37,6 +40,13 @@ import shutil
 from subprocess import getoutput
 import sys
 import tempfile
+from typing import (
+    Optional, Any, List, Dict, Union,
+    TextIO,
+)
+from types import FrameType
+from io import TextIOWrapper
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Installed packages
 import textwrap
@@ -44,12 +54,13 @@ import textwrap
 # Local packages
 from mezcla import debug
 from mezcla import system
+## TODO2: top_common => debug.
 from mezcla import tpo_common as tpo
-## OLD: from mezcla.tpo_common import debug_format, debug_print, print_stderr, setenv
 from mezcla.tpo_common import debug_format, debug_print
-## OLD: from mezcla.main import DISABLE_RECURSIVE_DELETE
-## DEBUG: sys.stderr.write(f"{__file__=}\n")
 ## TODO3: debug.trace_expr(6, __file__)
+from mezcla.validate_arguments_types import (
+    FileDescriptorOrPath, StrOrBytesPath
+)
 
 # Constants
 TL = debug.TL
@@ -89,23 +100,25 @@ TEMP_SUFFIX = system.getenv_text(
     "TEMP_SUFFIX", "-",
     description="Suffix to use for temp files")
 TEMP_SUFFIX = ("-")
-NTF_ARGS = {'prefix': TEMP_PREFIX,
-            'delete': not debug.detailed_debugging(),
-            'suffix': TEMP_SUFFIX}
+KEEP_TEMP = system.getenv_bool(
+    "KEEP_TEMP", debug.detailed_debugging(),
+    desc="Keep temporary files")
+## OLD:
+## NTF_ARGS = {'prefix': TEMP_PREFIX,
+##             'delete': not debug.detailed_debugging(),
+##             'suffix': TEMP_SUFFIX}
 TEMP_BASE = system.getenv_value(
     "TEMP_BASE", None,
     description="Override for temporary file basename")
-TEMP_BASE_DIR_DEFAULT = (TEMP_BASE and
-                         (system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")))
+USE_TEMP_BASE_DIR_DEFAULT = bool(
+    TEMP_BASE and (system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")))
 USE_TEMP_BASE_DIR = system.getenv_bool(
-    "USE_TEMP_BASE_DIR", TEMP_BASE_DIR_DEFAULT,
+    "USE_TEMP_BASE_DIR", USE_TEMP_BASE_DIR_DEFAULT,
     description="Whether TEMP_BASE should be a dir instead of prefix")
 DISABLE_RECURSIVE_DELETE = system.getenv_value(
     "DISABLE_RECURSIVE_DELETE", None,
     description="Disable use of potentially dangerous rm -r style recursive deletions")
-PRESERVE_TEMP_FILE = system.getenv_value(
-    "PRESERVE_TEMP_FILE", None,
-    desc="Retain value of TEMP_FILE even if TEMP_BASE set--see INFER_TEMP_FILE")
+PRESERVE_TEMP_FILE = None
 
 # Globals
 # note:
@@ -125,29 +138,44 @@ TEMP_SCRIPT_FILE = os.path.join(TMP, f"{GLOBAL_TEMP_FILE}.script")
 
 #------------------------------------------------------------------------
 
-def get_temp_file(delete=None):
+def get_temp_file(delete: Optional[bool] = None) -> str:
     """Return name of unique temporary file, optionally with DELETE"""
     # Note: delete defaults to False if detailed debugging
     # TODO: allow for overriding other options to NamedTemporaryFile
     if ((delete is None) and debug.detailed_debugging()):
         delete = False
-    temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
+    ## BAD: temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
+    NTF_ARGS = {'prefix': TEMP_PREFIX,
+                ## OLD: 'delete': not debug.detailed_debugging(),
+                'delete': not KEEP_TEMP,
+                'suffix': TEMP_SUFFIX}
+    temp_file_name = TEMP_FILE
+    if not temp_file_name:
+        # note: uses context so not deleted right away if delete=True
+        # TODO2: fix this
+        with tempfile.NamedTemporaryFile(**NTF_ARGS) as temp_file_obj:
+            temp_file_name = temp_file_obj.name
+        # HACK: clear the file
+        if not KEEP_TEMP:
+            system.write_file(temp_file_name, "")
+    temp_file_name = temp_file_name or ""
     debug.assertion(not delete, "Support for delete not implemented")
-    debug_format("get_temp_file() => {r}", 5, r=temp_file_name)
+    debug_format("get_temp_file() => {r!r}", 5, r=temp_file_name)
     return temp_file_name
 
 
-def get_temp_dir(delete=None):
+def get_temp_dir(delete=None) -> str:
     """Gets temporary file to use as a directory
     note: Optionally DELETEs directory afterwards
     """
-    debug.assertion(False, "work-in-progress implementation")
+    ## OLD: debug.assertion(False, "work-in-progress implementation")
     temp_dir_path = get_temp_file(delete=delete)
-    full_mkdir(temp_dir_path)
+    # note: removes non-dir file if exists
+    full_mkdir(temp_dir_path, force=True)
     return temp_dir_path
 
 
-def create_temp_file(contents, binary=False):
+def create_temp_file(contents: Any, binary: bool = False) -> str:
     """Create temporary file with CONTENTS and return full path"""
     temp_filename = get_temp_file()
     system.write_file(temp_filename, contents, binary=binary)
@@ -155,21 +183,21 @@ def create_temp_file(contents, binary=False):
     return temp_filename
 
 
-def basename(filename, extension=None):
+def basename(filename: str, extension: Optional[str] = None) -> str:
     """Remove directory from FILENAME along with optional EXTENSION, as with Unix basename command. Note: the period in the extension must be explicitly supplied (e.g., '.data' not 'data')"""
     # EX: basename("fubar.py", ".py") => "fubar"
     # EX: basename("fubar.py", "py") => "fubar."
     # EX: basename("/tmp/solr-4888.log", ".log") => "solr-4888"
-    base = os.path.basename(filename)
+    base = os.path.basename(filename) or ""
     if extension is not None:
         pos = base.find(extension)
         if pos > -1:
             base = base[:pos]
-    debug_print("basename(%s, %s) => %s" % (filename, extension, base), 5)
+    debug_print(f"basename({filename!r}, {extension}) => {base}", 5)
     return base
 
 
-def remove_extension(filename, extension):
+def remove_extension(filename: str, extension: str) -> str:
     """Returns FILENAME without EXTENSION. Note: similar to basename() but retaining directory portion."""
     # EX: remove_extension("/tmp/solr-4888.log", ".log") => "/tmp/solr-4888"
     # EX: remove_extension("/tmp/fubar.py", ".py") => "/tmp/fubar"
@@ -177,7 +205,7 @@ def remove_extension(filename, extension):
     # NOTE: Unlike os.path.splitext, only the specific extension is removed (not whichever extension used).
     pos = filename.find(extension)
     base = filename[:pos] if (pos > -1) else filename
-    debug_print("remove_extension(%s, %s) => %s" % (filename, extension, base), 5)
+    debug_print(f"remove_extension({filename!r}, {extension}) => {base!r}", 5)
     return base
 
 
@@ -185,7 +213,7 @@ def remove_extension(filename, extension):
 ##           ...
 
 
-def dir_path(filename, explicit=False):
+def dir_path(filename: str, explicit: bool = False) -> str:
     """Wrapper around os.path.dirname over FILENAME
     Note: With EXPLICIT, returns . instead of "" (e.g., if filename in current direcotry)
     """
@@ -195,40 +223,48 @@ def dir_path(filename, explicit=False):
     path = os.path.dirname(filename)
     if (not path and explicit):
         path = "."
-    debug.trace(5, f"dir_path({filename}, [explicit={explicit}]) => {path}")
+    debug.trace(5, f"dir_path({filename!r}, [explicit={explicit}]) => {path}")
     # TODO: add realpath (i.e., canonical path)
     if not explicit:
-        debug.assertion(form_path(path, basename(filename)) == filename)
+        base = basename(filename)
+        ## OLD:
+        ## # TODO: debug.assertion
+        ## assert isinstance(base, str)
+        debug.assertion(form_path(path, base) == filename)
     return path
 
 
-def dirname(file_path):
+def dirname(file_path: str) -> str:
     """"Returns directory component of FILE_PATH as with Unix dirname"""
     # EX: dirname("/tmp/solr-4888.log") => "/tmp"
     # EX: dirname("README.md") => "."
     return dir_path(file_path, explicit=True)
 
 
-def file_exists(filename):
+def file_exists(filename: FileDescriptorOrPath) -> bool:
     """Returns indication that FILENAME exists"""
     ok = os.path.exists(filename)
-    debug_print("file_exists(%s) => %s" % (filename, ok), 7)
+    debug_print(f"file_exists({filename!r}) => {ok}", 7)
     return ok
 
 
-def non_empty_file(filename):
+def non_empty_file(filename: FileDescriptorOrPath) -> bool:
     """Whether FILENAME exists and is non-empty"""
     size = (os.path.getsize(filename) if os.path.exists(filename) else -1)
     non_empty = (size > 0)
-    debug_print("non_empty_file(%s) => %s (filesize=%s)" % (filename, non_empty, size), 5)
+    debug_print(f"non_empty_file({filename!r}) => {non_empty} (filesize={size})", 5)
     return non_empty
 
 
-def resolve_path(filename, base_dir=None, heuristic=False):
+def resolve_path(
+        filename: str,
+        base_dir: Optional[str] = None,
+        heuristic: bool = False
+    ) -> str:
     """Resolves path for FILENAME relative to BASE_DIR if not in current directory. Note: this uses the script directory for the calling module if BASE_DIR not specified (i.e., as if os.path.dirname(__file__) passed).
     If HEURISTIC, then also checks nearby directories such as parent for base_dir.
     """
-    debug.trace(5, f"in resolve_path({filename})")
+    debug.trace(5, f"in resolve_path({filename!r})")
     debug.trace_expr(6,  base_dir, heuristic)
     # TODO: give preference to script directory over current directory
     path = filename
@@ -237,16 +273,21 @@ def resolve_path(filename, base_dir=None, heuristic=False):
         if not base_dir:
             frame = None
             try:
-                frame = inspect.currentframe().f_back
+                frame = inspect.currentframe()
+                assert isinstance(frame, FrameType)
+                frame = frame.f_back
+                assert isinstance(frame, FrameType)
                 calling_filename = frame.f_globals['__file__']
                 base_dir = os.path.dirname(calling_filename)
                 debug.trace_expr(4, calling_filename, base_dir)
-            except (AttributeError, KeyError):
+            except (AssertionError, AttributeError, KeyError):
                 base_dir = ""
                 debug_print("Error: Exception during resolve_path: " + str(sys.exc_info()), 5)
             finally:
                 if frame:
                     del frame
+        if not isinstance(base_dir, str):
+            base_dir = str(base_dir)
         
         # Check calling directory (TODO2: add more check dirs such as children)
         dirs_to_check = [base_dir]
@@ -268,7 +309,7 @@ def resolve_path(filename, base_dir=None, heuristic=False):
     return path
 
 
-def form_path(*filenames, create=False):
+def form_path(*filenames: str, create: bool = False) -> str:
     """Wrapper around os.path.join over FILENAMEs (with tracing)
     Note: includes sanity check about absolute filenames except for first
     If CREATE, then the directory for the path is created if needed
@@ -286,7 +327,7 @@ def form_path(*filenames, create=False):
     return path
 
 
-def is_directory(path):
+def is_directory(path: FileDescriptorOrPath) -> bool:
     """Determines whether PATH represents a directory"""
     is_dir = os.path.isdir(path)
     debug_format("is_dir({p}) => {r}", 6, p=path, r=is_dir)
@@ -301,7 +342,7 @@ def is_directory(path):
 ##      func.body = f'debug.trace(3, "{warning}")' + func.body
 
 
-def create_directory(path):
+def create_directory(path: StrOrBytesPath) -> None:
     """Wrapper around os.mkdir over PATH (with tracing)
     Warning: obsolete
     """
@@ -314,31 +355,36 @@ def create_directory(path):
     return
 
 
-def full_mkdir(path):
+def full_mkdir(path: FileDescriptorOrPath, force: bool = False) -> None:
     """Issues mkdir to ensure path directory, including parents (assuming Linux like shell)
+    When FORCE true, an existing non-directory is removed first.
     Note: Doesn't handle case when file exists but is not a directory
     """
     debug.trace(6, f"full_mkdir({path!r})")
     ## TODO: os.makedirs(path, exist_ok=True)
     debug.assertion(os.name == "posix")
+    if force and system.file_exists(path) and not system.is_directory(path):
+        delete_file(path)
     if not system.file_exists(path):
         issue('mkdir --parents "{p}"', p=path)
     debug.assertion(is_directory(path))
     return
 
 
-def real_path(path):
+def real_path(path: FileDescriptorOrPath) -> str:
     """Return resolved absolute pathname for PATH, as with Linux realpath command
     Note: Use version in system instead"""
     # EX: re.search("vmlinuz.*\d.\d", real_path("/vmlinuz"))
     ## TODO: result = system.real_path(path)
+    ## TODO3: check outher modules for over-applicaiton of !r-formatting
+    ## BAD: result = run(f'realpath "{path!r}"')
     result = run(f'realpath "{path}"')
     debug.trace(6, "Warning: obsolete: use system.real_path instead")
-    debug.trace(7, f"real_path({path}) => {result}")
+    debug.trace(7, f"real_path({path!r}) => {result}")
     return result
 
 
-def indent(text, indentation=None, max_width=512):
+def indent(text: str, indentation: Optional[str] = None, max_width: int = 512) -> str:
     """Indent TEXT with INDENTATION at beginning of each line, returning string ending in a newline unless empty and with resulting lines longer than max_width characters wrapped. Text is treated as a single paragraph."""
     if indentation is None:
         indentation = INDENT
@@ -350,7 +396,7 @@ def indent(text, indentation=None, max_width=512):
     return wrapped_text
 
 
-def indent_lines(text, indentation=None, max_width=512):
+def indent_lines(text: str, indentation: Optional[str] = None, max_width: int = 512) -> str:
     """Like indent, except that each line is indented separately. That is, the text is not treated as a single paragraph."""
     # Sample usage: print("log contents: {{\n{log}\n}}".format(log=indent_lines(lines)))
     # TODO: add support to simplify above idiom (e.g., indent_lines_bracketed); rename to avoid possible confusion that input is array (as wih write_lines)
@@ -367,7 +413,7 @@ def indent_lines(text, indentation=None, max_width=512):
 
 MAX_ELIDED_TEXT_LEN = system.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 #
-def elide(value, max_len=None):
+def elide(value: Optional[Any], max_len: Optional[int] = None) -> str:
     """Returns VALUE converted to text and elided to at most MAX_LEN characters (with '...' used to indicate remainder). 
     Note: intended for tracing long strings."""
     # EX: elide("=" * 80, max_len=8) => "========..."
@@ -375,7 +421,6 @@ def elide(value, max_len=None):
     # NOTE: Make sure compatible with debug.format_value (TODO3: add equivalent to strict argument)
     # TODO2: add support for eliding at word-boundaries
     tpo.debug_print("elide(_, _)", 8)
-    ## OLD: debug.assertion(isinstance(text, (str, type(None))))
     text = value
     if text is None:
         text = ""
@@ -391,7 +436,7 @@ def elide(value, max_len=None):
 #
 # EX: elide(None, 10) => ''
 
-def elide_values(values: list, **kwargs):
+def elide_values(values: List[Any], **kwargs) -> List[str]:
     """List version of elide [q.v.]"""
     # EX: elide_values(["1", "22", "333"], max_len=2) => ["1", "22", "33..."]
     tpo.debug_print("elide_values(_, _)", 7)
@@ -399,7 +444,7 @@ def elide_values(values: list, **kwargs):
                     values))
 
 
-def disable_subcommand_tracing():
+def disable_subcommand_tracing() -> None:
     """Disables tracing in scripts invoked via run().
     Note: Invoked in unittest_wrapper.py"""
     tpo.debug_print("disable_subcommand_tracing()", 7)
@@ -408,8 +453,15 @@ def disable_subcommand_tracing():
     default_subtrace_level = 0
 
 
-def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=False, **namespace):
-    """Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
+def run(
+        command: str,
+        trace_level: debug.IntOrTraceLevel = 4,
+        subtrace_level: Optional[debug.IntOrTraceLevel] = None,
+        just_issue: Optional[bool] = None,
+        output: bool = False,
+        **namespace
+    ) -> str:
+    """Invokes COMMAND via system shell (e.g., os.system), using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
    Notes:
    - The result includes stderr, so direct if not desired (see issue):
          run("ls /tmp/fubar 2> /dev/null")
@@ -423,7 +475,7 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
     # EX: "root" in run("ls /")
     # Note: Script tracing controlled DEBUG_LEVEL environment variable.
     debug.assertion(isinstance(trace_level, int))
-    debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output}")
+    debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output}", skip_sanity_checks=True)
     global default_subtrace_level
     # Keep track of current debug level setting
     debug_level_env = os.getenv("DEBUG_LEVEL")
@@ -436,21 +488,35 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
         just_issue = False
     save_temp_base = TEMP_BASE
     if TEMP_BASE:
-         system.setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
+        # note: makes sure subprocess TEMP_BASE is dir if main one is
+        if system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/"):
+            system.create_directory(TEMP_BASE)
+            new_TEMP_BASE = form_path(TEMP_BASE, "_subprocess_", create=True)
+            system.setenv("TEMP_BASE", new_TEMP_BASE)
+            ## TEMP
+            system.create_directory(new_TEMP_BASE)
+        else:
+            system.setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
     save_temp_file = TEMP_FILE
     if TEMP_FILE and (PRESERVE_TEMP_FILE is not True):
-        system.setenv("TEMP_FILE", TEMP_FILE + "_subprocess_")
-    # Expand the command template
+        new_TEMP_FILE = TEMP_FILE + "_subprocess_"
+        debug.trace_expr(5, PRESERVE_TEMP_FILE)
+        debug.trace(5, f"Setting TEMP_FILE to {new_TEMP_FILE}")
+        system.setenv("TEMP_FILE", new_TEMP_FILE)
+    # Expand the command template if brace-style variable reference encountered
+    # NOTE: un-pythonic warnings issued by format so this should not affect anything
     # TODO: make this optional
     command_line = command
-    if re.search("{.*}", command):
+    if (re.search(r"{\S+}", command) or namespace):
         command_line = tpo.format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
+    else:
+        # TODO2: and sanity check for unresolved f-string-like template as with debug.trace
+        pass
     debug_print("issuing: %s" % command_line, trace_level)
     # Run the command
     # TODO: check for errors (e.g., "sh: filter_file.py: not found"); make wait explicit
     in_background = command.strip().endswith("&")
     foreground_wait = not in_background
-    ## OLD: debug.assertion(wait or not just_issue)
     debug.trace_expr(5, in_background, in_just_issue)
     debug.assertion(not (in_background and (in_just_issue is False)))
     # Note: Unix supports the '>|' pipe operator (i.e., output with overwrite); but,
@@ -460,8 +526,6 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
     debug.assertion(">|" not in command_line)
     result = None
     ## TODO: if (just_issue or not foreground_wait): ... else: ...
-    ## OLD: result = getoutput(command_line) if foreground_wait else str(os.system(command_line))
-    ## OLD: wait_for_command = (not foreground_wait or not just_issue)
     wait_for_command = (foreground_wait and not just_issue)
     debug.trace_expr(5, foreground_wait, just_issue, wait_for_command)
     ## TODO3: clarify what output is when stdout redirected (e.g., for issue in support of unittest_wrapper.run_script
@@ -472,14 +536,20 @@ def run(command, trace_level=4, subtrace_level=None, just_issue=None, output=Fal
     system.setenv("DEBUG_LEVEL", debug_level_env or "")
     system.setenv("TEMP_BASE", save_temp_base or "")
     if save_temp_file and (PRESERVE_TEMP_FILE is not True):
-        system.setenv("TEMP_FILE", save_temp_file or "")
+        debug.trace(5, f"Resetting TEMP_FILE to {save_temp_file}")
+        system.setenv("TEMP_FILE", save_temp_file)
     debug_print("run(_) => {\n%s\n}" % indent_lines(result), (trace_level + 1))
     return result
 
 
-def run_via_bash(command, trace_level=4, subtrace_level=None, init_file=None,
-                 enable_aliases=False,
-                 **namespace):
+def run_via_bash(
+        command: str,
+        trace_level: debug.IntOrTraceLevel = 4,
+        subtrace_level: Optional[debug.IntOrTraceLevel] = None,
+        init_file: Optional[bool] = None,
+        enable_aliases: bool = False,
+        **namespace
+    ) -> str:
     """Version of run that runs COMMAND with aliases defined
     Notes:
     - This can be slow due to alias definition overhead
@@ -501,7 +571,12 @@ def run_via_bash(command, trace_level=4, subtrace_level=None, init_file=None,
     return run(command_line, trace_level=(trace_level + 1), subtrace_level=subtrace_level, just_issue=False, **namespace)
 
 
-def issue(command, trace_level=4, subtrace_level=None, **namespace):
+def issue(
+        command: str,
+        trace_level: debug.IntOrTraceLevel = 4,
+        subtrace_level: Optional[debug.IntOrTraceLevel] = None,
+        **namespace
+    ) -> None:
     """Wrapper around run() for when output is not being saved (i.e., just issues command). 
     Note:
     - Nothing is returned.
@@ -534,7 +609,7 @@ def issue(command, trace_level=4, subtrace_level=None, **namespace):
     return
 
 
-def get_hex_dump(text, break_newlines=False):
+def get_hex_dump(text: Any, break_newlines: bool = False) -> str:
     """Get hex dump for TEXT, optionally BREAKing lines on NEWLINES"""
     # TODO: implement entirely within Pyton (e.g., via binascii.hexlify)
     # EX: get_hex_dump("Tomás") => \
@@ -542,9 +617,6 @@ def get_hex_dump(text, break_newlines=False):
     debug.trace_fmt(6, "get_hex_dump({t}, {bn})", t=text, bn=break_newlines)
     in_file = get_temp_file() + ".in.list"
     out_file = get_temp_file() + ".out.list"
-    ## BAD:
-    ## write_file(in_file, text)
-    ## run("perl -Ss hexview.perl -newlines {i} > {o}", i=in_file, o=out_file)
     system.write_file(in_file, text, skip_newline=True)
     run("perl -Ss hexview.perl {i} > {o}", i=in_file, o=out_file)
     result = read_file(out_file).rstrip("\n")
@@ -552,7 +624,14 @@ def get_hex_dump(text, break_newlines=False):
     return result
 
 
-def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0, para_mode=False):
+def extract_matches(
+        pattern: str,
+        lines: List[str],
+        fields: int = 1,
+        multiple: bool = False,
+        re_flags: int = 0,
+        para_mode: Optional[bool] = False
+    ) -> List[str]:
     """Checks for PATTERN matches in LINES of text returning list of tuples with replacement groups.
     Notes: The number of FIELDS can be greater than 1.
     Optionally allows for MULTIPLE matches within a line.
@@ -599,7 +678,7 @@ def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0, para_m
                 line = new_line
             except (re.error, IndexError):
                 debug_print("Warning: Exception in pattern matching: %s" % str(sys.exc_info()), 2)
-                line = None
+                line = ""
     debug_print("extract_matches() => %s" % (matches), 7)
     double_indent = INDENT + INDENT
     debug_format("{ind}input lines: {{\n{res}\n{ind}}}", 8,
@@ -607,7 +686,14 @@ def extract_matches(pattern, lines, fields=1, multiple=False, re_flags=0, para_m
     return matches
 
 
-def extract_match(pattern, lines, fields=1, multiple=False, re_flags=0, para_mode=None):
+def extract_match(
+        pattern: str,
+        lines: List[str],
+        fields: int = 1,
+        multiple: bool = False,
+        re_flags: int = 0,
+        para_mode: Optional[bool] = None
+    ):
     """Extracts first match of PATTERN in LINES for FIELDS"""
     matches = extract_matches(pattern, lines, fields, multiple, re_flags, para_mode)
     result = (matches[0] if matches else None)
@@ -615,13 +701,27 @@ def extract_match(pattern, lines, fields=1, multiple=False, re_flags=0, para_mod
     return result
 
 
-def extract_match_from_text(pattern, text, fields=1, multiple=False, re_flags=0, para_mode=None):
+def extract_match_from_text(
+        pattern: str,
+        text: str,
+        fields: int = 1,
+        multiple: bool = False,
+        re_flags: int = 0,
+        para_mode: Optional[bool] = None
+    ) -> Optional[str]:
     """Wrapper around extract_match for text input"""
     ## TODO: rework to allow for multiple-line matching
     return extract_match(pattern, text.split("\n"), fields, multiple, re_flags, para_mode)
 
 
-def extract_matches_from_text(pattern, text, fields=1, multiple=None, re_flags=0, para_mode=None):
+def extract_matches_from_text(
+        pattern: str,
+        text: str,
+        fields: int = 1,
+        multiple: Optional[bool] = None,
+        re_flags: int = 0,
+        para_mode: Optional[bool] = None
+    ) -> List[str]:
     """Wrapper around extract_matches for text input
     Note: By default MULTIPLE matches are returned"""
     # EX: extract_matches_from_text(".", "abc") => ["a", "b", "c"]
@@ -632,30 +732,38 @@ def extract_matches_from_text(pattern, text, fields=1, multiple=None, re_flags=0
     return extract_matches(pattern, text.split("\n"), fields, multiple, re_flags, para_mode)
 
 
-def extract_pattern(pattern, text, **kwargs):
+def extract_pattern(pattern: str, text: str, **kwargs) -> Optional[str]:
     """Yet another wrapper around extract_match for text input"""
     return extract_match(pattern, text.split("\n"), **kwargs)
 
-def count_it(pattern, text, field=1, multiple=None):
+def count_it(
+        pattern: str,
+        text: str,
+        field: int = 1,
+        multiple: Optional[None] = None
+    ) -> Dict[str, int]:
     """Counts how often PATTERN's FIELD occurs in TEXT, returning hash.
     Note: By default MULTIPLE matches are tabulated"""
     # EX: dict(count_it("[a-z]", "Panama")) => {"a": 3, "n": 1, "m": 1}
     # EX: count_it("\w+", "My d@wg's fleas have fleas")["fleas"] => 2
     debug.trace(7, f"count_it({pattern}, _, {field}, {multiple}")
-    value_counts = defaultdict(int)
+    value_counts: Dict[str, int] = defaultdict(int)
     for value in extract_matches_from_text(pattern, text, field, multiple):
         value_counts[value] += 1
     debug.trace_values(6, value_counts, "count_it()")
     return value_counts
 
 
-def read_lines(filename=None, make_unicode=False):
+def read_lines(
+        filename: Optional[FileDescriptorOrPath] = None,
+        make_unicode: bool = False
+    ) -> List[str]:
     """Returns list of lines from FILENAME without newlines (or other extra whitespace)
     @notes: Uses stdin if filename is None. Optionally returned as unicode."""
     # TODO: use enumerate(f); refine exception in except; 
     # TODO: force unicode if UTF8 encountered
     lines = []
-    f = None
+    f: Optional[Union[TextIO, TextIOWrapper]] = None
     try:
         # Open the file
         if not filename:
@@ -672,46 +780,51 @@ def read_lines(filename=None, make_unicode=False):
                 line = tpo.ensure_unicode(line)
             lines.append(line)
     except IOError:
-        debug_print("Warning: Exception reading file %s: %s" % (filename, str(sys.exc_info())), 2)
+        debug_print(f"Warning: Exception reading file {filename!r}: {sys.exc_info()}", 2)
     finally:
         if f:
             f.close()
-    debug_print("read_lines(%s) => %s" % (filename, lines), 6)
+    debug_print(f"read_lines({filename!r}) => {lines}", 6)
     return lines
 
 
-def write_lines(filename, text_lines, append=False):
+def write_lines(
+        filename: FileDescriptorOrPath,
+        text_lines: List[str],
+        append: bool = False
+    ) -> None:
     """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND"""
-    debug_print("write_lines(%s, _)" % (filename), 5)
+    debug_print(f"write_lines({filename!r}, _)", 5)
     debug_print("    text_lines=%s" % text_lines, 6)
     debug.assertion(isinstance(text_lines, list) and all(isinstance(x, str) for x in text_lines))
     f = None
     try:
         mode = 'a' if append else 'w'
         f = system.open_file(filename, mode=mode)
+        assert isinstance(f, TextIOWrapper)
         for line in text_lines:
             line = tpo.normalize_unicode(line)
             f.write(line + "\n")
-    except IOError:
-        debug_print("Warning: Exception writing file %s: %s" % (filename, str(sys.exc_info())), 2)
+    except (AssertionError, IOError):
+        debug_print(f"Warning: Exception writing file {filename!r}: {sys.exc_info()}", 2)
     finally:
         if f:
             f.close()
     return
 
 
-def read_file(filename, make_unicode=False):
+def read_file(filename: FileDescriptorOrPath, make_unicode: bool = False) -> str:
     """Returns text from FILENAME (single string), including newline(s).
     Note: optionally returned as unicde.
     Warning: deprecated function--use system.read_file instead
     """
-    debug_print("read_file(%s)" % filename, 7)
+    debug_print(f"read_file({filename!r})", 7)
     debug_print("Warning: Deprecated (glue_helpers.read_file): use version in system", 3)
     text = "\n".join(read_lines(filename, make_unicode=make_unicode))
     return (text + "\n") if text else ""
 
 
-def write_file(filename, text, append=False):
+def write_file(filename: FileDescriptorOrPath, text: str, append: bool=False) -> None:
     """Writes FILENAME using contents in TEXT, adding trailing newline and optionally for APPEND
     Warning: deprecated function--use system.write_file instead
     """
@@ -723,7 +836,7 @@ def write_file(filename, text, append=False):
     return write_lines(filename, text_lines, append)
 
 
-def copy_file(source, target):
+def copy_file(source: str, target: str) -> None:
     """Copy SOURCE file to TARGET file (or directory)"""
     # Note: meta data is not copied (e.g., access control lists)); see
     #    https://docs.python.org/2/library/shutil.html
@@ -731,7 +844,12 @@ def copy_file(source, target):
     debug_print("copy_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
     debug.assertion(non_empty_file(source))
     shutil.copy(source, target)
-    target_file = (target if system.is_regular_file(target) else form_path(target, basename(source)))
+    if system.is_regular_file(target):
+        target_file = target
+    else:
+        base = basename(source)
+        assert isinstance(base, str)
+        target_file = form_path(target, base)
     ## TODO: debug.assertion(file_size(source) == file_size(target_file))
     debug.assertion(non_empty_file(target_file))
     return
@@ -756,7 +874,7 @@ def copy_directory(source, dest):
     debug.assertion(non_empty_directory(dest_path))
 
 
-def rename_file(source, target):
+def rename_file(source: StrOrBytesPath, target: str) -> None:
     """Rename SOURCE file as TARGET file"""
     # TODO: have option to skip if target exists
     debug_print("rename_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
@@ -767,20 +885,21 @@ def rename_file(source, target):
     return
 
 
-def delete_file(filename):
+def delete_file(filename: StrOrBytesPath) -> bool:
     """Deletes FILENAME"""
     debug_print("delete_file(%s)" % tpo.normalize_unicode(filename), 5)
     debug.assertion(os.path.exists(filename))
     ok = False
     try:
-        ok = os.remove(filename)
+        os.remove(filename)
+        ok = True
         debug_format("remove{f} => {r}", 6, f=filename, r=ok)
     except OSError:
         debug_print("Exception during deletion of {filename}: " + str(sys.exc_info()), 5)
     return ok
 
 
-def delete_existing_file(filename):
+def delete_existing_file(filename: StrOrBytesPath) -> bool:
     """Deletes FILENAME if it exists and is not a directory or other special file"""
     ok = False
     if file_exists(filename):
@@ -806,7 +925,7 @@ def delete_directory(path):
         debug.trace_fmt(5, f"Exception during deletion of {path}: {system.get_exception()}")
     return ok
 
-def file_size(filename):
+def file_size(filename: FileDescriptorOrPath) -> int:
     """Returns size of FILENAME in bytes (or -1 if not found)"""
     size = -1
     if os.path.exists(filename):
@@ -815,7 +934,7 @@ def file_size(filename):
     return size
 
 
-def get_matching_files(pattern, warn=False):
+def get_matching_files(pattern: str, warn: bool = False) -> List[str]:
     """Get sorted list of files matching PATTERN via shell globbing
     Note: Optionally issues WARNing"""
     # NOTE: Multiple glob specs not allowed in PATTERN
@@ -827,7 +946,7 @@ def get_matching_files(pattern, warn=False):
     return files
 
 
-def get_files_matching_specs(patterns):
+def get_files_matching_specs(patterns: List[str]) -> List[str]:
     """Get list of files matching PATTERNS via shell globbing"""
     files = []
     for spec in patterns:
@@ -837,9 +956,13 @@ def get_files_matching_specs(patterns):
     return files
 
 
-def get_directory_listing(dir_name, make_unicode=False):
+def get_directory_listing(
+        dir_name: Union[int, str, bytes],
+        make_unicode: bool = False
+    ) -> Union[List[str], List[str], List[bytes]]:
     """Returns files in DIR_NAME"""
-    all_file_names = []
+    # TODO: Union[List[str], List[bytes]] = []
+    all_file_names: Union[List[str], List[str], List[bytes]] = []
     try:
         all_file_names = os.listdir(dir_name)
     except OSError:
@@ -855,13 +978,15 @@ def get_directory_listing(dir_name, make_unicode=False):
 # Extensions to tpo_common included here due to inclusion of functions 
 # defined here.
 
-def getenv_filename(var, default="", description=None):
+def getenv_filename(var: str, default: str = "", description: Optional[str] = None) -> str:
     """Returns text filename based on environment variable VAR (or string version of DEFAULT) 
     with optional DESCRIPTION. This includes a sanity check for file being non-empty."""
     # EX: system.setenv("ETC", "/etc"); getenv_filename("ETC") => "/etc"
     # TODO4: explain motivation
     debug_format("getenv_filename({v}, {d}, {desc})", 6,
                  v=var, d=default, desc=description)
+    if not description:
+        description = ""
     filename = system.getenv_text(var, default, description)
     if filename and not non_empty_file(filename):
         system.print_stderr("Error: filename %s empty or missing for environment option %s" % (filename, var))
@@ -872,9 +997,10 @@ if __debug__:
 
     assertion_deprecation_shown = False
     
-    def assertion(condition):
+    def assertion(condition: bool) -> None:
         """Issues warning if CONDITION doesn't hold
         Note: deprecated function--use debug.assertion instead"""
+        ## TODO2: rework as wrapper around debug.assertion
         global assertion_deprecation_shown
         if not assertion_deprecation_shown:
             debug.trace(3, "Warning: glue_helpers.assertion() is deprecated")
@@ -888,13 +1014,19 @@ if __debug__:
             line_num = -1
             frame = None
             try:
-                frame = inspect.currentframe().f_back
+                frame = inspect.currentframe()
+                assert isinstance(frame, FrameType)
+                frame = frame.f_back
+                assert isinstance(frame, FrameType)
                 tpo.debug_trace("frame=%s", frame, level=8)
                 tpo.trace_object(frame, 9, "frame")
                 filename = frame.f_globals.get("__file__")
                 if filename and filename.endswith(".pyc"):
                     filename = filename[:-1]
                 line_num = frame.f_lineno
+            except:
+                debug.trace_fmt(TL.ALWAYS, "Exception formatting assertion: {exc}",
+                                exc=sys.exc_info())
             finally:
                 if frame:
                     del frame
@@ -919,29 +1051,35 @@ if __debug__:
 
 else:
 
-    def assertion(_condition):
+    def assertion(_condition: bool) -> None:
         """Non-debug stub for assertion"""
         return
 
-def init():
-    """Work around for Python quirk"""
+def init() -> None:
+    """Work around for Python quirk
+    Note: This is also used for reinitialize temp-file settings such as for unit tests (e.g., TEMP_FILE from TEMP_BASE)."""
     # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
     debug.trace(5, "glue_helpers.init()")
-    global TEMP_FILE
-    ## OLD: temp_filename = "temp-file.list"
     temp_filename = f"temp-{PID}.list"
     if USE_TEMP_BASE_DIR and TEMP_BASE:
         full_mkdir(TEMP_BASE)
-    #
-    ## BAD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
-    ## BAD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}" if TEMP_BASE else temp_filename)
-    ## OLD: temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}" if TEMP_BASE else None)
+
+    # Re-initialize flag blocking TEMP_FILE init from TEMP_BASE
+    global PRESERVE_TEMP_FILE
+    PRESERVE_TEMP_FILE = system.getenv_bool(
+        "PRESERVE_TEMP_FILE", None, allow_none=True,
+        desc="Retain value of TEMP_FILE even if TEMP_BASE set--see run and init below as well as unittest_wrapper.py")
+        
     # note: Normally TEMP_FILE gets overriden when TEMP_BASE set. However,
     # this complicates preserving test-specific test files (see unittest_wrapper.py).
+    # Further compications are due to the implicit module loading due to __init__.py.
+    # See tests/test_unittest_wrapper.py for some diagnosis tips.
     temp_file_default = None
     if TEMP_BASE and not PRESERVE_TEMP_FILE:
         temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
+        debug.trace(4, f"FYI: Inferred TEMP_FILE default: {temp_file_default!r}")
     debug.trace_expr(5, system.getenv("TEMP_FILE"))
+    global TEMP_FILE
     TEMP_FILE = system.getenv_value(
         "TEMP_FILE", temp_file_default,
         description="Override for temporary filename")
@@ -958,7 +1096,7 @@ def init():
 #
 init()
 
-def main():
+def main() -> None:
     """Entry point"""
     # Uses dynamic import to avoid circularity
     from mezcla.main import Main        # pylint: disable=import-outside-toplevel
