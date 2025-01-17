@@ -10,8 +10,13 @@ import ast
 from functools import wraps
 
 # Installed module
-from pydantic import BaseModel
-import astor
+try:
+    from pydantic import BaseModel
+    import astor
+except:
+    debug.trace(4, "Warning unable to import astor and pydantic")
+    BaseModel = object
+    astor = None
 
 # Local modules
 from mezcla import debug
@@ -131,6 +136,7 @@ def add_validate_call_decorator(code):
             node = visit_Call(node)
 
     # Convert the modified AST back to Python code
+    # TODO2: do this via ast
     modified_code = astor.to_source(tree)
 
     return modified_code
