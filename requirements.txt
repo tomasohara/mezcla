@@ -87,6 +87,7 @@ wheel
 #
 #opt# SpeechRecognition
 #opt# accelerate
+#opt# astor
 #opt# bash_kernel
 #opt# bashlex
 #opt# colout
@@ -100,6 +101,7 @@ wheel
 #opt# librosa
 #opt# numba
 #opt# pocketsphinx
+#opt# pydantic
 #opt# pylint
 #opt# pyyaml
 #opt# scispacy
@@ -134,3 +136,5 @@ typing_extensions>=4.7.0
 #full# tensorflow
 #full# tensorflow_hub
 #full# tensorrt
+types-six
+astor
