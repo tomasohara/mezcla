@@ -48,7 +48,8 @@ lxml
 mako
 matplotlib
 more_itertools
-nltk
+## bad: nltk
+nltk==3.8.1
 numpy>=1.18.5
 pandas>=1.3.0
 pyaml
@@ -86,6 +87,7 @@ wheel
 #
 #opt# SpeechRecognition
 #opt# accelerate
+#opt# astor
 #opt# bash_kernel
 #opt# colout
 #opt# coverage
@@ -96,7 +98,9 @@ wheel
 #opt# ipython
 #opt# jupyter
 #opt# librosa
+#opt# numba
 #opt# pocketsphinx
+#opt# pydantic
 #opt# pylint
 #opt# pyyaml
 #opt# scispacy
