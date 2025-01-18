@@ -35,6 +35,7 @@ datasets                      # Hugging Face (HF) data
 #opt# diffusers               # Stale Diffusion; TEMP
 diskcache
 extcolors>=1.0.0
+executing
 flair
 flask
 git+https://github.com/tehabstract/textract.git
