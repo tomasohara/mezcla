@@ -11,7 +11,6 @@ from datetime import datetime
 import inspect
 import ast
 from os.path import basename, realpath
-from typing import LiteralString
 from types import FrameType
 
 
@@ -80,7 +79,7 @@ class Source(executing.Source):
         return result
 
 
-def prefix_lines(prefix: str, s: str | LiteralString, start_at_line=0):
+def prefix_lines(prefix: str, s: str, start_at_line=0):
     """
     Separates every word in a string,
     adds a prefix and returns them as a list
