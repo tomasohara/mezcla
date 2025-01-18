@@ -54,28 +54,42 @@ import os
 import sys
 import tempfile
 import unittest
+from typing import (
+    Optional, Callable, Any, Tuple,
+)
+## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Installed packages
 import pytest
 
 # Local packages
-# note: Disables TEMP_FILE default used by in glue_helpers.py.
-os.environ["PRESERVE_TEMP_FILE"] = "1"
+# note: Disables TEMP_FILE default used by glue_helpers.py.
+PRESERVE_TEMP_FILE_LABEL = "PRESERVE_TEMP_FILE"
+if PRESERVE_TEMP_FILE_LABEL not in os.environ:
+    ## DEBUG: sys.stderr.write(f"Setting {PRESERVE_TEMP_FILE_LABEL}\n")
+    os.environ[PRESERVE_TEMP_FILE_LABEL] = "1"
 import mezcla
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla.main import DISABLE_RECURSIVE_DELETE
+## BAD: from mezcla.main import DISABLE_RECURSIVE_DELETE
+DISABLE_RECURSIVE_DELETE = gh.DISABLE_RECURSIVE_DELETE
 from mezcla.misc_utils import string_diff
 from mezcla.my_regex import my_re
 from mezcla import system
 ## DEBUG: debug.trace_expr(6, __file__)
+from mezcla.debug import IntOrTraceLevel
 
 # Constants (e.g., environment options)
 
 TL = debug.TL
-KEEP_TEMP = system.getenv_bool(
-    "KEEP_TEMP", debug.detailed_debugging(),
-    desc="Keep temporary files")
+## OLD:
+## KEEP_TEMP = system.getenv_bool(
+##     "KEEP_TEMP", debug.detailed_debugging(),
+##     desc="Keep temporary files")
+KEEP_TEMP = gh.KEEP_TEMP
+PRUNE_TEMP = system.getenv_bool(
+    "PRUNE_TEMP", False,
+    desc="Delete temporary files ahead of time")
 TODO_FILE = "TODO FILE"
 TODO_MODULE = "TODO MODULE"
 
@@ -114,7 +128,7 @@ if PROFILE_CODE:
 
 #-------------------------------------------------------------------------------
 
-def get_temp_dir(keep=None, unique=None):
+def get_temp_dir(keep: Optional[bool] = None, unique=None) -> str:
     """Get temporary directory, omitting later deletion if KEEP
     Note: Optionally returns UNIQUE dir
     """
@@ -132,12 +146,12 @@ def get_temp_dir(keep=None, unique=None):
     else:
         dir_path = dir_base
     if not system.is_directory(dir_path):
-        gh.full_mkdir(dir_path)
+        gh.full_mkdir(dir_path, force=True)
     debug.trace(5, f"get_temp_dir() => {dir_path}")
     return dir_path
 
 
-def trap_exception(function):
+def trap_exception(function: Callable) -> Any:
     """Decorator to trap exception during function execution
     Note:
     - Only intended for use in tests (e.g., fix for maldito pytest).
@@ -163,7 +177,7 @@ def trap_exception(function):
     return wrapper
 
 
-def pytest_fixture_wrapper(function):
+def pytest_fixture_wrapper(function: Callable) -> Callable:
     """Decorator for use with pytest fixtures like capsys
     Usage:
         @pytest_fixture_wrapper
@@ -183,6 +197,7 @@ def pytest_fixture_wrapper(function):
     debug.trace(7, f"pytest_fixture_wrapper() => {gh.elide(wrapper)}")
     return wrapper
 
+
 def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
     """Invoke TESTS defined in FILENAME, optionally VIA_UNITTEST"""
     if via_unittest:
@@ -190,6 +205,20 @@ def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
     else:
         pytest.main([filename])
 
+
+def init_temp_settings():
+    """Initialize settings related to temp-file names"""
+    ok = True
+    # Re-initalize glue helper temp file settings
+    ## TODO?: system.setenv("PRESERVE_TEMP_FILE", "1")
+    debug.trace_expr(4, os.environ.get(PRESERVE_TEMP_FILE_LABEL))
+    ## TEST: os.environ["PRESERVE_TEMP_FILE"] = "1"
+    if not system.getenv(PRESERVE_TEMP_FILE_LABEL):
+        system.setenv(PRESERVE_TEMP_FILE_LABEL, "1")
+    gh.init()
+    debug.trace_expr(4, os.environ.get(PRESERVE_TEMP_FILE_LABEL))
+    return ok
+        
 #-------------------------------------------------------------------------------
 
 class TestWrapper(unittest.TestCase):
@@ -198,14 +227,7 @@ class TestWrapper(unittest.TestCase):
     - script_module should be overriden to specify the module instance, such as via get_testing_module_name (see test/template.py)
     - set it to None to avoid command-line invocation checks
     """
-
-    # Re-initalize glue helper temp file settings
-    ## TODO?: system.setenv("PRESERVE_TEMP_FILE", "1")
-    debug.trace_expr(4, os.environ.get("PRESERVE_TEMP_FILE"))
-    ## TEST: os.environ["PRESERVE_TEMP_FILE"] = "1"
-    system.setenv("PRESERVE_TEMP_FILE", "1")
-    gh.init()
-    debug.trace_expr(4, os.environ.get("PRESERVE_TEMP_FILE"))
+    init_ok = init_temp_settings()
 
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usually set via derive_tested_module_name)
@@ -288,7 +310,7 @@ class TestWrapper(unittest.TestCase):
         return
 
     @staticmethod
-    def derive_tested_module_name(test_filename):
+    def derive_tested_module_name(test_filename: str) -> str:
         """Derive the name of the module being tested from TEST_FILENAME. Used as follows:
               script_module = TestWrapper.derive_tested_module_name(__file__)
         Note: *** Deprecated method *** (see get_testing_module_name)
@@ -302,7 +324,7 @@ class TestWrapper(unittest.TestCase):
         return (module)
 
     @staticmethod
-    def get_testing_module_name(test_filename, module_object=None):
+    def get_testing_module_name(test_filename: str, module_object: Optional[object] = None) -> str:
         """Derive the name of the module being tested from TEST_FILENAME and MODULE_OBJECT
         Note: used as follows (see tests/template.py):
             script_module = TestWrapper.get_testing_module_name(__file__)
@@ -324,7 +346,7 @@ class TestWrapper(unittest.TestCase):
         return (full_module_name)
 
     @staticmethod
-    def get_module_file_path(test_filename):
+    def get_module_file_path(test_filename: str) -> str:
         """Return absolute path of module being tested"""
         result = system.absolute_path(test_filename)
         ## TODO3: use os.path.delim instead of /
@@ -334,7 +356,7 @@ class TestWrapper(unittest.TestCase):
         return result
 
     @classmethod
-    def set_module_info(cls, test_filename, module_object=None):
+    def set_module_info(cls, test_filename: str, module_object: Optional[object] = None) -> None:
         """Sets both script_module and script_path
         Note: normally invoked in setUpClass method
         Usage: cls.set_module_info(__file__, THE_MODULE)
@@ -344,7 +366,7 @@ class TestWrapper(unittest.TestCase):
         cls.script_file = cls.get_module_file_path(test_filename)
         return 
     
-    def setUp(self):
+    def setUp(self) -> None:
         """Per-test initializations
         Notes:
         - Disables tracing scripts invoked via run() unless ALLOW_SUBCOMMAND_TRACING
@@ -352,7 +374,7 @@ class TestWrapper(unittest.TestCase):
         # Note: By default, each test gets its own temp file.
         debug.trace(5, "TestWrapper.setUp()")
         if not self.class_setup:
-            debug.trace(4, "Warning: invoking setUpClass in setUp")
+            debug.trace(3, "Warning: invoking setUpClass in setUp; make sure seUpClass calls parent")
             TestWrapper.setUpClass(self.__class__)
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
@@ -371,19 +393,32 @@ class TestWrapper(unittest.TestCase):
         self.temp_file = system.getenv_text(
             "TEMP_FILE", default_temp_file,
             desc="Override for temporary filename")
-        gh.delete_existing_file(f"{self.temp_file}")
-        for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
-            gh.delete_existing_file(f)
+        if PRUNE_TEMP:
+            gh.delete_existing_file(f"{self.temp_file}")
+            for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
+                gh.delete_existing_file(f)
 
         # Start the profiler
         if PROFILE_CODE:
+            assert self.profiler is not None
             self.profiler.enable()
         
         debug.trace_object(6, self, "TestWrapper instance")
         return
 
-    def run_script(self, options=None, data_file=None, log_file=None, trace_level=4,
-                   out_file=None, env_options: str=None, uses_stdin=None, post_options=None, background=None, skip_stdin=None):
+    def run_script(
+            self,
+            options: Optional[str] = None,
+            data_file: Optional[str] = None,
+            log_file: Optional[str] = None,
+            trace_level: IntOrTraceLevel = 4,
+            out_file: Optional[str] = None,
+            env_options: Optional[str] = None,
+            uses_stdin: Optional[bool] = None,
+            post_options: Optional[str] = None,
+            background: Optional[str] = None,
+            skip_stdin: Optional[bool] = None
+        ) -> str:
         """Runs the script over the DATA_FILE (optional), passing (positional)
         OPTIONS and optional setting ENV_OPTIONS. If OUT_FILE and LOG_FILE are
         not specified, they  are derived from self.temp_file. The optional POST_OPTIONS
@@ -423,6 +458,7 @@ class TestWrapper(unittest.TestCase):
         data_path = ("" if (skip_stdin or uses_stdin_false) else "-")
         if data_file is not None:
             data_path = (gh.resolve_path(data_file) if len(data_file) else data_file)
+        assert isinstance(self.temp_file, str)
         if not log_file:
             log_file = self.temp_file + ".log"
         if not out_file:
@@ -468,7 +504,17 @@ class TestWrapper(unittest.TestCase):
 
         return output
 
-    def resolve_assertion(self, function_label, message):
+    def resolve_assertion(
+            self,
+            function_label: str,
+            message: Optional[str]
+        ) -> Tuple[
+            Optional[str],
+            Optional[str],
+            Optional[int],
+            Optional[str],
+            Optional[str]
+        ]:
         """Returns statement text, filename, line number, and qualifier for FUNCTION_LABEL assertion failure"""
         statement = filename = line_num = expr = qual = None
         try:
@@ -502,7 +548,11 @@ class TestWrapper(unittest.TestCase):
         debug.trace(7, f"resolve_assertion({function_label}) => {result}")
         return result
     
-    def do_assert(self, condition, message=None):
+    def do_assert(
+            self,
+            condition: bool,
+            message: Optional[str] = None
+        ) -> None:
         """Shows context for assertion failure with CONDITION and then issue assert
         If MESSAGE specified, included in assertion error
         Note:
@@ -529,7 +579,12 @@ class TestWrapper(unittest.TestCase):
     ##     """Wrapper around do_assert (q.v.)"""
     ##     self.do_assert(*args, **kwargs)
 
-    def do_assert_equals(self, value1, value2, message=None):
+    def do_assert_equals(
+            self,
+            value1: Any,
+            value2: Any,
+            message: Optional[str] = None
+        ) -> None:
         """Make sure VALUE1 equals VALUE2, using optional MESSAGE"""
         equals = value1 == value2
         if ((not equals) and debug.debugging(debug.TL.DEFAULT)):
@@ -544,18 +599,18 @@ class TestWrapper(unittest.TestCase):
         assert equals, message
     
     @pytest.fixture(autouse=True)
-    def monkeypatch(self, monkeypatch):
+    def monkeypatch(self, monkeypatch) -> None:
         """Support for using pytest monkeypatch to modify objects (e.g., dictionaries or environment variables)"""
         # See https://docs.pytest.org/en/latest/how-to/monkeypatch.html
         self.monkeypatch = monkeypatch
 
     @pytest.fixture(autouse=True)
-    def capsys(self, capsys):
+    def capsys(self, capsys) -> None:
         """Support for capturing stdout and stderr"""
         # See https://docs.pytest.org/en/latest/how-to/capture-stdout-stderr.html
         self.capsys = capsys
 
-    def get_stdout_stderr(self):
+    def get_stdout_stderr(self) -> Tuple[str, str]:
         """Get currently captured standard output and error
         Note: Clears both stdout and stderr captured afterwards. This might
         be needed beforehand to clear capsys buffer.
@@ -565,21 +620,21 @@ class TestWrapper(unittest.TestCase):
         debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", maxlen=16384)
         return stdout, stderr
         
-    def get_stdout(self):
+    def get_stdout(self) -> str:
         """Get currently captured standard output (see get_stdout_stderr)
         Warning: You might need to invoke beforehand to clear buffer.
         """
         stdout, _stderr = self.get_stdout_stderr()
         return stdout
         
-    def get_stderr(self):
+    def get_stderr(self) -> str:
         """Get currently captured standard error (see get_stdout_stderr)
         Warning: You might need to invoke beforehand to clear buffer.
         """
         _stdout, stderr = self.get_stdout_stderr()
         return stderr
 
-    def clear_stdout_stderr(self):
+    def clear_stdout_stderr(self) -> None:
         """Clears stdout and stderr by issuing dummy call"""
         _result = self.get_stdout_stderr()
         return
@@ -587,7 +642,7 @@ class TestWrapper(unittest.TestCase):
     clear_stdout = clear_stdout_stderr
     clear_stderr = clear_stdout_stderr
     
-    def get_temp_file(self, delete=None):
+    def get_temp_file(self, delete: Optional[bool] = None) -> str:
         """return name of temporary file based on self.temp_file, optionally with DELETE"""
         # Note: delete defaults to False if detailed debugging
         # TODO: allow for overriding other options to NamedTemporaryFile
@@ -599,14 +654,14 @@ class TestWrapper(unittest.TestCase):
         debug.format_value(f"get_temp_file() => {temp_file_name}", 5)
         return temp_file_name
 
-    def create_temp_file(self, contents,  binary=False):
+    def create_temp_file(self, contents: Any,  binary: bool = False) -> str:
         """Create temporary file with CONTENTS and return full path"""
         temp_filename = self.get_temp_file()
         system.write_file(temp_filename, contents, binary=binary)
         debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
         return temp_filename
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         debug.trace(6, "TestWrapper.tearDown()")
         if not KEEP_TEMP:
@@ -617,6 +672,7 @@ class TestWrapper(unittest.TestCase):
 
         # Show results of code profiling if enabled
         if PROFILE_CODE:
+            assert self.profiler is not None
             self.profiler.disable()
             ## TODO: debug.trace(1, f"Test {self.test_num} code profiling results")
             print(f"Test {self.test_num} code profiling results")
@@ -627,7 +683,7 @@ class TestWrapper(unittest.TestCase):
         return
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         """Per-class cleanup: stub for tracing purposes"""
         debug.trace_fmtd(5, "TestWrapper.tearDownClass(); cls={c}", c=cls)
         if not KEEP_TEMP:

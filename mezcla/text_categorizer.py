@@ -283,7 +283,7 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
             """Normalize FEATURE_NAME"""
             return feature_name.replace(" ", "_")
         ##
-        features = [normalize(f) for f in self.tfidf_vectorizer.get_feature_names()]
+        features = [normalize(f) for f in self.tfidf_vectorizer.get_feature_names_out()]
         df_x.to_csv(basename + ".x.csv.list", header=features, index=False)
         df_y.to_csv(basename + ".y.csv.list", header=[CLASS_VAR], index=False)
         gh.run("paste --delimiters=',' {b}.x.csv.list {b}.y.csv.list > {b}.csv.list",
@@ -307,7 +307,8 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         debug.trace(6, f"extract_feature_importance(); self={self}")
         result = []
         try:
-            feature_names = (self.tfidf_vectorizer.get_feature_names() or [])
+            ## OLD: feature_names = (self.tfidf_vectorizer.get_feature_names() or [])
+            feature_names = self.tfidf_vectorizer.get_feature_names_out().tolist()
             sorted_scores = sorted(zip_longest(feature_names, self.classifier.feature_importances_,  fillvalue="F?"),
                                    key=lambda name_score: name_score[1],
                                    reverse=True)
@@ -804,3 +805,4 @@ def main(args):
 
 if __name__ == '__main__':
     main(sys.argv)
+    

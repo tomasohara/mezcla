@@ -26,10 +26,13 @@ from mezcla import debug
 #    THE_MODULE:	    global module object
 import mezcla.my_regex as THE_MODULE
 
+# Constants
+MEZCLA_REGEX = "M[e]zcl[a]"
+
 class TestMyRegex(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
-    my_re = THE_MODULE.my_re
+    my_re = THE_MODULE.my_re            # TODO3: make global to cut down self usages
 
     ## OLD:
     ## @pytest.fixture(autouse=True)
@@ -37,145 +40,189 @@ class TestMyRegex(TestWrapper):
     ##     """Gets capsys"""
     ##     self.capsys = capsys
 
+    def helper_my_regex(self, regex, text, is_match=0):
+        """Helper functions for my_regex"""
+        ## TODO2: rename as get_regex_search_result
+        if is_match:
+            self.my_re.match(regex, text, 0)
+        else:
+            self.my_re.search(regex, text)
+        output = self.my_re.get_match()
+        return output
+    
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_search(self):
         """Ensure search() works as expected"""
-        debug.trace(4, "test_search()")
-        pattern = r'\d+'
-        string = 'There are 123 in this string.'
-        match = self.my_re.search(pattern, string)
-        assert match is not None
-        assert match.group() == '123'
+        debug.trace(4, f"test_search(); self={self}")
+        text = "The quick brown fox jumps over the lazy dog."
+        regex = r"\w{5}"
+        output = self.helper_my_regex(regex, text)
+        assert (output.group() == "quick" and output.span() == (4, 9))
+    
+    def test_search_alt(self):
+        """Test search()"""
+        debug.trace(4, f"test_search(); self={self}")
+        self.do_assert(not self.my_re.search(MEZCLA_REGEX, "EZC"))
+        debug.assertion("E" not in MEZCLA_REGEX)
+        debug.assertion("e" in MEZCLA_REGEX)
+        self.my_re.search(MEZCLA_REGEX, "EZC", flags=re.IGNORECASE)
+        self.my_re.search(MEZCLA_REGEX, "ezc")
+        self.do_assert(self.my_re.search_text == "ezc")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_match(self):
         """Ensure match() works as expected"""
-        debug.trace(4, "test_match()")
-        pattern = r'\d+'
-        string = '123 numbers in this string.'
-        match = self.my_re.match(pattern, string)
-        assert match is not None
-        assert match.group() == '123'
+        debug.trace(4, f"test_match(); self={self}")
+        text = "1 kiss is all takes."
+        regex = r"\d+"
+        output = self.helper_my_regex(regex, text, is_match=1)
+        assert(output.group() == "1" and output.span() == (0, 1))
+        ## TODO: return the matched value (solved: use group() after my_re.get_match())
+        debug.assertion("M" in MEZCLA_REGEX)
+        debug.assertion("m" not in MEZCLA_REGEX)
+        self.do_assert(not self.my_re.match(MEZCLA_REGEX, "MEZC"))
+        self.my_re.match(MEZCLA_REGEX, "MEZC", flags=re.IGNORECASE)
+        self.my_re.match(MEZCLA_REGEX, "Mezc")
+        self.do_assert(self.my_re.search_text == "Mezc")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_match(self):
         """Ensure get_match() works as expected"""
-        debug.trace(4, "test_get_match()")
-        pattern = r'(\d+)\s(\w+)'
-        string = '123 numbers'
-        match = self.my_re.match(pattern, string)
-        assert match is not None
-        assert self.my_re.get_match().group() == '123 numbers'
+        debug.trace(4, f"test_get_match(); self={self}")
+        # get_match() returns the last the result of match
+        text = "333 little birds"
+        regex = r"\d+"
+        output = self.helper_my_regex(regex, text, is_match=1)
+        assert isinstance(output, re.Match)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_group(self):
         """Ensure group() works as expected"""
-        debug.trace(4, "test_group()")
-        pattern = r'(\d+)\s(\w+)'
-        string = '123 numbers'
-        match = self.my_re.match(pattern, string)
-        assert match is not None
-        assert match.group(1) == '123'
-        assert match.group(2) == 'numbers'
+        debug.trace(4, f"test_group(); self={self}")
+        text = "three, 7, eight"
+        regex = r"\w{5},"
+        self.my_re.search(regex, text, 0)
+        output = self.my_re.group(0)
+        assert (output == 'three,')
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_groups(self):
         """Ensure groups() works as expected"""
-        debug.trace(4, "test_groups()")
-        pattern = r'(\d+)\s(\w+)'
-        string = '123 numbers'
-        match = self.my_re.match(pattern, string)
-        assert match is not None
-        assert self.my_re.groups() == ('123', 'numbers')
+        debug.trace(4, f"test_groups(); self={self}")
+        text = "John Doe: 30 years old, Jane Smith: 25 years old"
+        regex = r"(\w+\s\w+): (\d+) years"
+        self.my_re.search(regex, text)
+        output = self.my_re.groups()
+        assert(output == ('John Doe', '30'))
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_grouping(self):
         """Ensure grouping() works as expected"""
-        debug.trace(4, "test_grouping()")
-        pattern = r'(\d+)\s(\w+)'
-        string = '123 numbers'
-        match = self.my_re.match(pattern, string)
-        assert match is not None
-        assert self.my_re.grouping() == ('123', 'numbers')
+        debug.trace(4, f"test_grouping(); self={self}")
+        text = "John Doe: 30 years old, Jane Smith: 25 years old"
+        regex = r"(\w+\s\w+): (\d+) years"
+        self.my_re.search(regex, text)
+        output = self.my_re.grouping()
+        assert(output == ('John Doe', '30'))
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_start(self):
         """Ensure start() works as expected"""
-        debug.trace(4, "test_start()")
-        pattern = r'(\d+)\s(\w+)'
-        string = '123 numbers'
-        _ = self.my_re.match(pattern, string)
-        assert self.my_re.start(1) == 0
-        assert self.my_re.start(2) == 4
+        debug.trace(4, f"test_start(); self={self}")
+        text = "three little birds"
+        regex = r"\w{5}"
+        self.my_re.search(regex, text)
+        output = self.my_re.start()
+        # start() returns starting index
+        assert(output == 0)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_end(self):
         """Ensure end() works as expected"""
-        debug.trace(4, "test_end()")
-        pattern = r'(\d+)\s(\w+)'
-        string = '123 numbers'
-        _ = self.my_re.match(pattern, string)
-        assert self.my_re.end(1) == 3
-        assert self.my_re.end(2) == 11
+        debug.trace(4, f"test_end(); self={self}")
+        text = "three big birds"
+        regex = r"\w{5}"
+        self.my_re.search(regex, text)
+        output = self.my_re.end()
+        # start() returns ending index
+        assert(output == 5)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_sub(self):
         """Ensure sub() works as expected"""
-        debug.trace(4, "test_sub()")
-        pattern = r'\d+'
-        repl = '456'
-        string = 'There are 123 numbers in this string.'
-        result = self.my_re.sub(pattern, repl, string)
-        assert result == 'There are 456 numbers in this string.'
+        debug.trace(4, f"test_sub(); self={self}")
+        text = "The quick brown fox jumps over the lazy dog."
+        regex = r"\w{4}"
+        replacement = "****"
+        output_sample = "The ****k ****n fox ****s **** the **** dog."
+        output = self.my_re.sub(pattern=regex, string=text, replacement=replacement)
+        assert(output == output_sample)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_span(self):
         """Ensure span() works as expected"""
-        debug.trace(4, "test_span()")
-        pattern = r'\d+'
-        string = 'There are 123 numbers in this string.'
-        match = self.my_re.search(pattern, string)
-        assert match is not None
-        assert match.span() == (10, 13)
-        
-    def test_findall(self):
-        """Ensure findall() works as expected"""
-        debug.trace(4, "test_findall()")
-        pattern = r'\s+'
-        string = 'This is a test string'
-        result = self.my_re.split(pattern, string)
-        assert result == ['This', 'is', 'a', 'test', 'string']
-        
+        debug.trace(4, f"test_span(); self={self}")
+        text = "The quick brown fox jumps over the lazy dog."
+        regex = r"\w{4}"
+        self.my_re.search(regex, text)
+        output = self.my_re.span()
+        assert(output == (4, 8))
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_split(self):
         """Ensure split() works as expected"""
-        debug.trace(4, "test_split()")
-        pattern = r'\d+'
-        string = 'There are 123 numbers in this string, and 456 more here.'
-        result = self.my_re.findall(pattern, string)
-        assert result == ['123', '456']
+        debug.trace(4, f"test_split(); self={self}")
+        text = "three,little,birds"
+        regex = r","
+        output = self.my_re.split(pattern=regex, string=text)
+        assert(output == text.split(","))
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_findall(self):
+        """Ensure findall() works as expected"""
+        debug.trace(4, f"test_findall(); self={self}")
+        text = "There are 32768 possible combinations, with 256 other combinations and 0 impossible combinations."
+        regex = r"\d+"
+        output = self.my_re.findall(pattern=regex, string=text)
+        assert(output == ['32768', '256', '0'])
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_escape(self):
+        """Ensure escape() works as expected"""
+        debug.trace(4, f"test_escape(); self={self}")
+        text = "foo*bar"
+        output = self.my_re.escape(text)
+        assert(r"\*" in output)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
     def test_f_string(self):
         """Ensure warning given about f-string like regex"""
-        debug.trace(4, "in test_f_string()")
+        debug.trace(4, f"in test_f_string(); self={self}")
         self.my_re.search("{fubar}", "foobar")
         # TODO2: change usages elsewhere to make godawful pytest default more intuitive
         captured_stderr = self.get_stderr()
         debug.trace_expr(4, captured_stderr, max_len=4096)
         self.do_assert(self.my_re.search("Warning:.*f-string", captured_stderr))
         ## TEST: print(f"{self.my_re=}")
-        debug.trace(5, "out test_f_string()")
+        debug.trace(5, "out test_f_string(); self={self}")
 
     def test_simple_regex(self):
         """"Test regex search with capturing"""
-        debug.trace(4, "test_simple_regex()")
-        if not self.my_re.search(r"(\w+)\W+(\w+)", ">scrap ~!@\n#$ yard<",
-                                 re.MULTILINE):
-            assert False, "simple regex search failed"
-        assert self.my_re.group(1) == "scrap"
-        assert self.my_re.group(2) == "yard"
+        debug.trace(4, f"test_simple_regex(); self={self}")
+        self.do_assert(self.my_re.search(r"(\w+)\W+(\w+)", ">scrap ~!@\n#$ yard<",
+                                         re.MULTILINE))
+        self.do_assert(self.my_re.group(1) == "scrap")
+        self.do_assert(self.my_re.group(2) == "yard")
         return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_pre_and_post_match(self):
+        """Test pre/post_match() functions"""
+        debug.trace(4, f"test_pre_and_post_match(); self={self}")
+        self.my_re.search(r"[dD]ef", "abc_def_ghi")
+        self.do_assert(self.my_re.pre_match() == "abc_")
+        self.do_assert(self.my_re.post_match() == "_ghi")
 
 #------------------------------------------------------------------------
 

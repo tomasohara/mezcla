@@ -394,6 +394,236 @@ class TestHtmlUtils(TestWrapper):
         ##      https://www.example.com//www.subdomain.example.com/sitemap.xml
         ## assert THE_MODULE.extract_html_link(html, url='https://www.example.com') == all_urls
 
+    @pytest.mark.xfail
+    def test_get_inner_html_type_hints(self):
+        URL_VALID = "https://duckduckgo.com"
+        URL_INVALID = "duckduckgo.com"
+        assert THE_MODULE.get_inner_html(URL_VALID)
+        assert not THE_MODULE.get_inner_html(URL_INVALID)
+
+    @pytest.mark.xfail
+    def test_get_inner_text_alt(self):
+        URL_VALID = "https://duckduckgo.com"
+        URL_INVALID = "duckduckgo.com"
+        inner_text_valid = THE_MODULE.get_inner_text(URL_VALID)
+        inner_text_invalid = THE_MODULE.get_inner_text(URL_INVALID)
+        keywords = ["DuckDuckGo", "private", "free", "browser", "search", "ads"]
+        assert all(word in inner_text_valid for word in keywords)
+        assert not inner_text_invalid
+
+    @pytest.mark.xfail
+    def test_document_ready_alt(self):
+        URL_VALID = "https://duckduckgo.com"
+        assert (THE_MODULE.document_ready(URL_VALID))
+        assert not THE_MODULE.document_ready(self.scrappycito_url)
+        ## Exception raised:
+        # E       selenium.common.exceptions.JavascriptException: Message: TypeError: document.body is null
+        # E       Stacktrace:
+        # E       @http://www.scrappycito.com:9330/:2:7
+        # E       @http://www.scrappycito.com:9330/:3:8
+        # /home/zavee/.local/lib/python3.10/site-packages/selenium/webdriver/remote/errorhandler.py:229: JavascriptException
+
+    @pytest.mark.xfail
+    def test_set_param_dict_alt(self):
+        param_dict = {
+            1: "a+b+c",
+            2: "a%2b%2c%2"
+        }
+        THE_MODULE.set_param_dict(param_dict)
+        assert THE_MODULE.user_parameters == param_dict
+
+    @pytest.mark.xfail
+    def test_set_param_dict_type_hints(self):
+        param_dict = str({1: "a+b+c", 2: "a%2b%2c%2"})
+        THE_MODULE.set_param_dict(param_dict)
+        assert not isinstance(THE_MODULE.user_parameters, dict)
+        assert len(THE_MODULE.user_parameters) > 2
+
+    @pytest.mark.xfail    
+    def test_get_param_dict_type_hints(self):
+        param_dict = str({
+            "p1": "a+b+c",
+            "p2": "a%2b%2c%2"
+        })
+        result = THE_MODULE.get_param_dict(param_dict=param_dict)
+        assert not isinstance(result, dict)
+
+    @pytest.mark.xfail 
+    def test_get_url_param_type_hints(self):
+        param_dict = {
+            "name": "Terry",
+            "age": "30"
+        }
+        name = "name"
+        default_value = "Default"
+        escaped = False
+        result = THE_MODULE.get_url_param(name, default_value, param_dict, escaped)
+
+        assert isinstance(name, str)
+        assert isinstance(default_value, str) or default_value is None
+        assert isinstance(param_dict, dict) or param_dict is None
+        assert isinstance(escaped, bool)
+        assert isinstance(result, str)
+    
+    @pytest.mark.xfail 
+    def test_get_url_text_type_hints(self):
+        param_dict = {
+            "name": "Alice",
+            "age": 28,
+            "city": "New York",
+            "is_student": False,
+            "grades": [85, 90, 78, 92, 88]
+        }
+
+        name = "name"
+        default_value = "default"
+        
+        result = THE_MODULE.get_url_text(name, default_value, param_dict)
+        assert isinstance(result, str)
+        assert isinstance(name, str)
+        assert isinstance(default_value, str) or default_value is None
+        assert isinstance(param_dict, dict) or param_dict is None
+
+        result = THE_MODULE.get_url_text(None)
+        assert isinstance(result, str)
+
+    @pytest.mark.xfail 
+    def test_get_url_param_checkbox_spec_type_hints(self):
+        name = "param"
+        default_value = ""
+        param_dict = {name: "on"}
+
+        result = THE_MODULE.get_url_param_checkbox_spec(name, default_value, param_dict)
+
+        assert isinstance(name, str)
+        assert isinstance(default_value, (bool, str)) or default_value is None
+        assert isinstance(param_dict, dict) or param_dict is None
+        assert isinstance(result, str)  # Result should always be a string
+
+        result = THE_MODULE.get_url_param_checkbox_spec(None)
+        assert isinstance(result, str)
+
+    @pytest.mark.xfail 
+    def test_get_url_parameter_value_type_hints(self):
+        param = "param"
+        default_value = ""
+        param_dict = {param: ["on", "off", "neutral"]}
+        
+        result = THE_MODULE.get_url_parameter_value(param, default_value, param_dict)
+
+        assert isinstance(param, str)
+        assert isinstance(default_value, (str, type(None)))  # Union of Any and None
+        assert isinstance(param_dict, dict) or param_dict is None
+        assert isinstance(result, (str, str))  # Union of string and Any type
+
+        result = THE_MODULE.get_url_parameter_value(None)
+        assert result is None
+
+    @pytest.mark.xfail 
+    def test_get_url_parameter_bool_type_hints(self):
+        param = "param"
+        default_value = False
+        param_dict = {param: "on"}
+        
+        result = THE_MODULE.get_url_parameter_bool(param, default_value, param_dict)
+
+        assert isinstance(param, str)
+        assert isinstance(default_value, bool)
+        assert isinstance(param_dict, dict) or param_dict is None
+        assert not isinstance(result, str)
+        assert isinstance(result, bool)
+
+        result = THE_MODULE.get_url_parameter_bool(None)
+        assert isinstance(result, bool)
+
+    @pytest.mark.xfail 
+    def test_get_url_parameter_int_type_hints(self):
+        param = "param"
+        default_value = 0
+        param_dict = {param: 9}
+
+        result = THE_MODULE.get_url_parameter_int(param, default_value, param_dict)
+
+        assert isinstance(param, str)
+        assert isinstance(default_value, int)
+        assert isinstance(param_dict, dict) or param_dict is None
+        assert isinstance(result, int)
+
+        result = THE_MODULE.get_url_parameter_int(None)
+        assert result is not None and isinstance(result, int)
+
+    @pytest.mark.xfail 
+    def test_get_url_parameter_float_type_hints(self):
+        param = "param"
+        default_value = 0.0
+        param_dict = {param: 17.38}
+
+        result = THE_MODULE.get_url_parameter_float(param, default_value, param_dict)
+
+        assert isinstance(param, str)
+        assert isinstance(default_value, float)
+        assert isinstance(param_dict, dict) or param_dict is None
+        assert isinstance(result, float)
+
+        result = THE_MODULE.get_url_parameter_float(None)
+        assert result is not None and isinstance(result, float)
+
+    @pytest.mark.xfail 
+    def test_fix_url_parameters_type_hints(self):
+        param = "param"
+        param_dict = {param: [17.38, 19.45, 88.88, 16.09]}
+
+        result = THE_MODULE.fix_url_parameters(param_dict)
+
+        assert isinstance(param_dict, dict)
+        assert isinstance(result, dict)
+        assert not isinstance(result[param], list)  
+
+        result = THE_MODULE.fix_url_parameters(None)
+        assert result is not None and isinstance(result, float)
+
+    @pytest.mark.xfail 
+    def test_expand_misc_param_type_hints(self):
+        misc_dict = {'x': 1, 'y': 2, 'z': 'a=3, b=4'}
+        param_name = "z"
+        param_dict = {"a":"3", "b":"4"}
+
+        result = THE_MODULE.expand_misc_param(misc_dict, param_name, param_dict)
+
+        assert isinstance(misc_dict, dict)
+        assert isinstance(param_dict, dict) or param_dict is None
+        assert isinstance(param_name, str)
+        assert isinstance(result, dict)
+
+        result = THE_MODULE.expand_misc_param(None, None)
+        assert isinstance(result, dict) or result is None
+        
+    @pytest.mark.xfail
+    def test__read_file_type_hints(self):
+        contents = "Hello World"
+        filename = gh.create_temp_file(contents)
+        as_binary = False
+        result = THE_MODULE._read_file(filename, as_binary)
+
+        assert isinstance(filename, str)
+        assert isinstance(as_binary, bool)
+        assert isinstance(result, str)        
+
+    @pytest.mark.xfail
+    def test__write_file_type_hints(self):
+        data = "Hello World"
+        filename = gh.create_temp_file(contents="")
+        as_binary = False
+        result = THE_MODULE._write_file(filename, data, as_binary)
+
+        assert isinstance(data, (str, bytes))
+        assert isinstance(filename, str)
+        assert isinstance(as_binary, bool)
+        assert result is None  
+        
+    # @pytest.mark.xfail
+    # def test_download_web_document_type_hints(self):
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':

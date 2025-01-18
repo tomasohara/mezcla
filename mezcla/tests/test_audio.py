@@ -9,6 +9,12 @@
 # - some tests will take a while.
 #
 ## TODO: solve test execution long times.
+#
+# TODO4:
+# - Reword "this will take a while and this require a valid audio path in AUDIOFILE"
+#   so that just covers RUN_SLOW_TESTS; Check separately for path.
+#
+
 
 
 """Tests for Audio module"""

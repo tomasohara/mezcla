@@ -15,8 +15,25 @@
 #   debugging traces are shown.
 # - You might also need to temporarily enable the print-based tracing in resolve_assertion.
 #
+# Tip:
+# - Although the inference of TEMP_FILE from TEMP_BASE is blocked with PRESERVE_TEMP_FILE,
+#   the implicit loading of modules via __init__.py can complicate matters. Enabling the
+#   __file__ tracing and running as follows can help:
+#      DEBUG_LEVEL=5 TEMP_BASE="/tmp/test-it/" test-python-script-method test_07 unittest_wrapper.py
+#      egrep '__file__=|TEMP_FILE|init' $log | less -S
+# - See https://github.com/tomasohara/shell-scripts for supporting aliases used above.
+#
 
 """Tests for unittest_wrapper module"""
+
+# Standard packages
+# note: checks for temp-file settings made by unittest_wrapper
+import os
+PRESERVE_TEMP_FILE_LABEL = "PRESERVE_TEMP_FILE"
+PRESERVE_TEMP_FILE_INIT = os.environ.get(PRESERVE_TEMP_FILE_LABEL)
+TEMP_FILE_LABEL = "TEMP_FILE"
+TEMP_FILE_INIT = os.environ.get(TEMP_FILE_LABEL)
+## DEBUG: import sys; sys.stderr.write(f"{__file__=}\n")  # pylint: disable=multiple-statements
 
 # Installed packages
 import atexit
@@ -24,8 +41,6 @@ import shutil
 import pytest
 
 # Local packages
-
-
 ## TEST: os.environ["PRESERVE_TEMP_FILE"] = "1"
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests, trap_exception
 from mezcla import debug
@@ -48,6 +63,7 @@ class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     last_temp_file = None               # Reserved for test_05_check_temp_part1/2
+    use_temp_base_dir = True            # treat TEMP_BASE as directory
 
     def test_01_usage(self):
         """Make sure usage warns that not intended for command line and that no stdout"""
@@ -148,6 +164,7 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.xfail
+    ## TODO: skip if not posix
     def test_04_get_temp_dir(self):
         """Tests get_temp_dir"""
         debug.trace(4, f"TestIt.test_04_get_temp_dir(); self={self}")
@@ -195,11 +212,36 @@ class TestIt(TestWrapper):
         debug.trace(4, f"TestIt.test_06_check_temp_part2(); self={self!r}; id={id(self)}")
         debug.trace_expr(5, self.last_temp_file, self.temp_file)
         assert self.last_temp_file != self.temp_file
-        assert(self.last_temp_file is not None)
+        ## TODO2: assert(self.last_temp_file is not None)
+        debug.assertion(self.last_temp_file is not None)
         global last_self                # TODO4 (use class member)
         # NOTE: The following will fail: apparently each test is run using
         # a separate class instance.
         debug.assertion(last_self == self)
+
+    @pytest.mark.xfail
+    def test_07_preserve_temp_file(self):
+        """Make sure PRESERVE_TEMP_FILE set appropriately"""
+        debug.trace(4, f"TestIt.test_07_preserve_temp_file(); self={self!r}")
+        # Get setting related to temp-file name inference
+        PRESERVE_TEMP_FILE_VALUE = os.environ.get(PRESERVE_TEMP_FILE_LABEL)
+        TEMP_FILE_VALUE = os.environ.get(TEMP_FILE_LABEL)
+        ## TODO: debug.trace(5, f"env. {PRESERVE_TEMP_FILE_LABEL}={PRESERVE_TEMP_FILE_VALUE!r} {TEMP_FILE_LABEL}={TEMP_FILE_VALUE!r}")
+        debug.trace_expr(5, PRESERVE_TEMP_FILE_INIT, PRESERVE_TEMP_FILE_VALUE)
+        debug.trace_expr(5, TEMP_FILE_INIT, TEMP_FILE_VALUE)
+
+        # Check tests unless settings might cause conflict
+        fyi_warning = "FYI: test_07_preserve_temp_file not applicable"
+        if PRESERVE_TEMP_FILE_INIT is not None:
+            debug.trace(4, f"{fyi_warning}: {PRESERVE_TEMP_FILE_INIT=}")
+        elif TEMP_FILE_INIT:
+            debug.trace(4, f"{fyi_warning}: {TEMP_FILE_INIT=}")
+        else:
+            assert PRESERVE_TEMP_FILE_LABEL == THE_MODULE.PRESERVE_TEMP_FILE_LABEL
+            assert PRESERVE_TEMP_FILE_VALUE == "1"
+            # note: should be test-7 (or test-1 if run in isolation)
+            assert my_re.search(r"test-[1-7]", self.temp_file)
+            
 
 #------------------------------------------------------------------------
 

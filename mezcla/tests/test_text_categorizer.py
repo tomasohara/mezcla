@@ -16,7 +16,7 @@
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper, trap_exception
+from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
@@ -25,12 +25,13 @@ from mezcla import misc_utils
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-system.setenv("USE_XGB", "1")
+## OLD: system.setenv("USE_XGB", "1")
 THE_MODULE = None
 try:
     ## TEMP: fails if xgboost not available (workaround for stupid docker issue)
-    import xgboost
-    debug.trace_expr(5, xgboost.XGBClassifier)
+    ## OLD:
+    ## import xgboost
+    ## debug.trace_expr(5, xgboost.XGBClassifier)
     import mezcla.text_categorizer as THE_MODULE
 except:
     system.print_exception_info("text_categorizer import")
@@ -198,7 +199,9 @@ class TestTextCategorizerScript(TestWrapper):
         debug.trace(4, "test_train()")
         data_file = gh.form_path(self.resources, "random-10pct-tweet-emotions.tsv")
         data = system.read_lines(data_file)
-        tc = THE_MODULE.TextCategorizer(use_xgb=True)
+        ## NOTE: Unfortunately xgboost takes too much disk space under Github actions
+        ## OLD: tc = THE_MODULE.TextCategorizer(use_xgb=True)
+        tc = THE_MODULE.TextCategorizer(use_xgb=False)
         tc.train(data_file)
         num_ok = 0
         num_to_test = 10

@@ -21,6 +21,7 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla import system
 from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla.unittest_wrapper import trap_exception
@@ -56,15 +57,17 @@ class TestMain(TestWrapper):
         class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
-            skip_args = True
-            ## TODO: rename as TestMain?
+            ## OLD: skip_args = True
+            ## TODO: rename as TestMain?; drop MyArgumentParser?
 
         # note: format is ("option", "description", "default"), or just "option"
         app = Test(text_options=[("name", "Full name", "John Doe")],
                    boolean_options=[("verbose", "testing verbose option", True)],
-                   runtime_args=[],
+                   ## OLD: runtime_args=[],
+                   runtime_args=["--verbose"],
                    )
         #
+        debug.trace_expr(5, app.parsed_args)
         self.do_assert(app.parsed_args.get("name") == "John Doe")
         self.do_assert(app.parsed_args.get("verbose"))
         debug.trace(5, "out test_script_options")
@@ -164,18 +167,21 @@ class TestMain(TestWrapper):
         class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
-            skip_args = True
+            ## OLD: skip_args = True
 
         # Test with and without Perl support
-        app = Test(boolean_options=[("verbose", "testing verbose option")],
-                   runtime_args=[], perl_switch_parsing=True)
+        app = Test(boolean_options=[("fubar", "testing fubar option")],
+                   runtime_args=["-fubar"], perl_switch_parsing=True)
+        debug.trace_expr(5, app.parsed_args)
         #
-        self.do_assert(app.parsed_args.get("verbose") == 0)
+        ## OLD: self.do_assert(app.parsed_args.get("verbose") == 0)
+        self.do_assert(system.to_bool(app.parsed_args.get("fubar")))
         #
-        app = Test(boolean_options=[("verbose", "testing verbose option")],
-                   runtime_args=[], perl_switch_parsing=False)
+        app = Test(boolean_options=[("fubar", "testing fubar option")],
+                   runtime_args=["-fubar"], perl_switch_parsing=False)
+        debug.trace_expr(5, app.parsed_args)
         # NOTE: this ensures that is None and not 0
-        self.do_assert(app.parsed_args.get("verbose") is None)
+        self.do_assert(app.parsed_args.get("fubar") is None)
         debug.trace(5, "out test_perl_arg")
 
 

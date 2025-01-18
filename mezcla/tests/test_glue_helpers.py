@@ -19,6 +19,7 @@ import os
 from io import StringIO
 import sys
 import atexit
+import tempfile
 
 # Installed packages
 import pytest
@@ -37,8 +38,23 @@ import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 
 class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     """Class for testcase definition"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     ## TEMP
     temp_file = gh.get_temp_file()
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    ## DEBUG: @trap_exception            # TODO: remove when debugged
+    def test_01_data_file(self):
+        """Tests run_script w/ data file"""
+        # Warning: see notes above about potential issues with run_script-based tests.
+        debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
+        data = ["item1", "item2"]
+        system.write_lines(self.temp_file, data)
+        output = self.run_script(options="--help", data_file=self.temp_file)
+        self.do_assert(my_re.search(r"gluing.*scripts", output))
+        captured = self.get_stderr()
+        self.do_assert(my_re.search(r"not.*intended", captured))
+        return
 
     def test_get_temp_file(self):
         """Ensure get_temp_file works as expected"""
@@ -48,6 +64,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_remove_extension(self):
         """Ensure remove_extension works as expected"""
         debug.trace(4, "test_remove_extension()")
+        ## TODO2: remove path or use form_path
         assert THE_MODULE.remove_extension("/tmp/solr-4888.log", ".log") == "/tmp/solr-4888"
         assert THE_MODULE.remove_extension("/tmp/fubar.py", ".py") == "/tmp/fubar"
         assert THE_MODULE.remove_extension("/tmp/fubar.py", "py") == "/tmp/fubar."
@@ -127,9 +144,20 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_get_temp_dir(self):
         """Tests get_temp_dir"""
         debug.trace(4, "test_get_temp_dir()")
-        temp_dir = THE_MODULE.get_temp_dir()
-        assert THE_MODULE.is_directory(temp_dir)
-        ## TODO: test delete when implemented
+        # Make sure new temp dirs used each time unless pre-specified
+        self.monkeypatch.setattr(gh, "TEMP_FILE", None)
+        temp_dir1 = THE_MODULE.get_temp_dir()
+        temp_dir2 = THE_MODULE.get_temp_dir()
+        assert temp_dir1 != temp_dir2
+        assert system.is_directory(temp_dir1)
+        assert system.is_directory(temp_dir2)
+
+        # note: not deleted for debugging purposes
+        static_temp_dir = tempfile.NamedTemporaryFile(delete=False).name
+        self.monkeypatch.setattr(gh, "TEMP_FILE", static_temp_dir)
+        temp_dir3 = THE_MODULE.get_temp_dir()
+        assert temp_dir3 == static_temp_dir
+        assert system.is_directory(temp_dir3)
 
     @pytest.mark.xfail
     def test_real_path(self):
@@ -524,6 +552,21 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
 
         THE_MODULE.DISABLE_RECURSIVE_DELETE = old
 
+    @pytest.mark.xfail
+    def test_get_temp_file_deletion(self):
+        """Make sure temp file returned properly when TEMP_FILE not set
+        Note: accounts for odd NamedTemporaryFile behavior with delete
+        """
+        self.monkeypatch.setattr(gh, 'TEMP_FILE', None)
+        #
+        self.monkeypatch.setattr(gh, 'KEEP_TEMP', True)
+        temp_file_without_delete = THE_MODULE.get_temp_file(delete=False)
+        assert system.file_exists(temp_file_without_delete)
+        #
+        self.monkeypatch.setattr(gh, 'KEEP_TEMP', False)
+        temp_file_with_delete = THE_MODULE.get_temp_file(delete=True)
+        assert system.file_exists(temp_file_with_delete)
+        
     @pytest.mark.xfail
     def test_initialization(self):
         """Make sure module initialized OK"""

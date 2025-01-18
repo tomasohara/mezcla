@@ -35,15 +35,36 @@ from mezcla import system
 
 # Constants
 Location = namedtuple('Location', ['document', 'start', 'end'])
+ADD_DUMMY_LOCATION = system.getenv_boolean(
+    ## TODO2: drop and just use SKIP_LOCATION
+    "ADD_DUMMY_LOCATION", False,
+    desc="Add dummy location for debugging purposes")
+SKIP_DOC_LOCATION = system.getenv_boolean(
+    "SKIP_DOC_LOCATION", False,
+    desc="Skip location tracking")
 
 
 class DocKeyword(object):
     """Class for maintaining stemmed term and original"""
     # Note: debug tracing commented out to cut down on overhead
     
-    def __init__(self, text, document=None, start=None, end=None):
+    def __init__(self, text, document=None, start=None, end=None,
+                 skip_location=None, add_dummy_location=None):
         self.locations = set()
         self.text = text
+        self.count = 1
+        if skip_location is None:
+            skip_location = SKIP_DOC_LOCATION
+        self.skip_location = skip_location
+        if add_dummy_location is None:
+            add_dummy_location = ADD_DUMMY_LOCATION
+        self.add_dummy_location = add_dummy_location
+        debug.assertion(not (self.skip_location and add_dummy_location))
+        if self.add_dummy_location:
+            if (start is None):
+                start = -1
+            if (end is None):
+                end = -1
         if (start is not None) and (end is not None):
             self.locations.add(Location(document, start, end))
         ## DEBUG: debug.trace_object(BDL + 4, self, "DocKeyword instance", show_all=False)
@@ -65,12 +86,16 @@ class DocKeyword(object):
         return self.__add__(other)
 
     def __len__(self):
-        return len(self.locations)
+        length = len(self.locations) if not self.skip_location else self.count
+        return length
 
     @property
     def original_texts(self):
         """Return list of original texts"""
         out = []
+        if self.skip_location:
+            ## TODO3: just show warning once
+            debug.trace(BDL - 1, "FYI: original_texts disabled with skip_location")
         for loc in self.locations:
             if loc.document:
                 text = loc.document.text[loc.start: loc.end]
@@ -82,15 +107,22 @@ class DocKeyword(object):
 
     def get_first_text(self):
         """Return the first original text."""
+        if self.skip_location:
+            ## TODO3: just show warning once
+            debug.trace(BDL - 1, "FYI: get_first_text disabled with skip_location")
         loc = next(iter(self.locations))
         ## DEBUG: debug.trace_expr(BDL + 3, loc.document.text)
         return loc.document.text[loc.start: loc.end]
 
     def __str__(self):
-        return 'Stem:%s, Instances:%s, Count:%d' % (self.text, str(self.original_texts), len(self))
+        return ('Stem:%s, Instances:%s, Count:%d, Len:%d, #Locs:%d'
+                % (self.text, str(self.original_texts), self.count, len(self.locations), len(self)))
 
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone")
-    debug.trace_object(BDL + -2, DocKeyword("monkeys"))
+    monkey_keyword = DocKeyword("monkeys")
+    print(f"{monkey_keyword=}")
+    print(f"{str(monkey_keyword)=}")
+    debug.trace_object(BDL - 2, monkey_keyword, "monkey_keyword")
