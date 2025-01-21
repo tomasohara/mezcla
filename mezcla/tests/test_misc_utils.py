@@ -15,6 +15,8 @@
 import math
 import datetime
 import time
+import json
+import os 
 ## NOTE: this is empty for now
 
 # Installed packages
@@ -25,6 +27,7 @@ from mezcla import glue_helpers as gh
 from mezcla import debug
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla.mezcla_to_standard import EqCall, Features
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -188,7 +191,6 @@ class TestMiscUtils(TestWrapper):
 
         assert THE_MODULE.string_diff(string_one, string_two) == expected_diff
 
-
     def test_elide_string_values(self):
         """Ensure elide_string_values works as expected"""
         debug.trace(4, "test_elide_string_values()")
@@ -249,6 +251,35 @@ class TestMiscUtils(TestWrapper):
         debug.trace(4, "test_get_class_from_name()")
         result_class = THE_MODULE.get_class_from_name('date', 'datetime')
         assert result_class is datetime.date
+
+    def test_convert_json_to_instance(self):
+        """ensure convert_json_to_instance works as expected"""
+        debug.trace(4, "test_convert_json_to_instance()")
+        
+        ins_1 = EqCall(
+            gh.rename_file,
+            dests=os.rename,
+        )
+        ins_2 = EqCall(
+            gh.dir_path,
+            dests= os.path.dirname,
+            eq_params= {"filename": "p"}
+        )
+        json_data = gh.form_path(gh.dirname(__file__), "resources", "instances.json")
+            
+        instances: list[EqCall] = THE_MODULE.convert_json_to_instance(
+            json_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+        )
+        
+        assert ins_1.targets[0].path == instances[0].targets[0].path
+        assert ins_1.dests[0].path == instances[0].dests[0].path
+        
+        assert ins_2.targets[0].path == instances[1].targets[0].path
+        assert ins_2.dests[0].path == instances[1].dests[0].path
+
 
 if __name__ == '__main__':
     debug.trace_current_context()

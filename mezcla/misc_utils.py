@@ -17,6 +17,7 @@ import random
 import re
 import sys
 import time
+import json
 
 # Installed packages
 ## NOTE: made dynamic due to import issue during shell-script repo tests
@@ -435,6 +436,26 @@ def get_class_from_name(class_name, module_name=None):
     class_object = getattr(sys.modules[module_name], class_name, None)
     debug.trace(6, f"get_class_from_name({class_name}, [{module_name}])) => {class_object}")
     return class_object
+
+def convert_json_to_instance(json_file, module_name, class_name, field_names):
+    """Converts JSON_FILE with array of dicts into a list of instances for CLASS_NAME, where each of FIELD_NAMES is used in the class invocation. The MODULE_NAME is used to import the class definition.
+    """
+    instances = []
+
+    # Initialize, loading module and reading JSON data
+    exec(f"from {module_name} import *")
+    dict_list: list[dict] = json.loads(system.read_file(json_file))
+    actual_class = get_class_from_name(class_name, module_name)
+    # Convert each str-to-str dict in data into an object by evaluating each
+    # field separately and then invoking the class constructor over the list
+    # of arbitrary objects.
+    for dict_spec in dict_list:
+        class_args = []
+        for field in field_names:
+            class_args.append(eval(dict_spec.get(field, "None")))
+        new_inst = actual_class(*class_args)
+        instances.append(new_inst)
+    return instances
 
 
 def init():
