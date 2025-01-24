@@ -18,6 +18,8 @@ import re
 import sys
 import time
 import json
+import yaml
+import csv
 
 # Installed packages
 ## NOTE: made dynamic due to import issue during shell-script repo tests
@@ -437,25 +439,72 @@ def get_class_from_name(class_name, module_name=None):
     debug.trace(6, f"get_class_from_name({class_name}, [{module_name}])) => {class_object}")
     return class_object
 
+def convert_file_to_instances(input_file, module_name, class_name, field_names, format=None):
+    """Converts input file with array of records into a list of class instances.
+    
+    Args:
+        input_file: Path to input file (json, yaml, csv)
+        module_name: Module containing the class definition
+        class_name: Name of the class to instantiate
+        field_names: List of field names to use for class constructor
+        format: Optional format override ('json', 'yaml', 'csv'). If None, inferred from extension.
+    
+    Returns:
+        List of class instances
+    """
+    # Detect format if not specified
+    if not format:
+        ext = input_file.lower().split('.')[-1]
+        format = ext
+
+    # Read data based on format
+    data = []
+    if format == 'json':
+        data = json.loads(system.read_file(input_file))
+    elif format == 'yaml':
+        data = yaml.safe_load(input_file) 
+    elif format == 'csv':
+        # Use CSV DictReader to get list of dicts
+        with system.open_file(input_file, newline='') as f:
+            reader = csv.DictReader(f)
+            data = list(reader)
+    else:
+        raise ValueError(f"Unsupported format: {format}")
+
+    # Initialize class from module
+    exec(f"from {module_name} import *")
+    actual_class = get_class_from_name(class_name, module_name)
+
+    # Convert records to instances
+    instances = []
+    for record in data:
+        class_args = []
+        for field in field_names:
+            # Handle both dict and object-like records
+            value = record.get(field, "None")
+            # Only eval non-string values from JSON/YAML
+            if format in ('json', 'yaml') and isinstance(value, str):
+                value = eval(value)
+            class_args.append(value)
+        new_inst = actual_class(*class_args)
+        instances.append(new_inst)
+
+    return instances    
+
 def convert_json_to_instance(json_file, module_name, class_name, field_names):
     """Converts JSON_FILE with array of dicts into a list of instances for CLASS_NAME, where each of FIELD_NAMES is used in the class invocation. The MODULE_NAME is used to import the class definition.
     """
-    instances = []
+    return convert_file_to_instances(json_file, module_name, class_name, field_names, format='json')
 
-    # Initialize, loading module and reading JSON data
-    exec(f"from {module_name} import *")
-    dict_list: list[dict] = json.loads(system.read_file(json_file))
-    actual_class = get_class_from_name(class_name, module_name)
-    # Convert each str-to-str dict in data into an object by evaluating each
-    # field separately and then invoking the class constructor over the list
-    # of arbitrary objects.
-    for dict_spec in dict_list:
-        class_args = []
-        for field in field_names:
-            class_args.append(eval(dict_spec.get(field, "None")))
-        new_inst = actual_class(*class_args)
-        instances.append(new_inst)
-    return instances
+def convert_yaml_to_instance(yaml_file, module_name, class_name, field_names):
+    """Converts YAML_FILE with array of dicts into a list of instances for CLASS_NAME, where each of FIELD_NAMES is used in the class invocation. The MODULE_NAME is used to import the class definition.
+    """
+    return convert_file_to_instances(yaml_file, module_name, class_name, field_names, format='yaml')
+
+def convert_csv_to_instance(csv_file, module_name, class_name, field_names):
+    """Converts CSV_FILE with array of dicts into a list of instances for CLASS_NAME, where each of FIELD_NAMES is used in the class invocation. The MODULE_NAME is used to import the class definition.
+    """
+    return convert_file_to_instances(csv_file, module_name, class_name, field_names, format='csv')
 
 
 def init():
