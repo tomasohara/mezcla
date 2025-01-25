@@ -31,6 +31,7 @@ try:
 except:
     debug.assertion(False, "TODO1: FIXME")
     THE_MODULE = None
+debug.trace_expr(5, THE_MODULE)
 #
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(__file__, r"\btemplate.py$"):

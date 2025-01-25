@@ -9,10 +9,10 @@
 """
 Download YouTube transcript
 
-Sample usage:
-   {script} https://www.youtube.com/watch?v=1KcdgFxmnb4 > Caravaggio-examples.txt
+Sample usages:
+   {script} 'https://www.youtube.com/watch?v=1KcdgFxmnb4' > Caravaggio-examples.txt
 
-   id=3UWxmt7VAlU; {script} $id > edward-loper-doc.txt
+   id=3UWxmt7VAlU; {script} "$id" > edward-loper-doc.txt
 """
 
 # Standard modules

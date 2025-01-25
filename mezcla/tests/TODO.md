@@ -7,3 +7,4 @@ An optional priority is indicated by [Pn]
 - [P2] Use mkdir wrapper (e.g., system.create_directory or glue_helpers.full_mkdir).
 - [P3] Remove unused boiterplate from template.py (e.g., setup methods).
 - [P4] Keep the tests in sync with package upgrades.
+- [P4] Track down exceptions in passing tests (e.g., test_to_csv).

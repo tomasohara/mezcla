@@ -19,9 +19,15 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
-## TODO: from mezcla.my_regex import my_re
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
+
+# Constants
+LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
+## TODO1: don't hardcode /tmp (see below)
+OUTPUT_PATH_PYDANTIC = "/tmp/temp_"
+DECORATOR_VALIDATION_CALL = "@validate_call\ndef"
 
 class TestMisc(TestWrapper):
     """Class for test case definitions"""
@@ -42,6 +48,21 @@ class TestMisc(TestWrapper):
         debug.trace_expr(5, ok_python_modules)
         return ok_python_modules
     
+    def transform_for_validation(self, file_path):
+        """Creates a temporary copy of the script for validation of argument calls (using pydantic)"""
+        content = system.read_file(file_path)
+        content = my_re.sub(r"^def", r"@validate_call\n\g<0>", content, flags=my_re.MULTILINE)
+        ## Uncomment the line below (and comment the line above) if the decorators are previously used
+        ## May not be compatible with scripts in mezcla/tests
+        # content = my_re.sub(r"^(?:(?!\s*[@'#\']).*?)(\s*)(def )", r'\1@validate_call\n\1\2', content, flags=my_re.MULTILINE)
+        ## TODO1:  something like the following (so that shebang line kept as first):
+        ## my_re.sub(r"^((from \S+ )?import)", fr"\1{LINE_IMPORT_PYDANTIC}", content, flags=my_re.MULTILINE, count=1)
+        content = LINE_IMPORT_PYDANTIC + content
+        ## TODO2: use self.get_temp_file(): Lorenzo added new functionality
+        output_path = OUTPUT_PATH_PYDANTIC + gh.basename(file_path)
+        system.write_file(filename=output_path, text=content)
+        return output_path
+    
     @pytest.mark.xfail
     def test_01_check_for_tests(self):
         """Make sure test exists for each Python module"""
@@ -55,7 +76,8 @@ class TestMisc(TestWrapper):
             # Make sure test file exists
             if include:
                 test_path = gh.form_path(dir_name, f"test_{filename}")
-                self.do_assert(system.file_exists(test_path))
+                self.do_assert(system.file_exists(test_path),
+                               f"module {module} is missing tests")
 
     @pytest.mark.xfail
     def test_02_check_lib_usages(self):
@@ -70,7 +92,7 @@ class TestMisc(TestWrapper):
             if "import sys" in module_code and "sys.stdin.read" in module_code:
                 bad_usage = (module != "main.py")
                 debug.trace(4, f"Direct use of sys.stdin.read in {module}")
-            self.do_assert(not bad_usage)
+            self.do_assert(not bad_usage, f"module {module} has bad sys.stdin.read usage")
 
     @pytest.mark.xfail
     def test_03_check_permissions(self):
@@ -79,12 +101,27 @@ class TestMisc(TestWrapper):
         debug.trace(4, "test_03_check_permissions()")
         for module in self.get_python_module_files():
             has_execute_perm = gh.run(f'ls -l "{module}" | grep ^...x..x..x')
-            self.do_assert(has_execute_perm)
+            self.do_assert(has_execute_perm, f"module {module} is missing execute permission")
 
     @pytest.mark.xfail
-    def test_04_usage_statements(self):
+    def test_04_check_transform_for_validation(self):
+        """Make sure the transformation is successful when adding decorators for validation of function calls"""
+        debug.trace(4, "test_04_check_transform_for_validation()")
+
+        ## TODO2: use gh.resolve_path
+        input_file = "../html_utils.py"
+        result = self.transform_for_validation(input_file)
+        ## TODO1: don't hardcode refs to /tmp 
+        assert "temp" in result and "/tmp/" in result
+        content = system.read_file(result)
+        ## For debugging: print(content)
+        assert content.startswith(LINE_IMPORT_PYDANTIC)
+        assert content.count(DECORATOR_VALIDATION_CALL) >= 1
+
+    @pytest.mark.xfail
+    def test_05_usage_statements(self):
         """Make sure usage statments refer to valid arguments"""
-        debug.trace(4, "test_04_usage_statements()")
+        debug.trace(4, "test_05_usage_statements()")
         # note: addresses change like --include-header => --header in randomize_lines.py
         #   for module in ...: for usage in module usage: assert (not "test_04_usage_statements" in run_script(usage))
         self.do_assert(False, "TODO: implement")

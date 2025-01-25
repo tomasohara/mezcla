@@ -44,6 +44,7 @@ import sys
 from importlib import reload
 
 # Installed modules
+import nltk
 import numpy as np
 import pandas as pd
 import sklearn
@@ -84,7 +85,9 @@ h = {'a': 1, 'b': 2, 'c': 3}
 l = [1, 2, 3]
 t = "some text"
 text = t
-    
+english_stopwords = nltk.corpus.stopwords.words('english')
+spanish_stopwords = nltk.corpus.stopwords.words('spanish')
+  
 #-------------------------------------------------------------------------------
 # Helper functions
 

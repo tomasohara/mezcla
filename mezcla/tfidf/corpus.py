@@ -66,7 +66,7 @@ CorpusKeyword = namedtuple('CorpusKeyword', ['term', 'ngram', 'score'])
 
 SKIP_NORMALIZATION = system.getenv_bool("SKIP_NORMALIZATION", False,
                                         "Skip term/ngram normalization")
-NGRAM_EPSILON = system.getenv_bool(
+NGRAM_EPSILON = system.getenv_float(
     "NGRAM_EPSILON", 0.000001,
     description="Occurrence count for unknown ngrams")
 TFIDF_NGRAM_LEN_WEIGHT = system.getenv_float(
@@ -228,7 +228,8 @@ class Corpus(object):
         """Returns IDF based on log of relative document frequency"""
         debug.assertion(self.count_doc_occurrences(ngram) >= 1)
         if self.count_doc_occurrences(ngram) == 0:
-            raise Exception(ngram)
+            ## OLD: raise Exception(ngram)
+            raise ValueError(f"count_doc_occurrences 0 for {ngram}")
         num_occurrences = self.count_doc_occurrences(ngram)
         ## TPO: TEST
         ## # HACK: give singletons a max DF to lower IDF score
@@ -243,7 +244,8 @@ class Corpus(object):
         """Returns inverse proper of DF (not N/DF)"""
         debug.assertion(self.count_doc_occurrences(ngram) >= 1)
         if self.count_doc_occurrences(ngram) == 0:
-            raise Exception(ngram)
+            ## OLD: raise Exception(ngram)
+            raise ValueError(f"count_doc_occurrences 0 for {ngram}")
         num_occurrences = self.count_doc_occurrences(ngram)
         idf = 1 / num_occurrences
         debug.trace_fmt(BDL + 2, "idf_freq({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
