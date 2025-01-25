@@ -462,7 +462,7 @@ def convert_file_to_instances(input_file, module_name, class_name, field_names, 
     if format == 'json':
         data = json.loads(system.read_file(input_file))
     elif format == 'yaml':
-        data = yaml.safe_load(input_file) 
+        data = yaml.safe_load(system.read_file(input_file)) 
     elif format == 'csv':
         # Use CSV DictReader to get list of dicts
         with system.open_file(input_file, newline='') as f:

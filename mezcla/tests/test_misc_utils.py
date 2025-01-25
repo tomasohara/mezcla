@@ -252,33 +252,68 @@ class TestMiscUtils(TestWrapper):
         result_class = THE_MODULE.get_class_from_name('date', 'datetime')
         assert result_class is datetime.date
 
+
+class test_file_to_instance(TestWrapper):
+    """Class for test case definitions"""
+
+    instance_1 = EqCall(
+        gh.rename_file,
+        dests=os.rename,
+    )
+    instance_2 = EqCall(gh.dir_path, dests=os.path.dirname, eq_params={"filename": "p"})
+
     def test_convert_json_to_instance(self):
         """ensure convert_json_to_instance works as expected"""
         debug.trace(4, "test_convert_json_to_instance()")
-        
-        ins_1 = EqCall(
-            gh.rename_file,
-            dests=os.rename,
-        )
-        ins_2 = EqCall(
-            gh.dir_path,
-            dests= os.path.dirname,
-            eq_params= {"filename": "p"}
-        )
+
         json_data = gh.form_path(gh.dirname(__file__), "resources", "instances.json")
-            
+
         instances: list[EqCall] = THE_MODULE.convert_json_to_instance(
             json_data,
             "mezcla.mezcla_to_standard",
             "EqCall",
             ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
         )
+
+        assert self.instance_1.targets[0].path == instances[0].targets[0].path
+        assert self.instance_1.dests[0].path == instances[0].dests[0].path
+
+        assert self.instance_2.targets[0].path == instances[1].targets[0].path
+        assert self.instance_2.dests[0].path == instances[1].dests[0].path
         
-        assert ins_1.targets[0].path == instances[0].targets[0].path
-        assert ins_1.dests[0].path == instances[0].dests[0].path
+    def test_convert_yaml_to_instance(self):
+        """ensure convert_yaml_to_instance works as expected"""
+        debug.trace(4, "test_convert_yaml_to_instance()")
+
+        yaml_data = gh.form_path(gh.dirname(__file__), "resources", "instances.yaml")
+
+        instances: list[EqCall] = THE_MODULE.convert_yaml_to_instance(
+            yaml_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+        )
+
+        assert self.instance_1.targets[0].path == instances[0].targets[0].path
+        assert self.instance_1.dests[0].path == instances[0].dests[0].path
+
+        assert self.instance_2.targets[0].path == instances[1].targets[0].path
+        assert self.instance_2.dests[0].path == instances[1].dests[0].path
         
-        assert ins_2.targets[0].path == instances[1].targets[0].path
-        assert ins_2.dests[0].path == instances[1].dests[0].path
+    def test_convert_csv_to_instance(self):
+        """ensure convert_csv_to_instance works as expected"""
+        debug.trace(4, "test_convert_csv_to_instance()")
+
+        csv_data = gh.form_path(gh.dirname(__file__), "resources", "instances.csv")
+
+        instances: list[EqCall] = THE_MODULE.convert_csv_to_instance(
+            csv_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+        )
+
+
 
 
 if __name__ == '__main__':
