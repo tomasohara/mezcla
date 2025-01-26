@@ -38,7 +38,6 @@ Miscellaneous tests for mezcla_to_standard module
 
 # Standard packages
 import difflib
-from typing import List
 
 # Installed packages
 import pytest
@@ -74,16 +73,17 @@ SKIP_WARNINGS = system.getenv_bool(
 OMIT_SLOW_TESTS = not (RUN_SLOW_TESTS or TEST_GLOB or TEST_FILES)
 OMIT_SLOW_REASON = "this will take a while"
 
-class ScriptComparison(BaseModel):
-    """Pydantic Class for use in validation"""
+## OLD: class ScriptComparison(BaseModel)
+class ScriptComparisonMetrics(BaseModel):
+    """Pydantic model for tracking script conversion metrics"""
     original_script: str
     converted_script: str
-    differences: List[str]
     total_original_lines: int
     total_converted_lines: int
     lines_added: int
     lines_removed: int
     lines_warned: int
+
 
 class TestM2SBatchConversion(TestWrapper):
     """Class for batch conversion of test usage of equivalent calls for mezcla_to_standard"""
@@ -137,11 +137,11 @@ class TestM2SBatchConversion(TestWrapper):
         
         transformed_org = self.transform_for_validation(script_path)
         script_path_org = gh.form_path(dirs['typehint_org'], script)
-        system.write_file(script_path_org, transformed_org)
+        system.write_file(filename=script_path_org, text=transformed_org)
         
         transformed_m2s = self.transform_for_validation(output_file)
         script_path_m2s = gh.form_path(dirs['typehint_m2s'], script)
-        system.write_file(script_path_m2s, transformed_m2s)
+        system.write_file(filename=script_path_m2s, text=transformed_m2s)
         
         return {
             'script': script,
@@ -163,28 +163,30 @@ class TestM2SBatchConversion(TestWrapper):
         overall_bad_pct = round(fail_count * 100 / num_scripts, 2) if num_scripts else 0
         return overall_bad_pct
     
-    ## TEMPORARILY COMMENTED
-    # def run_validation_tests(self, script_info, dirs):
-    #     """Run and compare validation tests for original and converted code"""
-    #     # Create and run tests for original
-    #     test_file_org = self.create_test_file(script_info['org_path'], dirs['typehint_org'])
-    #     pytest_result_org = gh.run(f"PYTHONPATH='{dirs['typehint_org']}' pytest {test_file_org}")
+    # TEMPORARILY COMMENTED
+    def run_validation_tests(self, script_info, dirs):
+        """Run and compare validation tests for original and converted code"""
+        # Create and run tests for original
+        test_file_org = self.create_test_file(script_info['org_path'], dirs['typehint_org'])
+        pytest_result_org = gh.run(f"PYTHONPATH='{dirs['typehint_org']}' pytest {test_file_org}")
         
-    #     # Create and run tests for converted
-    #     test_file_m2s = self.create_test_file(script_info['m2s_path'], dirs['typehint_m2s'])
-    #     pytest_result_m2s = gh.run(f"PYTHONPATH='{dirs['typehint_m2s']}' pytest {test_file_m2s}")
+        # Create and run tests for converted
+        test_file_m2s = self.create_test_file(script_info['m2s_path'], dirs['typehint_m2s'])
+        pytest_result_m2s = gh.run(f"PYTHONPATH='{dirs['typehint_m2s']}' pytest {test_file_m2s}")
         
-    #     # Save test results
-    #     org_result_path = gh.form_path(dirs['pytest_org'], gh.basename(script_info['script'], '.py')) + '.txt'
-    #     m2s_result_path = gh.form_path(dirs['pytest_m2s'], gh.basename(script_info['script'], '.py')) + '.txt'
-    #     system.write_file(pytest_result_org, org_result_path)
-    #     system.write_file(pytest_result_m2s, m2s_result_path)
+        # Save test results
+        org_result_path = gh.form_path(dirs['pytest_org'], gh.basename(script_info['script'], '.py')) + '.txt'
+        m2s_result_path = gh.form_path(dirs['pytest_m2s'], gh.basename(script_info['script'], '.py')) + '.txt'
+        # system.write_file(pytest_result_org, org_result_path)
+        # system.write_file(pytest_result_m2s, m2s_result_path)
+        system.write_file(org_result_path, pytest_result_org)
+        system.write_file(m2s_result_path, pytest_result_m2s)
         
-    #     return {
-    #         'org_passed': self.process_pytest_results(pytest_result_org),
-    #         'm2s_passed': self.process_pytest_results(pytest_result_m2s),
-    #         'result_paths': (org_result_path, m2s_result_path)
-    #     }
+        return {
+            'org_passed': self.process_pytest_results(pytest_result_org),
+            'm2s_passed': self.process_pytest_results(pytest_result_m2s),
+            'result_paths': (org_result_path, m2s_result_path)
+        }
 
     def get_mezcla_scripts(self):
         """Returns list of paths for python scripts in MEZCLA_DIR.
@@ -218,12 +220,14 @@ class TestM2SBatchConversion(TestWrapper):
         return output, output_file
 
     # Helper Script: Get absolute path of "mezcla_to_standard.py"
-    def get_m2s_path(self):
+    ## OLD_NAME: get_m2s_path
+    def get_mezcla_to_standard_script_path(self):
         """Returns the path of mezcla_to_standard.py"""        
         return gh.form_path(MEZCLA_DIR, "mezcla_to_standard.py")
 
     # Helper Script: Use Pydantic class to find comparison in the script
-    def compare_scripts(self, original_script_path: str, converted_script_path: str) -> ScriptComparison:
+    ## OLD_NAME: compare_scripts
+    def helper_compare_converted_scripts(self, original_script_path: str, converted_script_path: str) -> ScriptComparisonMetrics:
         """Uses Pydantic to compare the contents between the original & converted scripts"""
         original_code = system.read_file(original_script_path)
         converted_code = system.read_file(converted_script_path)
@@ -234,15 +238,11 @@ class TestM2SBatchConversion(TestWrapper):
         diff = difflib.unified_diff(original_code.splitlines(), converted_code.splitlines())
         differences = [line for line in diff if line.strip()]
 
-        ## TODO3: sum(1 for line in ...) => len(line for line in ...)
-        # lines_added = sum(1 for line in differences if line.startswith("+") and not line.startswith("+++"))
-        # lines_removed = sum(1 for line in differences if line.startswith("-") and not line.startswith("---"))
-        # lines_warned = sum(1 for line in converted_lines if 'WARNING not supported' in line)
         lines_added = len([line for line in differences if line.startswith("+") and not line.startswith("+++")])
         lines_removed = len([line for line in differences if line.startswith("-") and not line.startswith("---")])
         lines_warned = len([line for line in converted_lines if 'WARNING not supported' in line])
 
-        return ScriptComparison(
+        return ScriptComparisonMetrics(
             original_script=original_script_path,
             converted_script=converted_script_path,
             differences=differences,
@@ -286,18 +286,16 @@ class TestM2SBatchConversion(TestWrapper):
         if lines_original == 0 or lines_converted <= 1:
             return 0.0
 
-        # Ratios for each metric with capping at 1.0
         size_ratio = min(1.0, abs(lines_converted - lines_original) / (lines_original + epsilon))
         line_add_ratio = min(1.0, lines_added / (lines_original + epsilon))
         line_removed_ratio = min(1.0, lines_removed / (lines_original + epsilon))
         line_warning_ratio = min(1.0, lines_warned / (lines_original + epsilon))
 
-        # Dynamic adjustment for warnings
-        if lines_warned > lines_original * 0.1:  # Penalize if warnings exceed 10% of original lines
+        # Penalize if warnings exceed 10% of original lines
+        if lines_warned > lines_original * 0.1:  
             wt_warning += 0.1
             wt_size_difference -= 0.05
 
-        # Weighted sum of the ratios
         weighted_sum = (
             size_ratio * wt_size_difference +
             line_add_ratio * wt_added +
@@ -305,16 +303,12 @@ class TestM2SBatchConversion(TestWrapper):
             line_warning_ratio * wt_warning
         )
 
-        # Reduced bonuses for minimal changes
         minimal_change_bonus = 0.02 if (size_ratio < 0.05 and line_warning_ratio < 0.05) else 0.0
-
-        # Calculate the final score
         result = max(0.0, min(1.0, 1.0 - weighted_sum + minimal_change_bonus))
         return round(result, 4)
 
     def transform_for_validation(self, file_path):
         """Creates a copy of the script for validation of argument calls (using pydantic)"""
-        # Conversion and comparison starts from here
         content = system.read_file(file_path)
         content = my_re.sub(r"^def", r"@validate_call\ndef", content, flags=my_re.MULTILINE)
         content = LINE_IMPORT_PYDANTIC + content
@@ -340,14 +334,13 @@ class TestM2SBatchConversion(TestWrapper):
 
     def create_test_file(self, script_path, test_dir):
         """Creates a test file for a given script"""
-        ## TODO: Convert this to a mezcla script
         script_name = gh.basename(script_path, ".py")
         function_names = self.extract_function_names(script_path)
         test_file_content = "\n".join([self.create_test_function(script_name, fn) for fn in function_names])
         test_file_dir = gh.form_path(test_dir, "tests")
         system.create_directory(test_file_dir)
         test_file_path = gh.form_path(test_file_dir, f"test_{script_name}.py")
-        system.write_file(test_file_path, test_file_content)
+        system.write_file(filename=test_file_path, text=test_file_content)
         return test_file_path
 
     def extract_function_names(self, file_path):
@@ -356,7 +349,7 @@ class TestM2SBatchConversion(TestWrapper):
         return my_re.findall(r"^def (\w+)", content, flags=my_re.MULTILINE)
 
     ## EXPERIMENTAL: check_mezcla_wrappers in converted
-    def check_mezcla_wrappers(self, converted_code: str) -> dict:
+    def check_mez2std_wrappers(self, converted_code: str) -> dict:
         """Check for proper use of mezcla wrappers in converted code"""
         wrapper_stats = {
             'direct_calls': [],
@@ -365,14 +358,12 @@ class TestM2SBatchConversion(TestWrapper):
         
         wrapper_patterns = {
             'getsize': r'(?:gh\.file_size|os\.path\.getsize)',
-            # Add other wrapper patterns here
         }
         
-        for func, pattern in wrapper_patterns.items():
+        for func, *_ in wrapper_patterns.items():
             direct_calls = my_re.findall(rf'(?<!gh\.){func}\(', converted_code)
             wrapper_calls = my_re.findall(rf'gh\.{func}\(', converted_code)
 
-            
             if direct_calls:
                 wrapper_stats['direct_calls'].extend(direct_calls)
             if wrapper_calls:
@@ -380,38 +371,50 @@ class TestM2SBatchConversion(TestWrapper):
                 
         return wrapper_stats
 
-    # @pytest.mark.xfail
-    # @pytest.mark.skipif(OMIT_SLOW_TESTS, reason=OMIT_SLOW_REASON)
-    ## OLD_NAME: def test_m2s_compare_pytest(self)
-    # def test_mez2std_heuristic(self):
-    #     """Heuristic test for script differences: includes dynamic test checking via pydantic
-    #     and running pytest over original and converted script"""
-    #     scripts = self.get_mezcla_scripts()
-    #     dirs = self.setup_test_directories(self.temp_file)
-    #     m2s_path = self.get_m2s_path()
-        
-    #     validation_results = []
-    #     for idx, script_path in enumerate(scripts, start=1):
-    #         # Process script conversion
-    #         script_info = self.validate_mez2std_conversion(script_path, dirs, m2s_path)
-            
-    #         # Run validation tests
-    #         test_results = self.run_validation_tests(script_info, dirs)
-            
-    #         # Print results
-    #         print(f"\n#{idx} {script_info['script']} [{script_info['method_count']}]: ")
-    #         print(f"Converted Path: {script_info['m2s_path']}")
-    #         print(f"Original: {test_results['org_passed'][0]} passed, {test_results['org_passed'][1]} failed")
-    #         print(f"Modified: {test_results['m2s_passed'][0]} passed, {test_results['m2s_passed'][1]} failed")
-    #         print(f"Pytest Results (Original): {test_results['result_paths'][0]}")
-    #         print(f"Pytest Results (Mezcla): {test_results['result_paths'][1]}")
-            
-    #         validation_results.append(test_results)
-        
-    #     # Validate overall results
-    #     overall_bad_pct = self.calculate_failure_metrics(validation_results, len(scripts))
-    #     assert overall_bad_pct < 10
-
+    ## TOFIX: TestM2SBatchConversion.test_check_mez2std_wrappers() missing 2 required positional arguments: 'converted_code' and 'expected'
+    @pytest.mark.skipif(OMIT_SLOW_TESTS, reason=OMIT_SLOW_REASON)
+    @pytest.mark.parametrize("converted_code, expected", [
+        (
+            """
+            import os
+            def analyze_file(file_path):
+                size = os.path.getsize(file_path)
+                return size
+            def get_wrapper_size(file_path):
+                size = gh.file_size(file_path)
+                return size
+            """,
+            {
+                'direct_calls': ['getsize('],
+                'wrapper_calls': ['file_size(']
+            }
+        ),
+        (
+            """
+            def another_function():
+                return gh.file_size('/path/to/file')
+            """,
+            {
+                'direct_calls': [],
+                'wrapper_calls': ['file_size(']
+            }
+        ),
+        (
+            """
+            def no_calls_here():
+                return "Nothing interesting"
+            """,
+            {
+                'direct_calls': [],
+                'wrapper_calls': []
+            }
+        )
+    ])
+    def test_check_mez2std_wrappers(self, converted_code, expected):
+        """Test for check_mez2std_wrappers function in the test script"""
+        result = self.check_mez2std_wrappers(converted_code)
+        assert result == expected, f"Failed for input:\n{converted_code}"
+    
     @pytest.mark.xfail
     @pytest.mark.skipif(OMIT_SLOW_TESTS, reason=OMIT_SLOW_REASON)
     def test_mez2std_heuristic(self):
@@ -428,7 +431,7 @@ class TestM2SBatchConversion(TestWrapper):
         if not scripts:
             pytest.skip("No scripts found to test")
         
-        m2s_path = self.get_m2s_path()
+        m2s_path = self.get_mezcla_to_standard_script_path()
         output_dir = gh.get_temp_dir()
         
         # Initialize metrics tracking
@@ -469,7 +472,7 @@ class TestM2SBatchConversion(TestWrapper):
                     metrics['clean_conversions'] += 1
                 
                 # Compare original and converted scripts
-                comparison = self.compare_scripts(script_path, output_file)
+                comparison = self.helper_compare_converted_scripts(script_path, output_file)
                 
                 # Calculate efficiency score
                 efficiency = self.helper_calculate_heuristic_score(
@@ -515,13 +518,11 @@ class TestM2SBatchConversion(TestWrapper):
         # Calculate and validate overall test performance
         success_rate = (metrics['successful'] / metrics['processed']) * 100
         avg_efficiency = (
-            # sum(metrics['efficiency_scores']) / len(metrics['efficiency_scores']) 
             sum(metrics['efficiency_scores']) / metrics["processed"] 
             if metrics['efficiency_scores'] else 0
         )
 
             
-        # Assert overall test performance
         assert success_rate >= 80, (
             f"Success rate ({success_rate:.1f}%) below minimum threshold (80%)"
         )
@@ -531,90 +532,10 @@ class TestM2SBatchConversion(TestWrapper):
     
     # Check that 50+ scripts are collected
     def test_get_mezcla_scripts(self):
-        """Returns an array of all Python3 scripts in MEZCLA_DIR"""
+        """Tests if all Python3 scripts are in MEZCLA_DIR"""
         min_mezcla_scripts_count = (MIN_MEZCLA_SCRIPTS_COUNT
                                     if not (TEST_GLOB or TEST_FILES) else 1)
-        assert len(self.get_mezcla_scripts()) >= min_mezcla_scripts_count
-
-    # @pytest.mark.xfail
-    # @pytest.mark.skipif(OMIT_SLOW_TESTS, reason=OMIT_SLOW_REASON)
-    # def test_mezcla_scripts_compare(self, threshold=0.75):
-    #     """Tests for comparing mezcla scripts with the original scripts
-    #     Note: unlike test_m2s_compare_pytest, this checks for superficial differences,
-    #     which are evaluated using a metric modeling conversion "efficiency"
-    #     """
-    #     ## TODO1: rename to differentiate from test_m2s_compare_pytest
-    #     # Find the differences between the tests and optionally set a threshold for differences
-    #     scripts = self.get_mezcla_scripts()
-    #     m2s_path = self.get_m2s_path()
-    #     option = "to-standard"
-    #     output_path = gh.get_temp_dir()
-
-    #     for idx, script_path in enumerate(scripts, start=1):
-    #         _output, output_file = self.get_mezcla_command_output(m2s_path=m2s_path, script_path=script_path, option=option, output_path=output_path)
-    #         comparison = self.compare_scripts(script_path, output_file)
-    #         print(f"\n#{idx} Differences between {script_path} and {output_file}:")
-    #         print("Lines Original:", comparison.total_original_lines)
-    #         print("Lines Converted:", comparison.total_converted_lines)
-    #         print("Lines Added:", comparison.lines_added)
-    #         print("Lines Removed:", comparison.lines_removed)
-    #         print("Warning Lines:", comparison.lines_warned)
-            
-    #         score = self.calculate_score(
-    #             lines_original = comparison.total_original_lines,
-    #             lines_converted = comparison.total_converted_lines,
-    #             lines_added = comparison.lines_added,
-    #             lines_removed = comparison.lines_removed,
-    #             lines_warned = comparison.lines_warned
-    #         )
-    #         print("Score =", score)
-    #         assert (score >= threshold)
-    
-
-    ## OLD: Commented for debugging
-    # @pytest.mark.xfail
-    # @pytest.mark.skipif(OMIT_SLOW_TESTS, reason=OMIT_SLOW_REASON)
-    # def test_mezcla_scripts_batch_conversion(self):
-    #     """Test for batch conversion of mezcla scripts to standard script"""
-    #     # Batch Conversion (from mezcla to standard)
-    #     ## TODO2: rework so that a single failure doesn't break (
-
-    #     print("\nBatch Conversion (mez2std):\n")
-    #     scripts = self.get_mezcla_scripts()
-    #     m2s_path = self.get_m2s_path()
-    #     option = "to-standard"
-    #     output_path = gh.get_temp_dir()
-
-    #     for idx, script_path in enumerate(scripts, start=1):
-    #         script = gh.basename(script_path)
-    #         output, output_file = self.get_mezcla_command_output(m2s_path, script_path, option, output_path)
-            
-    #         # # Assertion A: Check file integrity (syntax errors)
-    #         # try:
-    #         #     converted_integrity_1 = ast.parse(source=output)
-    #         #     converted_integrity_2 = ast.parse(source=system.read_file(output_file))
-    #         # except SyntaxError:
-    #         #     converted_integrity_1, converted_integrity_2 = None, None
-    #         # # assert converted_integrity is not None
-    #         # print(f"#{idx} {script} -> {output_file}\n\t{converted_integrity_1} \\ {converted_integrity_2}")
-
-    #         print(f"#{idx} {script} -> {output_file}")
-
-    #         # Assertion B: Check if for each script, there exists no empty file or error files
-    #         ## TODO2: if ... bad_output_lines_count += 1 ... assert(bad_output_lines_count * 100/total 
-    #         assert len(output.split("\n")) > 5
-
-    #         # Assertion C: Check similarly between file content (file_size between +/- 20%)
-    #         original_size = gh.file_size(script_path)
-    #         converted_size = gh.file_size(output_file)
-    #         ## TODO2: if ... bad_file_size_count += 1 ... assert(bad_output_lines_count * 100/total 
-    #         assert 0.8 * original_size <= converted_size <= 1.2 * original_size
-
-    #     # Assertion: Check if a converted output file exists for each script in mezcla
-    #     ## TODO: gh.get_matching_files(gh.form_path(output_path, "*.py"))
-    #     ## OLD: assert len(os.listdir(output_path)) == len(scripts)
-        
-    #     assert len(system.read_directory(output_path)) == len(scripts)
+        assert len(self.get_mezcla_scripts()) >= min_mezcla_scripts_count    
 
     ## OLD_NAME: test_mezcla_scripts_batch_conversion(self):
     @pytest.mark.xfail
@@ -629,7 +550,7 @@ class TestM2SBatchConversion(TestWrapper):
         
         print(f"[DEBUG] Found {len(scripts)} mezcla scripts to process.")
         
-        m2s_path = self.get_m2s_path()
+        m2s_path = self.get_mezcla_to_standard_script_path()
         if not m2s_path:
             print("[ERROR] Conversion script path is not set.")
             return
@@ -642,6 +563,10 @@ class TestM2SBatchConversion(TestWrapper):
             return
 
         print(f"[DEBUG] Output directory: {output_path}\n")
+
+        ## NEW: Added stats for tracking successful conversions 
+        successful_conversions = 0
+        total_scripts = len(scripts)
 
         for idx, script_path in enumerate(scripts, start=1):
             script_name = gh.basename(script_path)
@@ -685,15 +610,15 @@ class TestM2SBatchConversion(TestWrapper):
                 print(f"[ERROR] File size comparison failed for {script_name}: {e}")
                 continue
 
-            # Check content integrity
+             # Check content integrity
             try:
-                ## OLD: converted_content = gh.read_file(output_file)
                 converted_content = system.read_file(output_file)
                 if not converted_content.strip():
                     print(f"[ERROR] Converted file {output_file} is empty.")
                 else:
                     line_count = len(converted_content.splitlines())
                     print(f"[DEBUG] Converted file {output_file} contains {line_count} lines.")
+                    successful_conversions += 1
             except Exception as e:
                 print(f"[ERROR] Failed to read converted file {output_file}: {e}")
                 continue
@@ -710,6 +635,13 @@ class TestM2SBatchConversion(TestWrapper):
 
         print("\n=== Batch Conversion Test Completed ===\n")
 
+        # Assert that at least 80% of scripts were converted successfully
+        success_percentage = (successful_conversions / total_scripts) * 100
+        assert success_percentage >= 80, (
+            f"[ERROR] Only {success_percentage:.2f}% of scripts converted successfully. "
+            f"Expected at least 80%. Successful conversions: {successful_conversions}/{total_scripts}"
+        )
+        print(f"[SUCCESS]: {successful_conversions} out of {total_scripts} passed (Efficiency: {success_percentage}% >= 80%)")
 
 
     ## COMMENTED: Activities performed by test_mez2std_heuristic
@@ -748,6 +680,86 @@ class TestM2SBatchConversion(TestWrapper):
     #         )
     #         print(f"#{idx} {script}: {efficiency}")
     #         assert efficiency >= threshold
+
+    ## NEW: Alternative pytest metrics to check conversion efficiency
+    @pytest.mark.xfail
+    @pytest.mark.skipif(OMIT_SLOW_TESTS, reason=OMIT_SLOW_REASON)
+    def test_mez2std_conversion_efficiency(self, efficiency_threshold=0.7):
+        """
+        Evaluates conversion efficiency using a multi-factor scoring.
+        
+        Complexity Score Calculation:
+        - Considers calls replaced vs warnings added
+        - Penalizes scripts with high warning-to-replacement ratio
+        - Provides overall conversion complexity assessment
+        """
+        print("\n=== Starting Mezcla Conversion Complexity Analysis ===\n")
+
+        
+        scripts = self.get_mezcla_scripts()
+        if not scripts:
+            print("[ERROR] No mezcla scripts found for analysis.")
+            return
+        
+        m2s_path = self.get_mezcla_to_standard_script_path()
+        if not m2s_path:
+            print("[ERROR] Conversion script path is not set.")
+            return
+
+        total_scripts = len(scripts)
+        complexity_scores = []
+
+        for idx, script_path in enumerate(scripts, start=1):
+            script_name = gh.basename(script_path)
+            print(f"\n[ANALYSIS {idx}/{total_scripts}] Processing script: {script_name}")
+
+            try:
+                output, *_ = self.get_mezcla_command_output(
+                    m2s_path=m2s_path, 
+                    script_path=script_path, 
+                    option="metrics", 
+                    output_path="/dev/null"
+                )
+
+                # Extract metrics using regex
+                calls_replaced = my_re.search(r"Calls replaced:\t(\d+)", output)
+                warnings_added = my_re.search(r"Warnings added:\t(\d+)", output)
+                
+                calls_replaced_num = int(calls_replaced.group(1)) if calls_replaced else 0
+                warnings_added_num = int(warnings_added.group(1)) if warnings_added else 0
+
+                # Calculate complexity score
+                total_modifications = calls_replaced_num + warnings_added_num
+                if total_modifications > 0:
+                    complexity_score = (
+                        calls_replaced_num / total_modifications
+                    )
+                else:
+                    complexity_score = 0
+
+                complexity_scores.append(complexity_score)
+                
+                print(f"[DEBUG] {script_name}: Calls Replaced = {calls_replaced_num}, "
+                      f"Warnings Added = {warnings_added_num}, "
+                      f"Complexity Score = {complexity_score:.2f}")
+
+            except Exception as e:
+                print(f"[ERROR] Analysis failed for {script_name}: {e}")
+                complexity_scores.append(0)
+
+        # Calculate overall metrics
+        avg_complexity = sum(complexity_scores) / total_scripts if complexity_scores else 0
+        
+        print("\n=== Conversion Complexity Analysis Summary ===")
+        print(f"Total Scripts Analyzed: {total_scripts}")
+        print(f"Average Complexity Score: {avg_complexity:.2f}")
+        print(f"Complexity Threshold Score: {efficiency_threshold:.2f}")
+
+        # Assert that the average complexity meets the threshold
+        assert avg_complexity >= efficiency_threshold, (
+            f"[ERROR] Average complexity score {avg_complexity:.2f} "
+            f"is below the required threshold of {efficiency_threshold}"
+        )
 
     # NEW: Test summary print handled by a different method
     def print_test_summary(self, metrics: dict):
