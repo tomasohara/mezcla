@@ -42,7 +42,7 @@ gradio                        # UI support (e.g., HF-based apps)
 importlib_metadata
 langchain
 langchain_community
-#opt# kenlm                   # language model support (NOTE: problem with wheel)
+#opt# kenlm                   # language model support (NOTE: problem with wheel; see https://kheafield.com/code/kenlm)
 ## OLD: librosa>=0.10.0
 lxml
 mako
