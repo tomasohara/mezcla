@@ -118,6 +118,16 @@ RUN if [ "$PYTHON_VERSION" == "" ]; then                                        
 # Copy the project's requirements file to the container
 COPY ./requirements.txt $REQUIREMENTS
 
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    libffi-dev \
+    libssl-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    zlib1g-dev \
+    && apt-get clean
+
 # Install the package requirements
 # NOTE: The workflow only handles requirements for the runner VM, not the docker container;
 # Also, the results aren't cached to save space in the image.
