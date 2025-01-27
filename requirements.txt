@@ -103,7 +103,7 @@ wheel
 #opt# librosa
 #opt# numba
 #opt# pocketsphinx
-#opt# pydantic
+pydantic==2.9.2
 #opt# pylint
 #opt# pyyaml
 #opt# scispacy
