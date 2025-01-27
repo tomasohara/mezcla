@@ -15,6 +15,8 @@
 import math
 import datetime
 import time
+import json
+import os 
 ## NOTE: this is empty for now
 
 # Installed packages
@@ -25,6 +27,7 @@ from mezcla import glue_helpers as gh
 from mezcla import debug
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper
+from mezcla.mezcla_to_standard import EqCall, Features
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -67,7 +70,8 @@ class TestMiscUtils(TestWrapper):
     def test_extract_string_list(self):
         """Ensure extract_string_list works as expected"""
         debug.trace(4, "test_extract_string_list()")
-        assert THE_MODULE.extract_string_list("1  2,3") == ['1', '2', '3']
+        assert THE_MODULE.extract_string_list("  a  b,c") == ['a', 'b', 'c']
+        assert THE_MODULE.extract_string_list("a\nb\tc") == ['a', 'b', 'c']
 
     def test_is_prime(self):
         """Ensure is_prime works as expected"""
@@ -187,7 +191,6 @@ class TestMiscUtils(TestWrapper):
 
         assert THE_MODULE.string_diff(string_one, string_two) == expected_diff
 
-
     def test_elide_string_values(self):
         """Ensure elide_string_values works as expected"""
         debug.trace(4, "test_elide_string_values()")
@@ -248,6 +251,70 @@ class TestMiscUtils(TestWrapper):
         debug.trace(4, "test_get_class_from_name()")
         result_class = THE_MODULE.get_class_from_name('date', 'datetime')
         assert result_class is datetime.date
+
+
+class test_file_to_instance(TestWrapper):
+    """Class for test case definitions"""
+
+    instance_1 = EqCall(
+        gh.rename_file,
+        dests=os.rename,
+    )
+    instance_2 = EqCall(gh.dir_path, dests=os.path.dirname, eq_params={"filename": "p"})
+
+    def test_convert_json_to_instance(self):
+        """ensure convert_json_to_instance works as expected"""
+        debug.trace(4, "test_convert_json_to_instance()")
+
+        json_data = gh.form_path(gh.dirname(__file__), "resources", "instances.json")
+
+        instances: list[EqCall] = THE_MODULE.convert_json_to_instance(
+            json_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+        )
+
+        assert self.instance_1.targets[0].path == instances[0].targets[0].path
+        assert self.instance_1.dests[0].path == instances[0].dests[0].path
+
+        assert self.instance_2.targets[0].path == instances[1].targets[0].path
+        assert self.instance_2.dests[0].path == instances[1].dests[0].path
+        
+    def test_convert_yaml_to_instance(self):
+        """ensure convert_yaml_to_instance works as expected"""
+        debug.trace(4, "test_convert_yaml_to_instance()")
+
+        yaml_data = gh.form_path(gh.dirname(__file__), "resources", "instances.yaml")
+
+        instances: list[EqCall] = THE_MODULE.convert_yaml_to_instance(
+            yaml_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+        )
+
+        assert self.instance_1.targets[0].path == instances[0].targets[0].path
+        assert self.instance_1.dests[0].path == instances[0].dests[0].path
+
+        assert self.instance_2.targets[0].path == instances[1].targets[0].path
+        assert self.instance_2.dests[0].path == instances[1].dests[0].path
+        
+    def test_convert_csv_to_instance(self):
+        """ensure convert_csv_to_instance works as expected"""
+        debug.trace(4, "test_convert_csv_to_instance()")
+
+        csv_data = gh.form_path(gh.dirname(__file__), "resources", "instances.csv")
+
+        instances: list[EqCall] = THE_MODULE.convert_csv_to_instance(
+            csv_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+        )
+
+
+
 
 if __name__ == '__main__':
     debug.trace_current_context()

@@ -24,8 +24,18 @@ from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Rreference are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.train_text_categorizer as THE_MODULE
+system.setenv("USE_XGB", "1")
+THE_MODULE = None
+try:
+    ## TEMP: fails if xgboost not available (workaround for stupid docker issue)
+    import xgboost
+    debug.trace_expr(5, xgboost.XGBClassifier)
+    import mezcla.train_text_categorizer as THE_MODULE
+except:
+    system.print_exception_info("text_categorizer import")
 
+
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 class TestTrainTextCategorizer(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)

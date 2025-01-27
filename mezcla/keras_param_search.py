@@ -77,7 +77,7 @@ assert((sys.version_info.major >= 3) and (sys.version_info.minor >= 6))
 
 DEFAULT_VERBOSITY = ((debug.get_level() + 1) // 2)
 VERBOSITY_LEVEL = system.getenv_int("VERBOSITY_LEVEL", DEFAULT_VERBOSITY)
-DATA_FILE = system.getenv_text("DATA_FILE", "samples/pima-indians-diabetes.csv")
+DATA_FILE = system.getenv_text("DATA_FILE", "examples/pima-indians-diabetes.csv")
 FIELD_SEP = system.getenv_text("FIELD_SEP", ",")
 BRUTE_FORCE = system.getenv_bool("BRUTE_FORCE", False)
 RANDOM_OPTIMIZATION = (not BRUTE_FORCE)

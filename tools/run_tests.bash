@@ -12,6 +12,10 @@
 #   SC2046: Quote this to prevent word splitting.
 #   SC2086: Double quote to prevent globbing and word splitting.
 #
+# TODO2:
+# - Document environment variables (e.g. overrides in _temp_test_settings.bash):
+#   DEBUG_LEVEL, TRACE, VERBOSE, TEST_REGEX, FILTER_REGEX
+#
 # Usage:
 # $ ./tools/run_tests.bash
 # $ ./tools/run_tests.bash --coverage
@@ -31,9 +35,6 @@ fi
 
 # Get directory locations
 dir=$(dirname "${BASH_SOURCE[0]}")
-## OLD:
-## tools="$(dirname "$(realpath -s "$0")")"
-## base="$tools/.."
 base="$dir/.."
 mezcla="$base/mezcla"
 tests="$mezcla/tests"
@@ -54,7 +55,8 @@ fi
 echo "DEBUG_LEVEL=$DEBUG_LEVEL"
 
 # Get tests to run
-TEST_REGEX="${TEST_REGEX:-"."}"
+DEFAULT_TEST_REGEX="."
+TEST_REGEX="${TEST_REGEX:-$DEFAULT_TEST_REGEX}"
 # Note: TEST_REGEX is for only running the specified tests, 
 # and, FILTER_REGEX is for disabling particular tests.
 # Both are meant as expedients, not long-term solutions.
@@ -62,24 +64,26 @@ TEST_REGEX="${TEST_REGEX:-"."}"
 DEFAULT_FILTER_REGEX="(not-a-real-test.py)"
 FILTER_REGEX="${FILTER_REGEX:-"$DEFAULT_FILTER_REGEX"}"
 # shellcheck disable=SC2010
-if [[ ("$TEST_REGEX" != ".") || ("$FILTER_REGEX" != "") ]]; then
-    ## OLD:
-    ## tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX")
-    ## example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX")
+if [[ ("$TEST_REGEX" != "$DEFAULT_TEST_REGEX") || ("$FILTER_REGEX" != "$DEFAULT_FILTER_REGEX") ]]; then
     tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
     example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
 fi
 #
-## OLD: echo -e "Running tests on $tests; also running $example_tests\n"
 echo -n "Running tests on $tests"
 if [ "$example_tests" == "" ]; then
-    echo "Running no example tests"
+    echo "; running no example tests"
 else
-    echo "Also running $example_tests"
+    echo "; also running $example_tests"
 fi
 echo ""
 echo -n "via "
 python3 --version
+
+# Just echo command if dry run
+pre_cmd=""
+if [ "${DRY_RUN:-0}" == 1 ]; then
+   pre_cmd="echo"
+fi
 
 # Remove mezcla package if running under Docker (or act)
 # TODO2: check with Bruno whether still needed
@@ -115,6 +119,7 @@ if [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
     python3 --version
     python3 "$mezcla"/master_test.py
     python_result="$?"
+
 fi
 
 # End of processing
