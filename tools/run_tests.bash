@@ -95,7 +95,6 @@ fi
 export PYTHONPATH="$mezcla/:$PYTHONPATH"
 
 # shellcheck disable=SC2046,SC2086
-<<<<<<< HEAD
 
 # Get environment overrides
 # TODO3: Get optional environment settings from _test-config.bash
@@ -120,7 +119,7 @@ if [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
     python3 --version
     python3 "$mezcla"/master_test.py
     python_result="$?"
-=======
+
 if [ "$1" == "--coverage" ]; then
     $pre_cmd export COVERAGE_RCFILE="$base/.coveragerc"
     $pre_cmd export CHECK_COVERAGE='true'
@@ -133,7 +132,6 @@ else
     pytest_options="${PYTEST_OPTIONS:-}"
     $pre_cmd pytest $pytest_options $tests $example_tests
     test_result="$?"
->>>>>>> cd8567accf4df6c2c59423f9d15d9c68752be0af
 fi
 
 # End of processing
