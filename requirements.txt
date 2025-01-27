@@ -42,7 +42,7 @@ gradio                        # UI support (e.g., HF-based apps)
 importlib_metadata
 langchain
 langchain_community
-#opt# kenlm                   # language model support (NOTE: problem with wheel)
+#opt# kenlm                   # language model support (NOTE: problem with wheel; see https://kheafield.com/code/kenlm)
 ## OLD: librosa>=0.10.0
 lxml
 mako
@@ -88,7 +88,7 @@ wheel
 #
 #opt# SpeechRecognition
 #opt# accelerate
-#opt# astor
+#opt# astor                             # AST utils
 #opt# bash_kernel
 #opt# bashlex
 #opt# colout
@@ -126,6 +126,7 @@ en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_co
 typing_extensions>=4.7.0
 #
 #opt# textract
+#opt# types-six                         # typing stubs for six
 #opt# youtube_transcript_api
 #opt# vaderSentiment
 #...............................................................................
@@ -140,5 +141,3 @@ typing_extensions>=4.7.0
 #full# tensorflow
 #full# tensorflow_hub
 #full# tensorrt
-types-six
-astor
