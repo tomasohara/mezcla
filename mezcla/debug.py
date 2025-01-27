@@ -73,6 +73,7 @@ from typing_extensions import Buffer
 import six
 import sys
 import time
+import traceback
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 from mezcla.validate_arguments_types import (
     FileDescriptorOrPath,
@@ -691,11 +692,10 @@ if __debug__:
         return
 
 
-    ## TODO
-    ## def trace_stack(level=VERBOSE):
-    ##     """Output stack trace to stderr (if at trace LEVEL or higher)"""
-    ##     system-ish.print_full_stack()
-    ##     return
+    def trace_stack(level=VERBOSE):
+        """Output stack trace to stderr (if at trace LEVEL or higher)"""
+        traceback.print_stack(file=sys.stderr)
+        return
 
 
     def trace_exception(level: IntOrTraceLevel, task: Any) -> None:
@@ -709,10 +709,10 @@ if __debug__:
         return
 
     
-    def raise_exception(level: IntOrTraceLevel = 1) -> None:
-        """Raise an exception if debugging (at specified trace LEVEL)"""
-        # Note: For producing full stacktrace in except clause when debugging.
-        # TODO: elaborate
+    def raise_exception(level: IntOrTraceLevel = 1):
+        """Raise an exception if debugging (at specified trace LEVEL)
+        Note: useful to re-raise exceptions normally ignored when not debugging
+        """
         if __debug__ and (level <= trace_level):
             raise                       # pylint: disable=misplaced-bare-raise
         return

@@ -361,12 +361,12 @@ def full_mkdir(path: FileDescriptorOrPath, force: bool = False) -> None:
     Note: Doesn't handle case when file exists but is not a directory
     """
     debug.trace(6, f"full_mkdir({path!r})")
-    ## TODO: os.makedirs(path, exist_ok=True)
     debug.assertion(os.name == "posix")
     if force and system.file_exists(path) and not system.is_directory(path):
         delete_file(path)
     if not system.file_exists(path):
-        issue('mkdir --parents "{p}"', p=path)
+        ## OLD: issue('mkdir --parents "{p}"', p=path)
+        os.makedirs(path, exist_ok=True)
     debug.assertion(is_directory(path))
     return
 
@@ -1070,7 +1070,7 @@ def init() -> None:
     PRESERVE_TEMP_FILE = system.getenv_bool(
         "PRESERVE_TEMP_FILE", None, allow_none=True,
         desc="Retain value of TEMP_FILE even if TEMP_BASE set--see run and init below as well as unittest_wrapper.py")
-        
+
     # note: Normally TEMP_FILE gets overriden when TEMP_BASE set. However,
     # this complicates preserving test-specific test files (see unittest_wrapper.py).
     # Further compications are due to the implicit module loading due to __init__.py.

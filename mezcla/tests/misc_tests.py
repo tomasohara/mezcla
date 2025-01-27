@@ -7,6 +7,12 @@
 #   -- A test exists for each module (e.g., tests/test_fubar.py for ./fubar.py).
 #   -- Python files have execute permissions (e.g., chmod ugo+x).
 #
+# TODO2: Run once a week or so (e.g., to help catch poor test stubs like
+# test_train_language_model.py)!
+#
+# TODO3:
+# - Check for common pylint issues (n.b., not nitpicking ones like spacing).
+#
 
 """Miscellaneous/non-module tests"""
 
