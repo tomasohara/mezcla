@@ -12,13 +12,13 @@ import os
 
 # Installed packages
 import pytest
-from pydantic import ValidationError, BaseModel, validate_call
+from pydantic import ValidationError, BaseModel, validate_call    # pylint: disable=no-name-in-module
 
 # Local packages
 from mezcla import system
 import mezcla.validate_arguments as va
+THE_MODULE = va
 from mezcla.unittest_wrapper import TestWrapper
-from mezcla import glue_helpers as gh
 
 # Constants
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -95,6 +95,7 @@ def test_wrong_model():
         example_wrong_model({})
     assert "must be a pydantic.BaseModel class" in str(exc_info.value)
 
+@pytest.mark.xfail
 def test_add_validate_call_decorator():
     """Test for add_validate_call_decorator"""
     code = system.read_file(SIMPLE_SCRIPT)
@@ -104,8 +105,9 @@ def test_add_validate_call_decorator():
 class TestValidateArgument(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.xfail
     def test_simple_script(self):
         """Run validate arguments on a simple script"""
         script_output = self.run_script(

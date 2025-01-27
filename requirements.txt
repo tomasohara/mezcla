@@ -43,7 +43,7 @@ gradio==3.48                        # UI support (e.g., HF-based apps)
 importlib_metadata
 langchain
 langchain_community
-#opt# kenlm                   # language model support (NOTE: problem with wheel)
+#opt# kenlm                   # language model support (NOTE: problem with wheel; see https://kheafield.com/code/kenlm)
 ## OLD: librosa>=0.10.0
 lxml
 mako
@@ -54,6 +54,7 @@ numpy>=1.18.5
 pandas>=1.3.0
 pyaml
 pyctcdecode                   # CTC beam search decoder for speech recognition
+## OLD: pydantic
 pyenchant
 pysbd
 pytest
@@ -80,13 +81,14 @@ wheel
 #   python -m spacy download en_core_web_lg
 # - install bash kernel
 #   python -m bash_kernel.install
-# - add '#opt#deprecated#' (e,.g., useful for deprecated functions/modules)
+# - add '#opt#deprecated#' (e.g., useful for deprecated functions/modules)
 # NOTE:
 # - tensorflow and related not installed by default due to size of repo and C compilation overhead.
 # - ipython, pylint, etc. used for setting up development environment
 #
 #opt# SpeechRecognition
 #opt# accelerate
+#opt# astor                             # AST utils
 #opt# bash_kernel
 #opt# colout
 #opt# coverage
@@ -96,13 +98,18 @@ wheel
 #opt# ibm_cloud_sdk_core
 #opt# ipython
 #opt# jupyter
+#opt# libcst
 #opt# librosa
 #opt# pocketsphinx
+## TODO?: #opt#
+pydantic==2.9.2
 #opt# pylint
 #opt# pyyaml
 #opt# scispacy
 #opt# selenium
 #opt# Sphinx
+## TODO?: make unittest_parametrize regular dependency
+#opt# unittest_parametrize
 #
 ## OLD: #opt# spacy>=3.0.0
 ## TODO:
@@ -118,6 +125,7 @@ en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_co
 typing_extensions>=4.7.0
 #
 #opt# textract
+#opt# types-six                         # typing stubs for six
 #opt# youtube_transcript_api
 #opt# vaderSentiment
 #...............................................................................

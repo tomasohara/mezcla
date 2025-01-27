@@ -17,7 +17,12 @@
 
 name: Github-Tests
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+
+  # Allow for manual invocation
+  workflow_dispatch:
 
 jobs:
 

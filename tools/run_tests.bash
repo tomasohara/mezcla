@@ -12,6 +12,10 @@
 #   SC2046: Quote this to prevent word splitting.
 #   SC2086: Double quote to prevent globbing and word splitting.
 #
+# TODO2:
+# - Document environment variables (e.g. overrides in _temp_test_settings.bash):
+#   DEBUG_LEVEL, TRACE, VERBOSE, TEST_REGEX, FILTER_REGEX
+#
 # Usage:
 # $ ./tools/run_tests.bash
 # $ ./tools/run_tests.bash --coverage
@@ -31,9 +35,6 @@ fi
 
 # Get directory locations
 dir=$(dirname "${BASH_SOURCE[0]}")
-## OLD:
-## tools="$(dirname "$(realpath -s "$0")")"
-## base="$tools/.."
 base="$dir/.."
 mezcla="$base/mezcla"
 tests="$mezcla/tests"
@@ -54,7 +55,8 @@ fi
 echo "DEBUG_LEVEL=$DEBUG_LEVEL"
 
 # Get tests to run
-TEST_REGEX="${TEST_REGEX:-"."}"
+DEFAULT_TEST_REGEX="."
+TEST_REGEX="${TEST_REGEX:-$DEFAULT_TEST_REGEX}"
 # Note: TEST_REGEX is for only running the specified tests, 
 # and, FILTER_REGEX is for disabling particular tests.
 # Both are meant as expedients, not long-term solutions.
@@ -62,24 +64,26 @@ TEST_REGEX="${TEST_REGEX:-"."}"
 DEFAULT_FILTER_REGEX="(not-a-real-test.py)"
 FILTER_REGEX="${FILTER_REGEX:-"$DEFAULT_FILTER_REGEX"}"
 # shellcheck disable=SC2010
-if [[ ("$TEST_REGEX" != ".") || ("$FILTER_REGEX" != "") ]]; then
-    ## OLD:
-    ## tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX")
-    ## example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX")
+if [[ ("$TEST_REGEX" != "$DEFAULT_TEST_REGEX") || ("$FILTER_REGEX" != "$DEFAULT_FILTER_REGEX") ]]; then
     tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
     example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
 fi
 #
-## OLD: echo -e "Running tests on $tests; also running $example_tests\n"
 echo -n "Running tests on $tests"
 if [ "$example_tests" == "" ]; then
-    echo "Running no example tests"
+    echo "; running no example tests"
 else
-    echo "Also running $example_tests"
+    echo "; also running $example_tests"
 fi
 echo ""
 echo -n "via "
 python3 --version
+
+# Just echo command if dry run
+pre_cmd=""
+if [ "${DRY_RUN:-0}" == 1 ]; then
+   pre_cmd="echo"
+fi
 
 # Remove mezcla package if running under Docker (or act)
 # TODO2: check with Bruno whether still needed
@@ -90,9 +94,9 @@ fi
 # Make sure mezcla in python path
 export PYTHONPATH="$mezcla/:$PYTHONPATH"
 
+# Get environment overrides1
+# TODO2: cleanup stuff inherited from shell-script repo
 # shellcheck disable=SC2046,SC2086
-
-# Get environment overrides
 # TODO3: Get optional environment settings from _test-config.bash
 ## DEBUG: export DEBUG_LEVEL=6
 ## TEST: export TEST_REGEX="calc-entropy-tests"
@@ -108,13 +112,27 @@ fi
 # Run the python tests 
 # note: the python stdout and stderr streams are unbuffered so interleaved
 ## OLD: dir=$(dirname "${BASH_SOURCE[0]}")
-python_result=0
-if [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
+test_result=0
+if [ "$1" == "--coverage" ]; then
+    $pre_cmd export COVERAGE_RCFILE="$base/.coveragerc"
+    $pre_cmd export CHECK_COVERAGE='true'
+    $pre_cmd coverage erase
+    $pre_cmd coverage run -m pytest $tests $example_tests
+    $pre_cmd coverage combine
+    $pre_cmd coverage html
+    test_result="$?"
+elif [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
     export PYTHONUNBUFFERED=1
     echo -n "Running tests under "
     python3 --version
     python3 "$mezcla"/master_test.py
-    python_result="$?"
+    test_result="$?"
+else
+    # note: this clause is now obsolete (TODO2: remove)
+    pytest_options="${PYTEST_OPTIONS:-}"
+    $pre_cmd echo "Warning: not running tests due to unexpected condition"
+    $pre_cmd echo "    pytest $pytest_options $tests $example_tests"
+    test_result="$?"
 fi
 
 # End of processing
@@ -125,4 +143,4 @@ fi
 # Return status code used by Github actions
 ## TODO3: integrate support for Jupyter notebooks tests and use combined result;
 ## see run_tests.bash in shell-scripts repo.
-exit "$python_result"
+exit "$test_result"
