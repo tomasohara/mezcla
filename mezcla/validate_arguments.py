@@ -9,7 +9,7 @@
 from functools import wraps
 
 # Installed module
-from pydantic import BaseModel
+from pydantic import BaseModel          # pylint: disable=no-name-in-module
 import libcst as cst
 
 # Local modules
@@ -21,8 +21,10 @@ from mezcla import system
 # Constants
 VALIDATE_ARGUMENTS = True
 TL = debug.TL
-# TODO: TMP_PATH = gh.get_temp_dir
-TMP_PATH = "/tmp/temp_"
+## OLD:
+## # TODO: TMP_PATH = gh.get_temp_dir
+## TMP_PATH = "/tmp/temp_"
+TMP_PATH = gh.get_temp_dir()
 
 # Arguments for Validate Arguments Script
 FILE = "file"
@@ -30,8 +32,7 @@ ARG_INPUT_SCRIPT = "input"
 ARG_NO_TRANSFORM = "no-transform"
 OUTPUT = "output"
 
-# pylint: disable=unused-argument
-def validate_dictionaries(*decorator_args, **decorator_kwargs):
+def validate_dictionaries(*_decorator_args, **decorator_kwargs):
     """
     Decorator to validate dictionaries with Pydantic models,
     but without changing function definition to keep compatibility
@@ -46,7 +47,7 @@ def validate_dictionaries(*decorator_args, **decorator_kwargs):
         example_key: str
 
     @validate_call
-    fun some_function(some_dict: ExpectedDictModel):
+    def some_function(some_dict: ExpectedDictModel):
         # Some code here
 
     But this is not compatible with mypy, pyright and other...
@@ -55,7 +56,7 @@ def validate_dictionaries(*decorator_args, **decorator_kwargs):
     and pass the parameter to validate with the model like this:
 
     @validate_dictionaries(some_dict = ExpectedDictModel)
-    fun some_function(some_dict: dict):
+    def some_function(some_dict: dict):
         # Some code here
     """
     def decorator(func):
