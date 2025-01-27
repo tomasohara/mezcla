@@ -17,6 +17,7 @@
 #   See glue_helper.py for implementation along with related ALLOW_SUBCOMMAND_TRACING.
 # TODO:
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
+#   via glue_helpers.py: default base prefix vs fixed override
 # - Add TEMP_DIR for more direct specification.
 # - Clarify that this can co-exist with pytest-based tests (see tests/test_main.py).
 # TODO2:
@@ -126,6 +127,7 @@ def get_temp_dir(keep: Optional[bool] = None, unique=None) -> str:
     """Get temporary directory, omitting later deletion if KEEP
     Note: Optionally returns UNIQUE dir
     """
+    # TODO2: rework keep using atexit-style callback
     debug.assertion(not ((keep is False) and (unique is False)))
     if keep is None:
         keep = KEEP_TEMP
@@ -141,7 +143,7 @@ def get_temp_dir(keep: Optional[bool] = None, unique=None) -> str:
         dir_path = dir_base
     if not system.is_directory(dir_path):
         gh.full_mkdir(dir_path, force=True)
-    debug.trace(5, f"get_temp_dir() => {dir_path}")
+    debug.trace(5, f"utw.get_temp_dir() => {dir_path}")
     return dir_path
 
 
@@ -225,7 +227,7 @@ class TestWrapper(unittest.TestCase):
 
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usually set via derive_tested_module_name)
-    temp_base = system.getenv_text(
+    temp_base = system.getenv_value(
         "TEMP_BASE", tempfile.NamedTemporaryFile().name,
         desc="Override for basename of temporary files")
     check_coverage = system.getenv_bool(
@@ -234,7 +236,7 @@ class TestWrapper(unittest.TestCase):
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
     temp_file = None
-    use_temp_base_dir = system.is_directory(temp_base)
+    use_temp_base_dir = (system.is_directory(temp_base) if temp_base else False)
     ## OLD: test_num = 1
     test_num = 0
     temp_file_count = 0
@@ -275,15 +277,18 @@ class TestWrapper(unittest.TestCase):
                 system.print_stderr("Warning: script should implement --help")
 
         # Optionally, setup temp-base directory (normally just a file)
+        debug.assertion(cls.init_ok)
         if cls.use_temp_base_dir is None:
             cls.use_temp_base_dir = system.getenv_bool(
                 "USE_TEMP_BASE_DIR", False,
                 desc="Treat TEMP_BASE as a directory")
             # TODO: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); cls.use_temp_base_dir = bool(temp_base_dir.strip()); ...
+        if not cls.temp_base:
+            cls.temp_base = cls.temp_file
+        if not cls.temp_base:
+            cls.temp_base = gh.get_temp_file()
         if cls.use_temp_base_dir:
-            ## TODO: pure python
-            ## TODO: gh.full_mkdir
-            gh.run("mkdir -p {dir}", dir=cls.temp_base)
+            gh.full_mkdir(cls.temp_base)
 
         # Warn that coverage support is limited
         if cls.check_coverage:
