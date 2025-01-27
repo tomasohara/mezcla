@@ -469,8 +469,11 @@ class Main(object):
         return self.convert_option(argument_spec, default_value, positional=True)
 
     def get_option_name(self, label: str) -> str:
-        """Return internal name for parser options (e.g. dashes converted to underscores)"""
+        """Return internal name for parser options (e.g. dashes converted to underscores)
+        Note: underscores should not be used in labels to support standard Unix argument conventions (e.g., "--skip-run" not "--skip_run").
+        """
         # EX: dummy_app.get_option_name("mucho-backflips") => "mucho_backflips"
+        debug.assertion(("_" not in label), "Use dashes not underscores")
         name = label.replace("-", "_")
         tpo.debug_format("get_option_name({l}) => {n}; self={s}", 6,
                          l=label, n=name, s=self)
