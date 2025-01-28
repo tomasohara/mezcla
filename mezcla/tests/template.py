@@ -74,10 +74,11 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 
 class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
+    # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     #
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
-    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
+    # note: temp_file defined by parent (e.g., also temp_base and test_num)
 
     ## TODO: optional setup methods
     ##
