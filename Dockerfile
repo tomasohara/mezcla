@@ -25,6 +25,8 @@
 #
 # Warning:
 # - *** Changes need to be synchronized in 3 places: Dockerfile, tools/local-workflow.sh, and .github/workflows/*.yml!
+# - Python scripts should be invoked with python3 due to quirk with distribution archive
+#   lacking plain python executable (unlike anaconda).
 #
 # TODO3: keep in synch with ~/bin version (https://github.com/tomasohara/shell-scripts)
 #
