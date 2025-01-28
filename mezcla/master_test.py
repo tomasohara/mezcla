@@ -10,6 +10,7 @@
 import math
 import subprocess
 import os
+from typing import Dict
 
 # Installed modules
 import yaml
@@ -33,15 +34,18 @@ THRESHOLDS_FILE = system.getenv_text(
     "thresholds.yaml",
     description="thresholds file for master_test.py",
 )
+TEST_REGEX = system.getenv_value(
+    "TEST_REGEX", None,
+    description="Regex for tests to include; ex: '^test_c.*' for debugging")
 MYPY_TEST_REGEX = system.getenv_value(
     "MYPY_TEST_REGEX",
-    None,
-    "Regex for source files to test typing on; ex: '^test_c.*' for debugging",
+    TEST_REGEX,
+    description="Regex for source files for mypy checks",
 )
 PYTEST_TEST_REGEX = system.getenv_value(
     "PYTEST_TEST_REGEX",
-    None,
-    "Regex for tests to include; ex: '^test_c.*' for debugging",
+    TEST_REGEX,
+    description="Regex for pytest",
 )
 MYPY_CONFIG_FILE = system.getenv_text(
     "MYPY_CONFIG_FILE",
@@ -91,14 +95,15 @@ def round_p2str(num):
 def run(command, trace_level=4, subtrace_level=None, **namespace) -> str :
     """Wrapper around subprocess.run
     Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
-   Notes:
-   - The result includes stderr, so direct if not desired (see issue):
-         run("ls /tmp/fubar 2> /dev/null")
-   - This is only intended for running simple commands. It would be better to create a subprocess for any complex interactions.
-   - This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed.
-   - If TEMP_FILE or TEMP_BASE defined, these are modified to be unique to avoid conflicts across processeses.
+    Notes:
+    - The result includes stderr, so direct if not desired (see issue):
+          run("ls /tmp/fubar 2> /dev/null")
+    - This is only intended for running simple commands. It would be better to create a subprocess for any complex interactions.
+    - This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed.
+    - If TEMP_FILE or TEMP_BASE defined, these are modified to be unique to avoid conflicts across processeses.
     - If OUTPUT, the result will be printed.
-   """
+    """
+    ## NOTE: streamlined version of gh.run
     debug.assertion(isinstance(trace_level, int))
     debug.trace(6, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}")
     # Keep track of current debug level setting
@@ -134,7 +139,7 @@ def run(command, trace_level=4, subtrace_level=None, **namespace) -> str :
 # Main code
 
 
-def run_mypy(thresholds: dict[str, float]) -> int:
+def run_mypy(thresholds: Dict[str, float]) -> int:
     """Run mypy and return the number of failures"""
     config = (
         f" --config-file {MYPY_CONFIG_FILE}" if gh.file_exists(MYPY_CONFIG_FILE) else ""
@@ -160,7 +165,7 @@ def run_mypy(thresholds: dict[str, float]) -> int:
                 debug.trace(4, f"mypy: skipping module {filename}")
                 include = False
             elif MYPY_TEST_REGEX and not my_re.search(rf"{MYPY_TEST_REGEX}", file_path):
-                debug.trace(5, f"Filtering test {file_path} not matching TEST_REGEX ({MYPY_TEST_REGEX})",)
+                debug.trace(5, f"Filtering test {file_path} not matching MYPY_TEST_REGEX ({MYPY_TEST_REGEX})",)
                 include = False
             if not include:
                 continue
@@ -182,7 +187,7 @@ def run_mypy(thresholds: dict[str, float]) -> int:
     return failed
 
 
-def run_tests(thresholds: dict[str, float]) -> int:
+def run_tests(thresholds: Dict[str, float]) -> int:
     """Run tests and compare the results with the allowed thresholds"""
     failed = 0
     for test_filename, threshold in thresholds.items():
@@ -195,7 +200,7 @@ def run_tests(thresholds: dict[str, float]) -> int:
             debug.trace(5, f"Ignoring non-python test: {test_filename}")
             include = False
         elif PYTEST_TEST_REGEX and not my_re.search(rf"{PYTEST_TEST_REGEX}", test_filename):
-            debug.trace(5, f"Filtering test {test_filename} not matching TEST_REGEX ({PYTEST_TEST_REGEX})",)
+            debug.trace(5, f"Filtering test {test_filename} not matching PYTEST_TEST_REGEX ({PYTEST_TEST_REGEX})",)
             include = False
         if not include:
             continue
@@ -317,7 +322,7 @@ def main():
     default_thresholds = {**mypy_thresholds, **test_thresholds}
     debug.trace_expr(5, default_thresholds, prefix="default thresholds: ")
     if system.file_exists(thresholds_path):
-        new_thresholds: dict[str, float] = load_thresholds(thresholds_path)
+        new_thresholds: Dict[str, float] = load_thresholds(thresholds_path)
         for filename, threshold in new_thresholds.items():
             if my_re.search(r"^.*(test).*", filename):
                 test_thresholds[filename] = threshold
