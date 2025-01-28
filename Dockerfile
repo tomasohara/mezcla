@@ -114,7 +114,7 @@ RUN if [ "$PYTHON_VERSION" != "" ]; then                                        
 # Set the working directory visible
 # Make sure the installed python takes precedence (TODO: use var to reduce redundancy with above)
 ENV PYTHONPATH="${PYTHONPATH}:$WORKDIR"
-ENV PATH="/opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64/bin:${PYTHONPATH}:$WORKDIR"
+ENV PATH="/opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64/bin:${PATH}:$WORKDIR"
 
 # Install pip for the specified Python version (TODO rm)
 RUN if [ "$PYTHON_VERSION" == "" ]; then                                                \
