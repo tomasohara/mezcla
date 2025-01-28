@@ -12,6 +12,9 @@
 #
 # TODO3:
 # - Check for common pylint issues (n.b., not nitpicking ones like spacing).
+# - Check for proper usage/customization of test/template.py, such as
+#   TestWrapper, get_testing_module_name(__file__, THE_MODULE), actual
+#   tests being defined, and no stubs (e.g., assert(False, "TODO: implement")).
 #
 
 """Miscellaneous/non-module tests"""
