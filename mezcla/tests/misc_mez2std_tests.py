@@ -23,6 +23,7 @@
 # TODO2:
 # - Try to make output easier to review for pytest summary.
 # - Make sure code follows mezcla's conventions.
+# - Use gh.form_path instead of hardcoding /'s.
 #
 # TODO3:
 # - Keep most comments focused on high-level, covering the intention of the code.
@@ -35,6 +36,7 @@
 # - Avoid numbering steps, because it becomes a maintenance issue.
 # - Similarly, avoid references like "script 1", etc.
 # - Remove redundant comments previously preceding docstring's.
+# - Drop 'helper' in method names, especially as implicit if not test_xyz.
 #
 
 """
@@ -81,7 +83,9 @@ OMIT_SLOW_REASON = "this will take a while"
 INCLUDE_EFFICIENCY = system.getenv_bool(
     "INCLUDE_EFFICIENCY", False,
     "Include dubious efficiency metrics")
-
+GENERATE_TESTS = system.getenv_bool(
+    "GENERATE_TESTS", False,
+    "Generates synthetic tests")
 
 class ScriptComparisonMetrics(BaseModel):
     """Pydantic model for tracking script conversion metrics"""
@@ -106,15 +110,21 @@ class TestM2SBatchConversion(TestWrapper):
                          'pytest_org', 'pytest_m2s', ]
         dirs = {}
         for name in subdir_names:
-            dirs[name] = gh.form_path(temp_base, "mez2std", name)
+            dirs[name] = gh.form_path(temp_base, name)
             gh.full_mkdir(dirs[name])
         debug.trace(5, f"setup_directories({temp_base}) => {dirs}")
         return dirs
 
     def process_pytest_results(self, pytest_output):
         """Extract pass/fail counts from pytest output"""
-        failed = sum(map(int, my_re.findall(r"(\d+) x?failed", pytest_output)))
-        passed = sum(map(int, my_re.findall(r"(\d+) x?passed", pytest_output)))
+        ## TODO3: treat errors separately
+        # Note: looks for lines like "=== 21 passed, 2 skipped, 13 xfailed, 2 xpassed in 0.26s ==="
+        # and "=== 1 error in 0.08s ===".
+        failed = sum(map(int, my_re.findall(r"===.* (\d+) x?failed.* ===", pytest_output)))
+        errors = sum(map(int, my_re.findall(r"===.* (\d+) error.* ===", pytest_output)))
+        if errors:
+            failed += errors
+        passed = sum(map(int, my_re.findall(r"===.*(\d+) x?passed.* ===", pytest_output)))
         return passed, failed
     
     def count_methods(self, code_content):
@@ -132,7 +142,9 @@ class TestM2SBatchConversion(TestWrapper):
         return len(my_re.findall(method_pattern, code_content, my_re.MULTILINE))
 
     def validate_mez2std_conversion(self, script_path, dirs, m2s_path):
-        """Process single script conversion and validation"""
+        """Process single script conversion and validation
+        Note: This uses Pydantic for validation via @validate_call
+        """
         script = gh.basename(script_path)
         
         output, output_file = self.get_mezcla_command_output(
@@ -154,14 +166,16 @@ class TestM2SBatchConversion(TestWrapper):
             'script': script,
             'method_count': self.count_methods(output),
             'org_path': script_path_org,
-            'm2s_path': script_path_m2s
+            'm2s_path': script_path_m2s,
+            'script_path': script_path,
         }
     
     def calculate_failure_metrics(self, validation_results, num_scripts):
-        """Calculate and validate failure metrics"""
+        """Calculate and validate failure metrics given VALIDATION_RESULTS dict and NUM_SCRIPTS"""
         fail_count = 0
         for result in validation_results:
             total_count = sum(result['m2s_passed'])
+            ## TODO1: reverse test?
             if result['m2s_passed'][1] > result['org_passed'][1]:
                 fail_count += 1
             bad_pct = round(fail_count * 100 / total_count, 2) if total_count else 0
@@ -169,29 +183,34 @@ class TestM2SBatchConversion(TestWrapper):
             
         overall_bad_pct = round(fail_count * 100 / num_scripts, 2) if num_scripts else 0
         return overall_bad_pct
-    
+
     def run_validation_checks(self, script_info, dirs):
-        """Run and compare validation tests for original and converted code"""
-        ## # TEMPORARILY COMMENTED [OUT?]
+        """Run and compare validation tests for original and converted code given SCRIPT_INFO and temp DIRS dicts"""
+        debug.trace(5, f"run_validation_checks({script_info}, {dirs})")
         # Create and run tests for original
-        test_file_org = self.create_test_file(script_info['org_path'], dirs['typehint_org'])
+        test_file_org = self.create_test_file(script_info['org_path'], dirs['typehint_org'], script_info['script_path'])
         pytest_result_org = gh.run(f"PYTHONPATH='{dirs['typehint_org']}' pytest {test_file_org}")
         
         # Create and run tests for converted
-        test_file_m2s = self.create_test_file(script_info['m2s_path'], dirs['typehint_m2s'])
+        test_file_m2s = self.create_test_file(script_info['m2s_path'], dirs['typehint_m2s'], script_info['script_path'])
         pytest_result_m2s = gh.run(f"PYTHONPATH='{dirs['typehint_m2s']}' pytest {test_file_m2s}")
         
         # Save test results
-        org_result_path = gh.form_path(dirs['pytest_org'], gh.basename(script_info['script'], '.py')) + '.txt'
-        m2s_result_path = gh.form_path(dirs['pytest_m2s'], gh.basename(script_info['script'], '.py')) + '.txt'
+        script_filename = gh.basename(script_info['script'], '.py') + '.txt'
+        org_result_path = gh.form_path(dirs['pytest_org'], script_filename)
+        m2s_result_path = gh.form_path(dirs['pytest_m2s'], script_filename)
         system.write_file(org_result_path, pytest_result_org)
         system.write_file(m2s_result_path, pytest_result_m2s)
-        
-        return {
+
+        # Analyze
+        ## TODO2: org_errors, org_passed, org_failed = self.process_pytest_results(pytest_result_org)
+        result = {
             'org_passed': self.process_pytest_results(pytest_result_org),
             'm2s_passed': self.process_pytest_results(pytest_result_m2s),
             'result_paths': (org_result_path, m2s_result_path)
         }
+        debug.trace(6, f"run_validation_checks() => {result}")
+        return result
 
     def get_mezcla_scripts(self):
         """Returns list of paths for python scripts in MEZCLA_DIR.
@@ -214,6 +233,7 @@ class TestM2SBatchConversion(TestWrapper):
         """Executes the mezcla script externally (option: to_standard, metrics)"""
         # Helper Script: Get the output of the execution of mezcla_to_standard.py (w/ options)
         warning_option = ("--skip-warnings" if skip_warnings else "")
+        ## TODO3: get rid of this needless output_path complication
         if output_path != "/dev/null":
             output_file = f"{output_path}/_mez2std_{gh.basename(script_path, '.py')}.py"
             command = f"python3 {m2s_path} --{option} {script_path} {warning_option} | tee {output_file}"
@@ -227,13 +247,14 @@ class TestM2SBatchConversion(TestWrapper):
     def get_mezcla_to_standard_script_path(self):
         """Returns the path of mezcla_to_standard.py"""        
         # Helper Script: Get absolute path of "mezcla_to_standard.py"
-        ## OLD_NAME: get_m2s_path
         return gh.form_path(MEZCLA_DIR, "mezcla_to_standard.py")
 
     def helper_compare_converted_scripts(self, original_script_path: str, converted_script_path: str) -> ScriptComparisonMetrics:
         """Uses Pydantic to compare the contents between the original & converted scripts"""
-        # Helper Script: Use Pydantic class to find comparison in the script
-        ## OLD_NAME: compare_scripts
+        # Warning: This just summarizes the diff bewteen original and converted script:
+        # there is no Pydantic validation involved; it just uses Pydantic base class
+        # for the metrics computed (n.b., vacuous validation because types involved simple and fixed).
+        ## TODO2: reword comment
         original_code = system.read_file(original_script_path)
         converted_code = system.read_file(converted_script_path)
         
@@ -257,7 +278,7 @@ class TestM2SBatchConversion(TestWrapper):
             lines_removed=lines_removed,
             lines_warned=lines_warned
         )
-    
+
     def helper_calculate_heuristic_score(
             self, 
             lines_original: int, 
@@ -287,7 +308,9 @@ class TestM2SBatchConversion(TestWrapper):
         Returns:
             A normalized efficiency score between 0.0 and 1.0.
         """
-        ## OLD_NAME: calculate_score
+        # Warning: The heuristic is only quantitatively "sensitive: it doesn't account
+        # for important transformations not done (due to bugs or missing mappings).
+        # TODO2: revise docstring accordingly
         if lines_original == 0 or lines_converted <= 1:
             return 0.0
 
@@ -297,30 +320,36 @@ class TestM2SBatchConversion(TestWrapper):
         line_warning_ratio = min(1.0, lines_warned / (lines_original + epsilon))
 
         # Penalize if warnings exceed 10% of original lines
+        # Note: Also applies small boost if size and warning ratios low.
+        ## TODO3: make the adjustments more explicit
         if lines_warned > lines_original * 0.1:  
             wt_warning += 0.1
             wt_size_difference -= 0.05
-
+        #
         weighted_sum = (
             size_ratio * wt_size_difference +
             line_add_ratio * wt_added +
             line_removed_ratio * wt_removed +
             line_warning_ratio * wt_warning
         )
-
         minimal_change_bonus = 0.02 if (size_ratio < 0.05 and line_warning_ratio < 0.05) else 0.0
+        #
         result = max(0.0, min(1.0, 1.0 - weighted_sum + minimal_change_bonus))
+
         return round(result, 4)
 
     def transform_for_validation(self, file_path):
-        """Creates a copy of the script for validation of argument calls (using pydantic)"""
+        """Creates a copy of the script at FILE_PATH for validation of argument calls (using pydantic)"""
+        # Note: This just modifies top-level functions
         content = system.read_file(file_path)
         content = my_re.sub(r"^def", r"@validate_call\ndef", content, flags=my_re.MULTILINE)
         content = LINE_IMPORT_PYDANTIC + content
         return content
 
     def create_test_function(self, module_name, function_name):
-        """Creates a test function template for a given function name"""
+        """Creates a test function template for a given FUNCTION_NAME from MODULE_NAME"""
+        # Warning: this function is broken and only works for functions w/o args!
+        ## TODO2: apply fix to add proper arguments (WTH?)
         code = (
             f"""
             def test_{function_name}():
@@ -328,20 +357,30 @@ class TestM2SBatchConversion(TestWrapper):
                 assert callable({function_name})
                 # Add appropriate function calls and assertions here
                 try:
-                    {function_name}()  # Example call, modify as needed
+                    {function_name}()           # *** Example call needs to be modified ***
                 except Exception as e:
                     assert False, f"Function {function_name} raised an exception: {{e}}"
             """
             )
+        
         result = fix_indent(code)
         debug.trace(6, f"create_test_function({module_name}, {function_name}) => {result!r}")
         return result
 
-    def create_test_file(self, script_path, test_dir):
-        """Creates a test file for a given script"""
-        script_name = gh.basename(script_path, ".py")
-        function_names = self.extract_function_names(script_path)
-        test_file_content = "\n".join([self.create_test_function(script_name, fn) for fn in function_names])
+    def create_test_file(self, temp_script_path, test_dir, old_script_path, generate_tests=None):
+        """Creates a test file for TEMP_SCRIPT_PATH in TEST_DIR, using OLD_SCRIPT_PATH to find tests
+        Note: Unless GENERATE_TESTS, the original tests are used; otherwise synthetic ones"""
+        ## TODO4: reduce redundancy
+        script_name = gh.basename(old_script_path, ".py")
+        debug.assertion(script_name == gh.basename(temp_script_path, ".py"))
+        if generate_tests is None:
+            generate_tests = GENERATE_TESTS
+        if generate_tests:
+            function_names = self.extract_function_names(old_script_path)
+            test_file_content = "\n".join([self.create_test_function(script_name, fn) for fn in function_names])
+        else:
+            test_script_path = gh.form_path(gh.dirname(old_script_path), "tests", f"test_{script_name}.py")
+            test_file_content = system.read_file(test_script_path)
         test_file_dir = gh.form_path(test_dir, "tests")
         system.create_directory(test_file_dir)
         test_file_path = gh.form_path(test_file_dir, f"test_{script_name}.py")
@@ -352,7 +391,7 @@ class TestM2SBatchConversion(TestWrapper):
         """Extracts function names from a script"""
         content = system.read_file(file_path)
         return my_re.findall(r"^def (\w+)", content, flags=my_re.MULTILINE)
-    
+
     def check_mez2std_wrappers(self, converted_code: str) -> dict:
         """Check for proper use of mezcla wrappers in converted code"""
         ## EXPERIMENTAL: check_mezcla_wrappers in converted
@@ -424,7 +463,9 @@ class TestM2SBatchConversion(TestWrapper):
     @pytest.mark.xfail
     @pytest.mark.skipif(OMIT_SLOW_TESTS, reason=OMIT_SLOW_REASON)
     def test_mez2std_pytest(self):
-        """"Check for differences in pytest failures, etc in original vs transformed version"""
+        """"Check for differences in pytest failures in original vs transformed version code
+        Note: By default this uses the original test suite, but optionally synthetic ones added.
+        """
         debug.trace(5, f"test_mez2std_pytest(); self={self}")
         scripts = self.get_mezcla_scripts()
         dirs = self.setup_directories(self.temp_file)
