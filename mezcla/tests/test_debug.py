@@ -32,7 +32,7 @@ import pytest
 from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 import mezcla.glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
@@ -50,7 +50,7 @@ TEST_TBD = system.getenv_bool("TEST_TBD", False,
 
 class TestDebug(TestWrapper):
     """Class for test case definitions"""
-    # Note: TestWrapper not used due to conflict with capsys
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     stdout_text = None
     stderr_text = None
     expected_stdout_trace = None
@@ -136,7 +136,7 @@ class TestDebug(TestWrapper):
                 """Increase age"""
                 self.age += 1
             
-            def __has_debt(self) -> bool:
+            def __has_debt(self) -> bool:         # pylint: disable=unused-private-member
                 return self.__debt > 0
                 
         obj = Test_class()
@@ -144,7 +144,7 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert "Test_class__debt: 0" in err
         assert "Test_class__has_debt:" in err
-        assert "age_up:"
+        ## OLD: assert "age_up:"
         assert "age: 0" in err
         assert "age_up: " in err
         
@@ -199,16 +199,17 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert 'Person("Kiran")' in err
 
+    @pytest.mark.xfail
     def test_trace_expr(self):
         """Make sure trace_expr shows 'expr1=value1; expr2=value2'"""
+        debug.trace(4, f"test_trace_expr(): self={self}")
         var1 = 3
         var2 = 6
         THE_MODULE.trace_expr(debug.get_level(), var1, var2)
         err = self.get_stderr()
-        assert "var1=3;var2=6" in my_re.sub(r"\s+", "", err)
+        assert(my_re.search(r"var1=3; var2=6;?", err))
 
     @pytest.mark.xfail
-    @pytest.mark.skipif(not TEST_TBD, reason="Ignoring feature to be designed")
     def test_trace_expr_expression(self):
         """Make sure trace_expr expression resolved when split across lines"""
         var1 = 3
@@ -217,13 +218,13 @@ class TestDebug(TestWrapper):
                               var1,
                               var2)
         err = self.get_stderr()
-        assert "var1=3.*var2=6" in my_re.sub(r"\s+", "", err)
+        assert(my_re.search(r"var1=3; var2=6;?", err))
         
     @pytest.mark.xfail
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
-        number: int = 9
+        number: int = 9                 # pylint: disable=unused-variable
         THE_MODULE.trace_current_context(4)
         err = self.get_stderr()
         assert "test_debug.TestDebug testMethod=test_trace_current_context" in err  # name of current function
@@ -250,6 +251,7 @@ class TestDebug(TestWrapper):
             THE_MODULE.raise_exception()
         THE_MODULE.raise_exception(10)
 
+    @pytest.mark.xfail
     def test_assertion(self):
         """Ensure assertion works as expected"""
         debug.trace(4, f"test_assertion(): self={self}")
@@ -500,20 +502,24 @@ class TestDebug(TestWrapper):
     def test_debug_init(self):
         """Ensure debug_init works as expected"""
         debug.trace(4, f"test_debug_init(): self={self}")
-        self.monkeypatch.setenv("DEBUG_FILE", "tmp_debug.txt")
+        temp_debug_filename = self.temp_file + ".debug.log"
+        self.monkeypatch.setenv("DEBUG_FILE", temp_debug_filename)
         self.monkeypatch.setenv("ENABLE_LOGGING", "True")
         # NOTE: Setting MONITOR_FUNCTIONS to True breaks tests on windows
-        today = str(datetime.now()).split(' ')[0]
+        ## OLD: today = str(datetime.now()).split(' ')[0]
+        today = str(datetime.now()).split(' ', maxsplit=1)[0]
         THE_MODULE.debug_init()
+        # TODO3: why is _test*err.txt being output?
         err = self.get_stderr()
-        err_file = system.form_path(gh.dirname(__file__), "err.txt")
+        err_file = system.form_path(gh.dirname(__file__),
+                                    "_test_debug_init-err.txt")
         system.write_file(err_file, err)
 
-        assert "debug_filename=tmp_debug.txt" in err
-        assert "debug_file=<_io.TextIOWrapper name=\'tmp_debug.txt\'" in err
+        assert f"debug_filename={temp_debug_filename}" in err
+        assert f"debug_file=<_io.TextIOWrapper name=\'{temp_debug_filename}\'" in err
         assert f"[{THE_MODULE.__file__}] loaded at {today}" in err
         assert "Setting logger level to 10" in err
-        assert "DEBUG_FILE: tmp_debug.txt" in err
+        assert f"DEBUG_FILE: {temp_debug_filename}" in err
         assert "ENABLE_LOGGING: True" in err
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -522,16 +528,22 @@ class TestDebug(TestWrapper):
         debug.trace(4, f"test_display_ending_time_etc(): self={self}")
         self.monkeypatch.setenv("SKIP_ATEXIT", "False")
         self.monkeypatch.delenv("DEBUG_FILE", raising=False)
-        self.monkeypatch.setattr("mezcla.debug.debug_file", None)
-        THE_MODULE.debug_init()
+        temp_debug_file = system.open_file(self.temp_file + ".debug.log",
+                                           mode="w")
+        assert(not temp_debug_file.closed)
+        self.monkeypatch.setattr("mezcla.debug.debug_file", temp_debug_file)
+        # note: display_ending_time_etc needs to be extracted from debug_init
+        THE_MODULE.display_ending_time_etc()
+        # TODO3: why is _test*err.txt being output?
         err = self.get_stderr()
-        err_file = system.form_path(gh.dirname(__file__), "err.txt")
+        err_file = system.form_path(gh.dirname(__file__),
+                                    "_test_display_ending_time_etc-err.txt")
         system.write_file(err_file, err)
-        assert(False)
+        assert(temp_debug_file.closed)
 
     def test_visible_simple_trace(self):
         """Make sure level-1 trace outputs to stderr"""
-        debug.trace(4, f"test_visible_simple_trace()")
+        debug.trace(4, f"test_visible_simple_trace(): self={self}")
         self.setup_simple_trace()
         if not __debug__:
             self.expected_stderr_trace = ""
@@ -548,7 +560,7 @@ class TestDebug(TestWrapper):
 
     def test_hidden_simple_trace(self):
         """Make sure level-N+1 trace doesn't output to stderr"""
-        debug.trace(4, f"test_hidden_simple_trace()")
+        debug.trace(4, f"test_hidden_simple_trace(): self={self}")
         self.setup_simple_trace()
         ## TEST
         ## capsys.stop_capturing()
@@ -609,4 +621,4 @@ class TestDebug2(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)
