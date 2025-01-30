@@ -913,13 +913,14 @@ def delete_directory(path):
     ok = False
     try:
         if DISABLE_RECURSIVE_DELETE:
+            files = get_directory_listing(path)
             debug.trace(4, f"FYI: Only deleting top-level files in {path} to avoid potentially dangerous rm -r")
-            run(f"rm -vf {path}/* {path}/.*")
-            run(f"rm -vf {path}")
+            for file in files:
+                delete_file(form_path(path, file))
             ok = None
         else:
             debug.trace(4, f"FYI: Using potentially dangerous rm -r over {path}")
-            run(f"rm -rvf {path}")
+            shutil.rmtree(path)
             ok = None
     except OSError:
         debug.trace_fmt(5, f"Exception during deletion of {path}: {system.get_exception()}")

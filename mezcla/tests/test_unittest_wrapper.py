@@ -36,6 +36,8 @@ TEMP_FILE_INIT = os.environ.get(TEMP_FILE_LABEL)
 ## DEBUG: import sys; sys.stderr.write(f"{__file__=}\n")  # pylint: disable=multiple-statements
 
 # Installed packages
+import atexit
+import shutil
 import pytest
 
 # Local packages
@@ -44,6 +46,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests, trap_exception
 from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
+from mezcla import glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                  global module object
@@ -165,9 +168,32 @@ class TestIt(TestWrapper):
     def test_04_get_temp_dir(self):
         """Tests get_temp_dir"""
         debug.trace(4, f"TestIt.test_04_get_temp_dir(); self={self}")
-        temp_dir = THE_MODULE.get_temp_dir()
-        TMPDIR = system.getenv("TMPDIR", "/tmp")
-        assert TMPDIR in temp_dir
+        tmp_dir = system.form_path(system.getenv_text("TMP"), 'test_get_temp_dir')
+        self.monkeypatch.setattr("mezcla.glue_helpers.TEMP_FILE", tmp_dir)
+
+        if system.is_directory(tmp_dir):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+        assert not system.is_directory(tmp_dir)
+        unittest_temp_dir = THE_MODULE.get_temp_dir(keep=False)
+        atexit.register(gh.delete_directory, unittest_temp_dir)
+        
+        assert tmp_dir == unittest_temp_dir
+        assert system.is_directory(tmp_dir)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        
+        # Test argument unique=True
+        tmp_dir_2 = system.form_path(system.getenv_text("TMP"), 'test_get_temp_dir_2')
+        self.monkeypatch.setattr("mezcla.glue_helpers.TEMP_FILE", tmp_dir_2)
+        
+        if system.is_directory(tmp_dir_2):
+            shutil.rmtree(tmp_dir_2, ignore_errors=True)
+        assert not system.is_directory(tmp_dir_2)
+
+        unittest_temp_dir_2 = THE_MODULE.get_temp_dir(keep=False, unique=True)
+        atexit.register(gh.delete_directory, unittest_temp_dir_2)
+        
+        assert (tmp_dir_2 + '_temp_dir_') in unittest_temp_dir_2
+        assert system.is_directory(unittest_temp_dir_2)
 
     @pytest.mark.xfail
     def test_05_check_temp_part1(self):

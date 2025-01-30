@@ -32,7 +32,7 @@ import mezcla.filter_random as THE_MODULE
 class TestFilterRandom(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.derive_tested_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__)
     use_temp_base_dir = True            # treat TEMP_BASE as directory
 
     def setUp(self):

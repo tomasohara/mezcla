@@ -152,6 +152,33 @@ def get_last_modified_date(iterable: Iterable) -> float:
         result = max(map(get_file_mod_fime, iterable))
     return result
 
+def correct_metadata(doc: Document, base_dir: str) -> Document:
+    """removes BASE_DIR from the source metadata path
+       so it represents the actual source of the file"""
+    # TODO1: fix docstrings with respect to hardcoded assumptions
+    debug.trace_expr(4, base_dir)
+    doc_metadata = doc.metadata
+    old_source = doc_metadata['source']
+    debug.trace_expr(4, old_source)
+    ## BAD:
+    ## split_source = doc_metadata['source'].split(system.path_separator(),maxsplit=3)
+    ## TODO2: make sure this works for other temp directories (e.g., /home/tomohara/temp)
+    ## # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
+    ## new_source = system.real_path(split_source[3])
+    new_source = old_source.replace(base_dir, "")
+    debug.assertion(new_source != old_source)
+    debug.trace_expr(4, new_source)
+    doc_metadata['source'] = new_source
+    doc.metadata = doc_metadata
+    return doc
+
+def convert_to_txt(in_file: str) -> str:
+    """reads non-txt files and returns the text inside them"""
+    if in_file.endswith('.html'):
+        text = html_utils.html_to_text(system.read_file(in_file))
+    else:
+        text = extract_document_text.document_to_text(in_file)
+    return text
 
 class DesktopSearch:
     """Class for searching local computer"""
@@ -181,46 +208,15 @@ class DesktopSearch:
         text_loader_kwargs={'autodetect_encoding': True}
         loader = DirectoryLoader(dir_path, glob="./*.txt", loader_cls=TextLoader, loader_kwargs=text_loader_kwargs)
         debug.trace_expr(5, loader)
-
-        ## TODO1: move this helper outside of index_dir
-        def convert_to_txt(in_file: str) -> str:
-            """reads non-txt files and returns the text inside them"""
-            if in_file.endswith('.html'):
-                text = html_utils.html_to_text(system.read_file(in_file))
-            else:
-                text = extract_document_text.document_to_text(in_file)
-            return text
-    
-        ## TODO1: move this helper outside of index_dir
-        def correct_metadata(doc: Document, base_dir: str) -> Document:
-            """removes the first two parts of the source metadata
-               so it represents the actual source of the file
-               Note: Now removes specifid BASE_DIR"""
-            # TODO1: fix docstrings with respect to hardcoded assumptions
-            doc_metadata = doc.metadata
-            old_source = doc_metadata['source']
-            debug.trace_expr(4, old_source)
-            ## BAD:
-            ## split_source = doc_metadata['source'].split(system.path_separator(),maxsplit=3)
-            ## TODO2: make sure this works for other temp directories (e.g., /home/tomohara/temp)
-            ## # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
-            ## new_source = system.real_path(split_source[3])
-            new_source = old_source.replace(base_dir, "")
-            debug.assertion(new_source != old_source)
-            debug.trace_expr(4, new_source)
-            doc_metadata['source'] = new_source
-            doc.metadata = doc_metadata
-            return doc
         
         # copy files over to temp dir
         # note: timestamp strips the time of day (e.g., 2024-05-11)
         timestamp = debug.timestamp().split(' ', maxsplit=1)[0]
         real_path = system.real_path(dir_path)
         # note: using [1:] to remove the initial path separator 
-        ## TODO1: make sure this work if TMP not /tmp
-        tmp_path = system.form_path(f"{system.TEMP_DIR}", f"llm_desktop_search.{timestamp}",
-                                    real_path[1:])
-        gh.full_mkdir(tmp_path)
+        temp_base = system.form_path(system.TEMP_DIR, f"llm_desktop_search.{timestamp}")
+        temp_path = system.form_path(temp_base,real_path[1:])
+        gh.full_mkdir(temp_path)
         
         list_files = system.get_directory_filenames(real_path)
         filtered_files = list_files
@@ -236,24 +232,24 @@ class DesktopSearch:
         files_to_convert = [found for found in filtered_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
         # register cleanup function before creating temp files
         if not KEEP_TEMP_FILES:
-            atexit.register(gh.delete_directory, tmp_path)
+            atexit.register(gh.delete_directory, temp_path)
         for num, file in enumerate(files_to_convert):
             filename = system.filename_proper(file)
-            file_tmp_path = system.form_path(tmp_path, filename) 
+            file_tmp_path = system.form_path(temp_path, filename) 
             if file.endswith('.txt'):
                 system.write_file(file_tmp_path, system.read_entire_file(file, encoding="unicode_escape"))
             else:
                 system.write_file(f"{file_tmp_path}_temp_{num}.txt", convert_to_txt(file))
         
         # interpret information in the documents
-        loader = DirectoryLoader(tmp_path, glob="*.txt", loader_cls=TextLoader)
+        loader = DirectoryLoader(temp_path, glob="*.txt", loader_cls=TextLoader)
         documents = loader.load()
         debug.trace_expr(5, len(documents), documents)
         splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE,
                                                   chunk_overlap=CHUNK_OVERLAP)
         # documents are splitted to a maximum of 500 characters per chunk (by default)
         texts = splitter.split_documents(documents)
-        corrected_texts = [correct_metadata(text, tmp_path) for text in texts]
+        corrected_texts = [correct_metadata(text, temp_base) for text in texts]
         if not self.embeddings:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name=EMBEDDING_MODEL,

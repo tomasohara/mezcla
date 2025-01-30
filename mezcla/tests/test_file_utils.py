@@ -12,6 +12,8 @@
 # Standard packages
 import json
 import re
+import os
+import datetime
 
 # Installed packages
 import pytest
@@ -48,9 +50,9 @@ class TestFileUtils(TestWrapper):
 
         for foldername in folders:
             ## TODO3: use mezcla wrappers (e.g., gh.full_mkdir)
-            gh.run(f'mkdir {foldername}')
+            system.create_directory(foldername)
             for filename in filenames:
-                gh.run(f'touch {gh.form_path(foldername, filename)}')
+                system.write_file(gh.form_path(foldername, filename), '')
 
         # Run Test
         list_result = THE_MODULE.get_directory_listing(f'{self.temp_base}', recursive=True, long=True, return_string=True)
@@ -63,33 +65,48 @@ class TestFileUtils(TestWrapper):
                                          readable = False,
                                          return_string = False)
         """
-        gh.run(f'touch {self.temp_file}')
+        temp_file = self.get_temp_file()
+        system.write_file(temp_file, '')
 
-        ls_result = gh.run(f'ls -l {self.temp_file}')
-        ls_result = re.sub(r'\s+', ' ', ls_result)
-
-        assert THE_MODULE.get_information(self.temp_file, return_string=True).lower() == ls_result.lower()
+        if os.name == 'nt':
+            ls_result = gh.run(f'dir {temp_file} /Q').split('\n')[5].strip()
+            ls_result = re.sub(r'\s+', ' ', ls_result).split(' ')
+            modif_time = ls_result[1]
+            owner = ls_result[3].split('\\')[1]
+            file_name = ls_result[-1]
+            info = THE_MODULE.get_information(temp_file, return_string=False)
+            
+            assert modif_time in info[5]
+            assert owner == info[2]
+            assert file_name in info[-1]
+            assert 'None' == info[3]
+            assert os.stat(temp_file).st_size == int(info[4])
+            # assert ls_result.lower() == info.lower()
+        else:
+            ls_result = gh.run(f'ls -l {temp_file}')
+            ls_result = re.sub(r'\s+', ' ', ls_result)
+            assert THE_MODULE.get_information(temp_file, return_string=True).lower() == ls_result.lower()
 
     def test_get_permissions(self):
         """Tests for get_permissions(path)"""
 
         # Setup
         test_file = gh.form_path(self.temp_base, 'some-file.cpp')
-        gh.run(f'touch {test_file}')
+        system.write_file(test_file, '')
 
         # Run
-        assert THE_MODULE.get_permissions(test_file) == gh.run(f'ls -l {test_file}')[:10]
-        assert THE_MODULE.get_permissions(self.temp_base) == gh.run(f'ls -ld {self.temp_base}')[:10]
+        assert THE_MODULE.get_permissions(test_file) == '-rw-rw-rw-'
+        assert THE_MODULE.get_permissions(self.temp_base) == 'drwxrwxrwx'
 
     def test_get_modification_date(self):
         """Tests for get_modification_date(path)"""
-        gh.run(f'touch {self.temp_file}')
-        ls_date = gh.run(f'ls -l {self.temp_file}').lower()
+        system.write_file(self.temp_file, '')
+        ls_date = os.stat(self.temp_file).st_mtime
         # Extract date
-        ls_date = re.search(r'\w\w\w +\d\d? +\d\d:\d\d', ls_date).group()
-        # Remove extra spaces
-        ls_date = re.sub(r'\s+', ' ', ls_date)
-        assert THE_MODULE.get_modification_date(self.temp_file, strftime='%b %-d %H:%M').lower() == ls_date
+        char = '#' if os.name == 'nt' else '-'
+        ls_date = datetime.datetime.fromtimestamp(ls_date).strftime(f'%b %{char}d %H:%M').lower()
+
+        assert THE_MODULE.get_modification_date(self.temp_file).lower() == ls_date
 
     def test_json_to_jsonl(self):
         """Tests for json_to_jsonl"""

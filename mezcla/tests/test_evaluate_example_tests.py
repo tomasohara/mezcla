@@ -27,7 +27,7 @@ from mezcla import system
 import mezcla.evaluate_example_tests as THE_MODULE
 #
 # Note: sanity test for customization (TODO: remove if desired)
-if not my_re.search(__file__, r"\btemplate.py$"):
+if not my_re.search(repr(__file__), r"\btemplate.py$"):
     debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 ## TODO:

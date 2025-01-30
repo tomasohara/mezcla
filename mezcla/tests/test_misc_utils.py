@@ -137,7 +137,7 @@ class TestMiscUtils(TestWrapper):
         stack = str(THE_MODULE.get_current_frame())
         test_name = system.get_current_function_name()
         assert f'code {test_name}' in stack
-        assert __file__ in stack
+        assert repr(__file__) in stack
 
     def test_eval_expression(self):
         """Ensure eval_expression works as expected"""

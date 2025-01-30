@@ -197,6 +197,9 @@ def pysbd_sentence_boundaries(doc):
 
     # Set new-sentence flag for token at each starting offset for sentence
     start_token_ids = [span[0].idx for span in spacy_sent_char_spans if span]
+    # for loop below causes error:
+    # ValueError: [E043] Refusing to write to token.sent_start if its document is parsed, 
+    # because this may cause inconsistent state.
     for token in doc:
         token.is_sent_start = (token.idx in start_token_ids)
     debug.assertion(len(custom_sent_char_spans) == sum(token.is_sent_start for token in doc))
@@ -238,6 +241,9 @@ def nltk_sentence_boundaries(doc):
     
     # Set new-sentence flag for token at each starting offset for sentence
     start_token_ids = [span[0].idx for span in spacy_sent_char_spans if span]
+    # for loop below causes error:
+    # ValueError: [E043] Refusing to write to token.sent_start if its document is parsed, 
+    # because this may cause inconsistent state.
     for token in doc:
         token.is_sent_start = (token.idx in start_token_ids)
     debug.assertion(len(sentence_list) == sum(token.is_sent_start for token in doc))

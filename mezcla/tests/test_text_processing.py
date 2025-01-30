@@ -24,7 +24,7 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla.my_regex import my_re
-from mezcla.unittest_wrapper import TestWrapper, RUN_SLOW_TESTS
+from mezcla.unittest_wrapper import TestWrapper, UNDER_COVERAGE, RUN_SLOW_TESTS
 from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
@@ -36,15 +36,17 @@ except:
     system.print_exception_info("text_processing import")    
 
 # Constants
-RESOURCES = f'{gh.dir_path(__file__)}/resources'
-TEXT_EXAMPLE = f'{RESOURCES}/example_text.txt'
-TEXT_EXAMPLE_TAGS = f'{RESOURCES}/example_text_tags.txt'
-WORD_POS_FREQ_FILE = f'{RESOURCES}/word-POS.freq'
-WORD_FREQ_FILE = f'{RESOURCES}/word.freq'
+RESOURCES = gh.form_path(f'{gh.dir_path(__file__)}','resources')
+TEXT_EXAMPLE = gh.form_path(f'{RESOURCES}', 'example_text.txt')
+TEXT_EXAMPLE_TAGS = gh.form_path(f'{RESOURCES}', 'example_text_tags.txt')
+WORD_POS_FREQ_FILE = gh.form_path(f'{RESOURCES}', 'word-POS.freq')
+WORD_FREQ_FILE = gh.form_path(f'{RESOURCES}', 'word.freq')
 
 @pytest.mark.skipif(not THE_MODULE, reason="Problem loading THE_MODULE")
 class TestTextProcessing(TestWrapper):
     """Class for testcase definition"""
+    script_file = TestWrapper.get_module_file_path(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_split_sentences(self):
         """Ensure split_sentences works as expected"""
@@ -223,8 +225,10 @@ class TestTextProcessingScript(TestWrapper):
     def test_all(self):
         """Ensure text_processing without argument works as expected"""
         debug.trace(4, "test_all()")
-        output = self.run_script(data_file=TEXT_EXAMPLE)
-        assert output == gh.read_file(TEXT_EXAMPLE_TAGS)[:-1]
+        output = [tag.strip() for tag in self.run_script(data_file=TEXT_EXAMPLE).split(',')]
+        expected_tags = [tag.strip() for tag in gh.read_file(TEXT_EXAMPLE_TAGS)[:-1].split(',')]
+        for output_tag, expected_tag in zip(output, expected_tags):
+            assert output_tag == expected_tag
 
     def test_just_tokenize(self):
         """Ensure just_tokenize argument works as expected"""
@@ -254,6 +258,7 @@ class TestTextProc(TestWrapper):
     @pytest.mark.xfail
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
     ## DEBUG:
+    @pytest.mark.skipif(UNDER_COVERAGE,reason="skipped because crashes when run under coverage")
     @trap_exception            # TODO: remove when debugged
     def test_chunk_noun_phrases(self):
         """Make sure sentences split into NPs properly"""

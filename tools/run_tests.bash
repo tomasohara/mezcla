@@ -94,7 +94,7 @@ fi
 # Make sure mezcla in python path
 export PYTHONPATH="$mezcla/:$PYTHONPATH"
 
-# Get environment overrides1
+# Get environment overrides
 # TODO2: cleanup stuff inherited from shell-script repo
 # shellcheck disable=SC2046,SC2086
 # TODO3: Get optional environment settings from _test-config.bash
@@ -143,4 +143,4 @@ fi
 # Return status code used by Github actions
 ## TODO3: integrate support for Jupyter notebooks tests and use combined result;
 ## see run_tests.bash in shell-scripts repo.
-exit "$test_result"
+exit "$python_result"

@@ -116,6 +116,12 @@ RUN_SLOW_TESTS = system.getenv_bool(
     description="Run tests that can a while to run")
 debug.reference_var(RUN_SLOW_TESTS)
 
+UNDER_COVERAGE = system.getenv_bool(
+    "COVERAGE_RUN", False,
+    description="whether or not tests are being run under coverage"
+)
+
+
 # Dynamic imports
 if PROFILE_CODE:
     import cProfile
@@ -440,7 +446,15 @@ class TestWrapper(unittest.TestCase):
                          env=env_options, stdin=uses_stdin, post=post_options, back=background)
         if options is None:
             options = ""
-        if env_options is None:
+        if env_options is not None:
+            suffix = ' '
+            preffix = ' '
+            if os.name == 'nt':
+                suffix = '&& '
+                preffix = 'SET '
+            list_options = [ f"{preffix}{option}{suffix}" for option in env_options.split(' ')]
+            env_options = " ".join(list_options)
+        else:
             env_options = ""
         if post_options is None:
             post_options = ""

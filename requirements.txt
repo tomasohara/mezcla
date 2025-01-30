@@ -26,6 +26,7 @@
 #
 HTMLParser
 absl_py
+asttokens
 beautifulsoup4
 bs4
 cachetools
