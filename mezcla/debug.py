@@ -167,6 +167,7 @@ if __debug__:
     max_trace_value_len = 1024          # maxium length for tracing values
     time_start = 0                      # time of module load
     include_trace_diagnostics = False   # include trace invocation sanity checks
+    use_old_introspection = False       # use old-style introspection
     #
     try:
         trace_level_text = os.environ.get(DEBUG_LEVEL_LABEL, "")
@@ -264,7 +265,7 @@ if __debug__:
             skip_sanity_checks: Optional[bool] = None
         ) -> None:
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE
-        Noe: Optionally, uses \n unless no_eol, precedes trace with INDENTATION, and
+        Note: Optionally, uses \n unless no_eol, precedes trace with INDENTATION, and
         SKIPs_SANITY_CHECKS (e.g., variables in braces in f-string omission).
         """
         # TODO1: add exception handling
@@ -576,16 +577,19 @@ if __debug__:
             # note: Short-circuits processing to avoid errors about known problems (e.g., under ipython)
             return
         # Note: checks alternative keyword first, so False ones not misintepretted
+        ## TODO3: make sep deprecated
         sep = kwargs.get('_sep') or kwargs.get('sep')
-        delim = kwargs.get('_delim') or kwargs.get('delim')
+        delim = kwargs.get('_delim') or kwargs.get('delim') or sep
         suffix = kwargs.get('_suffix') or kwargs.get('suffix')
-        no_eol = bool(kwargs.get('_no_eol') or kwargs.get('no_eol'))
+        ## OLD: no_eol = bool(kwargs.get('_no_eol') or kwargs.get('no_eol'))
+        no_eol = kwargs.get('_no_eol') or kwargs.get('no_eol')
         in_no_eol = no_eol
         use_repr = kwargs.get('_use_repr') or kwargs.get('use_repr')
         max_len = kwargs.get('_max_len') or kwargs.get('max_len')
         prefix = kwargs.get('_prefix') or kwargs.get('prefix')
-        if sep is None:
-            sep = ", "
+        ## OLD:
+        ## if sep is None:
+        ##     sep = ", "
         if no_eol is None:
             no_eol = (delim and ("\n" in delim))
         if delim is None:
@@ -596,63 +600,77 @@ if __debug__:
             use_repr = True
         if prefix is None:
             prefix = ""
-        trace(9, f"sep={sep!r}, del={delim!r}, noe={no_eol}, rep={use_repr}, len={max_len}, pre={prefix!r} suf={suffix!r}")
-
-        expression = intro.format(*values, arg_offset=1)
+        trace(9, f"sep={sep!r}, del={delim!r}, noeol={no_eol}, rep={use_repr}, len={max_len}, pre={prefix!r} suf={suffix!r}")
 
         # Get symbolic expressions for the values
-        # TODO2: handle cases split across lines
-        # try:
-        #     # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
-        #     caller = inspect.stack()[1]
-        #     (_frame, filename, line_number, _function, context, _index) = caller
-        #     trace(9, f"filename={filename!r}, context={context!r}")
-        #     statement = read_line(filename, line_number).strip()
-        #     if statement == MISSING_LINE:
-        #         statement = str(context).replace("\\n']", "")
-        #     # Extract list of argument expressions (removing optional comment)
-        #     statement = re.sub(r"#.*$", "", statement)
-        #     statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
-        #     # Remove trailing paren with optional semicolon
-        #     statement = re.sub(r"\)\s*;?\s*$", "", statement)
-        #     # Remove trailing comma (e.g., if split across lines)
-        #     statement = re.sub(r",?\s*$", "", statement)
-        #     # Skip first argument (level)
-        #     expressions = re.split(", +", statement)[1:]
-        #     trace(9, f"expressions={expressions!r}\nvalues={values!r}")
-        # except:
-        #     trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
-        #                exc=sys.exc_info())
-        #     expressions = []
+        if not use_old_introspection:
+            ## TODO2: make sure sep, max_len, etc. honored
+            ## HACK: uses _prefix to avoid conflict with introspection's prefix
+            ## TODO:
+            ## expression = intro.format(*values, arg_offset=1,
+            ##                           no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
+            expression = intro.format(*values, arg_offset=1, indirect=True,
+                                      no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
+            ## TEST:
+            ## expression = []
+            ## for i, value in enumerate(values):
+            ##     expression.append(intro.format(value, arg_offset=(i + 1)))
+            ## expression = "@".join(expression)
+            ## trace(3, f"{values=} {expression=}")
+            ##
+            trace(level, expression)
+        else:
+            ## TODO2: handle cases split across lines
+            try:
+                # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
+                caller = inspect.stack()[1]
+                (_frame, filename, line_number, _function, context, _index) = caller
+                trace(9, f"filename={filename!r}, context={context!r}")
+                statement = read_line(filename, line_number).strip()
+                if statement == MISSING_LINE:
+                    statement = str(context).replace("\\n']", "")
+                # Extract list of argument expressions (removing optional comment)
+                statement = re.sub(r"#.*$", "", statement)
+                statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
+                # Remove trailing paren with optional semicolon
+                statement = re.sub(r"\)\s*;?\s*$", "", statement)
+                # Remove trailing comma (e.g., if split across lines)
+                statement = re.sub(r",?\s*$", "", statement)
+                # Skip first argument (level)
+                expressions = re.split(", +", statement)[1:]
+                trace(9, f"expressions={expressions!r}\nvalues={values!r}")
+            except:
+                trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
+                           exc=sys.exc_info())
+                expressions = []
 
-        # # Output initial text
-        # if prefix:
-        #     trace(level, prefix, no_eol=no_eol)
+            # Output initial text
+            if prefix:
+                trace(level, prefix, no_eol=no_eol)
 
-        # # Output each expression value
-        # for expression, value in zip_longest(expressions, values):
-        #     try:
-        #         # Exclude kwarg params
-        #         match = re.search(r"^(\w+)=", str(expression))
-        #         if (match and match.group(1) in kwargs):
-        #             continue
-        #         assertion((not ((value is not None) and (expression is None))),
-        #                   f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
-        #         value_spec = format_value(repr(value) if use_repr else value,
-        #                                   max_len=max_len)
-        #         trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
-        #     except:
-        #         trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
-        #                exc=sys.exc_info())
+            # Output each expression value
+            for expression, value in zip_longest(expressions, values):
+                try:
+                    ## Exclude kwarg params
+                    match = re.search(r"^(\w+)=", str(expression))
+                    if (match and match.group(1) in kwargs):
+                        continue
+                    assertion((not ((value is not None) and (expression is None))),
+                              f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
+                    value_spec = format_value(repr(value) if use_repr else value,
+                                              max_len=max_len)
+                    trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
+                except:
+                    trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
+                           exc=sys.exc_info())
+            # Output final text
+            if suffix:
+                trace(level, suffix, no_eol=False)
+            elif (no_eol and (delim != "\n")):
+                trace(level, "", no_eol=False)
+            else:
+                trace(9, "No final text to output")
 
-        # # Output final text
-        # if suffix:
-        #     trace(level, suffix, no_eol=False)
-        # elif (no_eol and (delim != "\n")):
-        #     trace(level, "", no_eol=False)
-        # else:
-        #      trace(9, "No final text to output")
-        trace(level,expression)
         return
 
     
@@ -694,7 +712,8 @@ if __debug__:
 
     def trace_stack(level=VERBOSE):
         """Output stack trace to stderr (if at trace LEVEL or higher)"""
-        traceback.print_stack(file=sys.stderr)
+        if (level <= trace_level):
+            traceback.print_stack(file=sys.stderr)
         return
 
 
@@ -713,7 +732,7 @@ if __debug__:
         """Raise an exception if debugging (at specified trace LEVEL)
         Note: useful to re-raise exceptions normally ignored when not debugging
         """
-        if __debug__ and (level <= trace_level):
+        if (level <= trace_level):
             raise                       # pylint: disable=misplaced-bare-raise
         return
 
@@ -747,11 +766,28 @@ if __debug__:
                 ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
                 (_frame, filename, line_number, _function, context, _index) = caller
                 trace(8, f"filename={filename!r}, context={context!r}")
-                # Read statement in file and extract assertion expression
-                # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
-                expression = intro.format(expression)
-                expression_text = expression
+
+                # Resolve expression text
+                if not use_old_introspection:
+                    expression = intro.format(expression, indirect=True)
+                    expression = re.sub("=False$", "", expression)
+                    expression_text = expression
+                else:
+                    # Read statement in file and extract assertion expression
+                    # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
+                    statement = read_line(filename, line_number).strip()
+                    if statement == MISSING_LINE:
+                        ## OLD: statement = str(context).replace(")\\n']", "")
+                        statement = str(context).replace("\\n']", "")
+                        # Format expression and message
+                        # note: removes comments, along with the assertion call prefix and suffix
+                        statement = re.sub("#.*$", "", statement)
+                        statement = re.sub(r"^(\S*)assertion\(", "", statement)
+                        expression = re.sub(r"\);?\s*$", "", statement)
+                        expression = re.sub(r",\s*$", "", statement)
+                        expression_text = expression                    
                 qualification_spec = (": " + message) if message else ""
+
                 # Output information
                 # TODO: omit subsequent warnings
                 trace_fmtd(ALWAYS, "Assertion failed: {expr} (at {file}:{line}){qual}",
@@ -1143,12 +1179,13 @@ def main(args: List[str]) -> None:
         level_value = level
         trace_expr(level, level_value)
     #
-    # Maker sure trace_expr gets all arguments
+    # Make sure trace_expr gets all arguments
+    # TODO4: Revise confusing legend
     trace(ALWAYS, "n-i=N-i         for N=trace_level ({l}) and i from 1..-1".format(l=trace_level))
     n = trace_level
     i = 1
     ## TODO: for i in range(3, 0, -1):
-    trace_expr(ERROR, n+i, n, n+i)
+    trace_expr(ERROR, n-i, n, n+i)
     return
 
 
@@ -1157,14 +1194,15 @@ def main(args: List[str]) -> None:
 
 if __debug__:
 
-    def open_debug_file() -> None:
+    def open_debug_file(debug_filename: Optional[str] = None) -> None:
         """Open external file for copy of trace output"""
         trace(5, "open_debug_file()")
         global debug_file
         assertion(debug_file is None)
 
         # Open the file
-        debug_filename = os.getenv("DEBUG_FILE")
+        if debug_filename is None:
+            debug_filename = os.getenv("DEBUG_FILE")
         if debug_filename is not None:
             ## OLD: debug_file = open(debug_filename, mode="w", encoding="UTF-8")
             ## TEST: open unbuffered which requires binary output mode
@@ -1179,12 +1217,13 @@ if __debug__:
                    fn=debug_filename, f=debug_file)
         return
 
-    def reopen_debug_file() -> None:
+    def reopen_debug_file(debug_filename: Optional[str] = None) -> None:
         """Re-open debug file to work around concurrent access issues
         Note: The debug file is mainly used with pytest to work around stderr tracing issues"""
         trace(5, "reopen_debug_file()")
         global debug_file
-        assertion(debug_file is not None)
+        if not debug_filename:
+            assertion(debug_file is not None)
 
         # Close file if opened
         if debug_file:
@@ -1192,7 +1231,7 @@ if __debug__:
             debug_file = None
 
         # Open fresh
-        open_debug_file()
+        open_debug_file(debug_filename)
         return
 
     def debug_init() -> None:
@@ -1244,6 +1283,8 @@ if __debug__:
         ## global output_caller_info
         ## output_caller_info = _getenv_bool("OUTPUT_CALLER_INFO", output_caller_info)
         trace_expr(VERBOSE, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
+        global use_old_introspection
+        use_old_introspection = _getenv_bool("USE_OLD_INTROSPECTION", False)
 
         # Show additional information when detailed debugging
         # TODO: sort keys to facilate comparisons of log files
