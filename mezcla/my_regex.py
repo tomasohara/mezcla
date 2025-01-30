@@ -145,7 +145,7 @@ class regex_wrapper():
         if base_trace_level is None:
             base_trace_level = self.TRACE_LEVEL
         debug.trace_fmtd((1 + base_trace_level), "my_regex.search({r!r}, {t!r}, {f}): self={s}",
-                         r=regex, t=text, f=flags, s=self)
+                         r=regex, t=text, f=flags, s=self, max_len=2048)
         ## OLD: debug.assertion(isinstance(text, six.string_types))
         debug.assertion(isinstance(text, (str, bytes)) and (isinstance(regex, type(text))))
         self.search_text = text
@@ -162,7 +162,7 @@ class regex_wrapper():
         if base_trace_level is None:
             base_trace_level = self.TRACE_LEVEL
         debug.trace_fmtd((1 + base_trace_level), "my_regex.match({r!r}, {t!r}, {f}): self={s}",
-                         r=regex, t=text, f=flags, s=self)
+                         r=regex, t=text, f=flags, s=self, max_len=2048)
         self.search_text = text
         self.check_pattern(regex)
         self.match_result = re.match(regex, text, flags)
@@ -230,14 +230,14 @@ class regex_wrapper():
         """Use PATTERN to split STRING, optionally up to MAXSPLIT with FLAGS"""
         result = re.split(pattern, string, maxsplit, flags)
         debug.trace_fmt(self.TRACE_LEVEL, "split{args} => {r!r}",
-                        args=tuple([pattern, string, maxsplit, flags]), r=result)
+                        args=tuple([pattern, string, maxsplit, flags]), r=result, max_len=2048)
         return result
     
     def findall(self, pattern, string, flags=0):
         """Use PATTERN to split STRING, optionally with specified FLAGS"""
         result = re.findall(pattern, string, flags)
         debug.trace_fmt(self.TRACE_LEVEL, "findall{args} => {r!r}",
-                        args=tuple([pattern, string, flags]), r=result)
+                        args=tuple([pattern, string, flags]), r=result, max_len=2048)
         return result
 
     def escape(self, text):
