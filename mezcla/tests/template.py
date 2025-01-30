@@ -38,7 +38,7 @@
 import pytest
 
 # Local modules
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 ## TODO: from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
 ## TODO: from mezcla import glue_helpers as gh
@@ -194,5 +194,4 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    ## TODO2: here and elsewhere: invoke_tests(__file__)
-    pytest.main([__file__])
+    invoke_tests(__file__)
