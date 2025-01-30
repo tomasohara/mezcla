@@ -196,10 +196,15 @@ def pytest_fixture_wrapper(function: Callable) -> Callable:
 
 def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
     """Invoke TESTS defined in FILENAME, optionally VIA_UNITTEST"""
-    if via_unittest:
-        unittest.main()
-    else:
-        pytest.main([filename])
+    debug.trace(5, f"invoke_tests({filename}, [{via_unittest}])")
+    try:
+        if via_unittest:
+            unittest.main(argv=sys.argv[:1])
+        else:
+            pytest.main([filename])
+    except:
+        debug.raise_exception(6)
+        system.print_exception_info("invoke_tests")
 
 
 def init_temp_settings():
@@ -271,7 +276,7 @@ class TestWrapper(unittest.TestCase):
                             f"problem running via 'python -m {cls.script_module}'")
             # Warn about lack of usage statement unless "not intended for command-line" type warning issued
             # TODO: standardize the not-intended wording
-            if (not ((my_re.search(r"warning:.*not intended", help_usage,
+            if (not ((my_re.search(r"(warning|FYI):.*not intended", help_usage,
                                    flags=my_re.IGNORECASE))
                      or ("usage:" in help_usage.lower()))):
                 system.print_stderr("Warning: script should implement --help")
@@ -507,6 +512,7 @@ class TestWrapper(unittest.TestCase):
             Optional[str]
         ]:
         """Returns statement text, filename, line number, and qualifier for FUNCTION_LABEL assertion failure"""
+        ## TODO2: use new introspection module
         statement = filename = line_num = expr = qual = None
         try:
             # note: accounts for trap_exception and other decorators
