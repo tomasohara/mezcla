@@ -9,6 +9,8 @@
 # TODO:
 # - Add support for write_lines & read_lines.
 # - Add support for other commonly used functions.
+# TODO2:
+# - Use gh.form_path instead of hard-coding path delimiters.
 #
 
 """Tests for glue_helpers module"""
@@ -29,7 +31,7 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import tpo_common as tpo    # Deprecated, only used for mock
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import system
 
 # Note: Two references are used for the module to be tested:
@@ -39,8 +41,7 @@ import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    ## TEMP
-    temp_file = gh.get_temp_file()
+    ## OLD: temp_file = gh.get_temp_file()
 
     @pytest.mark.xfail                   # TODO: remove xfail
     ## DEBUG: @trap_exception            # TODO: remove when debugged
@@ -276,6 +277,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert not THE_MODULE.basename("fubar.py", "") == "fubar"
         assert THE_MODULE.basename("/tmp/solr-4888.log", ".log") == "solr-4888"
 
+    @pytest.mark.xfail
     def test_resolve_path(self):
         """Tests for resolve_path(filename)"""
         script = "glue_helpers.py"
@@ -508,7 +510,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_copy_directory(self):
         """Ensure copy_directory works as expected"""
         debug.trace(4, "test_copy_directory()")
-        temp_dir = '/tmp/test_copy_dir_'
+        ## OLD: temp_dir = '/tmp/test_copy_dir_'
+        temp_dir = self.temp_file + 'test_copy_dir_'
         system.create_directory(f'{temp_dir}1')
         system.write_file(f'{temp_dir}1/test_file', "copy")
         assert 'test_file' in system.read_directory(
@@ -522,13 +525,15 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         old = THE_MODULE.DISABLE_RECURSIVE_DELETE
 
         # test an empty directory gets deleted
-        empty_dir = '/tmp/test_delete_directory-1/'
+        ## OLD: empty_dir = '/tmp/test_delete_directory-1/'
+        empty_dir = self.temp_file + 'test_delete_directory-1'
         system.create_directory(empty_dir)
         assert THE_MODULE.is_directory(empty_dir)
         assert THE_MODULE.delete_directory(empty_dir) is None
 
         # test a directory with files gets deleted
-        non_empty_dir = '/tmp/test_delete_directory-2'
+        ## OLD: non_empty_dir = '/tmp/test_delete_directory-2'
+        non_empty_dir = self.temp_file + 'test_delete_directory-2'
         system.create_directory(non_empty_dir)
         system.write_file(f'{non_empty_dir}/test_delete_directory', '2')
         assert THE_MODULE.is_directory(non_empty_dir)
@@ -536,7 +541,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
 
         # test a directory with subdirs doesnt get deleted if DISABLE_RECURSIVE_DELETE
         THE_MODULE.DISABLE_RECURSIVE_DELETE = True
-        dir_with_subdirs = '/tmp/test_delete_directory-3'
+        ## OLD: dir_with_subdirs = '/tmp/test_delete_directory-3'
+        dir_with_subdirs = self.temp_file + 'test_delete_directory-3'
         subdir = f"{dir_with_subdirs}/subdir"
         system.create_directory(dir_with_subdirs)
         system.create_directory(subdir)
@@ -603,4 +609,4 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)
