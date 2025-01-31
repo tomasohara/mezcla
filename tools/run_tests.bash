@@ -143,4 +143,4 @@ fi
 # Return status code used by Github actions
 ## TODO3: integrate support for Jupyter notebooks tests and use combined result;
 ## see run_tests.bash in shell-scripts repo.
-exit "$python_result"
+exit "$test_result"
