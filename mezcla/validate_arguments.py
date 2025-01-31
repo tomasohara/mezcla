@@ -8,13 +8,14 @@
 # Standard modules
 import ast
 from functools import wraps
+import sys
 
 # Installed module
 try:
     from pydantic import BaseModel
     import astor
 except:
-    debug.trace(4, "Warning unable to import astor and pydantic")
+    sys.stderr.write("Warning unable to import astor and/or pydantic\n")
     BaseModel = object
     astor = None
 
