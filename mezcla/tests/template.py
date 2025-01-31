@@ -58,7 +58,7 @@ except:
 ## TODO: make sure import above syntactically valid
 #
 # Note: sanity test for customization (TODO: remove if desired)
-if not my_re.search(__file__, r"\btemplate.py$"):
+if not my_re.search(r"\btemplate.py$", __file__):
     debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 ## TODO:
