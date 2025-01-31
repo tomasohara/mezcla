@@ -131,11 +131,11 @@ def get_information(path, readable=False, return_string=False):
         get_file_size('somefile.txt', return_string=True) -> "-rwxrwxr-x\t3\tpeter\tadmins\t4096\toct 25 01:42\tsomefile.txt"
     """
     debug.assertion(not readable)
+    is_dir = is_directory(path)
     is_windows = os.name == 'nt'
     if is_windows:
         system.print_stderr("Warning: Windows is not fully supported by mezcla")
         
-        is_dir = is_directory(path)
         dir_flags = '/AD /Q' if is_dir else '/A-D /Q'
         ls_result = gh.run(f'dir {dir_flags} {path}')
         ls_result = my_re.sub(r'\s+', ' ', ls_result).split(' ')[15:]
