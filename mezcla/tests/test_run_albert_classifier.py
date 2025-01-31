@@ -33,4 +33,4 @@ class TestRunAlbertClassifier:
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

@@ -259,7 +259,7 @@ class IBMWatson(SpeechEngine):
         debug.trace_object(5, self, label="IBMWatson instance")
 
     def setup(self):
-        # pylint: disable=import-outside-toplevel, disable=redefined-outer-name
+        # pylint: disable=import-outside-toplevel, disable=redefined-outer-name, import-error
         from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
         from ibm_watson import SpeechToTextV1
         self.IAMAuthenticator = IAMAuthenticator

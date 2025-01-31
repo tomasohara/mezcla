@@ -18,7 +18,7 @@ import re
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
 
@@ -31,7 +31,7 @@ MEZCLA_REGEX = "M[e]zcl[a]"
 
 class TestMyRegex(TestWrapper):
     """Class for testcase definition"""
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     my_re = THE_MODULE.my_re            # TODO3: make global to cut down self usages
 
     ## OLD:
@@ -228,4 +228,4 @@ class TestMyRegex(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

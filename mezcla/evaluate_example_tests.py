@@ -60,7 +60,7 @@ class TestConverter:
 
     def add_module(self, module_spec):
         """Add import-* spec from MODULE_SPEC"""
-        # pylint: disable=eval-used,exec-used
+        # pylint: disable=eval-used, exec-used
         ## TODO2: debug.assertion(eval("isintance(eval({module_spec!r}, module)"))
         exec(f"import {module_spec}")
         debug.assertion(eval(f"isinstance({module_spec}, ModuleType)"))

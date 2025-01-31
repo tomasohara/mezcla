@@ -31,7 +31,7 @@ except:
     librosa = None
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import glue_helpers as gh
 from mezcla import debug
 from mezcla import system
@@ -164,4 +164,4 @@ class TestAudio(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

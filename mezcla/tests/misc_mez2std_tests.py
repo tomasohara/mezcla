@@ -46,7 +46,7 @@ from pydantic import BaseModel
 # Local packages
 from mezcla import system, debug, glue_helpers as gh, misc_utils
 from mezcla.my_regex import my_re
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import RUN_SLOW_TESTS, fix_indent
 
 # Constants, including environment variables
@@ -789,4 +789,4 @@ class TestM2SBatchConversion(TestWrapper):
 
 if __name__ == "__main__":
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

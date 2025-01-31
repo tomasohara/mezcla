@@ -27,7 +27,7 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Constants
 LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"

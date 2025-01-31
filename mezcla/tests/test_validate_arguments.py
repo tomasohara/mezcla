@@ -18,7 +18,7 @@ from pydantic import ValidationError, BaseModel, validate_call    # pylint: disa
 from mezcla import system
 import mezcla.validate_arguments as va
 THE_MODULE = va
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Constants
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))

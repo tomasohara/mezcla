@@ -485,7 +485,6 @@ def open_file(
         encoding = "UTF-8"
     if (encoding and (errors is None)):
         errors = 'ignore'
-    ENCODING = "encoding"
     if kwargs.get(ENCODING) is None:
         kwargs[ENCODING] = encoding
     result = None

@@ -50,7 +50,7 @@ except:
     THE_MODULE = None
 from mezcla import system, debug, glue_helpers as gh
 ## TOO: from mezcla.my_regex import my_re
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import (
     SKIP_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON, fix_indent)
 
@@ -2994,4 +2994,4 @@ class TestUsage(TestWrapper):
 
 if __name__ == "__main__":
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

@@ -30,7 +30,7 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 ## OLD: from mezcla.my_regex import my_re
 ## OLD: from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 ## OLD: from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
@@ -521,4 +521,4 @@ class TestFormatProfile(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

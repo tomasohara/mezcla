@@ -21,7 +21,7 @@ import pytest
 ## OLD: import bs4
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla import system
 from mezcla import glue_helpers as gh
@@ -38,7 +38,7 @@ TEST_SELENIUM = system.getenv_bool("TEST_SELENIUM", False,
 
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     scrappycito_url = "http://www.scrappycito.com"
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
@@ -628,4 +628,4 @@ class TestHtmlUtils(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

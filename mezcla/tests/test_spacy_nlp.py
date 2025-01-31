@@ -48,7 +48,7 @@ from mezcla import glue_helpers as gh
 from mezcla.misc_utils import is_close
 from mezcla.my_regex import my_re
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 ## DEBUG: from mezcla.unittest_wrapper import trap_exception
 
 # Environment manpulation
@@ -155,4 +155,4 @@ class TestSpacy(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

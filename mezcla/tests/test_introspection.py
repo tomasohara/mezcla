@@ -29,12 +29,6 @@ try:
     import mezcla.introspection as THE_MODULE
 except:
     system.print_exception_info("introspection import") 
-## 
-## TODO: make sure import above syntactically valid
-#
-# Note: sanity test for customization (TODO: remove if desired)
-if not my_re.search(__file__, r"\btemplate.py$"):
-    debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 #------------------------------------------------------------------------
 

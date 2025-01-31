@@ -19,7 +19,7 @@ import pytest
 
 # Local packages
 from mezcla import debug
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.my_regex import my_re
 from mezcla import system
 
@@ -60,4 +60,4 @@ class TestSimpleMainExample(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

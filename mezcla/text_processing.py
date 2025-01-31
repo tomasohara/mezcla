@@ -97,6 +97,8 @@ TL = debug.TL
 speller = None
 word_freq_hash = None
 WORD_FREQ_FILE = system.getenv_text("WORD_FREQ_FILE", "word.freq")
+nltk = None
+enchant = None
 
 # Hash for returning most common part of speech for a word (or token)
 word_POS_hash = None

@@ -21,7 +21,7 @@ import pytest
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -30,7 +30,7 @@ import mezcla.merge_files as THE_MODULE
 class TestMergeFiles(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     use_temp_base_dir = True            # treat TEMP_BASE as directory
 
     @pytest.mark.xfail
@@ -72,4 +72,4 @@ class TestMergeFiles(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

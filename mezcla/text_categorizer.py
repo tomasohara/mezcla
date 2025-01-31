@@ -232,7 +232,7 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         """Get parameter names for the estimator"""
         # TODO: drop method
         # Note: This is not class method as in BaseEstimator.
-        # pylint: disable=protected-access,arguments-differ
+        # pylint: disable=protected-access, arguments-differ
         return self.classifier._get_param_names()
 
     def get_params(self, deep=True):

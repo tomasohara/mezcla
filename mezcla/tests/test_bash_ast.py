@@ -54,7 +54,7 @@
 import pytest
 
 # Local modules
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
@@ -68,10 +68,6 @@ try:
 except:
     THE_MODULE = None
     debug.trace_exception(4, "bash_ast import")
-#
-# Note: sanity test for customization (TODO: remove if desired)
-if not my_re.search(__file__, r"\btemplate.py$"):
-    debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 #------------------------------------------------------------------------
 
@@ -108,4 +104,4 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

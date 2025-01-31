@@ -26,7 +26,7 @@ import pytest
 from mezcla import glue_helpers as gh
 from mezcla import debug
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.mezcla_to_standard import EqCall, Features
 
 # Note: Two references are used for the module to be tested:
@@ -318,4 +318,4 @@ class test_file_to_instance(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)
