@@ -28,7 +28,7 @@
 #
 #   import unittest
 #   from mezcla import system
-#   from mezcla.unittest_wrapper import TestWrapper
+#   from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 #
 #   class TestIt(TestWrapper):
 #       """Class for testcase definition"""
@@ -41,7 +41,7 @@
 #           self.assertTrue("really" in output)
 #
 #   if __name__ == '__main__':
-#      unittest.main()
+#      invoke_tests(__file__)
 #-------------------------------------------------------------------------------
 # TODO:
 # - Add method to invoke unittest.main(), so clients don't need to import unittest.
@@ -337,7 +337,7 @@ class TestWrapper(unittest.TestCase):
     def get_testing_module_name(test_filename: str, module_object: Optional[object] = None) -> str:
         """Derive the name of the module being tested from TEST_FILENAME and MODULE_OBJECT
         Note: used as follows (see tests/template.py):
-            script_module = TestWrapper.get_testing_module_name(__file__)
+            script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
         """
         # Note: Used to resolve module name given THE_MODULE (see template).
         module_name = os.path.split(test_filename)[-1]
