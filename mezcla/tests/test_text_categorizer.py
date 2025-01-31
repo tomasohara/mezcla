@@ -16,7 +16,7 @@
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
@@ -49,20 +49,20 @@ class TestTextCategorizerUtils(TestWrapper):
     def test_sklearn_report(self):
         """Ensure sklearn_report works as expected"""
         debug.trace(4, "test_sklearn_report()")
-        assert(False)
+        self.do_assert(False, "TODO: implement")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_create_tabular_file(self):
         """Ensure create_tabular_file works as expected"""
         debug.trace(4, "test_create_tabular_file()")
-        assert(False)
+        self.do_assert(False, "TODO: implement")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_read_categorization_data(self):
         """Ensure read_categorization_data works as expected"""
         debug.trace(4, "test_read_categorization_data()")
         # TODO: create resource file to test tab separated values
-        assert(False)
+        self.do_assert(False, "TODO: implement")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_int_if_whole(self):
@@ -90,68 +90,68 @@ class TestTextCategorizerUtils(TestWrapper):
         assert my_re.search(r"TODO-pattern", output.strip())
         return
 
-@pytest.mark.xfail  # TODO: remove xfail
-def test_format_index_html():
-    """Ensure format_index_html works as expected"""
-    debug.trace(4, "test_format_index_html()")
-    
-    # Example input data
-    base_url = "http://127.0.0.1:8080"
-    
-    # Expected output
-    expected_output = """
-    <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
-    <html lang="en">
-        <head>
-            <meta content="text/html; charset=UTF-8" http-equiv="content-type">
-            <title>Text categorizer</title>
-        </head>
-        <body>
-            Try <a href="categorize">categorize</a> and <a href="class_probabilities">class_probabilities</a>.<br>
-            note: You need to supply the <i><b>text</b></i> parameter.<br>
-            <br>
-            Examples:
-            <ul>
-                <li>Category for <a href="categorize?text=Donald+Trump+was+President.">"Donald Trump was President."</a>:<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;<code>http://127.0.0.1:8080/categorize?text=Donald+Trump+was+President.</code>
-                </li>
-    
-                <li>Probability distribution for <a href="class_probabilities?text=My+dog+has+fleas.">"My dog has fleas."</a>:<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;<code>http://127.0.0.1:8080/class_probabilities?text=My+dog+has+fleas.</code>
-                </li>
-            </ul>
-            
-            <!-- Form for entering text for categorization -->
-            <hr>
-            <form action="http://127.0.0.1:8080/categorize" method="get">
-                <label for="textarea1">Categorize</label>
+    @pytest.mark.xfail  # TODO: remove xfail
+    def test_format_index_html(self):
+        """Ensure format_index_html works as expected"""
+        debug.trace(4, "test_format_index_html()")
+        
+        # Example input data
+        base_url = "http://127.0.0.1:8080"
+        
+        # Expected output
+        expected_output = """
+        <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+        <html lang="en">
+            <head>
+                <meta content="text/html; charset=UTF-8" http-equiv="content-type">
+                <title>Text categorizer</title>
+            </head>
+            <body>
+                Try <a href="categorize">categorize</a> and <a href="class_probabilities">class_probabilities</a>.<br>
+                note: You need to supply the <i><b>text</b></i> parameter.<br>
                 <br>
-                <textarea id="textarea1" rows="10" cols="100" name="text"></textarea>
-                <br>
-                <input type="submit">
-            </form>
-            <!-- Form for entering text for textcat probability distribution -->
-            <hr>
-            <form action="http://127.0.0.1:8080/probs" method="get">
-                <label for="textarea1">Probabilities</label>
-                <br>
-                <textarea id="textarea2" rows="10" cols="100" name="text"></textarea>
-                <br>
-                <input type="submit">
-            </form>
-        </body>
-    </html>
-    """
-    
-    # Call the function
-    output = THE_MODULE.format_index_html(base_url)
-    
-    # Print the actual output for debugging
-    print("Actual Output:\n", output)
-    
-    # Assert the output
-    assert output.strip() == expected_output.strip()
-
+                Examples:
+                <ul>
+                    <li>Category for <a href="categorize?text=Donald+Trump+was+President.">"Donald Trump was President."</a>:<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<code>http://127.0.0.1:8080/categorize?text=Donald+Trump+was+President.</code>
+                    </li>
+        
+                    <li>Probability distribution for <a href="class_probabilities?text=My+dog+has+fleas.">"My dog has fleas."</a>:<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;<code>http://127.0.0.1:8080/class_probabilities?text=My+dog+has+fleas.</code>
+                    </li>
+                </ul>
+                
+                <!-- Form for entering text for categorization -->
+                <hr>
+                <form action="http://127.0.0.1:8080/categorize" method="get">
+                    <label for="textarea1">Categorize</label>
+                    <br>
+                    <textarea id="textarea1" rows="10" cols="100" name="text"></textarea>
+                    <br>
+                    <input type="submit">
+                </form>
+                <!-- Form for entering text for textcat probability distribution -->
+                <hr>
+                <form action="http://127.0.0.1:8080/probs" method="get">
+                    <label for="textarea1">Probabilities</label>
+                    <br>
+                    <textarea id="textarea2" rows="10" cols="100" name="text"></textarea>
+                    <br>
+                    <input type="submit">
+                </form>
+            </body>
+        </html>
+        """
+        
+        # Call the function
+        output = THE_MODULE.format_index_html(base_url)
+        
+        # Print the actual output for debugging
+        print("Actual Output:\n", output)
+        
+        # Assert the output
+        ## TODO3: check individually for specific segments
+        assert output.strip() == expected_output.strip()
 
     @pytest.mark.skipif(not TEST_TBD, reason="Ignoring feature to be designed")
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -221,4 +221,4 @@ class TestTextCategorizerScript(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)
