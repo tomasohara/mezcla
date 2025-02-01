@@ -60,7 +60,8 @@ import executing
 
 # Globals
 _absent = object()
-intro = None
+## OLD (droppped for sake of mypy):
+## intro = None
 
 
 def stderr_print(*args):
@@ -106,6 +107,11 @@ class Source(executing.Source):
         Retrieves the text representation of the given AST node, preserving its indentation.
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        ## DEBUG: debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {Source.__init__({a})")
+        ## DEBUG: debug.trace_object(5, self, label="Source instance")
+
     def get_text_with_indentation(self, node):
         """
         Retrieves the text representation of the given AST node, preserving its indentation.
@@ -118,8 +124,12 @@ class Source(executing.Source):
         result = result.strip()
         return result
 
+    @classmethod
+    def for_frame(cls, frame, use_cache=True):
+        return super(Source, cls).for_frame(frame, use_cache)
 
-def prefix_lines(prefix: str, s: str, start_at_line=0):
+
+def prefix_lines(prefix: str, s: str, start_at_line=0) -> list[str]:
     """
     Separates every word in a string,
     adds a prefix and returns them as a list
@@ -132,7 +142,7 @@ def prefix_lines(prefix: str, s: str, start_at_line=0):
     return lines
 
 
-def prefix_first_line_indent_remaining(prefix: str, s):
+def prefix_first_line_indent_remaining(prefix: str, s: str) -> list[str]:
     """
     Adds prefix to first line and indents the remaining,
     returns the lines as a list
@@ -301,10 +311,11 @@ class MezclaDebugger:
         ## DEBUG: sys.stderr.write(f"call_node: {ast.dump(call_node)}\n")
         if call_node is not None:
             source = Source.for_frame(call_frame)
+            # Note: disables mypy error: "EnhancedAST" has no attribute "args" [attr-defined]
             ## DEBUG: sys.stderr.write(f"{call_node=} {call_node.args=} {source=}\n")
             sanitized_arg_strs = [
                 source.get_text_with_indentation(arg)
-                for arg in call_node.args[arg_offset:]
+                for arg in call_node.args[arg_offset:]      # type: ignore [attr-defined]
             ]
             ## DEBUG: sys.stderr.write(f"{sanitized_arg_strs=}\n")
         else:
@@ -360,8 +371,10 @@ class MezclaDebugger:
                 lines = prefix_first_line_indent_remaining(prefix, "\n".join(arg_lines))
         else:
             ## OLD: lines = [prefix + context + context_delimiter + all_args_on_one_line + suffix]
-            lines = "".join((v if v else "") for v in
-                            [prefix, context, context_delimiter, all_args_on_one_line, suffix])
+            ## OLD2: lines = "".join((v if v else "") for v in
+            ##                       [prefix, context, context_delimiter, all_args_on_one_line, suffix])
+            lines = [(v if v else "") for v in
+                     [prefix, context, context_delimiter, all_args_on_one_line, suffix]]
         ## DEBUG: sys.stderr.write(f"{prefix=}\n{context=}\n{context_delimiter=}\n{all_args_on_one_line=}\n{suffix=}\n")
 
         no_eol = kwargs.get('no_eol', False)
