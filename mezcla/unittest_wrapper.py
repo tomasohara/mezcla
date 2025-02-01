@@ -253,6 +253,8 @@ class TestWrapper(unittest.TestCase):
     temp_file_count = 0
     class_setup = False
     profiler = None
+    monkeypatch = None
+    capsys = None
     
     ## TEST:
     ## NOTE: leads to pytest warning. See
@@ -609,14 +611,14 @@ class TestWrapper(unittest.TestCase):
                 system.print_error("Warning: unexpected condition in do_assert_equals")
         assert equals, message
     
-    @pytest.fixture(autouse=True)
-    def monkeypatch(self, monkeypatch) -> None:
+    @pytest.fixture(autouse=True, name='monkeypatch')
+    def monkeypatch_fixture(self, monkeypatch) -> None:
         """Support for using pytest monkeypatch to modify objects (e.g., dictionaries or environment variables)"""
         # See https://docs.pytest.org/en/latest/how-to/monkeypatch.html
         self.monkeypatch = monkeypatch
 
-    @pytest.fixture(autouse=True)
-    def capsys(self, capsys) -> None:
+    @pytest.fixture(autouse=True, name='capsys')
+    def capsys_fixture(self, capsys) -> None:
         """Support for capturing stdout and stderr"""
         # See https://docs.pytest.org/en/latest/how-to/capture-stdout-stderr.html
         self.capsys = capsys
