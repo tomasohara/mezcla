@@ -271,7 +271,9 @@ def write_json(filename, obj, indent=None, default=None):
 
 
 def read_yaml(filename):
-    """Create FILENAME using YAML representation of OBJ"""
+    """Create FILENAME using YAML representation of OBJ
+    Note: The contents need to have at least one value or None returned (e.g., just comments).
+    """
     result = None
     try:
         result = yaml.safe_load(system.open_file(filename))
