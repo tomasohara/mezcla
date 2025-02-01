@@ -8,6 +8,8 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_system.py
 #
+# TODO3: Remove xfail's
+#
 
 """Tests for system module"""
 
@@ -206,7 +208,6 @@ class TestSystem(TestWrapper):
         assert "Foobar" in captured
 
     @pytest.mark.xfail
-    @trap_exception                     # TODO: remove when debugged
     def test_exit(self):
         """Ensure exit works as expected"""
         # Note: This modifies sys.exit so that system.exit doesn't really exit.
@@ -220,9 +221,13 @@ class TestSystem(TestWrapper):
         #
         self.monkeypatch.setattr(sys, "exit", sys_exit_mock)
         MESSAGE = "test_exit method"
-        self.do_assert(THE_MODULE.exit(MESSAGE) == EXIT)
-        # Exit is mocked, ignore code editor hidding
+        ## NOTE: system.exit returns None
+        ## BAD: self.do_assert(THE_MODULE.exit(MESSAGE) == EXIT)
+        self.do_assert(sys.exit(MESSAGE) == EXIT)
+        THE_MODULE.exit(MESSAGE)
+        # Exit is mocked, ignore code editor hidding [TODO4: hidden?]
         captured = self.get_stderr()
+        debug.trace_expr(5, captured)
         self.do_assert(MESSAGE in captured)
 
     def test_setenv(self):
@@ -460,10 +465,15 @@ class TestSystem(TestWrapper):
         assert 'Warning: Ignoring line' in captured
 
         # Test invalid filename
-        with pytest.raises(AssertionError):
-            THE_MODULE.read_lookup_table('bad_filename')
-            captured = self.get_stderr()
-            assert 'Error' in captured
+        ## Note: AssertionError now trapped by read_lookup_table
+        ## OLD:
+        ## with pytest.raises(AssertionError):
+        ##     THE_MODULE.read_lookup_table('bad_filename')
+        ##     captured = self.get_stderr()
+        ##     assert 'Error' in captured
+        THE_MODULE.read_lookup_table('bad_filename')
+        captured = self.get_stderr()
+        assert 'Error' in captured
 
     @pytest.mark.xfail
     def test_create_boolean_lookup_table(self):
@@ -498,11 +508,16 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.create_boolean_lookup_table(temp_file, retain_case=True) == expected_uppercase
 
         # Test invalid file
-        with pytest.raises(AssertionError):
-            THE_MODULE.create_boolean_lookup_table('/tmp/bad_filename')
-            captured = self.get_stderr()
-            assert 'Error:' in captured
-
+        ## Note: AssertionError now trapped by create_boolean_lookup_table
+        ## OLD
+        ## with pytest.raises(AssertionError):
+        ##     THE_MODULE.create_boolean_lookup_table('/tmp/bad_filename')
+        ##     captured = self.get_stderr()
+        ##     assert 'Error:' in captured
+        THE_MODULE.create_boolean_lookup_table('/tmp/bad_filename')
+        captured = self.get_stderr()
+        assert 'Error:' in captured
+    
     def test_lookup_entry(self):
         """Ensure lookup_entry works as expected"""
         debug.trace(4, "test_lookup_entry()")
@@ -660,9 +675,10 @@ class TestSystem(TestWrapper):
         past_dir = THE_MODULE.get_current_directory()
         test_dir = gh.dir_path(__file__)
         assert THE_MODULE.set_current_directory(gh.form_path(test_dir, '..')) is None
+        assert not THE_MODULE.get_current_directory().endswith('tests')
+        THE_MODULE.set_current_directory(test_dir)
         assert THE_MODULE.get_current_directory().endswith('tests')
-        assert THE_MODULE.get_current_directory() is not past_dir
-
+        ## OLD: assert THE_MODULE.get_current_directory() is not past_dir
 
     def test_to_utf8(self):
         """Ensure to_utf8 works as expected"""
