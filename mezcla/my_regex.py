@@ -58,7 +58,10 @@ REGEX_DEBUG_LEVEL = system.getenv_int(
 REGEX_TRACE_LEVEL = system.getenv_int(
     "REGEX_TRACE_LEVEL", REGEX_DEBUG_LEVEL,
     desc="Trace level for my_regex")
-    
+REGEX_WARNINGS = system.getenv_bool(
+    "REGEX_WARNINGS", debug.debugging(debug.USUAL),
+    desc="Include warnings about regex's such as f-string")
+
 ## TODO # HACK: make sure regex can be used as plug-in replacement 
 ## from from re import *
 
@@ -128,16 +131,22 @@ class regex_wrapper():
 
     def check_pattern(self, regex):
         """Apply sanity checks to REGEX when debugging
-        Note: Added to account for potential f-string confusion"""
-        # TODO: Add way to disable check
+        Note: Added to account for potential missing f-string prefix"""
+        debug.trace(self.TRACE_LEVEL + 1, f"check_pattern({regex})")
         debug.reference_var(self)
-        check_regex = r"([^{]|^)\{[^0-9][A-Fa-f0-9]*[^{}]+\}([^}]|$)"
+        # note: checks for variable reference in braces (e.g., "Hi, {name}!")
+        ## BAD: check_regex = r"([^{]|^)\{[^0-9][A-Fa-f0-9]*[^{}]+\}([^}]|$)"
+        ## ALT: check_regex = r"([^\{]|^)\{([[A-Z][A-Z0-9]*[^\{\}]+)\}([^\}]|$)"
+        check_regex = r"([^{]|^){[A-Z][A-Z0-9]*[^{}]+}([^}]|$)"
         if isinstance(regex, bytes):
-            check_regex = check_regex.encode()
-        if debug.debugging(1):
-            match = re.search(check_regex, regex)
+            regex = regex.encode()
+        if REGEX_WARNINGS:
+            debug.trace_expr(self.TRACE_LEVEL + 1, check_regex, delim="\n")
+            match = re.search(check_regex, regex, flags=re.IGNORECASE)
+            if match and re.search(r"[\*\+\?]", match.string):
+                match = None
             if match:
-                system.print_error(f"Warning: potentially unresolved f-string in {regex} at {match.start(0)}")
+                system.print_error(f"Warning: potentially unresolved f-string in {regex!r} at {match.start(0)}")
 
     def search(self, regex, text, flags=0, base_trace_level=None):
         """Search for REGEX in TEXT with optional FLAGS and BASE_TRACE_LEVEL (e.g., 6)"""
