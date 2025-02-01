@@ -837,6 +837,7 @@ def write_file(
     Note: A newline is added at the end if missing unless SKIP_NEWLINE.
     A binary file is created if BINARY (n.b., incompatible with APPEND).
     """
+    ## TODO2: Any => Union[bytes, str]
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
     # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
@@ -901,8 +902,9 @@ def write_lines(
     return
 
 
-def write_temp_file(filename: FileDescriptorOrPath, text: str) -> None:
+def write_temp_file(filename: FileDescriptorOrPath, text: Any) -> None:
     """Create FILENAME in temp. directory using TEXT"""
+    ## TODO2: Any => Union[bytes, str]
     try:
         assert isinstance(TEMP_DIR, str) and TEMP_DIR != "", "TEMP_DIR not defined"
         temp_path = form_path(TEMP_DIR, filename)
