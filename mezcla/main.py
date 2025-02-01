@@ -98,6 +98,33 @@ from mezcla import system
 from mezcla.my_regex import my_re
 from mezcla.system import getenv_bool
 
+# Type information
+#
+# note: Each option/arg is a string label or a tuple with 2-4 elements: (label, desc, default, nargs).
+# ex:  'verbose',  ('num', 'number of', 2),  ('files", "File names", ["f1", "f2", "f3"], "+")]
+# See Main.convert_option.
+##
+## TODO?:
+## ArgInfoType = Union[str,
+##                     Tuple[str, str],
+##                     Tuple[str, str, Optional[Any]],
+##                     Tuple[str, str, Optional[Any], Optional[str]]]
+##
+## OLD:
+##
+## ArgInfoType = Union[str,
+##                     Tuple[str],
+##                     Tuple[str, Optional[Any]],
+##                     Tuple[str, Optional[Any], Optional[Any]],
+##                     Tuple[str, Optional[Any], Optional[Any], Optional[Any]]]
+##
+UserArgInfoType = Union[
+    str,
+    Tuple[str, str],
+    Tuple[str, str, Optional[Any]],
+    Tuple[str, str, Optional[Any], Optional[str]]]
+SysArgInfoType = Tuple[str, str, Optional[Any], Optional[str]]
+
 # Constants
 HELP_ARG = "--help"
 USAGE_ARG = "--usage"
@@ -189,12 +216,12 @@ class Main(object):
             track_pages: Optional[bool] = None,
             file_input_mode: Optional[bool] = None,
             newlines: Optional[str] = None,
-            boolean_options: Optional[List[Tuple[str, str]]] = None,
-            text_options: Optional[List[Tuple[str, str]]] = None,
-            int_options: Optional[List[Tuple[str, str]]] = None,
-            float_options: Optional[List[Tuple[str, str]]] = None,
-            positional_options: Optional[List[Tuple[str, str]]] = None,
-            positional_arguments: Optional[List[Tuple[str, str]]] = None,
+            boolean_options: Optional[List[UserArgInfoType]] = None,
+            text_options: Optional[List[UserArgInfoType]] = None,
+            int_options: Optional[List[UserArgInfoType]] = None,
+            float_options: Optional[List[UserArgInfoType]] = None,
+            positional_options: Optional[List[UserArgInfoType]] = None,
+            positional_arguments: Optional[List[UserArgInfoType]] = None,
             skip_input: Optional[bool] = None,
             manual_input: Optional[bool] = None,
             skip_stdin: Optional[bool] = None,
@@ -216,11 +243,12 @@ class Main(object):
         debug.trace(4, f"Main.__init__(): self={self}")
         trace_args(5, "input main args")
         self.description = "TODO: what the script does"   # *** DONT'T MODIFY: default TODO note for client
-        self.boolean_options: List[Tuple[str, str]] = []
-        self.text_options: List[Tuple[str, str]] = []
-        self.int_options: List[Tuple[str, str]] = []
-        self.float_options: List[Tuple[str, str]] = []
-        self.positional_options: List[Tuple[str, str]] = []
+        # note: List[Union[str, Tuple[str, str], Tuple[str, str, str], Tuple[str, str, str, str]]]
+        self.boolean_options: List[UserArgInfoType] = []
+        self.text_options: List[UserArgInfoType] = []
+        self.int_options: List[UserArgInfoType] = []
+        self.float_options: List[UserArgInfoType] = []
+        self.positional_options: List[UserArgInfoType] = []
         self.process_line_warning = False
         self.input_stream: Optional[TextIO] = None
         self.end_of_page = False
@@ -232,7 +260,7 @@ class Main(object):
         self.para_num = -1
         self.line_num = -1
         self.char_offset = -1
-        self.raw_line = None
+        self.raw_line: Optional[str] = None
         # note: auto_help is typically used when there is a filename argument
         debug.assertion(not (auto_help and skip_stdin))
         if (auto_help is None):
@@ -401,23 +429,24 @@ class Main(object):
             self,
             just_positional: bool = False,
             just_optional: bool = False
-        ) -> List[Tuple[str, str]]:
-        """Return list of arguments, optional just positional"""
+        ) -> List[UserArgInfoType]:
+        """Return list of arguments, optionally JUST_POSITIONAL and JUST_OPTIONAL"""
         argument_specs = []
         if not just_positional:
             argument_specs += self.boolean_options + self.text_options + self.int_options + self.float_options
         if not just_optional:
             argument_specs += self.positional_options
-        arguments = [(spec[0] if list(spec[0]) else spec) for spec in argument_specs]
+        ## OLD: arguments = [(spec[0] if list(spec[0]) else spec) for spec in argument_specs]
+        arguments = [(spec[0] if isinstance(spec, list) else spec) for spec in argument_specs]
         debug.trace(6, f"get_arguments([pos?={just_positional}, opt?={just_optional}] => {arguments}")
         return arguments
     
     def convert_option(
             self,
-            option_spec: Tuple,
+            option_spec: UserArgInfoType,
             default_value: Optional[Any] = None,
             positional: bool = False
-        ) -> Tuple[str, str, Any, Optional[str]]:
+        ) -> SysArgInfoType:
         """Convert OPTION_SPEC to (label, description, default) tuple. 
         Notes: The description and default of the specification are optional,
         and the parentheses can be omitted if just the label is given. For example,
@@ -432,24 +461,27 @@ class Main(object):
         ## TEST: result = ["", "", ""]
         tpo.debug_format("in convert_option({o}, {d}, {p})", 6,
                          o=option_spec, d=default_value, p=positional)
-        opt_label = None
-        opt_desc = None
-        opt_default = default_value
-        opt_nargs = None
+        opt_label: str = ""
+        opt_desc: str = ""
+        opt_default: Any = default_value
+        opt_nargs: Optional[str] = None
         opt_prefix = "--" if not positional else ""
         # TODO: use keyword arguments (or namedtuple)
         if isinstance(option_spec, tuple):
-            option_components = list(option_spec)
+            ## OLD: option_components = list(option_spec)
+            option_components = option_spec
             opt_label = opt_prefix + option_components[0]
             if len(option_components) > 1:
                 opt_desc = option_components[1]
             if len(option_components) > 2:
                 opt_default = option_components[2]
-            if len(option_components) > 3 and positional:
-                debug.assertion(positional)
-                opt_nargs = option_components[3]
+            if len(option_components) > 3:
+                if positional:
+                    opt_nargs = option_components[3]
+                else:
+                    debug.trace(3, f"Warning: opt_nargs only positional {option_spec!r}")
         else:
-            opt_label = opt_prefix + tpo.to_string(option_spec)
+            opt_label = opt_prefix + str(option_spec)
         debug.assertion(not " " in opt_label)
         result_list = [opt_label, opt_desc, opt_default, opt_nargs]
         result = tuple(result_list)
@@ -460,9 +492,9 @@ class Main(object):
 
     def convert_argument(
             self,
-            argument_spec: Tuple,
+            argument_spec: UserArgInfoType,
             default_value: Optional[Any] = None
-        ) -> Tuple[str, str, Any, Optional[str]]:
+        ) -> SysArgInfoType:
         """Convert ARGUMENT_SPEC to (label, description, default) tuple. 
         Note: This is a wrapper around convert_option for positional arguments."""
         debug.trace(6, f"convert_argument({argument_spec}, {default_value}")
@@ -617,7 +649,8 @@ class Main(object):
         # Check for options of specific types
         # TODO: consolidate processing for the groups; add option for environment-based default; resolve stupid pylint false positive about unbalanced-tuple-unpacking
         for opt_spec in self.boolean_options:
-            (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)   # pylint: disable=unbalanced-tuple-unpacking
+            # pylint: disable=unbalanced-tuple-unpacking
+            (opt_label, opt_desc, opt_default, _opt_nargs) = self.convert_option(opt_spec, None)
             if self.perl_switch_parsing:
                 # note: With Perl argument support, booleans treated as integers due to argparse quirk.
                 ## TEST: parser.add_argument(opt_label, type=int, nargs="?", default=opt_default, help=opt_desc)
@@ -637,15 +670,23 @@ class Main(object):
                     desc = argparse.SUPPRESS
                     debug.trace(4, f"Adding negative-boolean: label={label} dest={under_label}")
                     parser.add_argument(label, default=opt_default, dest=under_label, action="store_false", help=desc, add_short=False)
-        for opt_spec in self.int_options:
-            (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
-        for opt_spec in self.float_options:
-            (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            add_argument(opt_label, type=float, default=opt_default, help=opt_desc)
-        for opt_spec in self.text_options:
-            (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            add_argument(opt_label, default=opt_default, help=opt_desc)
+        ## OLD:
+        ## for opt_spec in self.int_options:
+        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
+        ##     add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
+        ## for opt_spec in self.float_options:
+        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
+        ##     add_argument(opt_label, type=float, default=opt_default, help=opt_desc)
+        ## for opt_spec in self.text_options:
+        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
+        ##     add_argument(opt_label, default=opt_default, help=opt_desc)
+        for options, opt_type in [(self.int_options, int),
+                                  (self.float_options, float),
+                                  (self.text_options, str)]:
+            # pylint: disable=unbalanced-tuple-unpacking
+            for opt_spec in options:
+                (opt_label, opt_desc, opt_default, _opt_nargs) = self.convert_option(opt_spec, None)
+                add_argument(opt_label, type=opt_type, default=opt_default, help=opt_desc)
 
         # Add dummy arguments
         # Note: These are used as reminders on how to flesh out the initialization
@@ -782,7 +823,13 @@ class Main(object):
                 debug.trace(4, f"Changing input stream newlines from {self.input_stream.newlines!r} to {self.newlines!r}")
             if error_handling_change:
                 debug.trace(4, f"Changing input stream error handling from {self.input_stream.errors!r} to {self.input_error_mode!r}")
-            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=self.input_error_mode, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
+            ## TODO3: track down mypy issue with following call:
+            ##   Item "TextIO" of "TextIO | Any" has no attribute "write_through"  [union-attr]
+            self.input_stream = io.TextIOWrapper(
+                self.input_stream.buffer, encoding=self.input_stream.encoding,
+                errors=self.input_error_mode, newline=self.newlines,
+                line_buffering=bool(self.input_stream.line_buffering),
+                write_through=self.input_stream.write_through)        # type: ignore [union-attr]
             debug.trace_object(4, self.input_stream)
     
     def run(self) -> None:
