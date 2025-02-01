@@ -16,7 +16,7 @@ Sample usage:
 """
 
 # Standard modules
-## TODO: from collections import defaultdict
+from typing import Optional
 
 # Installed modules
 ## TODO: import numpy
@@ -79,7 +79,7 @@ class Script(Main):
     """Input processing class"""
     # TODO: -or-: """Adhoc script class (e.g., no I/O loop, just run calls)"""
     ## TODO: class-level member variables for arguments (avoids need for class constructor)
-    todo_arg = False
+    todo_arg: Optional[bool] = False
     ## text_arg = ""
 
     # TODO: add class constructor if needed for non-standard initialization
@@ -88,7 +88,7 @@ class Script(Main):
     ## NOTE: Such class decomposition is also beneficial for unit tests.
     #
     ## def __init__(self, *args, **kwargs):
-    ##     debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {self.__class__.__name__}.__init__({a})")
+    ##     debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {self.__class__.__name__}.__init__({args}, {kwargs})")
     ##     super().__init__(*args, **kwargs)
 
     def setup(self):
