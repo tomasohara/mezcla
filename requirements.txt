@@ -102,6 +102,7 @@ wheel
 #opt# libcst
 #opt# librosa
 #opt# pocketsphinx
+#opt# mypy
 ## TODO?: #opt#
 pydantic==2.9.2
 #opt# pylint
