@@ -34,14 +34,12 @@ fi
 
 ## NOTE: Until we integrate a testing framework with thresholds, we
 ## will need to select tests via TEST_REGEX and FILTER_REGEX
-## TEST:
-export TEST_REGEX="debug|glue_helpers|mezcla_to_standard|system"
+## TEST: export TEST_REGEX="debug|glue_helpers|mezcla_to_standard|system"
 ##
 ## TEMP: don't run tests starting with misc, template, __, or config
 ##   ex: excludes misc_doctests.py, template.py, __init__.py, and conftest.py
 ## NOTE: The intention is just to run test_*.py
-## TEST:
-export FILTER_REGEX="/(misc|template|__|config|common_module)"
+## TEST: export FILTER_REGEX="/(misc|template|__|config|common_module)"
 ## TODO: "/?<!(test_)*.py", which uses negative lookbehind
 ## export FILTER_REGEX="/?<!(test_).*.py"
 
