@@ -19,7 +19,6 @@ import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
-from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
@@ -33,12 +32,6 @@ class TestMyRegex(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     my_re = THE_MODULE.my_re            # TODO3: make global to cut down self usages
-
-    ## OLD:
-    ## @pytest.fixture(autouse=True)
-    ## def capsys(self, capsys):
-    ##     """Gets capsys"""
-    ##     self.capsys = capsys
 
     def helper_my_regex(self, regex, text, is_match=0):
         """Helper functions for my_regex"""
@@ -194,18 +187,29 @@ class TestMyRegex(TestWrapper):
         output = self.my_re.escape(text)
         assert(r"\*" in output)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    @trap_exception
-    def test_f_string(self):
-        """Ensure warning given about f-string like regex"""
-        debug.trace(4, f"in test_f_string(); self={self}")
+    def check_f_string(self, expected=True):
+        """Check that f-string warning is ISSUED"""
+        debug.trace(4, f"check_f_string({expected})")
         self.my_re.search("{fubar}", "foobar")
-        # TODO2: change usages elsewhere to make godawful pytest default more intuitive
         captured_stderr = self.get_stderr()
         debug.trace_expr(4, captured_stderr, max_len=4096)
-        self.do_assert(self.my_re.search("Warning:.*f-string", captured_stderr))
-        ## TEST: print(f"{self.my_re=}")
-        debug.trace(5, "out test_f_string(); self={self}")
+        has_warning = bool(self.my_re.search("Warning:.*f-string", captured_stderr))
+        self.do_assert(has_warning == expected)
+        
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_f_string_warning(self):
+        """Ensure warning given about f-string like regex"""
+        # Make sure shown by default
+        debug.trace(4, f"in test_f_string(); self={self}")
+        self.monkeypatch.setattr(THE_MODULE, 'REGEX_WARNINGS', True)
+        self.check_f_string(expected=True)
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_no_f_string_warning(self):
+        """Make sure f-string warning can be disabled"""
+        debug.trace(4, f"in test_no_f_string_warning(); self={self}")
+        self.monkeypatch.setattr(THE_MODULE, 'REGEX_WARNINGS', False)
+        self.check_f_string(expected=False)
 
     def test_simple_regex(self):
         """"Test regex search with capturing"""
