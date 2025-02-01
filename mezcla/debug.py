@@ -165,7 +165,7 @@ if __debug__:
     debug_file_hack = False             # work around concurrent writes by reopening after each trace
     para_mode_tracing = False           # multiline tracing functions add blank lines (e.g., for para-mode grep)
     max_trace_value_len = 1024          # maxium length for tracing values
-    time_start = 0                      # time of module load
+    time_start = 0.0                    # time of module load
     include_trace_diagnostics = False   # include trace invocation sanity checks
     use_old_introspection = False       # use old-style introspection
     #
@@ -260,7 +260,7 @@ if __debug__:
             level: IntOrTraceLevel,
             text: str,
             empty_arg: Optional[bool] = None,
-            no_eol: bool = False,
+            no_eol: Optional[bool] = None,
             indentation: Optional[str] = None,
             skip_sanity_checks: Optional[bool] = None
         ) -> None:
@@ -540,7 +540,7 @@ if __debug__:
                            v=format_value(value, max_len=max_len, skip_sanity_checks=True))
             except:
                 trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}: {exc}",
-                           k=_to_utf8(k), exc=sys.exc_info())
+                           k=str(k), exc=sys.exc_info())
         trace(ALWAYS, indentation + "}")
         if para_mode_tracing:
             trace(ALWAYS, "")
@@ -600,7 +600,7 @@ if __debug__:
             use_repr = True
         if prefix is None:
             prefix = ""
-        trace(9, f"sep={sep!r}, del={delim!r}, noeol={no_eol}, rep={use_repr}, len={max_len}, pre={prefix!r} suf={suffix!r}")
+        trace(9, f"sep={sep!r}, del={delim!r}, noeol={no_eol}, rep={use_repr}, len={max_len}, pre={prefix!r} suf={suffix!r}", skip_sanity_checks=True)
 
         # Get symbolic expressions for the values
         if not use_old_introspection:
@@ -618,14 +618,14 @@ if __debug__:
             ## expression = "@".join(expression)
             ## trace(3, f"{values=} {expression=}")
             ##
-            trace(level, expression)
+            trace(level, expression, skip_sanity_checks=True)
         else:
             ## TODO2: handle cases split across lines
             try:
                 # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
                 caller = inspect.stack()[1]
                 (_frame, filename, line_number, _function, context, _index) = caller
-                trace(9, f"filename={filename!r}, context={context!r}")
+                trace(9, f"filename={filename!r}, context={context!r}", skip_sanity_checks=True)
                 statement = read_line(filename, line_number).strip()
                 if statement == MISSING_LINE:
                     statement = str(context).replace("\\n']", "")
@@ -638,7 +638,7 @@ if __debug__:
                 statement = re.sub(r",?\s*$", "", statement)
                 # Skip first argument (level)
                 expressions = re.split(", +", statement)[1:]
-                trace(9, f"expressions={expressions!r}\nvalues={values!r}")
+                trace(9, f"expressions={expressions!r}\nvalues={values!r}", skip_sanity_checks=True)
             except:
                 trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
                            exc=sys.exc_info())
@@ -646,7 +646,7 @@ if __debug__:
 
             # Output initial text
             if prefix:
-                trace(level, prefix, no_eol=no_eol)
+                trace(level, prefix, no_eol=no_eol, skip_sanity_checks=True)
 
             # Output each expression value
             for expression, value in zip_longest(expressions, values):
@@ -659,13 +659,13 @@ if __debug__:
                               f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
                     value_spec = format_value(repr(value) if use_repr else value,
                                               max_len=max_len)
-                    trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol)
+                    trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True)
                 except:
                     trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
                            exc=sys.exc_info())
             # Output final text
             if suffix:
-                trace(level, suffix, no_eol=False)
+                trace(level, suffix, no_eol=False, skip_sanity_checks=True)
             elif (no_eol and (delim != "\n")):
                 trace(level, "", no_eol=False)
             else:
@@ -898,11 +898,15 @@ else:
     
     ## TODO?:
     ## val = non_debug_stub
+    ## OLD:
+    ## def val(_expression: Any) -> None:
     ##
-    def val(_expression: Any) -> None:
+    def val(_level: IntOrTraceLevel, _value: Any) -> None:  # type: ignore [misc]
         """Non-debug stub for value()--a no-op function"""
-        # Note: implemented separately from non_debug_stub to ensure no return value
+        # Note: implemented separately from non_debug_stub to ensure no return value (i.e., future proof)
         return
+    ##
+    ## TODO3: drop _safe_eval
     ##
     def _safe_eval(expression: Union[str, Buffer, CodeType], default: Any = None) -> Any:
         """Returns evaluation of string EXPRESSION trapping for errors and if so returning DEFAULT"""
@@ -912,7 +916,7 @@ else:
             result = default
         return result
     ##
-    if (val(1) is not None):
+    if (val(TL.ALWAYS, 1) is not None):
         # note: work around for maldito python not providing None-like default if __file__ n/a
         sys.stderr.write(f"Warning: non-debug val() in {_safe_eval('__file__', 'debug.py')} should return Null\n")
     ##
@@ -1101,7 +1105,7 @@ def profile_function(frame, event, arg):
 
     # Resolve the names for the function (callable) and module
     name = "???"
-    module = "???"
+    module: Optional[str] = "???"
     try:
         name = frame.f_code.co_name
         if name in frame.f_globals:
