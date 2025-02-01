@@ -17,6 +17,7 @@ import yaml
 
 # Local modules
 from mezcla import debug
+from mezcla.file_utils import read_yaml
 from mezcla import glue_helpers as gh
 from mezcla.glue_helpers import default_subtrace_level, TEMP_BASE, TEMP_FILE, PRESERVE_TEMP_FILE
 from mezcla.my_regex import my_re
@@ -48,8 +49,7 @@ PYTEST_TEST_REGEX = system.getenv_value(
     description="Regex for pytest",
 )
 MYPY_CONFIG_FILE = system.getenv_text(
-    "MYPY_CONFIG_FILE",
-    gh.form_path(gh.dirname(__file__), "mypy.ini"),
+    "MYPY_CONFIG_FILE", "mypy.ini",
     description="config file for mypy ",
 )
 MYPY_TEST_PATH = system.getenv_text(
@@ -58,17 +58,26 @@ MYPY_TEST_PATH = system.getenv_text(
     description="directory with source files for mypy test",
 )
 PYTEST_TEST_PATH = system.getenv_text(
-    "PYTEST_TEST_PATH", gh.form_path(gh.dirname(__file__), "tests"), description="directory with pytest tests"
+    "PYTEST_TEST_PATH", gh.form_path(gh.dirname(__file__), "tests"),
+    description="directory with pytest tests"
 )
 MYPY_OUTPUT_PATH = system.getenv_text(
     "MYPY_OUTPUT_PATH", "mypy_reports", description="directory to save mypy reports in"
 )
 MYPY_WEIGHT = system.getenv_float(
-    "MYPY_WEIGHT", 0.0, description="final weight for mypy tests"
+    "MYPY_WEIGHT", 0.0,
+    description="final weight for mypy tests"
 )
+MYPY_COMBINED = system.getenv_bool(
+    "MYPY_COMBINED", False,
+    description="Run mypy over all files at same time")
 PYTEST_WEIGHT = system.getenv_float(
-    "PYTEST_WEIGHT", 1.0, description="final weight for pytest tests"
+    "PYTEST_WEIGHT", (1.0 - MYPY_WEIGHT),
+    description="final weight for pytest tests"
 )
+VERBOSE_OUTPUT = system.getenv_bool(
+    "VERBOSE_OUTPUT", False,
+    description="Verbose output mode")
 
 # -------------------------------------------------------------------------------
 # Utility functions
@@ -76,21 +85,17 @@ PYTEST_WEIGHT = system.getenv_float(
 
 def load_thresholds(filename):
     """Load test failure thresholds from a YAML file."""
-    result = None
-    with system.open_file(gh.resolve_path(filename)) as f:
-        try:
-            result = yaml.safe_load(f)
-        except:
-            system.print_exception_info("load_thresholds")
-    debug.trace(6, "load_thresholds({filename}) => {result!r}")
+    result = read_yaml(filename)
+    debug.trace(5, f"load_thresholds({filename}) => {result!r}")
     return result
 
 
 def round_p2str(num):
-    """Round NUM using precision of 3"""
+    """Round NUM using precision of 2"""
     # EX: round_p2str(1.678) => "1.68"
     # EX: round_p2str(1.6) => "1.60"
     return system.round_as_str(num, 2)
+
 
 def run(command, trace_level=4, subtrace_level=None, **namespace) -> str :
     """Wrapper around subprocess.run
@@ -131,37 +136,56 @@ def run(command, trace_level=4, subtrace_level=None, **namespace) -> str :
     system.setenv("TEMP_BASE", save_temp_base or "")
     if save_temp_file and (PRESERVE_TEMP_FILE is not True):
         system.setenv("TEMP_FILE", save_temp_file or "")
-    debug.trace(7, "run(_) => {\n%s\n}" % gh.indent_lines(result))
+    debug.trace_fmt(7, "run(_) => {{\n{r}\n}}", r=gh.indent_lines(result))
     return result
 
+
+def resolve_tools_file(filename):
+    """Resolve full path for FILENAME, defaulting to <repo>/tools dir if not found"""
+    full_path = filename
+    if not system.file_exists(full_path):
+        tools_dir = gh.form_path(gh.dirname(__file__), "..", "tools")
+        debug.assertion(system.file_exists(gh.form_path(tools_dir, "run_tests.bash")))
+        full_path = gh.form_path(tools_dir, filename)
+    if not system.file_exists(full_path):
+        full_path = gh.resolve_path(filename, heuristic=True)
+    debug.trace(5, f"resolve_tools_file({filename}) => {full_path!r}")
+    return full_path
 
 # -------------------------------------------------------------------------------
 # Main code
 
-
 def run_mypy(thresholds: Dict[str, float]) -> int:
     """Run mypy and return the number of failures"""
+    mypy_config_file = resolve_tools_file(MYPY_CONFIG_FILE)
+    debug.assertion(system.file_exists(mypy_config_file))
+    xml_report = None
     config = (
-        f" --config-file {MYPY_CONFIG_FILE}" if gh.file_exists(MYPY_CONFIG_FILE) else ""
+        f" --config-file {mypy_config_file}" if system.file_exists(mypy_config_file) else ""
     )
-    cmd = f"python -m mypy {MYPY_TEST_PATH}{config} --xml-report {MYPY_OUTPUT_PATH} --check-untyped-defs"
-    run(cmd, shell=True, check=False)
+    common_mypy_options = "--check-untyped-defs --install-types --non-interactive"
+    if MYPY_COMBINED:
+        cmd = f"python -m mypy {MYPY_TEST_PATH} {config} --xml-report {MYPY_OUTPUT_PATH} {common_mypy_options}"
+        run(cmd, shell=True, check=False)
     failed = 0
 
     # Read and parse xml report file
     report_file = gh.form_path(MYPY_OUTPUT_PATH, "index.xml")
-    if not system.file_exists(report_file):
+    if MYPY_COMBINED and not system.file_exists(report_file):
         debug.trace(4, f"{report_file} not found, skipping mypy checks")
     else:
-        xml_report = xml_utils.parse_xml(system.read_file(report_file))
+        if MYPY_COMBINED:
+            xml_report = xml_utils.parse_xml(system.read_file(report_file))
 
+        num_processed = 0
         for filename, threshold in thresholds.items():
             debug.trace_expr(4, filename, threshold)
             file_path = gh.resolve_path(filename)
+            filename_proper = gh.basename(filename)
 
             # Exclude certain test files (e.g., files outside of the mezcla module)
             include = True
-            if not my_re.search(rf"^mezcla{os.sep}(.*__.*).+\.py$", filename):
+            if my_re.search(rf"^mezcla{os.sep}(.*__.*).+\.py$", filename):
                 debug.trace(4, f"mypy: skipping module {filename}")
                 include = False
             elif MYPY_TEST_REGEX and not my_re.search(rf"{MYPY_TEST_REGEX}", file_path):
@@ -169,8 +193,23 @@ def run_mypy(thresholds: Dict[str, float]) -> int:
                 include = False
             if not include:
                 continue
+
+            if VERBOSE_OUTPUT:
+                if num_processed:
+                    print("-" * 132)
+                print(f"Running mypy over {filename_proper}")
+
+            num_processed += 1
+            if not MYPY_COMBINED:
+                basename = gh.basename(filename_proper, ".py")
+                mypy_output_path = gh.form_path(MYPY_OUTPUT_PATH, basename)
+                cmd = f"python -m mypy {filename} {config} --xml-report {mypy_output_path} {common_mypy_options}"
+                run(cmd, shell=True, check=False)
+                report_file = gh.form_path(mypy_output_path, "index.xml")
+                xml_report = xml_utils.parse_xml(system.read_file(report_file))
+            
             # find current module name in report
-            results = xml_report.find(f"./file[@name='{filename}']")
+            results = xml_report.find(f"./file[@name='{filename_proper}']")
 
             # calculate imprecise percentage and compare to threshold
             any_hints = int(results.get("any"))
@@ -311,7 +350,7 @@ def main():
     # in the tests directory (TODO: merge the two sources with file trumping default).
     # note: uses default of 25% succeses allowed just for sake of getting tests operational
     # under Github actions (TODO: lower to 50%).
-    thresholds_path = gh.resolve_path(THRESHOLDS_FILE)
+    thresholds_path = resolve_tools_file(THRESHOLDS_FILE)
     mypy_thresholds = {
         module: 40.0 for module in gh.get_matching_files(f"{MYPY_TEST_PATH}/*.py")
     }
@@ -337,16 +376,19 @@ def main():
     )
 
     # Run tests and compare the results with the allowed thresholds
-    test_failures = run_tests(test_thresholds)
-    mypy_failures = run_mypy(mypy_thresholds)
     test_failures = 0
+    mypy_failures = 0    
+    if PYTEST_WEIGHT > 0:
+        test_failures = run_tests(test_thresholds)
+    if MYPY_WEIGHT > 0:
+        mypy_failures = run_mypy(mypy_thresholds)
     failed = (mypy_failures * MYPY_WEIGHT) + (test_failures * PYTEST_WEIGHT)
 
     message = "All OK"
     code = 0
     if failed > 0:
         code = failed
-        message = "Error: {failed} modules failed"
+        message = f"Error: {test_failures} module failed, and {mypy_failures} mypy problems: combined score {failed:.2f}"
     system.exit(message, status_code=code)
 
 
