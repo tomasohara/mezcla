@@ -2269,11 +2269,11 @@ class MezclaToStandardScript(Main):
     def setup(self) -> None:
         """Process arguments"""
         debug.trace(5, "MezclaToStandardScript.setup()")
-        self.to_std = self.has_parsed_option(TO_STD)
-        self.to_mezcla = self.has_parsed_option(TO_MEZCLA)
-        self.metrics = self.has_parsed_option(METRICS)
-        self.in_place = self.has_parsed_option(IN_PLACE)
-        self.skip_warnings = self.has_parsed_option(SKIP_WARNINGS)
+        self.to_std = self.get_parsed_option(TO_STD, self.to_std)
+        self.to_mezcla = self.get_parsed_option(TO_MEZCLA, self.to_mezcla)
+        self.metrics = self.get_parsed_option(METRICS, self.metrics)
+        self.in_place = self.get_parsed_option(IN_PLACE, self.in_place)
+        self.skip_warnings = self.get_parsed_option(SKIP_WARNINGS, self.skip_warnings)
 
     def show_continue_warning(self) -> None:
         """Show warning if user want to continue"""
