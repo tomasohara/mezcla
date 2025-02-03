@@ -97,9 +97,10 @@ TEMP_PREFIX = system.getenv_text(
     "TEMP_PREFIX", FILE_BASE + "-",
     description="Prefix to use for temp files")
 TEMP_SUFFIX = system.getenv_text(
-    "TEMP_SUFFIX", "-",
+    ## OLD: "TEMP_SUFFIX", "-",
+    "TEMP_SUFFIX", "_",
     description="Suffix to use for temp files")
-TEMP_SUFFIX = ("-")
+## OLD: TEMP_SUFFIX = ("-")
 KEEP_TEMP = system.getenv_bool(
     "KEEP_TEMP", debug.detailed_debugging(),
     desc="Keep temporary files")
@@ -123,10 +124,11 @@ PRESERVE_TEMP_FILE = None
 # Globals
 # note:
 # - see init() for main initialization;
-# - these are placeholds until module initialized
-# - os.path.join used to likewise avoid chick-n-egg problems with init
+# - these are placeholders until module initialized
+# - os.path.join used to likewise avoid chicken-n-egg problems with init
 # - TEMP_FILE is normally None to indicate use of random temp file name
 # - TEMP_LOG_FILE and TEMP_SCRIPT_FILE are used in run, issue, etc.
+# TODO3: make GLOBAL_TEMP_FILE, etc. lowercase
 TMP = system.getenv_text(
     "TMP", "/tmp",
     description="Temporary directory")
@@ -158,9 +160,10 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
         # HACK: clear the file
         if not KEEP_TEMP:
             system.write_file(temp_file_name, "")
+    ## TODO2: drop ... or ""
     temp_file_name = temp_file_name or ""
     debug.assertion(not delete, "Support for delete not implemented")
-    debug_format("get_temp_file() => {r!r}", 5, r=temp_file_name)
+    debug_format("gh.get_temp_file() => {r!r}", 5, r=temp_file_name)
     return temp_file_name
 
 
@@ -215,7 +218,7 @@ def remove_extension(filename: str, extension: str) -> str:
 
 def dir_path(filename: str, explicit: bool = False) -> str:
     """Wrapper around os.path.dirname over FILENAME
-    Note: With EXPLICIT, returns . instead of "" (e.g., if filename in current direcotry)
+    Note: With EXPLICIT, returns . instead of "" (e.g., if filename in current directory)
     """
     # TODO: return . for filename without directory (not "")
     # EX: dir_path("/tmp/solr-4888.log") => "/tmp"
@@ -235,7 +238,9 @@ def dir_path(filename: str, explicit: bool = False) -> str:
 
 
 def dirname(file_path: str) -> str:
-    """"Returns directory component of FILE_PATH as with Unix dirname"""
+    """"Returns directory component of FILE_PATH as with Unix dirname
+    Note: Unlike dir_path, this always returns explicit directory
+    """
     # EX: dirname("/tmp/solr-4888.log") => "/tmp"
     # EX: dirname("README.md") => "."
     return dir_path(file_path, explicit=True)
@@ -347,11 +352,13 @@ def create_directory(path: StrOrBytesPath) -> None:
     Warning: obsolete
     """
     debug.trace(3, "Warning: create_directory obsolete use version in system.py instead")
-    if not os.path.exists(path):
-        os.mkdir(path)
-        debug_format("os.mkdir({p})", 6, p=path)
-    else:
-        debug.assertion(os.path.isdir(path))
+    system.create_directory(path)
+    ## OLD:
+    ## if not os.path.exists(path):
+    ##     os.mkdir(path)
+    ##     debug_format("os.mkdir({p})", 6, p=path)
+    ## else:
+    ##     debug.assertion(os.path.isdir(path))
     return
 
 
