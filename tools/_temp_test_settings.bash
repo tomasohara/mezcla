@@ -34,6 +34,11 @@ if [ "$DEBUG_LEVEL" -ge 4 ]; then
     export PYTEST_OPTIONS="-v -s"
 fi
 
+
+# Optionally, disable use of master_test.py and call pytest directly.
+## TEMP:
+export INVOKE_PYTEST_DIRECTLY=1
+
 ## NOTE: Until we integrate a testing framework with thresholds, we
 ## will need to select tests via TEST_REGEX and FILTER_REGEX
 ## TEST: export TEST_REGEX="debug|glue_helpers|mezcla_to_standard|system"
