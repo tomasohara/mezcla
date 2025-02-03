@@ -1,4 +1,4 @@
-# Some docs here
+# Script with bad argument type for tests/test_validate_arguments.py
 
 """
 Some docs here
@@ -20,8 +20,9 @@ def move_debug_level() -> None:
 
 def main() -> None:
     """Main function"""
+    print("Hello, ...")
     move_debug_level()
-    print("Hello, World!")
+    print("... World!")
 
 if __name__ == "__main__":
     main()

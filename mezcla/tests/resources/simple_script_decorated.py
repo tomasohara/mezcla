@@ -21,8 +21,9 @@ def move_debug_level() ->None:
 
 def main() ->None:
     """Main function"""
+    print('Hello, ...')
     validate_call(move_debug_level)()
-    print('Hello, World!')
+    print('... World!')
 
 
 if __name__ == '__main__':

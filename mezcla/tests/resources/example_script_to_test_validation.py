@@ -1,4 +1,7 @@
 #! /usr/bin/env python
+#
+# note: Not used in any test.
+#
 
 """
 Illustration script to test validation of most used functions from:
@@ -84,8 +87,8 @@ class ExampleValidationScript(Main):
 
     def setup(self) -> None:
         """Process arguments"""
-        self.wrong = self.has_parsed_option(WRONG)
-        self.good = self.has_parsed_option(GOOD)
+        self.wrong = self.get_parsed_option(WRONG, self.wrong)
+        self.good = self.get_parsed_option(GOOD, self.good)
 
     def run_main_step(self) -> None:
         """Process main script"""
