@@ -21,13 +21,22 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
-import mezcla.show_bert_representation as THE_MODULE
+#    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)
+#    TestIt.script_module:     dotted module path (e.g., "mezcla.main")
+try:
+    import mezcla.show_bert_representation as THE_MODULE
+except:
+    THE_MODULE = None
+    system.print_exception_info("THE_MODULE import")
 
-class TestShowBertRepresentation:
+class TestShowBertRepresentation(TestWrapper):
     """Class for testcase definition"""
+    # note: script_module used in argument parsing sanity check (e.g., --help)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_cosine_distance(self):
         """Ensure cosine_distance works as expected"""
@@ -36,13 +45,16 @@ class TestShowBertRepresentation:
         assert THE_MODULE.cosine_distance([1, 0, 0], [2, 0, 0]) == 0.0 
         assert THE_MODULE.cosine_distance([1, 0, 0, 0], [1, 1, 1, 1]) == 0.5 
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_show_cosine_distances(self):
         """Ensure show_cosine_distances works as expected"""
         debug.trace(4, "test_show_cosine_distances()")
-        ## TODO: WORK-IN=PROGRESS
+        self.do_assert(False, "TODO: implement")
 
     ## TODO: test ExtractFeatures class
     ## TODO: test Script class
+
+#------------------------------------------------------------------------
 
 if __name__ == '__main__':
     debug.trace_current_context()

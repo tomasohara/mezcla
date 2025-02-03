@@ -19,17 +19,37 @@ import pytest
 
 # Local packages
 from mezcla import debug
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
-## TODO: solve import issues with run_bert_classifier
-## import mezcla.run_bert_classifier as THE_MODULE
+#    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)
+#    TestIt.script_module:     dotted module path (e.g., "mezcla.main")
+try:
+    import mezcla.run_bert_classifier as THE_MODULE
+except:
+    THE_MODULE = None
+    system.print_exception_info("THE_MODULE import")
 
-class TestRunBertClassifier:
+class TestRunBertClassifier(TestWrapper):
     """Class for testcase definition"""
 
-    ## TODO: TESTS WORK-IN-PROGRESS
+    # note: script_module used in argument parsing sanity check (e.g., --help)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_01_data_file(self):
+        """Tests run_script w/ data file"""
+        # Warning: see notes above about potential issues with run_script-based tests.
+        debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
+        data = ["TODO1", "TODO2"]
+        system.write_lines(self.temp_file, data)
+        ## TODO: add use_stdin=True to following if no file argument
+        output = self.run_script(options="", data_file=self.temp_file)
+        self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
+        return
+
+#------------------------------------------------------------------------
 
 if __name__ == '__main__':
     debug.trace_current_context()
