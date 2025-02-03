@@ -136,6 +136,7 @@ stopwords = None
 
 #------------------------------------------------------------------------
 # Optional libraries
+## TODO4: add init function for dynamic loading (e.g., for testing purposes)
 
 # NLP toolkit
 if not SKIP_NLTK:
@@ -338,6 +339,7 @@ def has_spelling_mistake(term):
             has_mistake = not speller.check(term)
     except:
         system.print_exception_info(f"spell checking of {term}")
+    debug.trace(6, f"has_spelling_mistake({term}) => {has_mistake}")
     return has_mistake
 
 
