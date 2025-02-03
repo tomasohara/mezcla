@@ -50,7 +50,7 @@ SKIP_UNIMPLEMENTED_REASON = "Ignoring unimplemented test"
 def fix_indent(code):
     """Make sure CODE indented proper if it is a string;
     however, list input is returned as is.
-    Note: this accounts for code defined with index triple-quote strings
+    Note: this accounts for code defined with indented triple-quoted strings
     
     >>> fix_indent('''
                    print("ok")
