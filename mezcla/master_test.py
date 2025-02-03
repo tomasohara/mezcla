@@ -23,9 +23,9 @@ from mezcla.glue_helpers import default_subtrace_level, TEMP_BASE, TEMP_FILE, PR
 from mezcla.my_regex import my_re
 from mezcla import xml_utils
 from mezcla import tpo_common as tpo
-
 ## TODO3: from mezcla import misc_utils
 from mezcla import system
+from  mezcla.system import to_int
 
 # Environment options
 # Note: These are just intended for internal options, not for end users.
@@ -75,6 +75,11 @@ PYTEST_WEIGHT = system.getenv_float(
     "PYTEST_WEIGHT", (1.0 - MYPY_WEIGHT),
     description="final weight for pytest tests"
 )
+PYTEST_OPTIONS = system.getenv_value(
+    "PYTEST_OPTIONS", None
+    description="Options for pytest"
+)
+
 VERBOSE_OUTPUT = system.getenv_bool(
     "VERBOSE_OUTPUT", False,
     description="Verbose output mode")
@@ -157,6 +162,7 @@ def resolve_tools_file(filename):
 
 def run_mypy(thresholds: Dict[str, float]) -> int:
     """Run mypy and return the number of failures"""
+    ## TODO1: rework so that failure is based on errors, not imprecision
     mypy_config_file = resolve_tools_file(MYPY_CONFIG_FILE)
     debug.assertion(system.file_exists(mypy_config_file))
     xml_report = None
@@ -186,10 +192,13 @@ def run_mypy(thresholds: Dict[str, float]) -> int:
             # Exclude certain test files (e.g., files outside of the mezcla module)
             include = True
             if my_re.search(rf"^mezcla{os.sep}(.*__.*).+\.py$", filename):
-                debug.trace(4, f"mypy: skipping module {filename}")
+                debug.trace(4, f"mypy: skipping dunder module {filename!r}")
                 include = False
             elif MYPY_TEST_REGEX and not my_re.search(rf"{MYPY_TEST_REGEX}", file_path):
                 debug.trace(5, f"Filtering test {file_path} not matching MYPY_TEST_REGEX ({MYPY_TEST_REGEX})",)
+                include = False
+            elif not system.file_exists(file_path):
+                debug.trace(4, f"Warning: skipping missing module {filename!r}")
                 include = False
             if not include:
                 continue
@@ -212,10 +221,12 @@ def run_mypy(thresholds: Dict[str, float]) -> int:
             results = xml_report.find(f"./file[@name='{filename_proper}']")
 
             # calculate imprecise percentage and compare to threshold
-            any_hints = int(results.get("any"))
-            imprecise_hints = int(results.get("imprecise"))
-            total_hints = int(results.get("total"))
-            impreciseness = ((any_hints + imprecise_hints) / total_hints) * 100
+            any_hints = to_int(results.get("any"))
+            imprecise_hints = to_int(results.get("imprecise"))
+            total_hints = to_int(results.get("total"))
+            impreciseness = 0.0
+            if total_hints > 0:
+                impreciseness = ((any_hints + imprecise_hints) / total_hints) * 100
             debug.assertion(impreciseness <= threshold)
             debug.trace(
                 5, f"{filename}, threshold: {threshold}, impreciseness: {impreciseness}"
@@ -240,6 +251,9 @@ def run_tests(thresholds: Dict[str, float]) -> int:
             include = False
         elif PYTEST_TEST_REGEX and not my_re.search(rf"{PYTEST_TEST_REGEX}", test_filename):
             debug.trace(5, f"Filtering test {test_filename} not matching PYTEST_TEST_REGEX ({PYTEST_TEST_REGEX})",)
+            include = False
+        elif not system.file_exists(test_path):
+            debug.trace(4, f"Warning: skipping missing test {test_path!r}")
             include = False
         if not include:
             continue
@@ -270,7 +284,8 @@ def run_tests(thresholds: Dict[str, float]) -> int:
             total_tests = summary_total_tests if (total_tests == 0) else total_tests
 
         # Run tests for the test
-        cmd = f"pytest {test_path}"
+        pytest_options = (PYTEST_OPTIONS or "")
+        cmd = f"pytest {pytest_options} {test_path}"
         run_result = run(cmd)
         debug.trace_object(6, run_result)
         failed_tests = len(my_re.findall(r"FAILED", run_result))
@@ -363,12 +378,12 @@ def main():
     if system.file_exists(thresholds_path):
         new_thresholds: Dict[str, float] = load_thresholds(thresholds_path)
         for filename, threshold in new_thresholds.items():
-            if my_re.search(r"^.*(test).*", filename):
+            if my_re.search(r"^.*(tests{os.sep}).*", filename):
                 test_thresholds[filename] = threshold
             elif my_re.search(r"^.*\.py$", filename):
                 mypy_thresholds[filename] = threshold
             else:
-                debug.trace(4, f"ignoring threshold for file {filename}")
+                debug.trace(4, f"Warning: ignoring threshold for file {filename!r}")
     else:
         debug.trace(2, f"Warning: unable to find {thresholds_path}")
     debug.trace_expr(
