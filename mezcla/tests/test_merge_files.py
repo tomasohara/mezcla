@@ -36,6 +36,7 @@ class TestMergeFiles(TestWrapper):
     @pytest.mark.xfail
     def test_get_timestamp(self):
         """Ensure get_timestamp works as expected"""
+        ## TODO3: flag as Linux only
         debug.trace(4, f"test_get_timestamp(); self={self}")
         lsb_date = gh.run('date +%F -r /proc/fb').strip().split('-')
         lts_year = lsb_date[0]
@@ -63,7 +64,7 @@ class TestMergeFiles(TestWrapper):
         system.write_lines(f"{tmp}/backup/1.list", list(map(str, ['1', '2', '3'])))
         system.write_lines(f"{tmp}/other-1.list", list(map(str, ['1', '2', '3', '4'])))
         actual = self.run_script(
-            env_options=["IGNORE_TIMESTAMP=1"],
+            env_options="IGNORE_TIMESTAMP=1",
             uses_stdin=True,
             data_file="",
             options=f"{tmp}/1.list {tmp}/other-1.list",
