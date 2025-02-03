@@ -15,6 +15,7 @@ import pytest
 from pydantic import ValidationError, BaseModel, validate_call    # pylint: disable=no-name-in-module
 
 # Local packages
+from mezcla import debug
 from mezcla import system
 import mezcla.validate_arguments as va
 THE_MODULE = va
@@ -42,6 +43,7 @@ class ExpectedDictModel(BaseModel):
 def example_dict_keys_values(some_dict: dict) -> bool:
     """Example validating keys and values of a dictionary"""
     assert isinstance(some_dict, dict), "The validation should fail before this"
+    ## TODO3: clarify "fail before this" (e.g., intentional or cut-n-paste error)
     assert isinstance(some_dict.get("example_key"), str), "The validation should fail before this"
     print("@custom_validate_call works!")
     return True
@@ -109,27 +111,32 @@ class TestValidateArgument(TestWrapper):
 
     @pytest.mark.xfail
     def test_simple_script(self):
-        """Run validate arguments on a simple script"""
+        """Run validate arguments on a good simple script"""
         script_output = self.run_script(
             options=f"--output {self.temp_file}",
             data_file=SIMPLE_SCRIPT,
         )
         # Check script output
-        assert script_output, 'script output is empty'
-        assert "Hello, World!" in script_output
+        assert script_output, 'script output should not be empty'
+        assert "Hello, ..." in script_output
+        assert "... World!" in script_output
         # Check decorated script output
         expected_output = system.read_file(SIMPLE_SCRIPT_DECORATED)
         current_output = system.read_file(self.temp_file)
-        assert current_output, 'current output is empty'
+        assert current_output, 'current output should not be empty'
+        ## TODO3: ignore whitespace (or run black on both)?
         assert current_output == expected_output
 
     def test_wrong_script(self):
-        """Run validate arguments on a wrong script"""
+        """Run validate arguments on a wrong script (i.e., wrong types)"""
         script_output = self.run_script(
             data_file=SIMPLE_WRONG_SCRIPT,
         )
         assert script_output, 'script output is empty'
         assert "further information visit" in script_output
 
-if __name__ == "__main__":
-    pytest.main()
+#------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    debug.trace_current_context()
+    invoke_tests(__file__)
