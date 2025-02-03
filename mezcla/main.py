@@ -169,7 +169,7 @@ ENV_OPTION_PREFIX = system.getenv_value("ENV_OPTION_PREFIX", None,
 ## TEST
 ## TEMP_BASE = system.getenv_value("TEMP_BASE", None,
 ##                                 "Override for temporary file basename")
-TEMP_BASE = gh.TEMP_BASE
+## OLD: TEMP_BASE = gh.TEMP_BASE
 ## OLD:
 ## USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", False,
 ##                                        "Whether TEMP_BASE should be a dir instead of prefix")
@@ -327,13 +327,14 @@ class Main(object):
         # TODO: allow temp_base handling to be overridable by constructor options
         # TODO: reconcile with unittest_wrapper.py.get_temp_dir
         prefix = (FILE_BASE + "-")
-        alt_temp_base = (
-            tempfile.NamedTemporaryFile(
-                prefix=prefix,
-                delete=not debug.detailed_debugging(),
-                ## TODO: "suffix": "-"
-            ).name)
-        self.temp_base = (TEMP_BASE or alt_temp_base)
+        ## OLD:
+        ## alt_temp_base = (
+        ##     tempfile.NamedTemporaryFile(
+        ##         prefix=prefix,
+        ##         delete=not debug.detailed_debugging(),
+        ##         ## TODO: "suffix": "-"
+        ##     ).name)
+        self.temp_base = gh.get_temp_file()
         # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
         # -or-: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
         if use_temp_base_dir is None:
@@ -344,7 +345,8 @@ class Main(object):
             ## TEMP HACK: remove file if not a dir (n.b., quirk with NamedTemporaryFile
             if system.is_regular_file(self.temp_base):
                 gh.delete_file(self.temp_base)
-            gh.run("mkdir -p {dir}", dir=self.temp_base)
+            ## OLD: gh.run("mkdir -p {dir}", dir=self.temp_base)
+            gh.full_mkdir(self.temp_base)
             ## TODO3: main-temp.txt???
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
