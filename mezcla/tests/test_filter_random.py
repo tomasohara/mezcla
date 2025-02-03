@@ -17,7 +17,7 @@
 ## NOTE: this is empty for now
 
 # Installed packages
-import pytest
+## OLD: import pytest
 
 # Local packages
 from mezcla import debug
@@ -33,16 +33,16 @@ class TestFilterRandom(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    use_temp_base_dir = True            # treat TEMP_BASE as directory
+    ## OLD: use_temp_base_dir = True            # treat TEMP_BASE as directory
 
     def setUp(self):
         """Per-test setup"""
-        debug.trace(6, f"TestFilterRandom.setUp(); self={self}")
+        debug.trace(5, f"TestFilterRandom.setUp(); self={self}")
         # note: must do parent first (e.g., for temp file support)
         super().setUp()
         num_lines = 10
         data = [str(i) for i in range(num_lines)]
-        debug.assertion(self.temp_file)
+        debug.assertion(self.temp_file + ".data")
         gh.write_lines(self.temp_file, data)
         return
     
@@ -59,20 +59,20 @@ class TestFilterRandom(TestWrapper):
     def test_simple_data_file(self):
         """Makes sure simple canned data file works as expected"""
         debug.trace(4, f"TestFilterRandom.test_simple_data_file({self})")
-        self.setUp()
+        ## OLD: self.setUp()
         return self.run_data_file_test(0.15, self.temp_file, "6\n9\n")
 
     def test_filter_all(self):
         """Makes sure all lines are filtered out with ratio 0.0"""
         debug.trace(4, f"TestFilterRandom.test_filter_all({self})")
-        self.setUp()
+        ## OLD: self.setUp()
         return self.run_data_file_test(0.0, self.temp_file, "")
 
     def test_filter_none(self):
         """Makes sure no lines are filtered out with ratio 1.0"""
         debug.trace(4, f"TestFilterRandom.test_filter_none({self})")
         temp_file_contents = system.read_file(self.temp_file)
-        self.setUp()
+        ## OLD: self.setUp()
         return self.run_data_file_test(1.0, self.temp_file, temp_file_contents)
 
 #------------------------------------------------------------------------
