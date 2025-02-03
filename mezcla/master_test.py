@@ -62,7 +62,8 @@ PYTEST_TEST_PATH = system.getenv_text(
     description="directory with pytest tests"
 )
 MYPY_OUTPUT_PATH = system.getenv_text(
-    "MYPY_OUTPUT_PATH", "mypy_reports", description="directory to save mypy reports in"
+    "MYPY_OUTPUT_PATH", gh.form_path("output-files", "mypy_reports"),
+    description="directory to save mypy reports in"
 )
 MYPY_WEIGHT = system.getenv_float(
     "MYPY_WEIGHT", 0.0,
@@ -170,6 +171,7 @@ def run_mypy(thresholds: Dict[str, float]) -> int:
         f" --config-file {mypy_config_file}" if system.file_exists(mypy_config_file) else ""
     )
     common_mypy_options = "--check-untyped-defs --install-types --non-interactive"
+    gh.full_mkdir(MYPY_OUTPUT_PATH)
     if MYPY_COMBINED:
         cmd = f"python -m mypy {MYPY_TEST_PATH} {config} --xml-report {MYPY_OUTPUT_PATH} {common_mypy_options}"
         run(cmd, shell=True, check=False)
