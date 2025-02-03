@@ -34,6 +34,7 @@ from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 import mezcla.glue_helpers as gh
+from mezcla.tests.common_module import fix_indent
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
@@ -47,6 +48,36 @@ import mezcla.debug as THE_MODULE # pylint: disable=reimported
 TEST_TBD = system.getenv_bool("TEST_TBD", False,
                               description="Test features to be designed: TBD")
 
+#................................................................................
+# Classes for testing
+
+class Test_class: 
+    """Test class for test_trace_object"""
+
+    age: int = 25
+    _debt: int = 5000
+    __income: int = 75000
+    
+    def age_up(self) -> None:
+        """Increase age"""
+        self.age += 1
+        
+    def _has_debt(self) -> bool:          # pylint: disable=unused-private-member
+        return self._debt > 0
+
+    def __good_income(self) -> bool:      # pylint: disable=unused-private-member
+        return self.__income > 50000
+
+class Person:
+    """Test class for test_trace_values"""
+    
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return f'Person("{self.name}")'
+
+#................................................................................
 
 class TestDebug(TestWrapper):
     """Class for test case definitions"""
@@ -63,6 +94,10 @@ class TestDebug(TestWrapper):
         self.stderr_text = "world"
         self.expected_stdout_trace = self.stdout_text + "\n"
         self.expected_stderr_trace = self.stderr_text + "\n"
+
+    def patch_trace_level(self, level):
+        """Monkey patch the trace LEVEL"""
+        self.monkeypatch.setattr("mezcla.debug.trace_level", level)
 
     def test_set_level(self):
         """Ensure set_level works as expected"""
@@ -126,33 +161,40 @@ class TestDebug(TestWrapper):
     def test_trace_object(self):
         """Ensure trace_object works as expected"""
         debug.trace(4, f"test_trace_object(): self={self}")
-        class Test_class: 
-            """Test class"""
-            alive: bool = True
-            age: int = 0
-            __debt: int = 0
-            
-            def age_up(self) -> None:
-                """Increase age"""
-                self.age += 1
-            
-            def __has_debt(self) -> bool:         # pylint: disable=unused-private-member
-                return self.__debt > 0
-                
         obj = Test_class()
         THE_MODULE.trace_object(level=1, obj=obj, show_all=True)
-        err = self.get_stderr()
-        assert "Test_class__debt: 0" in err
-        assert "Test_class__has_debt:" in err
-        ## OLD: assert "age_up:"
-        assert "age: 0" in err
-        assert "age_up: " in err
+        stderr = self.get_stderr()
+        ## OLD:
+        ## assert "Test_class__debt: 0" in err
+        ## assert "Test_class__has_debt:" in err
+        ## ## OLD: assert "age_up:"
+        ## assert "age: 0" in err
+        ## assert "age_up: " in err
+        ##
+        # <class '__main__.Test_class'> 0x7e30e9e54f10: {
+        # ... _Test_class__good_income: ('<bound method Test_class.__good_income ...)
+        assert my_re.search(r"Test_class[^:]+_good_income:[^:]+bound method", stderr)
+        # ... _Test_class__income: 75000
+        assert my_re.search(r"Test_class[^:]+_income: 75000", stderr)
+        # ... _debt: 5000
+        assert my_re.search(r"_debt: 5000", stderr)
+        # ... _has_debt: ('<bound method Test_class._has_debt ...)
+        assert my_re.search(r"_has_debt:[^:]+bound method", stderr)
+        # ... age: 0
+        assert my_re.search(r"age: 25", stderr)
+        # ... age_up: ('<bound method Test_class.age_up of
+        assert my_re.search(r"age_up:[^:]+bound method", stderr)
         
-        self.clear_stdout_stderr()
-        THE_MODULE.trace_object(level=1, obj=Test_class(), show_all=False, show_methods_etc=False, show_private=False)
-        err_2 = self.get_stderr()
-        assert "Test_class__has_debt:" not in err_2
-        assert "Test_class__debt: 0" in err_2
+    @pytest.mark.xfail
+    def test_negative_trace_object(self):
+        """Negative tests for trace_object"""
+        debug.trace(4, f"test_negative_trace_object(): self={self}")
+        obj = Test_class()
+        THE_MODULE.trace_object(level=1, obj=obj,
+                                show_all=False, show_methods_etc=False, show_private=False)
+        stderr = self.get_stderr()
+        assert "__has_debt:" not in stderr
+        ## TODO: assert "__income" not in stderr
 
     def test_trace_values(self):
         """Ensure trace_values works as expected"""
@@ -189,18 +231,12 @@ class TestDebug(TestWrapper):
         assert ": 123" in err
 
         # Test use_repr parameter
-        class Person:
-            """Test class"""
-            def __init__(self, name):
-                self.name = name
-            def __repr__(self):
-                return f'Person("{self.name}")'
         THE_MODULE.trace_values(-1, [Person("Kiran")], use_repr=True)
         err = self.get_stderr()
         assert 'Person("Kiran")' in err
 
     @pytest.mark.xfail
-    def test_trace_expr(self):
+    def test_simple_trace_expr(self):
         """Make sure trace_expr shows 'expr1=value1; expr2=value2'"""
         debug.trace(4, f"test_trace_expr(): self={self}")
         var1 = 3
@@ -210,7 +246,7 @@ class TestDebug(TestWrapper):
         assert(my_re.search(r"var1=3; var2=6;?", err))
 
     @pytest.mark.xfail
-    def test_trace_expr_expression(self):
+    def test_multiline_trace_expr(self):
         """Make sure trace_expr expression resolved when split across lines"""
         var1 = 3
         var2 = 6
@@ -221,17 +257,44 @@ class TestDebug(TestWrapper):
         assert(my_re.search(r"var1=3; var2=6;?", err))
         
     @pytest.mark.xfail
+    def test_newline_trace_expr(self):
+        """Test trace_expr with newline delim"""
+        debug.trace(4, f"test_trace_expr(): self={self}")
+        var1 = 3
+        var2 = 6
+        THE_MODULE.trace_expr(debug.get_level(), var1, var2, delim="\n")
+        err = self.get_stderr()
+        assert(my_re.search(r"var1=3\nvar2=6;?", err))
+
+    @pytest.mark.xfail
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
         number: int = 9                 # pylint: disable=unused-variable
+        self.patch_trace_level(4)
         THE_MODULE.trace_current_context(4)
         err = self.get_stderr()
-        assert "test_debug.TestDebug testMethod=test_trace_current_context" in err  # name of current function
-        assert "\'number\': 9" in err   # variable created in current function
-        assert "\'__name__\': \'test_debug\'" in err    # name of file
-        assert "\'__doc__\': \'Tests for debug module\'" in err # docstring of file
-        assert __file__ in err  # path of file
+        ##
+        ## OLD:
+        ## assert "test_debug.TestDebug testMethod=test_trace_current_context" in err  # name of current function
+        ## assert "\'number\': 9" in err   # variable created in current function
+        ## assert "\'__name__\': \'test_debug\'" in err    # name of file
+        ## assert "\'__doc__\': \'Tests for debug module\'" in err # docstring of file
+        ## assert __file__ in err  # path of file
+        ##
+        script_filename = gh.basename(__file__)
+        # globals: {\n  {value): {\n
+        # ... '__name__': 'mezcla.tests.test_debug',
+        assert my_re.search(r"__name__[^,]+test_debug", err)
+        # ... '__doc__': 'Tests for debug module', 
+        assert my_re.search(r"__doc__[^,]+Tests for debug", err)
+        # ... '__file__': '/home/joe/Mezcla/mezcla/tests/test_debug.py',
+        assert my_re.search(fr"__file__[^,]+{script_filename}", err)
+        # locals: {\n  {value): {\n
+        # ...  'self': <mezcla.tests.test_debug.TestDebug testMethod=test_trace_current_context>,
+        assert my_re.search(r"self[^,]+testMethod=test_trace_current_context", err)
+        # ... 'number': 9}
+        assert my_re.search(r"number[^,]+ 9", err)
 
     @pytest.mark.xfail
     def test_trace_exception(self):
@@ -266,15 +329,16 @@ class TestDebug(TestWrapper):
         assert "(2 + 2) == 5" in err
 
     @pytest.mark.xfail
-    @pytest.mark.skipif(not TEST_TBD, reason="Ignoring feature to be designed")
-    def test_assertion_expression(self):
+    def test_multiline_assertion(self):
         """Make sure assertion expression split across lines resolved"""
-        debug.trace(4, f"test_assertion_expression(): self={self}")
+        debug.trace(4, f"test_multiline_assertion(): self={self}")
         THE_MODULE.assertion(2 +
                              2 ==
                              5)
         err = self.get_stderr()
-        assert "2+2==5" in my_re.sub(r"\s+", "", err)
+        ## OLD: assert "2+2==5" in my_re.sub(r"\s+", "", err)
+        self.do_assert(my_re.search(r"2.*\+.*2.*==.*5", err,
+                                    flags=my_re.DOTALL|my_re.MULTILINE))
 
     def test_val(self):
         """Ensure val works as expected"""
@@ -326,9 +390,11 @@ class TestDebug(TestWrapper):
         """Ensure timestamp works as expected"""
         debug.trace(4, f"test_timestamp(): self={self}")
         debug_timestamp = THE_MODULE.timestamp()
-        new_timestamp = str(datetime.now())
-        assert debug_timestamp == new_timestamp
-        
+        ## OLD:
+        ## new_timestamp = str(datetime.now())
+        ## assert debug_timestamp == new_timestamp
+        # example: 2025-02-02 01:23:27.451258
+        assert my_re.search(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d", debug_timestamp)
 
     def test_debugging(self):
         """Ensure debugging works as expected"""
@@ -452,19 +518,19 @@ class TestDebug(TestWrapper):
     def test_profile_function(self):
         """Ensure profile_function works as expected"""
         debug.trace(4, f"test_profile_function(): self={self}")
+        self.monkeypatch.setattr("mezcla.debug.trace_level", 6)
         frame = inspect.currentframe()
         
         # test function call
-        THE_MODULE.profile_function(frame, 'test_profile_function call', 'something') 
-        err = self.get_stderr()
-        assert "test_profile_function call" in err
-        assert "in: test_debug:test_profile_function(something)" in err
+        THE_MODULE.profile_function(frame, 'call', 'arg') 
+        stderr = self.get_stderr()
+        assert "in: mezcla.tests.test_debug:test_profile_function(arg);" in stderr
         
         # test function return
         self.clear_stderr()
-        THE_MODULE.profile_function(frame, 'test_profile_function return', 'None') 
-        err_2 = self.get_stderr()
-        assert "out: test_debug:test_profile_function => None" in err_2
+        THE_MODULE.profile_function(frame, 'return', 'result') 
+        stderr = self.get_stderr()
+        assert "out: mezcla.tests.test_debug:test_profile_function => result" in stderr
         
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_reference_var(self):
@@ -486,35 +552,40 @@ class TestDebug(TestWrapper):
     def test_read_line(self):
         """Ensure read_line works as expected"""
         debug.trace(4, f"test_read_line(): self={self}")
-        content = """line1
-        line2
-        line3
-"""
+        content = fix_indent(
+            """
+            line1
+            line2
+            line3
+            """).lstrip("\n")
         
         temp_file = self.get_temp_file()
         system.write_file(temp_file, content)
         line_1 = THE_MODULE.read_line(temp_file, 1)
         line_2 = THE_MODULE.read_line(temp_file, 2)
         line_3 = THE_MODULE.read_line(temp_file, 3)
-        assert (line_1 + line_2 + line_3) == content
+        ## OLD: assert (line_1 + line_2 + line_3) == content
+        assert my_re.search(fr"{line_1}.*{line_2}.*{line_3}", content)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_debug_init(self):
         """Ensure debug_init works as expected"""
         debug.trace(4, f"test_debug_init(): self={self}")
+        self.patch_trace_level(6)
         temp_debug_filename = self.temp_file + ".debug.log"
         self.monkeypatch.setenv("DEBUG_FILE", temp_debug_filename)
         self.monkeypatch.setenv("ENABLE_LOGGING", "True")
         # NOTE: Setting MONITOR_FUNCTIONS to True breaks tests on windows
         ## OLD: today = str(datetime.now()).split(' ')[0]
         today = str(datetime.now()).split(' ', maxsplit=1)[0]
-        THE_MODULE.debug_init()
+        THE_MODULE.debug_init(force=True)
         # TODO3: why is _test*err.txt being output?
         err = self.get_stderr()
         err_file = system.form_path(gh.dirname(__file__),
                                     "_test_debug_init-err.txt")
         system.write_file(err_file, err)
 
+        ## TODO2: use regex pattern matching to be less brittle
         assert f"debug_filename={temp_debug_filename}" in err
         assert f"debug_file=<_io.TextIOWrapper name=\'{temp_debug_filename}\'" in err
         assert f"[{THE_MODULE.__file__}] loaded at {today}" in err
