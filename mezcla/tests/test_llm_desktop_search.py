@@ -34,7 +34,7 @@ import pytest
 
 # Local modules
 from mezcla.unittest_wrapper import TestWrapper, RUN_SLOW_TESTS
-from mezcla.unittest_wrapper import trap_exception
+from mezcla.unittest_wrapper import trap_exception, invoke_tests
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from  mezcla import gpu_utils
