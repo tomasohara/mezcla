@@ -114,11 +114,14 @@ class Script(Main):
         ##     print("arg2 line: %s" % line)
 
     ## TODO: if no input prococessed, customize run_main_step instead
-    ## and specify skip_input below
+    ## and specify skip_input below. (Use skip_input=False for filename support.)
     ##
     ## def run_main_step(self):
     ##     """Main processing step (n.b., assumes self.manual_input)"""
     ##     debug.trace(5, f"Script.run_main_step(): self={self}")
+    ##     ...
+    ##     ## TODO: data = self.read_entire_input()
+    #@     ...
     ##
 
     ## TODO:
@@ -131,8 +134,8 @@ def main():
     """Entry point"""
     app = Script(
         description=__doc__.format(script=gh.basename(__file__)),
-        # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
-        # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
+        # Note: if not manual_input, line-by-line processing is done via process_line;
+        # otherwise, run_main_step is used. Use skip_input to disable filename argument.
         skip_input=False,
         manual_input=False,
         ## TODO (specify auto_help such as when manual_input set):
