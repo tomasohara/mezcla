@@ -22,6 +22,7 @@ import pytest
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -59,8 +60,10 @@ def normalize_text(text):
     return result
 
 
-class TestTextUtils:
+class TestTextUtils(TestWrapper):
     """Class for test case definitions"""
+    # note: script_module used in argument parsing sanity check (e.g., --help)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_init_BeautifulSoup(self):
         """Ensure init_BeautifulSoup works as expected"""
