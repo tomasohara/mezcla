@@ -25,7 +25,7 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla.my_regex import my_re
 from mezcla.unittest_wrapper import TestWrapper, UNDER_COVERAGE, RUN_SLOW_TESTS
-from mezcla.unittest_wrapper import trap_exception
+from mezcla.unittest_wrapper import trap_exception, invoke_tests
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -36,7 +36,7 @@ except:
     system.print_exception_info("text_processing import")    
 
 # Constants
-RESOURCES = gh.form_path(f'{gh.dir_path(__file__)}','resources')
+RESOURCES = gh.form_path(f'{gh.dir_path(__file__)}', 'resources')
 TEXT_EXAMPLE = gh.form_path(f'{RESOURCES}', 'example_text.txt')
 TEXT_EXAMPLE_TAGS = gh.form_path(f'{RESOURCES}', 'example_text_tags.txt')
 WORD_POS_FREQ_FILE = gh.form_path(f'{RESOURCES}', 'word-POS.freq')
@@ -62,7 +62,7 @@ class TestTextProcessing(TestWrapper):
     def test_label_for_tag(self):
         """Ensure label_for_tag works as expected"""
         debug.trace(4, "test_label_for_tag()")
-        previous_value = THE_MODULE.KEEP_PUNCT
+        ## OLD: previous_value = THE_MODULE.KEEP_PUNCT
         
         self.monkeypatch.setattr(THE_MODULE, 'KEEP_PUNCT', True)
         assert THE_MODULE.label_for_tag("SYM", ',') == ','
@@ -70,7 +70,7 @@ class TestTextProcessing(TestWrapper):
         self.monkeypatch.setattr(THE_MODULE, 'KEEP_PUNCT', False)
         assert THE_MODULE.label_for_tag("SYM", ',') == 'SYM'
         assert THE_MODULE.label_for_tag("SYM", '?') == 'SYM'
-        self.monkeypatch.setattr(THE_MODULE, 'KEEP_PUNCT', previous_value)
+        ## OLD: self.monkeypatch.setattr(THE_MODULE, 'KEEP_PUNCT', previous_value)
         
 
     def test_class_for_tag(self):
@@ -115,24 +115,32 @@ class TestTextProcessing(TestWrapper):
     def test_has_spelling_mistake(self):
         """Ensure has_spelling_mistake works as expected"""
         debug.trace(4, "test_has_spelling_mistake()")
-        previous_value = THE_MODULE.SKIP_ENCHANT
+        # Note: overrides the word frequency file used if Enchant skip;
+        # the corresponding hash needs to be reset when changed.
+        ## OLD: previous_value = THE_MODULE.SKIP_ENCHANT
         self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', True)
+        self.monkeypatch.setattr(THE_MODULE, 'WORD_FREQ_FILE', WORD_FREQ_FILE)
+        self.monkeypatch.setattr(THE_MODULE, 'word_freq_hash', None)
         assert not THE_MODULE.has_spelling_mistake('the')
         assert THE_MODULE.has_spelling_mistake('ai')
+        # HACK: modifies module to ensure enchant loaded (TODO4: add init function)
+        import enchant                  # pylint: disable=import-outside-toplevel
+        self.monkeypatch.setattr(THE_MODULE, 'enchant', enchant)
         self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', False)
+        self.monkeypatch.setattr(THE_MODULE, 'word_freq_hash', None)
         assert not THE_MODULE.SKIP_ENCHANT
         assert THE_MODULE.has_spelling_mistake('sneik')
         assert not THE_MODULE.has_spelling_mistake('snake')
-        
-        self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', previous_value)
-        
+        ## OLD: self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', previous_value)
 
     def test_read_freq_data(self):
         """Ensure read_freq_data works as expected"""
         debug.trace(4, "test_read_freq_data()")
         lines = gh.read_lines(WORD_FREQ_FILE)
         freq = THE_MODULE.read_freq_data(WORD_FREQ_FILE)
-        for line in lines[7:]:
+        for line in lines:
+            if line.startswith("#"):
+                continue
             token = re.match(r'^.+?(?=\s)', line).group(0).lower()
             self.do_assert(freq[token])
 
@@ -142,7 +150,9 @@ class TestTextProcessing(TestWrapper):
         debug.trace(4, "test_read_word_POS_data()")
         lines = gh.read_lines(WORD_POS_FREQ_FILE)
         freq_pos = THE_MODULE.read_word_POS_data(WORD_POS_FREQ_FILE)
-        for line in lines[6:]:
+        for line in lines:
+            if line.startswith("#"):
+                continue
             token = re.match(r'^.+?(?=\s)', line).group(0).lower()
             self.do_assert(freq_pos[token])
 
