@@ -120,6 +120,9 @@ DISABLE_RECURSIVE_DELETE = system.getenv_value(
     "DISABLE_RECURSIVE_DELETE", None,
     description="Disable use of potentially dangerous rm -r style recursive deletions")
 PRESERVE_TEMP_FILE = None
+HOME_DIR = system.getenv_text(
+    "HOME", "~",
+    description="home directory")
 
 # Globals
 # note:
