@@ -212,6 +212,7 @@ class MezclaDebugger:
         arg_to_string_function=argument_to_string,
         include_context=False,
         context_abs_path=False,
+        icecream_like=None,
     ):
         self.enabled = True
         self.prefix = prefix
@@ -219,6 +220,7 @@ class MezclaDebugger:
         self.output_function = output_function
         self.arg_to_string_function = arg_to_string_function
         self.context_abs_path = context_abs_path
+        self.icecream_like = icecream_like
 
     def __call__(self, *args, arg_offset=0, indirect=False, **kwargs):
         """
@@ -356,12 +358,13 @@ class MezclaDebugger:
         all_args_on_one_line = separator.join(pair_strs)
         multiline_args = len(all_args_on_one_line.splitlines()) > 1
 
+        # note: context stuff is relic of icecream
         context_delimiter = self._contextDelimiter if context else ""
         all_pairs = prefix + context + context_delimiter + all_args_on_one_line
         ## BAD: first_line_too_long = len(all_pairs.splitlines()[0]) > self._lineWrapWidth
         first_line_too_long = (len(all_pairs.splitlines()[0]) > self._lineWrapWidth if all_pairs else False)
 
-        if multiline_args or first_line_too_long:
+        if self.icecream_like and (multiline_args or first_line_too_long):
             if context:
                 lines = [prefix + context] + [
                     format_pair(len(prefix) * " ", arg, value) for arg, value in pairs
