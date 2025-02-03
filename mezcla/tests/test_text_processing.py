@@ -9,7 +9,8 @@
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_text_processing.py
 #
 # TODO1: Combine testes classes into one.
-# TODO2: Remove RUN_SLOW_TESTS from test_chunk_noun_phrases
+# TODO2: Remove RUN_SLOW_TESTS from test_chunk_noun_phrases.
+# TODO3: Remove xfail's.
 #
 
 """Tests for text_processing module"""
@@ -41,8 +42,11 @@ TEXT_EXAMPLE = gh.form_path(f'{RESOURCES}', 'example_text.txt')
 TEXT_EXAMPLE_TAGS = gh.form_path(f'{RESOURCES}', 'example_text_tags.txt')
 WORD_POS_FREQ_FILE = gh.form_path(f'{RESOURCES}', 'word-POS.freq')
 WORD_FREQ_FILE = gh.form_path(f'{RESOURCES}', 'word.freq')
+NLTK_DIR = system.getenv_text(
+    "NLTK_DIR", gh.form_path(gh.HOME_DIR, "nltk_data"),
+    desc="Directory for NLTK data")
+                             
 
-@pytest.mark.skipif(not THE_MODULE, reason="Problem loading THE_MODULE")
 class TestTextProcessing(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
@@ -226,7 +230,6 @@ class TestTextProcessing(TestWrapper):
         assert "sentence splitting, word tokenization, and part-of-speech tagging" in captured
         assert "- Set SKIP_NLTK environment variable to 1 to disable NLTK usage." in captured
 
-@pytest.mark.skipif(not THE_MODULE, reason="Problem loading THE_MODULE")
 class TestTextProcessingScript(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
@@ -260,7 +263,22 @@ class TestTextProcessingScript(TestWrapper):
         output_lower = self.run_script(data_file=TEXT_EXAMPLE,options="--just-tokenize --lowercase")
         self.do_assert(output_lower == output_normal.lower(), "TODO: code test")
 
-@pytest.mark.skipif(not THE_MODULE, reason="Problem loading THE_MODULE")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
+    @pytest.mark.xfail
+    def test_download_nltk_resources(self):
+        """Makes sure download_nltk_resources actually does so"""
+        THE_MODULE.download_nltk_resources()
+        resource_info = [
+            ("tokenizers", ["punkt", "punkt_tab"]),
+            ("taggers", ["averaged_perceptron_tagger", "averaged_perceptron_tagger_eng"]),
+            ("corpora", ["stopwords"])]
+        for subdir, resource_names in resource_info:
+            for resource in resource_names:
+                assert system.is_directory(
+                    gh.form_path(NLTK_DIR, subdir, resource))
+        return
+
+
 class TestTextProc(TestWrapper):
     """Test TextProc classes"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
