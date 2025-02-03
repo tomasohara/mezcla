@@ -11,6 +11,13 @@
 #   SC2010: Don't use ls | grep
 #   SC2046: Quote this to prevent word splitting.
 #   SC2086: Double quote to prevent globbing and word splitting.
+# - Environment options:
+#   TEST_REGEX: tests to include
+#   FILTER_REGEX: tests to exclude
+#   DRY_RUN:-just show commands to be run
+#   INVOKE_PYTEST_DIRECTLY: uses pytest instead of master_test.py wrapper
+#   PYTEST_OPTIONS: options for pytest
+#   RUN_PYTHON_TESTS: (deprecated) invoke master_test.py
 #
 # TODO2:
 # - Document environment variables (e.g. overrides in _temp_test_settings.bash):
@@ -121,18 +128,21 @@ if [ "$1" == "--coverage" ]; then
     $pre_cmd coverage combine
     $pre_cmd coverage html
     test_result="$?"
+elif [ "${INVOKE_PYTEST_DIRECTLY:-0}" == "1" ]; then
+    # note: Runs pytest directly, which is useful for pin-pointing errors
+    # in GitHub actions web interface.
+    pytest_options="${PYTEST_OPTIONS:-}"
+    $pre_cmd pytest $pytest_options $tests $example_tests
+    test_result="$?"    
 elif [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
+    # note: use master test script allowing for thresholds and mypy usage
     export PYTHONUNBUFFERED=1
     echo -n "Running tests under "
     python3 --version
     python3 "$mezcla"/master_test.py
     test_result="$?"
 else
-    # note: this clause is now obsolete (TODO2: remove)
-    pytest_options="${PYTEST_OPTIONS:-}"
-    $pre_cmd echo "Warning: not running tests due to unexpected condition"
-    $pre_cmd echo "    pytest $pytest_options $tests $example_tests"
-    test_result="$?"
+    echo "Warning: not running tests"
 fi
 
 # End of processing
