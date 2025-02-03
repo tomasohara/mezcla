@@ -56,7 +56,9 @@ class TestIt(TestWrapper):
             2
             ==
             5)
-        self.do_assert(my_re.search(r"2.*\+.*2.*==.*5", multiline_value_expr))
+        debug.trace_expr(5, multiline_value_expr)
+        self.do_assert(my_re.search(r"2.*\+.*2.*==.*5", multiline_value_expr,
+                                    flags=my_re.DOTALL|my_re.MULTILINE))
         return
 
 #------------------------------------------------------------------------
