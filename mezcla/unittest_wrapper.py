@@ -93,6 +93,7 @@ PRUNE_TEMP = system.getenv_bool(
     desc="Delete temporary files ahead of time")
 TODO_FILE = "TODO FILE"
 TODO_MODULE = "TODO MODULE"
+TEMP_BASE = gh.TEMP_BASE
 
 # Note: the following is for transparent resolution of dotted module names
 # for invocation of scripts via 'python -m package.module'. This is in support
@@ -238,9 +239,11 @@ class TestWrapper(unittest.TestCase):
 
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usually set via derive_tested_module_name)
-    temp_base = system.getenv_value(
-        "TEMP_BASE", tempfile.NamedTemporaryFile().name,
-        desc="Override for basename of temporary files")
+    ## OLD:
+    ## temp_base = system.getenv_value(
+    ##     "TEMP_BASE", tempfile.NamedTemporaryFile().name,
+    ##     desc="Override for basename of temporary files")
+    temp_base = TEMP_BASE
     check_coverage = system.getenv_bool(
         "CHECK_COVERAGE", False,
         desc="Check coverage during unit testing")
@@ -255,7 +258,7 @@ class TestWrapper(unittest.TestCase):
     profiler = None
     monkeypatch = None
     capsys = None
-    
+
     ## TEST:
     ## NOTE: leads to pytest warning. See
     ##   https://stackoverflow.com/questions/62460557/cannot-collect-test-class-testmain-because-it-has-a-init-constructor-from
@@ -272,10 +275,10 @@ class TestWrapper(unittest.TestCase):
         """Per-class initialization: make sure script_module set properly
         Note: Optional FILENAME is path for testing script and MODULE the imported object for tested script
         """
-        debug.trace(6, f"TestWrapper.setUpClass({cls}, fn={filename}, mod={module})")
+        debug.trace(5, f"TestWrapper.setUpClass({cls}, fn={filename}, mod={module})")
         super().setUpClass()
         cls.class_setup = True
-        debug.trace_object(7, cls, "TestWrapper class")
+        debug.trace_object(7, cls, "init TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
         if (cls.script_module is not None):
             # Try to pull up usage via python -m mezcla.xyz --help
@@ -301,7 +304,7 @@ class TestWrapper(unittest.TestCase):
         if not cls.temp_base:
             cls.temp_base = gh.get_temp_file()
         if cls.use_temp_base_dir:
-            gh.full_mkdir(cls.temp_base)
+            gh.full_mkdir(cls.temp_base, force=True)
 
         # Warn that coverage support is limited
         if cls.check_coverage:
@@ -318,6 +321,7 @@ class TestWrapper(unittest.TestCase):
         # Optionally, setup up script_file and script_module
         if filename:
             cls.set_module_info(filename, module_object=module)
+        debug.trace_object(6, cls, "finalized TestWrapper class")
 
         return
 
@@ -378,6 +382,14 @@ class TestWrapper(unittest.TestCase):
         cls.script_file = cls.get_module_file_path(test_filename)
         return 
     
+    def ensure_file_dir_exists(self, filename):
+        """Make sure that directory for FILENAME exists"""
+        debug.trace(5, f"TestWrapper.ensure_file_dir_exists({filename})")
+        dir_path = gh.dirname(filename)
+        if not system.is_directory(dir_path):
+            debug.trace(4, f"FYI: Creating output directory {dir_path!r}\n\t{self.temp_file=}")
+            gh.full_mkdir(dir_path)
+
     def setUp(self) -> None:
         """Per-test initializations
         Notes:
@@ -396,18 +408,20 @@ class TestWrapper(unittest.TestCase):
             default_temp_file = gh.form_path(self.temp_base, "test-")
         else:
             default_temp_file = self.temp_base + "-test-"
+        temp_file_basename = default_temp_file
         TestWrapper.test_num += 1
         default_temp_file += str(TestWrapper.test_num)
         debug.trace_expr(5, default_temp_file)
 
         # Get new temp file and delete existing file and variants based on temp_file_count,
         # such as /tmp/test-2, /tmp/test-2-1, and /tmp/test-2-2 (but not /tmp/test-[13]*).
+        # Warning: using TEMP_FILE is not recommended due to clobbering by different tests
         self.temp_file = system.getenv_text(
             "TEMP_FILE", default_temp_file,
             desc="Override for temporary filename")
         if PRUNE_TEMP:
             gh.delete_existing_file(f"{self.temp_file}")
-            for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
+            for f in gh.get_matching_files(f"{temp_file_basename}-[0-9]*"):
                 gh.delete_existing_file(f)
 
         # Start the profiler
@@ -476,6 +490,10 @@ class TestWrapper(unittest.TestCase):
         if not out_file:
             out_file = self.temp_file + ".out"
         # note: output is redirected to a file to preserve tabs
+
+        # Make sure output and log files are in valid dirs
+        self.ensure_file_dir_exists(out_file)
+        self.ensure_file_dir_exists(log_file)
 
         # Set converage script path and command spec
         coverage_spec = ''
