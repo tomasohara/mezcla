@@ -142,8 +142,7 @@ stopwords = None
 if not SKIP_NLTK:
     import nltk            # pylint: disable=ungrouped-imports
     if DOWNLOAD_DATA:
-        ## TODO: nltk.download('all')
-        nltk.download(['punkt', 'averaged_perceptron_tagger'])
+        download_nltk_resources()
 # spell checking
 if not SKIP_ENCHANT:
     import enchant         # pylint: disable=ungrouped-imports
@@ -595,6 +594,14 @@ def create_text_proc(name, *args, **kwargs):
     except:
         system.print_exception_info("create_text_proc")
     return class_instance
+
+
+def download_nltk_resources():
+    """Download NLTK resources from their website"""
+    nltk.download(['punkt', 'punkt_tab', 
+                   'averaged_perceptron_tagger',
+                   'averaged_perceptron_tagger_eng',
+                   'stopwords'])
 
 #-------------------------------------------------------------------------------
 
