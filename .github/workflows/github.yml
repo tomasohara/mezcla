@@ -67,7 +67,7 @@ jobs:
       - name: Download data
         run: |
           ## TODO3: put post-install support in mezcla to minimize redundancy
-          python -m nltk.downloader -d "$HOME/nltk_data" punkt averaged_perceptron_tagger stopwords
+          python3 -m nltk.downloader -d "$HOME/nltk_data" punkt punkt_tab averaged_perceptron_tagger stopwords
 
       - name: Run Python Tests under Runner
         run: |
