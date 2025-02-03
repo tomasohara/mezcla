@@ -131,3 +131,9 @@ class TestMisc(TestWrapper):
         # note: addresses change like --include-header => --header in randomize_lines.py
         #   for module in ...: for usage in module usage: assert (not "test_04_usage_statements" in run_script(usage))
         self.do_assert(False, "TODO: implement")
+    
+#------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    debug.trace_current_context()
+    invoke_tests(__file__)
