@@ -156,7 +156,7 @@ END_RUN
 ## COPY . $WORKDIR/mezcla
 
 # Download the NLTK required data
-RUN python3 -m nltk.downloader -d /usr/local/share/nltk_data punkt punkt_tab averaged_perceptron_tagger stopwords
+RUN python3 -m nltk.downloader -d /usr/local/share/nltk_data punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng stopwords
 
 # Install required tools and libraries (TODO: why lsb-release?)
 # Note: cleans the apt-get cache
