@@ -166,10 +166,11 @@ class TestTextUtils(TestWrapper):
         assert THE_MODULE.extract_int_list("1   2  foobar", default_value=9) == [1, 2, 9]
         assert THE_MODULE.extract_int_list("1   2  3.45", default_value=230) == [1, 2, 230]
 
-    def test_getenv_ints(self, monkeypatch):
+    def test_getenv_ints(self):
         """Ensure getenv_ints works as expected"""
         debug.trace(4, "test_getenv_ints()")
-        monkeypatch.setenv("DUMMY-VARIABLE", "0, 1  2  3 4 ", prepend=os.pathsep)
+        ## INFO: help(self.monkeypatch)
+        self.monkeypatch.setenv("DUMMY-VARIABLE", "0, 1  2  3 4 ", prepend=os.pathsep)
         assert THE_MODULE.getenv_ints("DUMMY-VARIABLE", str(list(range(5)))) == [0, 1, 2, 3, 4]
 
     def test_is_symbolic(self):
