@@ -80,7 +80,9 @@ from mezcla.validate_arguments_types import (
 )
 
 # Local packages
-from mezcla.introspection import intro
+## OLD: from mezcla.introspection import intro
+intro = None
+
 ## OLD:
 ## # note: The following redefines sys.version_info to be python3 compatible;
 ## # this is used in _to_utf8, which should be reworked via six-based wrappers.
@@ -167,7 +169,9 @@ if __debug__:
     max_trace_value_len = 1024          # maxium length for tracing values
     time_start = 0.0                    # time of module load
     include_trace_diagnostics = False   # include trace invocation sanity checks
-    use_old_introspection = False       # use old-style introspection
+    monitor_functions = None            # monitor function entry/exit
+    module_file = __file__              # file name for module script
+    use_old_introspection = True        # use old-style introspection (temp enabled until debug_init)
     #
     try:
         trace_level_text = os.environ.get(DEBUG_LEVEL_LABEL, "")
@@ -604,11 +608,8 @@ if __debug__:
 
         # Get symbolic expressions for the values
         if not use_old_introspection:
-            ## TODO2: make sure sep, max_len, etc. honored
             ## HACK: uses _prefix to avoid conflict with introspection's prefix
-            ## TODO:
-            ## expression = intro.format(*values, arg_offset=1,
-            ##                           no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
+            ## TODO2: drop newlines due to arguments split across lines
             expression = intro.format(*values, arg_offset=1, indirect=True,
                                       no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
             ## TEST:
@@ -771,6 +772,8 @@ if __debug__:
                 if not use_old_introspection:
                     expression = intro.format(expression, indirect=True)
                     expression = re.sub("=False$", "", expression)
+                    ## TODO2: drop newlines due to argument split across lines
+                    ##   expression = re.sub("\n", " ", expression)???
                     expression_text = expression
                 else:
                     # Read statement in file and extract assertion expression
@@ -943,7 +946,6 @@ def timestamp() -> str:
     return (str(datetime.now()))
     
 
-## OLD: def debugging(level=ERROR):
 def debugging(level: IntOrTraceLevel = USUAL) -> bool:
     """Whether debugging at specified trace LEVEL (e.g., 3 for usual)"""
     ## BAD: """Whether debugging at specified trace level, which defaults to {l}""".format(l=ERROR)
@@ -1121,12 +1123,15 @@ def profile_function(frame, event, arg):
         _print_exception_info("profile_function")
 
     # Trace out the call (with other information at higher tracing levels)
+    # Common events: [c_]call, [c_]return, and [c_]exception
     if event.endswith("call"):
-        trace_fmt(DETAILED, "in: {mod}:{func}({a})", mod=module, func=name, a=arg)
+        trace_fmt(DETAILED, "in: {mod}:{func}({a}); ev={e}",
+                  mod=module, func=name, e=event, a=arg)
     elif event.endswith("return"):
-        trace_fmt(DETAILED, "out: {mod}:{func} => {a}", mod=module, func=name, a=arg)
+        trace_fmt(DETAILED, "out: {mod}:{func} => {a}; ev={e}",
+                  mod=module, func=name, e=event, a=arg)
     else:
-        trace_fmt(VERBOSE, "profile {mod}:{func} {e}: arg={a}",
+        trace_fmt(VERBOSE, "profile {mod}:{func}; ev={e}: arg={a}",
                   mod=module, func=name, e=event, a=arg)
     return
 
@@ -1168,6 +1173,18 @@ def read_line(filename: FileDescriptorOrPath, line_number: int) -> str:
 
 def main(args: List[str]) -> None:
     """Supporting/ code for command-line processing"""
+    # Check command line arguments
+    proceed = True
+    if "--help" in str(sys.argv):
+        print("Usage: {prog} [--help] [--skip-example]".format(prog=sys.argv[0]))
+        print("Note: Supporting module with minimal command line options")
+        proceed = False
+    if "--skip-example" in str(sys.argv):
+        proceed = False
+    if not proceed:
+        return
+
+    # Show results of various tracing calls
     trace_expr(DETAILED, len(args))
     trace(ERROR, "FYI: Not intended for direct invocation. Some tracing examples follow.")
     #
@@ -1238,9 +1255,31 @@ if __debug__:
         open_debug_file(debug_filename)
         return
 
-    def debug_init() -> None:
+    def display_ending_time_etc() -> None:
+        """Display ending time information"""
+        # TODO: rename to reflect generic-exit nature
+        # note: does nothing if stderr closed (e.g., other monitor)
+        # TODO: resolve pylint issue with sys.stderr.closed
+        trace_object(QUITE_VERBOSE, sys.stderr)
+        if sys.stderr.closed:       # pylint: disable=using-constant-test
+            return
+        elapsed = get_elapsed_time()
+        trace_fmtd(DETAILED, "[{f}] unloaded at {t}; elapsed={e}s",
+                   f=module_file, t=timestamp(), e=elapsed)
+        if monitor_functions:
+            sys.setprofile(None)
+        global debug_file
+        if debug_file:
+            debug_file.close()
+            debug_file = None
+    
+    def debug_init(force: Optional[bool] = False) -> None:
         """Debug-only initialization"""
         global time_start
+        if (time_start > 0 and not force):
+            ## TODO3: track down source of re-init
+            trace(DETAILED, f"debug_init early exit: {time_start=} {force=}")
+            return
         time_start = time.time()
         trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
         ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
@@ -1263,7 +1302,6 @@ if __debug__:
         output_timestamps = _getenv_bool("OUTPUT_DEBUG_TIMESTAMPS", False)
     
         # Show startup time and tracing info
-        module_file = __file__
         trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
         trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
         trace_expr(QUITE_DETAILED, __file__)
@@ -1280,6 +1318,7 @@ if __debug__:
             init_logging()
         global include_trace_diagnostics
         include_trace_diagnostics = _getenv_bool("TRACE_DIAGNOSTICS", trace_level >= QUITE_DETAILED)
+        global monitor_functions
         monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
         if monitor_functions:
             sys.setprofile(profile_function)
@@ -1289,6 +1328,13 @@ if __debug__:
         trace_expr(VERBOSE, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
         global use_old_introspection
         use_old_introspection = _getenv_bool("USE_OLD_INTROSPECTION", False)
+        if not use_old_introspection:
+            ## TODO2: put before trace_expr or assertion called
+            # pylint: disable=import-outside-toplevel
+            from mezcla import introspection
+            ## TODO3: from mezcla.introspection import intro
+            global intro
+            intro = introspection.intro
 
         # Show additional information when detailed debugging
         # TODO: sort keys to facilate comparisons of log files
@@ -1306,23 +1352,6 @@ if __debug__:
         trace_expr(MOST_DETAILED, globals(), max_len=65536)
 
         # Register to show shuttdown time and elapsed seconds
-        # TODO: rename to reflect generic-exit nature
-        def display_ending_time_etc() -> None:
-            """Display ending time information"""
-            # note: does nothing if stderr closed (e.g., other monitor)
-            # TODO: resolve pylint issue with sys.stderr.closed
-            trace_object(QUITE_VERBOSE, sys.stderr)
-            if sys.stderr.closed:       # pylint: disable=using-constant-test
-                return
-            elapsed = get_elapsed_time()
-            trace_fmtd(DETAILED, "[{f}] unloaded at {t}; elapsed={e}s",
-                       f=module_file, t=timestamp(), e=elapsed)
-            if monitor_functions:
-                sys.setprofile(None)
-            global debug_file
-            if debug_file:
-                debug_file.close()
-                debug_file = None
         # note: atexit support is enabled by default unless DEBUG_FILE used (n.b., cleanup issues)
         skip_atexit = _getenv_bool("SKIP_ATEXIT", (debug_file is not None))
         trace_expr(4, skip_atexit)
