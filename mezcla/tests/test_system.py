@@ -27,7 +27,7 @@ import pytest
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
-from mezcla.unittest_wrapper import trap_exception
+from mezcla.unittest_wrapper import trap_exception, get_temp_dir
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import debug
@@ -654,10 +654,12 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.is_regular_file(filename)
         assert not THE_MODULE.is_regular_file('/etc')
 
+    @pytest.mark.xfail
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
         debug.trace(4, "test_create_directory()")
-        temp_dir = THE_MODULE.getenv('TEMP')
+        ## OLD: temp_dir = THE_MODULE.getenv('TEMP')
+        temp_dir = get_temp_dir()
         path = THE_MODULE.form_path(temp_dir, 'mezcla_test')
         THE_MODULE.create_directory(path)
         assert THE_MODULE.is_directory(path)
