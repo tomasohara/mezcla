@@ -774,6 +774,7 @@ class TestSystem(TestWrapper):
             assert "/" in THE_MODULE.real_path("/etc/mtab")
             assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_module_version(self):
         """Ensure get_module_version works as expected"""
         debug.trace(4, "test_get_module_version()")

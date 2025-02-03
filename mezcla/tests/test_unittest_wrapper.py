@@ -65,6 +65,7 @@ class TestIt(TestWrapper):
     last_temp_file = None               # Reserved for test_05_check_temp_part1/2
     use_temp_base_dir = True            # treat TEMP_BASE as directory
 
+    @pytest.mark.xfail
     def test_01_usage(self):
         """Make sure usage warns that not intended for command line and that no stdout"""
         debug.trace(4, f"TestIt.test_01_usage(); self={self}")

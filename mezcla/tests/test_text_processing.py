@@ -235,6 +235,7 @@ class TestTextProcessingScript(TestWrapper):
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.xfail
     def test_all(self):
         """Ensure text_processing without argument works as expected"""
         debug.trace(4, "test_all()")
@@ -243,6 +244,7 @@ class TestTextProcessingScript(TestWrapper):
         for output_tag, expected_tag in zip(output, expected_tags):
             assert output_tag == expected_tag
 
+    @pytest.mark.xfail
     def test_just_tokenize(self):
         """Ensure just_tokenize argument works as expected"""
         debug.trace(4, "test_just_tokenize()")

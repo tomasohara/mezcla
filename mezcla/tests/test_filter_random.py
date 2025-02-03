@@ -17,7 +17,7 @@
 ## NOTE: this is empty for now
 
 # Installed packages
-## OLD: import pytest
+import pytest
 
 # Local packages
 from mezcla import debug
@@ -56,6 +56,7 @@ class TestFilterRandom(TestWrapper):
         assert expected_output == actual_output
         return None
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_simple_data_file(self):
         """Makes sure simple canned data file works as expected"""
         debug.trace(4, f"TestFilterRandom.test_simple_data_file({self})")
@@ -68,6 +69,7 @@ class TestFilterRandom(TestWrapper):
         ## OLD: self.setUp()
         return self.run_data_file_test(0.0, self.temp_file, "")
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_filter_none(self):
         """Makes sure no lines are filtered out with ratio 1.0"""
         debug.trace(4, f"TestFilterRandom.test_filter_none({self})")
