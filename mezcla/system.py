@@ -84,10 +84,14 @@ def register_env_option(var: str, description: str, default: Any) -> None:
     """Register environment VAR as option with DESCRIPTION and DEFAULT"""
     # Note: The default value is typically the default value passes into the
     # getenv_xyz call, not the current value from the environment.
-    debug.trace_fmt(7, "register_env_option({v}, {dsc}, {dft})",
+    debug.trace_fmt(7, "register_env_option({v}, {dsc!r}, {dft!r})",
                     v=var, dsc=description, dft=default)
     global env_options
     global env_defaults
+    if env_options.get(var):
+        print_error(f"Warning: redefining env entry for {var}: {env_options.get(var)=} {env_defaults.get(var)=}")
+    ## TEMP:
+    debug.trace_stack(8)
     env_options[var] = description
     env_defaults[var] = default
     return
@@ -650,8 +654,8 @@ def read_entire_file(filename: FileDescriptorOrPath, **kwargs) -> str:
         debug.trace_exception(1, "read_entire_file/IOError")
         report_errors = (kwargs.get("errors") != "ignore")
         if report_errors:
-            print_stderr("Error: Unable to read file '{f}': {exc}",
-                         f=filename, exc=get_exception())
+            print_stderr("Error: Unable to read file '{f}': {exc}".format(
+                f=filename, exc=get_exception()))
     debug.trace_fmtd(8, "read_entire_file({f}) => {r}", f=filename, r=data)
     return data
 #
@@ -671,6 +675,9 @@ def read_lines(filename: FileDescriptorOrPath, ignore_comments: Optional[bool] =
     lines = contents.split("\n")
     if ((lines[-1] == "") and contents.endswith("\n")):
         lines = lines[:-1]
+    ## HACK: fixup for [""]
+    if lines == [""]:
+        lines = []
     debug.trace(7, f"read_lines({filename!r}) => {lines}")
     return lines
 #
