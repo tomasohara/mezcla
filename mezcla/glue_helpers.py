@@ -21,6 +21,7 @@
 # TODO:
 # - Add more functions to facilitate command-line scripting (check bash scripts for commonly used features).
 # - Add functions to facilitate functional programming (e.g., to simply debugging traces).
+# TODO3: add deprecated warnings to functions superceded by ones in system
 #
 
 """Helpers gluing scripts together
@@ -42,10 +43,10 @@ import sys
 import tempfile
 from typing import (
     Optional, Any, List, Dict, Union,
-    TextIO,
+    ## OLD: TextIO,
 )
 from types import FrameType
-from io import TextIOWrapper
+## OLD: from io import TextIOWrapper
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Installed packages
@@ -54,9 +55,7 @@ import textwrap
 # Local packages
 from mezcla import debug
 from mezcla import system
-## TODO2: top_common => debug.
-from mezcla import tpo_common as tpo
-from mezcla.tpo_common import debug_format, debug_print
+from mezcla.tpo_common import format as tpo_format
 ## TODO3: debug.trace_expr(6, __file__)
 from mezcla.validate_arguments_types import (
     FileDescriptorOrPath, StrOrBytesPath
@@ -97,17 +96,11 @@ TEMP_PREFIX = system.getenv_text(
     "TEMP_PREFIX", FILE_BASE + "-",
     description="Prefix to use for temp files")
 TEMP_SUFFIX = system.getenv_text(
-    ## OLD: "TEMP_SUFFIX", "-",
     "TEMP_SUFFIX", "_",
     description="Suffix to use for temp files")
-## OLD: TEMP_SUFFIX = ("-")
 KEEP_TEMP = system.getenv_bool(
     "KEEP_TEMP", debug.detailed_debugging(),
     desc="Keep temporary files")
-## OLD:
-## NTF_ARGS = {'prefix': TEMP_PREFIX,
-##             'delete': not debug.detailed_debugging(),
-##             'suffix': TEMP_SUFFIX}
 TEMP_BASE = system.getenv_value(
     "TEMP_BASE", None,
     description="Override for temporary file basename")
@@ -151,7 +144,6 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
         delete = False
     ## BAD: temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
     NTF_ARGS = {'prefix': TEMP_PREFIX,
-                ## OLD: 'delete': not debug.detailed_debugging(),
                 'delete': not KEEP_TEMP,
                 'suffix': TEMP_SUFFIX}
     temp_file_name = TEMP_FILE
@@ -166,7 +158,7 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
     ## TODO2: drop ... or ""
     temp_file_name = temp_file_name or ""
     debug.assertion(not delete, "Support for delete not implemented")
-    debug_format("gh.get_temp_file() => {r!r}", 5, r=temp_file_name)
+    debug.trace_fmtd(5, "gh.get_temp_file() => {r!r}", r=temp_file_name)
     return temp_file_name
 
 
@@ -174,7 +166,6 @@ def get_temp_dir(delete=None) -> str:
     """Gets temporary file to use as a directory
     note: Optionally DELETEs directory afterwards
     """
-    ## OLD: debug.assertion(False, "work-in-progress implementation")
     temp_dir_path = get_temp_file(delete=delete)
     # note: removes non-dir file if exists
     full_mkdir(temp_dir_path, force=True)
@@ -199,7 +190,7 @@ def basename(filename: str, extension: Optional[str] = None) -> str:
         pos = base.find(extension)
         if pos > -1:
             base = base[:pos]
-    debug_print(f"basename({filename!r}, {extension}) => {base}", 5)
+    debug.trace(5, f"basename({filename!r}, {extension}) => {base}")
     return base
 
 
@@ -211,7 +202,7 @@ def remove_extension(filename: str, extension: str) -> str:
     # NOTE: Unlike os.path.splitext, only the specific extension is removed (not whichever extension used).
     pos = filename.find(extension)
     base = filename[:pos] if (pos > -1) else filename
-    debug_print(f"remove_extension({filename!r}, {extension}) => {base!r}", 5)
+    debug.trace(5, f"remove_extension({filename!r}, {extension}) => {base!r}")
     return base
 
 
@@ -233,9 +224,6 @@ def dir_path(filename: str, explicit: bool = False) -> str:
     # TODO: add realpath (i.e., canonical path)
     if not explicit:
         base = basename(filename)
-        ## OLD:
-        ## # TODO: debug.assertion
-        ## assert isinstance(base, str)
         debug.assertion(form_path(path, base) == filename)
     return path
 
@@ -252,7 +240,7 @@ def dirname(file_path: str) -> str:
 def file_exists(filename: FileDescriptorOrPath) -> bool:
     """Returns indication that FILENAME exists"""
     ok = os.path.exists(filename)
-    debug_print(f"file_exists({filename!r}) => {ok}", 7)
+    debug.trace(7, f"file_exists({filename!r}) => {ok}")
     return ok
 
 
@@ -260,7 +248,7 @@ def non_empty_file(filename: FileDescriptorOrPath) -> bool:
     """Whether FILENAME exists and is non-empty"""
     size = (os.path.getsize(filename) if os.path.exists(filename) else -1)
     non_empty = (size > 0)
-    debug_print(f"non_empty_file({filename!r}) => {non_empty} (filesize={size})", 5)
+    debug.trace(5, f"non_empty_file({filename!r}) => {non_empty} (filesize={size})")
     return non_empty
 
 
@@ -290,7 +278,7 @@ def resolve_path(
                 debug.trace_expr(4, calling_filename, base_dir)
             except (AssertionError, AttributeError, KeyError):
                 base_dir = ""
-                debug_print("Error: Exception during resolve_path: " + str(sys.exc_info()), 5)
+                debug.trace(5, "Error: Exception during resolve_path: " + str(sys.exc_info()))
             finally:
                 if frame:
                     del frame
@@ -313,7 +301,7 @@ def resolve_path(
         debug.assertion(base_dir)
         path = run(f"find {base_dir or '.'} -name '{path}'")
             
-    debug_format("resolve_path({f}) => {p}", 4, f=filename, p=path)
+    debug.trace_fmtd(4, "resolve_path({f}) => {p}", f=filename, p=path)
     return path
 
 
@@ -331,14 +319,14 @@ def form_path(*filenames: str, create: bool = False) -> str:
             full_mkdir(path_dir)
 
     path = os.path.join(*filenames)
-    debug_format("form_path{f} => {p}", 6, f=tuple(filenames), p=path)
+    debug.trace_fmtd(6, "form_path{f} => {p}", f=tuple(filenames), p=path)
     return path
 
 
 def is_directory(path: FileDescriptorOrPath) -> bool:
     """Determines whether PATH represents a directory"""
     is_dir = os.path.isdir(path)
-    debug_format("is_dir({p}) => {r}", 6, p=path, r=is_dir)
+    debug.trace_fmtd(6, "is_dir({p}) => {r}", p=path, r=is_dir)
     return is_dir
 
 
@@ -356,12 +344,6 @@ def create_directory(path: StrOrBytesPath) -> None:
     """
     debug.trace(3, "Warning: create_directory obsolete use version in system.py instead")
     system.create_directory(path)
-    ## OLD:
-    ## if not os.path.exists(path):
-    ##     os.mkdir(path)
-    ##     debug_format("os.mkdir({p})", 6, p=path)
-    ## else:
-    ##     debug.assertion(os.path.isdir(path))
     return
 
 
@@ -375,7 +357,6 @@ def full_mkdir(path: FileDescriptorOrPath, force: bool = False) -> None:
     if force and system.file_exists(path) and not system.is_directory(path):
         delete_file(path)
     if not system.file_exists(path):
-        ## OLD: issue('mkdir --parents "{p}"', p=path)
         os.makedirs(path, exist_ok=True)
     debug.assertion(is_directory(path))
     return
@@ -430,7 +411,7 @@ def elide(value: Optional[Any], max_len: Optional[int] = None) -> str:
     # EX: elide(None) => ""
     # NOTE: Make sure compatible with debug.format_value (TODO3: add equivalent to strict argument)
     # TODO2: add support for eliding at word-boundaries
-    tpo.debug_print("elide(_, _)", 8)
+    debug.trace(8, "elide(_, _)")
     text = value
     if text is None:
         text = ""
@@ -441,7 +422,7 @@ def elide(value: Optional[Any], max_len: Optional[int] = None) -> str:
     result = text
     if (result and (len(result) > max_len)):
         result = result[:max_len] + "..."
-    tpo.debug_print("elide({%s}, [{%s}]) => {%s}" % (text, max_len, result), 9)
+    debug.trace(9, "elide({%s}, [{%s}]) => {%s}" % (text, max_len, result))
     return result
 #
 # EX: elide(None, 10) => ''
@@ -449,7 +430,7 @@ def elide(value: Optional[Any], max_len: Optional[int] = None) -> str:
 def elide_values(values: List[Any], **kwargs) -> List[str]:
     """List version of elide [q.v.]"""
     # EX: elide_values(["1", "22", "333"], max_len=2) => ["1", "22", "33..."]
-    tpo.debug_print("elide_values(_, _)", 7)
+    debug.trace(7, "elide_values(_, _)")
     return list(map(lambda v: elide(str(v), **kwargs),
                     values))
 
@@ -457,7 +438,7 @@ def elide_values(values: List[Any], **kwargs) -> List[str]:
 def disable_subcommand_tracing() -> None:
     """Disables tracing in scripts invoked via run().
     Note: Invoked in unittest_wrapper.py"""
-    tpo.debug_print("disable_subcommand_tracing()", 7)
+    debug.trace(7, "disable_subcommand_tracing()")
     # Note this works by having run() temporarily setting DEBUG_LEVEL to 0."""
     global default_subtrace_level
     default_subtrace_level = 0
@@ -518,11 +499,14 @@ def run(
     # TODO: make this optional
     command_line = command
     if (re.search(r"{\S+}", command) or namespace):
-        command_line = tpo.format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
+        if not namespace:
+            ## TODO3: weed out gh.run calls with empty kwargs
+            debug.trace(4, "Warning: deprecated interpolation used for gh.run")
+        command_line = tpo_format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
     else:
         # TODO2: and sanity check for unresolved f-string-like template as with debug.trace
         pass
-    debug_print("issuing: %s" % command_line, trace_level)
+    debug.trace(trace_level, "issuing: %s" % command_line)
     # Run the command
     # TODO: check for errors (e.g., "sh: filter_file.py: not found"); make wait explicit
     in_background = command.strip().endswith("&")
@@ -568,7 +552,7 @@ def run_via_bash(
     - Used in bash to python translation; see
          https://github.com/tomasohara/shell-scripts/blob/main/bash2python.py
     """
-    debug_print("issuing: %s" % command, trace_level)
+    debug.trace(trace_level, "issuing: %s" % command)
     commands_to_run = ""
     if enable_aliases:
         commands_to_run += "shopt -s expand_aliases\n"
@@ -594,11 +578,12 @@ def issue(
     - Captures stderr unless redirected and traces at error level (1)."""
     # EX: issue("ls /") => None
     # EX: issue("xeyes &")
-    debug_print("issue(%s, [trace_level=%s], [subtrace_level=%s], [ns=%s])"
-                % (command, trace_level, subtrace_level, namespace), (trace_level + 1))
+    debug.trace_fmt(
+        (trace_level + 1), "issue({c}, [trace_level={tl}], [sub_level={sl}], [ns={n}])",
+        c=command, tl=trace_level, sl=subtrace_level, n=namespace)
     # Add stderr redirect to temporary log file, unless redirection already present
     log_file = None
-    if tpo.debugging() and (not "2>" in command) and (not "2|&1" in command):
+    if debug.debugging() and (not "2>" in command) and (not "2|&1" in command):
         ## TODO: use a different suffix each time to aid in debugging
         log_file = TEMP_LOG_FILE
         delete_existing_file(log_file)
@@ -606,15 +591,19 @@ def issue(
     # Run the command and trace output
     command_line = command
     if re.search("{.*}", command_line):
-        command_line = tpo.format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
+        if not namespace:
+            ## TODO3: weed out gh.issue calls with empty kwargs
+            debug.trace(4, "Warning: deprecated interpolation used for gh.issue")
+        command_line = tpo_format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
     output = run(command_line, trace_level, subtrace_level, just_issue=True)
-    tpo.debug_print("stdout from command: {\n%s\n}\n" % indent(output), (2 + trace_level))
+    debug.trace((2 + trace_level), "stdout from command: {\n%s\n}\n" % indent(output))
     # Trace out any standard error output and remove temporary log file (unless debugging)
     if log_file:
-        if tpo.debugging() and non_empty_file(log_file):
+        if debug.debugging() and non_empty_file(log_file):
             stderr_output = indent(read_file(log_file))
-            tpo.debug_print("stderr output from command: {\n%s\n}\n" % indent(stderr_output))
-        if not tpo.detailed_debugging():
+            debug.trace(1, "stderr output from command: {\n%s\n}\n" % indent(stderr_output))
+        if not debug.detailed_debugging():
+            ## TODO4: add option for deletion
             delete_file(log_file)
     return
 
@@ -652,7 +641,7 @@ def extract_matches(
     # ex: extract_matches(r"^(\S+) \S+", ["John D.", "Jane D.", "Plato"]) => ["John", "Jane"]
     # Note: modelled after extract_matches.perl
     # TODO: make multiple the default
-    debug_print("extract_matches(%s, _, [fld=%s], [m=%s], [flg=%s], [para=%s])" % (pattern, fields, multiple, re_flags, para_mode), 6)
+    debug.trace(6, "extract_matches(%s, _, [fld=%s], [m=%s], [flg=%s], [para=%s])" % (pattern, fields, multiple, re_flags, para_mode))
     ## TODO
     ## if re_flags is None:
     ##     re_flags = re.DOTALL
@@ -687,11 +676,11 @@ def extract_matches(
                     break
                 line = new_line
             except (re.error, IndexError):
-                debug_print("Warning: Exception in pattern matching: %s" % str(sys.exc_info()), 2)
+                debug.trace(2, "Warning: Exception in pattern matching: %s" % str(sys.exc_info()))
                 line = ""
-    debug_print("extract_matches() => %s" % (matches), 7)
+    debug.trace(7, "extract_matches() => %s" % (matches))
     double_indent = INDENT + INDENT
-    debug_format("{ind}input lines: {{\n{res}\n{ind}}}", 8,
+    debug.trace_fmtd(8, "{ind}input lines: {{\n{res}\n{ind}}}",
                  ind=INDENT, res=indent_lines("\n".join(lines), double_indent))
     return matches
 
@@ -707,7 +696,7 @@ def extract_match(
     """Extracts first match of PATTERN in LINES for FIELDS"""
     matches = extract_matches(pattern, lines, fields, multiple, re_flags, para_mode)
     result = (matches[0] if matches else None)
-    debug_print("match: %s" % result, 5)
+    debug.trace(5, "match: %s" % result)
     return result
 
 
@@ -769,33 +758,17 @@ def read_lines(
         make_unicode: bool = False
     ) -> List[str]:
     """Returns list of lines from FILENAME without newlines (or other extra whitespace)
-    @notes: Uses stdin if filename is None. Optionally returned as unicode."""
-    # TODO: use enumerate(f); refine exception in except; 
-    # TODO: force unicode if UTF8 encountered
-    lines = []
-    f: Optional[Union[TextIO, TextIOWrapper]] = None
-    try:
-        # Open the file
-        if not filename:
-            tpo.debug_format("Reading from stdin", 4)
-            f = sys.stdin
-        else:
-            f = system.open_file(filename)
-            if not f:
-                raise IOError
-        # Read line by line
-        for line in f:
-            line = line.strip("\n")
-            if make_unicode:
-                line = tpo.ensure_unicode(line)
-            lines.append(line)
-    except IOError:
-        debug_print(f"Warning: Exception reading file {filename!r}: {sys.exc_info()}", 2)
-    finally:
-        if f:
-            f.close()
-    debug_print(f"read_lines({filename!r}) => {lines}", 6)
-    return lines
+    Note:
+    - Uses stdin if filename is None. Optionally returned as unicode.
+    - make_unicode is deprecated
+    - Warning: deprecated function--use system.read_lines instead
+    """
+    debug.trace(3, "Warning: in deprecated glue_helpers.read_lines: use version in system")
+    debug.assertion(not make_unicode)
+    if not filename:
+        filename = get_temp_file() + ".stdin.list"
+        system.write_file(filename, system.read_all_stdin())
+    return system.read_lines(filename)
 
 
 def write_lines(
@@ -803,24 +776,10 @@ def write_lines(
         text_lines: List[str],
         append: bool = False
     ) -> None:
-    """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND"""
-    debug_print(f"write_lines({filename!r}, _)", 5)
-    debug_print("    text_lines=%s" % text_lines, 6)
-    debug.assertion(isinstance(text_lines, list) and all(isinstance(x, str) for x in text_lines))
-    f = None
-    try:
-        mode = 'a' if append else 'w'
-        f = system.open_file(filename, mode=mode)
-        assert isinstance(f, TextIOWrapper)
-        for line in text_lines:
-            line = tpo.normalize_unicode(line)
-            f.write(line + "\n")
-    except (AssertionError, IOError):
-        debug_print(f"Warning: Exception writing file {filename!r}: {sys.exc_info()}", 2)
-    finally:
-        if f:
-            f.close()
-    return
+    """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND
+    Warning: deprecated function--use version in system.py instead"""
+    debug.trace(3, "Warning: Deprecated (glue_helpers.read_file): use version in system")
+    system.write_lines(filename, text_lines, append=append)
 
 
 def read_file(filename: FileDescriptorOrPath, make_unicode: bool = False) -> str:
@@ -828,22 +787,17 @@ def read_file(filename: FileDescriptorOrPath, make_unicode: bool = False) -> str
     Note: optionally returned as unicde.
     Warning: deprecated function--use system.read_file instead
     """
-    debug_print(f"read_file({filename!r})", 7)
-    debug_print("Warning: Deprecated (glue_helpers.read_file): use version in system", 3)
-    text = "\n".join(read_lines(filename, make_unicode=make_unicode))
-    return (text + "\n") if text else ""
+    debug.trace(3, "Warning: Deprecated (glue_helpers.read_file): use version in system")
+    debug.assertion(not make_unicode)
+    return system.read_file(filename)
 
 
 def write_file(filename: FileDescriptorOrPath, text: str, append: bool=False) -> None:
     """Writes FILENAME using contents in TEXT, adding trailing newline and optionally for APPEND
     Warning: deprecated function--use system.write_file instead
     """
-    ## TEST: debug_print(u"write_file(%s, %s)" % (filename, text), 7)
-    ## TEST: debug_print(u"write_file(%s, %s)" % (filename, tpo.normalize_unicode(text)), 7)
-    debug_print("write_file(%s, %s)" % (tpo.normalize_unicode(filename), tpo.normalize_unicode(text)), 7)
-    debug_print("Warning: Deprecated (glue_helpers.write_file): use version in system", 3)
-    text_lines = text.rstrip("\n").split("\n")
-    return write_lines(filename, text_lines, append)
+    debug.trace(3, "Warning: Deprecated (glue_helpers.write_file): use version in system")
+    system.write_file(filename, text, append=append)
 
 
 def copy_file(source: str, target: str) -> None:
@@ -851,7 +805,7 @@ def copy_file(source: str, target: str) -> None:
     # Note: meta data is not copied (e.g., access control lists)); see
     #    https://docs.python.org/2/library/shutil.html
     # TODO: have option to skip if non-dir target exists
-    debug_print("copy_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
+    debug.trace(5, f"copy_file({source}, {target}")
     debug.assertion(non_empty_file(source))
     shutil.copy(source, target)
     if system.is_regular_file(target):
@@ -869,13 +823,13 @@ def copy_directory(source, dest):
     """copy SOURCE dir to DEST dir"""
     # Note: meta data is not copied (e.g., access control lists)); see
     #    https://docs.python.org/3/library/shutil.html
-    debug.trace_fmt(5, f'copy_directory({source}, {dest})')
+    debug.trace_fmt(5, f"copy_directory({source}, {dest})")
 
     def non_empty_directory(path):
         """Whether PATH exists and is not empty"""
         size = len(get_directory_listing(path)) if is_directory(path) else -1
         non_empty = size > 0
-        debug.trace_fmt(5, f'non_empty_directory({path}) => {non_empty} (files={size})')
+        debug.trace_fmt(5, f"non_empty_directory({path}) => {non_empty} (files={size})")
         return non_empty
     
     debug.assertion(non_empty_directory(source))
@@ -887,7 +841,7 @@ def copy_directory(source, dest):
 def rename_file(source: StrOrBytesPath, target: str) -> None:
     """Rename SOURCE file as TARGET file"""
     # TODO: have option to skip if target exists
-    debug_print("rename_file(%s, %s)" % (tpo.normalize_unicode(source), tpo.normalize_unicode(target)), 5)
+    debug.trace(5, f"rename_file({source}, {target})")
     debug.assertion(non_empty_file(source))
     debug.assertion(source != target)
     os.rename(source, target)
@@ -897,15 +851,15 @@ def rename_file(source: StrOrBytesPath, target: str) -> None:
 
 def delete_file(filename: StrOrBytesPath) -> bool:
     """Deletes FILENAME"""
-    debug_print("delete_file(%s)" % tpo.normalize_unicode(filename), 5)
+    debug.trace(5, f"delete_file({filename})")
     debug.assertion(os.path.exists(filename))
     ok = False
     try:
         os.remove(filename)
         ok = True
-        debug_format("remove{f} => {r}", 6, f=filename, r=ok)
+        debug.trace_fmtd(6, "remove{f} => {r}", f=filename, r=ok)
     except OSError:
-        debug_print("Exception during deletion of {filename}: " + str(sys.exc_info()), 5)
+        debug.trace(5, "Exception during deletion of {filename}: " + str(sys.exc_info()))
     return ok
 
 
@@ -914,7 +868,7 @@ def delete_existing_file(filename: StrOrBytesPath) -> bool:
     ok = False
     if file_exists(filename):
         ok = delete_file(filename)
-    tpo.debug_format("delete_existing_file({f}) => {r}", 5, f=filename, r=ok)
+    debug.trace_fmtd(5, "delete_existing_file({f}) => {r}", f=filename, r=ok)
     return ok
 
 def delete_directory(path):
@@ -941,7 +895,7 @@ def file_size(filename: FileDescriptorOrPath) -> int:
     size = -1
     if os.path.exists(filename):
         size = os.path.getsize(filename)
-    tpo.debug_format("file_size({f}) => {s}", 5, f=filename, s=size)
+    debug.trace_fmtd(5, "file_size({f}) => {s}", f=filename, s=size)
     return size
 
 
@@ -950,7 +904,7 @@ def get_matching_files(pattern: str, warn: bool = False) -> List[str]:
     Note: Optionally issues WARNing"""
     # NOTE: Multiple glob specs not allowed in PATTERN
     files = sorted(glob.glob(pattern))
-    tpo.debug_format("get_matching_files({p}) => {l}", 5,
+    debug.trace_fmtd(5, "get_matching_files({p}) => {l}",
                      p=pattern, l=files)
     if ((not files) and warn):
         system.print_stderr(f"Warning: no matching files for {pattern}")
@@ -962,7 +916,7 @@ def get_files_matching_specs(patterns: List[str]) -> List[str]:
     files = []
     for spec in patterns:
         files += get_matching_files(spec)
-    tpo.debug_format("get_files_matching_specs({p}) => {l}", 6,
+    debug.trace_fmtd(6, "get_files_matching_specs({p}) => {l}",
                      p=patterns, l=files)
     return files
 
@@ -971,30 +925,34 @@ def get_directory_listing(
         dir_name: Union[int, str, bytes],
         make_unicode: bool = False
     ) -> Union[List[str], List[str], List[bytes]]:
-    """Returns files in DIR_NAME"""
+    """Returns files in DIR_NAME
+    Note: make_unicode is deprecated
+    """
     # TODO: Union[List[str], List[bytes]] = []
+    ## TODO3: drop make_unicode; implement via system.get_directory_filenames
     all_file_names: Union[List[str], List[str], List[bytes]] = []
     try:
         all_file_names = os.listdir(dir_name)
     except OSError:
-        tpo.debug_format("Exception during get_directory_listing: {exc}", 4,
+        debug.trace_fmtd(4, "Exception during get_directory_listing: {exc}",
                          exc=str(sys.exc_info()))
     if make_unicode:
-        all_file_names = [tpo.ensure_unicode(f) for f in all_file_names]
-    tpo.debug_format("get_directory_listing({dir}) => {files}", 5,
+        debug.trace(4, "Warning: using obsolete get_directory_listing make_unicode option")
+    debug.trace_fmtd(5, "get_directory_listing({dir}) => {files}",
                      dir=dir_name, files=all_file_names)
     return all_file_names
 
 #-------------------------------------------------------------------------------
-# Extensions to tpo_common included here due to inclusion of functions 
+# Extensions to system.py included here due to inclusion of functions 
 # defined here.
+## TODO3: put in system.py
 
 def getenv_filename(var: str, default: str = "", description: Optional[str] = None) -> str:
     """Returns text filename based on environment variable VAR (or string version of DEFAULT) 
     with optional DESCRIPTION. This includes a sanity check for file being non-empty."""
     # EX: system.setenv("ETC", "/etc"); getenv_filename("ETC") => "/etc"
     # TODO4: explain motivation
-    debug_format("getenv_filename({v}, {d}, {desc})", 6,
+    debug.trace_fmtd(6, "getenv_filename({v}, {d}, {desc})",
                  v=var, d=default, desc=description)
     if not description:
         description = ""
@@ -1011,53 +969,19 @@ if __debug__:
     def assertion(condition: bool) -> None:
         """Issues warning if CONDITION doesn't hold
         Note: deprecated function--use debug.assertion instead"""
-        ## TODO2: rework as wrapper around debug.assertion
         global assertion_deprecation_shown
         if not assertion_deprecation_shown:
-            debug.trace(3, "Warning: glue_helpers.assertion() is deprecated")
+            debug.trace(3, "Warning: glue_helpers.assertion() is deprecated; use version in debug.py")
             assertion_deprecation_shown = True
-        # EX: assertion(2 + 2 != 5)
-        # TODO: rename as soft_assertion???; add to tpo_common.py (along with run???)
-        if not condition:
-            # Try to get file and line number from stack frame
-            # note: not available during interactive use
-            filename = None
-            line_num = -1
-            frame = None
+        if debug.assertion(condition):
             try:
                 frame = inspect.currentframe()
-                assert isinstance(frame, FrameType)
                 frame = frame.f_back
-                assert isinstance(frame, FrameType)
-                tpo.debug_trace("frame=%s", frame, level=8)
-                tpo.trace_object(frame, 9, "frame")
                 filename = frame.f_globals.get("__file__")
-                if filename and filename.endswith(".pyc"):
-                    filename = filename[:-1]
                 line_num = frame.f_lineno
+                debug.trace(TL.WARNING, f"FYI: Assertion failed at {filename}:{line_num}")
             except:
-                debug.trace_fmt(TL.ALWAYS, "Exception formatting assertion: {exc}",
-                                exc=sys.exc_info())
-            finally:
-                if frame:
-                    del frame
-            
-            # Get text for line and extract the condition from invocation,
-            # ignoring comments and function name.
-            # TODO: define function for extracting line, so this can be put in tpo_common.py
-            line = "???"
-            if filename:
-                line = run("tail --lines=+{l} '{f}' | head -1", 
-                           subtrace_level=8, f=filename, l=line_num)
-            condition = re.sub(r"^\s*\S*assertion\((.*)\)\s*(\#.*)?$", 
-                               "\\1", line)
-    
-            # Print the assertion warning
-            line_spec = "???"
-            if filename:
-                line_spec = "{f}:{l}".format(f=filename, l=line_num)
-            debug_format("*** Warning: assertion failed: ({c}) at {ls}", 
-                         tpo.WARNING, c=condition, ls=line_spec)
+                system.print_exception_info("gh.assertion")
         return
 
 else:
