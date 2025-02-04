@@ -361,9 +361,6 @@ def get_func_specs(func: callable) -> ArgsSpecs:
         new_args = func_specs.args
         new_kwargs = []
         if func_specs.defaults:
-            ## OLD:
-            ## new_kwargs = func_specs.args[-len(func_specs.defaults):]
-            ## new_args = func_specs.args[:-len(func_specs.defaults)]
             args_count = len(func_specs.args) - len(func_specs.defaults)
             new_args = func_specs.args[0: args_count]
             new_kwargs = func_specs.args[args_count:]
@@ -460,7 +457,6 @@ class CallDetails:
         """
         # Convert to list
         if isinstance(funcs, list):
-            ## OLD: funcs = funcs
             pass
         elif isinstance(funcs, tuple):
             funcs = list(funcs)
@@ -503,7 +499,6 @@ class CallDetails:
         return (self.callable(*args, **kwargs) if self.callable else None)
 
     def __repr__(self) -> str:
-        ## OLD: return f"CallDetails: {self.path}"
         return f"CallDetails: path={self.path!r} callable={self.callable!r} specs={self.specs!r}"
 
 class Features(Enum):
@@ -976,7 +971,6 @@ mezcla_to_standard = [
     EqCall(
         "system.sleep",
         "time.sleep",
-        ## OLD: eq_params={ "num_seconds": "seconds" }
     ),
     EqCall(
         ## TODO3: separate: get_exception just returns tuple
@@ -1046,13 +1040,6 @@ mezcla_to_standard = [
     # - Exceptions would be the deprecated tpo_common.py and the complex main.py.
     # - In addition, testing support is not included (e.g., unittest_wrapper.py).
     #
-    ## OLD:
-    ## Note: supercede by simpler version with os.putenv
-    ## EqCall(
-    ##     system.setenv,
-    ##     dests=lambda var, value: os.environ.update({var: value}),
-    ##     features=[Features.COPY_DEST_SOURCE]
-    ## ),
     EqCall(
         system.quote_url_text,
         dests=urllib.parse.quote_plus
@@ -2389,10 +2376,6 @@ def main():
     ## TODO4: use main()
     app = MezclaToStandardScript(
         description=__doc__.format(script=gh.basename(__file__)),
-        ## OLD:
-        ## positional_arguments = [
-        ##     (FILE, 'Python script to run with Mezcla-to-Standard conversion')
-        ## ],
         boolean_options = [
             (TO_STD, 'Convert Mezcla calls to standard calls'),
             (TO_MEZCLA, 'Convert standard calls to Mezcla calls'),
