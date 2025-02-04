@@ -15,8 +15,7 @@
 #    export TEST_REGEX="tips|README"    # run tests with tips or README in file
 #
 ## export DEBUG_LEVEL=4               # use verbose tracing
-## TEMP:
-export DEBUG_LEVEL=6
+## TEMP: export DEBUG_LEVEL=6
 
 # Override settings if under testing VM
 # Note: 1. Most settings off so user can override when running locally,
@@ -49,4 +48,4 @@ export INVOKE_PYTEST_DIRECTLY=1
 ## TEST: export FILTER_REGEX="/(misc|template|__|config|common_module)"
 ## TODO: "/?<!(test_)*.py", which uses negative lookbehind
 ## export FILTER_REGEX="/?<!(test_).*.py"
-export TEST_REGEX='filter_random|merge_files|system|text_processing|unittest_wrapper|validate_arguments'
+## TEMP: export TEST_REGEX='filter_random|merge_files|system|text_processing|unittest_wrapper|validate_arguments'
