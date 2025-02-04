@@ -443,6 +443,7 @@ def get_class_from_name(class_name, module_name=None):
 def convert_file_to_instances(input_file, module_name, class_name, field_names,
                               fmt=None):
     """Converts input file with array of records into a list of class instances.
+    Note: Supports mezcla_to_standard mapping table loading.
     
     Args:
         input_file: Path to input file (json, yaml, csv)
