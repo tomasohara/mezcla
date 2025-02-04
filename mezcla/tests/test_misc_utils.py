@@ -37,8 +37,10 @@ except:
         path = "n/a"
     class EqCall:
         """Dummy equivalent call"""
+        ## TODO3: use mock package
         dests = targets = [Path()]
-        pass
+        def __init__(self, *_args, **_kwargs):
+            pass
     debug.trace_exception(4, "mezcla.mezcla_to_standard import")
 
 # Note: Two references are used for the module to be tested:
