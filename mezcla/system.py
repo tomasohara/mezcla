@@ -89,7 +89,7 @@ def register_env_option(var: str, description: str, default: Any) -> None:
     global env_options
     global env_defaults
     if env_options.get(var):
-        print_error(f"Warning: redefining env entry for {var}: {env_options.get(var)=} {env_defaults.get(var)=}")
+        debug.trace(4, f"Warning: redefining env entry for {var}: {env_options.get(var)=} {env_defaults.get(var)=}")
     ## TEMP:
     debug.trace_stack(8)
     env_options[var] = description
