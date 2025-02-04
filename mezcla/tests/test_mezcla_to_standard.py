@@ -44,12 +44,13 @@ except:
     unittest_parametrize = ParametrizedTestCase = ut_parametrize = ut_param = None
 
 # Local packages
+# note: mezcla_to_standard uses packages not installed by default (e.g., libcst)
+from mezcla import system, debug, glue_helpers as gh
 try:
     import mezcla.mezcla_to_standard as THE_MODULE
 except:
     THE_MODULE = None
-from mezcla import system, debug, glue_helpers as gh
-## TOO: from mezcla.my_regex import my_re
+    debug.trace_exception(4, "mezcla.mezcla_to_standard import")
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import (
     SKIP_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON, fix_indent)
