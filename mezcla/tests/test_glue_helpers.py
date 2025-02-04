@@ -330,10 +330,11 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         # Test no filename (read from stdin)
         self.monkeypatch.setattr('sys.stdin', StringIO('my input\nsome line'))
         assert THE_MODULE.read_lines() == ['my input', 'some line']
+        ##
         ## TODO: solve "ValueError: I/O operation on closed file."
-        ## THE_MODULE.read_lines()
-        ## captured = capsys.readouterr()
-        ## assert 'stdin' in captured.err
+        ##   THE_MODULE.read_lines()
+        ##   captured = capsys.readouterr()
+        ##   assert 'stdin' in captured.err
 
         # Test invalid filename
         assert(not THE_MODULE.read_lines(filename='bad_filename.txt'))
