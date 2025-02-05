@@ -97,6 +97,7 @@ class TestDebug(TestWrapper):
 
     def patch_trace_level(self, level):
         """Monkey patch the trace LEVEL"""
+        ## TODO3: add to TestWrapper class
         self.monkeypatch.setattr("mezcla.debug.trace_level", level)
 
     def test_set_level(self):
@@ -164,13 +165,6 @@ class TestDebug(TestWrapper):
         obj = Test_class()
         THE_MODULE.trace_object(level=1, obj=obj, show_all=True)
         stderr = self.get_stderr()
-        ## OLD:
-        ## assert "Test_class__debt: 0" in err
-        ## assert "Test_class__has_debt:" in err
-        ## ## OLD: assert "age_up:"
-        ## assert "age: 0" in err
-        ## assert "age_up: " in err
-        ##
         # <class '__main__.Test_class'> 0x7e30e9e54f10: {
         # ... _Test_class__good_income: ('<bound method Test_class.__good_income ...)
         assert my_re.search(r"Test_class[^:]+_good_income:[^:]+bound method", stderr)
@@ -274,14 +268,6 @@ class TestDebug(TestWrapper):
         self.patch_trace_level(4)
         THE_MODULE.trace_current_context(4)
         err = self.get_stderr()
-        ##
-        ## OLD:
-        ## assert "test_debug.TestDebug testMethod=test_trace_current_context" in err  # name of current function
-        ## assert "\'number\': 9" in err   # variable created in current function
-        ## assert "\'__name__\': \'test_debug\'" in err    # name of file
-        ## assert "\'__doc__\': \'Tests for debug module\'" in err # docstring of file
-        ## assert __file__ in err  # path of file
-        ##
         script_filename = gh.basename(__file__)
         # globals: {\n  {value): {\n
         # ... '__name__': 'mezcla.tests.test_debug',
@@ -336,7 +322,6 @@ class TestDebug(TestWrapper):
                              2 ==
                              5)
         err = self.get_stderr()
-        ## OLD: assert "2+2==5" in my_re.sub(r"\s+", "", err)
         self.do_assert(my_re.search(r"2.*\+.*2.*==.*5", err,
                                     flags=my_re.DOTALL|my_re.MULTILINE))
 
@@ -390,9 +375,6 @@ class TestDebug(TestWrapper):
         """Ensure timestamp works as expected"""
         debug.trace(4, f"test_timestamp(): self={self}")
         debug_timestamp = THE_MODULE.timestamp()
-        ## OLD:
-        ## new_timestamp = str(datetime.now())
-        ## assert debug_timestamp == new_timestamp
         # example: 2025-02-02 01:23:27.451258
         assert my_re.search(r"\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d", debug_timestamp)
 
@@ -564,7 +546,6 @@ class TestDebug(TestWrapper):
         line_1 = THE_MODULE.read_line(temp_file, 1)
         line_2 = THE_MODULE.read_line(temp_file, 2)
         line_3 = THE_MODULE.read_line(temp_file, 3)
-        ## OLD: assert (line_1 + line_2 + line_3) == content
         assert my_re.search(fr"{line_1}.*{line_2}.*{line_3}", content)
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -576,7 +557,6 @@ class TestDebug(TestWrapper):
         self.monkeypatch.setenv("DEBUG_FILE", temp_debug_filename)
         self.monkeypatch.setenv("ENABLE_LOGGING", "True")
         # NOTE: Setting MONITOR_FUNCTIONS to True breaks tests on windows
-        ## OLD: today = str(datetime.now()).split(' ')[0]
         today = str(datetime.now()).split(' ', maxsplit=1)[0]
         THE_MODULE.debug_init(force=True)
         # TODO3: why is _test*err.txt being output?
