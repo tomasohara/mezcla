@@ -14,6 +14,7 @@
 # - Temporarily disabling the use of TL.DEFAULT below can help, so that the detailed
 #   debugging traces are shown.
 # - You might also need to temporarily enable the print-based tracing in resolve_assertion.
+# - Don't use dangerous utilities like shutil.rmtree (or rm -r)!
 #
 # Tip:
 # - Although the inference of TEMP_FILE from TEMP_BASE is blocked with PRESERVE_TEMP_FILE,
@@ -36,8 +37,8 @@ TEMP_FILE_INIT = os.environ.get(TEMP_FILE_LABEL)
 ## DEBUG: import sys; sys.stderr.write(f"{__file__=}\n")  # pylint: disable=multiple-statements
 
 # Installed packages
-import atexit
-import shutil
+## OLD: import atexit
+## BAD: import shutil
 import pytest
 
 # Local packages
@@ -165,34 +166,42 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.xfail
-    ## TODO: skip if not posix
     def test_04_get_temp_dir(self):
         """Tests get_temp_dir"""
+        ## TODO3: Cleanup this test: rework to work around disabled rmtree and atexit calls
+        ## NOTE: By default temp files placed under /tmp, which system will delete if needed.
+        ## TODO3: skip if not posix
+        ##
         debug.trace(4, f"TestIt.test_04_get_temp_dir(); self={self}")
-        tmp_dir = system.form_path(system.getenv_text("TMP"), 'test_get_temp_dir')
+        ## BAD: tmp_dir = system.form_path(system.getenv_text("TMP"), 'test_get_temp_dir')
+        tmp_dir = gh.form_path(gh.get_temp_dir(), 'test_get_temp_dir')
         self.monkeypatch.setattr("mezcla.glue_helpers.TEMP_FILE", tmp_dir)
-
+        #
         if system.is_directory(tmp_dir):
-            shutil.rmtree(tmp_dir, ignore_errors=True)
+            # Note: Should only occurs when TEMP_FILE or TEMP_BASE overriden (for debugging).
+            debug.trace(4, "Warning: Temporary directory unexpectedly exists: {tmp_dir!r}")
+            ## BAD: shutil.rmtree(tmp_dir, ignore_errors=True)
         assert not system.is_directory(tmp_dir)
         unittest_temp_dir = THE_MODULE.get_temp_dir(keep=False)
-        atexit.register(gh.delete_directory, unittest_temp_dir)
-        
+        ## OLD: atexit.register(gh.delete_directory, unittest_temp_dir)
+        #
         assert tmp_dir == unittest_temp_dir
         assert system.is_directory(tmp_dir)
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+        ## BAD: shutil.rmtree(tmp_dir, ignore_errors=True)
         
         # Test argument unique=True
-        tmp_dir_2 = system.form_path(system.getenv_text("TMP"), 'test_get_temp_dir_2')
+        ## BAD: tmp_dir_2 = system.form_path(system.getenv_text("TMP"), 'test_get_temp_dir_2')
+        tmp_dir_2 = gh.form_path(gh.get_temp_dir(), 'test_get_temp_dir_2')
         self.monkeypatch.setattr("mezcla.glue_helpers.TEMP_FILE", tmp_dir_2)
-        
         if system.is_directory(tmp_dir_2):
-            shutil.rmtree(tmp_dir_2, ignore_errors=True)
+            ## Note: Should only occurs when TEMP_FILE or TEMP_BASE overriden (for debugging).
+            debug.trace(4, "Warning: Temporary directory unexpectedly exists: {tmp_dir!r}")
+            ## BAD: shutil.rmtree(tmp_dir_2, ignore_errors=True)
         assert not system.is_directory(tmp_dir_2)
-
+        #
         unittest_temp_dir_2 = THE_MODULE.get_temp_dir(keep=False, unique=True)
-        atexit.register(gh.delete_directory, unittest_temp_dir_2)
-        
+        ## OLD: atexit.register(gh.delete_directory, unittest_temp_dir_2)
+        #
         assert (tmp_dir_2 + '_temp_dir_') in unittest_temp_dir_2
         assert system.is_directory(unittest_temp_dir_2)
 
