@@ -8,3 +8,6 @@ An optional priority is indicated by [Pn]
 - [P4] Weed out debug.trace_fmt usages.
 - [P1] Weed out lingering tpo_common usages.
 - [P3] make sure try/except blocks issue warnings instead of swallowing errors (e.g., during test imports).
+- [P4] Avoid use of atexit for deleting temporary files: by default they are
+  put under /tmp, which gets cleaned up by the system!
+- [P4] Avoid using tempfile directly: use glue_helper.get_temp_file instead.
