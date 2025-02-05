@@ -1319,8 +1319,9 @@ def to_float(text: str, default_value: float = 0.0) -> float:
     try:
         result = float(text)
     except (TypeError, ValueError):
-        debug.trace_fmtd(7, "Exception in to_float: {exc}", exc=get_exception())
-    debug.trace_fmtd(8, "to_float({v}) => {r}", v=text, r=result)
+        debug.trace_fmtd(7, "Exception in to_float({v!r}): {exc}",
+                         v=text, exc=get_exception())
+    debug.trace_fmtd(8, "to_float({v!r}) => {r}", v=text, r=result)
     return result
 #
 safe_float = to_float
@@ -1333,8 +1334,9 @@ def to_int(text: Any, default_value: int = 0, base: Optional[int] = None) -> int
     try:
         result = int(text, base) if (base and isinstance(text, str)) else int(text)
     except (TypeError, ValueError):
-        debug.trace_fmtd(7, "Exception in to_int: {exc}", exc=get_exception())
-    debug.trace_fmtd(8, "to_int({v}) => {r}", v=text, r=result)
+        debug.trace_fmtd(7, "Exception in to_int({v!r}): {exc}",
+                         v=text, exc=get_exception())
+    debug.trace_fmtd(8, "to_int({v!r}) => {r}", v=text, r=result)
     return result
 #
 safe_int = to_int
