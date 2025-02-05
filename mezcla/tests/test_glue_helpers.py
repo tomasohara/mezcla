@@ -11,6 +11,8 @@
 # - Add support for other commonly used functions.
 # TODO2:
 # - Use gh.form_path instead of hard-coding path delimiters.
+# TODO3
+# - Flag tests that assume Unix (posix).
 #
 
 """Tests for glue_helpers module"""
@@ -20,8 +22,8 @@ import os
 ## OLD: from os import path
 from io import StringIO
 import sys
-import atexit
-import tempfile
+## OLD: import atexit
+## OLD: import tempfile
 
 # Installed packages
 import pytest
@@ -33,6 +35,7 @@ from mezcla.my_regex import my_re
 from mezcla import tpo_common as tpo    # Deprecated, only used for mock
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import system
+from mezcla.tests.common_module import mezcla_root_dir
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -42,6 +45,12 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     ## OLD: temp_file = gh.get_temp_file()
+
+    def patch_trace_level(self, level):
+        """Monkey patch the trace LEVEL"""
+        ## TEMP: borrowed from test_debug.py
+        ## TODO3: add to TestWrapper class
+        self.monkeypatch.setattr("mezcla.debug.trace_level", level)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     ## DEBUG: @trap_exception            # TODO: remove when debugged
@@ -124,12 +133,15 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
         debug.trace(4, "test_create_directory()")
-        test_dir = THE_MODULE.dir_path(__file__)
-        res_2_dir = THE_MODULE.form_path(test_dir, "resources_2")
-        _ = THE_MODULE.form_path(test_dir, "resources")
+        ## OLD: test_dir = THE_MODULE.dir_path(__file__)
+        # Note: Use of temp files in repo tree should be avoided.
+        ## BAD: res_2_dir = THE_MODULE.form_path(test_dir, "resources_2")
+        res_2_dir = gh.form_path(gh.get_temp_dir(), "resources_2")
+        ## OLD: _ = THE_MODULE.form_path(test_dir, "resources")
         THE_MODULE.create_directory(res_2_dir)
-        # cleanup created directory
-        atexit.register(THE_MODULE.delete_directory, res_2_dir)
+        ## OLD:
+        ## # cleanup created directory
+        ## atexit.register(THE_MODULE.delete_directory, res_2_dir)
         assert THE_MODULE.is_directory(res_2_dir)
 
     @pytest.mark.xfail
@@ -145,6 +157,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_get_temp_dir(self):
         """Tests get_temp_dir"""
         debug.trace(4, "test_get_temp_dir()")
+        static_temp_dir = gh.form_path(self.get_temp_dir(), "test_get_temp_dir")
+
         # Make sure new temp dirs used each time unless pre-specified
         self.monkeypatch.setattr(gh, "TEMP_FILE", None)
         temp_dir1 = THE_MODULE.get_temp_dir()
@@ -154,15 +168,17 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert system.is_directory(temp_dir2)
 
         # note: not deleted for debugging purposes
-        static_temp_dir = tempfile.NamedTemporaryFile(delete=False).name
+        ## OLD: static_temp_dir = tempfile.NamedTemporaryFile(delete=False).name
         self.monkeypatch.setattr(gh, "TEMP_FILE", static_temp_dir)
         temp_dir3 = THE_MODULE.get_temp_dir()
-        assert temp_dir3 == static_temp_dir
+        temp_dir4 = THE_MODULE.get_temp_dir()
+        assert temp_dir3 == temp_dir4 == static_temp_dir
         assert system.is_directory(temp_dir3)
 
     @pytest.mark.xfail
     def test_real_path(self):
         """Ensure real_path works as expected"""
+        ## TODO3: skip if not posix
         debug.trace(4, "test_real_path()")
         debug.assertion(my_re.search("ubuntu", gh.run("uname -a"),
                                      flags=my_re.IGNORECASE))
@@ -203,22 +219,41 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
 
     @pytest.mark.xfail
     def test_disable_subcommand_tracing(self):
-        """Ensure disable_subcommand_tracing works as expected"""
+        """Ensure disable_subcommand_tracing works as expected
+        Warning: This test relies upon various assumptions about the tracing
+        level. The overall level is set to 7, so that the run invocation is shown;
+        and the issue command trace level is set to 5 for the get/setenv tracing.
+        """
         debug.trace(4, "test_disable_subcommand_tracing()")
-
         test_dir = THE_MODULE.dirname(__file__)
-        resource_dir = THE_MODULE.form_path(test_dir, "resources", "example_text.txt")
-        command = f"python -m mezcla.extract_document_text {resource_dir}"
-        THE_MODULE.issue(command, trace_level=6, subtrace_level=6)
+        ## TODO4: rework to use html input file (e.g., for posthoc conversion validation)
+        resource_file = THE_MODULE.form_path(test_dir, "resources", "example_text.txt")
+        self.patch_trace_level(7)
+
+        # Test with sub-tracing
+        ## NOTE: capsys doesn't work across processes, hence sub-stderr based on log
+        ## TODO3: look into capfd
+        out_file1 = self.temp_file + ".out1"
+        log_file1 = self.temp_file + ".log1"
+        command = f"STDOUT=1 python -m mezcla.extract_document_text {resource_file} > {out_file1} 2> {log_file1}"
+        THE_MODULE.issue(command, trace_level=5, subtrace_level=5)
+        assert "Combined Work" in system.read_file(out_file1)
         stderr_1 = self.get_stderr()
+        assert my_re.search(r"run.*extract_document_text", stderr_1)
+        sub_stderr_1 = system.read_file(log_file1)
+        assert my_re.search(r"getenv_int\(SUB_DEBUG_LEVEL, \d+\) => 5", sub_stderr_1)
 
+        # Test without sub-tracing
+        out_file2 = self.temp_file + ".out2"
+        log_file2 = self.temp_file + ".log2"
+        command = f"STDOUT=1 python -m mezcla.extract_document_text {resource_file} > {out_file2} 2> {log_file2}"
         THE_MODULE.disable_subcommand_tracing()
-        THE_MODULE.issue(command, trace_level=6)
+        THE_MODULE.issue(command, trace_level=5)
+        assert "Combined Work" in system.read_file(out_file2)
         stderr_2 = self.get_stderr()
-
-        assert my_re.search(r"getenv_int\(SUB_DEBUG_LEVEL, 3\) => 6", stderr_1)
+        sub_stderr_2 = system.read_file(log_file2)
         assert my_re.search(r"setenv\(DEBUG_LEVEL, 0\)", stderr_2)
-
+        assert not sub_stderr_2.strip()
 
     @pytest.mark.xfail
     def test_run(self):
@@ -285,21 +320,23 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         test_dir = gh.dir_path(__file__)
         debug.assertion(test_script in __file__)
         # The main script should resolve to parent directory but this one to test dir
-        assert not (THE_MODULE.resolve_path(script)
+        assert not (gh.real_path(THE_MODULE.resolve_path(script))
                     == gh.form_path(test_dir, test_script))
-        assert (THE_MODULE.resolve_path(test_script)
+        assert (gh.real_path(THE_MODULE.resolve_path(test_script))
                 == gh.form_path(test_dir, test_script))
 
     @pytest.mark.xfail
     def test_heuristic_resolve_path(self):
         """Tests for heuristic version of resolve_path(filename)"""
         requirements_filename = "requirements.txt"
-        # The requirements normally isn't resolved
-        assert(THE_MODULE.resolve_path(requirements_filename, heuristic=False)
+        module_dir = gh.form_path(gh.dir_path(__file__), "..")
+        # note: the requirements normally isn't resolved
+        assert(THE_MODULE.resolve_path(requirements_filename,
+                                       base_dir=module_dir, heuristic=False)
                == requirements_filename)
-        test_dir = gh.dir_path(__file__)
-        assert(gh.real_path(THE_MODULE.resolve_path(requirements_filename, heuristic=True))
-               == gh.real_path(gh.form_path(test_dir, "..", "..", requirements_filename)))
+        assert(gh.real_path(THE_MODULE.resolve_path(requirements_filename,
+                                                    base_dir=module_dir, heuristic=True))
+               == gh.real_path(gh.form_path(mezcla_root_dir, requirements_filename)))
 
     def test_extract_match_from_text(self):
         """Ensure extract_match_from_text works as expected"""
@@ -473,12 +510,13 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_get_directory_listing(self):
         """Ensure get_directory_listing works as expected"""
         debug.trace(4, "test_get_directory_listing()")
-        filenames = [gh.get_temp_file() for _ in range(5)]
-        for file in filenames:
-            gh.write_file(file, 'random content')
-        debug.assertion("/tmp" == system.getenv("TMP"))
-        filenames = [file.replace('/tmp/', '') for file in filenames]
-        assert set(filenames).issubset(THE_MODULE.get_directory_listing('/tmp/'))
+        test_temp_dir = self.get_temp_dir(static=True)
+        full_filenames = []
+        for i in range(5):
+            full_filenames.append(gh.form_path(test_temp_dir, f"f{i}.list"))
+            system.write_file(full_filenames[-1], f"content for temp. file {i}")
+        filenames = [f.replace(f"{test_temp_dir}{os.sep}", "") for f in full_filenames]
+        assert set(filenames).issubset(THE_MODULE.get_directory_listing(test_temp_dir))
 
     def test_getenv_filename(self):
         """Ensure getenv_filename works as expected"""
@@ -508,52 +546,74 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert THE_MODULE.getenv_filename('BAD_ENV_FILE_VAR', default='missing-file') == 'missing-file'
 
     @pytest.mark.xfail
+    def test_non_empty_directory(self):
+        """Make sure non_empty_directory works for empty and non-empty dir"""
+        ## TODO3: use monkeypatvh to ensure TEMP_FILE not set
+        debug.assertion(not THE_MODULE.TEMP_FILE)
+        temp_dir = self.get_temp_dir()
+        assert not THE_MODULE.non_empty_directory(temp_dir)
+        system.write_file(gh.form_path(temp_dir, "temp_file.list"), "dummy text")
+        assert THE_MODULE.non_empty_directory(temp_dir)
+
+    @pytest.mark.xfail
     def test_copy_directory(self):
         """Ensure copy_directory works as expected"""
         debug.trace(4, "test_copy_directory()")
-        ## OLD: temp_dir = '/tmp/test_copy_dir_'
-        temp_dir = self.temp_file + 'test_copy_dir_'
-        system.create_directory(f'{temp_dir}1')
-        system.write_file(f'{temp_dir}1/test_file', "copy")
-        assert 'test_file' in system.read_directory(
-            THE_MODULE.copy_directory(f'{temp_dir}1', f'{temp_dir}2'))
-        assert 'copy' in system.read_file(f'{temp_dir}2/test_file')
+        ## OLD:
+        ## temp_dir = '/tmp/test_copy_dir_'
+        ## system.create_directory(f'{temp_dir}1')
+        temp_dir_1 = self.get_temp_dir()
+        temp_dir_2 = self.get_temp_dir(skip_create=True)
+        assert temp_dir_1 != temp_dir_2
+        ## BAD: system.write_file(f'{temp_dir}1/test_file', "copy")
+        copy_file_name = "copy_file.list"
+        copy_contents = "copy contents"
+        system.write_file(gh.form_path(temp_dir_1, copy_file_name),
+                          copy_contents)
+        assert copy_file_name in system.read_directory(temp_dir_1)
+        THE_MODULE.copy_directory(temp_dir_1, temp_dir_2)
+        assert copy_file_name in system.read_directory(temp_dir_2)
+        ## BAD: assert 'copy' in system.read_file(f'{temp_dir}2/test_file')
+        assert copy_contents in system.read_file(
+            gh.form_path(temp_dir_2, copy_file_name))
 
     @pytest.mark.xfail
     def test_delete_directory(self):
         """Ensure delete_directory works as expected"""
         debug.trace(4, "test_delete_directory()")
+        ## TODO3: use monkeypatch
         old = THE_MODULE.DISABLE_RECURSIVE_DELETE
+        test_temp_dir = self.get_temp_dir(static=True)
 
         # test an empty directory gets deleted
         ## OLD: empty_dir = '/tmp/test_delete_directory-1/'
-        empty_dir = self.temp_file + 'test_delete_directory-1'
+        empty_dir = gh.form_path(test_temp_dir, "test_delete_directory-1")
         system.create_directory(empty_dir)
         assert THE_MODULE.is_directory(empty_dir)
         assert THE_MODULE.delete_directory(empty_dir) is None
 
         # test a directory with files gets deleted
         ## OLD: non_empty_dir = '/tmp/test_delete_directory-2'
-        non_empty_dir = self.temp_file + 'test_delete_directory-2'
+        non_empty_dir = gh.form_path(test_temp_dir, "test_delete_directory-2")
         system.create_directory(non_empty_dir)
-        system.write_file(f'{non_empty_dir}/test_delete_directory', '2')
+        system.write_file(gh.form_path(non_empty_dir, "test_delete_directory.list"), '2')
         assert THE_MODULE.is_directory(non_empty_dir)
         assert THE_MODULE.delete_directory(non_empty_dir) is None
 
         # test a directory with subdirs doesnt get deleted if DISABLE_RECURSIVE_DELETE
         THE_MODULE.DISABLE_RECURSIVE_DELETE = True
         ## OLD: dir_with_subdirs = '/tmp/test_delete_directory-3'
-        dir_with_subdirs = self.temp_file + 'test_delete_directory-3'
-        subdir = f"{dir_with_subdirs}/subdir"
+        dir_with_subdirs = gh.form_path(test_temp_dir, "test_delete_directory-3")
+        subdir = gh.form_path(dir_with_subdirs, "subdir")
         system.create_directory(dir_with_subdirs)
         system.create_directory(subdir)
-        system.write_file(f"{subdir}/subdir_file", '3')
+        system.write_file(gh.form_path(subdir, "subdir_file.list"), '3')
         assert THE_MODULE.is_directory(subdir)
         assert not THE_MODULE.delete_directory(dir_with_subdirs)
 
         # test a directory with subdirs gets deleted if not DISABLE_RECURSIVE_DELETE
         assert THE_MODULE.is_directory(subdir)
-        system.write_file(f"{subdir}/subdir_file", '4')
+        system.write_file(gh.form_path(subdir, "subdir_file.list"), '4')
         THE_MODULE.DISABLE_RECURSIVE_DELETE = False
         assert THE_MODULE.delete_directory(dir_with_subdirs) is None
 
@@ -573,38 +633,56 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         self.monkeypatch.setattr(gh, 'KEEP_TEMP', False)
         temp_file_with_delete = THE_MODULE.get_temp_file(delete=True)
         assert system.file_exists(temp_file_with_delete)
-        
+ 
     @pytest.mark.xfail
-    def test_initialization(self):
-        """Make sure module initialized OK"""
+    def test_zend_initialization(self):
+        """Make sure module initialized OK
+        Warning: This test involves subtle maniulation of the temp file environment
+        settings and related globals. It can be tedious to debug, in which case
+        it can help to run with a high tracing level (e.g., 6); check the log for 
+        changes to TEMP_FILE-related settings.
+        """
+        # note: "zend" used so test runs last (in case module state messed up)
         # TODO1: add checks for TEMP_BASE and TEMP_FILE, along with PRESERVE_TEMP_FILE
         # TODO3: add checks for TEMP_LOG_FILE and TEMP_SCRIPT_FILE
+        test_temp_dir = self.get_temp_dir(static=True)
 
         # attrs that won't be changed
-        self.monkeypatch.setattr('mezcla.glue_helpers.PID', 1)
+        PID = 1
+        self.monkeypatch.setattr('mezcla.glue_helpers.PID', PID)
+        PID_basename = f"temp-{PID}"
+        self.monkeypatch.setattr('mezcla.glue_helpers.PID_BASENAME', PID_basename)
 
-        # CASE of USE_TEMP_BASE_DIR False but TEMP_BASE
+        # Case of USE_TEMP_BASE_DIR False but TEMP_BASE
         self.monkeypatch.setattr('mezcla.glue_helpers.USE_TEMP_BASE_DIR', False)
-        self.monkeypatch.setattr('mezcla.glue_helpers.PRESERVE_TEMP_FILE', False)
+        self.monkeypatch.setenv("PRESERVE_TEMP_FILE", "0")
+        ## OLD: self.monkeypatch.setattr('mezcla.glue_helpers.PRESERVE_TEMP_FILE', False)
         # delete TEMP_FILE to check use of temp_file_default
         self.monkeypatch.delenv('TEMP_FILE', raising=False)
-        if THE_MODULE.TEMP_BASE is None:
-            temp_dir = system.getenv_text("TMP_DIR")
-            self.monkeypatch.setattr(
-                'mezcla.glue_helpers.TEMP_BASE', system.form_path(temp_dir,"test_init"))
+        self.monkeypatch.setattr(
+            'mezcla.glue_helpers.TEMP_BASE', gh.form_path(test_temp_dir, "temp_file"))
         THE_MODULE.init()
         assert not system.is_directory(THE_MODULE.TEMP_BASE)
-        assert THE_MODULE.TEMP_FILE == f"{THE_MODULE.TEMP_BASE}-temp-1.list"
+        assert THE_MODULE.TEMP_FILE == f"{THE_MODULE.TEMP_BASE}-{PID_basename}"
 
-        # CASE of USE_TEMP_BASE_DIR True
+        # Case of USE_TEMP_BASE_DIR True
         self.monkeypatch.setattr('mezcla.glue_helpers.USE_TEMP_BASE_DIR', True)
-        self.monkeypatch.setattr('mezcla.glue_helpers.TEMP_FILE', None)
+        self.monkeypatch.setenv("PRESERVE_TEMP_FILE", "0")
+        self.monkeypatch.delenv("TEMP_FILE", raising=False)
+        # note: subdirectory created to ensure proper interpretation
+        temp_base = gh.form_path(test_temp_dir, "temp_dir")
+        gh.full_mkdir(temp_base)
+        self.monkeypatch.setattr(
+            'mezcla.glue_helpers.TEMP_BASE', temp_base)
+        ## OLD: self.monkeypatch.setattr('mezcla.glue_helpers.USE_TEMP_BASE_DIR', True)
+        ## OLD: self.monkeypatch.setattr('mezcla.glue_helpers.TEMP_FILE', None)
         self.monkeypatch.delenv('TEMP_LOG_FILE', raising=False)
         self.monkeypatch.delenv('TEMP_SCRIPT_FILE', raising=False)
         THE_MODULE.init()
-        atexit.register(THE_MODULE.delete_directory, THE_MODULE.TEMP_BASE) # cleanup
+        ## OLD: atexit.register(THE_MODULE.delete_directory, THE_MODULE.TEMP_BASE) # cleanup
         assert system.is_directory(THE_MODULE.TEMP_BASE)
-        assert THE_MODULE.TEMP_FILE == system.form_path(THE_MODULE.TEMP_BASE, "temp-1.list")
+        ## OLD: assert THE_MODULE.TEMP_FILE == system.form_path(THE_MODULE.TEMP_BASE, f"{PID_basename}.list")
+        assert THE_MODULE.TEMP_FILE == gh.form_path(THE_MODULE.TEMP_BASE, PID_basename)
         assert THE_MODULE.TEMP_LOG_FILE.split('-')[0] == THE_MODULE.TEMP_SCRIPT_FILE.split('-')[0]
 
 
