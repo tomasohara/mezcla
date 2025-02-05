@@ -12,7 +12,7 @@
 # - Also see ALLOW_SUBCOMMAND_TRACING usage below and in unittest_wrapper.py.
 # - By default, temporary files are created in the system temporary directory. To
 #   facilate debugging, two environment variables allow for overriding this
-#      TEMP_FILE: fixed temporary file to use
+#      TEMP_FILE: fixed temporary file to use (** avoid if possible)
 #      TEMP_BASE: basename for temporary files (or a directory if USE_TEMP_BASE_DIR)
 # - Uses str as return type instead of Optional[str] for string functions like basename
 #   or get_temp_dir where "" is an invalid value (e.g., no need for None).
@@ -103,15 +103,15 @@ KEEP_TEMP = system.getenv_bool(
     desc="Keep temporary files")
 TEMP_BASE = system.getenv_value(
     "TEMP_BASE", None,
-    description="Override for temporary file basename")
+    description="Debugging override for temporary file basename")
 USE_TEMP_BASE_DIR_DEFAULT = bool(
     TEMP_BASE and (system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")))
 USE_TEMP_BASE_DIR = system.getenv_bool(
     "USE_TEMP_BASE_DIR", USE_TEMP_BASE_DIR_DEFAULT,
     description="Whether TEMP_BASE should be a dir instead of prefix")
 DISABLE_RECURSIVE_DELETE = system.getenv_value(
-    "DISABLE_RECURSIVE_DELETE", None,
-    description="Disable use of potentially dangerous rm -r style recursive deletions")
+    "DISABLE_RECURSIVE_DELETE", debug.detailed_debugging(),
+    description="Disable potentially dangerous rm -r style or rmtree recursive deletions")
 PRESERVE_TEMP_FILE = None
 HOME_DIR = system.getenv_text(
     "HOME", "~",
@@ -120,7 +120,7 @@ HOME_DIR = system.getenv_text(
 # Globals
 # note:
 # - see init() for main initialization;
-# - these are placeholders until module initialized
+#   these are placeholders until module initialized below (see init)
 # - os.path.join used to likewise avoid chicken-n-egg problems with init
 # - TEMP_FILE is normally None to indicate use of random temp file name
 # - TEMP_LOG_FILE and TEMP_SCRIPT_FILE are used in run, issue, etc.
@@ -130,7 +130,8 @@ TMP = system.getenv_text(
     description="Temporary directory")
 PID = system.get_process_id()
 TEMP_FILE = None
-GLOBAL_TEMP_FILE = os.path.join(TMP, f"temp-{PID}")
+PID_BASENAME = f"temp-{PID}"
+GLOBAL_TEMP_FILE = os.path.join(TMP, PID_BASENAME)
 TEMP_LOG_FILE = os.path.join(TMP, f"{GLOBAL_TEMP_FILE}.log")
 TEMP_SCRIPT_FILE = os.path.join(TMP, f"{GLOBAL_TEMP_FILE}.script")
 
@@ -166,6 +167,7 @@ def get_temp_dir(delete=None) -> str:
     """Gets temporary file to use as a directory
     note: Optionally DELETEs directory afterwards
     """
+    ## TODO3: make option to bypass creation
     temp_dir_path = get_temp_file(delete=delete)
     # note: removes non-dir file if exists
     full_mkdir(temp_dir_path, force=True)
@@ -248,7 +250,7 @@ def non_empty_file(filename: FileDescriptorOrPath) -> bool:
     """Whether FILENAME exists and is non-empty"""
     size = (os.path.getsize(filename) if os.path.exists(filename) else -1)
     non_empty = (size > 0)
-    debug.trace(5, f"non_empty_file({filename!r}) => {non_empty} (filesize={size})")
+    debug.trace(5, f"non_empty_file({filename!r}) => {non_empty}; (filesize={size})")
     return non_empty
 
 
@@ -347,10 +349,13 @@ def create_directory(path: StrOrBytesPath) -> None:
     return
 
 
-def full_mkdir(path: FileDescriptorOrPath, force: bool = False) -> None:
+def full_mkdir(path: FileDescriptorOrPath, force: bool = False) -> FileDescriptorOrPath:
     """Issues mkdir to ensure path directory, including parents (assuming Linux like shell)
-    When FORCE true, an existing non-directory is removed first.
-    Note: Doesn't handle case when file exists but is not a directory
+    Note:
+    - When FORCE true, an existing non-directory is removed first.
+    - Otherwise, doesn't handle case when file exists but is not a directory.
+    - Returns path, which is useful for temporary sub-directory creation:
+    -   gh.full_mkdir(gh.form_path(gh.get_temp_dir(), 'my_temp_subdir'))
     """
     debug.trace(6, f"full_mkdir({path!r})")
     debug.assertion(os.name == "posix")
@@ -359,7 +364,7 @@ def full_mkdir(path: FileDescriptorOrPath, force: bool = False) -> None:
     if not system.file_exists(path):
         os.makedirs(path, exist_ok=True)
     debug.assertion(is_directory(path))
-    return
+    return path
 
 
 def real_path(path: FileDescriptorOrPath) -> str:
@@ -468,12 +473,16 @@ def run(
     debug.assertion(isinstance(trace_level, int))
     debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output}", skip_sanity_checks=True)
     global default_subtrace_level
-    # Keep track of current debug level setting
+    # Keep track of current debug level settings for later restoration
     debug_level_env = os.getenv("DEBUG_LEVEL")
+    sub_debug_level_env = os.getenv("SUB_DEBUG_LEVEL")
     if subtrace_level is None:
         subtrace_level = default_subtrace_level
-    if subtrace_level != trace_level:
+    if subtrace_level != system.to_int(debug_level_env):
         system.setenv("DEBUG_LEVEL", str(subtrace_level))
+    if subtrace_level != system.to_int(sub_debug_level_env):
+        # note: for run/issue called within scripts
+        system.setenv("SUB_DEBUG_LEVEL", str(subtrace_level))
     in_just_issue = just_issue
     if just_issue is None:
         just_issue = False
@@ -528,6 +537,7 @@ def run(
         print(result)
     # Restore debug level setting in environment
     system.setenv("DEBUG_LEVEL", debug_level_env or "")
+    system.setenv("SUB_DEBUG_LEVEL", sub_debug_level_env or "")
     system.setenv("TEMP_BASE", save_temp_base or "")
     if save_temp_file and (PRESERVE_TEMP_FILE is not True):
         debug.trace(5, f"Resetting TEMP_FILE to {save_temp_file}")
@@ -569,6 +579,7 @@ def issue(
         command: str,
         trace_level: debug.IntOrTraceLevel = 4,
         subtrace_level: Optional[debug.IntOrTraceLevel] = None,
+        log_file: Optional[str] = None,
         **namespace
     ) -> None:
     """Wrapper around run() for when output is not being saved (i.e., just issues command). 
@@ -583,9 +594,12 @@ def issue(
         c=command, tl=trace_level, sl=subtrace_level, n=namespace)
     # Add stderr redirect to temporary log file, unless redirection already present
     log_file = None
-    if debug.debugging() and (not "2>" in command) and (not "2|&1" in command):
+    has_stderr_redir = ("2>" in command) or ("2|&1" in command)
+    if (not log_file) and debug.debugging() and (not has_stderr_redir):
         ## TODO: use a different suffix each time to aid in debugging
         log_file = TEMP_LOG_FILE
+    if log_file:
+        debug.assertion(not has_stderr_redir)
         delete_existing_file(log_file)
         command += " 2> " + log_file
     # Run the command and trace output
@@ -819,23 +833,27 @@ def copy_file(source: str, target: str) -> None:
     return
 
 
+def non_empty_directory(path):
+    """Whether PATH exists and is not empty"""
+    size = len(get_directory_listing(path)) if is_directory(path) else -1
+    non_empty = size > 0
+    debug.trace_fmt(5, f"non_empty_directory({path}) => {non_empty}; (#files={size})")
+    return non_empty
+
+
 def copy_directory(source, dest):
-    """copy SOURCE dir to DEST dir"""
+    """copy SOURCE dir to DEST dir
+    Note: The DEST directory must not exist beforehand
+    """
+    ## TODO4: add option to overwrite files (e.g., via copytree's dirs_exist_ok)
     # Note: meta data is not copied (e.g., access control lists)); see
     #    https://docs.python.org/3/library/shutil.html
     debug.trace_fmt(5, f"copy_directory({source}, {dest})")
 
-    def non_empty_directory(path):
-        """Whether PATH exists and is not empty"""
-        size = len(get_directory_listing(path)) if is_directory(path) else -1
-        non_empty = size > 0
-        debug.trace_fmt(5, f"non_empty_directory({path}) => {non_empty} (files={size})")
-        return non_empty
-    
-    debug.assertion(non_empty_directory(source))
+    ## OLD: debug.assertion(non_empty_directory(source))
     dest_path = shutil.copytree(src=source, dst=dest)
     debug.assertion(len(get_directory_listing(source)) == len(get_directory_listing(dest_path)))
-    debug.assertion(non_empty_directory(dest_path))
+    ## OLD: debug.assertion(non_empty_directory(dest_path))
 
 
 def rename_file(source: StrOrBytesPath, target: str) -> None:
@@ -872,18 +890,20 @@ def delete_existing_file(filename: StrOrBytesPath) -> bool:
     return ok
 
 def delete_directory(path):
-    """Deletes PATH"""
+    """Deletes directory at PATH
+    Warning: Unless DISABLE_RECURSIVE_DELETE, this removes entire directory tree
+    """
     debug.trace_fmt(5, f"delete_directory({path})")
     ok = False
     try:
         if DISABLE_RECURSIVE_DELETE:
             files = get_directory_listing(path)
-            debug.trace(4, f"FYI: Only deleting top-level files in {path} to avoid potentially dangerous rm -r")
+            debug.trace(4, f"FYI: Only deleting top-level files in {path} to avoid potentially dangerous recursive deletion")
             for file in files:
                 delete_file(form_path(path, file))
             ok = None
         else:
-            debug.trace(4, f"FYI: Using potentially dangerous rm -r over {path}")
+            debug.trace(4, f"FYI: Using potentially dangerous rmtree over {path}")
             shutil.rmtree(path)
             ok = None
     except OSError:
@@ -992,12 +1012,17 @@ else:
 
 def init() -> None:
     """Work around for Python quirk
-    Note: This is also used for reinitialize temp-file settings such as for unit tests (e.g., TEMP_FILE from TEMP_BASE)."""
+    Note: This is also used for reinitialize temp-file settings such as for unit tests (e.g., TEMP_FILE from TEMP_BASE).
+    Warning: The environment is used to reset following globals:
+        PRESERVE_TEMP_FILE, TEMP_FILE, TEMP_LOG_FILE, TEMP_SCRIPT_FILE
+    """
     # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
     debug.trace(5, "glue_helpers.init()")
-    temp_filename = f"temp-{PID}.list"
+    ## OLD: temp_filename = f"{PID_BASENAME}.list"
+    temp_filename = f"{PID_BASENAME}"
     if USE_TEMP_BASE_DIR and TEMP_BASE:
-        full_mkdir(TEMP_BASE)
+        ## OLD: full_mkdir(TEMP_BASE)
+        pass
 
     # Re-initialize flag blocking TEMP_FILE init from TEMP_BASE
     global PRESERVE_TEMP_FILE
@@ -1017,7 +1042,7 @@ def init() -> None:
     global TEMP_FILE
     TEMP_FILE = system.getenv_value(
         "TEMP_FILE", temp_file_default,
-        description="Override for temporary filename")
+        description="Debugging override for temporary filename: avoid if possible")
     debug.trace_expr(5, system.getenv("TEMP_FILE"))
     #
     global TEMP_LOG_FILE
