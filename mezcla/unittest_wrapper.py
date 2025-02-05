@@ -150,7 +150,7 @@ def get_temp_dir(keep: Optional[bool] = None, unique=None) -> str:
         dir_path = dir_base
     if not system.is_directory(dir_path):
         gh.full_mkdir(dir_path, force=True)
-    debug.trace(5, f"utw.get_temp_dir() => {dir_path}")
+    debug.trace(5, f"unittest_wrapper.get_temp_dir() => {dir_path}")
     return dir_path
 
 
@@ -416,9 +416,11 @@ class TestWrapper(unittest.TestCase):
         # Get new temp file and delete existing file and variants based on temp_file_count,
         # such as /tmp/test-2, /tmp/test-2-1, and /tmp/test-2-2 (but not /tmp/test-[13]*).
         # Warning: using TEMP_FILE is not recommended due to clobbering by different tests
-        self.temp_file = system.getenv_text(
-            "TEMP_FILE", default_temp_file,
-            desc="Override for temporary filename")
+        ## OLD:
+        ## self.temp_file = system.getenv_text(
+        ##     "TEMP_FILE", default_temp_file,
+        ##     desc="Override for temporary filename")
+        self.temp_file = (gh.TEMP_FILE or default_temp_file)
         if PRUNE_TEMP:
             gh.delete_existing_file(f"{self.temp_file}")
             for f in gh.get_matching_files(f"{temp_file_basename}-[0-9]*"):
@@ -673,18 +675,41 @@ class TestWrapper(unittest.TestCase):
     clear_stdout = clear_stdout_stderr
     clear_stderr = clear_stdout_stderr
     
-    def get_temp_file(self, delete: Optional[bool] = None) -> str:
-        """return name of temporary file based on self.temp_file, optionally with DELETE"""
+    def get_temp_file(self, delete: Optional[bool] = None, static: Optional[bool] = None) -> str:
+        """Return name of temporary file based on self.temp_file, optionally with DELETE.
+        Normally, the file is based on the test base, current test number and usage count
+        (e.g., /tmp/_temp-fi7huvmb_-test-1-3 for third temp file used in first test).
+        Note:
+        - This returns a new file each time called unless STATIC specified.
+        - The delete option is not yet functional.
+        """
         # Note: delete defaults to False if detailed debugging
         # TODO: allow for overriding other options to NamedTemporaryFile
         if delete is None and debug.detailed_debugging():
             delete = False
-        temp_file_name = f"{self.temp_file}-{self.temp_file_count}"
+        temp_file_name = self.temp_file
+        if not static:
+            temp_file_name += f"-{self.temp_file_count}"
         self.temp_file_count += 1
         debug.assertion(not delete, "Support for delete not implemented")
-        debug.format_value(f"get_temp_file() => {temp_file_name}", 5)
+        debug.trace(5, f"TestWrapper.get_temp_file() => {temp_file_name!r}")
         return temp_file_name
 
+    def get_temp_dir(self, delete: Optional[bool] = None,
+                     skip_create: Optional[bool] = None,
+                     static: Optional[bool] = None) -> str:
+        """Return name of temporary dir based on self.temp_file, optionally with DELETE.
+        Also, the directory will be created unless SKIP_CREATE;
+        this possibly overwrites existing file with same name.
+        In addition, the directory will be unique unless STATIC specified.
+        Note: delete option not yet functional
+        """
+        temp_dir = self.get_temp_file(delete=delete, static=static)
+        if not skip_create:
+            gh.full_mkdir(temp_dir, force=True)
+        debug.trace(5, f"get_temp_dir() => {temp_dir!r}")
+        return temp_dir
+    
     def create_temp_file(self, contents: Any,  binary: bool = False) -> str:
         """Create temporary file with CONTENTS and return full path"""
         temp_filename = self.get_temp_file()
