@@ -176,8 +176,10 @@ USE_TEMP_BASE_DIR = gh.USE_TEMP_BASE_DIR
 ## TEMP_FILE = system.getenv_value("TEMP_FILE", None,
 ##                                 "Override for temporary filename")
 TEMP_FILE = gh.TEMP_FILE
-KEEP_TEMP_FILES = system.getenv_bool("KEEP_TEMP_FILES", debug.detailed_debugging(),
-                                     "Retain temporary files")
+## OLD:
+## KEEP_TEMP_FILES = system.getenv_bool("KEEP_TEMP_FILES", debug.detailed_debugging(),
+##                                      "Retain temporary files")
+KEEP_TEMP_FILES = gh.KEEP_TEMP
 INPUT_ERROR_OPTION = "input_error"
 INPUT_ERROR = system.getenv_value(
     INPUT_ERROR_OPTION.upper(), None,
