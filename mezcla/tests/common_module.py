@@ -13,10 +13,11 @@
 
 # Local modules
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
 
-# Environment options
+# Constants and environment options
 # Note: These are just intended for internal options, not for end users.
 # It also allows for enabling options in one place.
 #
@@ -45,6 +46,9 @@ SKIP_UNIMPLEMENTED_TESTS = system.getenv_bool(
     description="Skip tests not yet implemented")
 SKIP_UNIMPLEMENTED_REASON = "Ignoring unimplemented test"
 
+# Globals
+mezcla_root_dir = None
+
 #-------------------------------------------------------------------------------
 
 def fix_indent(code):
@@ -63,6 +67,17 @@ def fix_indent(code):
         result = my_re.sub(fr"^{indentation}", "", result, flags=my_re.MULTILINE)
     debug.trace(8, f"fix_indent{code!r} => {result!r}")
     return result
+
+
+def get_mezcla_root_dir():
+    """Get the base directory for the mezcla distribution"""
+    test_dir = gh.dir_path(__file__)
+    root_dir = gh.real_path(gh.form_path(test_dir, "..", ".."))
+    debug.assertion(system.file_exists(gh.form_path(root_dir, "LICENSE.txt")))
+    debug.trace(5, f"get_mezcla_root_dir() => {root_dir!r}")
+    return root_dir      
+
+mezcla_root_dir = get_mezcla_root_dir()
 
 #-------------------------------------------------------------------------------
 
