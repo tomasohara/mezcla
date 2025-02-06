@@ -46,12 +46,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     ## OLD: temp_file = gh.get_temp_file()
 
-    def patch_trace_level(self, level):
-        """Monkey patch the trace LEVEL"""
-        ## TEMP: borrowed from test_debug.py
-        ## TODO3: add to TestWrapper class
-        self.monkeypatch.setattr("mezcla.debug.trace_level", level)
-
     @pytest.mark.xfail                   # TODO: remove xfail
     ## DEBUG: @trap_exception            # TODO: remove when debugged
     def test_01_data_file(self):
