@@ -7,20 +7,18 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_tpo_common.py
 #
-# Warning:
-# - *** The tpo_common.py module is being phased out. Although there are
-#   a bunch of "work-in-progress" tests below, they are low priority because
-#   most are addressed by test_system.py or test_debug.py.
-#
-# TODO1: Make sure all work-in-progress tests issue Assert(False).
-#
 # TODO:
 # - Address commonly used debugging functions (e.g., debug_print) by redirecting output (via remapping sys.stderr to a file) and then checking file contents.
 # - add tests for normalize_unicode, ensure_unicode and other problematic functions
+# TODO2:
+# - Remove most of the trace.Trace usages as that usually is overkill:
+#   capturing stderr is sufficient!
 #
 # Important:
-# - Most of the methods on tpo_common was moved to predecessors modules as system.py, debug.py etc.
-# - Using the predecessors module tests to these moved methods could be useful to avoid repeated tests but this could create conflicts with modified methods.
+# - Most of the methods on tpo_common was moved to newer modules, such
+#   as system.py, debug.py etc.
+# - Using the newer module tests to these moved methods could be useful to avoid
+#   repeated tests but this could create conflicts with modified methods.
 #
 
 """Tests for tpo_common module"""
@@ -73,7 +71,7 @@ class TestTpoCommon(TestWrapper):
     def test_debug_trace_without_newline(self):
         """Ensure debug_trace_without_newline works as expected"""
         debug.trace(4, "test_debug_trace_without_newline()")
-        text = 'test debug trace withouht newline'
+        text = 'test debug trace without newline'
 
         # test underlying function is being called
         tracer = trace.Trace(countfuncs=1)
@@ -90,12 +88,11 @@ class TestTpoCommon(TestWrapper):
         assert text in error
         assert f'{text}\n' not in error
 
-
     @pytest.mark.xfail
-    def test_debug_trace(self):
-        """Ensure debug_trace works as expected"""
+    def test_debug_trace_basic(self):
+        """Test basic debug_trace_basic usage"""
         debug.trace(4, "test_debug_trace()")
-        text = 'test debug trace withouht newline'
+        text = 'test debug trace without newline'
 
         # test underlying function is being called
         tracer = trace.Trace(countfuncs=1)
@@ -115,7 +112,8 @@ class TestTpoCommon(TestWrapper):
     def test_debug_print(self):
         """Ensure debug_print works as expected"""
         debug.trace(4, "test_debug_print()")
-        text = 'test debug trace withouht newline'
+        self.patch_trace_level(2)
+        text = 'test debug trace without newline'
 
         # test underlying function is being called
         tracer = trace.Trace(countfuncs=1)
@@ -130,7 +128,6 @@ class TestTpoCommon(TestWrapper):
 
         # test behaviour of functions
         assert f'{text}\n' in error
-
 
         # test with skip_newline
         self.clear_stdout_stderr()
@@ -151,9 +148,9 @@ class TestTpoCommon(TestWrapper):
     def test_debug_format(self):
         """Ensure debug_format works as expected"""
         debug.trace(4, "test_debug_format()")
-        ## TODO: WORK-IN-PROGRESS
         text = "test {function}"
-        THE_MODULE.debug_format(text=text, level=4, skip_newline=False, function="debug_format")
+        THE_MODULE.debug_format(text=text, level=4, skip_newline=False,
+                                function="debug_format")
         stderr = self.get_stderr()
         assert "test debug_format" in stderr
 
@@ -190,7 +187,6 @@ class TestTpoCommon(TestWrapper):
         captured = self.get_stdout()
         assert re.search(r'modulename: debug, funcname: raise_exception', captured)
 
-
     def test_trace_array(self):
         """Ensure trace_array works as expected"""
         debug.trace(4, "test_trace_array()")
@@ -213,9 +209,11 @@ class TestTpoCommon(TestWrapper):
         debug.trace(4, "test_trace_object()")
 
         class TestObj:
+            """Class for trace_object"""
             __var__ = 1
 
-            def test_method():
+            def test_method(self):
+                """Dummy method"""
                 pass
 
         obj = TestObj()
@@ -231,7 +229,6 @@ class TestTpoCommon(TestWrapper):
 
         assert '__var__: 1' in error
         assert 'test_method' in error
-
 
     @pytest.mark.xfail
     def test_trace_value(self):
@@ -262,10 +259,13 @@ class TestTpoCommon(TestWrapper):
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, "test_trace_current_context()")
+        # note: level should be higher than level below
+        self.patch_trace_level(4)
 
-        test_var = 1
-        #assert local and global variables are traced
-        THE_MODULE.trace_current_context(level=8, label='TPO', show_methods_etc=True)
+        test_var = 1                    # pylint: disable=unused-variable
+        # check that local and global variables are traced
+        THE_MODULE.trace_current_context(level=2, label='TPO',
+                                         show_methods_etc=False, max_value_len=9999)
         error = self.get_stderr()
         assert 'TPO' in error
         assert 'test_var' in error
@@ -273,7 +273,7 @@ class TestTpoCommon(TestWrapper):
 
         # assert debug function is being called
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_current_context, show_methods_etc=True, label='TPO')
+        tracer.runfunc(THE_MODULE.trace_current_context, level=2, label='TPO', show_methods_etc=False)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -353,7 +353,6 @@ class TestTpoCommon(TestWrapper):
         error = self.get_stderr()
         assert message in error
 
-    # @pytest.mark.xfail
     def test_redirect_stderr(self):
         """Ensure redirect_stderr works as expected"""
         debug.trace(4, "test_redirect_stderr()")
@@ -371,7 +370,8 @@ class TestTpoCommon(TestWrapper):
         """Ensure restore_stderr works as expected"""
         debug.trace(4, "test_restore_stderr()")
         # ensure stderr is already being redirected
-        self.monkeypatch.setattr(THE_MODULE, 'stderr', system.open_file(self.get_temp_file()))
+        self.monkeypatch.setattr(THE_MODULE, 'stderr',
+                                 system.open_file(self.get_temp_file()))
         THE_MODULE.restore_stderr()
         assert sys.stderr == THE_MODULE.stderr
 
@@ -462,7 +462,6 @@ class TestTpoCommon(TestWrapper):
         self.monkeypatch.setenv('TEST_NEG_VAR', "-123_456")
         neg_env = THE_MODULE.getenv_real('TEST_NEG_VAR', default=2.71)
 
-
         self.monkeypatch.setenv('TEST_POS_VAR', "123.45")
         pos_env = THE_MODULE.getenv_real('TEST_POS_VAR', default=2.71)
 
@@ -536,7 +535,6 @@ class TestTpoCommon(TestWrapper):
         stderr = self.get_stderr()
         assert "init_logging" in stderr
 
-
     def test_load_object(self):
         """Ensure load_object works as expected"""
         debug.trace(4, "test_load_object()")
@@ -605,7 +603,6 @@ class TestTpoCommon(TestWrapper):
         assert table['a'] == '1st'
         assert table['b'] == '2nd'
         assert linum_table[3] == 'c'
-
 
     def test_lookup_key(self):
         """Ensure lookup_key works as expected"""
@@ -770,20 +767,18 @@ class TestTpoCommon(TestWrapper):
     def test_safe_int(self):
         """Ensure safe_int works as expected"""
         debug.trace(4, "test_safe_int()")
-        THE_MODULE.safe_int('1') == 1
-        THE_MODULE.safe_int(2.0) == 2
-        THE_MODULE.safe_int("F", base=16) == 16
-        THE_MODULE.safe_int("82", base=8) == 10
-        THE_MODULE.safe_int("four") == 0
+        assert THE_MODULE.safe_int('1') == 1
+        assert THE_MODULE.safe_int(2.0) == 2
+        assert THE_MODULE.safe_int("F", base=16) == 15
+        assert THE_MODULE.safe_int("77", base=8) == 63
+        assert THE_MODULE.safe_int("four") == 0
 
-    # @pytest.mark.xfail
     def test_safe_float(self):
         """Ensure safe_float works as expected"""
         debug.trace(4, "test_safe_float()")
         assert THE_MODULE.safe_float(5) == 5.0
         assert THE_MODULE.safe_float("3") == 3.0
         assert THE_MODULE.safe_float("three") == 0.0
-
 
     @pytest.mark.xfail
     def test_reference_variables(self):
@@ -795,17 +790,16 @@ class TestTpoCommon(TestWrapper):
         stderr = self.get_stderr()
         assert 'reference_variables("\'a\'",)' in stderr
 
-
     @pytest.mark.xfail
     def test_memodict(self):
         """Ensure memodict works as expected"""
         debug.trace(4, "test_memodict()")
+        self.patch_trace_level(4)
 
         @THE_MODULE.memodict
         def add_1(x:int)-> int:
             debug.trace(4, f"add_1({x})")
             return x + 1
-
 
         _ = add_1(1)
         stderr = self.get_stderr()
@@ -815,7 +809,6 @@ class TestTpoCommon(TestWrapper):
         _ = add_1(1)
         stderr = self.get_stderr()
         assert 'add_1(1)' not in stderr
-
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_exit(self):
