@@ -993,7 +993,7 @@ if __debug__:
         if not assertion_deprecation_shown:
             debug.trace(3, "Warning: glue_helpers.assertion() is deprecated; use version in debug.py")
             assertion_deprecation_shown = True
-        if debug.assertion(condition):
+        if debug.assertion(condition, indirect=True):
             try:
                 frame = inspect.currentframe()
                 frame = frame.f_back
