@@ -8,3 +8,6 @@ An optional priority is indicated by [Pn]
 - [P3] Remove unused boiterplate from template.py (e.g., setup methods).
 - [P4] Keep the tests in sync with package upgrades.
 - [P4] Track down exceptions in passing tests (e.g., test_to_csv).
+- [P3] Make sure tests run in optimized code (i.e., __debug__=False) and likewise with DEBUG_LEVEL lower than default (2).
+- [P3] Check for tests not making assertions, as in old version of test_safe_int
+       "THE_MODULE.safe_int(2.0) == 2" => "assert THE_MODULE.safe_int(2.0) == 2"
