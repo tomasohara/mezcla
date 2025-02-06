@@ -717,6 +717,10 @@ class TestWrapper(unittest.TestCase):
         debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
         return temp_filename
 
+    def patch_trace_level(self, level):
+        """Monkey patch the trace LEVEL"""
+        self.monkeypatch.setattr("mezcla.debug.trace_level", level)
+
     def tearDown(self) -> None:
         """Per-test cleanup: deletes temp file unless detailed debugging"""
         debug.trace(6, "TestWrapper.tearDown()")
