@@ -15,8 +15,6 @@
 #   so that just covers RUN_SLOW_TESTS; Check separately for path.
 #
 
-
-
 """Tests for Audio module"""
 
 # Standard packages
@@ -66,7 +64,6 @@ class TestAudio(TestWrapper):
     def test_sphinx_engine(self):
         """Test CMUSphinx speech recognition engine class"""
         debug.trace(debug.DETAILED, f"TestAudio.test_sphinx_engine({self})")
-
         sample = THE_MODULE.Audio(AUDIOFILE)
         result_speech = sample.speech_to_text(engine='sphinx')
         assert isinstance(result_speech, str)
@@ -78,10 +75,10 @@ class TestAudio(TestWrapper):
         debug.trace(debug.DETAILED, f"TestAudio.test_audio_path({self})")
         ## TODO2: fixme
         path = 'some/path'
-
+        #
         sample = THE_MODULE.Audio(path)
         assert sample.get_path() == path
-
+        #
         sample = THE_MODULE.Audio()
         assert not sample.get_path()
         sample.set_path(path)
@@ -91,10 +88,10 @@ class TestAudio(TestWrapper):
     def test_source_single_audio(self):
         """End to end test sourcing a single audio file"""
         debug.trace(debug.DETAILED, f"TestAudio.test_source_single_audio({self})")
-
+        #
         audio = self.temp_file + '.wav'
         gh.write_file(audio, 'some content')
-
+        #
         command  = f'python {self.script_module} --verbose {audio}'
         expected = f'Audio: {audio}'
         assert gh.run(command) == expected
