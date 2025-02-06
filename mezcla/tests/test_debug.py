@@ -95,11 +95,6 @@ class TestDebug(TestWrapper):
         self.expected_stdout_trace = self.stdout_text + "\n"
         self.expected_stderr_trace = self.stderr_text + "\n"
 
-    def patch_trace_level(self, level):
-        """Monkey patch the trace LEVEL"""
-        ## TODO3: add to TestWrapper class
-        self.monkeypatch.setattr("mezcla.debug.trace_level", level)
-
     def test_set_level(self):
         """Ensure set_level works as expected"""
         debug.trace(4, f"test_set_level(): self={self}")
