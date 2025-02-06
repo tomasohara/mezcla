@@ -674,20 +674,38 @@ if __debug__:
 
         return
 
-    
-    def trace_current_context(level: IntOrTraceLevel = QUITE_DETAILED, label: Optional[str] = None,
-                              show_methods_etc: bool = False) -> None:
+
+    def trace_frame(level: IntOrTraceLevel, frame, label="frame"):
+        """Trace info about FRAME to stderr if LEVEL or higher, using LABEL prefix"""
+        # example: trace_frame debug.py:680
+        frame_spec = (f"{frame.f_code.co_name} {inspect.getfile(frame)}:{frame.f_lineno}"
+                      if frame else "n/a")
+        trace(level, f"{label}: {frame_spec}")
+
+
+    def trace_current_context(level: IntOrTraceLevel = QUITE_DETAILED,
+                              label: Optional[str] = None,
+                              show_methods_etc: bool = False,
+                              indirect: Optional[bool] = False,
+                              max_value_len: Optional[int] = 2048) -> None:
         """Traces out current context (local and global variables), with output
         prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
         Notes: By default the debugging level must be quite-detailed (6).
         If the debugging level is higher, the entire stack frame is traced.
-        Also, methods are omitted by default."""
+        Also, methods are omitted by default. Other optional arguments allow
+        for INDIRECT callign contexts and MAX_VALUE_LEN of traced output.
+        """
         frame = None
         if label is None:
             label = "current"
         try:
             current_frame = inspect.currentframe()
+            trace_frame(7, frame, "current frame")
             frame = current_frame.f_back if current_frame else None
+            trace_frame(7, frame, "calling frame")
+            if frame and indirect:
+                frame = frame.f_back
+                trace_frame(7, frame, "indirect frame")
         except (AttributeError, KeyError, ValueError):
             trace_fmt(VERBOSE, "Exception during trace_current_context: {exc}",
                       exc=sys.exc_info())
@@ -697,14 +715,14 @@ if __debug__:
         prefix = INDENT
         if (get_level() - level) > 1:
             trace_object((level + 2), frame, "frame", indentation=prefix,
-                         show_all=show_methods_etc)
+                         show_all=show_methods_etc, max_value_len=max_value_len)
         else:
             trace_fmt(level, "frame = {f}", f=frame)
             if frame:
                 trace_object(level, frame.f_globals, "globals", indentation=prefix,
-                             show_all=show_methods_etc)
+                             show_all=show_methods_etc, max_value_len=max_value_len)
                 trace_object(level, frame.f_locals, "locals", indentation=prefix,
-                             show_all=show_methods_etc)
+                             show_all=show_methods_etc, max_value_len=max_value_len)
         trace(level, "}")
         if para_mode_tracing:
             trace(level, "")
@@ -741,7 +759,8 @@ if __debug__:
     def assertion(
             expression: Union[bool, Any],
             message: Optional[str] = None,
-            assert_level: Optional[IntOrTraceLevel] = None
+            assert_level: Optional[IntOrTraceLevel] = None,
+            indirect: Optional[bool] = False
         ) -> Optional[str]:
         """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
         Note:
@@ -763,7 +782,8 @@ if __debug__:
             try:
                 # Get source information for failed assertion
                 trace_fmtd(MOST_VERBOSE, "Call stack: {st}", st=inspect.stack())
-                caller = inspect.stack()[1]
+                offset = 2 if indirect else 1
+                caller = inspect.stack()[offset]
                 ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
                 (_frame, filename, line_number, _function, context, _index) = caller
                 trace(8, f"filename={filename!r}, context={context!r}")
