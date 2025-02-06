@@ -83,10 +83,6 @@ from mezcla.debug import IntOrTraceLevel
 # Constants (e.g., environment options)
 
 TL = debug.TL
-## OLD:
-## KEEP_TEMP = system.getenv_bool(
-##     "KEEP_TEMP", debug.detailed_debugging(),
-##     desc="Keep temporary files")
 KEEP_TEMP = gh.KEEP_TEMP
 PRUNE_TEMP = system.getenv_bool(
     "PRUNE_TEMP", False,
@@ -239,10 +235,6 @@ class TestWrapper(unittest.TestCase):
 
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usually set via derive_tested_module_name)
-    ## OLD:
-    ## temp_base = system.getenv_value(
-    ##     "TEMP_BASE", tempfile.NamedTemporaryFile().name,
-    ##     desc="Override for basename of temporary files")
     temp_base = TEMP_BASE
     check_coverage = system.getenv_bool(
         "CHECK_COVERAGE", False,
@@ -295,10 +287,7 @@ class TestWrapper(unittest.TestCase):
         # Optionally, setup temp-base directory (normally just a file)
         debug.assertion(cls.init_ok)
         if cls.use_temp_base_dir is None:
-            cls.use_temp_base_dir = system.getenv_bool(
-                "USE_TEMP_BASE_DIR", False,
-                desc="Treat TEMP_BASE as a directory")
-            # TODO: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); cls.use_temp_base_dir = bool(temp_base_dir.strip()); ...
+            cls.use_temp_base_dir = gh.USE_TEMP_BASE_DIR
         if not cls.temp_base:
             cls.temp_base = cls.temp_file
         if not cls.temp_base:
@@ -416,10 +405,6 @@ class TestWrapper(unittest.TestCase):
         # Get new temp file and delete existing file and variants based on temp_file_count,
         # such as /tmp/test-2, /tmp/test-2-1, and /tmp/test-2-2 (but not /tmp/test-[13]*).
         # Warning: using TEMP_FILE is not recommended due to clobbering by different tests
-        ## OLD:
-        ## self.temp_file = system.getenv_text(
-        ##     "TEMP_FILE", default_temp_file,
-        ##     desc="Override for temporary filename")
         self.temp_file = (gh.TEMP_FILE or default_temp_file)
         if PRUNE_TEMP:
             gh.delete_existing_file(f"{self.temp_file}")
