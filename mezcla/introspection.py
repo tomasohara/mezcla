@@ -259,6 +259,7 @@ class MezclaDebugger:
         
         :raises ValueError: If the call frame cannot be accessed
         """
+        ## TODO2: add levels_back param (e.g., 2 for gh.assertion)
         # NOTE: this is not separated into a function
         # as to not generate another call frame
         call_frame = inspect.currentframe()
