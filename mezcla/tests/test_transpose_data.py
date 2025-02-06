@@ -56,8 +56,8 @@ import mezcla.transpose_data as THE_MODULE
 ##
 ##     def test_transpose_table(self):
 ##         """Ensure test_transpose_table works as expected"""
-##         tmp_cmd_1 = gh.get_temp_file()
-##         tmp_cmd_2 = gh.get_temp_file()
+##         tmp_cmd_1 = self.get_temp_file()
+##         tmp_cmd_2 = self.get_temp_file()
 ##         debug.trace(4, f"test_transpose_table(); self={self}")
 ##         test_run_command_1 = f'echo "{SAMPLE_INPUT}" > {tmp_cmd_1}'
 ##         test_run_command_2 = f'../transpose_data.py --delim="|" < {tmp_cmd_1} > {tmp_cmd_2}'
@@ -67,7 +67,7 @@ import mezcla.transpose_data as THE_MODULE
 ##
 ##         # Problem with output (self.run_script(self.temp_file) returns '')
 ##         # ERROR: ...Full output truncated (1 line hidden), use '-vv' to show
-##         # FIXED 1: Replaced self.temp_file with gh.get_temp_file
+##         # FIXED 1: Replaced self.temp_file with self.get_temp_file
 ##         # FIXED 2: Replaced self.run_script with gh.read_file
 ##         # FIXED 3: Replaced == with in comparing output and SAMPLE_OUTPUT
 ##         # NOTE 1: Changing the position of """ in SAMPLE_OUTPUT varies the output

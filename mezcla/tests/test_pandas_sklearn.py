@@ -64,7 +64,7 @@ class TestPandasSklearn(TestWrapper):
     def test_main_without_args(self):
         """Ensure main without args works as expected"""
         debug.trace(4, "test_main_without_args()")
-        log_file = gh.get_temp_file()
+        log_file = self.get_temp_file()
         self.run_script(data_file='', log_file=log_file)
         assert 'Usage:' in gh.read_file(log_file)
 

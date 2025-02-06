@@ -886,9 +886,9 @@ class TestUsageM2SEqCall(TestWrapper, ParametrizedTestCase):
         argnames="input_code, expected_code",
         argvalues=[
             ut_param(
-                "from mezcla import glue_helpers as gh\ntemp_file = gh.get_temp_file()\n",
+                "from mezcla import glue_helpers as gh\ntemp_file = self.get_temp_file()\n",
                 "import tempfile\ntemp_file = tempfile.NamedTemporaryFile()\n",
-                id="test_eqcall_gh_get_temp_file",
+                id="test_eqcall_self.get_temp_file",
             ),
             ut_param(
                 'from mezcla import glue_helpers as gh\nbasename = gh.basename("./foo/bar/foo.bar")\n',

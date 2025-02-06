@@ -244,7 +244,7 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, "test__read_file()")
 
         # test valid file
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert (
             THE_MODULE._read_file(filename=temp_file, as_binary=False) ==
@@ -267,12 +267,12 @@ class TestHtmlUtils(TestWrapper):
         """Ensure _write_file() works as expected"""
         debug.trace(4, "test__write_file()")
         # Test normal usage
-        filename = gh.get_temp_file()
+        filename = self.get_temp_file()
         THE_MODULE._write_file(filename, "it", as_binary=False)
         assert THE_MODULE._read_file(filename=filename, as_binary=False) == "it\n"
 
         # Test binary mode
-        filename = gh.get_temp_file()
+        filename = self.get_temp_file()
         THE_MODULE._write_file(filename, data=bytes("it", encoding="UTF-8"), as_binary=True)
         assert THE_MODULE._read_file(filename=filename, as_binary=True) == b"it"
 

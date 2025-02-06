@@ -44,7 +44,7 @@ import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    ## OLD: temp_file = gh.get_temp_file()
+    ## OLD: temp_file = self.get_temp_file()
 
     @pytest.mark.xfail                   # TODO: remove xfail
     ## DEBUG: @trap_exception            # TODO: remove when debugged
@@ -83,7 +83,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         """Ensure file_exists works as expected"""
         debug.trace(4, "test_file_exists()")
         # Existent file
-        test_filename = gh.get_temp_file()
+        test_filename = self.get_temp_file()
         gh.write_file(test_filename, 'some content')
         assert THE_MODULE.file_exists(test_filename)
         # Not existent file
@@ -94,7 +94,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_non_empty_file()")
 
         # Test valid file
-        file_with_content = gh.get_temp_file()
+        file_with_content = self.get_temp_file()
         gh.write_file(file_with_content, 'content')
         assert THE_MODULE.non_empty_file(file_with_content)
 
@@ -102,7 +102,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert not THE_MODULE.non_empty_file('bad_file_name')
 
         # Test empty file
-        empty_file = gh.get_temp_file()
+        empty_file = self.get_temp_file()
         with open(empty_file, 'wb') as _:
             pass # gh.write_file cant be used because appends a newline
         assert not THE_MODULE.non_empty_file(empty_file)
@@ -260,12 +260,12 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_issue()")
 
         # Simple command test
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         THE_MODULE.issue(f'echo "this is a simple test" > {temp_file}')
         assert 'this is a simple test' in gh.read_file(temp_file)
 
         # Setup log file
-        log_file = gh.get_temp_file()
+        log_file = self.get_temp_file()
         system.write_file(log_file, 'random content')
         def debugging_mock():
             return True
@@ -354,7 +354,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_read_lines()")
 
         # Test valid file
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
 
@@ -389,7 +389,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         ]
 
         # Test normal usage
-        filename = gh.get_temp_file()
+        filename = self.get_temp_file()
         THE_MODULE.write_lines(filename, content_in_lines)
         assert THE_MODULE.read_file(filename) == content
 
@@ -400,7 +400,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_read_file(self):
         """Ensure read_file works as expected"""
         debug.trace(4, "test_read_file()")
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_file(temp_file) == 'file\nwith\nmultiple\nlines\n'
 
@@ -409,7 +409,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_write_file()")
 
         # Test normal usage
-        filename = gh.get_temp_file()
+        filename = self.get_temp_file()
         THE_MODULE.write_file(filename, "some test")
         assert THE_MODULE.read_file(filename) == "some test\n"
 
@@ -420,7 +420,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_copy_file(self):
         """Ensure copy_file works as expected"""
         debug.trace(4, "test_copy_file()")
-        first_temp_file = gh.get_temp_file()
+        first_temp_file = self.get_temp_file()
         second_temp_file = f"{first_temp_file}_target_copy"
         gh.write_file(first_temp_file, 'some random content')
         THE_MODULE.copy_file(first_temp_file, second_temp_file)
@@ -429,8 +429,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_rename_file(self):
         """Ensure rename_file works as expected"""
         debug.trace(4, "test_rename_file()")
-        test_filename = gh.get_temp_file()
-        new_test_filename = gh.get_temp_file() + '_this_append_avoids_bad_file_exists'
+        test_filename = self.get_temp_file()
+        new_test_filename = self.get_temp_file() + '_this_append_avoids_bad_file_exists'
         gh.write_file(test_filename, 'some content')
 
         # Check existense of files before rename
@@ -449,7 +449,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_delete_file()")
 
         # Test valid file to delete
-        test_filename = gh.get_temp_file()
+        test_filename = self.get_temp_file()
         gh.write_file(test_filename, 'some content')
         assert gh.file_exists(test_filename)
         THE_MODULE.delete_file(test_filename)
@@ -464,7 +464,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_file_size(self):
         """Ensure file_size works as expected"""
         debug.trace(4, "test_file_size()")
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, 'content')
         if os.name == 'nt':
             # CRLF line-end occupies 1 byte more than LF
@@ -517,13 +517,13 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_getenv_filename()")
 
         # Test valid filename with valid content
-        test_filename = gh.get_temp_file()
+        test_filename = self.get_temp_file()
         gh.write_file(test_filename, 'random content')
         self.monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
         assert THE_MODULE.getenv_filename('TEST_ENV_FILENAME') == test_filename
 
         # Test valid filename with empty content
-        test_filename = gh.get_temp_file()
+        test_filename = self.get_temp_file()
         with open(test_filename, 'wb') as _:
             pass # gh.write_file cant be used because appends a newline
         debug.set_level(7)

@@ -278,7 +278,7 @@ class TestSystem(TestWrapper):
             1: 'first',
             2: 'second',
         }
-        test_filename = gh.get_temp_file()
+        test_filename = self.get_temp_file()
 
         THE_MODULE.save_object(test_filename, test_dict)
 
@@ -296,7 +296,7 @@ class TestSystem(TestWrapper):
             1: 'first',
             2: 'second',
         }
-        test_filename = gh.get_temp_file()
+        test_filename = self.get_temp_file()
         with open(test_filename, 'wb') as test_file :
             pickle.dump(test_dict, test_file)
             test_file.close()
@@ -375,7 +375,7 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_read_entire_file()")
 
         # Test valid vile
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_entire_file(temp_file) == 'file\nwith\nmultiple\nlines\n'
 
@@ -391,7 +391,7 @@ class TestSystem(TestWrapper):
     def test_read_lines(self):
         """Ensure read_lines works as expected"""
         debug.trace(4, "test_read_lines()")
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
 
@@ -441,7 +441,7 @@ class TestSystem(TestWrapper):
         }
 
         # Test normal usage parameters
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, content)
         assert THE_MODULE.read_lookup_table(temp_file, skip_header=False, delim=' -> ', retain_case=False) == expected_lowercase
         assert THE_MODULE.read_lookup_table(temp_file, skip_header=False, delim=' -> ', retain_case=True) == expected_uppercase
@@ -449,7 +449,7 @@ class TestSystem(TestWrapper):
 
         # Tests default delim
         content_with_tabs = content.replace(' -> ', '\t')
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, content_with_tabs)
         assert THE_MODULE.read_lookup_table(temp_file) == expected_lowercase
 
@@ -458,7 +458,7 @@ class TestSystem(TestWrapper):
             'line without delim\n'
             'France -> Paris\n'
         )
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, without_delim_content)
         THE_MODULE.read_lookup_table(temp_file)
         captured = self.get_stderr()
@@ -497,13 +497,13 @@ class TestSystem(TestWrapper):
             'IsBusiness': True
         }
 
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, content_with_custom_delim)
         assert THE_MODULE.create_boolean_lookup_table(temp_file, delim=' - ', retain_case=False) == expected_lowercase
         assert THE_MODULE.create_boolean_lookup_table(temp_file, delim=' - ', retain_case=True) == expected_uppercase
 
         # Test default delim tab
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, content_tab_delim)
         assert THE_MODULE.create_boolean_lookup_table(temp_file, retain_case=True) == expected_uppercase
 
@@ -534,12 +534,12 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_write_file()")
 
         # Test normal usage
-        filename = gh.get_temp_file()
+        filename = self.get_temp_file()
         THE_MODULE.write_file(filename, "it")
         assert THE_MODULE.read_file(filename) == "it\n"
 
         # Test skip newline argument
-        filename = gh.get_temp_file()
+        filename = self.get_temp_file()
         THE_MODULE.write_file(filename, "it", skip_newline=True)
         assert THE_MODULE.read_file(filename) == "it"
         assert THE_MODULE.read_file(filename) != "it\n"
@@ -547,7 +547,7 @@ class TestSystem(TestWrapper):
     def test_write_binary_file(self):
         """Ensure write_binary_file works as expected"""
         debug.trace(4, "test_write_binary_file()")
-        filename = gh.get_temp_file()
+        filename = self.get_temp_file()
         THE_MODULE.write_binary_file(filename, bytes("binary", "UTF-8"))
         assert THE_MODULE.read_binary_file(filename) == b'binary'
 
@@ -567,7 +567,7 @@ class TestSystem(TestWrapper):
         ]
 
         # Test normal usage
-        filename = gh.get_temp_file()
+        filename = self.get_temp_file()
         THE_MODULE.write_lines(filename, content_in_lines)
         assert THE_MODULE.read_file(filename) == content
 
@@ -578,7 +578,7 @@ class TestSystem(TestWrapper):
     def test_write_temp_file(self):
         """Ensure write_temp_file works as expected"""
         debug.trace(4, "test_write_temp_file()")
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         THE_MODULE.write_temp_file(temp_file, 'some content')
         assert THE_MODULE.read_file(temp_file) == 'some content\n'
 
@@ -616,7 +616,7 @@ class TestSystem(TestWrapper):
     def test_file_exists(self):
         """Ensure file_exists works as expected"""
         debug.trace(4, "test_file_exists()")
-        existent_file = gh.get_temp_file()
+        existent_file = self.get_temp_file()
         gh.write_file(existent_file, 'content')
         assert THE_MODULE.file_exists(existent_file)
         assert not THE_MODULE.file_exists('bad_file_name')
@@ -624,7 +624,7 @@ class TestSystem(TestWrapper):
     def test_get_file_size(self):
         """Ensure get_file_size works as expected"""
         debug.trace(4, "test_get_file_size()")
-        temp_file = gh.get_temp_file()
+        temp_file = self.get_temp_file()
         gh.write_file(temp_file, 'content')
         if os.name == 'nt':
             # CRLF line-end occupies 1 byte more than LF
@@ -649,7 +649,7 @@ class TestSystem(TestWrapper):
     def test_is_regular_file(self):
         """Ensure is_regular_file works as expected"""
         debug.trace(4, "test_is_regular_file()")
-        filename = gh.get_temp_file()
+        filename = self.get_temp_file()
         gh.write_file(filename, 'content')
         assert THE_MODULE.is_regular_file(filename)
         assert not THE_MODULE.is_regular_file('/etc')
@@ -737,7 +737,7 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_non_empty_file()")
 
         # Test valid file
-        file_with_content = gh.get_temp_file()
+        file_with_content = self.get_temp_file()
         gh.write_file(file_with_content, 'content')
         assert THE_MODULE.non_empty_file(file_with_content)
 
@@ -745,7 +745,7 @@ class TestSystem(TestWrapper):
         assert not THE_MODULE.non_empty_file('bad_file_name')
 
         # Test empty file
-        empty_file = gh.get_temp_file()
+        empty_file = self.get_temp_file()
         with open(empty_file, 'wb') as _:
             pass # gh.write_file cant be used because appends a newline
         assert not THE_MODULE.non_empty_file(empty_file)

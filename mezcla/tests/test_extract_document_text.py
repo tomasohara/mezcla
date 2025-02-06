@@ -40,7 +40,7 @@ class TestExtractDocumentText(TestWrapper):
         # NOTE: Output contains \n specifier at the end on the text.
         # - Uses test-specific temp file as per TestWrapper.
         # - Uses file extension for use by underlying textract module (see document_to_text).
-        ## OLD: tmp_document = gh.get_temp_file()
+        ## OLD: tmp_document = self.get_temp_file()
         tmp_document = self.temp_file + ".txt"
 
         # DOCUMENT_TEXT = """Lorem Ipsum is simply dummy text of the printing and typesetting industry.
@@ -73,8 +73,8 @@ class TestExtractDocumentText(TestWrapper):
         ## OLD: env_option = "STDOUT"
         # NOTE: Output contains \n specifier at the end on the text.
         ## OLD:
-        ## doc_input_temp = gh.get_temp_file()
-        ## doc_output_temp = gh.get_temp_file()
+        ## doc_input_temp = self.get_temp_file()
+        ## doc_output_temp = self.get_temp_file()
         ## TODO2: carefully review tests/template.py
         doc_input_temp = self.temp_file + ".txt"
         # Single-line string as INPUT
