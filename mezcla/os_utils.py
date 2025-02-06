@@ -32,6 +32,11 @@ def split_extension(path):
     debug.trace(5, f"split_extension({path}) => {result}")
     return result
 
+## TEMP: define dummy function for tests/test_os_utils.py
+##
+## def some_other_function():
+##     """Used for testing test_02_no_other_functions"""
+##     return
 
 def main(*args, **kwargs):
     """Supporting code for command-line processing"""

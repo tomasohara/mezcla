@@ -7,11 +7,11 @@
 #   1. Usual
 #      pip install -r requirements.txt
 #   2. Optional (i.e., including most optional):
-#      perl -pe 's/^#opt#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | egrep -v '^(#|$)' > _opt-requirements.list
-#      pip install --verbose --upgrade --requirement _opt-requirements.list
-#   3. Full (i.e., including all optional), done one-by-one to avoid pip quirk:
-#      perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | egrep -v '^(#|$)' > _all-requirements.list
-#      cat _all-requirements.list | xargs -I '{}' pip install --verbose --upgrade '{}' 
+#      pip install --verbose $(perl -pe 's/^#opt#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
+#   3. Full (i.e., including all optional):
+#      pip install --verbose $(perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
+#      # TODO2: --ignore-errors [maldito pip]; set pip-update check
+#      perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#' | xargs -I '{}' pip install '{}'
 # - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
 # - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
 #
@@ -26,6 +26,7 @@
 #
 HTMLParser
 absl_py
+asttokens
 beautifulsoup4
 bs4
 cachetools
@@ -35,10 +36,11 @@ datasets                      # Hugging Face (HF) data
 #opt# diffusers               # Stale Diffusion; TEMP
 diskcache
 extcolors>=1.0.0
+executing
 flair
 flask
 git+https://github.com/tehabstract/textract.git
-gradio                        # UI support (e.g., HF-based apps)
+gradio==3.48                        # UI support (e.g., HF-based apps)
 importlib_metadata
 langchain
 langchain_community
@@ -48,13 +50,12 @@ lxml
 mako
 matplotlib
 more_itertools
-## bad: nltk
-nltk==3.8.1
+nltk
 numpy>=1.18.5
 pandas>=1.3.0
 pyaml
 pyctcdecode                   # CTC beam search decoder for speech recognition
-pydantic
+## OLD: pydantic
 pyenchant
 pysbd
 pytest
@@ -68,7 +69,7 @@ stop_words
 transformers                  # HF models
 torch
 #opt# torchaudio
-webcolors
+webcolors==1.13
 wheel
 ## NOTE: temporarily disabled due to stupid docker disk space constraints
 ## TODO: xgboost
@@ -90,7 +91,6 @@ wheel
 #opt# accelerate
 #opt# astor                             # AST utils
 #opt# bash_kernel
-#opt# bashlex
 #opt# colout
 #opt# coverage
 #opt# flit
@@ -101,8 +101,9 @@ wheel
 #opt# jupyter
 #opt# libcst
 #opt# librosa
-#opt# numba
 #opt# pocketsphinx
+#opt# mypy
+## TODO?: #opt#
 pydantic==2.9.2
 #opt# pylint
 #opt# pyyaml

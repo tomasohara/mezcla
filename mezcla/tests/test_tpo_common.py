@@ -7,20 +7,18 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_tpo_common.py
 #
-# Warning:
-# - *** The tpo_common.py module is being phased out. Although there are
-#   a bunch of "work-in-progress" tests below, they are low priority because
-#   most are addressed by test_system.py or test_debug.py.
-#
-# TODO1: Make sure all work-in-progress tests issue Assert(False).
-#
 # TODO:
 # - Address commonly used debugging functions (e.g., debug_print) by redirecting output (via remapping sys.stderr to a file) and then checking file contents.
 # - add tests for normalize_unicode, ensure_unicode and other problematic functions
+# TODO2:
+# - Remove most of the trace.Trace usages as that usually is overkill:
+#   capturing stderr is sufficient!
 #
 # Important:
-# - Most of the methods on tpo_common was moved to predecessors modules as system.py, debug.py etc.
-# - Using the predecessors module tests to these moved methods could be useful to avoid repeated tests but this could create conflicts with modified methods.
+# - Most of the methods on tpo_common was moved to newer modules, such
+#   as system.py, debug.py etc.
+# - Using the newer module tests to these moved methods could be useful to avoid
+#   repeated tests but this could create conflicts with modified methods.
 #
 
 """Tests for tpo_common module"""
@@ -29,17 +27,19 @@
 import sys
 import re
 from datetime import datetime
+import os
+import math
+import trace
+import pickle
 
 # Installed modules
 import pytest
-import pickle
-import trace
 
 # Local modules
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
@@ -71,16 +71,16 @@ class TestTpoCommon(TestWrapper):
     def test_debug_trace_without_newline(self):
         """Ensure debug_trace_without_newline works as expected"""
         debug.trace(4, "test_debug_trace_without_newline()")
-        text = 'test debug trace withouht newline'
-        
+        text = 'test debug trace without newline'
+
         # test underlying function is being called
         tracer = trace.Trace(countfuncs=1)
         tracer.runfunc(THE_MODULE.debug_trace_without_newline, (text))
-        
+
         # redirect write_results to temp file
         temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
-        
+
         out, error = self.get_stdout_stderr()
         assert re.search(r'modulename: debug, funcname: trace', out)
 
@@ -88,41 +88,85 @@ class TestTpoCommon(TestWrapper):
         assert text in error
         assert f'{text}\n' not in error
 
-
     @pytest.mark.xfail
-    def test_debug_trace(self):
-        """Ensure debug_trace works as expected"""
+    def test_debug_trace_basic(self):
+        """Test basic debug_trace_basic usage"""
         debug.trace(4, "test_debug_trace()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        text = 'test debug trace without newline'
+
+        # test underlying function is being called
+        tracer = trace.Trace(countfuncs=1)
+        tracer.runfunc(THE_MODULE.debug_trace, (text))
+
+        # redirect write_results to temp file
+        temp = self.get_temp_file()
+        tracer.results().write_results(coverdir=temp)
+
+        out, error = self.get_stdout_stderr()
+        assert re.search(r'modulename: debug, funcname: trace', out)
+
+        # test behaviour of functions
+        assert f'{text}\n' in error
 
     @pytest.mark.xfail
     def test_debug_print(self):
         """Ensure debug_print works as expected"""
         debug.trace(4, "test_debug_print()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        self.patch_trace_level(2)
+        text = 'test debug trace without newline'
+
+        # test underlying function is being called
+        tracer = trace.Trace(countfuncs=1)
+        tracer.runfunc(THE_MODULE.debug_print, (text), skip_newline=False)
+
+        # redirect write_results to temp file
+        temp = self.get_temp_file()
+        tracer.results().write_results(coverdir=temp)
+
+        out, error = self.get_stdout_stderr()
+        assert re.search(r'modulename: debug, funcname: trace', out)
+
+        # test behaviour of functions
+        assert f'{text}\n' in error
+
+        # test with skip_newline
+        self.clear_stdout_stderr()
+        tracer.runfunc(THE_MODULE.debug_print, (text), skip_newline=True)
+
+        # redirect write_results to temp file
+        temp = self.get_temp_file()
+        tracer.results().write_results(coverdir=temp)
+
+        out, error = self.get_stdout_stderr()
+        assert re.search(r'modulename: debug, funcname: trace', out)
+
+        # test behaviour of functions
+        assert text in error
+        assert f'{text}\n' not in error
 
     @pytest.mark.xfail
     def test_debug_format(self):
         """Ensure debug_format works as expected"""
         debug.trace(4, "test_debug_format()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        text = "test {function}"
+        THE_MODULE.debug_format(text=text, level=4, skip_newline=False,
+                                function="debug_format")
+        stderr = self.get_stderr()
+        assert "test debug_format" in stderr
 
     def test_debug_timestamp(self):
         """Ensure debug_timestamp works as expected"""
         debug.trace(4, "test_debug_timestamp()")
         tracer = trace.Trace(countfuncs=1)
         tracer.runfunc(THE_MODULE.debug_timestamp)
-        
+
         # redirect write_results to temp file
         temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
-        
+
         captured = self.get_stdout()
         assert re.search(r'modulename: debug, funcname: timestamp', captured)
-        
+
         # test behaviour of function
         actual, expected = THE_MODULE.debug_timestamp(), str(datetime.now())
         # truncating the timestamp to eliminate milisecond difference in calculation
@@ -131,18 +175,17 @@ class TestTpoCommon(TestWrapper):
     def test_debug_raise(self):
         """Ensure debug_raise works as expected"""
         debug.trace(4, "test_debug_raise()")
-        
+
         tracer = trace.Trace(countfuncs=1)
         with pytest.raises(RuntimeError):
             tracer.runfunc(THE_MODULE.debug_raise)
-                
+
         # redirect write_results to temp file
         temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
-        
+
         captured = self.get_stdout()
         assert re.search(r'modulename: debug, funcname: raise_exception', captured)
-
 
     def test_trace_array(self):
         """Ensure trace_array works as expected"""
@@ -150,70 +193,92 @@ class TestTpoCommon(TestWrapper):
         array = ['test', 'trace', 'array']
         tracer = trace.Trace(countfuncs=1)
         tracer.runfunc(THE_MODULE.trace_array, (array))
-        
+
         # redirect write_results to temp file
         temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
-        
+
         out, error = self.get_stdout_stderr()
         assert re.search(r'modulename: debug, funcname: trace_values', out)
-        
+
         for i, item in enumerate(array):
             assert f"{i}: {item}" in error
 
     def test_trace_object(self):
         """Ensure trace_object works as expected"""
         debug.trace(4, "test_trace_object()")
-        
+
         class TestObj:
+            """Class for trace_object"""
             __var__ = 1
-            
-            def test_method():
+
+            def test_method(self):
+                """Dummy method"""
                 pass
-        
+
         obj = TestObj()
         tracer = trace.Trace(countfuncs=1)
         tracer.runfunc(THE_MODULE.trace_object, obj, show_methods_etc=True, show_private=True)
-        
+
         # redirect write_results to temp file
         temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
-        
+
         out, error = self.get_stdout_stderr()
         assert re.search(r'modulename: debug, funcname: trace_object', out)
-        
+
         assert '__var__: 1' in error
         assert 'test_method' in error
-        
 
     @pytest.mark.xfail
     def test_trace_value(self):
         """Ensure trace_value works as expected"""
         debug.trace(4, "test_trace_value()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        value = "test value"
+        tracer = trace.Trace(countfuncs=1)
+        tracer.runfunc(THE_MODULE.trace_value, value)
+
+        # redirect write_results tot temp file
+        temp = self.get_temp_file()
+        tracer.results().write_results(coverdir=temp)
+
+        out, error = self.get_stdout_stderr()
+        assert re.search(r'modulename: tpo_common, funcname: debug_print', out)
+        assert value in error
+
+        tracer.runfunc(THE_MODULE.trace_value, value, label='TPO')
+
+        # redirect write_results to temp file
+        tracer.results().write_results(coverdir=temp)
+
+        out, error = self.get_stdout_stderr()
+
+        assert f"TPO: {value}" in error
 
     @pytest.mark.xfail
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, "test_trace_current_context()")
-        
-        test_var = 1
-        #assert local and global variables are traced
-        THE_MODULE.trace_current_context(level=8, label='TPO', show_methods_etc=True)
+        # note: level should be higher than level below
+        self.patch_trace_level(4)
+
+        test_var = 1                    # pylint: disable=unused-variable
+        # check that local and global variables are traced
+        THE_MODULE.trace_current_context(level=2, label='TPO',
+                                         show_methods_etc=False, max_value_len=9999)
         error = self.get_stderr()
         assert 'TPO' in error
         assert 'test_var' in error
         assert 'FOOBAR' in error
-        
+
         # assert debug function is being called
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_current_context, show_methods_etc=True, label='TPO')
-        
+        tracer.runfunc(THE_MODULE.trace_current_context, level=2, label='TPO', show_methods_etc=False)
+
         # redirect write_results to temp file
         temp = self.get_temp_file()
         tracer.results().write_results(coverdir=temp)
-        
+
         stdout = self.get_stdout()
         assert re.search(r'modulename: debug, funcname: trace_current_context', stdout)
 
@@ -221,8 +286,8 @@ class TestTpoCommon(TestWrapper):
     def test_during_debugging(self):
         """Ensure during_debugging works as expected"""
         debug.trace(4, "test_during_debugging()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        assert THE_MODULE.during_debugging()
+        assert not THE_MODULE.during_debugging(False)
 
     def test_debugging(self):
         """Ensure debugging works as expected"""
@@ -288,13 +353,12 @@ class TestTpoCommon(TestWrapper):
         error = self.get_stderr()
         assert message in error
 
-    # @pytest.mark.xfail
     def test_redirect_stderr(self):
         """Ensure redirect_stderr works as expected"""
         debug.trace(4, "test_redirect_stderr()")
         # ensure stderr is not being redirected
         self.monkeypatch.setattr(THE_MODULE, 'stderr', sys.stderr)
-        
+
         temp = self.get_temp_file()
         THE_MODULE.redirect_stderr(temp)
         THE_MODULE.print_stderr("stderr redirected")
@@ -306,7 +370,8 @@ class TestTpoCommon(TestWrapper):
         """Ensure restore_stderr works as expected"""
         debug.trace(4, "test_restore_stderr()")
         # ensure stderr is already being redirected
-        self.monkeypatch.setattr(THE_MODULE, 'stderr', system.open_file(self.get_temp_file()))
+        self.monkeypatch.setattr(THE_MODULE, 'stderr',
+                                 system.open_file(self.get_temp_file()))
         THE_MODULE.restore_stderr()
         assert sys.stderr == THE_MODULE.stderr
 
@@ -319,7 +384,7 @@ class TestTpoCommon(TestWrapper):
     def test_chomp(self):
         """Ensure chomp works as expected"""
         debug.trace(4, "test_chomp()")
-        assert THE_MODULE.chomp("abc\n") == "abc"
+        assert THE_MODULE.chomp("abc" + os.linesep) == "abc"
         assert THE_MODULE.chomp("http://localhost/", "/") == "http://localhost"
 
     @trap_exception
@@ -389,20 +454,36 @@ class TestTpoCommon(TestWrapper):
         self.do_assert(isinstance(result, list))
         self.do_assert("(2022)" in str(result), "default added")
         self.do_assert(len(result) == 2)
-        
+
     @pytest.mark.xfail
     def test_getenv_real(self):
         """Ensure getenv_real works as expected"""
         debug.trace(4, "test_getenv_real()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        self.monkeypatch.setenv('TEST_NEG_VAR', "-123_456")
+        neg_env = THE_MODULE.getenv_real('TEST_NEG_VAR', default=2.71)
+
+        self.monkeypatch.setenv('TEST_POS_VAR', "123.45")
+        pos_env = THE_MODULE.getenv_real('TEST_POS_VAR', default=2.71)
+
+        assert neg_env == -123456
+        assert pos_env == 123.45
 
     @pytest.mark.xfail
     def test_getenv_float(self):
         """Ensure getenv_float works as expected"""
         debug.trace(4, "test_getenv_float()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        self.monkeypatch.setenv('TEST_INF_VAR', "inf")
+        inf_env = THE_MODULE.getenv_float('TEST_INF_VAR', default=2.71)
+
+        self.monkeypatch.setenv('TEST_NAN_VAR', 'nan')
+        nan_env = THE_MODULE.getenv_float('TEST_NAN_VAR', default=2.71)
+
+        self.monkeypatch.setenv('TEST_NEG_VAR', 'a123')
+        default_env = THE_MODULE.getenv_float('TEST_NEG_VAR', default=2.71)
+
+        assert inf_env == math.inf
+        assert math.isnan(nan_env)
+        assert default_env == 2.71
 
     def test_get_current_function_name(self):
         """Test(s) for get_current_function_name()"""
@@ -413,15 +494,28 @@ class TestTpoCommon(TestWrapper):
     def test_get_property_value(self):
         """Ensure get_property_value works as expected"""
         debug.trace(4, "test_get_property_value()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        class test_object:
+            """ test class """
+            def __init__(self):
+                self.property = "test"
+
+        test_obj = test_object()
+
+        assert THE_MODULE.get_property_value(test_obj, 'property') == "test"
+        assert THE_MODULE.get_property_value(test_obj, 'non_prop', None) is None
 
     @pytest.mark.xfail
     def test_simple_format(self):
         """Ensure simple_format works as expected"""
         debug.trace(4, "test_simple_format()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        fubar = 202
+
+        assert THE_MODULE.simple_format("{F} vs. {f}", namespace={"F": FUBAR, "f": fubar}) == f"{FUBAR} vs. {fubar}"
+        assert THE_MODULE.simple_format("{{F}} vs. {{f}}", namespace={"F":FUBAR, "f":fubar}) == r"{F} vs. {f}"
+
+        THE_MODULE.simple_format("{F} vs. {f}", namespace={})
+        stderr = self.get_stderr()
+        assert r"Unable to resolve replacement 'F' in '{F} vs. {f}'" in stderr
 
     def test_format(self):
         """Ensure format resolves from local and global namespace, and that local takes precedence"""
@@ -437,8 +531,9 @@ class TestTpoCommon(TestWrapper):
     def test_init_logging(self):
         """Ensure init_logging works as expected"""
         debug.trace(4, "test_init_logging()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        THE_MODULE.init_logging()
+        stderr = self.get_stderr()
+        assert "init_logging" in stderr
 
     def test_load_object(self):
         """Ensure load_object works as expected"""
@@ -493,8 +588,21 @@ class TestTpoCommon(TestWrapper):
     def test_create_lookup_table(self):
         """Ensure create_lookup_table works as expected"""
         debug.trace(4, "test_create_lookup_table()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        content = (
+            "a\t1st\n"
+            "b\t2nd\n"
+            "c\n"
+        )
+
+        temp_file = self.get_temp_file()
+        gh.write_file(temp_file, content)
+
+        linum_table = THE_MODULE.create_lookup_table(temp_file, use_linenum=True)
+        table = THE_MODULE.create_lookup_table(temp_file, use_linenum=False)
+
+        assert table['a'] == '1st'
+        assert table['b'] == '2nd'
+        assert linum_table[3] == 'c'
 
     def test_lookup_key(self):
         """Ensure lookup_key works as expected"""
@@ -529,15 +637,16 @@ class TestTpoCommon(TestWrapper):
     def test_normalize_frequencies(self):
         """Ensure normalize_frequencies works as expected"""
         debug.trace(4, "test_normalize_frequencies()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        dictionary = {'a':25, 'b': 55, 'c': 20}
+        THE_MODULE.normalize_frequencies(dictionary)
+        assert dictionary == {'a': 0.25, 'b': 0.55, 'c': 0.2}
 
     @pytest.mark.xfail
     def test_sort_frequencies(self):
         """Ensure sort_frequencies works as expected"""
         debug.trace(4, "test_sort_frequencies()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        dictionary = {'a': 0.25, 'b': 0.55, 'c': 0.2}
+        assert THE_MODULE.sort_frequencies(dictionary) == ['b', 'a', 'c']
 
     def test_sort_weighted_hash(self):
         """Ensure sort_weighted_hash works as expected"""
@@ -565,8 +674,15 @@ class TestTpoCommon(TestWrapper):
     def test_format_freq_hash(self):
         """Ensure format_freq_hash works as expected"""
         debug.trace(4, "test_format_freq_hash()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        dictionary = {'a': 2.25, 'b': 3.55, 'c': 1.2}
+        expected_output = (
+            'test_format_freq_hash\n'
+            '\tb\t4\n'
+            '\ta\t2\n'
+            '\tc\t1'
+        )
+        formatted_dict = THE_MODULE.format_freq_hash(dictionary, 'test_format_freq_hash')
+        assert formatted_dict == expected_output
 
     def test_union(self):
         """Ensure union works as expected"""
@@ -651,34 +767,48 @@ class TestTpoCommon(TestWrapper):
     def test_safe_int(self):
         """Ensure safe_int works as expected"""
         debug.trace(4, "test_safe_int()")
-        THE_MODULE.safe_int('1') == 1
-        THE_MODULE.safe_int(2.0) == 2
-        THE_MODULE.safe_int("F", base=16) == 16
-        THE_MODULE.safe_int("82", base=8) == 10
-        THE_MODULE.safe_int("four") == 0
+        assert THE_MODULE.safe_int('1') == 1
+        assert THE_MODULE.safe_int(2.0) == 2
+        assert THE_MODULE.safe_int("F", base=16) == 15
+        assert THE_MODULE.safe_int("77", base=8) == 63
+        assert THE_MODULE.safe_int("four") == 0
 
-    # @pytest.mark.xfail
     def test_safe_float(self):
         """Ensure safe_float works as expected"""
         debug.trace(4, "test_safe_float()")
         assert THE_MODULE.safe_float(5) == 5.0
         assert THE_MODULE.safe_float("3") == 3.0
         assert THE_MODULE.safe_float("three") == 0.0
-        
-        
+
     @pytest.mark.xfail
     def test_reference_variables(self):
         """Ensure reference_variables works as expected"""
         debug.trace(4, "test_reference_variables()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        self.monkeypatch.setattr("mezcla.debug.trace_level", 10)
+        THE_MODULE.reference_variables("\'a\'")
+
+        stderr = self.get_stderr()
+        assert 'reference_variables("\'a\'",)' in stderr
 
     @pytest.mark.xfail
     def test_memodict(self):
         """Ensure memodict works as expected"""
         debug.trace(4, "test_memodict()")
-        ## TODO: WORK-IN-PROGRESS
-        assert(False)
+        self.patch_trace_level(4)
+
+        @THE_MODULE.memodict
+        def add_1(x:int)-> int:
+            debug.trace(4, f"add_1({x})")
+            return x + 1
+
+        _ = add_1(1)
+        stderr = self.get_stderr()
+        assert 'add_1(1)' in stderr
+
+        self.clear_stderr()
+        _ = add_1(1)
+        stderr = self.get_stderr()
+        assert 'add_1(1)' not in stderr
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_exit(self):
@@ -763,4 +893,4 @@ def set_test_env_var():
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

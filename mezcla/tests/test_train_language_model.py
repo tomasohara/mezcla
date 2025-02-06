@@ -67,7 +67,7 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Rreference are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -112,4 +112,4 @@ class TestTrainLanguageModel(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

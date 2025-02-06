@@ -113,6 +113,7 @@ import sys
 import numpy as np
 import scipy.spatial.distance
 try:
+    # pylint disable: disable=import-error
     tf = None
     if ("--help" not in sys.argv):
         import tensorflow as tf

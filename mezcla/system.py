@@ -84,10 +84,14 @@ def register_env_option(var: str, description: str, default: Any) -> None:
     """Register environment VAR as option with DESCRIPTION and DEFAULT"""
     # Note: The default value is typically the default value passes into the
     # getenv_xyz call, not the current value from the environment.
-    debug.trace_fmt(7, "register_env_option({v}, {dsc}, {dft})",
+    debug.trace_fmt(7, "register_env_option({v}, {dsc!r}, {dft!r})",
                     v=var, dsc=description, dft=default)
     global env_options
     global env_defaults
+    if env_options.get(var):
+        debug.trace(4, f"Warning: redefining env entry for {var}: {env_options.get(var)=} {env_defaults.get(var)=}")
+    ## TEMP:
+    debug.trace_stack(8)
     env_options[var] = description
     env_defaults[var] = default
     return
@@ -485,7 +489,6 @@ def open_file(
         encoding = "UTF-8"
     if (encoding and (errors is None)):
         errors = 'ignore'
-    ENCODING = "encoding"
     if kwargs.get(ENCODING) is None:
         kwargs[ENCODING] = encoding
     result = None
@@ -651,8 +654,8 @@ def read_entire_file(filename: FileDescriptorOrPath, **kwargs) -> str:
         debug.trace_exception(1, "read_entire_file/IOError")
         report_errors = (kwargs.get("errors") != "ignore")
         if report_errors:
-            print_stderr("Error: Unable to read file '{f}': {exc}",
-                         f=filename, exc=get_exception())
+            print_stderr("Error: Unable to read file '{f}': {exc}".format(
+                f=filename, exc=get_exception()))
     debug.trace_fmtd(8, "read_entire_file({f}) => {r}", f=filename, r=data)
     return data
 #
@@ -672,6 +675,9 @@ def read_lines(filename: FileDescriptorOrPath, ignore_comments: Optional[bool] =
     lines = contents.split("\n")
     if ((lines[-1] == "") and contents.endswith("\n")):
         lines = lines[:-1]
+    ## HACK: fixup for [""]
+    if lines == [""]:
+        lines = []
     debug.trace(7, f"read_lines({filename!r}) => {lines}")
     return lines
 #
@@ -838,6 +844,7 @@ def write_file(
     Note: A newline is added at the end if missing unless SKIP_NEWLINE.
     A binary file is created if BINARY (n.b., incompatible with APPEND).
     """
+    ## TODO2: Any => Union[bytes, str]
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
     # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
@@ -902,8 +909,9 @@ def write_lines(
     return
 
 
-def write_temp_file(filename: FileDescriptorOrPath, text: str) -> None:
+def write_temp_file(filename: FileDescriptorOrPath, text: Any) -> None:
     """Create FILENAME in temp. directory using TEXT"""
+    ## TODO2: Any => Union[bytes, str]
     try:
         assert isinstance(TEMP_DIR, str) and TEMP_DIR != "", "TEMP_DIR not defined"
         temp_path = form_path(TEMP_DIR, filename)
@@ -1311,8 +1319,9 @@ def to_float(text: str, default_value: float = 0.0) -> float:
     try:
         result = float(text)
     except (TypeError, ValueError):
-        debug.trace_fmtd(7, "Exception in to_float: {exc}", exc=get_exception())
-    debug.trace_fmtd(8, "to_float({v}) => {r}", v=text, r=result)
+        debug.trace_fmtd(7, "Exception in to_float({v!r}): {exc}",
+                         v=text, exc=get_exception())
+    debug.trace_fmtd(8, "to_float({v!r}) => {r}", v=text, r=result)
     return result
 #
 safe_float = to_float
@@ -1325,8 +1334,9 @@ def to_int(text: Any, default_value: int = 0, base: Optional[int] = None) -> int
     try:
         result = int(text, base) if (base and isinstance(text, str)) else int(text)
     except (TypeError, ValueError):
-        debug.trace_fmtd(7, "Exception in to_int: {exc}", exc=get_exception())
-    debug.trace_fmtd(8, "to_int({v}) => {r}", v=text, r=result)
+        debug.trace_fmtd(7, "Exception in to_int({v!r}): {exc}",
+                         v=text, exc=get_exception())
+    debug.trace_fmtd(8, "to_int({v!r}) => {r}", v=text, r=result)
     return result
 #
 safe_int = to_int

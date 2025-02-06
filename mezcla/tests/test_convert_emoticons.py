@@ -31,7 +31,7 @@
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
 from mezcla.my_regex import my_re
@@ -48,7 +48,7 @@ D = system.path_separator()
 class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    script_file = my_re.sub(rf"{D}tests{D}test_", f"{D}", __file__)
+    script_file = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     ## TEST: @trap_exception
@@ -112,4 +112,4 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

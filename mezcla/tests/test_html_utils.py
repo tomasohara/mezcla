@@ -14,13 +14,14 @@
 
 # Standard packages
 import re
+import os
 
 # Installed packages
 import pytest
 ## OLD: import bs4
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla import system
 from mezcla import glue_helpers as gh
@@ -37,7 +38,7 @@ TEST_SELENIUM = system.getenv_bool("TEST_SELENIUM", False,
 
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     scrappycito_url = "http://www.scrappycito.com"
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
@@ -78,7 +79,7 @@ class TestHtmlUtils(TestWrapper):
         rendered_text = THE_MODULE.get_inner_text(url)
         debug.trace_expr(5, rendered_text)
         assert re.search(r"Browser dimensions: \d+x\d+", rendered_text)
-    
+
     def test_get_inner_html(self):
         """Verify that JavaScript fills in window dimensions
         Note: requires selenium"""
@@ -136,8 +137,8 @@ class TestHtmlUtils(TestWrapper):
         """Ensure unescape_html_value() works as expected"""
         debug.trace(4, "test_unescape_html_value()")
         # note: this test is the same as test_system.test_unescape_html_text
-        assert THE_MODULE.unescape_html_value("&lt;2/") == "<2/" 
-        assert THE_MODULE.unescape_html_value("Joe&#x27;s hat") == "Joe's hat" 
+        assert THE_MODULE.unescape_html_value("&lt;2/") == "<2/"
+        assert THE_MODULE.unescape_html_value("Joe&#x27;s hat") == "Joe's hat"
 
     def test_escape_hash_value(self):
         """Ensure escape_hash_value() works as expected"""
@@ -188,7 +189,18 @@ class TestHtmlUtils(TestWrapper):
     def test_get_url_param_checkbox_spec(self):
         """Ensure get_url_param_checkbox_spec() works as expected"""
         debug.trace(4, "test_get_url_param_checkbox_spec()")
-        assert False, "TODO: code test"
+        param_dict = {"check_1": "on", "check_2": "off","check_3": "True",
+                                    "check_4": False, "check_5": 1}
+
+        # Test multiple positive cases
+        assert THE_MODULE.get_url_param_checkbox_spec("check_1", param_dict=param_dict)
+        assert THE_MODULE.get_url_param_checkbox_spec("check_3", param_dict=param_dict)
+        assert THE_MODULE.get_url_param_checkbox_spec("check_5", param_dict=param_dict)
+
+        # test non-checked and non-existent check cases
+        assert not THE_MODULE.get_url_param_checkbox_spec("check_2", param_dict=param_dict)
+        assert not THE_MODULE.get_url_param_checkbox_spec("check_4", param_dict=param_dict)
+        assert not THE_MODULE.get_url_param_checkbox_spec("non_check", param_dict=param_dict)
 
     def test_get_url_parameter_bool(self):
         """Ensure get_url_parameter_bool() works as expected"""
@@ -200,7 +212,9 @@ class TestHtmlUtils(TestWrapper):
     def test_get_url_parameter_int(self):
         """Ensure get_url_parameter_int() works as expected"""
         debug.trace(4, "test_get_url_parameter_int()")
-        assert False, "TODO: code test"
+        assert THE_MODULE.get_url_parameter_int("abc", 0, { "abc": "123" }) == 123
+        assert THE_MODULE.get_url_parameter_int("abc", 0, { "abc": "123.4" }) == 0
+        assert THE_MODULE.get_url_parameter_int("abc", 0, { "abc": "not int" }) == 0
 
     def test_fix_url_parameters(self):
         """Ensure fix_url_parameters() works as expected"""
@@ -228,14 +242,40 @@ class TestHtmlUtils(TestWrapper):
     def test__read_file(self):
         """Ensure _read_file() works as expected"""
         debug.trace(4, "test__read_file()")
-        assert False, "TODO: code test"
+
+        # test valid file
+        temp_file = self.get_temp_file()
+        gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
+        assert (
+            THE_MODULE._read_file(filename=temp_file, as_binary=False) ==
+            'file\nwith\nmultiple\nlines\n')
+
+        # Test invalid file
+        debug.set_level(3)
+        THE_MODULE._read_file(filename='invalid_file', as_binary=False)
+        captured = self.get_stderr()
+        assert "Unable to read file" in captured
+
+        # Test binary mode
+        test_filename = gh.create_temp_file("open binary")
+        assert (
+            THE_MODULE._read_file(filename=test_filename, as_binary=True) ==
+            bytes("open binary"+ os.linesep , "UTF-8"))
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test__write_file(self):
         """Ensure _write_file() works as expected"""
         debug.trace(4, "test__write_file()")
-        assert False, "TODO: code test"
-    
+        # Test normal usage
+        filename = self.get_temp_file()
+        THE_MODULE._write_file(filename, "it", as_binary=False)
+        assert THE_MODULE._read_file(filename=filename, as_binary=False) == "it\n"
+
+        # Test binary mode
+        filename = self.get_temp_file()
+        THE_MODULE._write_file(filename, data=bytes("it", encoding="UTF-8"), as_binary=True)
+        assert THE_MODULE._read_file(filename=filename, as_binary=True) == b"it"
+
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_old_download_web_document(self):
         """Ensure old_download_web_document() works as expected"""
@@ -247,30 +287,61 @@ class TestHtmlUtils(TestWrapper):
         """Ensure download_web_document() works as expected"""
         debug.trace(4, "test_download_web_document()")
         assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
-        assert THE_MODULE.download_web_document("www. bogus. url.html") is None 
+        assert THE_MODULE.download_web_document("www. bogus. url.html") is None
 
     def test_test_download_html_document(self):
         """Ensure test_download_html_document() works as expected"""
         debug.trace(4, "test_test_download_html_document()")
-        assert "Google" in THE_MODULE.test_download_html_document("www.google.com") 
+        assert "Google" in THE_MODULE.test_download_html_document("www.google.com")
         assert "Tomás" not in THE_MODULE.test_download_html_document("http://www.tomasohara.trade", encoding="big5")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_html_document(self):
         """Ensure download_html_document() works as expected"""
         debug.trace(4, "test_download_html_document()")
-        assert False, "TODO: code test"
+
+        # Set tmp_dir and filename for testing
+        tmp_dir = system.getenv("TMP")
+        filename = "test_download_file"
+
+        # Assert file is downloaded and created in tmp_dir
+        THE_MODULE.download_html_document("http://www.tomasohara.trade", download_dir=tmp_dir, filename=filename)
+        assert filename in system.read_directory(tmp_dir)
+
+        # Assert exception report is printed when not Ignore
+        try :
+            _ = THE_MODULE.download_html_document("", ignore=False)
+        except Exception as _:
+            pass
+        err = self.get_stderr()
+        assert "Error during retrieve_web_document" in err
+
+        # Assert exception report is not printed when Ignore
+        self.clear_stderr()
+        try :
+            _ = THE_MODULE.download_html_document("", ignore=True)
+        except Exception as _:
+            pass
+        err = self.get_stderr()
+        assert "Error during retrieve_web_document" not in err
+
+
+
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_binary_file(self):
         """Ensure download_binary_file() works as expected"""
         debug.trace(4, "test_download_binary_file()")
-        assert False, "TODO: code test"
+        binary_doc = THE_MODULE.download_binary_file(url="www.tomasohara.trade")
+        non_binary_doc = THE_MODULE.download_web_document(url="www.tomasohara.trade")
+        assert re.search(b"Scrappy.*Cito", binary_doc)
+        assert bytes(non_binary_doc, encoding="UTF-8") == binary_doc
+
 
     def test_retrieve_web_document(self):
         """Ensure retrieve_web_document() works as expected"""
         debug.trace(4, "test_retrieve_web_document()")
-        assert re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document("www.tomasohara.trade")) 
+        assert re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document("www.tomasohara.trade"))
 
     def test_init_BeautifulSoup(self):
         """Ensure init_BeautifulSoup() works as expected"""
@@ -319,7 +390,7 @@ class TestHtmlUtils(TestWrapper):
         assert THE_MODULE.extract_html_link(html, url='https://www.example.com', base_url='http://') == all_urls
 
         # Test base_url none
-        ## TODO: this assertion is returning, need to be solved: 
+        ## TODO: this assertion is returning, need to be solved:
         ##      https://www.example.com//www.subdomain.example.com/sitemap.xml
         ## assert THE_MODULE.extract_html_link(html, url='https://www.example.com') == all_urls
 
@@ -557,4 +628,4 @@ class TestHtmlUtils(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

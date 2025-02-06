@@ -38,16 +38,15 @@
 import pytest
 
 # Local modules
-from mezcla.unittest_wrapper import TestWrapper
-## TODO: from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
 ## TODO: from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:                        global module object
-#    TestIt.script_module:              path to file
+#    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)
+#    TestIt.script_module:     dotted module path (e.g., "mezcla.main")
 THE_MODULE = None
 try:
     ## TODO: import mezcla.<module> as THE_MODULE
@@ -58,7 +57,7 @@ except:
 ## TODO: make sure import above syntactically valid
 #
 # Note: sanity test for customization (TODO: remove if desired)
-if not my_re.search(__file__, r"\btemplate.py$"):
+if not my_re.search(r"\btemplate.py$", __file__):
     debug.assertion("mezcla.template" not in str(THE_MODULE))
 
 ## TODO:
@@ -74,10 +73,11 @@ if not my_re.search(__file__, r"\btemplate.py$"):
 
 class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
+    # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     #
-    # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
-    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
+    # TODO: use_temp_base_dir = True    # treat TEMP_BASE as dir (e.g., for simpler organization with many tests)
+    # note: temp_file defined by parent (e.g., also temp_base and test_num)
 
     ## TODO: optional setup methods
     ##
@@ -101,7 +101,6 @@ class TestIt(TestWrapper):
     ##     return
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    ## DEBUG: @trap_exception            # TODO: remove when debugged
     def test_01_data_file(self):
         """Tests run_script w/ data file"""
         # Warning: see notes above about potential issues with run_script-based tests.
@@ -114,7 +113,6 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    ## DEBUG: @trap_exception            # TODO: remove when debugged
     def test_02_something_else(self):
         """Test for something_else: TODO..."""
         debug.trace(4, f"TestIt.test_02_something_else(); self={self}")
@@ -193,5 +191,4 @@ class TestIt(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    ## TODO2: here and elsewhere: invoke_tests(__file__)
-    pytest.main([__file__])
+    invoke_tests(__file__)

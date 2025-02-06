@@ -31,6 +31,7 @@ import sys
 from collections import OrderedDict
 
 # Installed moduless
+# pylint disable: disable=import-error
 # TODO: install kera dynamically???
 ## TEST: sys.stderr.write("here\n")
 ## BAD:
@@ -202,6 +203,7 @@ class MyKerasClassifier(KerasClassifier):
         super().__init__(**kwargs)
 
     def check_params(self, params):
+        """Make sure all params supported"""
         ok = (not system.difference(list(params.keys()), self.params))
         debug.trace_fmt(6, "{cl}.check_params({p}) => {r}", cl=self.class_name, p=params, r=ok)
         return ok

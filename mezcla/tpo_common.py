@@ -552,13 +552,13 @@ def trace_value(value, level=5, label=None):
 
 
 def trace_current_context(level=QUITE_DETAILED, label=None, 
-                          show_methods_etc=False):
+                          show_methods_etc=False, **kwargs):
     """Traces out current context (local and global variables), with output
     prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
     Notes: By default the debugging level must be quite-detailed (6).
     If the debugging level is higher, the entire stack frame is traced.
     Also, methods are omitted by default."""
-    return debug.trace_current_context(level=level, label=label, show_methods_etc=show_methods_etc)
+    return debug.trace_current_context(level=level, label=label, show_methods_etc=show_methods_etc, indirect=True, **kwargs)
 
 
 def during_debugging(expression=True):
@@ -664,7 +664,8 @@ def restore_stderr():
     """Restores error output to system stderr, closing handle for redirection"""
     global stderr
     assert(stderr != sys.stderr)
-    stderr.close()
+    if stderr:
+        stderr.close()
     stderr = sys.stderr
 
 
@@ -1298,37 +1299,45 @@ def is_numeric(text):
     return numeric
 
 
-def safe_int(numeric, default_value=0, base=10):
-    """Returns NUMERIC interpreted as a int, using DEFAULT_VALUE (0) if not
-    numeric and interpretting value as optional BASE (10)"""
-    try:
-        result = int(numeric, base)
-    except (TypeError, ValueError):
-        debug_format("Warning: Exception converting integer numeric ({num}): {exc}", 4,
-                     num=numeric, exc=str(sys.exc_info()))
-        result = default_value
-    debug_format("safe_int({n}, [{df}, {b}]) => {r})", 7,
-                 n=numeric, df=default_value, b=base, r=result)
-    return result
+## OLD:
+## 
+## def safe_int(numeric, default_value=0, base=10):
+##     """Returns NUMERIC interpreted as a int, using DEFAULT_VALUE (0) if not
+##     numeric and interpretting value as optional BASE (10)"""
+##     try:
+##         result = int(numeric, base)
+##     except (TypeError, ValueError):
+##         debug_format("Warning: Exception converting integer numeric ({num}): {exc}", 4,
+##                      num=numeric, exc=str(sys.exc_info()))
+##         result = default_value
+##     debug_format("safe_int({n}, [{df}, {b}]) => {r})", 7,
+##                  n=numeric, df=default_value, b=base, r=result)
+##     return result
+## 
+## 
+## def safe_float(numeric, default_value=0.0):
+##     """Returns NUMERIC interpreted as a float, using DEFAULT_VALUE (0.0) if not numeric"""
+##     try:
+##         result = float(numeric)
+##     except ValueError:
+##         debug_format("Warning: Exception converting float numeric ({num}): {exc}", 4,
+##                      num=numeric, exc=str(sys.exc_info()))
+##         result = default_value
+##     debug_format("safe_int({n}, {df}) => {r})", 7,
+##                  n=numeric, df=default_value, r=result)
+##     return result
+##
+## def reference_variables(*args):
+##     """Dummy function used for referencing variables"""
+##     debug_print("reference_variables%s" % str(args), 9)
+##     return
+##
 
+safe_int = system.to_int
 
-def safe_float(numeric, default_value=0.0):
-    """Returns NUMERIC interpreted as a float, using DEFAULT_VALUE (0.0) if not numeric"""
-    try:
-        result = float(numeric)
-    except ValueError:
-        debug_format("Warning: Exception converting float numeric ({num}): {exc}", 4,
-                     num=numeric, exc=str(sys.exc_info()))
-        result = default_value
-    debug_format("safe_int({n}, {df}) => {r})", 7,
-                 n=numeric, df=default_value, r=result)
-    return result
+safe_float = system.to_float
 
-
-def reference_variables(*args):
-    """Dummy function used for referencing variables"""
-    debug_print("reference_variables%s" % str(args), 9)
-    return
+reference_variables = debug.reference_var
 
 #------------------------------------------------------------------------
 # Memomization support (i.e., functiona result caching), based on 

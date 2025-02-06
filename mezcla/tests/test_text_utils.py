@@ -22,6 +22,7 @@ import pytest
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -59,8 +60,10 @@ def normalize_text(text):
     return result
 
 
-class TestTextUtils:
+class TestTextUtils(TestWrapper):
     """Class for test case definitions"""
+    # note: script_module used in argument parsing sanity check (e.g., --help)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_init_BeautifulSoup(self):
         """Ensure init_BeautifulSoup works as expected"""
@@ -163,10 +166,11 @@ class TestTextUtils:
         assert THE_MODULE.extract_int_list("1   2  foobar", default_value=9) == [1, 2, 9]
         assert THE_MODULE.extract_int_list("1   2  3.45", default_value=230) == [1, 2, 230]
 
-    def test_getenv_ints(self, monkeypatch):
+    def test_getenv_ints(self):
         """Ensure getenv_ints works as expected"""
         debug.trace(4, "test_getenv_ints()")
-        monkeypatch.setenv("DUMMY-VARIABLE", "0, 1  2  3 4 ", prepend=os.pathsep)
+        ## INFO: help(self.monkeypatch)
+        self.monkeypatch.setenv("DUMMY-VARIABLE", "0, 1  2  3 4 ", prepend=os.pathsep)
         assert THE_MODULE.getenv_ints("DUMMY-VARIABLE", str(list(range(5)))) == [0, 1, 2, 3, 4]
 
     def test_is_symbolic(self):
@@ -188,4 +192,4 @@ class TestTextUtils:
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

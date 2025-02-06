@@ -33,7 +33,7 @@ import re
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla import glue_helpers as gh
 
@@ -49,7 +49,7 @@ NESTED_XML = """<?xml version="1.1"?>
 class TestXmlUtils(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_data_file(self):
         """Makes sure simple XML data file parsed OK"""
@@ -73,4 +73,4 @@ class TestXmlUtils(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

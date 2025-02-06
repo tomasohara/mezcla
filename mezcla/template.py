@@ -16,7 +16,7 @@ Sample usage:
 """
 
 # Standard modules
-## TODO: from collections import defaultdict
+from typing import Optional
 
 # Installed modules
 ## TODO: import numpy
@@ -79,7 +79,7 @@ class Script(Main):
     """Input processing class"""
     # TODO: -or-: """Adhoc script class (e.g., no I/O loop, just run calls)"""
     ## TODO: class-level member variables for arguments (avoids need for class constructor)
-    todo_arg = False
+    todo_arg: Optional[bool] = False
     ## text_arg = ""
 
     # TODO: add class constructor if needed for non-standard initialization
@@ -88,7 +88,7 @@ class Script(Main):
     ## NOTE: Such class decomposition is also beneficial for unit tests.
     #
     ## def __init__(self, *args, **kwargs):
-    ##     debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {self.__class__.__name__}.__init__({a})")
+    ##     debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {self.__class__.__name__}.__init__({args}, {kwargs})")
     ##     super().__init__(*args, **kwargs)
 
     def setup(self):
@@ -114,11 +114,14 @@ class Script(Main):
         ##     print("arg2 line: %s" % line)
 
     ## TODO: if no input prococessed, customize run_main_step instead
-    ## and specify skip_input below
+    ## and specify skip_input below. (Use skip_input=False for filename support.)
     ##
     ## def run_main_step(self):
     ##     """Main processing step (n.b., assumes self.manual_input)"""
     ##     debug.trace(5, f"Script.run_main_step(): self={self}")
+    ##     ...
+    ##     ## TODO: data = self.read_entire_input()
+    #@     ...
     ##
 
     ## TODO:
@@ -131,8 +134,8 @@ def main():
     """Entry point"""
     app = Script(
         description=__doc__.format(script=gh.basename(__file__)),
-        # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
-        # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
+        # Note: if not manual_input, line-by-line processing is done via process_line;
+        # otherwise, run_main_step is used. Use skip_input to disable filename argument.
         skip_input=False,
         manual_input=False,
         ## TODO (specify auto_help such as when manual_input set):

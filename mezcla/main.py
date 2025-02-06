@@ -56,7 +56,6 @@
 #      https://github.com/spotify/luigi/issues/193 [boolean as command-line arg]
 #
 # TODO:
-# - *** Convert tpo_common calls (i.e., tpo.xyz) to debug!
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 # - ** Create cheatsheet for argparse tricks (e.,g., using argparse.SUPPRESS to hide).
 # - Specify argument via input dicts, such as in 
@@ -83,7 +82,7 @@ import io
 import os
 import re
 import sys
-import tempfile
+## OLD: import tempfile
 from typing import (
     Optional, List, Tuple, Any, Union,
     Generator, Dict, TextIO,
@@ -92,11 +91,37 @@ from typing import (
 
 # Local packages
 from mezcla import debug
-from mezcla import tpo_common as tpo
 from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla.my_regex import my_re
 from mezcla.system import getenv_bool
+
+# Type information
+#
+# note: Each option/arg is a string label or a tuple with 2-4 elements: (label, desc, default, nargs).
+# ex:  'verbose',  ('num', 'number of', 2),  ('files", "File names", ["f1", "f2", "f3"], "+")]
+# See Main.convert_option.
+##
+## TODO?:
+## ArgInfoType = Union[str,
+##                     Tuple[str, str],
+##                     Tuple[str, str, Optional[Any]],
+##                     Tuple[str, str, Optional[Any], Optional[str]]]
+##
+## OLD:
+##
+## ArgInfoType = Union[str,
+##                     Tuple[str],
+##                     Tuple[str, Optional[Any]],
+##                     Tuple[str, Optional[Any], Optional[Any]],
+##                     Tuple[str, Optional[Any], Optional[Any], Optional[Any]]]
+##
+UserArgInfoType = Union[
+    str,
+    Tuple[str, str],
+    Tuple[str, str, Optional[Any]],
+    Tuple[str, str, Optional[Any], Optional[str]]]
+SysArgInfoType = Tuple[str, str, Optional[Any], Optional[str]]
 
 # Constants
 HELP_ARG = "--help"
@@ -142,7 +167,7 @@ ENV_OPTION_PREFIX = system.getenv_value("ENV_OPTION_PREFIX", None,
 ## TEST
 ## TEMP_BASE = system.getenv_value("TEMP_BASE", None,
 ##                                 "Override for temporary file basename")
-TEMP_BASE = gh.TEMP_BASE
+## OLD: TEMP_BASE = gh.TEMP_BASE
 ## OLD:
 ## USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", False,
 ##                                        "Whether TEMP_BASE should be a dir instead of prefix")
@@ -151,8 +176,10 @@ USE_TEMP_BASE_DIR = gh.USE_TEMP_BASE_DIR
 ## TEMP_FILE = system.getenv_value("TEMP_FILE", None,
 ##                                 "Override for temporary filename")
 TEMP_FILE = gh.TEMP_FILE
-KEEP_TEMP_FILES = system.getenv_bool("KEEP_TEMP_FILES", debug.detailed_debugging(),
-                                     "Retain temporary files")
+## OLD:
+## KEEP_TEMP_FILES = system.getenv_bool("KEEP_TEMP_FILES", debug.detailed_debugging(),
+##                                      "Retain temporary files")
+KEEP_TEMP_FILES = gh.KEEP_TEMP
 INPUT_ERROR_OPTION = "input_error"
 INPUT_ERROR = system.getenv_value(
     INPUT_ERROR_OPTION.upper(), None,
@@ -189,12 +216,12 @@ class Main(object):
             track_pages: Optional[bool] = None,
             file_input_mode: Optional[bool] = None,
             newlines: Optional[str] = None,
-            boolean_options: Optional[List[Tuple[str, str]]] = None,
-            text_options: Optional[List[Tuple[str, str]]] = None,
-            int_options: Optional[List[Tuple[str, str]]] = None,
-            float_options: Optional[List[Tuple[str, str]]] = None,
-            positional_options: Optional[List[Tuple[str, str]]] = None,
-            positional_arguments: Optional[List[Tuple[str, str]]] = None,
+            boolean_options: Optional[List[UserArgInfoType]] = None,
+            text_options: Optional[List[UserArgInfoType]] = None,
+            int_options: Optional[List[UserArgInfoType]] = None,
+            float_options: Optional[List[UserArgInfoType]] = None,
+            positional_options: Optional[List[UserArgInfoType]] = None,
+            positional_arguments: Optional[List[UserArgInfoType]] = None,
             skip_input: Optional[bool] = None,
             manual_input: Optional[bool] = None,
             skip_stdin: Optional[bool] = None,
@@ -216,11 +243,12 @@ class Main(object):
         debug.trace(4, f"Main.__init__(): self={self}")
         trace_args(5, "input main args")
         self.description = "TODO: what the script does"   # *** DONT'T MODIFY: default TODO note for client
-        self.boolean_options: List[Tuple[str, str]] = []
-        self.text_options: List[Tuple[str, str]] = []
-        self.int_options: List[Tuple[str, str]] = []
-        self.float_options: List[Tuple[str, str]] = []
-        self.positional_options: List[Tuple[str, str]] = []
+        # note: List[Union[str, Tuple[str, str], Tuple[str, str, str], Tuple[str, str, str, str]]]
+        self.boolean_options: List[UserArgInfoType] = []
+        self.text_options: List[UserArgInfoType] = []
+        self.int_options: List[UserArgInfoType] = []
+        self.float_options: List[UserArgInfoType] = []
+        self.positional_options: List[UserArgInfoType] = []
         self.process_line_warning = False
         self.input_stream: Optional[TextIO] = None
         self.end_of_page = False
@@ -232,7 +260,7 @@ class Main(object):
         self.para_num = -1
         self.line_num = -1
         self.char_offset = -1
-        self.raw_line = None
+        self.raw_line: Optional[str] = None
         # note: auto_help is typically used when there is a filename argument
         debug.assertion(not (auto_help and skip_stdin))
         if (auto_help is None):
@@ -298,14 +326,15 @@ class Main(object):
         # Setup temporary file and/or base directory
         # TODO: allow temp_base handling to be overridable by constructor options
         # TODO: reconcile with unittest_wrapper.py.get_temp_dir
-        prefix = (FILE_BASE + "-")
-        alt_temp_base = (
-            tempfile.NamedTemporaryFile(
-                prefix=prefix,
-                delete=not debug.detailed_debugging(),
-                ## TODO: "suffix": "-"
-            ).name)
-        self.temp_base = (TEMP_BASE or alt_temp_base)
+        ## OLD:
+        ## prefix = (FILE_BASE + "-")
+        ## alt_temp_base = (
+        ##     tempfile.NamedTemporaryFile(
+        ##         prefix=prefix,
+        ##         delete=not debug.detailed_debugging(),
+        ##         ## TODO: "suffix": "-"
+        ##     ).name)
+        self.temp_base = gh.get_temp_file()
         # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
         # -or-: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
         if use_temp_base_dir is None:
@@ -316,7 +345,8 @@ class Main(object):
             ## TEMP HACK: remove file if not a dir (n.b., quirk with NamedTemporaryFile
             if system.is_regular_file(self.temp_base):
                 gh.delete_file(self.temp_base)
-            gh.run("mkdir -p {dir}", dir=self.temp_base)
+            ## OLD: gh.run("mkdir -p {dir}", dir=self.temp_base)
+            gh.full_mkdir(self.temp_base)
             ## TODO3: main-temp.txt???
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
@@ -393,7 +423,7 @@ class Main(object):
             self.check_arguments(runtime_args)
         debug.trace_current_context(level=debug.QUITE_DETAILED)
         debug.trace_object(6, self, label="Main instance")
-        debug.trace_fmt(tpo.QUITE_DETAILED, "end of Main.__init__(); self={s}",
+        debug.trace_fmt(debug.QUITE_DETAILED, "end of Main.__init__(); self={s}",
                         s=self)
         return
 
@@ -401,23 +431,24 @@ class Main(object):
             self,
             just_positional: bool = False,
             just_optional: bool = False
-        ) -> List[Tuple[str, str]]:
-        """Return list of arguments, optional just positional"""
+        ) -> List[UserArgInfoType]:
+        """Return list of arguments, optionally JUST_POSITIONAL and JUST_OPTIONAL"""
         argument_specs = []
         if not just_positional:
             argument_specs += self.boolean_options + self.text_options + self.int_options + self.float_options
         if not just_optional:
             argument_specs += self.positional_options
-        arguments = [(spec[0] if list(spec[0]) else spec) for spec in argument_specs]
+        ## OLD: arguments = [(spec[0] if list(spec[0]) else spec) for spec in argument_specs]
+        arguments = [(spec[0] if isinstance(spec, list) else spec) for spec in argument_specs]
         debug.trace(6, f"get_arguments([pos?={just_positional}, opt?={just_optional}] => {arguments}")
         return arguments
     
     def convert_option(
             self,
-            option_spec: Tuple,
+            option_spec: UserArgInfoType,
             default_value: Optional[Any] = None,
             positional: bool = False
-        ) -> Tuple[str, str, Any, Optional[str]]:
+        ) -> SysArgInfoType:
         """Convert OPTION_SPEC to (label, description, default) tuple. 
         Notes: The description and default of the specification are optional,
         and the parentheses can be omitted if just the label is given. For example,
@@ -430,39 +461,42 @@ class Main(object):
         ## TODO2: add short option support as in ("--num-eggs/-#", "Number of eggs", 2)
         ## TODO3: make the component representation structured (e.g., namedtuple)
         ## TEST: result = ["", "", ""]
-        tpo.debug_format("in convert_option({o}, {d}, {p})", 6,
+        debug.trace_fmtd(6, "in convert_option({o}, {d}, {p})",
                          o=option_spec, d=default_value, p=positional)
-        opt_label = None
-        opt_desc = None
-        opt_default = default_value
-        opt_nargs = None
+        opt_label: str = ""
+        opt_desc: str = ""
+        opt_default: Any = default_value
+        opt_nargs: Optional[str] = None
         opt_prefix = "--" if not positional else ""
         # TODO: use keyword arguments (or namedtuple)
         if isinstance(option_spec, tuple):
-            option_components = list(option_spec)
+            ## OLD: option_components = list(option_spec)
+            option_components = option_spec
             opt_label = opt_prefix + option_components[0]
             if len(option_components) > 1:
                 opt_desc = option_components[1]
             if len(option_components) > 2:
                 opt_default = option_components[2]
-            if len(option_components) > 3 and positional:
-                debug.assertion(positional)
-                opt_nargs = option_components[3]
+            if len(option_components) > 3:
+                if positional:
+                    opt_nargs = option_components[3]
+                else:
+                    debug.trace(3, f"Warning: opt_nargs only positional {option_spec!r}")
         else:
-            opt_label = opt_prefix + tpo.to_string(option_spec)
+            opt_label = opt_prefix + str(option_spec)
         debug.assertion(not " " in opt_label)
         result_list = [opt_label, opt_desc, opt_default, opt_nargs]
         result = tuple(result_list)
-        tpo.debug_format("convert_option({o}, {d}, {p}): self={s} => {r}", 5,
+        debug.trace_fmtd(5, "convert_option({o}, {d}, {p}): self={s} => {r}",
                          o=option_spec, d=default_value, p=positional,
                          s=self, r=result)
         return result
 
     def convert_argument(
             self,
-            argument_spec: Tuple,
+            argument_spec: UserArgInfoType,
             default_value: Optional[Any] = None
-        ) -> Tuple[str, str, Any, Optional[str]]:
+        ) -> SysArgInfoType:
         """Convert ARGUMENT_SPEC to (label, description, default) tuple. 
         Note: This is a wrapper around convert_option for positional arguments."""
         debug.trace(6, f"convert_argument({argument_spec}, {default_value}")
@@ -475,7 +509,7 @@ class Main(object):
         # EX: dummy_app.get_option_name("mucho-backflips") => "mucho_backflips"
         debug.assertion(("_" not in label), "Use dashes not underscores")
         name = label.replace("-", "_")
-        tpo.debug_format("get_option_name({l}) => {n}; self={s}", 6,
+        debug.trace_fmtd(6, "get_option_name({l}) => {n}; self={s}",
                          l=label, n=name, s=self)
         return name
 
@@ -486,7 +520,7 @@ class Main(object):
         # EX: self.parsed_args = {"it": False}; self.has_parsed_option_old("nonit") => False
         name = self.get_option_name(label)
         has_option = (name in self.parsed_args and (self.parsed_args[name] is not None))
-        tpo.debug_format("has_parsed_option_old({l}) => {r}", 6,
+        debug.trace_fmtd(6, "has_parsed_option_old({l}) => {r}",
                          l=label, r=has_option)
         return has_option
 
@@ -503,7 +537,7 @@ class Main(object):
         name = self.get_option_name(label)
         ## TEMP HACK: has_parsed_option returns args.get(opt)
         option_value = self.parsed_args.get(name)
-        tpo.debug_format("has_parsed_option({l}) => {r}", 6,
+        debug.trace_fmtd(6, "has_parsed_option({l}) => {r}",
                          l=label, r=option_value)
         return option_value
 
@@ -557,13 +591,13 @@ class Main(object):
                                 f"potential option/argument mismatch for {label}")
             debug.trace_expr(6, label, opt_label, under_label)
         # Return result, after tracing invocation
-        tpo.debug_format("get_parsed_option({l}, [{d}], [{p}]) => {v}", 5,
+        debug.trace_fmtd(5, "get_parsed_option({l}, [{d}], [{p}]) => {v}",
                          l=label, d=default, p=positional, v=value)
         return value
 
     def get_parsed_argument(self, label: str, default: Optional[Any] = None) -> Optional[Any]:
         """Get value for positional argument LABEL using DEFAULT value"""
-        tpo.debug_format("get_parsed_agument({l}, [{d}])", 6,
+        debug.trace_fmtd(6, "get_parsed_agument({l}, [{d}])",
                          l=label, d=default)
         ## TODO2: debug.assertion(label in ((l[0] if isinstance(l, list) else l)) for l in self.positional_options)
         is_positional = (label in self.get_arguments(just_positional=True))
@@ -576,7 +610,7 @@ class Main(object):
         Note: This uses argparse, which might exit the process
         """
         # Note: Shows env. options when debugging as these are backdoor settings.
-        tpo.debug_format("Main.check_arguments({args})", 5, args=runtime_args)
+        debug.trace_fmtd(5, "Main.check_arguments({args})", args=runtime_args)
         # TODO: add in detailed usage notes w/ environment option descriptions (see google_word2vec.py)
         if not self.argument_parser:
             self.argument_parser = argparse.ArgumentParser
@@ -617,7 +651,8 @@ class Main(object):
         # Check for options of specific types
         # TODO: consolidate processing for the groups; add option for environment-based default; resolve stupid pylint false positive about unbalanced-tuple-unpacking
         for opt_spec in self.boolean_options:
-            (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)   # pylint: disable=unbalanced-tuple-unpacking
+            # pylint: disable=unbalanced-tuple-unpacking
+            (opt_label, opt_desc, opt_default, _opt_nargs) = self.convert_option(opt_spec, None)
             if self.perl_switch_parsing:
                 # note: With Perl argument support, booleans treated as integers due to argparse quirk.
                 ## TEST: parser.add_argument(opt_label, type=int, nargs="?", default=opt_default, help=opt_desc)
@@ -637,19 +672,27 @@ class Main(object):
                     desc = argparse.SUPPRESS
                     debug.trace(4, f"Adding negative-boolean: label={label} dest={under_label}")
                     parser.add_argument(label, default=opt_default, dest=under_label, action="store_false", help=desc, add_short=False)
-        for opt_spec in self.int_options:
-            (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
-        for opt_spec in self.float_options:
-            (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            add_argument(opt_label, type=float, default=opt_default, help=opt_desc)
-        for opt_spec in self.text_options:
-            (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-            add_argument(opt_label, default=opt_default, help=opt_desc)
+        ## OLD:
+        ## for opt_spec in self.int_options:
+        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
+        ##     add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
+        ## for opt_spec in self.float_options:
+        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
+        ##     add_argument(opt_label, type=float, default=opt_default, help=opt_desc)
+        ## for opt_spec in self.text_options:
+        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
+        ##     add_argument(opt_label, default=opt_default, help=opt_desc)
+        for options, opt_type in [(self.int_options, int),
+                                  (self.float_options, float),
+                                  (self.text_options, str)]:
+            # pylint: disable=unbalanced-tuple-unpacking
+            for opt_spec in options:
+                (opt_label, opt_desc, opt_default, _opt_nargs) = self.convert_option(opt_spec, None)
+                add_argument(opt_label, type=opt_type, default=opt_default, help=opt_desc)
 
         # Add dummy arguments
         # Note: These are used as reminders on how to flesh out the initialization
-        if tpo.detailed_debugging():
+        if debug.detailed_debugging():
             if not self.boolean_options:
                 parser.add_argument("--TODO-bool-arg", default=False, action="store_true",
                                     help="Add via boolean_options keyword")
@@ -668,7 +711,7 @@ class Main(object):
             opt_label, opt_desc, opt_default, opt_nargs = self.convert_argument(opt_spec, "") # pylint: disable=unbalanced-tuple-unpacking
             # note: a numeric nargs produces a list even if 1, so None used by default
             nargs = opt_nargs
-            tpo.debug_format("positional arg {i}, nargs={nargs}", 6, 
+            debug.trace_fmtd(6, "positional arg {i}, nargs={nargs}", 
                              i=i, nargs=nargs)
             # TODO: add default to opt_desc if not mentioned
             parser.add_argument(opt_label, default=opt_default, nargs=nargs, 
@@ -678,7 +721,7 @@ class Main(object):
         # Note: with nargs=+, the result is a list of filenames (even if one file [WTH?]!)
         if not self.skip_input:
             filename_nargs = ("?" if (not self.multiple_files) else "+")
-            tpo.debug_format("filename_nargs={nargs}", 6, nargs=filename_nargs)
+            debug.trace_fmtd(6, "filename_nargs={nargs}", nargs=filename_nargs)
             parser.add_argument("filename", nargs=filename_nargs, default="-",
                                 help="Input filename")
         elif self.auto_help:
@@ -706,7 +749,7 @@ class Main(object):
             sys.exit()
 
         # Parse the command line and get result
-        tpo.debug_format("parser={p}", 6, p=parser)
+        debug.trace_fmtd(6, "parser={p}", p=parser)
         debug.trace_object(8, parser, max_depth=2)
         self.parser = parser
         # note: not trapped to allow for early exit
@@ -731,7 +774,7 @@ class Main(object):
         Note: This is not invoked if the script exits during --help processing"
         """
         # Note: Use for post-argument proceessing setup
-        tpo.debug_format("Main.setup() stub: self={s}", 5, s=self)
+        debug.trace_fmtd(5, "Main.setup() stub: self={s}", s=self)
         return
 
     def process_line(self, line: str) -> None:
@@ -741,7 +784,7 @@ class Main(object):
         # TODO: clarify stripped newline vs. no newline at end of file
         debug.trace_fmt(5, "Main.process_line({l})", l=line)
         if not self.process_line_warning:
-            tpo.print_stderr("Warning: need to specialize process_line (i.e., stub called)")
+            system.print_stderr("Warning: need to specialize process_line (i.e., stub called)")
             self.process_line_warning = True
         print(line)
         return
@@ -749,8 +792,8 @@ class Main(object):
     def run_main_step(self) -> None:
         """Stub for main processing, along with error message"""
         # TODO: use decorator (e.g., @abstract)
-        tpo.debug_format("Main.run_main_step(): self={s}", 5, s=self)
-        tpo.print_stderr("Internal error: specialize run_main_step")
+        debug.trace_fmtd(5, "Main.run_main_step(): self={s}", s=self)
+        system.print_stderr("Internal error: specialize run_main_step")
         return
 
     def init_input(self) -> None:
@@ -782,12 +825,18 @@ class Main(object):
                 debug.trace(4, f"Changing input stream newlines from {self.input_stream.newlines!r} to {self.newlines!r}")
             if error_handling_change:
                 debug.trace(4, f"Changing input stream error handling from {self.input_stream.errors!r} to {self.input_error_mode!r}")
-            self.input_stream = io.TextIOWrapper(self.input_stream.buffer, encoding=self.input_stream.encoding, errors=self.input_error_mode, newline=self.newlines, line_buffering=self.input_stream.line_buffering, write_through=self.input_stream.write_through)
+            ## TODO3: track down mypy issue with following call:
+            ##   Item "TextIO" of "TextIO | Any" has no attribute "write_through"  [union-attr]
+            self.input_stream = io.TextIOWrapper(
+                self.input_stream.buffer, encoding=self.input_stream.encoding,
+                errors=self.input_error_mode, newline=self.newlines,
+                line_buffering=bool(self.input_stream.line_buffering),
+                write_through=self.input_stream.write_through)        # type: ignore [union-attr]
             debug.trace_object(4, self.input_stream)
     
     def run(self) -> None:
         """Runner for script processing"""
-        tpo.debug_print("Main.run()", 5)
+        debug.trace(5, "Main.run()")
         # TODO: decompose (e.g., isolate input proecessing)
 
         # Have client do pre-input initialization (e.g., argument extraction)
@@ -864,7 +913,7 @@ class Main(object):
         """
         # TODO: add special page-input mode
         # Note: para_num reset here and updated by process_input
-        tpo.debug_format("Main.read_input(): {input}", 5,
+        debug.trace_fmtd(5, "Main.read_input(): {input}",
                          input=self.input_stream)
 
         if not self.input_stream:
@@ -898,7 +947,7 @@ class Main(object):
                 line = line[:-1]
             debug.trace_fmt(6, "L{n}: {l}", n=self.line_num, l=line)
             if self.force_unicode:
-                line = tpo.ensure_unicode(line)
+                debug.trace(4, "Warning: Main.force_unicode obsolete")
             ## TEST: debug.trace(7, f"\ttype(line): {type(line)}; offset={self.input_stream.tell()}")
             if self.track_pages:
                 for i, line_segment in enumerate(line.split(FORM_FEED)):
@@ -945,7 +994,7 @@ class Main(object):
         """Process each line in current input stream (or stdin):
         Note: if paragraph mode enabled the input is processed in groups of lines separated by an entirely blank line (i.e., length is 0)"""
         # Note: self.raw_line can be used to check for missing newline at end of file
-        tpo.debug_format("Main.process_input(): {input}", 5,
+        debug.trace_fmtd(5, "Main.process_input(): {input}",
                          input=self.input_stream)
         self.rel_line_num = 0
         if self.paragraph_mode:
@@ -1007,13 +1056,13 @@ class Main(object):
 
     def wrap_up(self) -> None:
         """Default end processing"""
-        tpo.debug_format("Main.wrap_up() stub: self={s}", 5, s=self)
+        debug.trace_fmtd(5, "Main.wrap_up() stub: self={s}", s=self)
         return
 
     def clean_up(self) -> None:
         """Removes temporary files, etc."""
         # note: not intended to be overridden
-        tpo.debug_format("Main.clean_up(): self={s}", 5, s=self)
+        debug.trace_fmtd(5, "Main.clean_up(): self={s}", s=self)
         if not KEEP_TEMP_FILES:
             ## TODO2: 3=>6
             debug.trace_fmt(4, "Deleting any temporary files: {files}",

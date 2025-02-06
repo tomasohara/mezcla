@@ -73,6 +73,7 @@ def main():
     elide_fields = args['elide_fields']
     encode_newlines = args['encode_newlines']
     csv_dialect = args['dialect']
+    previous_value = []
     if args['delim']:
         delim = args['delim']
     if args['csv']:

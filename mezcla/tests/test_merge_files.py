@@ -21,7 +21,7 @@ import pytest
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -30,12 +30,13 @@ import mezcla.merge_files as THE_MODULE
 class TestMergeFiles(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     use_temp_base_dir = True            # treat TEMP_BASE as directory
 
     @pytest.mark.xfail
     def test_get_timestamp(self):
         """Ensure get_timestamp works as expected"""
+        ## TODO3: flag as Linux only
         debug.trace(4, f"test_get_timestamp(); self={self}")
         lsb_date = gh.run('date +%F -r /proc/fb').strip().split('-')
         lts_year = lsb_date[0]
@@ -45,12 +46,13 @@ class TestMergeFiles(TestWrapper):
     def test_get_numeric_timestamp(self):
         """Ensure get_numeric_timestamp works as expected"""
         debug.trace(4, f"test_get_numeric_timestamp(); self={self}")
-        # Note: /tmp should be newer than /etc
-        first_timestamp = THE_MODULE.get_numeric_timestamp("/etc")
-        second_timestamp = THE_MODULE.get_numeric_timestamp("/tmp")
+        temp_file = self.get_temp_file()
+        system.write_file(temp_file, '')
+        first_timestamp = THE_MODULE.get_numeric_timestamp(temp_file)
+        second_timestamp = THE_MODULE.get_numeric_timestamp(__file__)
         assert first_timestamp is not None
         assert second_timestamp is not None
-        assert first_timestamp < second_timestamp
+        assert first_timestamp > second_timestamp
 
     @pytest.mark.xfail
     def test_simple_merge(self):
@@ -58,7 +60,7 @@ class TestMergeFiles(TestWrapper):
         debug.trace(4, "test_simple_merge()")
         tmp = self.temp_base
         system.write_lines(f"{tmp}/1.list", list(map(str, [0, 1, 2, 3])))
-        gh.full_mkdir(f"{tmp}/backup")
+        system.create_directory(f"{tmp}/backup")
         system.write_lines(f"{tmp}/backup/1.list", list(map(str, ['1', '2', '3'])))
         system.write_lines(f"{tmp}/other-1.list", list(map(str, ['1', '2', '3', '4'])))
         actual = self.run_script(
@@ -71,4 +73,4 @@ class TestMergeFiles(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

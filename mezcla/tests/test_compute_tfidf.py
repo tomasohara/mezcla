@@ -96,8 +96,9 @@ import pytest
 
 # Local packages
 from mezcla import debug
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.my_regex import my_re
+import mezcla.glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -151,4 +152,4 @@ class TestComputeTfidf(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

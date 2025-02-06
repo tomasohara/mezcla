@@ -44,13 +44,14 @@ except:
     unittest_parametrize = ParametrizedTestCase = ut_parametrize = ut_param = None
 
 # Local packages
+# note: mezcla_to_standard uses packages not installed by default (e.g., libcst)
+from mezcla import system, debug, glue_helpers as gh
 try:
     import mezcla.mezcla_to_standard as THE_MODULE
 except:
     THE_MODULE = None
-from mezcla import system, debug, glue_helpers as gh
-## TOO: from mezcla.my_regex import my_re
-from mezcla.unittest_wrapper import TestWrapper
+    debug.trace_exception(4, "mezcla.mezcla_to_standard import")
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import (
     SKIP_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON, fix_indent)
 
@@ -885,9 +886,9 @@ class TestUsageM2SEqCall(TestWrapper, ParametrizedTestCase):
         argnames="input_code, expected_code",
         argvalues=[
             ut_param(
-                "from mezcla import glue_helpers as gh\ntemp_file = gh.get_temp_file()\n",
+                "from mezcla import glue_helpers as gh\ntemp_file = self.get_temp_file()\n",
                 "import tempfile\ntemp_file = tempfile.NamedTemporaryFile()\n",
-                id="test_eqcall_gh_get_temp_file",
+                id="test_eqcall_self.get_temp_file",
             ),
             ut_param(
                 'from mezcla import glue_helpers as gh\nbasename = gh.basename("./foo/bar/foo.bar")\n',
@@ -2994,4 +2995,4 @@ class TestUsage(TestWrapper):
 
 if __name__ == "__main__":
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

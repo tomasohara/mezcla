@@ -123,12 +123,13 @@ class Script(Main):
         else:
             ## TODO3: try to find non-private way to get list (without iterating
             ## through 16 million!)
+            # pylint: disable=protected-access, no-member
             try:
                 hexnames = webcolors._definitions._CSS3_HEX_TO_NAMES
             except:
                 hexnames = {}
         if not hexnames:
-            system.error("Error: unable to resolve hexname from webcolors")
+            system.print_error("Error: unable to resolve hexname from webcolors")
             
         debug.trace_values(6, hexnames)
         debug.trace_expr(5, hexnames, max_len=2**16)

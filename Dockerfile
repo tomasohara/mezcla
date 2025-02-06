@@ -25,6 +25,8 @@
 #
 # Warning:
 # - *** Changes need to be synchronized in 3 places: Dockerfile, tools/local-workflow.sh, and .github/workflows/*.yml!
+# - Python scripts should be invoked with python3 due to quirk with distribution archive
+#   lacking plain python executable (unlike anaconda).
 #
 # TODO3: keep in synch with ~/bin version (https://github.com/tomasohara/shell-scripts)
 #
@@ -42,6 +44,10 @@ WORKDIR $WORKDIR
 
 # Set the Python version to install
 # Note: The workflow uses versions 3.9 to 3.11 for installations under runner VM
+#
+# To find URL links, see https://github.com/actions/python-versions:
+# ex: https://github.com/actions/python-versions/releases/tag/3.11.4-5199054971
+#
 ## OLD: ARG PYTHON_VERSION=3.8.12
 ## TODO:
 ARG PYTHON_VERSION=3.11.4
@@ -87,6 +93,8 @@ END_RUN
 # - To find URL links, see https://github.com/actions/python-versions:
 #   ex: https://github.com/actions/python-versions/releases/download/3.8.12-117929/python-3.8.12-linux-20.04-x64.tar.gz
 # - Also see https://stackoverflow.com/questions/74673048/github-actions-setup-python-stopped-working.
+# - The wget -qO option is for quiet output to a file.
+# - TODO3: report error if download fails
 RUN if [ "$PYTHON_VERSION" != "" ]; then                                                 \
         wget -qO /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz "https://github.com/actions/python-versions/releases/download/${PYTHON_VERSION}-${PYTHON_TAG}/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz" &&     \
         mkdir -p /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 &&                    \
@@ -106,7 +114,9 @@ RUN if [ "$PYTHON_VERSION" != "" ]; then                                        
 ## OLD: RUN ln -s $(which python3) /usr/local/bin/python
 
 # Set the working directory visible
+# Make sure the installed python takes precedence (TODO: use var to reduce redundancy with above)
 ENV PYTHONPATH="${PYTHONPATH}:$WORKDIR"
+ENV PATH="/opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64/bin:${PATH}:$WORKDIR"
 
 # Install pip for the specified Python version (TODO rm)
 RUN if [ "$PYTHON_VERSION" == "" ]; then                                                \
@@ -133,20 +143,20 @@ RUN apt-get update && apt-get install -y \
 # Also, the results aren't cached to save space in the image.
 RUN <<END_RUN
   if [ "$(which nltk)" == "" ]; then
-       python -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
+       python3 -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
        ## TODO?
        ## # note: makes a second pass for failed installations, doing non-binary
-       ## python -m pip install --verbose --no-cache-dir --ignore-installed --no-binary --requirement $REQUIREMENTS;
+       ## python3 -m pip install --verbose --no-cache-dir --ignore-installed --no-binary --requirement $REQUIREMENTS;
   fi
 END_RUN
 ## TODO3: add option for optional requirements (likewise, for all via '#full#")
-##   RUN python -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')
+##   RUN python3 -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')
 
 ## TEMP workaround: copy source to image
 ## COPY . $WORKDIR/mezcla
 
 # Download the NLTK required data
-RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perceptron_tagger stopwords
+RUN python3 -m nltk.downloader -d /usr/local/share/nltk_data punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng stopwords
 
 # Install required tools and libraries (TODO: why lsb-release?)
 # Note: cleans the apt-get cache
@@ -154,12 +164,16 @@ RUN apt-get update -y && apt-get install --yes lsb-release && apt-get clean all
 # note: rcs needed for merge (TODO: place in required-packages.txt)
 RUN apt-get install --yes enchant-2 rcs
 
-# Show disk usage when debugging
+# Show disk usage and other info when debugging
 RUN <<END_RUN
     df --human-readable
     ## TODO: track down stupid problem with step failing
     ## echo "Top directories by disk usage (post-install):";
     ## du --block-size=1K / 2>&1 | sort -rn | head -20;
+    #
+    which python3
+    python3 --version
+    #
     true;                               # ensure success (quirk w/ head)
 END_RUN
 

@@ -20,7 +20,7 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -59,12 +59,12 @@ class TestPandasSklearnUtils:
 class TestPandasSklearn(TestWrapper):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_main_without_args(self):
         """Ensure main without args works as expected"""
         debug.trace(4, "test_main_without_args()")
-        log_file = gh.get_temp_file()
+        log_file = self.get_temp_file()
         self.run_script(data_file='', log_file=log_file)
         assert 'Usage:' in gh.read_file(log_file)
 
@@ -188,4 +188,4 @@ class TestPandasSklearn(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

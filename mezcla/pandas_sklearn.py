@@ -159,6 +159,7 @@ DUMP_MODEL = getenv_bool("DUMP_MODEL", False,
 # Globals
 devel_classifiers = [DEVEL_CLASSIFIER]
 validation_classifiers = [VALIDATION_CLASSIFIER]
+plt = None
 
 #...............................................................................
 # Optional packages

@@ -19,17 +19,19 @@ import pandas as pd
 import pytest
 
 # Local packages
-from mezcla import glue_helpers as gh
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla import system
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.data_utils as THE_MODULE
 
-class TestDataUtils:
+class TestDataUtils(TestWrapper):
     """Class for testcase definition"""
-
+    # note: script_module used in argument parsing sanity check (e.g., --help)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     path = os.path.dirname(os.path.realpath(__file__))
 
     def test_read_csv(self):
@@ -66,14 +68,15 @@ class TestDataUtils:
         tf = THE_MODULE.read_csv(f"{self.path}/../examples/iris.csv")
         assert THE_MODULE.lookup_df_value(tf, "sepal_length", "petal_length", "3.8") == "5.5" 
 
-    def test_main(self, capsys):
+    def test_main(self):
         """Ensure main works as expected"""
         debug.trace(4, "main()")
         THE_MODULE.main()
-        captured = capsys.readouterr()
-        assert "Error" in captured.err
+        captured = self.get_stderr()
+        assert "Error" in captured
 
+#------------------------------------------------------------------------
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

@@ -56,6 +56,7 @@ def get_timestamp(filename):
     """Returns timestamp for FILENAME as string value"""
     # EX: get_timestamp("/vmlinuz") => "2021-04-15 04:24:54"
     result = system.get_file_modification_time(filename, as_float=False)
+    debug.trace(6, f"get_timestamp({filename}) => {result}")
     debug.assertion(isinstance(result, str))
     return result
 
@@ -64,6 +65,7 @@ def get_numeric_timestamp(filename):
     """Returns timestamp for FILENAME as floating point value"""
     # EX: get_numeric_timestamp("/vmlinuz") => 1618478694.0
     result = system.get_file_modification_time(filename, as_float=True)
+    debug.trace(6, f"get_numeric_timestamp({filename}) => {result}")
     debug.assertion(isinstance(result, float))
     return result
 

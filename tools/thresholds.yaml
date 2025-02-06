@@ -1,0 +1,17 @@
+# Threshold for passing (% successes)
+#
+# Note:
+# - If any test fails, the whole test suite fails, so use conservative
+#   lower bounds at first.
+# - Dummy entry used so that dict returned instead of None.
+#
+# Format:
+#   filename: float-in-range-0-1
+#
+
+# mypy score
+# Note: score needs to be revised to downplay Any-type imprecison
+_dummy-script.py: 0.3
+
+# pytest success rate
+tests/test__dummy-script.py: 0.6
