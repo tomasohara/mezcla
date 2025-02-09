@@ -1211,7 +1211,7 @@ class TestUsage(TestWrapper):
         input_code = fix_indent(input_code)
         THE_MODULE.mezcla_to_standard = BACKUP_M2S
         arg = "--to-standard" if to_standard else "--to-mezcla"
-        input_file = gh.create_temp_file(contents=input_code)
+        input_file = self.create_temp_file(contents=input_code)
         ## TODO1: use self.run_script()
         ## OLD:
         ## command = f"python3 mezcla/mezcla_to_standard.py {arg} {input_file}"
@@ -1390,7 +1390,7 @@ class TestUsage(TestWrapper):
         # gh.delete_file("/tmp/fubar.list")
         # """
         ## OLD (Before Helper)
-        # input_file = gh.create_temp_file(contents=input_code)
+        # input_file = self.create_temp_file(contents=input_code)
         # command = f"python3 mezcla/mezcla_to_standard.py --to_mezcla {input_file}"
         # result = gh.run(command)
         result = self.helper_run_cmd_m2s(input_code, to_standard=False)
@@ -1441,7 +1441,7 @@ class TestUsage(TestWrapper):
         #         """
 
         ## OLD (Before Helper)
-        # input_file = gh.create_temp_file(contents=input_code)
+        # input_file = self.create_temp_file(contents=input_code)
         # command = f"python3 mezcla/mezcla_to_standard.py --to_standard {input_file}"
         # result = gh.run(command)
 
@@ -1557,7 +1557,7 @@ class TestUsage(TestWrapper):
         # """
 
         ## OLD: Before Helper
-        # input_file = gh.create_temp_file(contents=input_code)
+        # input_file = self.create_temp_file(contents=input_code)
         # command = f"python3 mezcla/mezcla_to_standard.py --to_standard {input_file}"
         # result = gh.run(command)
 

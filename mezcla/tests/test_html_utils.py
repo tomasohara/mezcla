@@ -257,7 +257,7 @@ class TestHtmlUtils(TestWrapper):
         assert "Unable to read file" in captured
 
         # Test binary mode
-        test_filename = gh.create_temp_file("open binary")
+        test_filename = self.create_temp_file("open binary")
         assert (
             THE_MODULE._read_file(filename=test_filename, as_binary=True) ==
             bytes("open binary"+ os.linesep , "UTF-8"))
@@ -601,7 +601,7 @@ class TestHtmlUtils(TestWrapper):
     @pytest.mark.xfail
     def test__read_file_type_hints(self):
         contents = "Hello World"
-        filename = gh.create_temp_file(contents)
+        filename = self.create_temp_file(contents)
         as_binary = False
         result = THE_MODULE._read_file(filename, as_binary)
 
@@ -612,7 +612,7 @@ class TestHtmlUtils(TestWrapper):
     @pytest.mark.xfail
     def test__write_file_type_hints(self):
         data = "Hello World"
-        filename = gh.create_temp_file(contents="")
+        filename = self.create_temp_file(contents="")
         as_binary = False
         result = THE_MODULE._write_file(filename, data, as_binary)
 
