@@ -49,5 +49,4 @@ export INVOKE_PYTEST_DIRECTLY=1
 ## TEST: export FILTER_REGEX="/(misc|template|__|config|common_module)"
 ## TODO: "/?<!(test_)*.py", which uses negative lookbehind
 ## export FILTER_REGEX="/?<!(test_).*.py"
-## TEMP:
-export TEST_REGEX='system|template'
+## TEMP: export TEST_REGEX='system|template'
