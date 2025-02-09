@@ -85,7 +85,7 @@ class TestTextCategorizerUtils(TestWrapper):
         """Makes sure TODO works as expected"""
         debug.trace(4, "TestTextCategorizer.test_data_file()")
         data = ["TODO1", "TODO2"]
-        gh.write_lines(self.temp_file, data)
+        system.write_lines(self.temp_file, data)
         output = self.run_script("", self.temp_file)
         assert my_re.search(r"TODO-pattern", output.strip())
         return
@@ -189,7 +189,7 @@ class TestTextCategorizerScript(TestWrapper):
         ## OLD: accuracy = tc.test(__file__)
         test_data = ["cat1\ta b c d e",
                      "cat2\tf g h i j"]
-        gh.write_lines(self.temp_file, test_data)
+        system.write_lines(self.temp_file, test_data)
         accuracy = tc.test(self.temp_file)
         assert(accuracy == 0)
 
