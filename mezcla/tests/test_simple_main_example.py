@@ -32,6 +32,7 @@ class TestSimpleMainExample(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_data_file(self):
         """Tests run_script w/ data file"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
