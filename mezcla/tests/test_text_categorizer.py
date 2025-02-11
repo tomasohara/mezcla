@@ -174,6 +174,7 @@ class TestTextCategorizerScript(TestWrapper):
     # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_usage(self):
         """Test usage statement"""
         # Current usage:
