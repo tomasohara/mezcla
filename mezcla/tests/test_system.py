@@ -26,8 +26,7 @@ import os
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper, invoke_tests
-from mezcla.unittest_wrapper import trap_exception, get_temp_dir
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests, get_temp_dir
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import debug
@@ -35,6 +34,7 @@ from mezcla import debug
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.system as THE_MODULE
+system = THE_MODULE
 
 class TestSystem(TestWrapper):
     """Class for test case definitions"""
@@ -224,6 +224,7 @@ class TestSystem(TestWrapper):
         ## NOTE: system.exit returns None
         ## BAD: self.do_assert(THE_MODULE.exit(MESSAGE) == EXIT)
         self.do_assert(sys.exit(MESSAGE) == EXIT)
+        # pylint: disable=unreachable
         THE_MODULE.exit(MESSAGE)
         # Exit is mocked, ignore code editor hidding [TODO4: hidden?]
         captured = self.get_stderr()
@@ -675,7 +676,7 @@ class TestSystem(TestWrapper):
     def test_set_current_directory(self):
         """Ensure set_current_directory works as expected"""
         debug.trace(4, "test_set_current_directory()")
-        past_dir = THE_MODULE.get_current_directory()
+        ## OLD: past_dir = THE_MODULE.get_current_directory()
         test_dir = gh.dir_path(__file__)
         assert THE_MODULE.set_current_directory(gh.form_path(test_dir, '..')) is None
         assert not THE_MODULE.get_current_directory().endswith('tests')
