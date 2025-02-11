@@ -245,7 +245,7 @@ class TestHtmlUtils(TestWrapper):
 
         # test valid file
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
+        system.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert (
             THE_MODULE._read_file(filename=temp_file, as_binary=False) ==
             'file\nwith\nmultiple\nlines\n')

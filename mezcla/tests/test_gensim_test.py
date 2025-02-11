@@ -71,7 +71,7 @@ class TestGensimTest(TestWrapper):
         """Test printing of corpus vector for simple input"""
         tpo.debug_print("test_vector_printing()", 4)
         temp_file = self.temp_base + ".txt"
-        gh.write_file(temp_file, "My dog has fleas.\n")
+        system.write_file(temp_file, "My dog has fleas.\n")
         output = self.run_script("--print --verbose", temp_file)
         assert re.search(r"\(u?'dog', 1\),.*\(u?'has', 1\)", output)
         ## TODO4: likewise do non-trivial input like LICENSE.txt

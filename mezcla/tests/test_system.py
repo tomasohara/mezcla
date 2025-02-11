@@ -443,7 +443,7 @@ class TestSystem(TestWrapper):
 
         # Test normal usage parameters
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, content)
+        system.write_file(temp_file, content)
         assert THE_MODULE.read_lookup_table(temp_file, skip_header=False, delim=' -> ', retain_case=False) == expected_lowercase
         assert THE_MODULE.read_lookup_table(temp_file, skip_header=False, delim=' -> ', retain_case=True) == expected_uppercase
         assert THE_MODULE.read_lookup_table(temp_file, skip_header=True, retain_case=False)['country'] == ''
@@ -451,7 +451,7 @@ class TestSystem(TestWrapper):
         # Tests default delim
         content_with_tabs = content.replace(' -> ', '\t')
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, content_with_tabs)
+        system.write_file(temp_file, content_with_tabs)
         assert THE_MODULE.read_lookup_table(temp_file) == expected_lowercase
 
         # Test without delim
@@ -460,7 +460,7 @@ class TestSystem(TestWrapper):
             'France -> Paris\n'
         )
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, without_delim_content)
+        system.write_file(temp_file, without_delim_content)
         THE_MODULE.read_lookup_table(temp_file)
         captured = self.get_stderr()
         assert 'Warning: Ignoring line' in captured
@@ -499,13 +499,13 @@ class TestSystem(TestWrapper):
         }
 
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, content_with_custom_delim)
+        system.write_file(temp_file, content_with_custom_delim)
         assert THE_MODULE.create_boolean_lookup_table(temp_file, delim=' - ', retain_case=False) == expected_lowercase
         assert THE_MODULE.create_boolean_lookup_table(temp_file, delim=' - ', retain_case=True) == expected_uppercase
 
         # Test default delim tab
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, content_tab_delim)
+        system.write_file(temp_file, content_tab_delim)
         assert THE_MODULE.create_boolean_lookup_table(temp_file, retain_case=True) == expected_uppercase
 
         # Test invalid file
@@ -618,7 +618,7 @@ class TestSystem(TestWrapper):
         """Ensure file_exists works as expected"""
         debug.trace(4, "test_file_exists()")
         existent_file = self.get_temp_file()
-        gh.write_file(existent_file, 'content')
+        system.write_file(existent_file, 'content')
         assert THE_MODULE.file_exists(existent_file)
         assert not THE_MODULE.file_exists('bad_file_name')
 
@@ -626,7 +626,7 @@ class TestSystem(TestWrapper):
         """Ensure get_file_size works as expected"""
         debug.trace(4, "test_get_file_size()")
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, 'content')
+        system.write_file(temp_file, 'content')
         if os.name == 'nt':
             # CRLF line-end occupies 1 byte more than LF
             assert THE_MODULE.get_file_size(temp_file) == 9
@@ -651,7 +651,7 @@ class TestSystem(TestWrapper):
         """Ensure is_regular_file works as expected"""
         debug.trace(4, "test_is_regular_file()")
         filename = self.get_temp_file()
-        gh.write_file(filename, 'content')
+        system.write_file(filename, 'content')
         assert THE_MODULE.is_regular_file(filename)
         assert not THE_MODULE.is_regular_file('/etc')
 
@@ -739,7 +739,7 @@ class TestSystem(TestWrapper):
 
         # Test valid file
         file_with_content = self.get_temp_file()
-        gh.write_file(file_with_content, 'content')
+        system.write_file(file_with_content, 'content')
         assert THE_MODULE.non_empty_file(file_with_content)
 
         # Test non existent file
@@ -748,7 +748,7 @@ class TestSystem(TestWrapper):
         # Test empty file
         empty_file = self.get_temp_file()
         with open(empty_file, 'wb') as _:
-            pass # gh.write_file cant be used because appends a newline
+            pass # system.write_file cant be used because appends a newline
         assert not THE_MODULE.non_empty_file(empty_file)
 
     def test_absolute_path(self):

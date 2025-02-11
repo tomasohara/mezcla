@@ -512,7 +512,7 @@ def main(runtime_args=None):
         ## temp_file = tpo.getenv_text("TEMP_FILE", tempfile.NamedTemporaryFile().name)
         temp_file = TEMP_BASE
         filename = temp_file + ".txt"
-        gh.write_file(filename, gh.read_file(None))
+        system.write_file(filename, gh.read_file(None))
 
     # Derive the basename if not given
     # TODO: TFIDF_MODEL_EXT = ".tfidf.mm"
