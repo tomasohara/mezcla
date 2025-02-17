@@ -90,7 +90,7 @@ class TestAudio(TestWrapper):
         debug.trace(debug.DETAILED, f"TestAudio.test_source_single_audio({self})")
         #
         audio = self.temp_file + '.wav'
-        gh.write_file(audio, 'some content')
+        system.write_file(audio, 'some content')
         #
         command  = f'python {self.script_module} --verbose {audio}'
         expected = f'Audio: {audio}'
@@ -108,7 +108,7 @@ class TestAudio(TestWrapper):
                       'audio23.wav\n'
                       'audioN.wav')
 
-        gh.write_file(list_file, audio_list)
+        system.write_file(list_file, audio_list)
 
         command  = f'python {self.script_module} --verbose {list_file}'
         expected = ('Audio: audio1.wav\n'
@@ -127,7 +127,7 @@ class TestAudio(TestWrapper):
 
         filenames = ['/audio1.wav', '/audio23.wav']
         for filename in filenames:
-            gh.write_file(self.temp_base + filename, 'content')
+            system.write_file(self.temp_base + filename, 'content')
 
         actual = gh.run(f'python {self.script_module} --verbose {self.temp_base}')
 

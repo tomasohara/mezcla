@@ -173,7 +173,7 @@ class CorpusData(object):
         ## OLD: """Returns iterator over vectors in corpus or over lines in input text"""
         tpo.debug_print("CorpusData.__iter__()", 6)
         if (self.mm):
-            # pylint disable: use-yield-from
+            # pylint: disable=use-yield-from
             for vector in self.mm.__iter__():
                 yield vector
         else:
@@ -512,7 +512,7 @@ def main(runtime_args=None):
         ## temp_file = tpo.getenv_text("TEMP_FILE", tempfile.NamedTemporaryFile().name)
         temp_file = TEMP_BASE
         filename = temp_file + ".txt"
-        gh.write_file(filename, gh.read_file(None))
+        system.write_file(filename, gh.read_file(None))
 
     # Derive the basename if not given
     # TODO: TFIDF_MODEL_EXT = ".tfidf.mm"

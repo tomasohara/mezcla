@@ -29,7 +29,7 @@
 #
 #   """Simple file manipulation"""
 #   from mezcla import glue_helpers as gh
-#   gh.write_file("/tmp/fubar.list", ["line1", "line2"])
+#   system.write_file("/tmp/fubar.list", ["line1", "line2"])
 #   gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
 #   gh.delete_file("/tmp/fubar.list")
 #   gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
@@ -40,7 +40,7 @@
 #   """Simple file manipulation"""
 #   import os
 #   from mezcla import glue_helpers as gh
-#   # WARNING not supported: gh.write_file("/tmp/fubar.list", ["line1", "line2"])
+#   # WARNING not supported: system.write_file("/tmp/fubar.list", ["line1", "line2"])
 #   # WARNING not supported: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
 #   os.remove("/tmp/fubar.list")
 #   os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")

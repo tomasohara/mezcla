@@ -792,7 +792,7 @@ def write_lines(
     ) -> None:
     """Creates FILENAME using TEXT_LINES with newlines added and optionally for APPEND
     Warning: deprecated function--use version in system.py instead"""
-    debug.trace(3, "Warning: Deprecated (glue_helpers.read_file): use version in system")
+    debug.trace(3, "Warning: in deprecated glue_helpers.read_file: use version in system")
     system.write_lines(filename, text_lines, append=append)
 
 
@@ -801,7 +801,7 @@ def read_file(filename: FileDescriptorOrPath, make_unicode: bool = False) -> str
     Note: optionally returned as unicde.
     Warning: deprecated function--use system.read_file instead
     """
-    debug.trace(3, "Warning: Deprecated (glue_helpers.read_file): use version in system")
+    debug.trace(3, "Warning: in deprecated glue_helpers.read_file: use version in system")
     debug.assertion(not make_unicode)
     return system.read_file(filename)
 
@@ -810,7 +810,7 @@ def write_file(filename: FileDescriptorOrPath, text: str, append: bool=False) ->
     """Writes FILENAME using contents in TEXT, adding trailing newline and optionally for APPEND
     Warning: deprecated function--use system.write_file instead
     """
-    debug.trace(3, "Warning: Deprecated (glue_helpers.write_file): use version in system")
+    debug.trace(3, "Warning: in deprecated glue_helpers.write_file: use version in system")
     system.write_file(filename, text, append=append)
 
 

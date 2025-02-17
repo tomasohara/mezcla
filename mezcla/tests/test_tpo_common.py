@@ -595,7 +595,7 @@ class TestTpoCommon(TestWrapper):
         )
 
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, content)
+        system.write_file(temp_file, content)
 
         linum_table = THE_MODULE.create_lookup_table(temp_file, use_linenum=True)
         table = THE_MODULE.create_lookup_table(temp_file, use_linenum=False)
@@ -630,7 +630,7 @@ class TestTpoCommon(TestWrapper):
         }
 
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, content)
+        system.write_file(temp_file, content)
         assert THE_MODULE.create_boolean_lookup_table(temp_file) == expected
 
     @pytest.mark.xfail

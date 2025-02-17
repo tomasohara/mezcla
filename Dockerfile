@@ -142,12 +142,14 @@ RUN apt-get update && apt-get install -y \
 # NOTE: The workflow only handles requirements for the runner VM, not the docker container;
 # Also, the results aren't cached to save space in the image.
 RUN <<END_RUN
-  if [ "$(which nltk)" == "" ]; then
-       python3 -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
-       ## TODO?
-       ## # note: makes a second pass for failed installations, doing non-binary
-       ## python3 -m pip install --verbose --no-cache-dir --ignore-installed --no-binary --requirement $REQUIREMENTS;
-  fi
+  ## OLD
+  ## if [ "$(which nltk)" == "" ]; then
+  ##      python3 -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
+  ##      ## TODO?
+  ##      ## # note: makes a second pass for failed installations, doing non-binary
+  ##      ## python3 -m pip install --verbose --no-cache-dir --ignore-installed --no-binary --requirement $REQUIREMENTS;
+  ## fi
+  python3 -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
 END_RUN
 ## TODO3: add option for optional requirements (likewise, for all via '#full#")
 ##   RUN python3 -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')

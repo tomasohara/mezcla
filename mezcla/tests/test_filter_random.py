@@ -43,7 +43,7 @@ class TestFilterRandom(TestWrapper):
         num_lines = 10
         data = [str(i) for i in range(num_lines)]
         debug.assertion(self.temp_file + ".data")
-        gh.write_lines(self.temp_file, data)
+        system.write_lines(self.temp_file, data)
         return
     
     def run_data_file_test(self, ratio, data_file_path, expected_output):

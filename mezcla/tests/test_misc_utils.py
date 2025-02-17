@@ -79,7 +79,7 @@ class TestMiscUtils(TestWrapper):
             'framework': 'Pytest\n',
         }
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, string_table)
+        system.write_file(temp_file, string_table)
         assert THE_MODULE.read_tabular_data(temp_file) == dict_table
 
     def test_extract_string_list(self):

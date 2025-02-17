@@ -1211,7 +1211,7 @@ class TestUsage(TestWrapper):
         input_code = fix_indent(input_code)
         THE_MODULE.mezcla_to_standard = BACKUP_M2S
         arg = "--to-standard" if to_standard else "--to-mezcla"
-        input_file = gh.create_temp_file(contents=input_code)
+        input_file = self.create_temp_file(contents=input_code)
         ## TODO1: use self.run_script()
         ## OLD:
         ## command = f"python3 mezcla/mezcla_to_standard.py {arg} {input_file}"
@@ -1390,7 +1390,7 @@ class TestUsage(TestWrapper):
         # gh.delete_file("/tmp/fubar.list")
         # """
         ## OLD (Before Helper)
-        # input_file = gh.create_temp_file(contents=input_code)
+        # input_file = self.create_temp_file(contents=input_code)
         # command = f"python3 mezcla/mezcla_to_standard.py --to_mezcla {input_file}"
         # result = gh.run(command)
         result = self.helper_run_cmd_m2s(input_code, to_standard=False)
@@ -1416,7 +1416,7 @@ class TestUsage(TestWrapper):
             (
                 """
                 from mezcla import glue_helpers as gh
-                gh.write_file("/tmp/fubar.list", "fubar.list")
+                system.write_file("/tmp/fubar.list", "fubar.list")
                 gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1
                 """,
                 [
@@ -1436,12 +1436,12 @@ class TestUsage(TestWrapper):
         input_code = fix_indent(input_code)
         #         input_code = """
         # from mezcla import glue_helpers as gh
-        # gh.write_file("/tmp/fubar.list", "fubar.list")
+        # system.write_file("/tmp/fubar.list", "fubar.list")
         # gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1
         #         """
 
         ## OLD (Before Helper)
-        # input_file = gh.create_temp_file(contents=input_code)
+        # input_file = self.create_temp_file(contents=input_code)
         # command = f"python3 mezcla/mezcla_to_standard.py --to_standard {input_file}"
         # result = gh.run(command)
 
@@ -1460,7 +1460,7 @@ class TestUsage(TestWrapper):
             (
                 """
                 from mezcla import glue_helpers as gh
-                gh.write_file("/tmp/fubar.list", "fubar.list")
+                system.write_file("/tmp/fubar.list", "fubar.list")
                 gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
                 gh.delete_file("/tmp/fubar.list")
                 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
@@ -1468,7 +1468,7 @@ class TestUsage(TestWrapper):
                 """,
                 """
                 from mezcla import glue_helpers as gh
-                # WARNING not supported: gh.write_file("/tmp/fubar.list", "fubar.list")
+                # WARNING not supported: system.write_file("/tmp/fubar.list", "fubar.list")
                 # WARNING not supported: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
                 os.remove("/tmp/fubar.list")
                 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
@@ -1490,7 +1490,7 @@ class TestUsage(TestWrapper):
 
         #         input_code = """
         # from mezcla import glue_helpers as gh
-        # gh.write_file("/tmp/fubar.list", "fubar.list")
+        # system.write_file("/tmp/fubar.list", "fubar.list")
         # gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
         # gh.delete_file("/tmp/fubar.list")
         # gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
@@ -1500,7 +1500,7 @@ class TestUsage(TestWrapper):
         #         # Standard code consistes of glue helpers commands as well (as of 2024-06-10)
         #         expected_code = """
         # from mezcla import glue_helpers as gh
-        # # WARNING not supported: gh.write_file("/tmp/fubar.list", "fubar.list")
+        # # WARNING not supported: system.write_file("/tmp/fubar.list", "fubar.list")
         # # WARNING not supported: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
         # os.remove("/tmp/fubar.list")
         # os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
@@ -1557,7 +1557,7 @@ class TestUsage(TestWrapper):
         # """
 
         ## OLD: Before Helper
-        # input_file = gh.create_temp_file(contents=input_code)
+        # input_file = self.create_temp_file(contents=input_code)
         # command = f"python3 mezcla/mezcla_to_standard.py --to_standard {input_file}"
         # result = gh.run(command)
 
@@ -1741,7 +1741,7 @@ class TestUsage(TestWrapper):
                 from mezcla import glue_helpers as gh
                 from mezcla import debug
                 from os import path
-                gh.write_file("/tmp/test.txt", "test content")
+                system.write_file("/tmp/test.txt", "test content")
                 gh.copy_file("/tmp/test.txt", "/tmp/test_copy.txt")
                 debug.trace("Copy created", level=3)
                 gh.delete_file("/tmp/test.txt")
@@ -1751,7 +1751,7 @@ class TestUsage(TestWrapper):
                 """
                 import os
                 from os import path
-                # WARNING not supported: gh.write_file("/tmp/test.txt", "test content")
+                # WARNING not supported: system.write_file("/tmp/test.txt", "test content")
                 # WARNING not supported: gh.copy_file("/tmp/test.txt", "/tmp/test_copy.txt")
                 # WARNING not supported: debug.trace("Copy created", level=3)
                 os.remove("/tmp/test.txt")
@@ -1774,7 +1774,7 @@ class TestUsage(TestWrapper):
         # from mezcla import glue_helpers as gh
         # from mezcla import debug
         # from os import path
-        # gh.write_file("/tmp/test.txt", "test content")
+        # system.write_file("/tmp/test.txt", "test content")
         # gh.copy_file("/tmp/test.txt", "/tmp/test_copy.txt")
         # debug.trace("Copy created", level=3)
         # gh.delete_file("/tmp/test.txt")
@@ -1785,7 +1785,7 @@ class TestUsage(TestWrapper):
         #         expected_code = """
         # import os
         # from os import path
-        # # WARNING not supported: gh.write_file("/tmp/test.txt", "test content")
+        # # WARNING not supported: system.write_file("/tmp/test.txt", "test content")
         # # WARNING not supported: gh.copy_file("/tmp/test.txt", "/tmp/test_copy.txt")
         # # WARNING not supported: debug.trace("Copy created", level=3)
         # os.remove("/tmp/test.txt")
@@ -1815,7 +1815,7 @@ class TestUsage(TestWrapper):
                     gh.rename_file("/home/user/file1.txt", "/home/user/file2.txt")
                     gh.delete_file("/home/user/file1.txt")
                 else:
-                    gh.write_file("/home/user/file2.txt", "content")
+                    system.write_file("/home/user/file2.txt", "content")
                     pass
                 """,
                 """
@@ -1824,7 +1824,7 @@ class TestUsage(TestWrapper):
                     os.rename("/home/user/file1.txt", "/home/user/file2.txt")
                     os.remove("/home/user/file1.txt")
                 else:
-                    # WARNING not supported: gh.write_file("/home/user/file2.txt", "content")
+                    # WARNING not supported: system.write_file("/home/user/file2.txt", "content")
                     pass
                 """,
             )
@@ -1840,7 +1840,7 @@ class TestUsage(TestWrapper):
         #     gh.rename_file("/home/user/file1.txt", "/home/user/file2.txt")
         #     gh.delete_file("/home/user/file1.txt")
         # else:
-        #     gh.write_file("/home/user/file2.txt", "content")
+        #     system.write_file("/home/user/file2.txt", "content")
         #     pass
         # """
 
@@ -1850,7 +1850,7 @@ class TestUsage(TestWrapper):
         #     os.rename("/home/user/file1.txt", "/home/user/file2.txt")
         #     os.remove("/home/user/file1.txt")
         # else:
-        #     # WARNING not supported: gh.write_file("/home/user/file2.txt", "content")
+        #     # WARNING not supported: system.write_file("/home/user/file2.txt", "content")
         #     pass
         # """
         expected_code_heads = [

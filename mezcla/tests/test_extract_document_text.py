@@ -51,7 +51,7 @@ class TestExtractDocumentText(TestWrapper):
         # Single-line string as INPUT
         DOCUMENT_TEXT = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse porttitor rutrum leo. Nam efficitur justo quis mi ullamcorper consectetur. Aenean posuere nisl dignissim mauris blandit, sed euismod lacus posuere. Morbi ultrices magna eget faucibus ultricies. Praesent in ante nisi. Nulla faucibus sollicitudin sapien in aliquet. Interdum et malesuada fames ac ante ipsum primis in faucibus."
         
-        gh.write_file(tmp_document, text=DOCUMENT_TEXT)
+        system.write_file(tmp_document, text=DOCUMENT_TEXT)
         output = THE_MODULE.document_to_text(tmp_document)
         ## OLD:
         ## output_case1 = output != DOCUMENT_TEXT
@@ -79,7 +79,7 @@ class TestExtractDocumentText(TestWrapper):
         doc_input_temp = self.temp_file + ".txt"
         # Single-line string as INPUT
         DOCUMENT_TEXT = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse porttitor rutrum leo. Nam efficitur justo quis mi ullamcorper consectetur. Aenean posuere nisl dignissim mauris blandit, sed euismod lacus posuere. Morbi ultrices magna eget faucibus ultricies. Praesent in ante nisi. Nulla faucibus sollicitudin sapien in aliquet. Interdum et malesuada fames ac ante ipsum primis in faucibus."
-        gh.write_file(filename=doc_input_temp, text=DOCUMENT_TEXT)
+        system.write_file(filename=doc_input_temp, text=DOCUMENT_TEXT)
         ## BAD:
         ## test_command_1 = f"../extract_document_text.py {doc_input_temp} {doc_output_temp}"
         ## gh.run(test_command_1)
