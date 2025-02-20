@@ -471,16 +471,16 @@ def run(
     # EX: "root" in run("ls /")
     # Note: Script tracing controlled DEBUG_LEVEL environment variable.
     debug.assertion(isinstance(trace_level, int))
-    debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output}", skip_sanity_checks=True)
+    debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output})", skip_sanity_checks=True)
     global default_subtrace_level
     # Keep track of current debug level settings for later restoration
     debug_level_env = os.getenv("DEBUG_LEVEL")
     sub_debug_level_env = os.getenv("SUB_DEBUG_LEVEL")
     if subtrace_level is None:
         subtrace_level = default_subtrace_level
-    if subtrace_level != system.to_int(debug_level_env):
+    if subtrace_level != system.to_int(debug_level_env, ignore=True):
         system.setenv("DEBUG_LEVEL", str(subtrace_level))
-    if subtrace_level != system.to_int(sub_debug_level_env):
+    if subtrace_level != system.to_int(sub_debug_level_env, ignore=True):
         # note: for run/issue called within scripts
         system.setenv("SUB_DEBUG_LEVEL", str(subtrace_level))
     in_just_issue = just_issue
