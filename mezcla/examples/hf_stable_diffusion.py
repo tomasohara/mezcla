@@ -118,7 +118,6 @@ GUIDANCE_ARG = "guidance"
 TXT2IMG_ARG = "txt2img"
 IMG2IMG_ARG = "img2img"
 IMG2TXT_ARG = "img2txt"
-## OLD: IMAGE_ARG = "input-image"
 DENOISING_ARG = "denoising-factor"
 DUMMY_BASE64_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPAgMAAABGuH3ZAAAADFBMVEUAAMzMzP////8AAABGA1scAAAAJUlEQVR4nGNgAAFGQUEowRoa6sCABBZowAgsgBEIGUQCRALAPACMHAOQvR4HGwAAAABJRU5ErkJggg=="
 DUMMY_IMAGE_FILE = gh.resolve_path("dummy-image.png")
@@ -284,7 +283,6 @@ class StableDiffusion:
         Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag.
         If SKIP_CACHE, then new results are always generated.
         """
-        ## OLD: debug.trace(4, f"{self.__class__.__name__}.infer{(prompt, negative_prompt, scale, num_images)}")
         debug.trace_expr(4, prompt, negative_prompt, scale, num_images, skip_img_spec, skip_cache, prefix=f"\nin {self.__class__.__name__}.infer:\n\t", delim="\n\t",  suffix="}\n", max_len=1024)
         if num_images is None:
             num_images = NUM_IMAGES
@@ -292,7 +290,6 @@ class StableDiffusion:
             scale = GUIDANCE_SCALE
         for prompt_filter in word_list:
             if my_re.search(rf"\b{prompt_filter}\b", prompt):
-                ## OLD: raise gr.Error("Unsafe content found. Please try again with different prompts.")
                 raise RuntimeError("Unsafe content found. Please try again with different prompts.")
     
         images = []
@@ -338,13 +335,7 @@ class StableDiffusion:
                 b64_encoding = image
                 debug.assertion(isinstance(image, PIL.Image.Image))
                 try:
-                    ## OLD:
-                    ## image_path = f"{BASENAME}-{i + 1}.png"
-                    ## image.save(image_path)
                     num_generated += 1
-                    ## OLD:
-                    ## # note: "decodes" base-64 encoded bytes object into UTF-8 string
-                    ## b64_encoding = (base64.b64encode(system.read_binary_file(image_path))).decode()
                     b64_encoding = encode_PIL_image(image)
                     if not skip_img_spec:
                         b64_encoding = (f"data:image/png;base64,{b64_encoding}")
@@ -439,13 +430,7 @@ class StableDiffusion:
                 b64_encoding = image
                 debug.assertion(isinstance(image, PIL.Image.Image))
                 try:
-                    ## OLD:
-                    ## image_path = f"{BASENAME}-{i + 1}.png"
-                    ## image.save(image_path)
                     num_generated += 1
-                    ## OLD:
-                    ## # note: "decodes" base-64 encoded bytes object into UTF-8 string
-                    ## b64_encoding = (base64.b64encode(system.read_binary_file(image_path))).decode()
                     b64_encoding = encode_PIL_image(image)
                     if not skip_img_spec:
                         b64_encoding = (f"data:image/png;base64,{b64_encoding}")
@@ -996,7 +981,6 @@ def run_ui(use_img2img=None):
             output_controls = [gallery]
             infer_fn = infer
             examples = txt2img_examples
-            ## OLD: if img2img_control.value:
             if use_img2img:
                 infer_fn = infer_img2img
                 input_controls = ([input_image_control, denoise_control] + input_controls)
@@ -1009,7 +993,6 @@ def run_ui(use_img2img=None):
             prompt_control.submit(infer_fn, inputs=input_controls, outputs=output_controls, postprocess=False)
             btn.click(infer_fn, inputs=input_controls, outputs=output_controls, postprocess=False)
             # TODO1: fix
-            ## OLD: upload_control.click(fn=upload_image, inputs=[upload_control], outputs=[input_image_control])
             upload_control.upload(fn=upload_image_file, inputs=[upload_control], outputs=[input_image_control],
                                   postprocess=False)
             #
@@ -1074,7 +1057,6 @@ def main():
     # Parse command line argument, show usage if --help given
     # TODO? auto_help=False
     main_app = Main(description=__doc__,
-                    ## OLD: skip_input=True,
                     boolean_options=[(BATCH_ARG, "Use batch mode--no UI"),
                                      (SERVER_ARG, "Run flask server"),
                                      (UI_ARG, "Show user interface"),
@@ -1083,7 +1065,6 @@ def main():
                                      (IMG2TXT_ARG, "Run image-to-text: clip interrogator")],
                     text_options=[(PROMPT_ARG, "Positive prompt"),
                                   (NEGATIVE_ARG, "Negative prompt"),
-                                  ## OLD: (IMAGE_ARG, "Filename for img2img input image")
                                   ],
                     int_options=[(GUIDANCE_ARG, GUIDANCE_HELP)],
                     float_options=[(DENOISING_ARG, "Denoising factor for img2img")])
@@ -1094,7 +1075,6 @@ def main():
     BATCH_MODE_DEFAULT = (input_image_file != "-")
     batch_mode = main_app.get_parsed_option(BATCH_ARG, BATCH_MODE_DEFAULT)
     server_mode = main_app.get_parsed_option(SERVER_ARG)
-    ## OLD: ui_mode = main_app.get_parsed_option(UI_ARG, not (batch_mode or server_mode))
     ui_mode = main_app.get_parsed_option(UI_ARG)
     prompt = main_app.get_parsed_option(PROMPT_ARG, PROMPT)
     negative_prompt = main_app.get_parsed_option(NEGATIVE_ARG, NEGATIVE_PROMPT)
@@ -1102,7 +1082,6 @@ def main():
     use_img2img = main_app.get_parsed_option(IMG2IMG_ARG, USE_IMG2IMG)
     use_img2txt = main_app.get_parsed_option(IMG2TXT_ARG, USE_IMG2TXT)
     use_txt2img = main_app.get_parsed_option(TXT2IMG_ARG, not (use_img2img or use_img2txt))
-    ## OLD: input_image_file = main_app.get_parsed_option(IMAGE_ARG)
     denoising_factor = main_app.get_parsed_option(DENOISING_ARG)
     ## TODO?:
     debug.assertion((use_txt2img ^ use_img2img) or use_img2txt)
@@ -1140,7 +1119,7 @@ def main():
     elif ui_mode:
         debug.assertion(main_app.filename == "-")
         run_ui(use_img2img=use_img2img)
-    # Otheriwse, show command-line options
+    # Otherwise, show command-line options
     else:
         ## TODO3: expose print_usage directly through main_app
         main_app.parser.print_usage()
