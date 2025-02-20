@@ -740,8 +740,8 @@ if __debug__:
         """Trace exception information regarding TASK (e.g., function) at LEVEL"""
         # Note: Conditional output version of system's print_exception_info.
         # ex: trace_exception(DETAILED, "tally_counts")
-        trace_fmt(level, "Exception during {t}: {exc}".
-                  format(t=task, exc=sys.exc_info()))
+        trace(level, "Exception during {t}: {exc}".
+              format(t=task, exc=sys.exc_info()))
         # TODO: include full stack trace (e.g., at LEVEL + 2)
         ## system.trace_stack(level + 2)
         return
