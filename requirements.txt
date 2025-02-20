@@ -15,6 +15,10 @@
 # - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
 # - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
 #
+# Warning:
+# - Workaround for silly pip installation issues (e.g., Spacy):
+#   $ perl -pe 's/\s*#.*//;' requirements.txt | xargs -I '{}' pip install '{}'
+#
 # Installation:
 # - python -m nltk.downloader punkt averaged_perceptron_tagger stopwords
 #
