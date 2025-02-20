@@ -1305,7 +1305,7 @@ if __debug__:
         ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
         # note: shows command invocation unless invoked via "python -c ..."
         command_line = " ".join(sys.argv)
-        assertion(command_line)
+        ## OLD: assertion(command_line)
         if (command_line and (command_line != "-c") and (command_line != "-m")):
             # TODO2: simplify misc. trace suppression options (n.b., check shellscript repo)
             if _getenv_bool("TRACE_INVOCATION", False):
@@ -1350,11 +1350,16 @@ if __debug__:
         use_old_introspection = _getenv_bool("USE_OLD_INTROSPECTION", False)
         if not use_old_introspection:
             ## TODO2: put before trace_expr or assertion called
-            # pylint: disable=import-outside-toplevel
-            from mezcla import introspection
-            ## TODO3: from mezcla.introspection import intro
-            global intro
-            intro = introspection.intro
+            try:
+                # pylint: disable=import-outside-toplevel
+                from mezcla import introspection
+                ## TODO3: from mezcla.introspection import intro
+                global intro
+                intro = introspection.intro
+            except:
+                use_old_introspection = False
+                trace(3, "FYI: Unable to load introspection")
+                trace_exception(6, "loading introspection")
 
         # Show additional information when detailed debugging
         # TODO: sort keys to facilate comparisons of log files
