@@ -502,12 +502,14 @@ class Main(object):
         debug.trace(6, f"convert_argument({argument_spec}, {default_value}")
         return self.convert_option(argument_spec, default_value, positional=True)
 
-    def get_option_name(self, label: str) -> str:
-        """Return internal name for parser options (e.g. dashes converted to underscores)
-        Note: underscores should not be used in labels to support standard Unix argument conventions (e.g., "--skip-run" not "--skip_run").
+    def get_option_name(self, label: str, allow_under: Optional[bool] = None) -> str:
+        """Return internal name for parser options (e.g., dashes converted to underscores)
+        Note: Unless ALLOW_UNDER, issues warning about underscores used in labels: this is 
+        to support standard Unix argument conventions (e.g., "--skip-run" not "--skip_run").
         """
         # EX: dummy_app.get_option_name("mucho-backflips") => "mucho_backflips"
-        debug.assertion(("_" not in label), "Use dashes not underscores")
+        if not allow_under:
+            debug.assertion(("_" not in label), "Use dashes not underscores")
         name = label.replace("-", "_")
         debug.trace_fmtd(6, "get_option_name({l}) => {n}; self={s}",
                          l=label, n=name, s=self)
@@ -562,15 +564,28 @@ class Main(object):
             self,
             label: str,
             default: Optional[Any] = None,
-            positional: bool = False
+            positional: bool = False,
+            allow_under: Optional[bool] = None
         ) -> Optional[Any]:
         """Get value for option LABEL, with dashes converted to underscores. 
-        If POSITIONAL specified, DEFAULT value is used if omitted"""
-        opt_label = self.get_option_name(label) if not positional else label
+        If POSITIONAL specified, DEFAULT value is used if omitted
+        Note: ALLOW_UNDER skips sanity check about underscores
+        """
+        under_label = label.replace("-", "_")
+        dash_label = label.replace("_", "-")
+        opt_label = (self.get_option_name(label, allow_under=allow_under) if not positional
+                     else label)
         if not self.parsed_args:
             debug.trace(5, "Error: Unexpected condition in get_parsed_option")
             return default
         value = self.parsed_args.get(opt_label)
+        if value is None:
+            # note: workaround for argparse quirk
+            # See https://stackoverflow.com/questions/12834785/having-options-in-argparse-with-a-dash
+            alt_label = under_label if positional else dash_label
+            value = self.parsed_args.get(alt_label)
+            if value:
+                debug.trace(4, f"FYI: Resolved for alternative label workaround: {alt_label=} {value=}")
         # Override null value with default
         if value is None:
             if ((default is None) and ENV_OPTION_PREFIX):
@@ -580,7 +595,6 @@ class Main(object):
                     default = self.convert_option_value(label, default)
                     debug.trace(4, f"FYI: Using option {label} from env ({env_var}: {default!r})")
             value = default
-            under_label = label.replace("-", "_")
             # Do sanity check for positional argument being checked by mistake
             # TODO: do automatic correction?
             debug.trace_expr(5, label, opt_label, under_label, self.parsed_args)
@@ -595,7 +609,9 @@ class Main(object):
                          l=label, d=default, p=positional, v=value)
         return value
 
-    def get_parsed_argument(self, label: str, default: Optional[Any] = None) -> Optional[Any]:
+    def get_parsed_argument(self, label: str,
+                            default: Optional[Any] = None,
+                            allow_under: Optional[bool] = None) -> Optional[Any]:
         """Get value for positional argument LABEL using DEFAULT value"""
         debug.trace_fmtd(6, "get_parsed_agument({l}, [{d}])",
                          l=label, d=default)
@@ -603,7 +619,8 @@ class Main(object):
         is_positional = (label in self.get_arguments(just_positional=True))
         if not is_positional:
             debug.trace(4, f"FYI: Use get_parsed_option for non-positional option {label}")
-        return self.get_parsed_option(label, default, positional=is_positional)
+        return self.get_parsed_option(label, default, positional=is_positional,
+                                      allow_under=allow_under)
 
     def check_arguments(self, runtime_args: List[str]) -> None:
         """Check command-line arguments
@@ -642,12 +659,12 @@ class Main(object):
             debug.trace(6, f"add_argument{(opt_label, add_short, kwargs)}")
             if add_short is None:
                 add_short = self.short_options
-            if self.short_options and my_re.search(r"-(-[a-z])[a-z]+", opt_label):
+            if add_short and my_re.search(r"-(-[a-z])[a-z]+", opt_label):
                 short_label = my_re.group(1)
                 parser.add_argument(short_label, opt_label, **kwargs)
             else:
                 parser.add_argument(opt_label, **kwargs)
-    
+
         # Check for options of specific types
         # TODO: consolidate processing for the groups; add option for environment-based default; resolve stupid pylint false positive about unbalanced-tuple-unpacking
         for opt_spec in self.boolean_options:
