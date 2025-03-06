@@ -1,6 +1,8 @@
 # Basic requirements for main scripts
 #
-# By default only the cases used in multuiple scripts are installed.
+# By default only the cases used in multiple scripts are installed. Several
+# types of optional dependencies are included, including devel for convenience,
+# and full for everything.
 #
 # Note:
 # - Usage examples:
@@ -11,7 +13,7 @@
 #   3. Full (i.e., including all optional):
 #      pip install --verbose $(perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
 #      # TODO2: --ignore-errors [maldito pip]; set pip-update check
-#      perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#' | xargs -I '{}' pip install '{}'
+#      perl -pe 's/^#(opt|devel|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#' | xargs -I '{}' pip install '{}'
 # - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
 # - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
 #
@@ -38,6 +40,7 @@ cherrypy
 clip_interrogator
 datasets                      # Hugging Face (HF) data
 #opt# diffusers               # Stale Diffusion; TEMP
+#opt# xformers                # composable Transformer building blocks
 diskcache
 extcolors>=1.0.0
 executing
@@ -94,28 +97,28 @@ wheel
 #opt# SpeechRecognition
 #opt# accelerate
 #opt# astor                             # AST utils
-#opt# bash_kernel
-#opt# colout
-#opt# coverage
-#opt# flit
+#devel# bash_kernel
+#devel# colout
+#devel# coverage
+#devel# flit
 #opt# gensim
 #opt# ibm-watson
 #opt# ibm_cloud_sdk_core
-#opt# ipython
-#opt# jupyter
+#devel# ipython
+#devel# jupyter
 #opt# libcst
 #opt# librosa
 #opt# pocketsphinx
-#opt# mypy
+#devel# mypy
 ## TODO?: #opt#
 pydantic==2.9.2
-#opt# pylint
-#opt# pyyaml
+#devel# pylint
+#devel# pyyaml
 #opt# scispacy
 #opt# selenium
 #opt# Sphinx
 ## TODO?: make unittest_parametrize regular dependency
-#opt# unittest_parametrize
+#devel# unittest_parametrize
 #
 ## OLD: #opt# spacy>=3.0.0
 ## TODO:
@@ -131,7 +134,7 @@ en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_co
 typing_extensions>=4.7.0
 #
 #opt# textract
-#opt# types-six                         # typing stubs for six
+#devel# types-six                         # typing stubs for six
 #opt# youtube_transcript_api
 #opt# vaderSentiment
 #...............................................................................
