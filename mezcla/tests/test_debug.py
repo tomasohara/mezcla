@@ -235,6 +235,15 @@ class TestDebug(TestWrapper):
         assert(my_re.search(r"var1=3; var2=6;?", err))
 
     @pytest.mark.xfail
+    def test_trace_expr_prefix(self):
+        """Make sure trace_expr outputs prefix'"""
+        debug.trace(4, f"test_trace_expr(): self={self}")
+        var = 4
+        THE_MODULE.trace_expr(debug.get_level(), var, prefix="here: ")
+        err = self.get_stderr()
+        assert(my_re.search(r"here: var=4;?", err))
+
+    @pytest.mark.xfail
     def test_multiline_trace_expr(self):
         """Make sure trace_expr expression resolved when split across lines"""
         var1 = 3
