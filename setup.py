@@ -36,7 +36,7 @@ setup(name='Mezcla',
       ## BAD: requires-python=">=3.8",
       python_requires=">=3.8",
       ## TODO4?:
-      ## install_requires=["six"],
+      install_requires=["asttokens", "executing", "six"],
       ## BAD: home-page="https://github.com/tomasohara/Mezcla",
       home_page="https://github.com/tomasohara/Mezcla",
       classifiers=[

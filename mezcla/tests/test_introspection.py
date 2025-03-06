@@ -61,6 +61,17 @@ class TestIt(TestWrapper):
                                     flags=my_re.DOTALL|my_re.MULTILINE))
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_03_prefix(self):
+        """Test for simple introspection"""
+        debug.trace(4, f"TestIt.test_03_prefix(); self={self}")
+        var = 456
+        var_expr = THE_MODULE.intro.format(var, _prefix="here: ")
+        ## OLD: self.do_assert(my_re.search("here: var.*456", var_expr))
+        assert my_re.search("here: var.*456", var_expr)
+        return
+
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':

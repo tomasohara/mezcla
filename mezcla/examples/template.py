@@ -28,8 +28,8 @@ from mezcla import system
 
 # Constants
 TL = debug.TL
-## TODO: TODO_BOOL_OPT1 = "todo-bool-option1"
-## TODO: TODO_TEXT_OPT1 = "todo-text-option1"
+## TODO: TODO_BOOL_OPT = "todo-bool-option"
+## TODO: TODO_TEXT_OPT = "todo-text-option"
 
 ## TODO:
 ## # Environment options
@@ -53,11 +53,11 @@ def main():
     # Note: Uses Main without subclassing, so some methods are stubs (e.g., run_main_step).
     main_app = Main(
         description=__doc__.format(script=gh.basename(__file__)),
-        ## TODO: boolean_options=[(TODO_BOOL_OPT1, "TODO desc1")],
-        ## TODO: text_options=[(TODO_TEXT_OPT1, "TODO desc1")],
+        ## TODO: boolean_options=[(TODO_BOOL_OPT, "TODO desc1")],
+        ## TODO: text_options=[(TODO_TEXT_OPT, "TODO desc2")],
     )
     debug.assertion(main_app.parsed_args)
-    ## TODO_OPT1 = main_app.get_parsed_option(TODO_OPT1)
+    ## TODO_opt1 = main_app.get_parsed_option(TODO_BOOL_OPT)
 
     ## TODO:
     system.print_error("Error: Implement me!")

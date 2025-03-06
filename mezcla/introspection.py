@@ -54,7 +54,7 @@ from types import FrameType
 
 # Installed packages
 # note: asttokens load dynamically by executing (so checked here for clients)
-import asttokens                        # pylint: disable: unused-import
+import asttokens                        # pylint: disable=unused-import
 import pprint
 from textwrap import dedent
 import executing
@@ -290,7 +290,9 @@ class MezclaDebugger:
         Formats the given arguments and returns the formatted string
         """
         
-        prefix = pref if (pref := kwargs.get('prefix')) is not None else call_or_value(self.prefix)
+        ## OLD: prefix = pref if (pref := kwargs.get('prefix')) is not None else call_or_value(self.prefix)
+        pref = kwargs.get('prefix') or kwargs.get('_prefix')
+        prefix = pref if pref is not None else call_or_value(self.prefix)
         ## HACK: uses _prefix kwarg to avoid conflict with positional arg
         kwargs["_prefix"] = prefix
 

@@ -45,7 +45,7 @@ import os
 ## import matplotlib
 
 # TPO: for error handling when reading category labels
-# pylint disable: disable=import-error
+# pylint: disable=import-error
 import sys
 from bert import modeling
 from bert import optimization

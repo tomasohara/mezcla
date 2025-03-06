@@ -31,7 +31,7 @@ import sys
 from collections import OrderedDict
 
 # Installed moduless
-# pylint disable: disable=import-error
+# pylint: disable=import-error
 # TODO: install kera dynamically???
 ## TEST: sys.stderr.write("here\n")
 ## BAD:
