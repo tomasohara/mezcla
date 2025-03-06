@@ -297,7 +297,7 @@ class MezclaDebugger:
         kwargs["_prefix"] = prefix
 
         context = self._format_context(call_frame)
-        if not args:
+        if self.icecream_like and not args:
             time = self._format_time()
             out = prefix + context + time
         else:
