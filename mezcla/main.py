@@ -31,7 +31,7 @@
 #              fubar = self.get_parsed_option("fubar")
 # - With non-trivial command processing (e.g., positional arguments), it 
 #   might be better to do this in the constructor, as follows:
-#       def __init__(*args, **kwargs):
+#       def __init__(*args, **kwargs) -> None:
 #           super(MyMain, self).__init__(*args, positional_options=["targets"], 
 #                                        **kwargs)
 # - Changes to temporary directory/file support should be synchronized with the
@@ -1097,14 +1097,14 @@ debug.trace_current_context(8, "main.py context")
 
 #------------------------------------------------------------------------
 
-def main():
+def main() -> None:
     """Entry point"""
     class VacuousMain(Main):
         """Sub-class that does nothing"""
         # Note: complexity is for handle python running script from shell-scripts repo
         #     run-python-sript"
 
-        def run_main_step(self):
+        def run_main_step(self) -> None:
             print("No-op main step")
             
     # note: Following used for argument parsing
