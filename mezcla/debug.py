@@ -1325,6 +1325,9 @@ if __debug__:
         trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
         trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
         trace_expr(QUITE_DETAILED, __file__)
+        # note: also show python path if under Unix (TODO3: generalize)
+        if (os.name == "posix"):
+            code(VERBOSE, lambda: os.system("(echo -n 'Python: '; which python) 1>&2"))
 
         # Determine other debug-only environment options
         global para_mode_tracing
