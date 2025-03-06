@@ -64,13 +64,13 @@ TODO_FUBAR = system.getenv_bool(
 ## class Helper:
 ##     """TODO: class for doing ..."""
 ## 
-##     def __init__(self, ...):
+##     def __init__(self, ...) -> None:
 ##         """Initializer: ..."""
 ##         debug.trace(TL.VERBOSE, f"Helper.__init__(): self={self}")
 ##         self.TODO = None
 ##         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 ## 
-##     def process(self, ...):
+##     def process(self, ...) -> None:
 ##         """TODO: ..."""
 ##         # TODO: flesh out
 ##
@@ -91,7 +91,7 @@ class Script(Main):
     ##     debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {self.__class__.__name__}.__init__({args}, {kwargs})")
     ##     super().__init__(*args, **kwargs)
 
-    def setup(self):
+    def setup(self) -> None:
         """Check results of command line processing"""
         debug.trace(TL.VERBOSE, f"Script.setup(): self={self}")
         ## TODO: extract argument values
@@ -101,7 +101,7 @@ class Script(Main):
         ## self.alt_filename = self.get_parsed_argument(ALT_FILENAME)
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
-    def process_line(self, line):
+    def process_line(self, line) -> None:
         """Processes current line from input"""
         debug.trace_fmtd(TL.QUITE_DETAILED, "Script.process_line({l})", l=line)
         # TODO: flesh out
@@ -116,7 +116,7 @@ class Script(Main):
     ## TODO: if no input prococessed, customize run_main_step instead
     ## and specify skip_input below. (Use skip_input=False for filename support.)
     ##
-    ## def run_main_step(self):
+    ## def run_main_step(self) -> None:
     ##     """Main processing step (n.b., assumes self.manual_input)"""
     ##     debug.trace(5, f"Script.run_main_step(): self={self}")
     ##     ...
@@ -125,12 +125,12 @@ class Script(Main):
     ##
 
     ## TODO:
-    ## def wrap_up(self):
+    ## def wrap_up(self) -> None:
     ##     """Do final processing"""
     ##     debug.trace(6, f"Script.wrap_up(); self={self}")
     ##     # ...
 
-def main():
+def main() -> None:
     """Entry point"""
     app = Script(
         description=__doc__.format(script=gh.basename(__file__)),
