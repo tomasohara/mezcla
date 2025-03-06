@@ -74,7 +74,7 @@ from datetime import datetime
 ## OLD: import os
 
 # Installed packages
-# pylint disable: disable=import-error
+# pylint: disable=import-error
 import pandas as pd
 import tensorflow as tf
 import tensorflow_hub as hub
