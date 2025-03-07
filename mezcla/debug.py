@@ -1227,8 +1227,8 @@ def main(args: List[str]) -> None:
     i = 1
     ## TODO: for i in range(3, 0, -1):
     trace_expr(ERROR, n-i, n, n+i)
-    all = True
-    trace_expr(ALWAYS, all, prefix="Tha-tha-that's ", suffix=" folks!")
+    ALL = True
+    trace_expr(ALWAYS, ALL, prefix="Tha-tha-that's ", suffix=" folks!")
     return
 
 
