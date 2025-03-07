@@ -265,6 +265,17 @@ class TestDebug(TestWrapper):
         assert(my_re.search(r"var1=3\nvar2=6;?", err))
 
     @pytest.mark.xfail
+    def test_trace_expr_max_len(self):
+        """Test trace_expr with max_len"""
+        debug.trace(4, f"test_trace_expr(): self={self}")
+        var = "-" * 32
+        THE_MODULE.trace_expr(debug.get_level(), var, max_len=8)
+        err = self.get_stderr()
+        ## TODO2: assert my_re.search(r"var='--------...'", err))
+        ##                                              ^
+        assert my_re.search(r"var='--------...", err)
+
+    @pytest.mark.xfail
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
