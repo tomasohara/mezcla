@@ -63,12 +63,22 @@ class TestIt(TestWrapper):
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_prefix(self):
-        """Test for simple introspection"""
+        """Test for prefix added to introspection result"""
         debug.trace(4, f"TestIt.test_03_prefix(); self={self}")
         var = 456
         var_expr = THE_MODULE.intro.format(var, _prefix="here: ")
-        ## OLD: self.do_assert(my_re.search("here: var.*456", var_expr))
         assert my_re.search("here: var.*456", var_expr)
+        return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_04_max_len(self):
+        """Test for introspection truncation"""
+        debug.trace(4, f"TestIt.test_04_max_len(); self={self}")
+        var = "-" * 123
+        var_expr = THE_MODULE.intro.format(var, max_len=4)
+        ## TODO2: assert my_re.search("var='----...'", var_expr)
+        ##                                         ^
+        assert my_re.search("var='----...", var_expr)
         return
 
 
