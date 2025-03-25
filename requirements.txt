@@ -43,7 +43,7 @@ datasets                      # Hugging Face (HF) data
 #opt# xformers                # composable Transformer building blocks
 diskcache
 extcolors>=1.0.0
-executing
+executing                     # code introspection a la icecream
 flair
 flask
 git+https://github.com/tehabstract/textract.git
