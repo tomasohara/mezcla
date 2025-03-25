@@ -53,7 +53,7 @@ from types import FrameType
 # Local packages
 
 # Installed packages
-# note: asttokens load dynamically by executing (so checked here for clients)
+# note: asttokens loaded dynamically when executed (so checked here for clients)
 import asttokens                        # pylint: disable=unused-import
 import pprint
 from textwrap import dedent
