@@ -306,8 +306,8 @@ if __debug__:
                     do_print("[Warning: converted non-text to str] ", end="")
                 text = str(text)
             if ((not skip_sanity_checks)
-                and re.search(r"{\S+}", text)
-                and not re.search(r"{{\S+}}", text)):
+                and re.search(r"{[^0-9]\S+}", text)
+                and not re.search(r"{{[^0-9]\S+}}", text)):
                 # TODO3: show caller info; also rework indent (pep8 quirk)
                 if include_trace_diagnostics:
                     do_print("[FYI: f-string issue?] ", end="")
