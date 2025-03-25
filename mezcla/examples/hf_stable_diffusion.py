@@ -661,7 +661,7 @@ def create_image(image_data):           # TODO1: create_PIL_image
     """Create PIL image from IMAGE_DATA bytes"""
     ## TODO4?: create_PIL_image
     result = PIL.Image.open(BytesIO(image_data)).convert("RGB")
-    debug.trace(6, f"create_image({image_data!r}) => {result}")
+    debug.trace(6, f"create_image({gh.elide(image_data)!r}) => {result}")
     return result
 
 def write_image_file(filename, image_spec):
