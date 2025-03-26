@@ -15,9 +15,9 @@
 #      # TODO2: --ignore-errors [maldito pip]; set pip-update check
 #      perl -pe 's/^#(opt|devel|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#' | xargs -I '{}' pip install '{}'
 # - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
-# - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
 #
 # Warning:
+# - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
 # - Workaround for silly pip installation issues (e.g., Spacy):
 #   $ perl -pe 's/\s*#.*//;' requirements.txt | xargs -I '{}' pip install '{}'
 #
