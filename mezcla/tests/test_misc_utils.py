@@ -267,23 +267,39 @@ class TestMiscUtils(TestWrapper):
         result_class = THE_MODULE.get_class_from_name('date', 'datetime')
         assert result_class is datetime.date
 
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_apply_numeric_suffixes(self):
+        """Check apply_numeric_suffixes"""
+        one_mb = 1024 ** 2
+        text = f"{one_mb - 1024 - 1} {one_mb} {one_mb + 1024}"
+        actual = THE_MODULE.apply_numeric_suffixes(text).strip()
+        assert actual == "1022.999K 1M 1.001M"
+
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_stdin_apply_numeric_suffixes(self):
+        """Check apply_numeric_suffixes_stdin"""
+        temp_file = self.create_temp_file("999 1024")
+        self.monkeypatch.setattr("sys.stdin", system.open_file(temp_file))
+        THE_MODULE.apply_numeric_suffixes_stdin()
+        actual = self.get_stdout().strip()
+        assert actual == "999 1K"
+
 
 @pytest.mark.skipif(not mezcla_to_standard, reason="Unable to load mezcla_to_standard")
-class test_file_to_instance(TestWrapper):
-    """Class for test case definitions"""
+class TestFileToInstance(TestWrapper):
+    """Class for testing convert_file_to_instances: external file loading to support mezcla_to_standard"""
     # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    instance_1 = EqCall(
-        gh.rename_file,
-        dests=os.rename,
-    )
+    instance_1 = EqCall(gh.rename_file, dests=os.rename)
     instance_2 = EqCall(gh.dir_path, dests=os.path.dirname, eq_params={"filename": "p"})
 
 
     @pytest.mark.xfail                  # TODO: remove xfail
     def check_instances(self, instances):
-        """Check INSTANCES """
+        """Check that INSTANCES match self.instance_[12]"""
+        ## TODO3: Add parameters to reduce redundancy in following test_convert_*_to_instance,
+        ## such as resource data file and conversion function.
         assert self.instance_1.targets[0].path == instances[0].targets[0].path
         assert self.instance_1.dests[0].path == instances[0].dests[0].path
 
@@ -337,22 +353,20 @@ class test_file_to_instance(TestWrapper):
         self.check_instances(instances)
 
     @pytest.mark.xfail                  # TODO: remove xfail
-    def test_apply_numeric_suffixes(self):
-        """Check apply_numeric_suffixes"""
-        one_mb = 1024 ** 2
-        text = f"{one_mb - 1024 - 1} {one_mb} {one_mb + 1024}"
-        actual = THE_MODULE.apply_numeric_suffixes(text)
-        assert actual == "1022.999K 1M 1.001M"
+    def test_convert_py_data_to_instance(self):
+        """verify convert_py_data_to_instance"""
+        debug.trace(4, "test_convert_py_data_to_instance()")
 
-    @pytest.mark.xfail                  # TODO: remove xfail
-    def test_stdin_apply_numeric_suffixes(self):
-        """Check apply_numeric_suffixes_stdin"""
-        temp_file = self.create_temp_file("999 1024")
-        self.monkeypatch.setattr("sys.stdin", system.open_file(temp_file))
-        THE_MODULE.apply_numeric_suffixes_stdin()
-        actual = self.get_stdout().strip()
-        assert actual == "999 1K"
-        
+        py_data = gh.form_path(gh.dirname(__file__), "resources", "instances.py-data")
+
+        instances: list[EqCall] = THE_MODULE.convert_python_data_to_instance(
+            py_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+        )
+        self.check_instances(instances)
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
