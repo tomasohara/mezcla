@@ -60,18 +60,14 @@ from mezcla.my_regex import my_re
 from mezcla import data_utils as du
 from mezcla import glue_helpers as gh
 from mezcla import tpo_common as tpo
+from mezcla.unittest_wrapper import TestWrapper
 
 # Constants
 TL = debug.TL
 
 # Environment options
-# Note: These are just intended for internal options, not for end users.
-# It also allows for enabling options in one place rather than four
-# (e.g., [Main member] initialization, run-time value, and argument spec., along
-# with string constant definition).
-#
-TODO_FUBAR = system.getenv_bool("TODO_FUBAR", False,
-                                description="TODO:Fouled Up Beyond All Recognition processing")
+HOME = os.getenv("HOME")
+USER = os.getenv("USER")
 
 #-------------------------------------------------------------------------------
 # Global Variables
@@ -113,8 +109,17 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
     # Get list of modules attributes (e.g., variables)
     module_attrs = []
     try:
-        import_command = f"import {module_name}"
-        exec(import_command)
+        loaded = False
+        try:
+            import_command = f"reload({module_name})"
+            exec(import_command)
+            loaded = True
+        except:
+            debug.trace(4, f"Warning: {module_name} should have been imported")
+        if not loaded:
+            # note: might fail (e.g., 'from package import module' required(
+            import_command = f"import {module_name}"
+            exec(import_command)
         module = eval(module_name)
         module_attrs = dir(module)
     except:
@@ -122,6 +127,7 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
             system.print_exception_info(import_command)
         else:
             debug.trace_exception(5, import_command)
+    debug.trace(5, module)
 
     # Import each individually
     for var in module_attrs:
