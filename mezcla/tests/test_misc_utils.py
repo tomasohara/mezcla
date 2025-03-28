@@ -336,6 +336,23 @@ class test_file_to_instance(TestWrapper):
         )
         self.check_instances(instances)
 
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_apply_numeric_suffixes(self):
+        """Check apply_numeric_suffixes"""
+        one_mb = 1024 ** 2
+        text = f"{one_mb - 1024 - 1} {one_mb} {one_mb + 1024}"
+        actual = THE_MODULE.apply_numeric_suffixes(text)
+        assert actual == "1022.999K 1M 1.001M"
+
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_stdin_apply_numeric_suffixes(self):
+        """Check apply_numeric_suffixes_stdin"""
+        temp_file = self.create_temp_file("999 1024")
+        self.monkeypatch.setattr("sys.stdin", system.open_file(temp_file))
+        THE_MODULE.apply_numeric_suffixes_stdin()
+        actual = self.get_stdout().strip()
+        assert actual == "999 1K"
+        
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
