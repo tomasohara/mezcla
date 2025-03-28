@@ -13,6 +13,7 @@ import datetime
 from difflib import ndiff
 import inspect
 import math
+import os
 import random
 import re
 import sys
@@ -449,50 +450,75 @@ def convert_file_to_instances(input_file, module_name, class_name, field_names,
                               fmt=None):
     """Converts input file with array of records into a list of class instances.
     Note: Supports mezcla_to_standard mapping table loading.
+    Warning: Future support will just be in terms of reading and evaluation python
+    text-based data, which is the "py-data" format used below.
     
     Args:
         input_file: Path to input file (json, yaml, csv)
         module_name: Module containing the class definition
         class_name: Name of the class to instantiate
         field_names: List of field names to use for class constructor
-        fmt: Optional format override ('json', 'yaml', 'csv'). If None, inferred from extension.
+        fmt: Optional format override ('json', 'yaml', 'csv', 'py-data'). If None, inferred from extension.
     
     Returns:
         List of class instances
     """
+    # pylint: disable=exec-used,eval-used
+
     # Detect format if not specified
     if not fmt:
         ext = input_file.lower().split('.')[-1]
         fmt = ext
+
+    # Initialize class from module
+    exec(f"from {module_name} import *")          
+    actual_class = get_class_from_name(class_name, module_name)
 
     # Read data based on format
     data = []
     if fmt == 'json':
         data = json.loads(system.read_file(input_file))
     elif fmt == 'yaml':
-        data = yaml.safe_load(system.read_file(input_file)) 
+        data = yaml.safe_load(system.read_file(input_file))
     elif fmt == 'csv':
+        debug.trace(4, "Warning: convert_file_to_instances problematic with CSV files")
         # Use CSV DictReader to get list of dicts
-        with system.open_file(input_file, newline='') as f:
+        ## OLD: with system.open_file(input_file, newline='') as f:
+        with system.open_file(input_file) as f:
             reader = csv.DictReader(f)
-            data = list(reader)
+            data = list(reader)    
+    elif fmt == 'py-data':
+        try:
+            data = eval(system.read_file(input_file))
+        except:
+            system.print_exception_info(f"evaluation of {input_file!r}")
     else:
         raise ValueError(f"Unsupported format: {fmt}")
-
-    # Initialize class from module
-    exec(f"from {module_name} import *")          # pylint: disable=exec-used
-    actual_class = get_class_from_name(class_name, module_name)
 
     # Convert records to instances
     instances = []
     for record in data:
+        if fmt == 'py-data':
+            ## TODO4: rework to put special case outside of loop
+            debug.assertion(isinstance(record, actual_class))
+            instances.append(record)
+            continue
         class_args = []
         for field in field_names:
             # Handle both dict and object-like records
             value = record.get(field, "None")
             # Only eval non-string values from JSON/YAML
+            ## TODO3: clarify intention
+            ## TEST: if (fmt == 'csv') and isinstance(value, str):
             if fmt in ('json', 'yaml') and isinstance(value, str):
-                value = eval(value)               # pylint: disable=eval-used
+                try:
+                    value = eval(value)
+                except:
+                    system.print_exception_info(f"evaluation of {field} value {value!r}")
+            elif (fmt == 'py-data'):
+                pass
+            else:
+                debug.trace(5, f"FYI: Not evaluating {field} value {value!r}")
             class_args.append(value)
         new_inst = actual_class(*class_args)
         instances.append(new_inst)
@@ -515,31 +541,44 @@ def convert_csv_to_instance(csv_file, module_name, class_name, field_names):
     return convert_file_to_instances(csv_file, module_name, class_name, field_names, fmt='csv')
 
 
-def apply_numeric_suffixes(text, just_once=False):
+def convert_python_data_to_instance(python_data_file, module_name, class_name, field_names):
+    """Converts PYTHON_DATA_FILE into list of instances
+    Note: see convert_json_to_instance for details of other arguments"""
+    return convert_file_to_instances(python_data_file, module_name, class_name, field_names, fmt='py-data')
+
+
+def apply_numeric_suffixes(text: str, just_once=False) -> str:
     """Converts numbers in TEXT to use K, M, G, T, etc. suffixes.
-    Note: Optionally applies JUST_ONCE."""
+    Note: Optionally applies JUST_ONCE per line."""
     # EX: apply_numeric_suffixes("1024 1572864 1073741824") => "1K 1.5M 1G"
+    # TODO2: preserve spacing in text (e.g., splitlines quirks)
     debug.trace(5, f"apply_numeric_suffixes({text!r}, [once={just_once})")
     suffixes = "_KMGTPE"                # _ is placeholder for no suffix
-    max_count = len(text) / 3
-    count = 0
-    # note: uses negative look ahead to avoid conversion in decimals (e.g., 1023.5)
-    while (my_re.search(r"(.*)\b(\d{4,19})\b(?!\.)(.*)", text)):
-        count += 1
-        if count > max_count:
-            break
-        (pre, numeric, post) = my_re.groups()
-        num = float(numeric)
-        power = int(math.log(num) / math.log(1024))
-        new_num = system.round_as_str(num / (1024 ** power))
-        # note: accounts for quirk in rounding (e.g., stripping N.000)
-        # TODO2: ignore special cases like 0000 (n.b., due to \d{4,N} regex)
-        new_num = my_re.sub(r"\.0+$", "", new_num)
-        suffix = suffixes[power]
-        text = pre + str(new_num) + suffix + post
-        debug.trace_expr(6, numeric, num, power, text)
-    debug.trace(5, f"apply_numeric_suffixes() => {text!r}")
-    return text
+    new_text = ""
+    for line in text.splitlines():
+        max_count = len(line) / 3
+        count = 0
+        # note: uses negative look ahead to avoid conversion in decimals (e.g., 1023.5)
+        while (my_re.search(r"(.*)\b(\d{4,19})\b(?!\.)(.*)", line)):
+            count += 1
+            if count > max_count:
+                break
+            (pre, numeric, post) = my_re.groups()
+            num = float(numeric)
+            power = int(math.log(num) / math.log(1024))
+            new_num = system.round_as_str(num / (1024 ** power))
+            # note: accounts for quirk in rounding (e.g., stripping N.000)
+            # TODO2: ignore special cases like 0000 (n.b., due to \d{4,N} regex)
+            new_num = my_re.sub(r"\.0+$", "", new_num)
+            suffix = suffixes[power]
+            line = pre + str(new_num) + suffix + post
+            debug.trace_expr(6, numeric, num, power, line)
+        new_text += line + os.linesep
+    if new_text.endswith(os.linesep) and not text.endswith(os.linesep):
+        new_text = my_re.sub(fr"{os.linesep}$", "", new_text)
+    debug.trace(5, f"apply_numeric_suffixes() => {new_text!r}")
+    return new_text
+
 
 def apply_numeric_suffixes_stdin(just_once=False):
     """Invokes apply_numeric_suffixes over stdin
@@ -547,6 +586,7 @@ def apply_numeric_suffixes_stdin(just_once=False):
     """
     text = dummy_app.read_entire_input()
     print(apply_numeric_suffixes(text, just_once=just_once))
+
 
 def init():
     """MOdule initialization"""
