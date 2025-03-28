@@ -435,19 +435,19 @@ class CallDetails:
             self.callable = path_to_callable(func) if isinstance(func, str) else func
         except:
             ## DEBUG: debug.raise_exception(6)
-            debug.trace(4, f"FYI: Exception deriving callable {sys.exc_info()}")
+            debug.trace(4, f"FYI: Exception deriving callable from {func!r}: {sys.exc_info()}")
         self.path = None
         try:
             self.path = func if isinstance(func, str) else callable_to_path(func) if func else None
         except:
             ## DEBUG: debug.raise_exception(6)
-            debug.trace(4, f"FYI: Exception deriving module path {sys.exc_info()}")
+            debug.trace(4, f"FYI: Exception deriving module path from {func!r}: {sys.exc_info()}")
         self.specs = None
         try:
             self.specs = get_func_specs(func) if func else None
         except:
             ## DEBUG: debug.raise_exception(6)
-            debug.trace(4, f"FYI: Exception deriving function specification {sys.exc_info()}")
+            debug.trace(4, f"FYI: Exception deriving function specification from {func!r}: {sys.exc_info()}")
             debug.trace_stack(7)
 
     @staticmethod
