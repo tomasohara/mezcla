@@ -422,7 +422,9 @@ class Main(object):
         if not skip_args and runtime_args:
             self.check_arguments(runtime_args)
         debug.trace_current_context(level=debug.QUITE_DETAILED)
+        ## OLD:
         debug.trace_object(6, self, label="Main instance")
+        ## TEST: debug.trace_object(6, self, label=f"{self.__init__.__qualname__.split('.')[0]} instance")
         debug.trace_fmt(debug.QUITE_DETAILED, "end of Main.__init__(); self={s}",
                         s=self)
         return
