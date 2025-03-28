@@ -12,9 +12,17 @@
 #    ...
 #    if (my_re.search(r"^(\d+)\:?(\d*)\s+(\d+)\:?(\d*)\s+\S.*", line)):
 #        (start_hours, start_mins, end_hours, end_mins) = my_re.groups()
+#................................................................................
+# Regex cheatsheet:
+#     (?:regex)               non-capturing group
+#     (?<!regex)              negative lookbehind
+#     (?!regex)               negative lookahead
+#     (?=regex)               positive lookahead
+#     *?  and  +?             non-greedy match
 #
 #--------------------------------------------------------------------------------
 # TODO:
+# - Flesh out cheatsheet
 # - Add examples for group(), groups(), etc.
 # - Clean up script (e.g., regex => regex_wrapper).
 #
