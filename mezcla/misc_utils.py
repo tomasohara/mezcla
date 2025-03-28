@@ -28,19 +28,24 @@ import csv
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla.main import dummy_app
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla import text_utils
 
 # Constants
 ELLIPSIS = "\u2026"                 # Horizontal Ellipsis
-TYPICAL_EPSILON = system.getenv_float("TYPICAL_EPSILON", 1e-6,
-                                      description="Traditional floating-point negligible difference")
-VALUE_EPSILON = system.getenv_float("VALUE_EPSILON", 1e-3,
-                                    description="Epsilon for informal floating-point comparison")
+TYPICAL_EPSILON = system.getenv_float(
+    "TYPICAL_EPSILON", 1e-6,
+    description="Traditional floating-point negligible difference")
+VALUE_EPSILON = system.getenv_float(
+    "VALUE_EPSILON", 1e-3,
+    description="Epsilon for informal floating-point comparison")
 debug.assertion(TYPICAL_EPSILON < VALUE_EPSILON)
-RANDOM_SEED = system.getenv_integer("RANDOM_SEED", 15485863,
-                                    "Integral seed for random number generation: 0 for default")
+RANDOM_SEED = system.getenv_integer(
+    "RANDOM_SEED", 15485863,
+    ## TEST: "RANDOM_SEED", 15485863 ** 2 - 1,
+    description="Integral seed for random number generation: 0 for default")
 
 
 def transitive_closure(edge_list):
@@ -509,6 +514,39 @@ def convert_csv_to_instance(csv_file, module_name, class_name, field_names):
     """
     return convert_file_to_instances(csv_file, module_name, class_name, field_names, fmt='csv')
 
+
+def apply_numeric_suffixes(text, just_once=False):
+    """Converts numbers in TEXT to use K, M, G, T, etc. suffixes.
+    Note: Optionally applies JUST_ONCE."""
+    # EX: apply_numeric_suffixes("1024 1572864 1073741824") => "1K 1.5M 1G"
+    debug.trace(5, f"apply_numeric_suffixes({text!r}, [once={just_once})")
+    suffixes = "_KMGTPE"                # _ is placeholder for no suffix
+    max_count = len(text) / 3
+    count = 0
+    # note: uses negative look ahead to avoid conversion in decimals (e.g., 1023.5)
+    while (my_re.search(r"(.*)\b(\d{4,19})\b(?!\.)(.*)", text)):
+        count += 1
+        if count > max_count:
+            break
+        (pre, numeric, post) = my_re.groups()
+        num = float(numeric)
+        power = int(math.log(num) / math.log(1024))
+        new_num = system.round_as_str(num / (1024 ** power))
+        # note: accounts for quirk in rounding (e.g., stripping N.000)
+        # TODO2: ignore special cases like 0000 (n.b., due to \d{4,N} regex)
+        new_num = my_re.sub(r"\.0+$", "", new_num)
+        suffix = suffixes[power]
+        text = pre + str(new_num) + suffix + post
+        debug.trace_expr(6, numeric, num, power, text)
+    debug.trace(5, f"apply_numeric_suffixes() => {text!r}")
+    return text
+
+def apply_numeric_suffixes_stdin(just_once=False):
+    """Invokes apply_numeric_suffixes over stdin
+    Note: supports Bash alias (see shell-scripts/tomohara-aliases.bash)
+    """
+    text = dummy_app.read_entire_input()
+    print(apply_numeric_suffixes(text, just_once=just_once))
 
 def init():
     """MOdule initialization"""
