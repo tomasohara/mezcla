@@ -99,7 +99,9 @@ class Script(Main):
         ## TODO:
         ## self.text_arg = self.get_parsed_option(TEXT_ARG, self.text_arg)
         ## self.alt_filename = self.get_parsed_argument(ALT_FILENAME)
+        ## OLD:
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+        ## TEST: debug.trace_object(5, self, label=f"{self.__init__.__qualname__.split('.')[0]} instance")
 
     def process_line(self, line) -> None:
         """Processes current line from input"""
