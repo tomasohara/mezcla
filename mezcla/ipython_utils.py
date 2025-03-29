@@ -107,6 +107,7 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
         ignore_errors = False
     
     # Get list of modules attributes (e.g., variables)
+    module = None
     module_attrs = []
     try:
         loaded = False
