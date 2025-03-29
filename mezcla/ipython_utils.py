@@ -10,7 +10,7 @@
 #
 
 """
-Adhoc stuff for ipython.
+Adhoc stuff for ipython (or Jupyter notebooks)
 
 Simple usage:
     from mezcla.ipython_utils import *
@@ -88,7 +88,9 @@ spanish_stopwords = nltk.corpus.stopwords.words('spanish')
 # Helper functions
 
 def grep_obj_methods(obj, pattern, flags=None):
-    """Return methods for OBJ matching PATTERN (with optional re.search FLAGS)"""
+    """Return methods for OBJ matching PATTERN (with optional re.search FLAGS)
+    Note: in practice, all object members are grepped"""
+    ## TODO3: rename as grep_obj_methods
     # EX: grep_obj_methods(str, "strip") => ["lstrip", "strip", "rstrip"]
     if flags is None:
         flags = re.IGNORECASE
@@ -145,7 +147,6 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
 
         # Import the value
         if include:
-            ## OLD: import_desc = (f"importing value of {module_name}'s {var}")
             import_desc = (f"importing {var} from {module_name}")
             debug.trace(5, import_desc)
             try:
@@ -175,7 +176,18 @@ def set_xterm_title(title=None):
 # Helper class
 
 class Fubar():
-    """Dummy class used for cut-n-paste of method code"""
+    """Dummy class used for cut-n-paste of method code (e.g., under ipython)
+    Example:
+      # setup
+      debug.assertion("Fubar" in str(self))
+      self.dummy_arg = True
+      # cut-n-pasted code (see template.py_
+      debug.trace_object(1, self, label=f"{self.__class__.__name__} instance")
+    Output:
+      Fubar instance: {
+          dummy_arg: True
+          }
+    """
     pass
 
 #-------------------------------------------------------------------------------
