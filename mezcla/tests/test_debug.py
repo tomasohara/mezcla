@@ -143,6 +143,7 @@ class TestDebug(TestWrapper):
     def test_trace_fmtd(self):
         """Ensure trace_fmtd works as expected"""
         debug.trace(4, f"test_trace_fmtd(): self={self}")
+        self.patch_trace_level(5)
         
         THE_MODULE.trace_fmtd(4, "trace_{fmtd}", **{"max_len": 5, "fmtd": "formatted"})
         stderr = self.get_stderr()
@@ -152,6 +153,11 @@ class TestDebug(TestWrapper):
         THE_MODULE.trace_fmtd(4, "trace_{fmtd}", **{"fmtd": "formatted"})
         stderr_2 = self.get_stderr()
         assert "trace_formatted" in stderr_2
+
+        self.clear_stderr()
+        THE_MODULE.trace_fmtd(5, "x={x}", x=1, do_whatever=True)
+        stderr_3 = self.get_stderr()
+        assert my_re.search(r"Unexpected keyword.*['do_whatever']", stderr_3)
 
     @pytest.mark.xfail
     def test_trace_object(self):
@@ -271,9 +277,9 @@ class TestDebug(TestWrapper):
         var = "-" * 32
         THE_MODULE.trace_expr(debug.get_level(), var, max_len=8)
         err = self.get_stderr()
-        ## TODO2: assert my_re.search(r"var='--------...'", err))
-        ##                                              ^
-        assert my_re.search(r"var='--------...", err)
+        ## TODO2: assert my_re.search(r"var='--------\.\.\.'", err))
+        ##                                                 ^
+        assert my_re.search(r"var='--------\.\.\.", err)
 
     @pytest.mark.xfail
     def test_trace_current_context(self):
@@ -319,16 +325,26 @@ class TestDebug(TestWrapper):
     def test_assertion(self):
         """Ensure assertion works as expected"""
         debug.trace(4, f"test_assertion(): self={self}")
-        # Not prints in stderr
+        
+        # Doesn't print in stderr
         THE_MODULE.assertion((2 + 2 + 1) == 5)
         err = self.get_stderr()
         assert 'failed' not in err
+        
         # Prints assertion failed in stderr
         THE_MODULE.assertion((2 + 2) == 5)
         err = self.get_stderr()
         assert "failed" in err
         assert "(2 + 2) == 5" in err
 
+        # Just traces the variable expression as is
+        gpu = None
+        THE_MODULE.assertion(gpu)
+        err = self.get_stderr()
+        ## ex: Assertion failed: gpu=None\n (at <ipython-input-14-e3c30214f890>:1)
+        assert("Assertion failed: gpu (at" in err)
+
+        
     @pytest.mark.xfail
     def test_multiline_assertion(self):
         """Make sure assertion expression split across lines resolved"""
