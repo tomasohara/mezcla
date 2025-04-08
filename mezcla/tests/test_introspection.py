@@ -76,9 +76,9 @@ class TestIt(TestWrapper):
         debug.trace(4, f"TestIt.test_04_max_len(); self={self}")
         var = "-" * 123
         var_expr = THE_MODULE.intro.format(var, max_len=4)
-        ## TODO2: assert my_re.search("var='----...'", var_expr)
-        ##                                         ^
-        assert my_re.search("var='----...", var_expr)
+        ## TODO2: assert my_re.search("var='----\.\.\.'", var_expr)
+        ##                                            ^
+        assert my_re.search("var='----\.\.\.", var_expr)
         return
 
 
