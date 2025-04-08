@@ -6,6 +6,10 @@
 # - https://stackoverflow.com/questions/71568142/how-can-i-extract-and-store-the-text-generated-from-an-automatic-speech-recognit #pylint: disable=line-too-long
 # - Hugging Face's NLP with Transformers text
 #
+# TODO2:
+# - Address HuggingFace tip:
+#   In order to maximize efficiency [on a GPU] please use a dataset. [instead of using pipelines sequentially]
+#
 
 """Machine translation via Hugging Face
 
@@ -177,14 +181,14 @@ def main():
         ## OLD:
         # for segment in my_re.split(split_regex, text)
         for s, segment in enumerate(segments):
-            debug.trace_expr(5, s, segment)
+            debug.trace_expr(3, s, segment)
             if not segment.strip():
                 continue
             try:
                 # Translation Level I (FROM -> TO)
                 translation = model(segment, max_length=MAX_LENGTH)
                 translation_text = translated_text(translation)
-                debug.trace_expr(5, translation_text)
+                debug.trace_expr(3, translation_text)
                 
                 ## Round-Trip translation uses the reverse model to re-translate back to original form
                 if round_trip:
