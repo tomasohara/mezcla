@@ -731,6 +731,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     status_spec = f"{checkbox_spec} {disabled_spec}".strip()
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
+    label_misc_spec = ""
     if (label is None):
         label = (param_name.replace("-", " ") + "?")
         if not skip_capitalize:
@@ -740,11 +741,14 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
         if TARGET_BOOTSTRAP:
-            misc_spec += f" data-bs-toggle='tooltip' title='{tooltip}'"
+            spec = f" data-bs-toggle='tooltip' title='{tooltip}'"
+            misc_spec += spec
+            label_misc_spec += spec
         else:
             tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
             tooltip_end_spec = "</span>"
-    result += f"<label>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
+    ## OLD: result += f"<label>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
+    result += f"<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
 
@@ -797,14 +801,17 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
     misc_spec += (f"onchange={on_change}" if on_change else "")
+    label_misc_spec = ""
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
         if TARGET_BOOTSTRAP:
-            misc_spec += f" data-bs-toggle='tooltip' title='{tooltip}'"
+            spec = f" data-bs-toggle='tooltip' title='{tooltip}'"
+            misc_spec += spec
+            label_misc_spec += spec
         else:
             tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
             tooltip_end_spec = "</span>"
-    result = f'<label>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;'
+    result = f'<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;'
     if text_area:
         max_len_spec = (f'maxlength="{max_len}"' if max_len else "")
         value_spec = format_url_param(param_name)
