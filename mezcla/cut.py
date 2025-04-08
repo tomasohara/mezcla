@@ -376,7 +376,7 @@ class Script(Main):
             if (self.output_dialect is None):
                 self.output_dialect = self.dialect
 
-        # Optionally, fixup input if TSV changins multiple spaces into single tab.
+        # Optionally, fixup input if TSV changing multiple spaces into single tab.
         # Note: makes pass through data, writes to temp file, and then resets input stream to
         # read from the temp file.
         # TODO: have option to distinguish old-style loose fix (3+ spaces) from strict fix (all whitespace)
