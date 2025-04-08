@@ -88,8 +88,15 @@ def register_env_option(var: str, description: str, default: Any) -> None:
                     v=var, dsc=description, dft=default)
     global env_options
     global env_defaults
-    if env_options.get(var):
-        debug.trace(4, f"Warning: redefining env entry for {var}: {env_options.get(var)=} {env_defaults.get(var)=}")
+    ## OLD:
+    ## if env_options.get(var):
+    ##     debug.trace(4, f"Warning: redefining env entry for {var}: {env_options.get(var)=} {env_defaults.get(var)=}")
+    old_description = env_options.get(var)
+    if (old_description is not None) and (old_description != description):
+         debug.trace(4, f"Warning: redefining env option description for {var}: {old_description=} {description=}")
+    old_default = env_defaults.get(var)
+    if  (old_default is not None) and (old_default != default):
+         debug.trace(4, f"Warning: redefining env option default for {var}: {old_default=} {default=}")
     ## TEMP: debug.trace_stack(8)
     env_options[var] = description
     env_defaults[var] = default
@@ -1001,7 +1008,7 @@ def get_extension(filename: str) -> str:
 def file_exists(filename: FileDescriptorOrPath) -> bool:
     """Returns True iff FILENAME exists"""
     does_exist = os.path.exists(filename)
-    debug.trace_fmtd(5, "file_exists({f}) => {r}", f=filename, r=does_exist)
+    debug.trace_fmtd(6, "file_exists({f}) => {r}", f=filename, r=does_exist)
     return does_exist
 
 
