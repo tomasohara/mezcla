@@ -347,7 +347,10 @@ class MezclaDebugger:
             return f"{arg}{delim}"
         def format_value(val, max_len):
             """Return up to MAX_LEN of VAL text, adding ... if truncated"""
-            return ((val[:max_len + 1] + "...") if len(val) > max_len else val)
+            result = val
+            if isinstance(max_len, int) and len(val) > max_len:
+                result = val[:max_len + 1] + "..."
+            return result
 
         pairs = [(arg, self.arg_to_string_function(val)) for arg, val in pairs]
         if "max_len" in kwargs:
