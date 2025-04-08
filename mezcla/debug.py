@@ -37,6 +37,14 @@
 #     python -c 'from mezcla import debug; debug.trace(debug.DEFAULT + 1, "Not visible")'
 #     DEBUG_LEVEL=3 python -c 'from mezcla import debug; debug.trace(3, "Visible")'
 #
+# Environment variables:
+#     DEBUG_LEVEL                       trace level default
+#     ENABLE_LOGGING                    initialize logging
+#     GLOBAL_LOGGING                    re-initialize global logger
+#     USE_LOGGING                       output to log
+#     ...
+#
+#-------------------------------------------------------------------------------
 # TODO1:
 # - Add sanity check to trace_fmt for when keyword in kaargs unused.
 #
@@ -322,6 +330,23 @@ if __debug__:
             sys.stderr.write("Error: trace only accepts two positional arguments (was trace_expr intended?)\n")
         return
 
+    def check_keyword_args(level, expected, kwargs,
+                           function, format_text=None, add_underscore=False):
+        """Make sure KWARGS in EXPECTED list for FUNCTION at trace LEVEL
+        Note: Checks for leading underscore if ADD_UNDERSCORE. Excludes keywords
+        mentioned in FORMAT_TEXT.
+        """
+        if debugging(level):
+            expected = expected.split()
+            if add_underscore:
+                expected += [f"_{k}" for k in expected]
+            all_diff = set(kwargs.keys()).difference(expected)
+            diff = [kw for kw in all_diff
+                    ## TODO3: rf"{{{kw\W*}}" -or- rf"{{ {kw}[^a-z0-9_]* }}" -or- rf"{{ {kw}[^}}]* }}",
+                    if not re.search(rf"{{ {kw}.* }}",
+                                     (format_text or ""), flags=re.IGNORECASE|re.VERBOSE)]
+            if diff:
+                trace(1, f"Warning: Unexpected keyword arg(s) to {function}: {diff}")
 
     @docstring_parameter(max_len=max_trace_value_len)
     def trace_fmtd(level: IntOrTraceLevel, text: str, **kwargs) -> None:
@@ -333,6 +358,8 @@ if __debug__:
         # references, this function does the formatting.
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
         if (trace_level >= level):
+            check_keyword_args(VERBOSE, "max_len skip_sanity_checks",
+                               kwargs, "trace_fmt", format_text=text, add_underscore=True)
             # Note: checks alternative keyword first, so False ones not misintepretted
             max_len = kwargs.get('_max_len') or kwargs.get('max_len')
             skip_sanity_checks = kwargs.get('_skip_sanity_checks') or kwargs.get('skip_sanity_checks')
@@ -550,7 +577,6 @@ if __debug__:
             trace(ALWAYS, "")
         return
 
-
     @docstring_parameter(max_len=max_trace_value_len)
     def trace_expr(level: IntOrTraceLevel, *values, **kwargs) -> None:
         """Trace each of the argument VALUES (if at trace LEVEL or higher), with KWARGS for options.
@@ -570,6 +596,9 @@ if __debug__:
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
         trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw}); debug_level={dl}",
                   l=level, args=values, kw=kwargs, dl=trace_level)
+        check_keyword_args(VERBOSE, "sep delim no_eol max_len prefix suffix use_repr",
+                           kwargs, "trace_expr", add_underscore=True)
+                             
         ## TODO1: check for unknown keywords, which could be cut-n-paste error
         ## TODO2: try to handle numpy arrays better; ex: 'arr=array([[11, 12],\n       [21, 22]])'
         ##        => 'arr=array([[11, 12], [21, 22]])'
@@ -604,13 +633,13 @@ if __debug__:
             use_repr = True
         if prefix is None:
             prefix = ""
-        trace(9, f"sep={sep!r}, del={delim!r}, noeol={no_eol}, rep={use_repr}, len={max_len}, pre={prefix!r} suf={suffix!r}", skip_sanity_checks=True)
+        trace(9, f"sep={sep!r}, del={delim!r}, noeol={no_eol}, rep={use_repr}, mlen={max_len}, pre={prefix!r} suf={suffix!r}", skip_sanity_checks=True)
 
         # Get symbolic expressions for the values
         if not use_old_introspection:
             ## HACK: uses _prefix to avoid conflict with introspection's prefix
             ## TODO2: drop newlines due to arguments split across lines
-            expression = intro.format(*values, arg_offset=1, indirect=True,
+            expression = intro.format(*values, arg_offset=1, indirect=True, max_len=max_len,
                                       no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
             ## TEST:
             ## expression = []
@@ -831,7 +860,8 @@ if __debug__:
 
 
     def code(level: IntOrTraceLevel, no_arg_function: Callable) -> Any:
-        """Execute NO_ARG_FUNCTION if at trace LEVEL or higher
+        """Execute NO_ARG_FUNCTION if at trace LEVEL or higher.
+        Returns result of invocation or None.
         Notes:
         - Use call() for more flexible invocation (e.g., can avoid lambda function)
         - Given the quirks of Python syntax, a two-step process is required:
@@ -1362,7 +1392,7 @@ if __debug__:
                 global intro
                 intro = introspection.intro
             except:
-                use_old_introspection = False
+                use_old_introspection = True
                 trace(3, "FYI: Unable to load introspection")
                 trace_exception(6, "loading introspection")
 
