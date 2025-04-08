@@ -33,7 +33,9 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
+#    TestIt.script_module:              path to file
 import mezcla.system as THE_MODULE
+# note: 'system.function' used for functions not being tested (out of habit)
 system = THE_MODULE
 
 class TestSystem(TestWrapper):
@@ -129,6 +131,17 @@ class TestSystem(TestWrapper):
         self.monkeypatch.setenv('TEST_ENV_VAR', 'some value', prepend=False)
         assert THE_MODULE.getenv('TEST_ENV_VAR') == 'some value'
         assert THE_MODULE.getenv('INT_ENV_VAR', default_value=5) == 5
+
+    @pytest.mark.xfail
+    def test_getenv_text_etc_bookkeeping(self):
+        """Check getenv_text, etc. used of env. option registration"""
+        debug.trace(4, "test_getenv_bookkeeping()")
+        self.patch_trace_level(4)
+        THE_MODULE.getenv_bool("TEST_ENV_VAR", default=False, desc="desc1")
+        THE_MODULE.getenv_bool("TEST_ENV_VAR", default=True, desc="desc2")
+        stderr = self.get_stderr()
+        assert "redefining env option description" in stderr
+        assert "redefining env option default" in stderr
 
     def test_getenv_text(self):
         """Ensure getenv_text works as expected"""
@@ -375,9 +388,9 @@ class TestSystem(TestWrapper):
         """Ensure read_entire_file works as expected"""
         debug.trace(4, "test_read_entire_file()")
 
-        # Test valid vile
+        # Test valid file
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
+        system.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_entire_file(temp_file) == 'file\nwith\nmultiple\nlines\n'
 
         # Test invalid file
@@ -393,7 +406,7 @@ class TestSystem(TestWrapper):
         """Ensure read_lines works as expected"""
         debug.trace(4, "test_read_lines()")
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
+        THE_MODULE.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
 
     @pytest.mark.xfail                   # TODO: remove xfail
