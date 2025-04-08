@@ -42,6 +42,7 @@
 #     ENABLE_LOGGING                    initialize logging
 #     GLOBAL_LOGGING                    re-initialize global logger
 #     USE_LOGGING                       output to log
+#     USE_OLD_INTROSPECTION             use old homegrown introspection
 #     ...
 #
 #-------------------------------------------------------------------------------
