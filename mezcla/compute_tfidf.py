@@ -31,6 +31,7 @@ import sys
 # Installed packages
 # TODO: require version 1.1 with TPO hacks
 from mezcla import tfidf
+from mezcla.tfidf import MIN_NGRAM_SIZE, MAX_NGRAM_SIZE
 from mezcla.tfidf.corpus import Corpus as tfidf_corpus
 from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
 
@@ -42,8 +43,9 @@ from mezcla.text_utils import make_fixed_length
 
 # Determine environment-based options
 DEFAULT_NUM_TOP_TERMS = system.getenv_int("NUM_TOP_TERMS", 10)
-MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 1)
-MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", MAX_NGRAM_SIZE)
+## OLD:
+## MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 1)
+## MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", MAX_NGRAM_SIZE)
 IDF_WEIGHTING = system.getenv_text("IDF_WEIGHTING", "basic")
 TF_WEIGHTING = system.getenv_text("TF_WEIGHTING", "basic")
 DELIMITER = system.getenv_text("DELIMITER", ",")
