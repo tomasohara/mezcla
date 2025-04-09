@@ -10,7 +10,8 @@
 #
 # Note:
 # - This provides the wrapper class ngram_tfidf_analysis around tfidf for use
-#   in applications like Visual Diff Search (VDS) that use text from external sources.
+#   in applications like Visual Diff Search (VDS) that use text from external sources
+#   (e.g., http://www.scrappycito.com/init_search).
 # - This incorporates a few optional heuristics, such as filtering overlapping ngrams
 #   and boosting captialized ngrams.
 # - See compute_tfidf.py for computing tfidf over files.
@@ -31,7 +32,6 @@ Examples:
 
   echo $'a b c\\nb c d\\nc d e' | MIN_NGRAM_SIZE=2 MAX_NGRAM_SIZE=2 SKIP_TFIDF_PREPROCESSOR=1 {script} {options} -
 """
-## TODO: fix description (e.g., add pointer to VDS code)
 
 # Standard packages
 from collections import defaultdict
@@ -45,7 +45,6 @@ from sklearn.feature_extraction.text import CountVectorizer
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
-## OLD: from mezcla import spacy_nlp
 from mezcla import system
 from mezcla.system import round_num as rnd
 from mezcla import tpo_common as tpo
@@ -55,6 +54,8 @@ from mezcla.text_processing import stopwords as ENGLISH_STOPWORDS, create_text_p
 from mezcla.tfidf.corpus import Corpus as tfidf_corpus
 from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
 from mezcla.tfidf import preprocess as tfidf_preprocess
+from mezcla.tfidf import MIN_NGRAM_SIZE, MAX_NGRAM_SIZE
+
 
 SKIP_TFIDF_PREPROCESSOR = system.getenv_bool(
     "SKIP_TFIDF_PREPROCESSOR", False,
@@ -66,9 +67,9 @@ PREPROCESSOR_LANG = system.getenv_value(
     "PREPROCESSOR_LANG", DEFAULT_PREPROCESSOR_LANG,
     description="Language for ngram preprocessor")
 # NOTE: MIN_NGRAM_SIZE (e.g., 2) is alternative to deprecated ALL_NGRAMS (implies 1)
-MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 4)
+## OLD: MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 4)
 # TODO: add descriptions to all getenv options
-MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", 2)
+## OLD: MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", 2)
 ALL_NGRAMS = system.getenv_boolean("ALL_NGRAMS", False)
 USE_NGRAM_SMOOTHING = system.getenv_boolean("USE_NGRAM_SMOOTHING", False)
 DEFAULT_TF_WEIGHTING = 'basic'
@@ -105,13 +106,6 @@ TFIDF_BAD_BOOST = system.getenv_float(
 TFIDF_GOOD_BOOST = system.getenv_float(
     "TFIDF_GOOD_BOOST", 0,
     description="Boost factor for ngrams that good terms")
-
-## OLD:
-## # Dynamic loading
-## spacy_nlp = None
-## if TFIDF_NP_BOOST:
-##     from mezcla import spacy_nlp
-##     debug.trace_expr(5, spacy_nlp)
 
 # Do sanity check on TF/IDF package version
 try:
@@ -152,7 +146,6 @@ class ngram_tfidf_analysis(object):
         self.max_ngram_size = max_ngram_size
         self.pp = None
         self.corpus = None
-        ## OLD: self.chunker = (None if (not TFIDF_NP_BOOST) else spacy_nlp.Chunker())
         self.text_proc = None
         if TFIDF_NP_BOOST or TFIDF_VP_BOOST:
             self.text_proc = create_text_proc(TFIDF_TEXT_PROC)
@@ -252,13 +245,11 @@ class ngram_tfidf_analysis(object):
         top_terms = self.corpus.get_keywords(document_id=doc_id,
                                              tf_weight=tf_weight,
                                              idf_weight=idf_weight,
-                                             ## OLD: limit=(2 * limit)
                                              )
         debug.trace_fmtd(7, "top_terms={tt}", tt=top_terms)
 
         # Skip empty tokens due to spacing and to punctuation removal (e.g, " ").
         # Also skip stop words (e.g., unigram).
-        ## OLD: top_term_info = [(k.ngram, k.score) for k in top_terms if k.ngram.strip()]
         top_term_info = [(k.ngram, k.score) for k in top_terms
                          if k.ngram.strip() and not self.is_stopword(k.ngram)]
         #
@@ -277,11 +268,9 @@ class ngram_tfidf_analysis(object):
                 old_score = top_term_info[i][1]
 
                 # Apply boost if entire ngram is a noun phrase and likewise for verb phrase
-                ## OLD: if (TFIDF_NP_BOOST and self.text_proc.noun_phrases(ngram) == [ngram]):
                 if (TFIDF_NP_BOOST and (ngram in self.noun_phrases[doc_id])):
                     score = old_score * TFIDF_NP_BOOST
                     debug.trace(5, f"boosted NP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
-                ## OLD: if (TFIDF_VP_BOOST and self.text_proc.verb_phrases(ngram) == [ngram]):
                 if (TFIDF_VP_BOOST and (ngram in self.verb_phrases[doc_id])):
                     score = old_score * TFIDF_VP_BOOST
                     debug.trace(5, f"boosted VP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
@@ -296,7 +285,6 @@ class ngram_tfidf_analysis(object):
                     debug.trace(5, f"boosted bad-term {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                 # Update changed score
                 if old_score != score:
-                    ## BAD: top_term_info[i][1] = score
                     top_term_info[i] = (ngram, score)
                     boosted = True
             # Re-rank if scores changed
@@ -350,9 +338,6 @@ class ngram_tfidf_analysis(object):
 
             # OK
             final_top_term_info.append((ngram, score))
-            ## OLD:
-            ## if (len(final_top_term_info) == limit):
-            ##     break
         debug.trace_values(6, round_terms(final_top_term_info), "final top terms")
 
         # Sanity check on number of terms displayed
@@ -371,7 +356,7 @@ class ngram_tfidf_analysis(object):
         gen = self.pp.yield_keywords(text)
         more = True
         while (more):
-            ## DEBUG: debug.trace_fmtd(6, ".")
+            ## DEBUG: debug.trace(6, ".")
             try:
                 ngrams.append(next(gen).text)
             except StopIteration:
@@ -398,7 +383,6 @@ def simple_main_test():
     """Run test extracting ngrams from this source file"""
     debug.trace(4, "simple_main_test()")
     # Tabulate ngram occurrences
-    ## BAD: ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=2, max_ngram_size=3)
     ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE)
     all_text = system.read_entire_file(__file__)
     all_ngrams = ngram_analyzer.get_ngrams(all_text)
@@ -464,13 +448,14 @@ def main():
     REGULAR_OPT = "regular"
     GOOD_TERMS_OPT = "good-terms"
     BAD_TERMS_OPT = "bad-terms"
-    main_app = Main(description=__doc__.format(script=gh.basename(__file__),
-                                               options=f"--{REGULAR_OPT}"),
-                    boolean_options=[(SIMPLE_TEST_OPT, "Run simple canned test--default"),
-                                     (REGULAR_OPT, "Process regular input--not canned test")],
-                    text_options=[(GOOD_TERMS_OPT, "Overlap terms for boosting ngrams scores"),
-                                  (BAD_TERMS_OPT, "Overlap terms for de-boosting ngrams scores")],
-                    skip_input=False, manual_input=True)
+    main_app = Main(
+        description=__doc__.format(script=gh.basename(__file__),
+                                   options=f"--{REGULAR_OPT}"),
+        boolean_options=[(SIMPLE_TEST_OPT, "Run simple canned test--default"),
+                         (REGULAR_OPT, "Process regular input--not canned test")],
+        text_options=[(GOOD_TERMS_OPT, "Overlap terms for boosting ngrams scores"),
+                      (BAD_TERMS_OPT, "Overlap terms for de-boosting ngrams scores")],
+        skip_input=False, manual_input=True)
     regular = main_app.get_parsed_option(REGULAR_OPT)
     simple_test = main_app.get_parsed_option(SIMPLE_TEST_OPT, not regular)
     good_terms_text = main_app.get_parsed_option(GOOD_TERMS_OPT)
