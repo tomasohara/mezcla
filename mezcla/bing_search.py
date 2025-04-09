@@ -41,6 +41,7 @@ import tempfile
 from mezcla import tpo_common as tpo
 # TODO: import xml.dom.minidom
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla import system
 
 BING_KEY = (tpo.getenv_value("BING_KEY", None,
@@ -54,10 +55,13 @@ VALID_SEARCH_TYPES = {SEARCH, IMAGES, "videos", NEWS}
 DEFAULT_SEARCH_TYPE = SEARCH
 SEARCH_TYPE = system.getenv_text("SEARCH_TYPE", SEARCH)
 
-DEFAULT_TEMP_FILE = tempfile.NamedTemporaryFile().name
-TEMP_FILE = system.getenv_text("TEMP_FILE", DEFAULT_TEMP_FILE)
-DEFAULT_TEMP_DIR = tempfile.gettempdir()
-TEMP_DIR = system.getenv_text("TEMP", DEFAULT_TEMP_DIR)
+## OLD:
+## DEFAULT_TEMP_FILE = tempfile.NamedTemporaryFile().name
+## TEMP_FILE = system.getenv_text("TEMP_FILE", DEFAULT_TEMP_FILE)
+## DEFAULT_TEMP_DIR = tempfile.gettempdir()
+## TEMP_DIR = system.getenv_text("TEMP", DEFAULT_TEMP_DIR)
+TEMP_FILE = gh.TEMP_FILE
+TEMP_DIR = system.TEMP_DIR
 
 USE_CACHE = system.getenv_bool("USE_CACHE", False)
 
