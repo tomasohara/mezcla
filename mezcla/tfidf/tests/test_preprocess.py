@@ -38,13 +38,15 @@ class TestPreprocess(TestWrapper):
     @pytest.mark.xfail  # TODO: remove xfail
     def test_01_full_yield_keywords(self):
         """Tests yield_keywords"""
+        ## TODO2: remove monkeypatch since the prep class can be re-instantiated
         text = "my man fran is not a man"
         prep = THE_MODULE.Preprocessor(gramsize=2)
         debug.trace_object(5, prep)
         old_env = THE_MODULE.USE_SKLEARN_COUNTER
         # run yield_keywords with USE_SKLEARN_COUNTER = False
         # so it uses full_yield_keywords
-        self.monkeypatch.setattr(THE_MODULE, "USE_SKLEARN_COUNTER", False)
+        ## BAD: self.monkeypatch.setattr(THE_MODULE, "USE_SKLEARN_COUNTER", False)
+        prep.use_sklearn_counter = False
         full_ngrams = list(p.text for p in prep.yield_keywords(text))
         # set the env var back to previous state
         self.monkeypatch.setattr(THE_MODULE, "USE_SKLEARN_COUNTER", old_env)
@@ -55,7 +57,8 @@ class TestPreprocess(TestWrapper):
 
         #  run yield_keywords with USE_SKLEARN_COUNTER = True
         #  so it uses quick_yield_keywords
-        self.monkeypatch.setattr(THE_MODULE, "USE_SKLEARN_COUNTER", True)
+        ## BAD: self.monkeypatch.setattr(THE_MODULE, "USE_SKLEARN_COUNTER", True)
+        prep.use_sklearn_counter = True
         quick_ngrams = list(p.text for p in prep.yield_keywords(text))
         assert "my man" in quick_ngrams
         assert "not a" not in quick_ngrams
