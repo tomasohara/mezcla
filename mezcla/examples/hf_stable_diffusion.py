@@ -197,7 +197,7 @@ class StableDiffusion:
             if not my_re.search(r":\d+", self.server_url):
                 # TODO3: http://base-url/path => http://base-url:port/path
                 self.server_url += f":{server_port}"
-            else:
+            elif not server_port:
                 system.print_stderr(f"Warning: ignoring port {server_port} as already in URL {self.server_url}")
         elif self.use_hf_api:
             pass
