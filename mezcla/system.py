@@ -59,6 +59,7 @@ MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
 TEMP_DIR = None
 ENCODING = "encoding"
+USER = None
 
 ## TODO: debug.assertion(python_maj_min_version() >= 3.8, "Require Python 3.8+ for function def's with '/' or '*'")
 ## See https://stackoverflow.com/questions/9079036/how-do-i-detect-the-python-version-at-runtime
@@ -88,16 +89,17 @@ def register_env_option(var: str, description: str, default: Any) -> None:
                     v=var, dsc=description, dft=default)
     global env_options
     global env_defaults
-    ## OLD:
-    ## if env_options.get(var):
-    ##     debug.trace(4, f"Warning: redefining env entry for {var}: {env_options.get(var)=} {env_defaults.get(var)=}")
+    ok = True
     old_description = env_options.get(var)
     if (old_description is not None) and (old_description != description):
          debug.trace(4, f"Warning: redefining env option description for {var}: {old_description=} {description=}")
+         ok = False
     old_default = env_defaults.get(var)
     if  (old_default is not None) and (old_default != default):
          debug.trace(4, f"Warning: redefining env option default for {var}: {old_default=} {default=}")
-    ## TEMP: debug.trace_stack(8)
+         ok = False
+    if not ok:
+        debug.trace_stack(6)
     env_options[var] = description
     env_defaults[var] = default
     return
@@ -1506,8 +1508,15 @@ def memodict(f: Callable) -> Callable:
 def init() -> None:
     """Performs module initilization"""
     # TODO: rework global initialization to avoid the need for this
-    global TEMP_DIR
-    TEMP_DIR = getenv_text("TMPDIR", "/tmp")
+    global TEMP_DIR, USER
+    TEMP_DIR = getenv_text(
+        "TMPDIR", "/tmp",
+        desc="Temporary directory")
+    USER_DEFAULT = (os.getenv("USER") or os.getenv("USERNAME") or "user")
+    USER = getenv_text(
+        ## TODO: see if standard module provides username
+        "USER", USER_DEFAULT,
+        desc="User ID")
 
     ## TODO: # Register DEBUG_LEVEL for sake of new users
     ## test_debug_level = getenv_integer("DEBUG_LEVEL", debug.get_level(), 
@@ -1524,9 +1533,8 @@ init()
 def main(args: List[str]) -> None:
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
-    user = getenv_text("USER", "user")
     print_stderr("Warning, {u}: {f} not intended for direct invocation!".
-                 format(u=user, f=filename_proper(__file__)))
+                 format(u=USER, f=filename_proper(__file__)))
     debug.trace_fmt(4, "FYI: maximum integer is {maxi}", maxi=maxint())
     return
 
