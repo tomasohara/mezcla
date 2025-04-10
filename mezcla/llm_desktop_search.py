@@ -71,7 +71,8 @@ Helpful answer:
 NUM_SIMILAR = system.getenv_int(
     "NUM_SIMILAR", 10,
     description="Number of similar documents to show")
-HOME_DIR = system.getenv_text("HOME", description="home directory")
+## OLD: HOME_DIR = system.getenv_text("HOME", description="home directory")
+HOME_DIR = gh.HOME
 ## OLD:
 ## LLAMA_DEFAULT = gh.form_path(HOME_DIR, "Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin")
 ## LLAMA_MODEL = system.getenv_text(
