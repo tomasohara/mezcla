@@ -256,6 +256,9 @@ class DesktopSearch:
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
 
+        # show index info
+        num_chunks = len(self.db.index_to_docstore_id)
+        print(f"{num_chunks} chunks indexed")
 
     def load_index(self, for_qa=False):
         """Load index of documents"""
