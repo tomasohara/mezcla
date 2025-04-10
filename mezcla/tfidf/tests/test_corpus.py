@@ -13,6 +13,7 @@ import pytest
 # Local modules
 from mezcla.unittest_wrapper import TestWrapper
 from mezcla import debug
+from mezcla import system
 from mezcla.tfidf.preprocess import Preprocessor
 
 # Note: Two references are used for the module to be tested:
@@ -66,36 +67,49 @@ class TestPreprocess(TestWrapper):
         
     @pytest.mark.xfail  # TODO: remove xfail
     def test_03_idf_basic(self):
+        """Test IDF with basic normalization"""
         assert self.corp.idf_basic('dog') == 0
         assert self.corp.idf_basic('fox') == math.log(3/2)
         
     @pytest.mark.xfail  # TODO: remove xfail
     def test_04_idf_freq(self):
+        """Test IDF doc freq"""
         assert self.corp.idf_freq('dog') ==  1 / 3
         assert self.corp.idf_freq('fox') ==  1 / 2
 
     @pytest.mark.xfail  # TODO: remove xfail
     def test_05_idf_smooth(self):
+        """Test IDF with simple smoothing"""
         assert self.corp.idf_smooth('dog') == math.log(2)
         assert self.corp.idf_smooth('fox') == math.log(1 + 3/2)
         
     @pytest.mark.xfail  # TODO: remove xfail
     def test_06_idf_max(self):
+        """Test IDF with max TF and add-1 smoothing"""
         assert self.corp.idf_max('dog') == math.log(1 + (2/3))
         assert self.corp.idf_max('fox') == math.log(2)
     
     @pytest.mark.xfail  # TODO: remove xfail
     def test_07_idf_probabilistic(self):
-        assert self.corp.idf_probabilistic('dog') == math.log(1)
-        assert self.corp.idf_probabilistic('fox') == math.log(3/2)
+        """Test IDF via probabilistic interpretation"""
+        ## OLD:
+        ## assert self.corp.idf_probabilistic('dog') == math.log(1)
+        ## assert self.corp.idf_probabilistic('fox') == math.log(3/2)
+        # Note:
+        # IDF_prob = log((N - DF)/DF + epsilon) for N docs and DF doc. freq.
+        # dog => log((3 - 3) / 3 + epsilon); fox => log((3 - 2) / 2 + epsilon)
+        assert system.round3(self.corp.idf_probabilistic('dog')) == -13.816
+        assert system.round3(self.corp.idf_probabilistic('fox')) == -0.693
     
     @pytest.mark.xfail  # TODO: remove xfail
     def test_08_tf_idf(self):
+        """Test term frequency/inverse document frequency"""
         assert self.corp.tf_idf('dog', 'doc_3', tf_weight='basic').score == 0
         assert self.corp.tf_idf('fox', 'doc_3', tf_weight='basic').score == 0.25 * math.log(3/2)
         
     @pytest.mark.xfail  # TODO: remove xfail
     def test_09_get_keywords(self):
+        """Test ngram keywords with scores"""
         keywords = self.corp.get_keywords('doc_1')
         doc = self.corp['doc_1']
         for keyword in keywords:
