@@ -116,6 +116,7 @@ pydantic==2.9.2
 #devel# pyyaml
 #opt# scispacy
 #opt# selenium
+#opt# sentence-transformers
 #opt# Sphinx
 ## TODO?: make unittest_parametrize regular dependency
 #devel# unittest_parametrize
