@@ -66,8 +66,8 @@ from mezcla.unittest_wrapper import TestWrapper
 TL = debug.TL
 
 # Environment options
-HOME = os.getenv("HOME")
-USER = os.getenv("USER")
+HOME = gh.HOME
+USER = system.USER
 
 #-------------------------------------------------------------------------------
 # Global Variables
