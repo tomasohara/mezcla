@@ -638,9 +638,11 @@ class TestWrapper(unittest.TestCase):
         tests/template.py. Alternatively, use multiple test functions:
             https://stackoverflow.com/questions/56187165/how-to-clear-captured-stdout-stderr-in-between-of-multiple-assert-statements
         """
-        stdout, stderr = self.capsys.readouterr()
-        ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
-        debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
+        stdout, stderr = ("", "")
+        with self.capsys.disabled():
+            stdout, stderr = self.capsys.readouterr()
+            ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
+            debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
         return stdout, stderr
         
     def get_stdout(self) -> str:
