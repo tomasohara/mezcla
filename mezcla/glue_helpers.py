@@ -36,6 +36,7 @@ from collections import defaultdict
 import glob
 import inspect
 import os
+from pathlib import Path
 import re
 import shutil
 from subprocess import getoutput
@@ -114,8 +115,8 @@ DISABLE_RECURSIVE_DELETE = system.getenv_value(
     description="Disable potentially dangerous rm -r style or rmtree recursive deletions")
 PRESERVE_TEMP_FILE = None
 HOME_DIR = system.getenv_text(
-    "HOME", "~",
-    description="home directory")
+    "HOME", Path.home(),
+    description="User home directory")
 
 # Globals
 # note:
@@ -259,9 +260,16 @@ def resolve_path(
         base_dir: Optional[str] = None,
         heuristic: bool = False
     ) -> str:
-    """Resolves path for FILENAME relative to BASE_DIR if not in current directory. Note: this uses the script directory for the calling module if BASE_DIR not specified (i.e., as if os.path.dirname(__file__) passed).
-    If HEURISTIC, then also checks nearby directories such as parent for base_dir.
+    """Resolves path for FILENAME or path, relative to BASE_DIR if not in current directory. 
+    Note:
+    - This uses the script directory for the calling module if BASE_DIR not specified
+      (e.g., as if os.path.dirname(__file__) passed).
+    - If HEURISTIC, then also checks nearby directories such as parent for BASE_DIR, which
+      is useful for resolving resources for tests, which normally run of module dir 
+      (e.g., mezcla for mezcla/tests/test_template.py): see test_heuristic_resolve_path.
+    - HEURISTIC also uses find.
     """
+    ## TODO4: rename filename to sub_path for clarity
     debug.trace(5, f"in resolve_path({filename!r})")
     debug.trace_expr(6,  base_dir, heuristic)
     # TODO: give preference to script directory over current directory
