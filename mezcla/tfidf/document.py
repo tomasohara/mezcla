@@ -208,5 +208,5 @@ def main():
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
-    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone. A simple test willl be run.")
+    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone. A simple test will be run.")
     main()
