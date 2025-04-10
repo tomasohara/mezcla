@@ -632,10 +632,15 @@ class TestWrapper(unittest.TestCase):
         """Get currently captured standard output and error
         Note: Clears both stdout and stderr captured afterwards. This might
         be needed beforehand to clear capsys buffer.
+
+        Warning: The capsys clearing workaround is not foolproof, so you
+        might need to disable capsys beforehand (e.g., in setUp): see
+        tests/template.py. Alternatively, use multiple test functions:
+            https://stackoverflow.com/questions/56187165/how-to-clear-captured-stdout-stderr-in-between-of-multiple-assert-statements
         """
         stdout, stderr = self.capsys.readouterr()
         ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
-        debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", maxlen=16384)
+        debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
         return stdout, stderr
         
     def get_stdout(self) -> str:
@@ -653,7 +658,9 @@ class TestWrapper(unittest.TestCase):
         return stderr
 
     def clear_stdout_stderr(self) -> None:
-        """Clears stdout and stderr by issuing dummy call"""
+        """Clears stdout and stderr by issuing dummy call.
+        Warning: See disclaimer under get_stdout_stderr.
+        """
         _result = self.get_stdout_stderr()
         return
     #
