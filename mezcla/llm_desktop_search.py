@@ -9,9 +9,9 @@
 #
 # TODO1: ***
 # - Lorenzo: review the TODO1 items below (added during merge).
-# - Look into dropping atexit (becuase temp directories as used);
+# - Look into dropping atexit (becuase temp directories are used);
 #   or at least skip if main.KEEP_TEMP_FILES (useful for debugging).
-# - Note that --index arg changed rom binary to text with index dir.
+# - Note that --index arg changed from binary to text with index dir.
 #
 
 """
@@ -35,7 +35,8 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain_core.documents import Document
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
-from langchain_community.embeddings import HuggingFaceEmbeddings
+## OLD: from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.llms import CTransformers
 from langchain_community.vectorstores import FAISS
 
@@ -72,12 +73,7 @@ NUM_SIMILAR = system.getenv_int(
     "NUM_SIMILAR", 10,
     description="Number of similar documents to show")
 ## OLD: HOME_DIR = system.getenv_text("HOME", description="home directory")
-HOME_DIR = gh.HOME
-## OLD:
-## LLAMA_DEFAULT = gh.form_path(HOME_DIR, "Downloads/llama-2-7b-chat.ggmlv3.q8_0.bin")
-## LLAMA_MODEL = system.getenv_text(
-##     "LLAMA_MODEL", LLAMA_DEFAULT,
-##     description="path to llama model bin")
+HOME_DIR = gh.HOME_DIR
 EMBEDDING_MODEL = system.getenv_text(
     "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2",
     description="Model for sentence transformer embeddings")
@@ -89,7 +85,8 @@ QA_LLM_MODEL = system.getenv_text(
 QA_LLM_TYPE = system.getenv_text(
     "QA_LLM_TYPE", "llama",
     description="Type of transformer model for Q&A, such as llama or gpt2")
-ALLOW_UNSAFE_MODELS_DEFAULT = None if (TORCH_DEVICE != "mps") else True
+## OLD: ALLOW_UNSAFE_MODELS_DEFAULT = None if (TORCH_DEVICE != "mps") else True
+ALLOW_UNSAFE_MODELS_DEFAULT = True
 ALLOW_UNSAFE_MODELS = system.getenv_value(
     "ALLOW_UNSAFE_MODELS", ALLOW_UNSAFE_MODELS_DEFAULT,
     description="Whether to allow loading of possibly unsafe Pickle models")
@@ -111,15 +108,8 @@ CONTEXT_LENGTH = system.getenv_int(
 GPU_LAYERS = system.getenv_int(
     "GPU_LAYERS", (0 if (TORCH_DEVICE == "cpu") else -1),
     description="Number of layers to use for CTransfomers model")
-## TODO
-## X = system.getenv_int(
-##     "X", X,
-##     description="X")
-
-
 INDEX_STORE_DIR = system.getenv_text(
     # note: changed default to current directory to avoid script dir being reused
-    ## OLD: "INDEX_STORE_DIR", gh.form_path(gh.dirname(__file__), "faiss"),
     "INDEX_STORE_DIR", "faiss",
     description="path to store index data base")
 INDEX_ONLY_RECENT = system.getenv_bool(
@@ -141,13 +131,6 @@ def get_file_mod_fime(path: str) -> float:
 def get_last_modified_date(iterable: Iterable) -> float:
     """return the newest modification date as a float, 
        or -1 if iterable is empty or files don't exist"""
-    ## OLD:
-    ## times = map(get_file_mod_fime, iterable)
-    ## result = None
-    ## for time in times: 
-    ##     if time is None:
-    ##         continue
-    ##     result = time if result is None or time > result else result
     result = -1
     if iterable:
         result = max(map(get_file_mod_fime, iterable))
@@ -171,14 +154,20 @@ def correct_metadata(doc: Document, base_dir: str) -> Document:
     debug.trace_expr(4, new_source)
     doc_metadata['source'] = new_source
     doc.metadata = doc_metadata
+    debug.trace(5, f"correct_metadata({doc!r}, {base_dir!r}) => {doc!r}")
     return doc
 
 def convert_to_txt(in_file: str) -> str:
     """reads non-txt files and returns the text inside them"""
-    if in_file.endswith('.html'):
-        text = html_utils.html_to_text(system.read_file(in_file))
-    else:
-        text = extract_document_text.document_to_text(in_file)
+    text = ""
+    try:
+        if in_file.endswith('.html'):
+            text = html_utils.html_to_text(system.read_file(in_file))
+        else:
+            text = extract_document_text.document_to_text(in_file)
+    except:
+        debug.trace_exception(6, "convert_to_txt")
+    debug.trace(7, f"convert_to_txt({in_file}) => {text!r}")
     return text
 
 class DesktopSearch:
@@ -198,7 +187,7 @@ class DesktopSearch:
 
     def index_dir(self, dir_path):
         """Index files at DIR_PATH"""
-        ## TODO: look into indexing files from buffers rather than external files
+        ## TODO4: look into indexing files from buffers rather than external files
         debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
 
         # Make sure target index directory exists
@@ -224,9 +213,6 @@ class DesktopSearch:
         # filter files by modification time if needed
         # note: The modification time is -1 
         modif_time = get_last_modified_date(system.get_directory_filenames(self.index_store_dir))
-        ## BAD:
-        ## if modif_time is not None and INDEX_ONLY_RECENT:
-        ##     filtered_files = filter(system.get_file_modification_time, list_files)
         if INDEX_ONLY_RECENT:
             filtered_files = [f for f in list_files if (get_file_mod_fime(f) > modif_time)]
         
@@ -245,7 +231,7 @@ class DesktopSearch:
         # interpret information in the documents
         loader = DirectoryLoader(temp_path, glob="*.txt", loader_cls=TextLoader)
         documents = loader.load()
-        debug.trace_expr(5, len(documents), documents)
+        debug.trace_expr(5, len(documents), documents, max_len=1024)
         splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE,
                                                   chunk_overlap=CHUNK_OVERLAP)
         # documents are splitted to a maximum of 500 characters per chunk (by default)
@@ -275,7 +261,6 @@ class DesktopSearch:
         """Load index of documents"""
         debug.trace(4, "DesktopSearch.load_index()")
         # load the language model
-        ## OLD: config = {'max_new_tokens': 256, 'temperature': 0.01}
         config = {'max_new_tokens': MAX_NEW_TOKENS, 'temperature': TEMPERATURE,
                   'context_length': CONTEXT_LENGTH}
         if for_qa:
@@ -336,7 +321,10 @@ class DesktopSearch:
         if not self.db:
             self.load_index()
         docs = self.db.similarity_search_with_score(query=query, k=num)
-        print(docs)
+        ## OLD: print(docs)
+        print("Similar documents:")
+        for doc in docs:
+            print(doc)
         gpu_utils.trace_gpu_usage()
 
 class Script(Main):
