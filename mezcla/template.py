@@ -59,6 +59,11 @@ TL = debug.TL
 TODO_FUBAR = system.getenv_bool(
     "TODO_FUBAR", False,
     description="TODO:Fouled Up Beyond All Recognition processing")
+## TODO
+## X = system.getenv_int(
+##     "X", X,
+##     description="X")
+
 
 ## TODO: Use helper class for main logic
 ## class Helper:
