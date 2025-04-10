@@ -61,7 +61,7 @@ else:
 ## REGEX_TRACE_LEVEL = system.getenv_int("REGEX_TRACE_LEVEL", debug.QUITE_DETAILED,
 ##                                       "Trace level for my_regex")
 REGEX_DEBUG_LEVEL = system.getenv_int(
-    "REGEX_TRACE_LEVEL", debug.QUITE_DETAILED,
+    "REGEX_DEBUG_LEVEL", debug.QUITE_DETAILED,
     desc="Alias for REGEX_TRACE_LEVEL")
 REGEX_TRACE_LEVEL = system.getenv_int(
     "REGEX_TRACE_LEVEL", REGEX_DEBUG_LEVEL,
