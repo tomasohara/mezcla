@@ -93,6 +93,14 @@ class TestIt(TestWrapper):
     ##
     ## def setUp(self):
     ##     """Per-test setup"""
+    ##     #
+    ##     # Warning: *** to minimize capsys contamination due to pre-test tracing, 
+    ##     # use the following context (TODO: feel free to delete warning):
+    ##     #    with self.capsys.disabled():
+    ##     #       debug.trace(...)
+    ##     #       ...
+    ##     # See https://docs.pytest.org/en/7.1.x/how-to/capture-stdout-stderr.html
+    ##     #
     ##     debug.trace(6, f"TestIt.setUp(); self={self}")
     ##     # note: must do parent processing first (e.g., for temp file support)
     ##     super().setUp()
@@ -123,6 +131,7 @@ class TestIt(TestWrapper):
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_whatever(self):
         """TODO: flesh out test for whatever (capsys-like)"""
+        # Note: you might need to disable tracing during setUp (see notes above).
         debug.trace(4, f"TestIt.test_03_whatever(); self={self}")
         THE_MODULE.TODO_whatever()
         captured = self.get_stderr()
