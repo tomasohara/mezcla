@@ -7,11 +7,10 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_llm_desktop_search.py
 #
-# TODO1 By Lroenzo:
+# TODO1:
 # - Try to minize usage of run_script to just one or two tests:
 #   it is an older style of testing. It is better to use DesktopSearch
 #   class directly. More details follow in the warning.
-# - See other TODO1's below (i.e., highest priority todo's).
 #
 # Warning:
 # - The use of run_script as in test_01_data_file is an older style of testing.
@@ -19,9 +18,9 @@
 #   of the Script class based on Main, which is mainly for argument parsing.
 #   (For an example of this, see python_ast.py and tests/tests_python_ast.py.)
 # - Moreover, debugging tests with run_script is complicated because a separate
-#   process is involved (e.g., with separate environment variables.)
+#   process is involved (e.g., with separate environment variables).
 # - See discussion of SUB_DEBUG_LEVEL in unittest_wrapper.py for more info.
-
+#
 
 """Tests for llm_desktop_search module"""
 
@@ -43,18 +42,26 @@ from mezcla import system
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        module instance (e.g,, <module 'mezcla.main' from '/home/testuser/Mezcla/mezcla/main.py'>
 #    TestIt.script_module:              dotted module path (e.g., "mezcla.main")
-import mezcla.llm_desktop_search as THE_MODULE
-get_last_modified_date = THE_MODULE.get_last_modified_date
+try:
+    import mezcla.llm_desktop_search as THE_MODULE
+    get_last_modified_date = THE_MODULE.get_last_modified_date
+except:
+    THE_MODULE = None
+    get_last_modified_date = None
+    debug.trace_exception(3, "llm_desktop_search import")
 
 #------------------------------------------------------------------------
 
+
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    INDEX_STORE_DIR = THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator())
+    INDEX_STORE_DIR = (THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator())
+                       if THE_MODULE else None)
     use_temp_base_dir = True            # needed for self.temp_base to be a dir
     
-    # set a temp dir to test index indexingL setUpClass
+    # set a temp dir to test index indexing setUpClass
     # Note: index_temp_dir needs to be unique
     index_temp_dir = None
     index_parent = None
@@ -92,15 +99,16 @@ class TestIt(TestWrapper):
         file_dir = gh.real_path(gh.dirname(__file__))
         repo_base_dir = gh.form_path(file_dir, "..", "..")
         
-        self.run_script(options=f"--index {repo_base_dir}",
-                        env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")        
+        output = self.run_script(options=f"--index {repo_base_dir}",
+                                 env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
+        self.do_assert(my_re.search(r"\d\d chunks indexed", output))
         index_files = system.read_directory(self.index_temp_dir)
         
         # assert INDEX_STORE_DIR is not empty
         self.do_assert(index_files != [])
-        # self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
+        ## OLD: # self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         
-        #save modified date for comparing later 
+        # save modified date for comparing later 
         prev_date = get_last_modified_date(system.get_directory_filenames(self.index_temp_dir, just_regular_files=True))
         
         # test that indexing with an already existing DB works
