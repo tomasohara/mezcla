@@ -10,3 +10,7 @@ __version__ = "1.6"
 ## import os
 ## import sys;
 ## sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from mezcla.tfidf.corpus import MIN_NGRAM_SIZE, MAX_NGRAM_SIZE
+
+__all__ = ["MIN_NGRAM_SIZE", "MAX_NGRAM_SIZE"]
