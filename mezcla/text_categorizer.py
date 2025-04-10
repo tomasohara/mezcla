@@ -55,6 +55,7 @@ from mezcla import system
 from mezcla.system import (
     getenv_bool, getenv_float, getenv_int, getenv_text,
 )
+from mezcla.tfidf import MIN_NGRAM_SIZE, MAX_NGRAM_SIZE
 
 #................................................................................
 # Constants (e.g., environment-based options)
@@ -131,8 +132,11 @@ GPU_DEVICE = system.getenv_value("GPU_DEVICE", None,     # TODO: clarify value t
 # ex: min/max_df
 TFIDF_MAX_TERMS = getenv_int("MAX_TERMS", None,
                              "Maximum number of terms in TF/IDF matrix")
-TFIDF_MIN_NGRAM = getenv_int("MIN_NGRAM_SIZE", None)
-TFIDF_MAX_NGRAM = getenv_int("MAX_NGRAM_SIZE", None)
+## OLD:
+## TFIDF_MIN_NGRAM = getenv_int("MIN_NGRAM_SIZE", None)
+## TFIDF_MAX_NGRAM = getenv_int("MAX_NGRAM_SIZE", None)
+TFIDF_MIN_NGRAM = MIN_NGRAM_SIZE
+TFIDF_MAX_NGRAM = MAX_NGRAM_SIZE
 TFIDF_MIN_DF = getenv_float("MIN_DF", None)
 TFIDF_MAX_DF = getenv_float("MAX_DF", None)
 TFIDF_CHAR_NGRAMS = getenv_bool("CHAR_NGRAMS", None)
