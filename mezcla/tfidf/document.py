@@ -127,7 +127,9 @@ class Document(object):
         return tf_raw
 
     def tf_log(self, ngram):
-        """The log frequency of an ngram in a document."""
+        """The log (relative) frequency of an ngram in a document.
+        Note: uses add-1 smoothing
+        """
         # TODO: is this formula right? Wikipedia is often wrong...
         return 1 + math.log(self.tf_raw(ngram))
 
