@@ -208,17 +208,21 @@ def getenv_text(
         description: str = "",
         desc: str = "",
         helper: bool = False,
-        update: Optional[bool] = None
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None
     ) -> str:
     """Returns textual value for environment variable VAR (or DEFAULT value, excluding None).
     Notes:
     - Use getenv_value if default can be None, as result is always a string.
     - HELPER indicates that this call is in support of another getenv-type function (e.g., getenv_bool), so that tracing is only shown at higher verbosity level (e.g., 6 not 5).
     - DESCRIPTION used for get_environment_option_descriptions.
-    - If UPDATE, then the environment is modified with value (e.g., based on default)."""
+    - If UPDATE, then the environment is modified with value (e.g., based on default).
+    - If SKIP_REGISTER, the variable info is not recorded (see env_options global).
+    """
     # Note: default is empty string to ensure result is string (not NoneType)
     ## TODO: add way to block registration
-    register_env_option(var, description or desc, default)
+    if not skip_register:
+        register_env_option(var, description or desc, default)
     if default is None:
         debug.trace(4, f"Warning: getenv_text treats default None as ''; consider using getenv_value for '{var}' instead")
         default = ""
@@ -241,11 +245,13 @@ def getenv_value(
         default: Optional[Any] = None,
         description: str = "",
         desc: str = "",
-        update: Optional[bool] = None
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None
     ) -> Any:
-    """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE"""
+    """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE. (See getenv_text for option details.)"""
     # EX: getenv_value("bad env var") => None
-    register_env_option(var, description or desc, default)
+    if not skip_register:
+        register_env_option(var, description or desc, default)
     value = os.getenv(var, default)
     if update:
         setenv(var, value, normalize=True)
@@ -263,7 +269,8 @@ def getenv_bool(
         description: str = "",
         desc: str = "",
         allow_none: Optional[bool] = False, 
-        update: Optional[bool] = None
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None
     ) -> bool:
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note:
@@ -275,7 +282,7 @@ def getenv_bool(
     # EX: getenv_bool("bad env var", None, allow_none=True) => True
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
-    value_text = getenv_value(var, description=description, desc=desc, default=default, update=update)
+    value_text = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register)
     if (isinstance(value_text, str) and value_text.strip()):
         bool_value = to_bool(value_text)
     if not isinstance(bool_value, bool):
@@ -299,7 +306,8 @@ def getenv_number(
         desc: str = "",
         allow_none: Optional[bool] = False, 
         helper: bool = False,
-        update: Optional[bool] = None
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None
     ) -> float:
     """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note: Return is a float unless ALLOW_NONE; defaults to -1.0
@@ -308,7 +316,7 @@ def getenv_number(
     # TODO: def getenv_number(...) -> Optional(float):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
-    value = getenv_value(var, description=description, desc=desc, default=default, update=update)
+    value = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register)
     if (isinstance(value, str) and value.strip()):
         debug.assertion(is_number(value))
         num_value = to_float(value)
@@ -328,13 +336,14 @@ def getenv_int(
         description: str = "",
         desc: str = "",
         allow_none: bool = False,
-        update: Optional[bool] = None
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None
     ) -> int:
     """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
     Note: Return is an integer unless ALLOW_NONE; defaults to -1
     """
     # EX: getenv_int("?", default=1.5) => 1
-    value = getenv_number(var, description=description, desc=desc, default=default, allow_none=allow_none, helper=True, update=update)
+    value = getenv_number(var, description=description, desc=desc, default=default, allow_none=allow_none, helper=True, update=update, skip_register=skip_register)
     if (not isinstance(value, int)):
         ## OLD: if ((value is not None) and (not allow_none)):
         if (not ((value is None) and allow_none)):
@@ -1043,7 +1052,7 @@ def path_separator(sysname: Optional[str] = None):
 
 def form_path(*filenames: str) -> str:
     """Wrapper around os.path.join over FILENAMEs (with tracing)"""
-    debug.assertion(not any(f.startswith(path_separator()) for f in filenames[1:]))
+    ## OLD: debug.assertion(not any(f.startswith(path_separator()) for f in filenames[1:]))
     path = os.path.join(*filenames)
     debug.trace_fmt(6, "form_path({f}) => {p}", f=tuple(filenames), p=path)
     return path
