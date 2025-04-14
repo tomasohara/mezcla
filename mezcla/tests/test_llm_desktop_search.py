@@ -99,9 +99,10 @@ class TestIt(TestWrapper):
         file_dir = gh.real_path(gh.dirname(__file__))
         repo_base_dir = gh.form_path(file_dir, "..", "..")
         
-        output = self.run_script(options=f"--index {repo_base_dir}",
-                                 env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
-        self.do_assert(my_re.search(r"\d\d chunks indexed", output))
+        init_output = self.run_script(options=f"--index {repo_base_dir}",
+                                      env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
+        self.do_assert(my_re.search(r"(\d\d+) chunks indexed", init_output))
+        num_initial_chunks = int(my_re.group(1))
         index_files = system.read_directory(self.index_temp_dir)
         
         # assert INDEX_STORE_DIR is not empty
@@ -113,9 +114,12 @@ class TestIt(TestWrapper):
         
         # test that indexing with an already existing DB works
         resource_dir = gh.form_path(file_dir, "resources")
-        self.run_script(options=f"--index {resource_dir}",
-                        env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
-        
+        revised_output = self.run_script(options=f"--index {resource_dir}",
+                                         env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
+        self.do_assert(my_re.search(r"(\d\d+) chunks indexed", init_output))
+        num_final_chunks = int(my_re.group(1))
+        self.do_assert(num_final_chunks > num_initial_chunks)
+       
         # get modification time and check if it changed
         new_date = get_last_modified_date(system.get_directory_filenames(self.index_temp_dir, just_regular_files=True))
         self.do_assert(new_date > prev_date)
