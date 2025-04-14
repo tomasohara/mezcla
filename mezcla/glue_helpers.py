@@ -135,6 +135,7 @@ PID_BASENAME = f"temp-{PID}"
 GLOBAL_TEMP_FILE = os.path.join(TMP, PID_BASENAME)
 TEMP_LOG_FILE = os.path.join(TMP, f"{GLOBAL_TEMP_FILE}.log")
 TEMP_SCRIPT_FILE = os.path.join(TMP, f"{GLOBAL_TEMP_FILE}.script")
+initialized = False
 
 #------------------------------------------------------------------------
 
@@ -885,7 +886,8 @@ def delete_file(filename: StrOrBytesPath) -> bool:
         ok = True
         debug.trace_fmtd(6, "remove{f} => {r}", f=filename, r=ok)
     except OSError:
-        debug.trace(5, "Exception during deletion of {filename}: " + str(sys.exc_info()))
+        ## OLD: debug.trace(5, "Exception during deletion of {filename}: " + str(sys.exc_info()))
+        debug.trace_exception(5, f"deletion of {filename}")
     return ok
 
 
@@ -1024,6 +1026,7 @@ def init() -> None:
     Warning: The environment is used to reset following globals:
         PRESERVE_TEMP_FILE, TEMP_FILE, TEMP_LOG_FILE, TEMP_SCRIPT_FILE
     """
+    global initialized
     # See https://stackoverflow.com/questions/1590608/how-do-i-forward-declare-a-function-to-avoid-nameerrors-for-functions-defined
     debug.trace(5, "glue_helpers.init()")
     ## OLD: temp_filename = f"{PID_BASENAME}.list"
@@ -1035,7 +1038,7 @@ def init() -> None:
     # Re-initialize flag blocking TEMP_FILE init from TEMP_BASE
     global PRESERVE_TEMP_FILE
     PRESERVE_TEMP_FILE = system.getenv_bool(
-        "PRESERVE_TEMP_FILE", None, allow_none=True,
+        "PRESERVE_TEMP_FILE", None, allow_none=True, skip_register=initialized,
         desc="Retain value of TEMP_FILE even if TEMP_BASE set--see run and init below as well as unittest_wrapper.py")
 
     # note: Normally TEMP_FILE gets overriden when TEMP_BASE set. However,
@@ -1049,18 +1052,19 @@ def init() -> None:
     debug.trace_expr(5, system.getenv("TEMP_FILE"))
     global TEMP_FILE
     TEMP_FILE = system.getenv_value(
-        "TEMP_FILE", temp_file_default,
+        "TEMP_FILE", temp_file_default, skip_register=initialized,
         description="Debugging override for temporary filename: avoid if possible")
     debug.trace_expr(5, system.getenv("TEMP_FILE"))
     #
     global TEMP_LOG_FILE
     TEMP_LOG_FILE = system.getenv_text(
-        "TEMP_LOG_FILE", get_temp_file() + "-log",
+        "TEMP_LOG_FILE", get_temp_file() + "-log", skip_register=initialized,
         description="Log file for stderr such as for issue function")
     global TEMP_SCRIPT_FILE
     TEMP_SCRIPT_FILE = system.getenv_text(
-        "TEMP_SCRIPT_FILE", get_temp_file() + "-script",
+        "TEMP_SCRIPT_FILE", get_temp_file() + "-script", skip_register=initialized,
         description="File for command invocation")
+    initialized = True
 #
 init()
 
