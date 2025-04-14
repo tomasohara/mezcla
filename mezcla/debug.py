@@ -775,7 +775,9 @@ if __debug__:
         # TODO: include full stack trace (e.g., at LEVEL + 2)
         ## system.trace_stack(level + 2)
         return
-
+    #
+    # Note: alias to match print_exception_info in system
+    trace_exception_info = trace_exception
     
     def raise_exception(level: IntOrTraceLevel = 1):
         """Raise an exception if debugging (at specified trace LEVEL)
