@@ -116,9 +116,9 @@ class TestIt(TestWrapper):
         assert(message in captured_trace)
         
         # Make sure stuff properly stripped (i.e., message arg and comment)
-        assert(not "message" in captured_trace)
-        assert(not "Orwell" in captured_trace)
-        assert(not "sti.do_assert" in captured_trace)
+        assert("message" not in captured_trace)
+        assert("Orwell" not in captured_trace)
+        assert("sti.do_assert" not in captured_trace)
         return
 
     @pytest.mark.skipif(not __debug__, reason="Must be under __debug__")
@@ -162,7 +162,7 @@ class TestIt(TestWrapper):
         assert(my_re.search(r" \^\n.* \^\^\n", captured_trace, flags=my_re.DOTALL))
         
         # Make sure stuff properly stripped (i.e., message arg and comment)
-        assert(not "sti.do_assert_equals" in captured_trace)
+        assert("sti.do_assert_equals" not in captured_trace)
         return
 
     @pytest.mark.xfail
