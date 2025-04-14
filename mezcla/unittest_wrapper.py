@@ -321,6 +321,7 @@ class TestWrapper(unittest.TestCase):
         Note: *** Deprecated method *** (see get_testing_module_name)
         """
         debug.trace(3, "Warning: in deprecrated derive_tested_module_name")
+        debug.trace(5, f"TestWrapper.derive_tested_module_name({test_filename})")
         module = os.path.split(test_filename)[-1]
         module = my_re.sub(r".py[oc]?$", "", module)
         module = my_re.sub(r"^test_", "", module)
@@ -334,6 +335,7 @@ class TestWrapper(unittest.TestCase):
         Note: used as follows (see tests/template.py):
             script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
         """
+        debug.trace(6, f"TestWrapper.get_testing_module_name({test_filename}, {module_object})")
         # Note: Used to resolve module name given THE_MODULE (see template).
         module_name = os.path.split(test_filename)[-1]
         module_name = my_re.sub(r".py[oc]?$", "", module_name)
@@ -639,10 +641,14 @@ class TestWrapper(unittest.TestCase):
             https://stackoverflow.com/questions/56187165/how-to-clear-captured-stdout-stderr-in-between-of-multiple-assert-statements
         """
         stdout, stderr = ("", "")
-        with self.capsys.disabled():
-            stdout, stderr = self.capsys.readouterr()
-            ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
-            debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
+        try:
+            with self.capsys.disabled():
+                stdout, stderr = self.capsys.readouterr()
+                ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
+                debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
+        except:
+            # note: trace level high so as not to affect normal testing
+            debug.trace_exception(7, "get_stdout_stderr")
         return stdout, stderr
         
     def get_stdout(self) -> str:
