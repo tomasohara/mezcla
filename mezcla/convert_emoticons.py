@@ -1,13 +1,17 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Convert emoticons into names (or just strips them)
+# Convert emoticons/emoji into names (or just strips them)
 #
 # Example Input:
 #   Nothing to do 😴
 #
 # Example output:
 #   Nothing to do [sleeping face]
+#
+# Note:
+# - via https://www.dictionary.com/compare-words/emoticon-vs-emoji:
+#   emoji comes from a Japanese term meaning “pictograph,” from e, “picture, drawing,” and moji, “(written) character, letter.”
 #
 # TODO2:
 # - Handle variational selectors as in "‼️" (e.g., U+FE0F). See
@@ -32,9 +36,7 @@ import unicodedata
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
-## TODO: from mezcla.my_regex import my_re
 from mezcla import system
-## TODO2: streamline imports by exposing common functions, etc. in mezcla
 
 # Constants
 TL = debug.TL
@@ -56,13 +58,17 @@ AUGMENT_EMOTICONS = system.getenv_bool(
 class ConvertEmoticons:
     """Support for stripping those pesky emoticons from text (or replacing with description)"""
     OTHER_SYMBOL = 'So'
+    BTL = 5                             # base trace level
 
-    def __init__(self, replace=None, strip=None, replacement=None, augment=None):
+    def __init__(self, replace=None, strip=None, replacement=None, augment=None, base_trace_level=None):
         """Initializer: sets defaults for convert method
         Note: see convert() for argument descriptions
         """
         # TODO3: rework to remove non-standard functional interface for class
-        debug.trace_expr(7, replace, strip, replacement, augment, prefix="in ConvertEmoticons.__init__: ")
+        if base_trace_level is not None:
+            self.BTL = base_trace_level
+        debug.trace_expr(self.BTL + 2, replace, strip, replacement, augment,
+                         prefix="in ConvertEmoticons.__init__: ")
         if strip is None:
             strip = STRIP_EMOTICONS
         if replace is None:
@@ -75,7 +81,7 @@ class ConvertEmoticons:
         self.strip = strip
         self.replacement = replacement
         self.augment = augment
-        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+        debug.trace_object(self.BTL, self, label=f"{self.__class__.__name__} instance")
     #
     # EX: ce = ConvertEmoticons(); (ce.strip != cs.replace) => True
     # EX: ce.convert()("❌ Failure") => "[cross mark] Failure"
@@ -89,7 +95,8 @@ class ConvertEmoticons:
         # EX: ce.convert("✅ Success") => "[checkmark] Success"
         # EX: ce.convert("✅ Success", augment=True) => "✅ [checkmark] Success"
         # EX: ce.convert("año") => "año"       # ignore diacritic; Spanish for year
-        debug.trace_expr(6, replace, strip, replacement, augment, prefix="in ce.convert: text=_; ")
+        debug.trace_expr(self.BTL + 1, replace, strip, replacement, augment,
+                         prefix="in ce.convert: text=_; ")
         debug.assertion(text is not None)
         debug.assertion(not (replace and strip))
         debug.assertion(not (augment and strip))
@@ -101,7 +108,8 @@ class ConvertEmoticons:
             replacement = self.replacement
         if augment is None:
             augment = self.augment
-        debug.trace_expr(5, replace, strip, replacement, augment, prefix="ce.convert: text=_; ")
+        debug.trace_expr(self.BTL, replace, strip, replacement, augment,
+                         prefix="ce.convert: text=_; ")
         in_text = text
         text = (text or "")
         #
@@ -114,7 +122,7 @@ class ConvertEmoticons:
             chars.append(new_ch)
         text = "".join(chars)
         #
-        level = (4 if (text != in_text) else 6)
+        level = (self.BTL if (text != in_text) else self.BTL + 1)
         debug.trace(level, f"ce.convert({in_text!r}) => {text!r}")
         return text
     #
