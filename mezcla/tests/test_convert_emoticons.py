@@ -8,18 +8,12 @@
 # - input:
 #
 #   # Example Input:
-#   Nothing to do 😴
-#
-#   # Example output:
-#   Nothing to do [sleeping face]
+#   Nothing to test 😸
 #
 # - output:
 #
-#   # Example Input:
-#   Nothing to do [sleeping face]
-#
 #   # Example output:
-#   Nothing to do [sleeping face]
+#   Nothing to test [grinning cat face with smiling eyes]
 #
 
 """Tests for convert_emoticons module"""
@@ -48,7 +42,7 @@ D = system.path_separator()
 class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    script_file = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    script_file = TestWrapper.get_module_file_path(__file__)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     ## TEST: @trap_exception
@@ -57,16 +51,22 @@ class TestIt(TestWrapper):
         debug.trace(4, f"TestIt.test_over_script(); self={self}")
         output = self.run_script(options="", data_file=__file__)
         # the example usage should have input emoticon changed to match output
-        script_contents = system.read_file(self.script_file)
-        debug.trace_expr(6, script_contents, max_len=8192)
-        # ex (see above): "# Input:\n#   Nothing to do 😴\n# Output:\n#   Nothing to do [sleeping face]"
-        self.do_assert(not my_re.search(r"(\[sleeping face\]).*\1", script_contents, flags=my_re.DOTALL))
-        # ex (see above): "# Input:\n#   Nothing to do [sleeping face]\n#\n# Output:\n#   Nothing to do [sleeping face]"
-        self.do_assert(my_re.search(r"(\[sleeping face\]).*\1", output, flags=my_re.DOTALL))
+        # note: the example comments use ... for brevity and to simply regex matching
+        test_script_contents = system.read_file(__file__)
+        debug.trace_expr(6, test_script_contents, max_len=8192)
+        char_desc = "grinning cat face with smiling eyes"
+        # ex (see above): "# Input:\n#   Nothing to test 😴\n# Output:\n#   Nothing to test [Grinning Cat ...]"
+        self.do_assert(not my_re.search(fr"(\[{char_desc}\]).*\1",
+                                        test_script_contents, flags=my_re.DOTALL|my_re.IGNORECASE))
+        # ex (see above): "# Input:\n#   Nothing to test [grinning...]\n#\n# Output:\n#   Nothing to test [Grinning...]"
+        self.do_assert(my_re.search(fr"(\[{char_desc}\]).*\1", output,
+                                    flags=my_re.DOTALL|my_re.IGNORECASE))
 
         # Make sure no emoticon byte sequences in UTF-8 sequences for output, although in script.
         # Note: Uses broader UTF8-based tests than Unicode character DB used in script.
         # Also, regex is done over byte sequences to account for misformed input.
+        ## TODO3: use testing file for data not the tested script
+        script_contents = system.read_file(self.script_file)
         loose_emoticon_regex = br"[\xE0-\xFF][\x80-\xFF]{1,3}"
         # ex: "# EX: convert_emoticons("天気") => "天気"   # Japanese for weather"
         self.do_assert(my_re.search(loose_emoticon_regex, script_contents.encode()))
