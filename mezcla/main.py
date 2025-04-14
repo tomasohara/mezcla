@@ -139,9 +139,10 @@ TRACK_PAGES = getenv_bool("TRACK_PAGES", False,
                           "Track page boundaries by form feed--\\f or ^L")
 RETAIN_FORM_FEED = getenv_bool("RETAIN_FORM_FEED", False,
                                "Include formfeed (\\f) at start of each segment")
-DEFAULT_FILE_BASE = my_re.sub(r".py\w*$", "", gh.basename(__file__))
-FILE_BASE = system.getenv_text("FILE_BASE", DEFAULT_FILE_BASE,
-                               "Basename for output files including dir")
+## OLD:
+## DEFAULT_FILE_BASE = my_re.sub(r".py\w*$", "", gh.basename(__file__))
+## FILE_BASE = system.getenv_text("FILE_BASE", DEFAULT_FILE_BASE,
+##                                "Basename for output files including dir")
 SHOW_ENV_OPTIONS = system.getenv_bool("ENV_USAGE", debug.detailed_debugging(),
                                       "Include environment options in usage")
 # TODO: Put following in common module
