@@ -147,12 +147,18 @@ class regex_wrapper():
         ## ALT: check_regex = r"([^\{]|^)\{([[A-Z][A-Z0-9]*[^\{\}]+)\}([^\}]|$)"
         check_regex = r"([^{]|^){[A-Z][A-Z0-9]*[^{}]+}([^}]|$)"
         if isinstance(regex, bytes):
-            regex = regex.encode()
+            ## OLD: regex = regex.encode()
+            check_regex = check_regex.encode()
         if REGEX_WARNINGS:
             debug.trace_expr(self.TRACE_LEVEL + 1, check_regex, delim="\n")
             match = re.search(check_regex, regex, flags=re.IGNORECASE)
-            if match and re.search(r"[\*\+\?]", match.string):
-                match = None
+            if match:
+                # Ignore regex operators within f-string replacement
+                re_operator_pattern = r"[\*\+\?]"
+                if isinstance(match.string, bytes):
+                    re_operator_pattern = re_operator_pattern.encode()
+                if re.search(re_operator_pattern, match.string):
+                    match = None
             if match:
                 system.print_error(f"Warning: potentially unresolved f-string in {regex!r} at {match.start(0)}")
 
