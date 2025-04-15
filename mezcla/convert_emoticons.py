@@ -3,7 +3,7 @@
 #
 # Convert emoticons/emoji into names (or just strips them)
 #
-# Example Input:
+# Example Input (n.b., U+1f634 is sleeping-face character):
 #   Nothing to do 😴
 #
 # Example output:
@@ -23,8 +23,8 @@ Replace emoticons with name (or remove entirely)
 
 Sample usage:
 
-   echo 'github-\U0001F634_Transformers' | {script} -
-"""                          # 🤗 (HuggingFace logo)
+   echo 'github-\U0001f917_Transformers' | {script} -
+"""                          # 🤗 (HuggingFace logo: U+1f917)
 
 # Standard modules
 import unicodedata
@@ -84,7 +84,7 @@ class ConvertEmoticons:
         debug.trace_object(self.BTL, self, label=f"{self.__class__.__name__} instance")
     #
     # EX: ce = ConvertEmoticons(); (ce.strip != cs.replace) => True
-    # EX: ce.convert()("❌ Failure") => "[cross mark] Failure"
+    # EX: ce.convert()("❌ Failure") => "[cross mark] Failure"  # U+274c
 
     def convert(self, text=None, replace=None, strip=None, replacement=None, augment=None):
         """Either REPLACE emotions in TEXT with Unicode name, STRIP them entirely, or AUGMENT
@@ -92,7 +92,7 @@ class ConvertEmoticons:
         - REPLACEMENT can be used for subsituted text (e.g., instead of "").
         - with AUGMENT the emoticon is still included (a la REPLACE plus STRIP).
         """
-        # EX: ce.convert("✅ Success") => "[checkmark] Success"
+        # EX: ce.convert("✅ Success") => "[checkmark] Success"  # U+2705
         # EX: ce.convert("✅ Success", augment=True) => "✅ [checkmark] Success"
         # EX: ce.convert("año") => "año"       # ignore diacritic; Spanish for year
         debug.trace_expr(self.BTL + 1, replace, strip, replacement, augment,
@@ -126,10 +126,10 @@ class ConvertEmoticons:
         debug.trace(level, f"ce.convert({in_text!r}) => {text!r}")
         return text
     #
-    # EX: ce.convert("✅ Success", strip=True) => " Success"
+    # EX: ce.convert("✅ Success", strip=True) => " Success"   # U+2705 [White Heavy Check Mark]
     # EX: ce.convert("✅ Success", strip=True, replacement="_") => "_ Success"
     # note: ignores common language characters (e.g., CJK and ISO-8859)
-    # EX: ce.convert("天気") => "天気"   # Japanese for weather
+    # EX: ce.convert("天気") => "天気"   # Japanese for weather (U+5929 U+6c17)
     # EX: ce.convert("¿Hablas español?") => "¿Hablas español?"  # Spanish for "Do you speak Spanish"
 
 #-------------------------------------------------------------------------------
