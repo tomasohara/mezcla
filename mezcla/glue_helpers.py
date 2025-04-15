@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Utility functions for writing glue scripts, such as implementing functionality
 # available in Unix scripting (e.g., basename command).

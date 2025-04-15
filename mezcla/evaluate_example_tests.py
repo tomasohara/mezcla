@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # 
 # Evaluate '#: EX' tests placed in python source. This reformats EX comments
 # into the doctest text format. For example,

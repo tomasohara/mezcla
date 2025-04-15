@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Derives a language model over the input text by tabulating n-grams in the text and
 # then applying smoothing to the resulting counts. This is designed for the KenLM toolkit:

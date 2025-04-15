@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Support for performing Term Frequency (TF) Inverse Document Frequency (IDF)
 # using ngrams. This is provides a wrapper class around the tfidf package

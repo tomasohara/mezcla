@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Miscellaneous text utility functions, such as for extracting text from
 # HTML and other documents.

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Miscellaneous functions not suitable for other modules (e.g., system.py).
 #

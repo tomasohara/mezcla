@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Provides class Main to encompass common script processing. By default, the
 # command line arguments are analyzed to determine optional filename, which is

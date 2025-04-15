@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../evaluate_example_tests.py
 #

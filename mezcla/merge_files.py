@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # 
 # Merges two versions of the same file, using an earlier version as a baseline
 # (i.e., 3-way merge). If the baseline version is not supplied it is determined

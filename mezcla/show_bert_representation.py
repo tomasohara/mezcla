@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # 
 # Show what the BERT model representation is for a pair of sentences. This is based on the following:
 #    https://github.com/google-research/bert/blob/master/README.md

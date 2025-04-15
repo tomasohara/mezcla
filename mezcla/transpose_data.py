@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Takes an input table and transposes the rows and columns. In addition, there
 # is support for showing each field value on a separate line prefixed by the

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Simple tests for debug.py, based on following:
 #     https://stackoverflow.com/questions/16039463/how-to-access-the-py-test-capsys-from-inside-a-test

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # compute_tfidf.py: compute Term Frequency Inverse Document Frequency (TF-IDF)
 # for a collection of documents. See https://en.wikipedia.org/wiki/Tf-idf.

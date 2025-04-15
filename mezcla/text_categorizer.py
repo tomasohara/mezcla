@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Class for text categorizer using Scikit-Learn. See tutorial at
 #    http://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html

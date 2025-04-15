@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Functions for operating system related access, such as running command or
 # getting environment values.

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Use scikit-learn to perform probabilistic grid search for number of hidden
 # layers and number of units per layer.

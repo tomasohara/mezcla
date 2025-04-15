@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Utility functions for doing data analysis, such as wrappers for functions
 # provided by pandas and sklearn.

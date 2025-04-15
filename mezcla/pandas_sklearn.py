@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Runs training data through a variety of supervised classifiers, as an
 # illustration on how to use pandas and sklearn to do machine learning.

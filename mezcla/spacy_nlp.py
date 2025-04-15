@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # spacy_ner.py: Runs spaCy for a variety of natural lanuage processing (NLP)
 # tasks.

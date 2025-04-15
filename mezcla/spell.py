@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # spell.py: simple spell checker (e.g., via Enchant module)
 #

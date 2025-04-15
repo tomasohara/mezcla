@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # 
 # Similar to Unix cut command but with support for CSV files. Also modelled
 # after perl script with support for treating runs of whitespace as tab.

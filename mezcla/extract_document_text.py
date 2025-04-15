@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # extract_document_text.py: extract text from documents of various types
 #

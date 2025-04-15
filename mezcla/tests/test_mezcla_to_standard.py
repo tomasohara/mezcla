@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Comprehensive tests for mezcla-to-standard conversion
 #

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Functions for debugging, such as console tracing. This is for intended
 # for verbose tracing not suitable for the logging facility.

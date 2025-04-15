@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # 
 # Desktop search support using large language models (LLMs).
 #

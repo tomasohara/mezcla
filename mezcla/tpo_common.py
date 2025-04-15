@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # tpo_common.py: Python module with common utilities mostly for debugging,
 # mostly superceded by debug.py, system.py, and misc_util.py """
 #

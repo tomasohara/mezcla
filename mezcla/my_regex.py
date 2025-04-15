@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Convenience class for regex searching, providing simple wrapper around
 # static match results.

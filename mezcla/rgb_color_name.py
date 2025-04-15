@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Displays names of web colors for RGB codes, using a distance match in
 # case no exact matches exists.

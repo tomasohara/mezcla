@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # gensim_test.py: Tests features of gensim document processing, such ad TF/IDF-based term vector
 # representation and documented similarity computations. This takes as input a text file where each

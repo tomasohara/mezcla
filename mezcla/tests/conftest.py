@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # This currently includes adhoc code for modifying how the tests are run.
 # For example, there is an attempt at getting pytest not to swallow exceptions.

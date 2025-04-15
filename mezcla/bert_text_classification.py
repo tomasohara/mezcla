@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # 
 # Text categorized based on BERT model. This allows for multiclass categorization. The
 # input is a tabbed delimited file of the format:

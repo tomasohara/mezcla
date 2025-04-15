@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # text_processing.py: performs text processing (e.g., via NLTK), mainly for
 # word tokenization and part-of-speech tagging. To make the part-of-speech

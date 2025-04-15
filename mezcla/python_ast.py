@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Module for using Python abstract syntax tree (AST) support
 # 
