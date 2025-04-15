@@ -3,7 +3,7 @@
 #
 # Test(s) for ../convert_emoticons.py
 #
-# Sample input and output (see script):
+# Sample input and output (n.b., U+1f638 is grinning-cat character):
 #
 # - input:
 #
@@ -55,7 +55,7 @@ class TestIt(TestWrapper):
         test_script_contents = system.read_file(__file__)
         debug.trace_expr(6, test_script_contents, max_len=8192)
         char_desc = "grinning cat face with smiling eyes"
-        # ex (see above): "# Input:\n#   Nothing to test 😴\n# Output:\n#   Nothing to test [Grinning Cat ...]"
+        # ex (see above): "# Input:\n#   Nothing to test 😸\n# Output:\n#   Nothing to test [Grinning Cat ...]"
         self.do_assert(not my_re.search(fr"(\[{char_desc}\]).*\1",
                                         test_script_contents, flags=my_re.DOTALL|my_re.IGNORECASE))
         # ex (see above): "# Input:\n#   Nothing to test [grinning...]\n#\n# Output:\n#   Nothing to test [Grinning...]"
