@@ -77,7 +77,7 @@ PYTEST_WEIGHT = system.getenv_float(
     description="final weight for pytest tests"
 )
 PYTEST_OPTIONS = system.getenv_value(
-    "PYTEST_OPTIONS", None
+    "PYTEST_OPTIONS", None,
     description="Options for pytest"
 )
 
