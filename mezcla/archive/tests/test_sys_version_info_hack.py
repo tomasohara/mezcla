@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../sys_version_info_hack.py
 #

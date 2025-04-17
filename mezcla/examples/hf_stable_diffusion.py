@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Illustrates how to use Stable Diffusion via Hugging Face (HF) diffusers package,
 # including gradio-based UI for txt2img and img2img. This also uses the clip_interrogator

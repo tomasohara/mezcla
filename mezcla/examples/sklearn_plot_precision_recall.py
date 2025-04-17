@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # via https://scikit-learn.org/1.0/auto_examples/model_selection/plot_precision_recall.html
 #

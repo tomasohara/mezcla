@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # analyze_tfidf.py: analyze TF/IDF output produced via search_table_file_index.py with
 # respect to term differentiation, including support for filtering based on inclusion

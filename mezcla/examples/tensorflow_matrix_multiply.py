@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Simple tensorflow matrix multiplication based on following:
 #    https://www.tensorflow.org/guide/gpu

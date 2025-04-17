@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../test_matrix_multiply_benchmarking.py
 #

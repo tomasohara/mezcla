@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Based on following:
 #   https://www.geeksforgeeks.org/downloading-gists-from-github-made-simple

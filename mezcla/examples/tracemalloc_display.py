@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Based on following:
 #   https://stackoverflow.com/questions/552744/how-do-i-profile-memory-usage-in-python
