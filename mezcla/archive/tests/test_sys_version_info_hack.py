@@ -22,7 +22,7 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.sys_version_info_hack as THE_MODULE
+import mezcla.archive.sys_version_info_hack as THE_MODULE
 
 class TestSysVersionInfoHack:
     """Class for testcase definition"""
