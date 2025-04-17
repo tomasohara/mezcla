@@ -1734,6 +1734,9 @@ class BaseTransformerStrategy:
         }
         ```
         """
+        debug.assertion(args is not None)
+        if args is None:
+            args = {}
         new_args = args.copy()
         if eq_call.extra_params is None:
             debug.trace(6, f"[early exit] BaseTransformerStrategy.insert_extra_params(args={args}) => {new_args}")
