@@ -45,7 +45,8 @@ except:
 
 # Local packages
 # note: mezcla_to_standard uses packages not installed by default (e.g., libcst)
-from mezcla import system, debug, glue_helpers as gh
+from mezcla import system, debug
+from mezcla import glue_helpers as gh   # pylint: disable=unused-import
 try:
     import mezcla.mezcla_to_standard as THE_MODULE
 except:
@@ -55,12 +56,20 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import (
     SKIP_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON, fix_indent)
 
-# Pylint configurations
-
-## 1 disable "Line Too Long"
-# pylint: disable=C0301
-## 2 disable "Too many lines in module"
-# pylint: disable=C0302
+## OLD:
+##
+## NOTE:
+## - Nitpicking pylint exclusions are handled on the command line, so that
+##   the full pylint output can be checked (a la strict mode). (See the
+##   python-lint aliases in tomohara-aliases.bash from the shell-scripts-repo.)
+## - In addition, symbolic names are used (e.g., "C0303" => "trailing-whitespace").
+##
+## # Pylint configurations
+## 
+## ## 1 disable "Line Too Long"
+## # pylint: disable=C0301
+## ## 2 disable "Too many lines in module"
+## # pylint: disable=C0302
 
 # Backup of production mezcla_to_standard equivalent
 # calls to restore after some tests that modify it
@@ -92,14 +101,17 @@ def parametrize(parameters):
 @pytest.fixture(name="mock_to_module")
 def fixture_mock_to_module():
     """Mock for the to_module dependency"""
-    # Define mock behavior for get_replacement
-    new_mock_to_module = MagicMock()
+    debug.trace(6, "fixture_mock_to_module()")
 
-    def mock_get_replacement(module_name, _func, args):
+    # Define mock behavior for get_replacement
+    # TODO2: make sure mock_get_replacement invoked (i.e., for side effect)
+    new_mock_to_module = MagicMock()
+    #
+    def mock_get_replacement(module_name, func, args):
         """Mock function to simulate `get_replacement` method"""
-        ## TODO3: see why func arg unused
+        debug.trace(7, f"mock_get_replacement{(module_name, func, args)}")
         new_module = cst.Name(f"import_{module_name}")
-        new_func_node = cst.Name(f"new_func_{module_name}")
+        new_func_node = cst.Name(f"new_func_{module_name}_{func}")
         new_args_nodes = args
         return new_module, new_func_node, new_args_nodes
 
@@ -348,14 +360,14 @@ class TestBaseTransformerStrategy:
         """Ensures that get_replacement method of BaseTransformerStrategy class works as expected"""
         debug.trace(5, f"TestBaseTransformerStrategy.test_get_replacement(); self={self}")
         ## TODO: args = {"x1": 20, "y1": 10, "x2": 30, "y2": -60}
-        assert False, "TO_BE_IMPLEMENTED"
+        assert False, "TODO: implement"
 
     @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
     @pytest.mark.xfail
     def test_eq_call_to_module_func(self):
         """Ensures that eq_call_to_module_func method of BaseTransformerStrategy class works as expected"""
         debug.trace(5, f"TestBaseTransformerStrategy.test_test_eq_call_to_module_func(); self={self}")
-        assert False, "NOT_IMPLEMENTED_IN_FILE"
+        assert False, "TODO: implement"
         ## TODO: Wait for function to be implemented
 
     @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
@@ -363,7 +375,7 @@ class TestBaseTransformerStrategy:
     def test_find_eq_call(self):
         """Ensures that find_eq_call method of BaseTransformerStrategy class works as expected"""
         debug.trace(5, f"TestBaseTransformerStrategy.test_find_eq_call(); self={self}")        
-        assert False, "NOT_IMPLEMENTED_IN_FILE"
+        assert False, "TODO: implement"
         ## TODO: Wait for function to be implemented
 
     @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
@@ -371,7 +383,7 @@ class TestBaseTransformerStrategy:
     def test_get_args_replacement(self):
         """Ensures that get_args_replacement_func method of BaseTransformerStrategy class works as expected"""
         debug.trace(5, f"TestBaseTransformerStrategy.test_get_args_replacement(); self={self}")        
-        assert False, "NOT_IMPLEMENTED_IN_FILE"
+        assert False, "TODO: implement"
         ## TODO: Wait for function to be implemented
 
     @pytest.mark.skipif(SKIP_UNIMPLEMENTED_TESTS, reason=SKIP_UNIMPLEMENTED_REASON)
@@ -379,7 +391,7 @@ class TestBaseTransformerStrategy:
     def test_is_condition_to_replace_met(self):
         """Ensures that is_condition_to_replace_met method of BaseTransformerStrategy class works as expected"""
         debug.trace(5, f"TestBaseTransformerStrategy.test_is_condition_to_replace_met(); self={self}") 
-        assert False, "NOT_IMPLEMENTED_IN_FILE"
+        assert False, "TODO: implement"
         ## TODO: Wait for function to be implemented
 
 
@@ -405,7 +417,9 @@ class TestToStandard:
     @pytest.fixture
     def setup_to_standard(self):
         """Returns a pytest fixture for to_standard conversion"""
-        debug.trace(5, f"TestToStandard.setup_to_standard(); self={self}") 
+        debug.trace(5, f"TestToStandard.setup_to_standard(); self={self}")
+
+        # Use reflexive mapping for each function (i.e., self equality)
         THE_MODULE.mezcla_to_standard = [
             THE_MODULE.EqCall(targets=self.sample_func1, dests=self.sample_func1),
             THE_MODULE.EqCall(targets=self.sample_func2, dests=self.sample_func2),
@@ -461,21 +475,21 @@ class TestToStandard:
         ##         return self.condition_met
         ##
         ## TODO3: use monkey_patch or mocked.path
-        setattr(THE_MODULE, "my_module",  MagicMock(spec=["my_function"]))
-        setattr(THE_MODULE, "other_module", MagicMock(spec=["other_function"]))
+        setattr(THE_MODULE, "dummy_module_a",  MagicMock(spec=["my_function"]))
+        setattr(THE_MODULE, "dummy_module_b", MagicMock(spec=["other_function"]))
 
         # Create a ToStandard instance
         mezcla_to_standard = [
             THE_MODULE.EqCall(
-                targets="my_module.my_function", dests=None,
+                targets="dummy_module_a.my_function", dests=None,
             ),
             THE_MODULE.EqCall(
-                targets="other_module.other_function", dests=None,
+                targets="dummy_module_b.other_function", dests=None,
             ),
         ]
         to_standard = THE_MODULE.ToStandard(eq_call_table=mezcla_to_standard)
         # Assertion for eq_call match
-        result = to_standard.find_eq_call("my_module.my_function", ["arg1", "arg2"])
+        result = to_standard.find_eq_call("dummy_module_a.my_function", ["arg1", "arg2"])
         assert str(mezcla_to_standard[0].targets[0]) in str(result)
         assert str(mezcla_to_standard[1].targets[0]) not in str(result)
 
@@ -733,20 +747,25 @@ class TestTransform(TestWrapper):
     @pytest.fixture(autouse=True)
     def setup(self, mock_to_module):
         """Fixture to setup mock modules for TestTransform"""
+        # Note: defined by pytest (see _pytest/unittest/TestCaseFunction)
         debug.trace(5, f"TestTransform.setup({mock_to_module}); self={self}")
+        debug.trace_stack(8)
         self.mocked_to_module = mock_to_module
 
     @pytest.mark.xfail
     def test_transform(self):
         """Unit test for transform function"""
+        # Note: see fixture_mock_to_module for import_ prefix usage; for example,
+        # module_a replacement module is import_dummy_module_a.
         debug.trace(5, f"TestTransform.test_transform(); self={self}")
+        debug.assertion(self.mocked_to_module)
         # Example Python code to transform
         code = (
             """
-            import module_a
-            from module_b import func1, func2
-            from module_c import func3 as f3
-            from other_module import func4
+            import dummy_module_a
+            from dummy_module_b import func1, func2
+            from dummy_module_c import func3 as f3
+            from dummy_module_d import func4
             x = func1(1, 2)
             y = module_a.func2(3, 4)
             z = func3(5, 6)
@@ -755,22 +774,23 @@ class TestTransform(TestWrapper):
         # Expected transformed code after calling transform function
         expected_transformed_code = (
             """
-            import import_module_a
-            import import_module_b
-            from other_module import func4
+            import import_dummy_module_a
+            import import_dummy_module_b
+            from dummy_module_d import func4
             x = new_func_module_b(1, 2)
             y = new_func_module_a(3, 4)
             z = func3(5, 6)
             """)
 
-        # Acutal transformed code is a bit confusing, this marking the test as xfail
+        # Actual transformed code is a bit confusing, thus marking the test as xfail
+        ## TODO3: is this a bug or a feature?!
         _expected_transformed_code = (
             """
-            import import_module_a
-            import module_a
-            from module_b import func1, func2
-            from module_c import func3 as f3
-            from other_module import func4
+            import import_dummy_module_a
+            import dummy_module_a
+            from dummy_module_b import func1, func2
+            from dummy_module_c import func3 as f3
+            from dummy_module_d import func4
             x = func1(1, 2)
             y = new_func_module_a(3, 4)
             z = func3(5, 6)
@@ -781,6 +801,7 @@ class TestTransform(TestWrapper):
         assert transformed_code.strip() == expected_transformed_code.strip()
 
         # Additional assertions if needed to verify mock interactions
+        ## TODO2: explain what is being tested
         self.mocked_to_module.get_replacement.assert_any_call("module_a", ANY, ANY)
         self.mocked_to_module.get_replacement.assert_any_call("module_b", ANY, ANY)
         self.mocked_to_module.get_replacement.assert_any_call("module_c", ANY, ANY)
@@ -798,7 +819,7 @@ class TestTransform(TestWrapper):
 
         code = (
             """
-            import module_a
+            import dummy_module_a
             x = module_a.func1(1, 2)
             """)
 
@@ -809,9 +830,8 @@ class TestTransform(TestWrapper):
 
         expected_code = (
             """
-            import new_module
-            import module_a
-            x = module_a.func1(1, 2)
+            import dummy_module_b
+            x = module_b.func1(1, 2)
             """)
         # Result currently similar/same to original code (no changes)
         # BAD: assert result.strip() == code.strip()
@@ -825,10 +845,10 @@ class TestTransform(TestWrapper):
 
         code = (
             """
-            import my_module as mm
-            from another_module import submodule as sm
+            import dummy_module_a as mm
+            from dummy_module_b import submodule as sm
             """)
-        expected_aliases = {"mm": "my_module", "sm": "submodule"}
+        expected_aliases = {"mm": "dummy_module_a", "sm": "submodule"}
 
         # Parse the code into a CST tree
         tree = cst.parse_module(code)
@@ -848,11 +868,12 @@ class TestTransform(TestWrapper):
         debug.trace(5, f"TestTransform.test_leave_call(); self={self}")
         original_code = (
             """
-            result = old_module.old_function(2, 3)
+            import module_a
+            result = module_a.old_function(2, 3)
             """)
         expected_code = (
             """
-            from new_module import new_function
+            from module_b import new_function
             result = new_function(2, 3)
             """)
         result, _ = THE_MODULE.transform(self.mocked_to_module, original_code)
@@ -886,11 +907,12 @@ class TestUsageM2SEqCall(TestWrapper, ParametrizedTestCase):
     @ut_parametrize(
         argnames="input_code, expected_code",
         argvalues=[
-            ut_param(
-                "from mezcla import glue_helpers as gh\ntemp_file = self.get_temp_file()\n",
-                "import tempfile\ntemp_file = tempfile.NamedTemporaryFile()\n",
-                id="test_eqcall_self_get_temp_file",
-            ),
+            ## OLD (put in test_eqCall call below):
+            ## ut_param(
+            ##     "from mezcla import glue_helpers as gh\ntemp_file = self.get_temp_file()\n",
+            ##     "import tempfile\ntemp_file = tempfile.NamedTemporaryFile()\n",
+            ##     id="test_eqcall_self_get_temp_file",
+            ## ),
             ut_param(
                 'from mezcla import glue_helpers as gh\nbasename = gh.basename("./foo/bar/foo.bar")\n',
                 'from os import path\nbasename = path.basename("./foo/bar/foo.bar")\n',
@@ -1084,9 +1106,32 @@ class TestUsageM2SEqCall(TestWrapper, ParametrizedTestCase):
     def test_eqCall(self, input_code, expected_code):
         """Ensures that different Eqcall targets are equal to their dests"""
         debug.trace(
-            5,
+            6,
             f"TestUsageM2SEqCall.test_eqcall(); self={self}, input_code={input_code!r}, expected_code={expected_code!r}",
         )
+        self.check_eqCall(input_code, expected_code)
+
+
+    @pytest.mark.xfail
+    @ut_parametrize(
+        argnames="input_code, expected_code",
+        argvalues=[
+            ut_param(
+                "from mezcla import glue_helpers as gh\ntemp_file = self.get_temp_file()\n",
+                "import tempfile\ntemp_file = tempfile.NamedTemporaryFile()\n",
+                id="test_eqcall_self_get_temp_file",
+            ),
+        ])
+    def test_xfail_eqCall(self, input_code, expected_code):
+        """Version of test_eqCall for known failures"""
+        debug.trace_expr(5, self, input_code, expected_code,
+                         prefix="in TestUsageM2SEqCall.test_xfail_eqCall: ")
+        self.check_eqCall(input_code, expected_code)
+
+    def check_eqCall(self, input_code, expected_code):
+        """Ensure that INPUT_CODE equivalent to EXPECTED_CODE"""
+        debug.trace_expr(6, self, input_code, expected_code,
+                         prefix="in TestUsageM2SEqCall.check_eqcall: ")
         input_code = fix_indent(input_code)
         expected_code = fix_indent(expected_code)
         if isinstance(input_code, list) and isinstance(expected_code, list):
