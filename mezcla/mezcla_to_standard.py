@@ -1744,13 +1744,13 @@ class BaseTransformerStrategy:
         debug.trace(6, f"BaseTransformerStrategy.insert_extra_params(args={args}) => {new_args}")
         return new_args
 
-    ## TODO: refactor this returns two different types of values
     def get_replacement(self, path: str, args: List[cst.Arg]) -> Union[Tuple[str, List[cst.Arg]], cst.CSTNode]:
         """
         Get the function replacement
 
         Returns tuple of `(func_as_str, new_args_node)`
         """
+        ## TODO: refactor this returns two different types of values
         # Find the equivalent call
         eq_call = self.find_eq_call(path, args)
         func = ""
