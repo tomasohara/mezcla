@@ -98,8 +98,9 @@ if [ "$USER" == "docker" ]; then
     pip uninstall mezcla &> /dev/null  # Avoid conflicts with installed Mezcla
 fi
 
-# Make sure mezcla in python path
-export PYTHONPATH="$mezcla/:$PYTHONPATH"
+# Make sure mezcla in python path, along with main tests directory.
+# Note: Latter required for test_mezcla_to_standard.py
+export PYTHONPATH="$mezcla/:$mezcla/tests:$PYTHONPATH"
 
 # Get environment overrides
 # TODO2: cleanup stuff inherited from shell-script repo
