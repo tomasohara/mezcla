@@ -1,4 +1,7 @@
+#! /usr/bin/env python3
 # Dummy module for test_mezcla_to_standard.py
-def func1(*_args):
-    """Dummy function 1 with variable number of _ARGS"""
-    pass
+
+"""Another dummy module for testing purposes"""
+
+# pylint: disable=wildcard-import,unused-wildcard-import
+from dummy_module_a import *
