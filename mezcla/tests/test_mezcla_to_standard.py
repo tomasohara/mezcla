@@ -15,6 +15,8 @@
 #
 # TODO3:
 # - Remove extraneous code unless specifically tested (e.g., try/except clauses).
+# - Fix calls to debug.trace to use positional trace argument unless testing for error:
+#   for example, 'debug.trace("Copy created", level=3)' => 'debug.trace(3, "Copy created")'.
 #
 
 """
@@ -45,8 +47,10 @@ except:
 
 # Local packages
 # note: mezcla_to_standard uses packages not installed by default (e.g., libcst)
-from mezcla import system, debug
+from mezcla import debug
 from mezcla import glue_helpers as gh   # pylint: disable=unused-import
+from mezcla import misc_utils
+from mezcla import system
 try:
     import mezcla.mezcla_to_standard as THE_MODULE
 except:
@@ -54,6 +58,7 @@ except:
     debug.trace_exception(4, "mezcla.mezcla_to_standard import")
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import (
+    SKIP_EXPECTED_ERRORS, SKIP_EXPECTED_REASON,
     SKIP_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON, fix_indent)
 
 ## OLD:
@@ -75,14 +80,6 @@ from mezcla.tests.common_module import (
 # calls to restore after some tests that modify it
 ## TODO3: use pytest mocker, which includes support for this
 BACKUP_M2S = THE_MODULE.mezcla_to_standard if THE_MODULE else None
-
-# Environment options
-SKIP_EXPECTED_ERRORS = system.getenv_bool(
-    # Note: this helps filter known errors before running error checking script,
-    # (e.g., check_errors.py in companion repo tomasohara/shell-scripts).
-    "SKIP_EXPECTED_ERRORS",
-    False,
-    description="Skip cases intentionally causing conversion errors")
 
 #-------------------------------------------------------------------------------
     
@@ -109,13 +106,20 @@ def fixture_mock_to_module():
     #
     def mock_get_replacement(module_name, func, args):
         """Mock function to simulate `get_replacement` method"""
+        # note: get_replacement(module_func_path, args) => new_function_code, new_args_node
+        # example: get_replacement("glue_helpers.form_path", SimpleString(value="/tmp", ...))
         debug.trace(7, f"mock_get_replacement{(module_name, func, args)}")
-        new_module = cst.Name(f"import_{module_name}")
-        new_func_node = cst.Name(f"new_func_{module_name}_{func}")
+        ## OLD: new_module = cst.Name(f"import_{module_name}")
+        ## TEST: new_module = cst.Name(f"import_{module_name.__class__}")
+        ## OLD: new_func_node = cst.Name(f"new_func_{module_name}_{func}")
+        new_func_node = cst.Name(f"new_func__{module_name}__{func}")
         new_args_nodes = args
-        return new_module, new_func_node, new_args_nodes
+        ## OLD: return new_module, new_func_node, new_args_nodes'
+        return new_func_node, new_args_nodes
 
-    new_mock_to_module.get_replacement.side_effect = mock_get_replacement
+    ## BAD: new_mock_to_module.get_replacement.side_effect = mock_get_replacement
+    new_mock_to_module.get_replacement.side_effect = (
+        lambda path, args: mock_get_replacement("mock_to_module", path, args))
     return new_mock_to_module
 
 
@@ -743,6 +747,17 @@ class TestTransform(TestWrapper):
 
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     mocked_to_module = None
+    py_data_file = ""
+    eq_call_data = []
+
+    def setUp(self):
+        """"Per-test setup"""
+        debug.trace(5, f"TestTransform.setUP(); self={self}")
+        super().setUp()
+        eqcall_imports = ["dummy_module_a", "dummy_module_b", "dummy_module_c", "dummy_module_d"]
+        self.monkeypatch.setattr(THE_MODULE, "EQCALL_IMPORTS", eqcall_imports)
+        self.py_data_file = gh.form_path(gh.dirname(__file__), "resources", "dummy_eq_call.py-data")
+        self.eq_call_data = misc_utils.convert_python_data_to_instance(self.py_data_file, "mezcla.mezcla_to_standard", "EqCall", THE_MODULE.DEFAULT_EQCALL_FIELDS)
 
     @pytest.fixture(autouse=True)
     def setup(self, mock_to_module):
@@ -753,26 +768,44 @@ class TestTransform(TestWrapper):
         self.mocked_to_module = mock_to_module
 
     @pytest.mark.xfail
+    def test_simple_transform(self):
+        """Unit test for simple transform function"""
+        code = fix_indent(
+            """
+            import dummy_module_a
+            dummy_module_a.func1()
+            """)
+        expected_code = fix_indent(
+            """
+            import dummy_module_b
+            dummy_module_b.func1()
+            """)
+        transformer = THE_MODULE.ToStandard(self.eq_call_data)
+        transformed_code, _metrics = THE_MODULE.transform(transformer, code)
+        assert transformed_code.strip() == expected_code.strip()
+
+    @pytest.mark.xfail
     def test_transform(self):
         """Unit test for transform function"""
+        ## TODO2: Simply this overly complicated mocked unit test!
         # Note: see fixture_mock_to_module for import_ prefix usage; for example,
         # module_a replacement module is import_dummy_module_a.
         debug.trace(5, f"TestTransform.test_transform(); self={self}")
         debug.assertion(self.mocked_to_module)
         # Example Python code to transform
-        code = (
+        code = fix_indent(
             """
             import dummy_module_a
             from dummy_module_b import func1, func2
             from dummy_module_c import func3 as f3
             from dummy_module_d import func4
             x = func1(1, 2)
-            y = module_a.func2(3, 4)
+            y = dummy_module_a.func2(3, 4)
             z = func3(5, 6)
             """)
 
         # Expected transformed code after calling transform function
-        expected_transformed_code = (
+        expected_transformed_code = fix_indent(
             """
             import import_dummy_module_a
             import import_dummy_module_b
@@ -784,7 +817,7 @@ class TestTransform(TestWrapper):
 
         # Actual transformed code is a bit confusing, thus marking the test as xfail
         ## TODO3: is this a bug or a feature?!
-        _expected_transformed_code = (
+        _expected_transformed_code = fix_indent(
             """
             import import_dummy_module_a
             import dummy_module_a
@@ -1456,15 +1489,16 @@ class TestUsage(TestWrapper):
         # self.assertEqual(result.strip(), "")
         self.assert_m2s_transform(input_code=input_code, expected_code=expected_code)
 
-    @pytest.mark.skipif(SKIP_EXPECTED_ERRORS, reason="Ignoring test with expected conversion error")
+    @pytest.mark.skipif(SKIP_EXPECTED_ERRORS, reason=SKIP_EXPECTED_REASON)
     @parametrize(
         [
+            # Leads to "SyntaxError: unterminated string literal (detected at line 4)"
             (
                 """
                 from mezcla import glue_helpers as gh
                 system.write_file("/tmp/fubar.list", "fubar.list")
                 gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1
-                """,
+                """,                                           # ^: missing double quote
                 [
                     "Traceback (most recent call last):\n",
                     "libcst._exceptions.ParserSyntaxError: Syntax Error @ 1:1.",
@@ -1778,11 +1812,12 @@ class TestUsage(TestWrapper):
 
         self.assert_m2s_transform(input_code, expected_code)
 
-    @pytest.mark.skipif(SKIP_EXPECTED_ERRORS, reason="Ignoring test with expected conversion error")
+    @pytest.mark.skipif(SKIP_EXPECTED_ERRORS, reason=SKIP_EXPECTED_REASON)
     @parametrize(
-        # Exception: TypeError: '>' not supported between instances of 'str' and 'int'
         [
-            (
+            ## OLD: # Exception: TypeError: '>' not supported between instances of 'str' and 'int'
+            # Leads to "TypeError: trace() got multiple values for argument 'level'"
+            fix_indent(
                 """
                 from mezcla import glue_helpers as gh
                 from mezcla import debug
@@ -1790,11 +1825,17 @@ class TestUsage(TestWrapper):
                 system.write_file("/tmp/test.txt", "test content")
                 gh.copy_file("/tmp/test.txt", "/tmp/test_copy.txt")
                 debug.trace("Copy created", level=3)
+                """
+                #       => (3, "Copy created")
+                +
+                """
                 gh.delete_file("/tmp/test.txt")
                 if path.exists("/tmp/test_copy.txt"):
                     debug.trace("File exists", level=2)
-                """,
                 """
+                #               ^ likewise
+            ),
+            fix_indent("""
                 import os
                 from os import path
                 # WARNING not supported: system.write_file("/tmp/test.txt", "test content")
