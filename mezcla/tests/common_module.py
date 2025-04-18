@@ -45,6 +45,14 @@ SKIP_UNIMPLEMENTED_TESTS = system.getenv_bool(
     False,
     description="Skip tests not yet implemented")
 SKIP_UNIMPLEMENTED_REASON = "Ignoring unimplemented test"
+SKIP_EXPECTED_REASON = "Skipping cases that should never pass (e.g., intentional error)"
+SKIP_EXPECTED_ERRORS = system.getenv_bool(
+    # Note: this helps filter known errors before running error checking script,
+    # (e.g., check_errors.py in companion repo tomasohara/shell-scripts).
+    # It is different from xfail in that the tests are not likely to ever pass.
+    "SKIP_EXPECTED_ERRORS",
+    False,
+    description="Skip cases intentionally causing conversion errors, etc.")
 
 # Globals
 mezcla_root_dir = None
