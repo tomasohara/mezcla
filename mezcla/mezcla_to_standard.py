@@ -19,7 +19,6 @@
 # which have the majority of thin wrappers around PSL calls. The debugging
 # support in debug.py is also included as a bit idiosyncratic.
 #
-# TODO3: Look into making this table driven. Can't eval() be used to generate the EqCall specifications?
 # TODO4: Try to create a table covering more of system.py and glue_helper.py.
 #
 # --------------------------------------------------------------------------------
@@ -287,6 +286,26 @@ VALIDATE_CST = system.getenv_bool(
 SKIP_ARG_NAME_MATCHING = system.getenv_bool(
     "SKIP_ARG_NAME_MATCHING", False,
     desc="Omit arg name matching unless eq_params specified")
+EQCALL_DATAFILE = system.getenv_value(
+    "EQCALL_DATAFILE", None,
+    desc="Python data file with EqCall specifications")
+#
+USER_EQCALL_FIELDS = system.getenv_value(
+    "EQCALL_FIELDS", None,
+    desc="String list of field names for EqCall matching")
+DEFAULT_EQCALL_FIELDS = ["targets", "dests", "condition", "eq_params", "extra_params", "features"]
+EQCALL_FIELDS = (misc_utils.extract_string_list(USER_EQCALL_FIELDS) if USER_EQCALL_FIELDS else DEFAULT_EQCALL_FIELDS)
+#
+USER_IMPORTS = system.getenv_value(
+    "EQCALL_IMPORTS", None,
+    desc="String names for modules to import")
+DEFAULT_EQCALL_IMPORTS = ["debug", "system", "glue_helpers", "tpo_common", "spacy_nlp",
+                          "sys", "os", "logging", "time"]
+EQCALL_IMPORTS = (misc_utils.extract_string_list(USER_IMPORTS) if USER_IMPORTS else DEFAULT_EQCALL_IMPORTS)
+
+# Globals
+global_sandbox = {}
+## TODO2: global_sandbox = copy.deepcopy(globals())
 
 #-------------------------------------------------------------------------------
 
@@ -302,11 +321,14 @@ def path_to_callable(path: str) -> Callable:
     """
     components = path.split('.')
     # Get the base module from the global namespace
-    ## TODO3: use sandbox globals dict
-    module = globals()[components[0]]
-    # Iterate through the components to get the desired attribute
-    for component in components[1:]:
-        module = getattr(module, component)
+    module = lambda _x: None            # pylint: disable=unnecessary-lambda-assignment
+    try:
+        module = global_sandbox[components[0]]
+        # Iterate through the components to get the desired attribute
+        for component in components[1:]:
+            module = getattr(module, component)
+    except:
+        system.print_exception_info("path_to_callable")
     debug.trace(7, f"path_to_callable(func_string={path}) => {module}")
     return module
 
@@ -424,9 +446,28 @@ class CallDetails:
     store `callable`, func as `path` and `specs` of a function
     and avoid recalculating them every time
     """
+    imported_modules = {}
 
     def __init__(self, func: StrOrCallable) -> None:
+        debug.trace(7, f"CallDetails.__init__({func!r})")
         self.func = func
+        # Import any modules needed to resolve EqCall details
+        for module in EQCALL_IMPORTS:
+            try:
+                if not self.imported_modules.get(module):
+                    # pylint: disable=eval-used,exec-used
+                    debug.trace(6, f"FYI: importing {module}")
+                    exec(f"import {module}", global_sandbox)
+                    debug.trace(6, f"{module}={eval(module, global_sandbox)}")
+                    debug.assertion(module in global_sandbox)
+                else:
+                    self.imported_modules[module] = True
+            except:
+                system.print_exception_info("EqCall imports")
+        ## HACK: manually resolve aliases
+        if not USER_IMPORTS:
+            global_sandbox["gh"] = global_sandbox["glue_helpers"]
+            global_sandbox["tpo"] = global_sandbox["tpo_common"]
         # Some local functions as lambda in parameters
         # cannot be converted to path or callable
         # but also is not required, so we ignore them
@@ -449,6 +490,7 @@ class CallDetails:
             ## DEBUG: debug.raise_exception(6)
             debug.trace(4, f"FYI: Exception deriving function specification from {func!r}: {sys.exc_info()}")
             debug.trace_stack(7)
+        debug.trace_object(6, self, label="CallDetails instance")
 
     @staticmethod
     def to_list_of_call_details(funcs: SingleOrMultipleStrOrCallable) -> List['CallDetails']:
@@ -784,352 +826,355 @@ def assertion_replacement(expression, message=None, assert_level=None):   # pyli
 # Note: put new additions at the end (see comments undew NEW CALLS).
 ## TODO4: drop support for multiple targets (i.e., at expense of a little redundancy);
 ##    ex: EqCall(targets=(fu, bar), dests=fubar) => EqCall(targets=fu, dests=fubar) & EqCall(targets=bar, dests=fubar)
-mezcla_to_standard = [
-    EqCall(
-        ## TODO4: use full name (glue_helpers)
-        gh.get_temp_file,
-        tempfile.NamedTemporaryFile,
-    ),
-    EqCall(
-        gh.basename,
-        "os.path.basename",
-        eq_params={ "filename": "p" },
-    ),
-    EqCall(
-        gh.dir_path,
-        "os.path.dirname",
-        eq_params={ "filename": "p" },
-    ),
-    EqCall(
-        gh.dirname,
-        "os.path.dirname",
-        eq_params={ "file_path": "filename" }
-    ),
-    EqCall(
-        ## TODO4: treat targets separately
-        (gh.file_exists, system.file_exists),
-        "os.path.exists",
-        eq_params={ "filename": "path" }
-    ),
-    EqCall(
-        (gh.form_path, system.form_path),
-        "os.path.join",
-        ## TODO3: condition=lambda: not create [for gh.form_path]
-        ##    where extra_params = { "create": False },
-        eq_params = { "filenames": "a" }
-    ),
-    EqCall(
-        (gh.is_directory, system.is_directory),
-        "os.path.isdir",
-        eq_params = { "path": "s" }
-    ),
-    EqCall(
-        (gh.create_directory, system.create_directory),
-        "os.mkdir",
-    ),
-    EqCall(
-        gh.rename_file,
-        "os.rename",
-        eq_params = { "source": "src", "target": "dst" }
-    ),
-    EqCall(
-        (gh.delete_file, gh.delete_existing_file),
-        "os.remove",
-        eq_params = { "filename": "path" }
-    ),
-    EqCall(
-        gh.file_size,
-        "os.path.getsize",
-    ),
-    EqCall(
-        gh.get_directory_listing,
-        "os.listdir",
-        eq_params = { "dir_name": "path" }
-    ),
-    EqCall(
-        ## TODO4: drop tpo as obsolete; -or- use full name (tpo_common)
-        tpo.debug_print,
-        logging.debug,
-        ## TODO4: condition = lambda level: level > 3,
-        eq_params = { "text": "msg" },
-        extra_params = { "level": 1 },
-    ),
-    EqCall(
-        (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
-        logging.debug,
-        condition = lambda level: level > 3,
-        eq_params = { "text": "msg" },
-        extra_params = { "level": 4 },
-        features=[Features.FORMAT_STRING]
-    ),
-    EqCall(
-        (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
-        logging.info,
-        condition = lambda level: 2 < level <= 3,
-        eq_params = { "text": "msg" },
-        extra_params = { "level": 3 },
-        features=[Features.FORMAT_STRING],
-    ),
-    EqCall(
-        (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
-        logging.warning,
-        condition = lambda level: 1 < level <= 2,
-        eq_params = { "text": "msg" },
-        extra_params = { "level": 2 },
-        features=[Features.FORMAT_STRING],
-    ),
-    EqCall(
-        (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
-        logging.error,
-        condition = lambda level: 0 < level <= 1,
-        eq_params = { "text": "msg" },
-        extra_params  = { "level": 1 },
-        features=[Features.FORMAT_STRING],
-    ),
-    EqCall(
-        (system.print_error, system.print_stderr, system.print_stderr_fmt, tpo.print_stderr),
-        print,
-        eq_params={ "text": "values" },
-        extra_params={ "file": sys.stderr },
-        features=[Features.FORMAT_STRING],
-    ),
-    EqCall(
-        debug.trace_expr,
-        # should we use Icrecream.ic() here?
-        dests= print,
-        eq_params={ "values": "values" },
-        extra_params={ "file": sys.stderr },
+
+mezcla_to_standard = []
+if not EQCALL_DATAFILE:
+    mezcla_to_standard = [
+        EqCall(
+            ## TODO4: use full name (glue_helpers)
+            gh.get_temp_file,
+            tempfile.NamedTemporaryFile,
         ),
-    EqCall(
-        system.exit,
-        sys.exit,
-        eq_params={ "message": "status" }
-    ),
-    EqCall(
-        system.open_file,
-        open,
-        ## TODO4: extra_params={ "encoding": "UTF-8" },
-        eq_params={ "filename": "file" }
-    ),
-    EqCall(
-        system.read_directory,
-        "os.listdir",
-        eq_params={ "directory": "path" }
-    ),
-    EqCall(
-        system.is_regular_file,
-        "os.path.isfile",
-    ),
-    EqCall(
-        system.get_current_directory,
-        "os.getcwd",
-    ),
-    EqCall(
-        system.set_current_directory,
-        "os.chdir",
-        ## TEST:
-        ## eq_params={ "directory": "path" }
-    ),
-    EqCall(
-        system.absolute_path,
-        "os.path.abspath",
-    ),
-    EqCall(
-        system.real_path,
-        "os.path.realpath",
-    ),
-    EqCall(
-        system.get_args,
-        ## TODO: "sys.argv", w/ [Features.non-function]
-        dests=lambda: sys.argv,
-        features=[Features.COPY_DEST_SOURCE]        
-    ),
-    EqCall(
-        system.round_num,
-        round,
-        eq_params={ 
-                   "value": "number",
-                   "precision": "ndigits"},
-        extra_params={ "ndigits": 6 }
-    ),
-    EqCall(
-        system.round3,
-        round,
-        eq_params={ 
-                   "value": "number",
-                   "precision": "ndigits"},
-        extra_params={ "ndigits": 3 }
-    ),
-    EqCall(
-        tpo.round_num,
-        round,
-        eq_params={ 
-                   "value": "number",
-                   "precision": "ndigits"},
-        extra_params={ "ndigits": 3 }
-    ),
-    EqCall(
-        "system.sleep",
-        "time.sleep",
-    ),
-    EqCall(
-        ## TODO3: separate: get_exception just returns tuple
-        (system.print_exception_info, system.get_exception),
-        sys.exc_info,
-    ),
-    EqCall(
-        (
-            system.to_string, system.to_str, system.to_unicode,
-            tpo.normalize_unicode, tpo.ensure_unicode, system.to_utf8,
-            system.from_utf8
+        EqCall(
+            gh.basename,
+            "os.path.basename",
+            eq_params={ "filename": "p" },
         ),
-        str,
-    ),
-    EqCall(
-        (system.to_float, system.safe_float),
-        ## TODO4: dest=lambda: try: ... except: ...???
-        float,
-    ),
-    EqCall(
-        (system.to_int, system.safe_int),
-        int,
-    ),
-    EqCall(
-        (debug.assertion, gh.assertion),
-        dests=assertion_replacement,
-        extra_params={ "assert_level": 1, "message": "debug assertion failed" },
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        (system.getenv, system.getenv_value),
-        dests=lambda var, default_value: os.environ.get(var) or default_value,
-        eq_params={"var": "var", "default": "default_value"},
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        (system.getenv_int, system.getenv_integer),
-        dests=lambda var, default_value: int(os.environ.get(var)) or default_value,
-        eq_params={"var": "var", "default": "default_value"},
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        (system.getenv_bool, system.getenv_boolean),
-        dests=lambda var, default_value: bool(os.environ.get(var)) or default_value,
-        eq_params={"var": "var", "default": "default_value"},
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        system.getenv_text,
-        dests=lambda var, default_value: str(os.environ.get(var)) or default_value,
-        eq_params={"var": "var", "default": "default_value"},
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        (system.getenv_number, system.getenv_float),
-        dests=lambda var, default_value: float(os.environ.get(var)) or default_value,
-        eq_params={"var": "var", "default": "default_value"},
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    # 
-    # NEW CALLS
-    #
-    # Note:
-    # - The goal is to provide coverage for the most commonly used functions,
-    #   not all of mezcla. This would mostly include debug.py, system.py, and
-    #   glue_helpers.py.
-    # - Exceptions would be the deprecated tpo_common.py and the complex main.py.
-    # - In addition, testing support is not included (e.g., unittest_wrapper.py).
-    #
-    EqCall(
-        system.quote_url_text,
-        dests=urllib.parse.quote_plus
-    ),
-    EqCall(
-        system.unquote_url_text,
-        dests=urllib.parse.unquote_plus
-    ),
-    EqCall(
-        (system.non_empty_file, gh.non_empty_file),
-        dests=lambda path: os.path.exists(path) and os.path.getsize(path) > 0,
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        (system.read_file, system.read_entire_file),
-        dests=lambda path: open(path, encoding="UTF-8").read(),
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        system.write_file,
-        dests=lambda path, text: open(path, "w", encoding="UTF-8").write(text),
-        eq_params={ "filename": "path", "text": "text" },
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        gh.full_mkdir,
-        dests=os.makedirs,
-    ),
-    EqCall(
-        gh.elide,
-        dests=lambda text, max_length: text[:max_length] + "..." if len(text) > max_length else text,
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        debug.reference_var,
-        dests=lambda var: ...,
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        (debug.debugging, debug.detailed_debugging, debug.verbose_debugging),
-        dests=lambda : False,
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        system.chomp,
-        dests=lambda text: text.rstrip(os.linesep),
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        system.save_object,
-        dests=lambda obj,filename: pickle.dump(obj, open(filename, "wb")),
-        eq_params={ "obj": "obj", "file_name": "filename" },
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        system.load_object,
-        dests=lambda filename: pickle.load(open(filename, "rb")),
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        system.round_as_str,
-        dests=lambda value: str(round(value)),
-        features=[Features.COPY_DEST_SOURCE],
-        extra_params={ "precision": 6 }
-    ),
-    EqCall(
-        misc_utils.sort_weighted_hash,
-        dests=lambda hash: sorted(hash.items(), key=lambda x: x[1], reverse=True),
-        features=[Features.COPY_DEST_SOURCE]
-    ),
-    EqCall(
-        gh.resolve_path,
-        dests=os.path.realpath,
-    ),
-    EqCall(
-        debug.timestamp,
-        dests=datetime.datetime.now,
-    ),
-    EqCall(
-        spacy_nlp.Chunker,
-        dests=spacy.load,
-        eq_params={"model": "name"},
-    ),
-    EqCall(
-        targets="system.setenv",
-        dests="os.putenv",
-    ),
-    ## TODO2: Make sure new additions are for commonly used functions.
-    ## For tips, see header comments and notes above under "NEW CALLS".
-]
+        EqCall(
+            gh.dir_path,
+            "os.path.dirname",
+            eq_params={ "filename": "p" },
+        ),
+        EqCall(
+            gh.dirname,
+            "os.path.dirname",
+            eq_params={ "file_path": "filename" }
+        ),
+        EqCall(
+            ## TODO4: treat targets separately
+            (gh.file_exists, system.file_exists),
+            "os.path.exists",
+            eq_params={ "filename": "path" }
+        ),
+        EqCall(
+            (gh.form_path, system.form_path),
+            "os.path.join",
+            ## TODO3: condition=lambda: not create [for gh.form_path]
+            ##    where extra_params = { "create": False },
+            eq_params = { "filenames": "a" }
+        ),
+        EqCall(
+            (gh.is_directory, system.is_directory),
+            "os.path.isdir",
+            eq_params = { "path": "s" }
+        ),
+        EqCall(
+            (gh.create_directory, system.create_directory),
+            "os.mkdir",
+        ),
+        EqCall(
+            gh.rename_file,
+            "os.rename",
+            eq_params = { "source": "src", "target": "dst" }
+        ),
+        EqCall(
+            (gh.delete_file, gh.delete_existing_file),
+            "os.remove",
+            eq_params = { "filename": "path" }
+        ),
+        EqCall(
+            gh.file_size,
+            "os.path.getsize",
+        ),
+        EqCall(
+            gh.get_directory_listing,
+            "os.listdir",
+            eq_params = { "dir_name": "path" }
+        ),
+        EqCall(
+            ## TODO4: drop tpo as obsolete; -or- use full name (tpo_common)
+            tpo.debug_print,
+            logging.debug,
+            ## TODO4: condition = lambda level: level > 3,
+            eq_params = { "text": "msg" },
+            extra_params = { "level": 1 },
+        ),
+        EqCall(
+            (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
+            logging.debug,
+            condition = lambda level: level > 3,
+            eq_params = { "text": "msg" },
+            extra_params = { "level": 4 },
+            features=[Features.FORMAT_STRING]
+        ),
+        EqCall(
+            (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
+            logging.info,
+            condition = lambda level: 2 < level <= 3,
+            eq_params = { "text": "msg" },
+            extra_params = { "level": 3 },
+            features=[Features.FORMAT_STRING],
+        ),
+        EqCall(
+            (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
+            logging.warning,
+            condition = lambda level: 1 < level <= 2,
+            eq_params = { "text": "msg" },
+            extra_params = { "level": 2 },
+            features=[Features.FORMAT_STRING],
+        ),
+        EqCall(
+            (debug.trace, "debug.trace_fmt", debug.trace_fmtd),
+            logging.error,
+            condition = lambda level: 0 < level <= 1,
+            eq_params = { "text": "msg" },
+            extra_params  = { "level": 1 },
+            features=[Features.FORMAT_STRING],
+        ),
+        EqCall(
+            (system.print_error, system.print_stderr, system.print_stderr_fmt, tpo.print_stderr),
+            print,
+            eq_params={ "text": "values" },
+            extra_params={ "file": sys.stderr },
+            features=[Features.FORMAT_STRING],
+        ),
+        EqCall(
+            debug.trace_expr,
+            # should we use Icrecream.ic() here?
+            dests= print,
+            eq_params={ "values": "values" },
+            extra_params={ "file": sys.stderr },
+            ),
+        EqCall(
+            system.exit,
+            sys.exit,
+            eq_params={ "message": "status" }
+        ),
+        EqCall(
+            system.open_file,
+            open,
+            ## TODO4: extra_params={ "encoding": "UTF-8" },
+            eq_params={ "filename": "file" }
+        ),
+        EqCall(
+            system.read_directory,
+            "os.listdir",
+            eq_params={ "directory": "path" }
+        ),
+        EqCall(
+            system.is_regular_file,
+            "os.path.isfile",
+        ),
+        EqCall(
+            system.get_current_directory,
+            "os.getcwd",
+        ),
+        EqCall(
+            system.set_current_directory,
+            "os.chdir",
+            ## TEST:
+            ## eq_params={ "directory": "path" }
+        ),
+        EqCall(
+            system.absolute_path,
+            "os.path.abspath",
+        ),
+        EqCall(
+            system.real_path,
+            "os.path.realpath",
+        ),
+        EqCall(
+            system.get_args,
+            ## TODO: "sys.argv", w/ [Features.non-function]
+            dests=lambda: sys.argv,
+            features=[Features.COPY_DEST_SOURCE]        
+        ),
+        EqCall(
+            system.round_num,
+            round,
+            eq_params={ 
+                       "value": "number",
+                       "precision": "ndigits"},
+            extra_params={ "ndigits": 6 }
+        ),
+        EqCall(
+            system.round3,
+            round,
+            eq_params={ 
+                       "value": "number",
+                       "precision": "ndigits"},
+            extra_params={ "ndigits": 3 }
+        ),
+        EqCall(
+            tpo.round_num,
+            round,
+            eq_params={ 
+                       "value": "number",
+                       "precision": "ndigits"},
+            extra_params={ "ndigits": 3 }
+        ),
+        EqCall(
+            "system.sleep",
+            "time.sleep",
+        ),
+        EqCall(
+            ## TODO3: separate: get_exception just returns tuple
+            (system.print_exception_info, system.get_exception),
+            sys.exc_info,
+        ),
+        EqCall(
+            (
+                system.to_string, system.to_str, system.to_unicode,
+                tpo.normalize_unicode, tpo.ensure_unicode, system.to_utf8,
+                system.from_utf8
+            ),
+            str,
+        ),
+        EqCall(
+            (system.to_float, system.safe_float),
+            ## TODO4: dest=lambda: try: ... except: ...???
+            float,
+        ),
+        EqCall(
+            (system.to_int, system.safe_int),
+            int,
+        ),
+        EqCall(
+            (debug.assertion, gh.assertion),
+            dests=assertion_replacement,
+            extra_params={ "assert_level": 1, "message": "debug assertion failed" },
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            (system.getenv, system.getenv_value),
+            dests=lambda var, default_value: os.environ.get(var) or default_value,
+            eq_params={"var": "var", "default": "default_value"},
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            (system.getenv_int, system.getenv_integer),
+            dests=lambda var, default_value: int(os.environ.get(var)) or default_value,
+            eq_params={"var": "var", "default": "default_value"},
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            (system.getenv_bool, system.getenv_boolean),
+            dests=lambda var, default_value: bool(os.environ.get(var)) or default_value,
+            eq_params={"var": "var", "default": "default_value"},
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            system.getenv_text,
+            dests=lambda var, default_value: str(os.environ.get(var)) or default_value,
+            eq_params={"var": "var", "default": "default_value"},
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            (system.getenv_number, system.getenv_float),
+            dests=lambda var, default_value: float(os.environ.get(var)) or default_value,
+            eq_params={"var": "var", "default": "default_value"},
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        # 
+        # NEW CALLS
+        #
+        # Note:
+        # - The goal is to provide coverage for the most commonly used functions,
+        #   not all of mezcla. This would mostly include debug.py, system.py, and
+        #   glue_helpers.py.
+        # - Exceptions would be the deprecated tpo_common.py and the complex main.py.
+        # - In addition, testing support is not included (e.g., unittest_wrapper.py).
+        #
+        EqCall(
+            system.quote_url_text,
+            dests=urllib.parse.quote_plus
+        ),
+        EqCall(
+            system.unquote_url_text,
+            dests=urllib.parse.unquote_plus
+        ),
+        EqCall(
+            (system.non_empty_file, gh.non_empty_file),
+            dests=lambda path: os.path.exists(path) and os.path.getsize(path) > 0,
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            (system.read_file, system.read_entire_file),
+            dests=lambda path: open(path, encoding="UTF-8").read(),
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            system.write_file,
+            dests=lambda path, text: open(path, "w", encoding="UTF-8").write(text),
+            eq_params={ "filename": "path", "text": "text" },
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            gh.full_mkdir,
+            dests=os.makedirs,
+        ),
+        EqCall(
+            gh.elide,
+            dests=lambda text, max_length: text[:max_length] + "..." if len(text) > max_length else text,
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            debug.reference_var,
+            dests=lambda var: ...,
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            (debug.debugging, debug.detailed_debugging, debug.verbose_debugging),
+            dests=lambda : False,
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            system.chomp,
+            dests=lambda text: text.rstrip(os.linesep),
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            system.save_object,
+            dests=lambda obj,filename: pickle.dump(obj, open(filename, "wb")),
+            eq_params={ "obj": "obj", "file_name": "filename" },
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            system.load_object,
+            dests=lambda filename: pickle.load(open(filename, "rb")),
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            system.round_as_str,
+            dests=lambda value: str(round(value)),
+            features=[Features.COPY_DEST_SOURCE],
+            extra_params={ "precision": 6 }
+        ),
+        EqCall(
+            misc_utils.sort_weighted_hash,
+            dests=lambda hash: sorted(hash.items(), key=lambda x: x[1], reverse=True),
+            features=[Features.COPY_DEST_SOURCE]
+        ),
+        EqCall(
+            gh.resolve_path,
+            dests=os.path.realpath,
+        ),
+        EqCall(
+            debug.timestamp,
+            dests=datetime.datetime.now,
+        ),
+        EqCall(
+            spacy_nlp.Chunker,
+            dests=spacy.load,
+            eq_params={"model": "name"},
+        ),
+        EqCall(
+            targets="system.setenv",
+            dests="os.putenv",
+        ),
+        ## TODO2: Make sure new additions are for commonly used functions.
+        ## For tips, see header comments and notes above under "NEW CALLS".
+    ]
 
 #-------------------------------------------------------------------------------
 
@@ -1711,6 +1756,10 @@ class BaseTransformerStrategy:
         """Initialize BaseTransformerStrategy with optional EQ_CALL_TABLE"""
         if eq_call_table is None:
             eq_call_table = mezcla_to_standard
+            if EQCALL_DATAFILE:
+                eq_call_table = misc_utils.convert_python_data_to_instance(
+                    EQCALL_DATAFILE, "mezcla.mezcla_to_standard", "EqCall",
+                    EQCALL_FIELDS)
         self.unique_eq_calls: list[EqCall] = []
         """
         List of equivalent calls between Mezcla and standard, with all permutations precalculated
@@ -2386,7 +2435,7 @@ def main():
             (IN_PLACE, 'Modify the file in place, useful if you want to compare changes using Git'),
             (SKIP_WARNINGS, 'Skip warnings'),
         ],
-        manual_input = True,
+        manual_input=True,
         skip_input=False,
     )
     app.run()
