@@ -25,6 +25,7 @@ from mezcla import glue_helpers as gh
 from mezcla import debug
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla.tests.common_module import SKIP_EXPECTED_ERRORS, SKIP_EXPECTED_REASON
 ## OLD: from mezcla.mezcla_to_standard import EqCall, Features
 # note: mezcla_to_standard uses packages not installed by default (e.g., libcst)
 try:
@@ -289,22 +290,23 @@ class TestMiscUtils(TestWrapper):
 class TestFileToInstance(TestWrapper):
     """Class for testing convert_file_to_instances: external file loading to support mezcla_to_standard"""
     # note: script_module used in argument parsing sanity check (e.g., --help)
+    ## TODO3: Add parameters to reduce redundancy in the various test_convert_*_to_instance methods,
+    ## such as resource data file and conversion function.
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    instance_1 = EqCall(gh.rename_file, dests=os.rename)
-    instance_2 = EqCall(gh.dir_path, dests=os.path.dirname, eq_params={"filename": "p"})
-
+    expected_instances = [
+        EqCall(gh.rename_file, dests=os.rename),
+        EqCall(gh.dir_path, dests=os.path.dirname, eq_params={"filename": "p"}),
+    ]
 
     @pytest.mark.xfail                  # TODO: remove xfail
     def check_instances(self, instances):
-        """Check that INSTANCES match self.instance_[12]"""
-        ## TODO3: Add parameters to reduce redundancy in following test_convert_*_to_instance,
-        ## such as resource data file and conversion function.
-        assert self.instance_1.targets[0].path == instances[0].targets[0].path
-        assert self.instance_1.dests[0].path == instances[0].dests[0].path
+        """Check that INSTANCES match expected_instances"""
+        assert self.expected_instances[0].targets[0].path == instances[0].targets[0].path
+        assert self.expected_instances[0].dests[0].path == instances[0].dests[0].path
 
-        assert self.instance_2.targets[0].path == instances[1].targets[0].path
-        assert self.instance_2.dests[0].path == instances[1].dests[0].path
+        assert self.expected_instances[1].targets[0].path == instances[1].targets[0].path
+        assert self.expected_instances[1].dests[0].path == instances[1].dests[0].path
         
     
     @pytest.mark.xfail                  # TODO: remove xfail
@@ -318,7 +320,7 @@ class TestFileToInstance(TestWrapper):
             json_data,
             "mezcla.mezcla_to_standard",
             "EqCall",
-            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+            mezcla_to_standard.EQCALL_FIELDS,
         )
         self.check_instances(instances)
         
@@ -333,10 +335,11 @@ class TestFileToInstance(TestWrapper):
             yaml_data,
             "mezcla.mezcla_to_standard",
             "EqCall",
-            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+            mezcla_to_standard.EQCALL_FIELDS,
         )
         self.check_instances(instances)
-        
+
+    @pytest.mark.skipif(SKIP_EXPECTED_ERRORS, reason=SKIP_EXPECTED_REASON)
     @pytest.mark.xfail                  # TODO: remove xfail
     def test_convert_csv_to_instance(self):
         """ensure convert_csv_to_instance works as expected"""
@@ -348,7 +351,7 @@ class TestFileToInstance(TestWrapper):
             csv_data,
             "mezcla.mezcla_to_standard",
             "EqCall",
-            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+            mezcla_to_standard.EQCALL_FIELDS,
         )
         self.check_instances(instances)
 
@@ -363,7 +366,7 @@ class TestFileToInstance(TestWrapper):
             py_data,
             "mezcla.mezcla_to_standard",
             "EqCall",
-            ["targets", "dests", "condition", "eq_params", "extra_params", "features"],
+            mezcla_to_standard.EQCALL_FIELDS,
         )
         self.check_instances(instances)
 
