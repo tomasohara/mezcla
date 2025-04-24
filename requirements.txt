@@ -75,6 +75,7 @@ stop_words
 #opt# tensorrt                # NVidia GPU support
 transformers                  # HF models
 torch
+unittest_parametrize          # pytest-like for classes
 #opt# torchaudio
 webcolors==1.13
 wheel
