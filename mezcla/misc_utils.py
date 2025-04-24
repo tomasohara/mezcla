@@ -555,24 +555,38 @@ def apply_numeric_suffixes(text: str, just_once=False) -> str:
     debug.trace(5, f"apply_numeric_suffixes({text!r}, [once={just_once})")
     suffixes = "_KMGTPE"                # _ is placeholder for no suffix
     new_text = ""
-    for line in text.splitlines():
+    for l, line in enumerate(text.splitlines()):
         max_count = len(line) / 3
         count = 0
-        # note: uses negative look ahead to avoid conversion in decimals (e.g., 1023.5)
+        # note: uses negative look ahead to avoid conversion in decimals (e.g., 1023.5);
+        # also, uses non-greedy search to exclude leading question marks (e.g., ?00000000?)
+        ## OLD:
         while (my_re.search(r"(.*)\b(\d{4,19})\b(?!\.)(.*)", line)):
+            ## TEST: while (my_re.search(r"([^\?]*+)\b(\d(\d\d\d){1,6})\b(?!\.)(.*)", line)):
+            ## TEST2: while (my_re.search(r"([^\?]*+)\b(\d{4,19})\b(?!\.)(.*)", line)):
             count += 1
             if count > max_count:
                 break
             (pre, numeric, post) = my_re.groups()
+            (new_num, suffix) = ("", "")
             num = float(numeric)
-            power = int(math.log(num) / math.log(1024))
-            new_num = system.round_as_str(num / (1024 ** power))
-            # note: accounts for quirk in rounding (e.g., stripping N.000)
-            # TODO2: ignore special cases like 0000 (n.b., due to \d{4,N} regex)
-            new_num = my_re.sub(r"\.0+$", "", new_num)
-            suffix = suffixes[power]
+            if num > 0:
+                try:
+                    power = int(math.log(num) / math.log(1024))
+                    new_num = system.round_as_str(num / (1024 ** power))
+                    # note: accounts for quirk in rounding (e.g., stripping N.000)
+                    # TODO2: ignore special cases like 0000 (n.b., due to \d{4,N} regex)
+                    new_num = my_re.sub(r"\.0+$", "", new_num)
+                    suffix = suffixes[power]
+                    debug.trace_expr(6, numeric, num, power, line)
+                except:
+                    # note: restore number and add surrounding ?'s to block regex
+                    new_num = f"_{numeric}?_"
+                    debug.trace_exception(5, f"apply_numeric_suffixes line {l} ({line!r})")
+            else:
+                ## TODO3: rework pattern matching to exclude 0000
+                new_num = "0K"
             line = pre + str(new_num) + suffix + post
-            debug.trace_expr(6, numeric, num, power, line)
         new_text += line + os.linesep
     if new_text.endswith(os.linesep) and not text.endswith(os.linesep):
         new_text = my_re.sub(fr"{os.linesep}$", "", new_text)
