@@ -63,8 +63,9 @@ NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
 GUIDANCE_HELP = "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)--higher for more; aka Classifier Free Guidance (CFG)"
 GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
                                    description=GUIDANCE_HELP)
-SD_URL = system.getenv_value("SD_URL", None,
+SD_URL_ENV = system.getenv_value("SD_URL", None,
                              "URL for SD TCP/restful server--new via flask or remote")
+SD_URL = (SD_URL_ENV if (SD_URL_ENV is not None) and (SD_URL_ENV.strip not in ["", "-"]) else None)
 SD_PORT = system.getenv_int("SD_PORT", 9700,
                             "TCP port for SD server")
 SD_DEBUG = system.getenv_int("SD_DEBUG", False,
