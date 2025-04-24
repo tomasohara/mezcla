@@ -19,6 +19,7 @@ import os
 
 # Installed packages
 import pytest
+from unittest_parametrize import ParametrizedTestCase, parametrize
 
 # Local packages
 from mezcla import glue_helpers as gh
@@ -55,7 +56,11 @@ try:
 except ImportError:
     system.print_exception_info("more_itertools import")
 
-class TestMiscUtils(TestWrapper):
+# Constants
+ONE_MB = 1024 ** 2
+
+
+class TestMiscUtils(TestWrapper, ParametrizedTestCase):
     """Class for test case definitions"""
     # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
@@ -268,13 +273,24 @@ class TestMiscUtils(TestWrapper):
         result_class = THE_MODULE.get_class_from_name('date', 'datetime')
         assert result_class is datetime.date
 
+    def check_apply_numeric_suffixes(self, text, expect):
+        """Helper for test_apply_numeric_suffixes """
+        debug.trace_expr(4, text, expect, prefix="in check_apply_numeric_suffixes: ")
+        actual = THE_MODULE.apply_numeric_suffixes(text)
+        assert actual.strip() == expect.strip()
+    
     @pytest.mark.xfail                  # TODO: remove xfail
-    def test_apply_numeric_suffixes(self):
+    @parametrize(
+        "text, actual",
+        ## TODO? ("text, actual")     # see https://github.com/adamchainz/unittest-parametrize
+        [ (f"{ONE_MB - 1024 - 1} {ONE_MB} {ONE_MB + 1024}", "1022.999K 1M 1.001M"),
+          ("0000", "0K"),
+          ## TODO2: ("-00000000-", "-_00000000_?-"),
+          ("-00000000-", "-0K-"),
+         ])
+    def test_apply_numeric_suffixes(self, text, actual):
         """Check apply_numeric_suffixes"""
-        one_mb = 1024 ** 2
-        text = f"{one_mb - 1024 - 1} {one_mb} {one_mb + 1024}"
-        actual = THE_MODULE.apply_numeric_suffixes(text).strip()
-        assert actual == "1022.999K 1M 1.001M"
+        self.check_apply_numeric_suffixes(text, actual)
 
     @pytest.mark.xfail                  # TODO: remove xfail
     def test_stdin_apply_numeric_suffixes(self):
