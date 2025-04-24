@@ -39,7 +39,8 @@ import re
 import sys
 
 # Installed packages
-from sklearn.feature_extraction.text import CountVectorizer
+## OLD: from sklearn.feature_extraction.text import CountVectorizer
+CountVectorizer = None
 
 # Local packages
 from mezcla import debug
@@ -84,8 +85,9 @@ ALLOW_NGRAM_OVERLAP = system.getenv_boolean("ALLOW_NGRAM_OVERLAP", False,
                                             "Allows ngrams to overlap--token boundariese")
 ALLOW_NUMERIC_NGRAMS = system.getenv_boolean("ALLOW_NUMERIC_NGRAMS", False)
 DEFAULT_USE_CORPUS_COUNTER = (not tfidf_preprocess.USE_SKLEARN_COUNTER)
-USE_CORPUS_COUNTER = system.getenv_boolean("USE_CORPUS_COUNTER", DEFAULT_USE_CORPUS_COUNTER,
-                                           "Use slow tfidf package ngram tabulation")
+USE_CORPUS_COUNTER = system.getenv_boolean(
+    "USE_CORPUS_COUNTER", DEFAULT_USE_CORPUS_COUNTER,
+    "Use slow tfidf package ngram tabulation")
 TFIDF_BOOST_CAPITALIZED = system.getenv_boolean(
     "TFIDF_BOOST_CAPITALIZED", False,
     description="Treat capitalized ngrams higher others of same weight; excludes inner function words")
@@ -124,6 +126,9 @@ except:
     system.print_stderr("Exception in main: " + str(sys.exc_info()))
 assert(TFIDF_VERSION > 1.0)
 
+# Do dynamic loads
+if not USE_CORPUS_COUNTER:
+    from sklearn.feature_extraction.text import CountVectorizer
 
 def split_tokens(text, include_punct=None, include_stop=None):
     """Split TEXT into word tokens (via NLTK), optionally with INCLUDE_PUNCT and INCLUDE_STOP"""
