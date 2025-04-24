@@ -47,6 +47,11 @@
 **/output-files
 **/downloads
 **/cache
+*.pyc
+*.pyo
+
+# Model files
+*.bin
 
 # Top level distribution dir and related
 # Note: tox support PyPi packaging
