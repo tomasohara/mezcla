@@ -39,7 +39,6 @@ import re
 import sys
 
 # Installed packages
-## OLD: from sklearn.feature_extraction.text import CountVectorizer
 CountVectorizer = None
 
 # Local packages
@@ -68,26 +67,22 @@ PREPROCESSOR_LANG = system.getenv_value(
     "PREPROCESSOR_LANG", DEFAULT_PREPROCESSOR_LANG,
     description="Language for ngram preprocessor")
 # NOTE: MIN_NGRAM_SIZE (e.g., 2) is alternative to deprecated ALL_NGRAMS (implies 1)
-## OLD: MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 4)
 # TODO: add descriptions to all getenv options
-## OLD: MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", 2)
 ALL_NGRAMS = system.getenv_boolean("ALL_NGRAMS", False)
-## OLD:
-## USE_NGRAM_SMOOTHING = system.getenv_boolean("USE_NGRAM_SMOOTHING", False)
-## DEFAULT_TF_WEIGHTING = 'basic'
-## TF_WEIGHTING = system.getenv_text("TF_WEIGHTING", DEFAULT_TF_WEIGHTING)
-## DEFAULT_IDF_WEIGHTING = 'smooth' if USE_NGRAM_SMOOTHING else 'basic'
-## IDF_WEIGHTING = system.getenv_text("IDF_WEIGHTING", DEFAULT_IDF_WEIGHTING)
 MAX_TERMS = system.getenv_int("MAX_TERMS", 100)
-ALLOW_NGRAM_SUBSUMPTION = system.getenv_boolean("ALLOW_NGRAM_SUBSUMPTION", False,
-                                                "Allow ngram subsumed by another--substring")
-ALLOW_NGRAM_OVERLAP = system.getenv_boolean("ALLOW_NGRAM_OVERLAP", False,
-                                            "Allows ngrams to overlap--token boundariese")
-ALLOW_NUMERIC_NGRAMS = system.getenv_boolean("ALLOW_NUMERIC_NGRAMS", False)
+ALLOW_NGRAM_SUBSUMPTION = system.getenv_boolean(
+    "ALLOW_NGRAM_SUBSUMPTION", False,
+    description="Allow ngram subsumed by another--substring")
+ALLOW_NGRAM_OVERLAP = system.getenv_boolean(
+    "ALLOW_NGRAM_OVERLAP", False,
+    description="Allows ngrams to overlap--token boundariese")
+ALLOW_NUMERIC_NGRAMS = system.getenv_boolean(
+    "ALLOW_NUMERIC_NGRAMS", False,
+    description="Allow ngrams with numbers")
 DEFAULT_USE_CORPUS_COUNTER = (not tfidf_preprocess.USE_SKLEARN_COUNTER)
 USE_CORPUS_COUNTER = system.getenv_boolean(
     "USE_CORPUS_COUNTER", DEFAULT_USE_CORPUS_COUNTER,
-    "Use slow tfidf package ngram tabulation")
+    description="Use slow tfidf package ngram tabulation")
 TFIDF_BOOST_CAPITALIZED = system.getenv_boolean(
     "TFIDF_BOOST_CAPITALIZED", False,
     description="Treat capitalized ngrams higher others of same weight; excludes inner function words")
@@ -126,7 +121,7 @@ except:
     system.print_stderr("Exception in main: " + str(sys.exc_info()))
 assert(TFIDF_VERSION > 1.0)
 
-# Do dynamic loads
+# Do dynamic load(s)
 if not USE_CORPUS_COUNTER:
     from sklearn.feature_extraction.text import CountVectorizer
 
@@ -282,7 +277,6 @@ class ngram_tfidf_analysis(object):
                 ## TODO4: simplify old-score maintenance (e.g., via helper functions)
                 init_score = score
                 tokens = (split_tokens(ngram, include_stop=True) if ANY_TOKEN_BOOST else [])
-                ## OLD: debug.trace_expr(6, tokens, TFIDF_STOP_BOOST, tokens[0], self.is_stopword(tokens[0]))
 
                 # Apply boost if entire ngram is a noun phrase and likewise for verb phrase
                 old_score = init_score
