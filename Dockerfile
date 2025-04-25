@@ -33,7 +33,9 @@
 
 ## NOTE: Uses a smaller image to speed up build
 ## TEST: FROM ghcr.io/catthehacker/ubuntu:act-latest
-FROM catthehacker/ubuntu:act-20.04
+## OLD: FROM catthehacker/ubuntu:act-20.04
+ARG UBUNTU_VERSION="22.04"
+FROM catthehacker/ubuntu:act-${UBUNTU_VERSION}
 
 ARG WORKDIR=/home/mezcla
 ARG REQUIREMENTS=$WORKDIR/requirements.txt
@@ -91,16 +93,16 @@ END_RUN
 # Note:
 # - Uses versions prepared for Github Actions
 # - To find URL links, see https://github.com/actions/python-versions:
-#   ex: https://github.com/actions/python-versions/releases/download/3.8.12-117929/python-3.8.12-linux-20.04-x64.tar.gz
+#   ex: https://github.com/actions/python-versions/releases/tag/3.11.4-5199054971
 # - Also see https://stackoverflow.com/questions/74673048/github-actions-setup-python-stopped-working.
 # - The wget -qO option is for quiet output to a file.
 # - TODO3: report error if download fails
 RUN if [ "$PYTHON_VERSION" != "" ]; then                                                 \
-        wget -qO /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz "https://github.com/actions/python-versions/releases/download/${PYTHON_VERSION}-${PYTHON_TAG}/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz" &&     \
+        wget -qO /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz "https://github.com/actions/python-versions/releases/download/${PYTHON_VERSION}-${PYTHON_TAG}/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz" &&     \
         mkdir -p /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 &&                    \
-        tar -xzf /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz                    \
+        tar -xzf /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz                    \
             -C /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 --strip-components=1 && \
-        rm /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz;                          \
+        rm /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz;                          \
     fi
 
 ## TODO (use streamlined python installation):
