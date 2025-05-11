@@ -80,6 +80,12 @@ def maxint() -> int:
 
 env_options = {}
 env_defaults = {}
+env_diagnostic_level = 6
+#
+def set_env_diagnostic_level(level):
+    """Set trace LEVEL at which getenv_xyz-related diagnostics occur"""
+    global env_diagnostic_level
+    env_diagnostic_level = level
 #
 def register_env_option(var: str, description: str, default: Any) -> None:
     """Register environment VAR as option with DESCRIPTION and DEFAULT"""
@@ -99,7 +105,7 @@ def register_env_option(var: str, description: str, default: Any) -> None:
          debug.trace(4, f"Warning: redefining env option default for {var}: {old_default=} {default=}")
          ok = False
     if not ok:
-        debug.trace_stack(6)
+        debug.trace_stack(env_diagnostic_level)
     env_options[var] = description
     env_defaults[var] = default
     return
@@ -561,6 +567,10 @@ def quote_url_text(text: str, unquote: bool = False) -> str:
     # EX: quote_url_text("Joe's hat") => "Joe%27s+hat"
     # EX: quote_url_text("Joe%27s+hat") => "Joe%2527s%2Bhat"
     debug.trace_fmtd(7, "in quote_url_text({t})", t=text)
+    ## TEMP: treat None as empty string
+    debug.assertion(text is not None)
+    if (text is None):
+        text = ""
     result = text
     quote = (not unquote)
     try:
