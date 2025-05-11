@@ -3,22 +3,31 @@
 # Uses the Hugging Face API for machine translation (MT)
 #
 # Based on:
-# - https://stackoverflow.com/questions/71568142/how-can-i-extract-and-store-the-text-generated-from-an-automatic-speech-recognit #pylint: disable=line-too-long
+# - https://stackoverflow.com/questions/70043467/how-to-run-huggingface-helsinki-nlp-models
 # - Hugging Face's NLP with Transformers text
 #
-# TODO2:
+# TODO3:
 # - Address HuggingFace tip:
 #   In order to maximize efficiency [on a GPU] please use a dataset. [instead of using pipelines sequentially]
+#
+# TODO2:
+# - Decompose main using helper class(es): see ../template.py and ../simple_main_example.py.
 #
 
 """Machine translation via Hugging Face
 
-Example:
+Examples:
 
 echo "How now Bourne cow?" | FROM=en TO=es {script} -
 
 USE_INTERFACE=1 {script} -
+
+--model "BryanFalkowski/english-to-latin-v2" --from=en --to=la - <<<"The farmer is in the field"
 """
+#
+## TODO3: find a model supporting Latin to English
+## {script} --model "BryanFalkowski/english-to-latin-v2" --from=la --to=en - <<<"Habemus Papam"
+## NOTE: It should produce "We have a pope".
 
 # Standard modules
 ## TODO: import json
@@ -60,6 +69,7 @@ TASK_ARG = "task"
 MODEL_ARG = "model"
 UI_ARG = "ui"
 ROUND_ARG = "round"
+TRANSLATION_TEXT = "translation_text"
 
 USE_GPU = system.getenv_bool("USE_GPU", True, "Uses Torch on GPU if True")
 MAX_LENGTH = system.getenv_int("MAX_LENGTH", 512, "Maximum Length of Tokens")
@@ -68,7 +78,7 @@ TEXT_FILE = system.getenv_text("TEXT_FILE", "-",
 USE_INTERFACE = system.getenv_bool("USE_INTERFACE", False,
                                    "Use web-based interface via gradio")
 
-## NOTE: Round-trip translation: Translating text from one language to another and back to its original form
+# Note: Round-trip translation: Translating text from one language to another and back to its original form
 ROUND_TRIP = system.getenv_bool("ROUND_TRIP", False, 
                                 "Perform round-trip translation")
 
@@ -83,7 +93,7 @@ def show_gpu_usage(trace_level=None):
     return
 
 def translated_text(model_obj):
-    TRANSLATION_TEXT = "translation_text"
+    """Get translation text for first entry in MODEL_OBJ"""
     return model_obj[0][TRANSLATION_TEXT] or ""
 
 def main():
@@ -110,7 +120,7 @@ def main():
     debug.assertion(dummy_app.parsed_args)
     text = dummy_app.get_parsed_option(TEXT_ARG)
     source_lang = dummy_app.get_parsed_option(FROM_ARG, SOURCE_LANG)
-    target_lang = dummy_app.get_parsed_option(FROM_ARG, TARGET_LANG)
+    target_lang = dummy_app.get_parsed_option(TO_ARG, TARGET_LANG)
     # Round-trip from argument
     round_trip = dummy_app.get_parsed_option(ROUND_ARG, ROUND_TRIP)
     use_interface = dummy_app.get_parsed_option(UI_ARG, USE_INTERFACE)
@@ -120,7 +130,7 @@ def main():
     mt_task = dummy_app.get_parsed_option(TASK_ARG, MT_TASK)
     mt_model = dummy_app.get_parsed_option(MODEL_ARG, MT_MODEL)
 
-    ## Creating language models and tasks in reverse for round-trip translation
+    # Creating language models and tasks in reverse for round-trip translation
     if round_trip:
         MT_TASK_REVERSE = f"translation_{target_lang}_to_{source_lang}"                 # pylint: disable=invalid-name
         MT_MODEL_REVERSE = f"Helsinki-NLP/opus-mt-{target_lang}-{source_lang}"          # pylint: disable=invalid-name  
@@ -152,9 +162,31 @@ def main():
     debug.trace_expr(5, device)
     model = pipeline(task=mt_task, model=mt_model, device=device)
 
-    ## Create a model for reverse translation when ROUND_TRIP is true
+    # Create a model for reverse translation when ROUND_TRIP is true
+    model_reverse = None
     if round_trip:
         model_reverse = pipeline(task=mt_task_reverse, model=mt_model_reverse)
+
+    def translate(text, mt_model=None, reverse=False):
+        """Translate TEXT from current source language to target
+        Optionally translates in REVERSE or uses different MT_MODEL
+        Note: works around issue with non-Helsinki-NLP models requiring source and target spec
+        """
+        ## TODO3: Convert into method (once main decomposed using class)
+        if mt_model is None:
+            mt_model = (model if not reverse else model_reverse)
+        translation = [{TRANSLATION_TEXT: ""}]
+        try:
+            translation = mt_model(text, max_length=MAX_LENGTH)
+        except:
+            debug.trace_exception(6, "translate")
+            debug.trace(5, "FYI: Retrying with explicit source and target")
+            try:
+                translation = mt_model(text, max_length=MAX_LENGTH,
+                                       src_lang=source_lang, tgt_lang=target_lang)
+            except:
+                system.print_exception_info("translate")
+        return translation
 
     # Pull up web interface if requested
     if use_interface:
@@ -171,44 +203,47 @@ def main():
 
     # Otherwise, do translation and output
     else:
-        TRANSLATION_TEXT = "translation_text"
         split_regex = r"\n\s*\n" if USE_PARAGRAPH_MODE else "\n"
-        ## Avoid "I'm sorry" bug when reading from stdin
+        # Note: Avoids "I'm sorry" bug when reading from stdin
         segments = my_re.split(split_regex, text)
-        # print(segments)
+        debug.trace_expr(6, segments)
         if segments[-1] == "":
             segments = segments[:-1]
-        ## OLD:
-        # for segment in my_re.split(split_regex, text)
         for s, segment in enumerate(segments):
             debug.trace_expr(3, s, segment)
             if not segment.strip():
                 continue
             try:
+                translation_reverse_text = translation_round_text = ""
+
                 # Translation Level I (FROM -> TO)
-                translation = model(segment, max_length=MAX_LENGTH)
+                ## OLD: translation = model(segment, max_length=MAX_LENGTH)
+                translation = translate(segment)
                 translation_text = translated_text(translation)
                 debug.trace_expr(3, translation_text)
                 
-                ## Round-Trip translation uses the reverse model to re-translate back to original form
+                # Round-Trip translation uses the reverse model to re-translate back to original form
+                ## TODO2: drop intermediate translation in round-trip support
+                ## NOTE: Only needs to go from source to target and then target back to source:
+                ##    src-original -> tgt-translated -> src-round-trip
                 if round_trip:
                     # Translation Level II (TO -> FROM_AUX)
-                    translation_reverse = model_reverse(translation_text, max_length=MAX_LENGTH)
+                    ## OLD: translation_reverse = model_reverse(translation_text, max_length=MAX_LENGTH)
+                    translation_reverse = translate(segment, reverse=True)
                     translation_reverse_text = translated_text(translation_reverse)
-                    
+
                     # Translation Level III (FROM_AUX -> TO)
-                    translation_round = model(translation_reverse_text, max_length=MAX_LENGTH)
+                    ## OLD: translation_round = model(translation_reverse_text, max_length=MAX_LENGTH)
+                    translation_round = translate(translation_reverse_text)
                     translation_round_text = translated_text(translation_round)
 
                 debug.assertion(isinstance(translation, list)
                                 and (TRANSLATION_TEXT in translation[0]))
-                translation_reverse_text = translation_reverse_text if round_trip else ''
-                translation_round_text = translation_round_text if round_trip else ''
-
-                ## OLD: Before round-trip translation
-                # print(translation[0].get(TRANSLATION_TEXT) or "")
+                ## OLD:
+                ## translation_reverse_text = translation_reverse_text if round_trip else ''
+                ## translation_round_text = translation_round_text if round_trip else ''
                 
-                ## For round trip translation, print all possible translations along with their language code
+                # For round trip translation, print all possible translations along with their language code
                 if round_trip:
                     print(f"\nOriginal      ({FROM}):\n{segment}")
                     print(f"\nTranslate     ({TO}):\n{translation_text}")
@@ -219,7 +254,7 @@ def main():
                     round_trip_difference = round_trip_diff_original or round_trip_diff_translate
                     print(f"\nDifference in Translation: {round_trip_difference}\n")
                     
-                    ## If there is any difference during round-trip translation, print the difference
+                    # If there is any difference during round-trip translation, print the difference
                     if round_trip_difference:
                         print("="*40)
                         print(f"\nDifferences in Original ({FROM}):")
