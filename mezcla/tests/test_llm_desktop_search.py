@@ -7,7 +7,7 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_llm_desktop_search.py
 #
-# TODO1:
+# TODO3:
 # - Try to minize usage of run_script to just one or two tests:
 #   it is an older style of testing. It is better to use DesktopSearch
 #   class directly. More details follow in the warning.
@@ -107,7 +107,6 @@ class TestIt(TestWrapper):
         
         # assert INDEX_STORE_DIR is not empty
         self.do_assert(index_files != [])
-        ## OLD: # self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         
         # save modified date for comparing later 
         prev_date = get_last_modified_date(system.get_directory_filenames(self.index_temp_dir, just_regular_files=True))
