@@ -7,10 +7,12 @@
 #   https://swharden.com/blog/2023-07-29-ai-chat-locally-with-python
 #   https://github.com/alejandro-ao/ask-multiple-pdfs
 #
-# TODO1: ***
-# - Lorenzo: review the TODO1 items below (added during merge).
-# - Look into dropping atexit (becuase temp directories are used);
-#   or at least skip if main.KEEP_TEMP_FILES (useful for debugging).
+# TODO2:
+# - Make sure the tests are more reliabile (e.g., perhaps issue due to caching).
+# - Clarify the specific Python requirements (language and modules)
+#
+# TODO3:
+# - Document the workflow better.
 # - Note that --index arg changed from binary to text with index dir.
 #
 
@@ -41,7 +43,6 @@ from langchain_community.llms import CTransformers
 from langchain_community.vectorstores import FAISS
 
 # Local modules
-# TODO: def mezcla_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import gpu_utils
@@ -139,7 +140,7 @@ def get_last_modified_date(iterable: Iterable) -> float:
 def correct_metadata(doc: Document, base_dir: str) -> Document:
     """removes BASE_DIR from the source metadata path
        so it represents the actual source of the file"""
-    # TODO1: fix docstrings with respect to hardcoded assumptions
+    # TODO3: fix docstrings with respect to hardcoded assumptions
     debug.trace_expr(4, base_dir)
     doc_metadata = doc.metadata
     old_source = doc_metadata['source']
@@ -376,5 +377,4 @@ def main():
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
     debug.trace(5, f"module __doc__: {__doc__}")
-    debug.assertion("TODO:" not in __doc__)
     main()
