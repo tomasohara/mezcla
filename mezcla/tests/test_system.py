@@ -338,6 +338,12 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.quote_url_text("Joe%27s+hat", unquote=True) == "Joe's hat"
         assert THE_MODULE.quote_url_text("Joe%2527s%2Bhat", unquote=True) == "Joe%27s+hat"
 
+        ## TEMP: Test workaround for handling null text
+        ## NOTE: -1 traicng blocks assertions
+        self.patch_trace_level(-1)
+        assert THE_MODULE.quote_url_text(None) == ""
+        assert THE_MODULE.quote_url_text(None, unquote=True) == ""
+
         ## TODO: Test sys.version_info.major < 2
 
     def test_unquote_url_text(self):
