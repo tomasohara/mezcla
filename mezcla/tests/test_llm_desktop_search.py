@@ -215,6 +215,70 @@ class TestIt(TestWrapper):
         debug.trace_expr(5, num_found, num_total, pct_75)
         assert(num_found >= pct_75)
 
+# Environment Variables for newer tests
+LLM_PATH = system.getenv_text(
+    "LLM_PATH", "",
+    description="Path for LLM model"
+)
+
+class TestLLMDesktopSearch(TestWrapper):
+    """Class for command-line based testcase definition"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    INDEX_STORE_DIR = THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator())
+    use_temp_base_dir = True
+    mezcla_base = gh.form_path(gh.dirname(__file__), "..", "..")   
+
+    def helper_create_temp_dir(self):
+        """Creates disposable temp directory"""
+        temp_dir = gh.get_temp_dir()
+        return temp_dir
+
+    def helper_create_sample_files(self):
+        pass
+
+    @pytest.mark.xfail
+    def test_func_get_file_mod_fime(self):
+        """Ensures get_file_mod_fime method works as expected"""
+        existing_dir = "/etc/passwd"
+        non_existing_dir = "/etc/password"
+        
+        self.assertNotEqual(
+            THE_MODULE.get_file_mod_fime(existing_dir), -1
+        )
+        self.assertEqual(
+            THE_MODULE.get_file_mod_fime(non_existing_dir), -1
+        )
+
+    @pytest.mark.xfail
+    def test_func_get_last_modified_date(self):
+        """Ensures get_last_modified_date works as expected"""
+        temp_dir = self.helper_create_temp_dir()
+        last_modified_date = THE_MODULE.get_last_modified_date(temp_dir)
+        self.assertIsInstance(last_modified_date, float)
+    
+    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
+    @pytest.mark.xfail
+    def test_preliminary_is_model_loaded(self):
+        """Test if test based model is loaded"""
+        # Check if QA_LLM_MODEL uses llama by default
+        self.assertIn("llama-2-7b-chat", THE_MODULE.QA_LLM_MODEL)
+        
+        # Use the command: LLM_PATH="/home/ricekiller/tomProject/mezcla/llama-2-7b-chat.Q4_K_M.gguf" pytest tests/test_llm_desktop_search.py
+        THE_MODULE.QA_LLM_MODEL = LLM_PATH
+        # desktop_search = THE_MODULE.DesktopSearch(index_store_dir=)
+
+    def test_e2e_generate_index_store(self):
+        """End-to-end test to ensure index files (faiss, pkl) is generated"""
+        index_store_temp = gh.get_temp_dir()
+        ## TODO: Replace gh.run with self.run_script method
+        gh.run(f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={index_store_temp} python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {self.mezcla_base}")
+        index_store_content = gh.run(f"ls {index_store_temp}")
+        self.assertIn("index.faiss", index_store_content)
+        self.assertIn("index.pkl", index_store_content)
+    
+    # def test_scenario_no_document_file
+    # def test_scenario_no_document_file
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
