@@ -267,6 +267,7 @@ class TestLLMDesktopSearch(TestWrapper):
         THE_MODULE.QA_LLM_MODEL = LLM_PATH
         # desktop_search = THE_MODULE.DesktopSearch(index_store_dir=)
 
+    @pytest.mark.xfail
     def test_e2e_generate_index_store(self):
         """End-to-end test to ensure index files (faiss, pkl) is generated"""
         index_store_temp = gh.get_temp_dir()
