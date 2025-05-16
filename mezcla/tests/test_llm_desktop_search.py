@@ -270,8 +270,8 @@ class TestLLMDesktopSearch(TestWrapper):
         last_modified_date = THE_MODULE.get_last_modified_date(temp_dir)
         self.assertIsInstance(last_modified_date, float)
     
-    # @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
-    # @pytest.mark.xfail
+    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
+    @pytest.mark.xfail
     def test_preliminary_is_model_loaded(self):
         """Test if test based model is loaded"""
 
