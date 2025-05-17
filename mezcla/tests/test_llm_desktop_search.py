@@ -249,6 +249,17 @@ class TestLLMDesktopSearch(TestWrapper):
             system.write_file(temp_dir + "/" + filename, doc_content)
 
         return temp_dir
+    
+    def helper_extract_compatible_documents(self, directory):
+        """Extract documents supported by the script from a directory"""
+        files = system.get_directory_filenames(directory)
+        extensions = ["txt", "html", "doc", "md"]
+        result = []
+        for file in files:
+            extension = file.split(".")[-1]
+            if extension in extensions:
+                result.append(gh.basename(file))
+        return result
 
     @pytest.mark.xfail
     def test_func_get_file_mod_fime(self):
@@ -354,8 +365,8 @@ class TestLLMDesktopSearch(TestWrapper):
         index_store_contents = gh.run(f"ls {temp_index_store_dir}")
         self.assertEqual(index_store_contents, "")
 
-
-    ## TODO: Create a helper class for run_script() for multiple cases 
+    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="--search option takes some time for operation")
     @pytest.mark.xfail
     def test_e2e_index_option(self):
         """End-to-end tests to check if --index option work as expected"""
@@ -366,30 +377,58 @@ class TestLLMDesktopSearch(TestWrapper):
         self.assertIn("index.faiss", index_dir_contents)
         self.assertIn("index.pkl", index_dir_contents)
 
+    
+    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="--search option takes some time for operation")
     @pytest.mark.xfail
     def test_e2e_search_option(self):
         """End-to-end tests to check if --search option works as expected"""
         ## Create an index at first, and proceed for the search
         ## TODO: Create a helper class or fixture that automates the creation of index
+        temp_index_store = gh.get_temp_dir()
+        CONTEXT_LENGTH = 1152
         self.run_script(options=f"--index {self.mezcla_base}",
-                        env_options=f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={self.e2e_index_store}")
-        search_term = "explain me the licenses used in this project"
-        command_output = self.run_script(options=f"--search {search_term}",
-                        env_options=f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={self.e2e_index_store}")
-        ## TODO: Describe proper tests
-        self.assertEqual(command_output, "")
+                        env_options=f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={temp_index_store}")
+        search_term = "Explain me in a sentence about the licenses used in this project"
+        command_output = self.run_script(options=f'--search "{search_term}"',
+                        env_options=f"CONTEXT_LENGTH={CONTEXT_LENGTH} ALLOW_UNSAFE_MODELS=True QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={temp_index_store}")
+        
+        outputs = command_output.split("\n")
+        self.assertIn("Question", command_output)
+        self.assertIn("Answer", command_output)
+        self.assertIn("response time", command_output)
+        self.assertEqual(len(outputs), 3)
+        result_question = outputs[1].split("</strong>")[-1].strip()
+        result_answer = outputs[2].split("<strong>")[-1].strip()
+        self.assertIn(gh.basename(LLM_PATH), outputs[0])
+        self.assertEqual(result_question, search_term)
+        ## The response must be in a single sentence as defined by the prompt
+        self.assertTrue(result_answer.endswith(".") and result_answer.count(".") == 1)
+        self.assertTrue(len(command_output) >= 50)
 
+    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="--search option takes some time for operation")
     @pytest.mark.xfail
     def test_e2e_similar_option(self):
         """End-to-end tests to check if --similar option works as expected"""
-        self.run_script(options=f"--index {self.mezcla_base}",
-        env_options=f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={self.e2e_index_store}")
+        temp_index_store = gh.get_temp_dir()
+        self.run_script(
+            options=f"--index {self.mezcla_base}",
+            env_options=f"ALLOW_UNSAFE_MODELS=True QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={temp_index_store}"
+        )
         similar_term = "GNU"
         command_output = self.run_script(options=f"--similar {similar_term}",
-                        env_options=f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={self.e2e_index_store}")
-        ## TODO: Describe proper tests
-        self.assertEqual(command_output, "")
-        
+                        env_options=f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={temp_index_store}")
+
+        self.assertNotEqual(command_output, "")
+        self.assertIn(similar_term, command_output)
+        result_pattern = r"\(Document\(id='([a-f0-9-]{36})',\s*metadata={'source':\s*'([^']+)'},\s*page_content='((?:[^']|\\')+)'\),\s*np\.float32\((\d+\.\d+)\)\)"
+        self.assertRegex(command_output, result_pattern)
+        compatible_docs = self.helper_extract_compatible_documents(directory=self.mezcla_base)
+        self.assertEqual(len(compatible_docs), 6)
+        docs_occurrences = sum(command_output.count(c) for c in compatible_docs)
+        self.assertTrue(docs_occurrences >= 1)
+
 
     @pytest.mark.xfail
     def test_e2e_help_option(self):
