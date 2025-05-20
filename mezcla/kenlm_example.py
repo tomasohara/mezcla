@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Example for using the KenLM language modeling utility (based on sample):
 #     http://kheafield.com/code/kenlm [./python/example.py]

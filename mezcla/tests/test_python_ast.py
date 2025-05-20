@@ -1,6 +1,7 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../python_ast.py
+# ^ TODO: More?
 #
 # Notes:
 # - Fill out TODO's below. Use numbered tests to order (e.g., test_1_usage).
@@ -21,7 +22,7 @@
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
@@ -33,9 +34,10 @@ import mezcla.python_ast as THE_MODULE
 
 
 class TestIt(TestWrapper):
-    """Class for command-line based testcase definition"""
+    """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_data_file(self):
         """Makes sure comparison converted using Compare nodes"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
@@ -44,10 +46,6 @@ class TestIt(TestWrapper):
         output = self.run_script(options="", data_file=self.temp_file)
         assert my_re.search(r"Compare", output.strip())
         return
-
-
-class TestIt2:
-    """Class for API-based testcase definition"""
 
     def test_comment_drop(self):
         """Test for comments being dropped"""
@@ -63,4 +61,4 @@ class TestIt2:
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

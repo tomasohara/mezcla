@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Use scikit-learn to perform probabilistic grid search for number of hidden
 # layers and number of units per layer.
@@ -31,6 +31,7 @@ import sys
 from collections import OrderedDict
 
 # Installed moduless
+# pylint: disable=import-error
 # TODO: install kera dynamically???
 ## TEST: sys.stderr.write("here\n")
 ## BAD:
@@ -77,7 +78,7 @@ assert((sys.version_info.major >= 3) and (sys.version_info.minor >= 6))
 
 DEFAULT_VERBOSITY = ((debug.get_level() + 1) // 2)
 VERBOSITY_LEVEL = system.getenv_int("VERBOSITY_LEVEL", DEFAULT_VERBOSITY)
-DATA_FILE = system.getenv_text("DATA_FILE", "samples/pima-indians-diabetes.csv")
+DATA_FILE = system.getenv_text("DATA_FILE", "examples/pima-indians-diabetes.csv")
 FIELD_SEP = system.getenv_text("FIELD_SEP", ",")
 BRUTE_FORCE = system.getenv_bool("BRUTE_FORCE", False)
 RANDOM_OPTIMIZATION = (not BRUTE_FORCE)
@@ -202,6 +203,7 @@ class MyKerasClassifier(KerasClassifier):
         super().__init__(**kwargs)
 
     def check_params(self, params):
+        """Make sure all params supported"""
         ok = (not system.difference(list(params.keys()), self.params))
         debug.trace_fmt(6, "{cl}.check_params({p}) => {r}", cl=self.class_name, p=params, r=ok)
         return ok

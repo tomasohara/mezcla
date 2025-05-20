@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Performs text classification using fine-tuning of BERT models,
 #
@@ -45,6 +45,7 @@ import os
 ## import matplotlib
 
 # TPO: for error handling when reading category labels
+# pylint: disable=import-error
 import sys
 from bert import modeling
 from bert import optimization

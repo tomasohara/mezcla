@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Trains text categorizer using Scikit-Learn. See
 #    http://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html

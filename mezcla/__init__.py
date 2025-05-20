@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Mezcla is Spanish for mixture, and this repository contains a variety of Python scripts.

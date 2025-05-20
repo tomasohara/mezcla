@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Example of how to plot multiclass precision/recall curves with sklearn
 # (via "binarizing" of output).

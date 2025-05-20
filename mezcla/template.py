@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # TODO: # -*- coding: utf-8 -*-
 ## TODO: handle case when env installed elsewhere (e.g., maldito mac)
 ## #! env python
@@ -16,7 +16,7 @@ Sample usage:
 """
 
 # Standard modules
-## TODO: from collections import defaultdict
+from typing import Optional
 
 # Installed modules
 ## TODO: import numpy
@@ -59,18 +59,23 @@ TL = debug.TL
 TODO_FUBAR = system.getenv_bool(
     "TODO_FUBAR", False,
     description="TODO:Fouled Up Beyond All Recognition processing")
+## TODO
+## X = system.getenv_int(
+##     "X", X,
+##     description="X")
+
 
 ## TODO: Use helper class for main logic
 ## class Helper:
 ##     """TODO: class for doing ..."""
 ## 
-##     def __init__(self, ...):
+##     def __init__(self, ...) -> None:
 ##         """Initializer: ..."""
 ##         debug.trace(TL.VERBOSE, f"Helper.__init__(): self={self}")
 ##         self.TODO = None
 ##         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 ## 
-##     def process(self, ...):
+##     def process(self, ...) -> None:
 ##         """TODO: ..."""
 ##         # TODO: flesh out
 ##
@@ -79,7 +84,7 @@ class Script(Main):
     """Input processing class"""
     # TODO: -or-: """Adhoc script class (e.g., no I/O loop, just run calls)"""
     ## TODO: class-level member variables for arguments (avoids need for class constructor)
-    todo_arg = False
+    todo_arg: Optional[bool] = False
     ## text_arg = ""
 
     # TODO: add class constructor if needed for non-standard initialization
@@ -88,10 +93,10 @@ class Script(Main):
     ## NOTE: Such class decomposition is also beneficial for unit tests.
     #
     ## def __init__(self, *args, **kwargs):
-    ##     debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {self.__class__.__name__}.__init__({a})")
+    ##     debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {self.__class__.__name__}.__init__({args}, {kwargs})")
     ##     super().__init__(*args, **kwargs)
 
-    def setup(self):
+    def setup(self) -> None:
         """Check results of command line processing"""
         debug.trace(TL.VERBOSE, f"Script.setup(): self={self}")
         ## TODO: extract argument values
@@ -99,9 +104,11 @@ class Script(Main):
         ## TODO:
         ## self.text_arg = self.get_parsed_option(TEXT_ARG, self.text_arg)
         ## self.alt_filename = self.get_parsed_argument(ALT_FILENAME)
+        ## OLD:
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+        ## TEST: debug.trace_object(5, self, label=f"{self.__init__.__qualname__.split('.')[0]} instance")
 
-    def process_line(self, line):
+    def process_line(self, line) -> None:
         """Processes current line from input"""
         debug.trace_fmtd(TL.QUITE_DETAILED, "Script.process_line({l})", l=line)
         # TODO: flesh out
@@ -114,25 +121,28 @@ class Script(Main):
         ##     print("arg2 line: %s" % line)
 
     ## TODO: if no input prococessed, customize run_main_step instead
-    ## and specify skip_input below
+    ## and specify skip_input below. (Use skip_input=False for filename support.)
     ##
-    ## def run_main_step(self):
+    ## def run_main_step(self) -> None:
     ##     """Main processing step (n.b., assumes self.manual_input)"""
     ##     debug.trace(5, f"Script.run_main_step(): self={self}")
+    ##     ...
+    ##     ## TODO: data = self.read_entire_input()
+    #@     ...
     ##
 
     ## TODO:
-    ## def wrap_up(self):
+    ## def wrap_up(self) -> None:
     ##     """Do final processing"""
     ##     debug.trace(6, f"Script.wrap_up(); self={self}")
     ##     # ...
 
-def main():
+def main() -> None:
     """Entry point"""
     app = Script(
         description=__doc__.format(script=gh.basename(__file__)),
-        # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
-        # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
+        # Note: if not manual_input, line-by-line processing is done via process_line;
+        # otherwise, run_main_step is used. Use skip_input to disable filename argument.
         skip_input=False,
         manual_input=False,
         ## TODO (specify auto_help such as when manual_input set):

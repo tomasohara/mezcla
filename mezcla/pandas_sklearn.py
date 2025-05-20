@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Runs training data through a variety of supervised classifiers, as an
 # illustration on how to use pandas and sklearn to do machine learning.
@@ -159,6 +159,7 @@ DUMP_MODEL = getenv_bool("DUMP_MODEL", False,
 # Globals
 devel_classifiers = [DEVEL_CLASSIFIER]
 validation_classifiers = [VALIDATION_CLASSIFIER]
+plt = None
 
 #...............................................................................
 # Optional packages

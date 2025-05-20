@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # google_word2vec.py: Create "deep learning" model for word vector representation
 # using Google's word2vec algorithm (Mikolov et al. 2013) as implemented in Gensim.

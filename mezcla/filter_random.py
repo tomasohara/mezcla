@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # 
 # Filters lines in input file, based on random numbers
 # TODO: use iterator for input (see ???)

@@ -9,5 +9,11 @@ This is a companion script to shell-scripts from Github:
 
 This repository is licensed under the GNU Lesser General Public Version 3 (LGPLv3). See LICENSE.txt.
 
+Some style tips:
+- Black has been blacklisted over existing modules. Ask to use over new ones.
+- Nitpicking pylint exclusions are handled on the command line, so that
+  the full pylint output can be checked (a la strict mode). (See the
+  python-lint aliases in tomohara-aliases.bash from the shell-scripts-repo.)
+- In addition, symbolic names are used (e.g., "C0303" => "trailing-whitespace").
+
 Tom O'Hara
-May 2024

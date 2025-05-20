@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../extract_document_text.py
 #
@@ -21,7 +21,7 @@ import pytest
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 
 # Note: Two references are used for the module to be tested:
@@ -40,7 +40,7 @@ class TestExtractDocumentText(TestWrapper):
         # NOTE: Output contains \n specifier at the end on the text.
         # - Uses test-specific temp file as per TestWrapper.
         # - Uses file extension for use by underlying textract module (see document_to_text).
-        ## OLD: tmp_document = gh.get_temp_file()
+        ## OLD: tmp_document = self.get_temp_file()
         tmp_document = self.temp_file + ".txt"
 
         # DOCUMENT_TEXT = """Lorem Ipsum is simply dummy text of the printing and typesetting industry.
@@ -51,7 +51,7 @@ class TestExtractDocumentText(TestWrapper):
         # Single-line string as INPUT
         DOCUMENT_TEXT = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse porttitor rutrum leo. Nam efficitur justo quis mi ullamcorper consectetur. Aenean posuere nisl dignissim mauris blandit, sed euismod lacus posuere. Morbi ultrices magna eget faucibus ultricies. Praesent in ante nisi. Nulla faucibus sollicitudin sapien in aliquet. Interdum et malesuada fames ac ante ipsum primis in faucibus."
         
-        gh.write_file(tmp_document, text=DOCUMENT_TEXT)
+        system.write_file(tmp_document, text=DOCUMENT_TEXT)
         output = THE_MODULE.document_to_text(tmp_document)
         ## OLD:
         ## output_case1 = output != DOCUMENT_TEXT
@@ -73,13 +73,13 @@ class TestExtractDocumentText(TestWrapper):
         ## OLD: env_option = "STDOUT"
         # NOTE: Output contains \n specifier at the end on the text.
         ## OLD:
-        ## doc_input_temp = gh.get_temp_file()
-        ## doc_output_temp = gh.get_temp_file()
+        ## doc_input_temp = self.get_temp_file()
+        ## doc_output_temp = self.get_temp_file()
         ## TODO2: carefully review tests/template.py
         doc_input_temp = self.temp_file + ".txt"
         # Single-line string as INPUT
         DOCUMENT_TEXT = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse porttitor rutrum leo. Nam efficitur justo quis mi ullamcorper consectetur. Aenean posuere nisl dignissim mauris blandit, sed euismod lacus posuere. Morbi ultrices magna eget faucibus ultricies. Praesent in ante nisi. Nulla faucibus sollicitudin sapien in aliquet. Interdum et malesuada fames ac ante ipsum primis in faucibus."
-        gh.write_file(filename=doc_input_temp, text=DOCUMENT_TEXT)
+        system.write_file(filename=doc_input_temp, text=DOCUMENT_TEXT)
         ## BAD:
         ## test_command_1 = f"../extract_document_text.py {doc_input_temp} {doc_output_temp}"
         ## gh.run(test_command_1)
@@ -108,4 +108,4 @@ class TestExtractDocumentText(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

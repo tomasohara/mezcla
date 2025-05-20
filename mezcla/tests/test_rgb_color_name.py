@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../rgb_color_name.py
 #
@@ -22,7 +22,7 @@ import re
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
@@ -38,7 +38,7 @@ class TestRgbColorName(TestWrapper):
 
     def helper_rgb_color_name(self, cmd_option:str, file_content:str):
         """Runs script over FILE_CONTENT using CMD_OPTION"""
-        data_file = gh.create_temp_file(contents=file_content)
+        data_file =self.create_temp_file(contents=file_content)
         output = self.run_script(options=cmd_option, data_file=data_file)
         return output
 
@@ -103,7 +103,7 @@ class TestRgbColorName(TestWrapper):
         assert color in helper_output
 
         ## OLD:
-        # data_file = gh.create_temp_file(contents=hex3_val)
+        # data_file =self.create_temp_file(contents=hex3_val)
         # output = self.run_script(
         #     data_file=data_file,
         #     options=option
@@ -124,7 +124,7 @@ class TestRgbColorName(TestWrapper):
         assert color in helper_output
 
         ## OLD:
-        # data_file = gh.create_temp_file(contents=hex6_val)
+        # data_file =self.create_temp_file(contents=hex6_val)
         # output = self.run_script(
         #     data_file=data_file,
         #     options=option
@@ -147,7 +147,7 @@ class TestRgbColorName(TestWrapper):
         assert color_hex in helper_output
 
         ## OLD: Without helper functions
-        # data_file = gh.create_temp_file(contents=color_tuple)
+        # data_file =self.create_temp_file(contents=color_tuple)
         # output = self.run_script(
         #     data_file=data_file,
         #     options=option
@@ -168,7 +168,7 @@ class TestRgbColorName(TestWrapper):
         assert color in helper_output
 
         ## OLD:
-        # data_file = gh.create_temp_file(contents=color_tuple)
+        # data_file =self.create_temp_file(contents=color_tuple)
         # output = self.run_script(
         #     data_file=data_file,
         #     options=option
@@ -197,7 +197,7 @@ class TestRgbColorName(TestWrapper):
         assert color in helper_output
 
         ## OLD: WIthout helper function
-        # data_file = gh.create_temp_file(contents=color_tuple)
+        # data_file = self.create_temp_file(contents=color_tuple)
         # output = self.run_script(
         #     data_file=data_file,
         #     options=option
@@ -208,4 +208,4 @@ class TestRgbColorName(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

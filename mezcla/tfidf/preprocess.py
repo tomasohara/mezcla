@@ -33,7 +33,8 @@ import html
 from cachetools import LRUCache, cached  # python2 support
 import nltk
 from nltk.stem import SnowballStemmer
-from sklearn.feature_extraction.text import CountVectorizer
+## OLD: from sklearn.feature_extraction.text import CountVectorizer
+CountVectorizer = None
 from stop_words import get_stop_words
 
 # Local modules
@@ -50,8 +51,9 @@ unescape = html.unescape
 # TODO: Get WORD_REGEX from environment.
 # TODO: Have option to ignore words with specific punctuation (or to include).
 # TODO: strip period to allow for ngrams with abbreviations (e.g., "Dr. Jones").
-SPLIT_WORDS = system.getenv_bool("SPLIT_WORDS", False,
-                                 "Split by word token instead of whitespace")
+SPLIT_WORDS = system.getenv_bool(
+    "SPLIT_WORDS", False,
+    description="Split by word token instead of whitespace")
 TFIDF_ALLOW_PUNCT = system.getenv_bool(
     "TFIDF_ALLOW_PUNCT", False,
     description="Allow ngrams to include words with punctuation")
@@ -59,12 +61,15 @@ TFIDF_SENT_SPLITTER = system.getenv_bool(
     "TFIDF_SENT_SPLITTER", False,
     description="Use NLTK for splitting sentences for TF/IDF")
 USE_SIMPLE_SENT_SPLITTER = (not TFIDF_SENT_SPLITTER)
-BAD_WORD_PUNCT_REGEX = system.getenv_text("BAD_WORD_PUNCT_REGEX", r"[^a-zA-Z0-9_'$ -]",
-                                          "Regex for punctuation not in words")
-SKIP_WORD_CLEANING = system.getenv_bool("SKIP_WORD_CLEANING", False,
-                                        "Omit word punctuation cleanup")
-USE_SKLEARN_COUNTER = system.getenv_bool("USE_SKLEARN_COUNTER", False,
-                                         "Use sklearn CountVectorizer for ngrams")
+BAD_WORD_PUNCT_REGEX = system.getenv_text(
+    "BAD_WORD_PUNCT_REGEX", r"[^a-zA-Z0-9_'$ -]",
+    description="Regex for punctuation not in words")
+SKIP_WORD_CLEANING = system.getenv_bool(
+    "SKIP_WORD_CLEANING", False,
+    description="Omit word punctuation cleanup")
+USE_SKLEARN_COUNTER = system.getenv_bool(
+    "USE_SKLEARN_COUNTER", False,
+    description="Use sklearn CountVectorizer for ngrams")
 TFIDF_PRESERVE_CASE = system.getenv_bool(
     "TFIDF_PRESERVE_CASE", False,
     description="Preserve case in TFIDF ngrams")
@@ -424,7 +429,11 @@ class Preprocessor(object):
         """Quick version for yielding keywords, using sklearn for ngram generation
         Note: the DocKeyword objects don't include offset information"""
         # TODO1: support BAD_WORD_PUNCT_REGEX
-
+        # Do dynamic load(s)
+        global CountVectorizer
+        if not CountVectorizer:
+            # pylint: disable=import-outside-toplevel,redefined-outer-name
+            from sklearn.feature_extraction.text import CountVectorizer
         vectorizer = CountVectorizer(ngram_range=(self.min_ngram_size, self.gramsize))
         analyzer = vectorizer.build_analyzer()
         ## DEBUG: debug.trace_expr(8, analyzer)

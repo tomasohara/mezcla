@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Miscellaneous functions not suitable for other modules (e.g., system.py).
 #
@@ -13,10 +13,14 @@ import datetime
 from difflib import ndiff
 import inspect
 import math
+import os
 import random
 import re
 import sys
 import time
+import json
+import yaml
+import csv
 
 # Installed packages
 ## NOTE: made dynamic due to import issue during shell-script repo tests
@@ -25,19 +29,24 @@ import time
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla.main import dummy_app
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla import text_utils
 
 # Constants
 ELLIPSIS = "\u2026"                 # Horizontal Ellipsis
-TYPICAL_EPSILON = system.getenv_float("TYPICAL_EPSILON", 1e-6,
-                                      description="Traditional floating-point negligible difference")
-VALUE_EPSILON = system.getenv_float("VALUE_EPSILON", 1e-3,
-                                    description="Epsilon for informal floating-point comparison")
+TYPICAL_EPSILON = system.getenv_float(
+    "TYPICAL_EPSILON", 1e-6,
+    description="Traditional floating-point negligible difference")
+VALUE_EPSILON = system.getenv_float(
+    "VALUE_EPSILON", 1e-3,
+    description="Epsilon for informal floating-point comparison")
 debug.assertion(TYPICAL_EPSILON < VALUE_EPSILON)
-RANDOM_SEED = system.getenv_integer("RANDOM_SEED", 15485863,
-                                    "Integral seed for random number generation: 0 for default")
+RANDOM_SEED = system.getenv_integer(
+    "RANDOM_SEED", 15485863,
+    ## TEST: "RANDOM_SEED", 15485863 ** 2 - 1,
+    description="Integral seed for random number generation: 0 for default")
 
 
 def transitive_closure(edge_list):
@@ -78,11 +87,12 @@ def read_tabular_data(filename):
 
 
 def extract_string_list(text):
-    """Extract a list of values from text using spaces and/or commas as delimiters"""
+    """Extract a list of values from text using whitespace and/or commas as delimiters"""
     # EX: extract_string_list("1  2,3") => [1, 2, 3]
-    trimmed_text = re.sub("  +", " ", text.strip())
+    # TODO: Add support for quoted values to allow for embedded spaces
+    trimmed_text = re.sub(r"\s+", " ", text.strip())
     values = trimmed_text.replace(" ", ",").split(",")
-    debug.trace_fmtd(5, "extract_string_list({t}) => {v}", t=text, v=values)
+    debug.trace_fmtd(5, "extract_string_list({t!r}) => {v!r}", t=text, v=values)
     return values
 
 
@@ -434,6 +444,162 @@ def get_class_from_name(class_name, module_name=None):
     class_object = getattr(sys.modules[module_name], class_name, None)
     debug.trace(6, f"get_class_from_name({class_name}, [{module_name}])) => {class_object}")
     return class_object
+
+
+def convert_file_to_instances(input_file, module_name, class_name, field_names,
+                              fmt=None):
+    """Converts input file with array of records into a list of class instances.
+    Note: Supports mezcla_to_standard mapping table loading.
+    Warning: Future support will just be in terms of reading and evaluation python
+    text-based data, which is the "py-data" format used below.
+    
+    Args:
+        input_file: Path to input file (json, yaml, csv)
+        module_name: Module containing the class definition
+        class_name: Name of the class to instantiate
+        field_names: List of field names to use for class constructor
+        fmt: Optional format override ('json', 'yaml', 'csv', 'py-data'). If None, inferred from extension.
+    
+    Returns:
+        List of class instances
+    """
+    # pylint: disable=exec-used,eval-used
+
+    # Detect format if not specified
+    if not fmt:
+        ext = input_file.lower().split('.')[-1]
+        fmt = ext
+
+    # Initialize class from module
+    exec(f"from {module_name} import *")          
+    actual_class = get_class_from_name(class_name, module_name)
+
+    # Read data based on format
+    data = []
+    if fmt == 'json':
+        data = json.loads(system.read_file(input_file))
+    elif fmt == 'yaml':
+        data = yaml.safe_load(system.read_file(input_file))
+    elif fmt == 'csv':
+        debug.trace(4, "Warning: convert_file_to_instances problematic with CSV files")
+        # Use CSV DictReader to get list of dicts
+        ## OLD: with system.open_file(input_file, newline='') as f:
+        with system.open_file(input_file) as f:
+            reader = csv.DictReader(f)
+            data = list(reader)    
+    elif fmt == 'py-data':
+        try:
+            data = eval(system.read_file(input_file))
+        except:
+            system.print_exception_info(f"evaluation of {input_file!r}")
+    else:
+        raise ValueError(f"Unsupported format: {fmt}")
+
+    # Convert records to instances
+    instances = []
+    for record in data:
+        if fmt == 'py-data':
+            ## TODO4: rework to put special case outside of loop
+            debug.assertion(isinstance(record, actual_class))
+            instances.append(record)
+            continue
+        class_args = []
+        for field in field_names:
+            # Handle both dict and object-like records
+            value = record.get(field, "None")
+            # Only eval non-string values from JSON/YAML
+            ## TODO3: clarify intention
+            ## TEST: if (fmt == 'csv') and isinstance(value, str):
+            if fmt in ('json', 'yaml') and isinstance(value, str):
+                try:
+                    value = eval(value)
+                except:
+                    system.print_exception_info(f"evaluation of {field} value {value!r}")
+            elif (fmt == 'py-data'):
+                pass
+            else:
+                debug.trace(5, f"FYI: Not evaluating {field} value {value!r}")
+            class_args.append(value)
+        new_inst = actual_class(*class_args)
+        instances.append(new_inst)
+
+    return instances    
+
+def convert_json_to_instance(json_file, module_name, class_name, field_names):
+    """Converts JSON_FILE with array of dicts into a list of instances for CLASS_NAME, where each of FIELD_NAMES is used in the class invocation. The MODULE_NAME is used to import the class definition.
+    """
+    return convert_file_to_instances(json_file, module_name, class_name, field_names, fmt='json')
+
+def convert_yaml_to_instance(yaml_file, module_name, class_name, field_names):
+    """Converts YAML_FILE with array of dicts into a list of instances for CLASS_NAME, where each of FIELD_NAMES is used in the class invocation. The MODULE_NAME is used to import the class definition.
+    """
+    return convert_file_to_instances(yaml_file, module_name, class_name, field_names, fmt='yaml')
+
+def convert_csv_to_instance(csv_file, module_name, class_name, field_names):
+    """Converts CSV_FILE with array of dicts into a list of instances for CLASS_NAME, where each of FIELD_NAMES is used in the class invocation. The MODULE_NAME is used to import the class definition.
+    """
+    return convert_file_to_instances(csv_file, module_name, class_name, field_names, fmt='csv')
+
+
+def convert_python_data_to_instance(python_data_file, module_name, class_name, field_names):
+    """Converts PYTHON_DATA_FILE into list of instances
+    Note: see convert_json_to_instance for details of other arguments"""
+    return convert_file_to_instances(python_data_file, module_name, class_name, field_names, fmt='py-data')
+
+
+def apply_numeric_suffixes(text: str, just_once=False) -> str:
+    """Converts numbers in TEXT to use K, M, G, T, etc. suffixes.
+    Note: Optionally applies JUST_ONCE per line."""
+    # EX: apply_numeric_suffixes("1024 1572864 1073741824") => "1K 1.5M 1G"
+    # TODO2: preserve spacing in text (e.g., splitlines quirks)
+    debug.trace(5, f"apply_numeric_suffixes({text!r}, [once={just_once})")
+    suffixes = "_KMGTPE"                # _ is placeholder for no suffix
+    new_text = ""
+    for l, line in enumerate(text.splitlines()):
+        max_count = len(line) / 3
+        count = 0
+        # note: uses negative look ahead to avoid conversion in decimals (e.g., 1023.5);
+        # also, uses non-greedy search to exclude leading question marks (e.g., ?00000000?)
+        ## OLD:
+        while (my_re.search(r"(.*)\b(\d{4,19})\b(?!\.)(.*)", line)):
+            ## TEST: while (my_re.search(r"([^\?]*+)\b(\d(\d\d\d){1,6})\b(?!\.)(.*)", line)):
+            ## TEST2: while (my_re.search(r"([^\?]*+)\b(\d{4,19})\b(?!\.)(.*)", line)):
+            count += 1
+            if count > max_count:
+                break
+            (pre, numeric, post) = my_re.groups()
+            (new_num, suffix) = ("", "")
+            num = float(numeric)
+            if num > 0:
+                try:
+                    power = int(math.log(num) / math.log(1024))
+                    new_num = system.round_as_str(num / (1024 ** power))
+                    # note: accounts for quirk in rounding (e.g., stripping N.000)
+                    # TODO2: ignore special cases like 0000 (n.b., due to \d{4,N} regex)
+                    new_num = my_re.sub(r"\.0+$", "", new_num)
+                    suffix = suffixes[power]
+                    debug.trace_expr(6, numeric, num, power, line)
+                except:
+                    # note: restore number and add surrounding ?'s to block regex
+                    new_num = f"_{numeric}?_"
+                    debug.trace_exception(5, f"apply_numeric_suffixes line {l} ({line!r})")
+            else:
+                ## TODO3: rework pattern matching to exclude 0000
+                new_num = "0K"
+            line = pre + str(new_num) + suffix + post
+        new_text += line + os.linesep
+    if new_text.endswith(os.linesep) and not text.endswith(os.linesep):
+        new_text = my_re.sub(fr"{os.linesep}$", "", new_text)
+    debug.trace(5, f"apply_numeric_suffixes() => {new_text!r}")
+    return new_text
+
+
+def apply_numeric_suffixes_stdin(just_once=False):
+    """Invokes apply_numeric_suffixes over stdin
+    Note: supports Bash alias (see shell-scripts/tomohara-aliases.bash)
+    """
+    text = dummy_app.read_entire_input()
+    print(apply_numeric_suffixes(text, just_once=just_once))
 
 
 def init():

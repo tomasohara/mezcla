@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # 
 # Text categorized based on BERT model. This allows for multiclass categorization. The
 # input is a tabbed delimited file of the format:
@@ -74,6 +74,7 @@ from datetime import datetime
 ## OLD: import os
 
 # Installed packages
+# pylint: disable=import-error
 import pandas as pd
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -212,7 +213,7 @@ class Script(Main):
         bert_module = hub.Module(
             BERT_MODEL_HUB,
             trainable=True)
-        bert_inputs = dict(
+        bert_inputs = dict(             # pylint: disable=use-dict-literal
             input_ids=input_ids,
             input_mask=input_mask,
             segment_ids=segment_ids)

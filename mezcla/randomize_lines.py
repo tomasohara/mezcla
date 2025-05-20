@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # randomize-lines.py: randomize lines in a file without reading entirely into memory.
 # This creates a temporary file with a random number in the first column and

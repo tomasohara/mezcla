@@ -8,3 +8,7 @@ Things to do
   -- pyproject.toml [for flit] & tox.ini [obsolete?]
   -- Dockerfile and tests/run_tests.bash
   -- etc.
+- Change '## Note: ...' to '# Note: ...' unless comments applies to
+  another commemtn (e.g., TODO or OLD).
+  -- Temporary comments use '##' rather than '#' to make this stick out
+     more (e.g., to facilitate cleanup).

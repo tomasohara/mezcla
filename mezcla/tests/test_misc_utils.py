@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../misc_utils.py
 #
@@ -15,31 +15,55 @@
 import math
 import datetime
 import time
-## NOTE: this is empty for now
+import os 
 
 # Installed packages
 import pytest
+from unittest_parametrize import ParametrizedTestCase, parametrize
 
 # Local packages
 from mezcla import glue_helpers as gh
 from mezcla import debug
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla.tests.common_module import SKIP_EXPECTED_ERRORS, SKIP_EXPECTED_REASON
+## OLD: from mezcla.mezcla_to_standard import EqCall, Features
+# note: mezcla_to_standard uses packages not installed by default (e.g., libcst)
+try:
+    from mezcla import mezcla_to_standard
+    EqCall = mezcla_to_standard.EqCall
+except:
+    mezcla_to_standard = None
+    class Path:
+        """Dummy path"""
+        path = "n/a"
+    class EqCall:
+        """Dummy equivalent call"""
+        ## TODO3: use mock package
+        dests = targets = [Path()]
+        def __init__(self, *_args, **_kwargs):
+            pass
+    debug.trace_exception(4, "mezcla.mezcla_to_standard import")
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.misc_utils as THE_MODULE
 
 # Make sure more_itertools available
-HAS_MORE_ITERTOOLS = True
+more_itertools = None
 try:
     import more_itertools
 except ImportError:
     system.print_exception_info("more_itertools import")
-    HAS_MORE_ITERTOOLS = False
 
-class TestMiscUtils(TestWrapper):
+# Constants
+ONE_MB = 1024 ** 2
+
+
+class TestMiscUtils(TestWrapper, ParametrizedTestCase):
     """Class for test case definitions"""
+    # note: script_module used in argument parsing sanity check (e.g., --help)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_transitive_closure(self):
         """Ensure transitive_closure works as expected"""
@@ -61,13 +85,14 @@ class TestMiscUtils(TestWrapper):
             'framework': 'Pytest\n',
         }
         temp_file = self.get_temp_file()
-        gh.write_file(temp_file, string_table)
+        system.write_file(temp_file, string_table)
         assert THE_MODULE.read_tabular_data(temp_file) == dict_table
 
     def test_extract_string_list(self):
         """Ensure extract_string_list works as expected"""
         debug.trace(4, "test_extract_string_list()")
-        assert THE_MODULE.extract_string_list("1  2,3") == ['1', '2', '3']
+        assert THE_MODULE.extract_string_list("  a  b,c") == ['a', 'b', 'c']
+        assert THE_MODULE.extract_string_list("a\nb\tc") == ['a', 'b', 'c']
 
     def test_is_prime(self):
         """Ensure is_prime works as expected"""
@@ -133,7 +158,7 @@ class TestMiscUtils(TestWrapper):
         stack = str(THE_MODULE.get_current_frame())
         test_name = system.get_current_function_name()
         assert f'code {test_name}' in stack
-        assert __file__ in stack
+        assert repr(__file__) in stack
 
     def test_eval_expression(self):
         """Ensure eval_expression works as expected"""
@@ -158,7 +183,7 @@ class TestMiscUtils(TestWrapper):
         assert "len(sys.argv)" in captured
         assert "sys.argv" in captured
 
-    @pytest.mark.skipif(not HAS_MORE_ITERTOOLS, reason="Unable to load more_itertools")
+    @pytest.mark.skipif(not more_itertools, reason="Unable to load more_itertools")
     def test_exactly1(self):
         """Ensure exactly1 works as expected"""
         debug.trace(4, "test_exactly1()")
@@ -186,7 +211,6 @@ class TestMiscUtils(TestWrapper):
         )
 
         assert THE_MODULE.string_diff(string_one, string_two) == expected_diff
-
 
     def test_elide_string_values(self):
         """Ensure elide_string_values works as expected"""
@@ -249,6 +273,121 @@ class TestMiscUtils(TestWrapper):
         result_class = THE_MODULE.get_class_from_name('date', 'datetime')
         assert result_class is datetime.date
 
+    def check_apply_numeric_suffixes(self, text, expect):
+        """Helper for test_apply_numeric_suffixes """
+        debug.trace_expr(4, text, expect, prefix="in check_apply_numeric_suffixes: ")
+        actual = THE_MODULE.apply_numeric_suffixes(text)
+        assert actual.strip() == expect.strip()
+    
+    @pytest.mark.xfail                  # TODO: remove xfail
+    @parametrize(
+        "text, actual",
+        ## TODO? ("text, actual")     # see https://github.com/adamchainz/unittest-parametrize
+        [ (f"{ONE_MB - 1024 - 1} {ONE_MB} {ONE_MB + 1024}", "1022.999K 1M 1.001M"),
+          ("0000", "0K"),
+          ## TODO2: ("-00000000-", "-_00000000_?-"),
+          ("-00000000-", "-0K-"),
+         ])
+    def test_apply_numeric_suffixes(self, text, actual):
+        """Check apply_numeric_suffixes"""
+        self.check_apply_numeric_suffixes(text, actual)
+
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_stdin_apply_numeric_suffixes(self):
+        """Check apply_numeric_suffixes_stdin"""
+        temp_file = self.create_temp_file("999 1024")
+        self.monkeypatch.setattr("sys.stdin", system.open_file(temp_file))
+        THE_MODULE.apply_numeric_suffixes_stdin()
+        actual = self.get_stdout().strip()
+        assert actual == "999 1K"
+
+
+@pytest.mark.skipif(not mezcla_to_standard, reason="Unable to load mezcla_to_standard")
+class TestFileToInstance(TestWrapper):
+    """Class for testing convert_file_to_instances: external file loading to support mezcla_to_standard"""
+    # note: script_module used in argument parsing sanity check (e.g., --help)
+    ## TODO3: Add parameters to reduce redundancy in the various test_convert_*_to_instance methods,
+    ## such as resource data file and conversion function.
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+
+    expected_instances = [
+        EqCall(gh.rename_file, dests=os.rename),
+        EqCall(gh.dir_path, dests=os.path.dirname, eq_params={"filename": "p"}),
+    ]
+
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def check_instances(self, instances):
+        """Check that INSTANCES match expected_instances"""
+        assert self.expected_instances[0].targets[0].path == instances[0].targets[0].path
+        assert self.expected_instances[0].dests[0].path == instances[0].dests[0].path
+
+        assert self.expected_instances[1].targets[0].path == instances[1].targets[0].path
+        assert self.expected_instances[1].dests[0].path == instances[1].dests[0].path
+        
+    
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_convert_json_to_instance(self):
+        """ensure convert_json_to_instance works as expected"""
+        debug.trace(4, "test_convert_json_to_instance()")
+
+        json_data = gh.form_path(gh.dirname(__file__), "resources", "instances.json")
+
+        instances: list[EqCall] = THE_MODULE.convert_json_to_instance(
+            json_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            mezcla_to_standard.EQCALL_FIELDS,
+        )
+        self.check_instances(instances)
+        
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_convert_yaml_to_instance(self):
+        """ensure convert_yaml_to_instance works as expected"""
+        debug.trace(4, "test_convert_yaml_to_instance()")
+
+        yaml_data = gh.form_path(gh.dirname(__file__), "resources", "instances.yaml")
+
+        instances: list[EqCall] = THE_MODULE.convert_yaml_to_instance(
+            yaml_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            mezcla_to_standard.EQCALL_FIELDS,
+        )
+        self.check_instances(instances)
+
+    @pytest.mark.skipif(SKIP_EXPECTED_ERRORS, reason=SKIP_EXPECTED_REASON)
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_convert_csv_to_instance(self):
+        """ensure convert_csv_to_instance works as expected"""
+        debug.trace(4, "test_convert_csv_to_instance()")
+
+        csv_data = gh.form_path(gh.dirname(__file__), "resources", "instances.csv")
+
+        instances: list[EqCall] = THE_MODULE.convert_csv_to_instance(
+            csv_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            mezcla_to_standard.EQCALL_FIELDS,
+        )
+        self.check_instances(instances)
+
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_convert_py_data_to_instance(self):
+        """verify convert_py_data_to_instance"""
+        debug.trace(4, "test_convert_py_data_to_instance()")
+
+        py_data = gh.form_path(gh.dirname(__file__), "resources", "instances.py-data")
+
+        instances: list[EqCall] = THE_MODULE.convert_python_data_to_instance(
+            py_data,
+            "mezcla.mezcla_to_standard",
+            "EqCall",
+            mezcla_to_standard.EQCALL_FIELDS,
+        )
+        self.check_instances(instances)
+
+#------------------------------------------------------------------------
+
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

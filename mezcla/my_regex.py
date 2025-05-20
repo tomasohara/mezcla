@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Convenience class for regex searching, providing simple wrapper around
 # static match results.
@@ -12,9 +12,17 @@
 #    ...
 #    if (my_re.search(r"^(\d+)\:?(\d*)\s+(\d+)\:?(\d*)\s+\S.*", line)):
 #        (start_hours, start_mins, end_hours, end_mins) = my_re.groups()
+#................................................................................
+# Regex cheatsheet:
+#     (?:regex)               non-capturing group
+#     (?<!regex)              negative lookbehind
+#     (?!regex)               negative lookahead
+#     (?=regex)               positive lookahead
+#     *?  and  +?             non-greedy match
 #
 #--------------------------------------------------------------------------------
 # TODO:
+# - Flesh out cheatsheet
 # - Add examples for group(), groups(), etc.
 # - Clean up script (e.g., regex => regex_wrapper).
 #
@@ -53,12 +61,15 @@ else:
 ## REGEX_TRACE_LEVEL = system.getenv_int("REGEX_TRACE_LEVEL", debug.QUITE_DETAILED,
 ##                                       "Trace level for my_regex")
 REGEX_DEBUG_LEVEL = system.getenv_int(
-    "REGEX_TRACE_LEVEL", debug.QUITE_DETAILED,
+    "REGEX_DEBUG_LEVEL", debug.QUITE_DETAILED,
     desc="Alias for REGEX_TRACE_LEVEL")
 REGEX_TRACE_LEVEL = system.getenv_int(
     "REGEX_TRACE_LEVEL", REGEX_DEBUG_LEVEL,
     desc="Trace level for my_regex")
-    
+REGEX_WARNINGS = system.getenv_bool(
+    "REGEX_WARNINGS", debug.debugging(debug.USUAL),
+    desc="Include warnings about regex's such as f-string")
+
 ## TODO # HACK: make sure regex can be used as plug-in replacement 
 ## from from re import *
 
@@ -128,16 +139,28 @@ class regex_wrapper():
 
     def check_pattern(self, regex):
         """Apply sanity checks to REGEX when debugging
-        Note: Added to account for potential f-string confusion"""
-        # TODO: Add way to disable check
+        Note: Added to account for potential missing f-string prefix"""
+        debug.trace(self.TRACE_LEVEL + 1, f"check_pattern({regex})")
         debug.reference_var(self)
-        check_regex = r"([^{]|^)\{[^0-9][A-Fa-f0-9]*[^{}]+\}([^}]|$)"
+        # note: checks for variable reference in braces (e.g., "Hi, {name}!")
+        ## BAD: check_regex = r"([^{]|^)\{[^0-9][A-Fa-f0-9]*[^{}]+\}([^}]|$)"
+        ## ALT: check_regex = r"([^\{]|^)\{([[A-Z][A-Z0-9]*[^\{\}]+)\}([^\}]|$)"
+        check_regex = r"([^{]|^){[A-Z][A-Z0-9]*[^{}]+}([^}]|$)"
         if isinstance(regex, bytes):
+            ## OLD: regex = regex.encode()
             check_regex = check_regex.encode()
-        if debug.debugging(1):
-            match = re.search(check_regex, regex)
+        if REGEX_WARNINGS:
+            debug.trace_expr(self.TRACE_LEVEL + 1, check_regex, delim="\n")
+            match = re.search(check_regex, regex, flags=re.IGNORECASE)
             if match:
-                system.print_error(f"Warning: potentially unresolved f-string in {regex} at {match.start(0)}")
+                # Ignore regex operators within f-string replacement
+                re_operator_pattern = r"[\*\+\?]"
+                if isinstance(match.string, bytes):
+                    re_operator_pattern = re_operator_pattern.encode()
+                if re.search(re_operator_pattern, match.string):
+                    match = None
+            if match:
+                system.print_error(f"Warning: potentially unresolved f-string in {regex!r} at {match.start(0)}")
 
     def search(self, regex, text, flags=0, base_trace_level=None):
         """Search for REGEX in TEXT with optional FLAGS and BASE_TRACE_LEVEL (e.g., 6)"""
@@ -145,7 +168,7 @@ class regex_wrapper():
         if base_trace_level is None:
             base_trace_level = self.TRACE_LEVEL
         debug.trace_fmtd((1 + base_trace_level), "my_regex.search({r!r}, {t!r}, {f}): self={s}",
-                         r=regex, t=text, f=flags, s=self)
+                         r=regex, t=text, f=flags, s=self, max_len=2048)
         ## OLD: debug.assertion(isinstance(text, six.string_types))
         debug.assertion(isinstance(text, (str, bytes)) and (isinstance(regex, type(text))))
         self.search_text = text
@@ -162,7 +185,7 @@ class regex_wrapper():
         if base_trace_level is None:
             base_trace_level = self.TRACE_LEVEL
         debug.trace_fmtd((1 + base_trace_level), "my_regex.match({r!r}, {t!r}, {f}): self={s}",
-                         r=regex, t=text, f=flags, s=self)
+                         r=regex, t=text, f=flags, s=self, max_len=2048)
         self.search_text = text
         self.check_pattern(regex)
         self.match_result = re.match(regex, text, flags)
@@ -230,14 +253,14 @@ class regex_wrapper():
         """Use PATTERN to split STRING, optionally up to MAXSPLIT with FLAGS"""
         result = re.split(pattern, string, maxsplit, flags)
         debug.trace_fmt(self.TRACE_LEVEL, "split{args} => {r!r}",
-                        args=tuple([pattern, string, maxsplit, flags]), r=result)
+                        args=tuple([pattern, string, maxsplit, flags]), r=result, max_len=2048)
         return result
     
     def findall(self, pattern, string, flags=0):
         """Use PATTERN to split STRING, optionally with specified FLAGS"""
         result = re.findall(pattern, string, flags)
         debug.trace_fmt(self.TRACE_LEVEL, "findall{args} => {r!r}",
-                        args=tuple([pattern, string, flags]), r=result)
+                        args=tuple([pattern, string, flags]), r=result, max_len=2048)
         return result
 
     def escape(self, text):

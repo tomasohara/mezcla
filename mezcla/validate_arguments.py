@@ -1,6 +1,9 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Simple illustration of optional pydantic argument validation.
+#
+# TODO2: clarify the use of dict's for validation
+# TODO3: add support for @validate_call
 #
 
 """Optional pydantic argument validation"""
@@ -8,13 +11,14 @@
 # Standard modules
 import ast
 from functools import wraps
+import sys
 
 # Installed module
 try:
     from pydantic import BaseModel
     import astor
 except:
-    debug.trace(4, "Warning unable to import astor and pydantic")
+    sys.stderr.write("Warning unable to import astor and/or pydantic\n")
     BaseModel = object
     astor = None
 
@@ -25,10 +29,14 @@ from mezcla.main import Main
 from mezcla import system
 
 # Constants
-VALIDATE_ARGUMENTS = True
+## OLD: VALIDATE_ARGUMENTS = True
+SKIP_VALIDATION = system.getenv_bool(
+    "SKIP_VALIDATION", False,
+    desc="Skip pydantic-based validation")
+VALIDATE_ARGUMENTS = not SKIP_VALIDATION
 TL = debug.TL
-# TODO: TMP_PATH = gh.get_temp_dir
-TMP_PATH = "/tmp/temp_"
+TMP_PATH = gh.get_temp_dir()
+## OLD: TMP_PATH = "/tmp/temp_"
 
 # Arguments for Validate Arguments Script
 FILE = "file"
@@ -36,8 +44,7 @@ ARG_INPUT_SCRIPT = "input"
 ARG_NO_TRANSFORM = "no-transform"
 OUTPUT = "output"
 
-# pylint: disable=unused-argument
-def validate_dictionaries(*decorator_args, **decorator_kwargs):
+def validate_dictionaries(*_decorator_args, **decorator_kwargs):
     """
     Decorator to validate dictionaries with Pydantic models,
     but without changing function definition to keep compatibility
@@ -68,6 +75,7 @@ def validate_dictionaries(*decorator_args, **decorator_kwargs):
         @wraps(func)
         def inner(*func_args, **func_kwargs):
             if not VALIDATE_ARGUMENTS:
+                debug.trace(4, "FYI: Ignoring validation for {func}")
                 return func(*func_args, **func_kwargs)
             # Validate the dictionary keys and values,
             # specified in the decorator parameters
@@ -93,6 +101,7 @@ def validate_dictionaries(*decorator_args, **decorator_kwargs):
 
 def add_validate_call_decorator(code):
     """Add the validate_call decorator to all function calls in the code"""
+    debug.trace_fmt(6, "add_validate_call_decorator({c})", c=code, max_len=256)
 
     # Parse the code into AST
     tree = ast.parse(code)
@@ -108,6 +117,7 @@ def add_validate_call_decorator(code):
     validate_decorator = ast.Name(id='validate_call', ctx=ast.Load())
 
     # Add the import statement to the beginning of the AST
+    ## TODO2: put after module docstring
     tree.body.insert(0, import_node)
 
     # List of functions to ignore, avoiding infinite recursion
@@ -138,6 +148,8 @@ def add_validate_call_decorator(code):
     # Convert the modified AST back to Python code
     # TODO2: do this via ast
     modified_code = astor.to_source(tree)
+    debug.trace_fmt(5, "add_validate_call_decorator() = {r!r})",
+                    r=modified_code, max_len=256)
 
     return modified_code
 
@@ -147,22 +159,25 @@ class ValidateArgumentsScript(Main):
 
     # Class-level member variables for arguments
     # (avoids need for class constructor)
-    file = ""
+    ## OLD: file = ""
     output = ""
 
     def setup(self) -> None:
         """Process arguments"""
-        self.file = self.get_parsed_argument(FILE, self.file)
-        self.output = self.get_parsed_argument(OUTPUT, self.output)
+        ## OLD: self.file = self.get_parsed_argument(FILE, self.file)
+        self.output = self.get_parsed_option(OUTPUT, self.output)
 
     def run_main_step(self) -> None:
         """Process main script"""
         debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
-        code = system.read_file(self.file)
+        ## OLD: code = system.read_file(self.filename)
+        filename = (self.filename if (self.filename != "-") else "_stdin_")
+        code = self.read_entire_input()
         if not code:
-            raise ValueError(f"File {self.file} is empty")
-        code = add_validate_call_decorator(code)
-        output_filename = self.output if self.output else TMP_PATH + gh.basename(self.file)
+            raise ValueError(f"File {filename} is empty")
+        if VALIDATE_ARGUMENTS:
+            code = add_validate_call_decorator(code)
+        output_filename = self.output if self.output else TMP_PATH + gh.basename(filename)
         system.write_file(
             filename=output_filename,
             text=code
@@ -174,13 +189,15 @@ class ValidateArgumentsScript(Main):
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
     app = ValidateArgumentsScript(
-        description = __doc__,
-        positional_arguments = [
-            (FILE, 'Python script to run with argument validation')
-        ],
-        text_options = [
+        description=__doc__,
+        ## OLD:
+        ## positional_arguments = [
+        ##     (FILE, 'Python script to run with argument validation')
+        ## ],
+        text_options=[
             (OUTPUT, 'Output of transformed script'),
         ],
-        manual_input = True,
+        skip_input=False,
+        manual_input=True,
     )
     app.run()

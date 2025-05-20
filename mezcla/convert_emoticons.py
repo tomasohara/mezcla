@@ -1,13 +1,17 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Convert emoticons into names (or just strips them)
+# Convert emoticons/emoji into names (or just strips them)
 #
-# Example Input:
+# Example Input (n.b., U+1f634 is sleeping-face character):
 #   Nothing to do 😴
 #
 # Example output:
 #   Nothing to do [sleeping face]
+#
+# Note:
+# - via https://www.dictionary.com/compare-words/emoticon-vs-emoji:
+#   emoji comes from a Japanese term meaning “pictograph,” from e, “picture, drawing,” and moji, “(written) character, letter.”
 #
 # TODO2:
 # - Handle variational selectors as in "‼️" (e.g., U+FE0F). See
@@ -19,8 +23,8 @@ Replace emoticons with name (or remove entirely)
 
 Sample usage:
 
-   echo 'github-\U0001F634_Transformers' | {script} -
-"""                          # 🤗 (HuggingFace logo)
+   echo 'github-\U0001f917_Transformers' | {script} -
+"""                          # 🤗 (HuggingFace logo: U+1f917)
 
 # Standard modules
 import unicodedata
@@ -32,9 +36,7 @@ import unicodedata
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
-## TODO: from mezcla.my_regex import my_re
 from mezcla import system
-## TODO2: streamline imports by exposing common functions, etc. in mezcla
 
 # Constants
 TL = debug.TL
@@ -56,13 +58,17 @@ AUGMENT_EMOTICONS = system.getenv_bool(
 class ConvertEmoticons:
     """Support for stripping those pesky emoticons from text (or replacing with description)"""
     OTHER_SYMBOL = 'So'
+    BTL = 5                             # base trace level
 
-    def __init__(self, replace=None, strip=None, replacement=None, augment=None):
+    def __init__(self, replace=None, strip=None, replacement=None, augment=None, base_trace_level=None):
         """Initializer: sets defaults for convert method
         Note: see convert() for argument descriptions
         """
         # TODO3: rework to remove non-standard functional interface for class
-        debug.trace_expr(7, replace, strip, replacement, augment, prefix="in ConvertEmoticons.__init__: ")
+        if base_trace_level is not None:
+            self.BTL = base_trace_level
+        debug.trace_expr(self.BTL + 2, replace, strip, replacement, augment,
+                         prefix="in ConvertEmoticons.__init__: ")
         if strip is None:
             strip = STRIP_EMOTICONS
         if replace is None:
@@ -75,10 +81,10 @@ class ConvertEmoticons:
         self.strip = strip
         self.replacement = replacement
         self.augment = augment
-        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+        debug.trace_object(self.BTL, self, label=f"{self.__class__.__name__} instance")
     #
     # EX: ce = ConvertEmoticons(); (ce.strip != cs.replace) => True
-    # EX: ce.convert()("❌ Failure") => "[cross mark] Failure"
+    # EX: ce.convert()("❌ Failure") => "[cross mark] Failure"  # U+274c
 
     def convert(self, text=None, replace=None, strip=None, replacement=None, augment=None):
         """Either REPLACE emotions in TEXT with Unicode name, STRIP them entirely, or AUGMENT
@@ -86,10 +92,11 @@ class ConvertEmoticons:
         - REPLACEMENT can be used for subsituted text (e.g., instead of "").
         - with AUGMENT the emoticon is still included (a la REPLACE plus STRIP).
         """
-        # EX: ce.convert("✅ Success") => "[checkmark] Success"
+        # EX: ce.convert("✅ Success") => "[checkmark] Success"  # U+2705
         # EX: ce.convert("✅ Success", augment=True) => "✅ [checkmark] Success"
         # EX: ce.convert("año") => "año"       # ignore diacritic; Spanish for year
-        debug.trace_expr(6, replace, strip, replacement, augment, prefix="in ce.convert: text=_; ")
+        debug.trace_expr(self.BTL + 1, replace, strip, replacement, augment,
+                         prefix="in ce.convert: text=_; ")
         debug.assertion(text is not None)
         debug.assertion(not (replace and strip))
         debug.assertion(not (augment and strip))
@@ -101,7 +108,8 @@ class ConvertEmoticons:
             replacement = self.replacement
         if augment is None:
             augment = self.augment
-        debug.trace_expr(5, replace, strip, replacement, augment, prefix="ce.convert: text=_; ")
+        debug.trace_expr(self.BTL, replace, strip, replacement, augment,
+                         prefix="ce.convert: text=_; ")
         in_text = text
         text = (text or "")
         #
@@ -114,14 +122,14 @@ class ConvertEmoticons:
             chars.append(new_ch)
         text = "".join(chars)
         #
-        level = (4 if (text != in_text) else 6)
+        level = (self.BTL if (text != in_text) else self.BTL + 1)
         debug.trace(level, f"ce.convert({in_text!r}) => {text!r}")
         return text
     #
-    # EX: ce.convert("✅ Success", strip=True) => " Success"
+    # EX: ce.convert("✅ Success", strip=True) => " Success"   # U+2705 [White Heavy Check Mark]
     # EX: ce.convert("✅ Success", strip=True, replacement="_") => "_ Success"
     # note: ignores common language characters (e.g., CJK and ISO-8859)
-    # EX: ce.convert("天気") => "天気"   # Japanese for weather
+    # EX: ce.convert("天気") => "天気"   # Japanese for weather (U+5929 U+6c17)
     # EX: ce.convert("¿Hablas español?") => "¿Hablas español?"  # Spanish for "Do you speak Spanish"
 
 #-------------------------------------------------------------------------------

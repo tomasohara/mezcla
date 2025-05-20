@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Based on following:
 #   https://stackoverflow.com/questions/6317818/eat-memory-using-python

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Class for text categorizer using Scikit-Learn. See tutorial at
 #    http://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html
@@ -55,6 +55,7 @@ from mezcla import system
 from mezcla.system import (
     getenv_bool, getenv_float, getenv_int, getenv_text,
 )
+from mezcla.tfidf import MIN_NGRAM_SIZE, MAX_NGRAM_SIZE
 
 #................................................................................
 # Constants (e.g., environment-based options)
@@ -131,8 +132,11 @@ GPU_DEVICE = system.getenv_value("GPU_DEVICE", None,     # TODO: clarify value t
 # ex: min/max_df
 TFIDF_MAX_TERMS = getenv_int("MAX_TERMS", None,
                              "Maximum number of terms in TF/IDF matrix")
-TFIDF_MIN_NGRAM = getenv_int("MIN_NGRAM_SIZE", None)
-TFIDF_MAX_NGRAM = getenv_int("MAX_NGRAM_SIZE", None)
+## OLD:
+## TFIDF_MIN_NGRAM = getenv_int("MIN_NGRAM_SIZE", None)
+## TFIDF_MAX_NGRAM = getenv_int("MAX_NGRAM_SIZE", None)
+TFIDF_MIN_NGRAM = MIN_NGRAM_SIZE
+TFIDF_MAX_NGRAM = MAX_NGRAM_SIZE
 TFIDF_MIN_DF = getenv_float("MIN_DF", None)
 TFIDF_MAX_DF = getenv_float("MAX_DF", None)
 TFIDF_CHAR_NGRAMS = getenv_bool("CHAR_NGRAMS", None)
@@ -232,7 +236,7 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
         """Get parameter names for the estimator"""
         # TODO: drop method
         # Note: This is not class method as in BaseEstimator.
-        # pylint: disable=protected-access,arguments-differ
+        # pylint: disable=protected-access, arguments-differ
         return self.classifier._get_param_names()
 
     def get_params(self, deep=True):
@@ -643,7 +647,7 @@ def format_index_html(base_url=None):
         """
     #
     # TODO: define text area dimensions based on browser window size
-    html_template += """
+    html_template += """        
             <!-- Form for entering text for categorization -->
             <hr>
             <form action="{base_url}/categorize" method="get">
@@ -652,8 +656,7 @@ def format_index_html(base_url=None):
                 <textarea id="textarea1" rows="10" cols="100" name="text"></textarea>
                 <br>
                 <input type="submit">
-            </form>            
-    """
+            </form>"""
     #
     html_template += """
             <!-- Form for entering text for textcat probability distribution -->
@@ -664,9 +667,8 @@ def format_index_html(base_url=None):
                 <textarea id="textarea2" rows="10" cols="100" name="text"></textarea>
                 <br>
                 <input type="submit">
-            </form>
-    """
-    html_template += """          
+            </form>"""
+    html_template += """
         </body>
     </html>
     """

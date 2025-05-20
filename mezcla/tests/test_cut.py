@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../cut.py
 #
@@ -16,7 +16,7 @@ import pytest
 
 # Local packages
 from mezcla import debug
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import glue_helpers as gh
 from mezcla import system
 
@@ -35,7 +35,7 @@ FIELDS_2_3_4 = f'{RESOURCES}/cars-fields-2-3-4.txt'
 class TestCutUtils(TestWrapper):
     """Class for testcase definition of utility functions"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_elide_values(self):
         """Ensure elide_values works as expected"""
@@ -50,7 +50,7 @@ class TestCutUtils(TestWrapper):
 class TestCutScript(TestWrapper):
     """Class for testcase definition of main class"""
     script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     def test_cut_csv(self):
         """Ensure csv files are cutted as expected"""
@@ -109,4 +109,4 @@ class TestCutScript(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

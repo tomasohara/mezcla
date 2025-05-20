@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # compute_tfidf.py: compute Term Frequency Inverse Document Frequency (TF-IDF)
 # for a collection of documents. See https://en.wikipedia.org/wiki/Tf-idf.
@@ -31,6 +31,7 @@ import sys
 # Installed packages
 # TODO: require version 1.1 with TPO hacks
 from mezcla import tfidf
+from mezcla.tfidf import MIN_NGRAM_SIZE, MAX_NGRAM_SIZE
 from mezcla.tfidf.corpus import Corpus as tfidf_corpus
 from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
 
@@ -42,10 +43,18 @@ from mezcla.text_utils import make_fixed_length
 
 # Determine environment-based options
 DEFAULT_NUM_TOP_TERMS = system.getenv_int("NUM_TOP_TERMS", 10)
-MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 1)
-MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", MAX_NGRAM_SIZE)
-IDF_WEIGHTING = system.getenv_text("IDF_WEIGHTING", "basic")
-TF_WEIGHTING = system.getenv_text("TF_WEIGHTING", "basic")
+## OLD:
+## MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 1)
+## MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", MAX_NGRAM_SIZE)
+USE_NGRAM_SMOOTHING = system.getenv_boolean("USE_NGRAM_SMOOTHING", False)
+
+## OLD: IDF_WEIGHTING = system.getenv_text("IDF_WEIGHTING", "basic")
+DEFAULT_IDF_WEIGHTING = 'smooth' if USE_NGRAM_SMOOTHING else 'basic'
+IDF_WEIGHTING = system.getenv_text("IDF_WEIGHTING", DEFAULT_IDF_WEIGHTING)
+## OLD: TF_WEIGHTING = system.getenv_text("TF_WEIGHTING", "basic")
+## TODO3: DEFAULT_IF_WEIGHTING = 'smooth' if USE_NGRAM_SMOOTHING else 'log'
+DEFAULT_TF_WEIGHTING = 'basic'
+TF_WEIGHTING = system.getenv_text("TF_WEIGHTING", DEFAULT_TF_WEIGHTING)
 DELIMITER = system.getenv_text("DELIMITER", ",")
 CORPUS_DUMP = system.getenv_value("CORPUS_DUMP", None,
                                   "Filename for corpus dump")

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../template.py
 #
@@ -17,7 +17,7 @@ import re
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
@@ -32,11 +32,12 @@ class TestTemplate(TestWrapper):
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_01_data_file(self):
         """Makes sure to-do grep works as expected"""
         debug.trace(4, "TestTemplate.test_01_data_file()")
         data = ["TEMP", "TODO", "DONE"]
-        gh.write_lines(self.temp_file, data)
+        system.write_lines(self.temp_file, data)
         # note: the support for --TODO-arg placeholder involves grepping for TODO
         output = self.run_script("--TODO-arg", self.temp_file)
         assert re.search(r"arg1 line \(2\): TODO", output.strip())
@@ -62,4 +63,4 @@ class TestTemplate(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Note: Test for working around ":double import" issue. See
 #    See https://stackoverflow.com/questions/43393764/python-3-6-project-structure-leads-to-runtimewarning

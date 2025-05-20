@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Functions for debugging, such as console tracing. This is for intended
 # for verbose tracing not suitable for the logging facility.
@@ -37,6 +37,15 @@
 #     python -c 'from mezcla import debug; debug.trace(debug.DEFAULT + 1, "Not visible")'
 #     DEBUG_LEVEL=3 python -c 'from mezcla import debug; debug.trace(3, "Visible")'
 #
+# Environment variables:
+#     DEBUG_LEVEL                       trace level default
+#     ENABLE_LOGGING                    initialize logging
+#     GLOBAL_LOGGING                    re-initialize global logger
+#     USE_LOGGING                       output to log
+#     USE_OLD_INTROSPECTION             use old homegrown introspection
+#     ...
+#
+#-------------------------------------------------------------------------------
 # TODO1:
 # - Add sanity check to trace_fmt for when keyword in kaargs unused.
 #
@@ -73,12 +82,16 @@ from typing_extensions import Buffer
 import six
 import sys
 import time
+import traceback
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 from mezcla.validate_arguments_types import (
     FileDescriptorOrPath,
 )
 
 # Local packages
+## OLD: from mezcla.introspection import intro
+intro = None
+
 ## OLD:
 ## # note: The following redefines sys.version_info to be python3 compatible;
 ## # this is used in _to_utf8, which should be reworked via six-based wrappers.
@@ -163,8 +176,11 @@ if __debug__:
     debug_file_hack = False             # work around concurrent writes by reopening after each trace
     para_mode_tracing = False           # multiline tracing functions add blank lines (e.g., for para-mode grep)
     max_trace_value_len = 1024          # maxium length for tracing values
-    time_start = 0                      # time of module load
+    time_start = 0.0                    # time of module load
     include_trace_diagnostics = False   # include trace invocation sanity checks
+    monitor_functions = None            # monitor function entry/exit
+    module_file = __file__              # file name for module script
+    use_old_introspection = True        # use old-style introspection (temp enabled until debug_init)
     #
     try:
         trace_level_text = os.environ.get(DEBUG_LEVEL_LABEL, "")
@@ -257,12 +273,12 @@ if __debug__:
             level: IntOrTraceLevel,
             text: str,
             empty_arg: Optional[bool] = None,
-            no_eol: bool = False,
+            no_eol: Optional[bool] = None,
             indentation: Optional[str] = None,
             skip_sanity_checks: Optional[bool] = None
         ) -> None:
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE
-        Noe: Optionally, uses \n unless no_eol, precedes trace with INDENTATION, and
+        Note: Optionally, uses \n unless no_eol, precedes trace with INDENTATION, and
         SKIPs_SANITY_CHECKS (e.g., variables in braces in f-string omission).
         """
         # TODO1: add exception handling
@@ -299,8 +315,8 @@ if __debug__:
                     do_print("[Warning: converted non-text to str] ", end="")
                 text = str(text)
             if ((not skip_sanity_checks)
-                and re.search(r"{\S+}", text)
-                and not re.search(r"{{\S+}}", text)):
+                and re.search(r"{[^0-9]\S+}", text)
+                and not re.search(r"{{[^0-9]\S+}}", text)):
                 # TODO3: show caller info; also rework indent (pep8 quirk)
                 if include_trace_diagnostics:
                     do_print("[FYI: f-string issue?] ", end="")
@@ -315,6 +331,23 @@ if __debug__:
             sys.stderr.write("Error: trace only accepts two positional arguments (was trace_expr intended?)\n")
         return
 
+    def check_keyword_args(level, expected, kwargs,
+                           function, format_text=None, add_underscore=False):
+        """Make sure KWARGS in EXPECTED list for FUNCTION at trace LEVEL
+        Note: Checks for leading underscore if ADD_UNDERSCORE. Excludes keywords
+        mentioned in FORMAT_TEXT.
+        """
+        if debugging(level):
+            expected = expected.split()
+            if add_underscore:
+                expected += [f"_{k}" for k in expected]
+            all_diff = set(kwargs.keys()).difference(expected)
+            diff = [kw for kw in all_diff
+                    ## TODO3: rf"{{{kw\W*}}" -or- rf"{{ {kw}[^a-z0-9_]* }}" -or- rf"{{ {kw}[^}}]* }}",
+                    if not re.search(rf"{{ {kw}.* }}",
+                                     (format_text or ""), flags=re.IGNORECASE|re.VERBOSE)]
+            if diff:
+                trace(1, f"Warning: Unexpected keyword arg(s) to {function}: {diff}")
 
     @docstring_parameter(max_len=max_trace_value_len)
     def trace_fmtd(level: IntOrTraceLevel, text: str, **kwargs) -> None:
@@ -326,6 +359,8 @@ if __debug__:
         # references, this function does the formatting.
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
         if (trace_level >= level):
+            check_keyword_args(VERBOSE, "max_len skip_sanity_checks",
+                               kwargs, "trace_fmt", format_text=text, add_underscore=True)
             # Note: checks alternative keyword first, so False ones not misintepretted
             max_len = kwargs.get('_max_len') or kwargs.get('max_len')
             skip_sanity_checks = kwargs.get('_skip_sanity_checks') or kwargs.get('skip_sanity_checks')
@@ -537,12 +572,11 @@ if __debug__:
                            v=format_value(value, max_len=max_len, skip_sanity_checks=True))
             except:
                 trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}: {exc}",
-                           k=_to_utf8(k), exc=sys.exc_info())
+                           k=str(k), exc=sys.exc_info())
         trace(ALWAYS, indentation + "}")
         if para_mode_tracing:
             trace(ALWAYS, "")
         return
-
 
     @docstring_parameter(max_len=max_trace_value_len)
     def trace_expr(level: IntOrTraceLevel, *values, **kwargs) -> None:
@@ -563,6 +597,9 @@ if __debug__:
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
         trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw}); debug_level={dl}",
                   l=level, args=values, kw=kwargs, dl=trace_level)
+        check_keyword_args(VERBOSE, "sep delim no_eol max_len prefix suffix use_repr",
+                           kwargs, "trace_expr", add_underscore=True)
+                             
         ## TODO1: check for unknown keywords, which could be cut-n-paste error
         ## TODO2: try to handle numpy arrays better; ex: 'arr=array([[11, 12],\n       [21, 22]])'
         ##        => 'arr=array([[11, 12], [21, 22]])'
@@ -574,16 +611,19 @@ if __debug__:
             # note: Short-circuits processing to avoid errors about known problems (e.g., under ipython)
             return
         # Note: checks alternative keyword first, so False ones not misintepretted
+        ## TODO3: make sep deprecated
         sep = kwargs.get('_sep') or kwargs.get('sep')
-        delim = kwargs.get('_delim') or kwargs.get('delim')
+        delim = kwargs.get('_delim') or kwargs.get('delim') or sep
         suffix = kwargs.get('_suffix') or kwargs.get('suffix')
-        no_eol = bool(kwargs.get('_no_eol') or kwargs.get('no_eol'))
+        ## OLD: no_eol = bool(kwargs.get('_no_eol') or kwargs.get('no_eol'))
+        no_eol = kwargs.get('_no_eol') or kwargs.get('no_eol')
         in_no_eol = no_eol
         use_repr = kwargs.get('_use_repr') or kwargs.get('use_repr')
         max_len = kwargs.get('_max_len') or kwargs.get('max_len')
         prefix = kwargs.get('_prefix') or kwargs.get('prefix')
-        if sep is None:
-            sep = ", "
+        ## OLD:
+        ## if sep is None:
+        ##     sep = ", "
         if no_eol is None:
             no_eol = (delim and ("\n" in delim))
         if delim is None:
@@ -594,78 +634,108 @@ if __debug__:
             use_repr = True
         if prefix is None:
             prefix = ""
-        trace(9, f"sep={sep!r}, del={delim!r}, noe={no_eol}, rep={use_repr}, len={max_len}, pre={prefix!r} suf={suffix!r}")
+        trace(9, f"sep={sep!r}, del={delim!r}, noeol={no_eol}, rep={use_repr}, mlen={max_len}, pre={prefix!r} suf={suffix!r}", skip_sanity_checks=True)
 
         # Get symbolic expressions for the values
-        # TODO2: handle cases split across lines
-        try:
-            # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
-            caller = inspect.stack()[1]
-            (_frame, filename, line_number, _function, context, _index) = caller
-            trace(9, f"filename={filename!r}, context={context!r}")
-            statement = read_line(filename, line_number).strip()
-            if statement == MISSING_LINE:
-                statement = str(context).replace("\\n']", "")
-            # Extract list of argument expressions (removing optional comment)
-            statement = re.sub(r"#.*$", "", statement)
-            statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
-            # Remove trailing paren with optional semicolon
-            statement = re.sub(r"\)\s*;?\s*$", "", statement)
-            # Remove trailing comma (e.g., if split across lines)
-            statement = re.sub(r",?\s*$", "", statement)
-            # Skip first argument (level)
-            # note: to avoid splitting array entries, etc. omit space after , (e.g., m[i,j] not m[i, j])
-            expressions = re.split(", +", statement)[1:]
-            trace(9, f"expressions={expressions!r}\nvalues={values!r}")
-        except:
-            trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
-                       exc=sys.exc_info())
-            expressions = []
-
-        # Output initial text
-        if prefix:
-            trace(level, prefix, no_eol=no_eol)
-
-        # Output each expression value
-        for expression, value in zip_longest(expressions, values):
-            try:
-                # Exclude kwarg params
-                match = re.search(r"^(\w+)=", str(expression))
-                if (match and match.group(1) in kwargs):
-                    continue
-                assertion((not ((value is not None) and (expression is None))),
-                          f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
-                value_spec = format_value(repr(value) if use_repr else value,
-                                          max_len=max_len)
-                # note: using skip_sanity_checks, because kwargs gives false positive on brace check
-                trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True)
-            except:
-                trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
-                       exc=sys.exc_info())
-
-        # Output final text
-        if suffix:
-            trace(level, suffix, no_eol=False)
-        elif (no_eol and (delim != "\n")):
-            trace(level, "", no_eol=False)
+        if not use_old_introspection:
+            ## HACK: uses _prefix to avoid conflict with introspection's prefix
+            ## TODO2: drop newlines due to arguments split across lines
+            expression = intro.format(*values, arg_offset=1, indirect=True, max_len=max_len,
+                                      no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
+            ## TEST:
+            ## expression = []
+            ## for i, value in enumerate(values):
+            ##     expression.append(intro.format(value, arg_offset=(i + 1)))
+            ## expression = "@".join(expression)
+            ## trace(3, f"{values=} {expression=}")
+            ##
+            trace(level, expression, skip_sanity_checks=True)
         else:
-             trace(9, "No final text to output")
+            ## TODO2: handle cases split across lines
+            try:
+                # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
+                caller = inspect.stack()[1]
+                (_frame, filename, line_number, _function, context, _index) = caller
+                trace(9, f"filename={filename!r}, context={context!r}", skip_sanity_checks=True)
+                statement = read_line(filename, line_number).strip()
+                if statement == MISSING_LINE:
+                    statement = str(context).replace("\\n']", "")
+                # Extract list of argument expressions (removing optional comment)
+                statement = re.sub(r"#.*$", "", statement)
+                statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
+                # Remove trailing paren with optional semicolon
+                statement = re.sub(r"\)\s*;?\s*$", "", statement)
+                # Remove trailing comma (e.g., if split across lines)
+                statement = re.sub(r",?\s*$", "", statement)
+                # Skip first argument (level)
+                expressions = re.split(", +", statement)[1:]
+                trace(9, f"expressions={expressions!r}\nvalues={values!r}", skip_sanity_checks=True)
+            except:
+                trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
+                           exc=sys.exc_info())
+                expressions = []
+
+            # Output initial text
+            if prefix:
+                trace(level, prefix, no_eol=no_eol, skip_sanity_checks=True)
+
+            # Output each expression value
+            for expression, value in zip_longest(expressions, values):
+                try:
+                    ## Exclude kwarg params
+                    match = re.search(r"^(\w+)=", str(expression))
+                    if (match and match.group(1) in kwargs):
+                        continue
+                    assertion((not ((value is not None) and (expression is None))),
+                              f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
+                    value_spec = format_value(repr(value) if use_repr else value,
+                                              max_len=max_len)
+                    trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True)
+                except:
+                    trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
+                           exc=sys.exc_info())
+            # Output final text
+            if suffix:
+                trace(level, suffix, no_eol=False, skip_sanity_checks=True)
+            elif (no_eol and (delim != "\n")):
+                trace(level, "", no_eol=False)
+            else:
+                trace(9, "No final text to output")
+
         return
 
-    
-    def trace_current_context(level: IntOrTraceLevel = QUITE_DETAILED, label: Optional[str] = None,
-                              show_methods_etc: bool = False) -> None:
+
+    def trace_frame(level: IntOrTraceLevel, frame, label="frame"):
+        """Trace info about FRAME to stderr if LEVEL or higher, using LABEL prefix"""
+        # example: trace_frame debug.py:680
+        frame_spec = (f"{frame.f_code.co_name} {inspect.getfile(frame)}:{frame.f_lineno}"
+                      if frame else "n/a")
+        trace(level, f"{label}: {frame_spec}")
+
+
+    def trace_current_context(level: IntOrTraceLevel = QUITE_DETAILED,
+                              label: Optional[str] = None,
+                              show_methods_etc: bool = False,
+                              indirect: Optional[bool] = False,
+                              max_value_len: Optional[int] = 2048) -> None:
         """Traces out current context (local and global variables), with output
         prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
         Notes: By default the debugging level must be quite-detailed (6).
         If the debugging level is higher, the entire stack frame is traced.
-        Also, methods are omitted by default."""
+        Also, methods are omitted by default. Other optional arguments allow
+        for INDIRECT callign contexts and MAX_VALUE_LEN of traced output.
+        """
         frame = None
         if label is None:
             label = "current"
         try:
             current_frame = inspect.currentframe()
+            trace_frame(7, frame, "current frame")
             frame = current_frame.f_back if current_frame else None
+            trace_frame(7, frame, "calling frame")
+            if frame and indirect:
+                frame = frame.f_back
+                trace_frame(7, frame, "indirect frame")
         except (AttributeError, KeyError, ValueError):
             trace_fmt(VERBOSE, "Exception during trace_current_context: {exc}",
                       exc=sys.exc_info())
@@ -675,43 +745,45 @@ if __debug__:
         prefix = INDENT
         if (get_level() - level) > 1:
             trace_object((level + 2), frame, "frame", indentation=prefix,
-                         show_all=show_methods_etc)
+                         show_all=show_methods_etc, max_value_len=max_value_len)
         else:
             trace_fmt(level, "frame = {f}", f=frame)
             if frame:
                 trace_object(level, frame.f_globals, "globals", indentation=prefix,
-                             show_all=show_methods_etc)
+                             show_all=show_methods_etc, max_value_len=max_value_len)
                 trace_object(level, frame.f_locals, "locals", indentation=prefix,
-                             show_all=show_methods_etc)
+                             show_all=show_methods_etc, max_value_len=max_value_len)
         trace(level, "}")
         if para_mode_tracing:
             trace(level, "")
         return
 
 
-    ## TODO
-    ## def trace_stack(level=VERBOSE):
-    ##     """Output stack trace to stderr (if at trace LEVEL or higher)"""
-    ##     system-ish.print_full_stack()
-    ##     return
+    def trace_stack(level=VERBOSE):
+        """Output stack trace to stderr (if at trace LEVEL or higher)"""
+        if (level <= trace_level):
+            traceback.print_stack(file=sys.stderr)
+        return
 
 
     def trace_exception(level: IntOrTraceLevel, task: Any) -> None:
         """Trace exception information regarding TASK (e.g., function) at LEVEL"""
         # Note: Conditional output version of system's print_exception_info.
         # ex: trace_exception(DETAILED, "tally_counts")
-        trace_fmt(level, "Exception during {t}: {exc}".
-                  format(t=task, exc=sys.exc_info()))
+        trace(level, "Exception during {t}: {exc}".
+              format(t=task, exc=sys.exc_info()))
         # TODO: include full stack trace (e.g., at LEVEL + 2)
         ## system.trace_stack(level + 2)
         return
-
+    #
+    # Note: alias to match print_exception_info in system
+    trace_exception_info = trace_exception
     
-    def raise_exception(level: IntOrTraceLevel = 1) -> None:
-        """Raise an exception if debugging (at specified trace LEVEL)"""
-        # Note: For producing full stacktrace in except clause when debugging.
-        # TODO: elaborate
-        if __debug__ and (level <= trace_level):
+    def raise_exception(level: IntOrTraceLevel = 1):
+        """Raise an exception if debugging (at specified trace LEVEL)
+        Note: useful to re-raise exceptions normally ignored when not debugging
+        """
+        if (level <= trace_level):
             raise                       # pylint: disable=misplaced-bare-raise
         return
 
@@ -719,7 +791,8 @@ if __debug__:
     def assertion(
             expression: Union[bool, Any],
             message: Optional[str] = None,
-            assert_level: Optional[IntOrTraceLevel] = None
+            assert_level: Optional[IntOrTraceLevel] = None,
+            indirect: Optional[bool] = False
         ) -> Optional[str]:
         """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
         Note:
@@ -741,24 +814,35 @@ if __debug__:
             try:
                 # Get source information for failed assertion
                 trace_fmtd(MOST_VERBOSE, "Call stack: {st}", st=inspect.stack())
-                caller = inspect.stack()[1]
+                offset = 2 if indirect else 1
+                caller = inspect.stack()[offset]
                 ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
                 (_frame, filename, line_number, _function, context, _index) = caller
                 trace(8, f"filename={filename!r}, context={context!r}")
-                # Read statement in file and extract assertion expression
-                # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
-                statement = read_line(filename, line_number).strip()
-                if statement == MISSING_LINE:
-                    ## OLD: statement = str(context).replace(")\\n']", "")
-                    statement = str(context).replace("\\n']", "")
-                # Format expression and message
-                # note: removes comments, along with the assertion call prefix and suffix
-                statement = re.sub("#.*$", "", statement)
-                statement = re.sub(r"^(\S*)assertion\(", "", statement)
-                expression = re.sub(r"\);?\s*$", "", statement)
-                expression = re.sub(r",\s*$", "", statement)
-                expression_text = expression
+
+                # Resolve expression text
+                if not use_old_introspection:
+                    expression = intro.format(expression, indirect=True)
+                    expression = re.sub("=False$", "", expression)
+                    ## TODO2: drop newlines due to argument split across lines
+                    ##   expression = re.sub("\n", " ", expression)???
+                    expression_text = expression
+                else:
+                    # Read statement in file and extract assertion expression
+                    # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
+                    statement = read_line(filename, line_number).strip()
+                    if statement == MISSING_LINE:
+                        ## OLD: statement = str(context).replace(")\\n']", "")
+                        statement = str(context).replace("\\n']", "")
+                        # Format expression and message
+                        # note: removes comments, along with the assertion call prefix and suffix
+                        statement = re.sub("#.*$", "", statement)
+                        statement = re.sub(r"^(\S*)assertion\(", "", statement)
+                        expression = re.sub(r"\);?\s*$", "", statement)
+                        expression = re.sub(r",\s*$", "", statement)
+                        expression_text = expression                    
                 qualification_spec = (": " + message) if message else ""
+
                 # Output information
                 # TODO: omit subsequent warnings
                 trace_fmtd(ALWAYS, "Assertion failed: {expr} (at {file}:{line}){qual}",
@@ -779,7 +863,8 @@ if __debug__:
 
 
     def code(level: IntOrTraceLevel, no_arg_function: Callable) -> Any:
-        """Execute NO_ARG_FUNCTION if at trace LEVEL or higher
+        """Execute NO_ARG_FUNCTION if at trace LEVEL or higher.
+        Returns result of invocation or None.
         Notes:
         - Use call() for more flexible invocation (e.g., can avoid lambda function)
         - Given the quirks of Python syntax, a two-step process is required:
@@ -869,11 +954,15 @@ else:
     
     ## TODO?:
     ## val = non_debug_stub
+    ## OLD:
+    ## def val(_expression: Any) -> None:
     ##
-    def val(_expression: Any) -> None:
+    def val(_level: IntOrTraceLevel, _value: Any) -> None:  # type: ignore [misc]
         """Non-debug stub for value()--a no-op function"""
-        # Note: implemented separately from non_debug_stub to ensure no return value
+        # Note: implemented separately from non_debug_stub to ensure no return value (i.e., future proof)
         return
+    ##
+    ## TODO3: drop _safe_eval
     ##
     def _safe_eval(expression: Union[str, Buffer, CodeType], default: Any = None) -> Any:
         """Returns evaluation of string EXPRESSION trapping for errors and if so returning DEFAULT"""
@@ -883,7 +972,7 @@ else:
             result = default
         return result
     ##
-    if (val(1) is not None):
+    if (val(TL.ALWAYS, 1) is not None):
         # note: work around for maldito python not providing None-like default if __file__ n/a
         sys.stderr.write(f"Warning: non-debug val() in {_safe_eval('__file__', 'debug.py')} should return Null\n")
     ##
@@ -910,7 +999,6 @@ def timestamp() -> str:
     return (str(datetime.now()))
     
 
-## OLD: def debugging(level=ERROR):
 def debugging(level: IntOrTraceLevel = USUAL) -> bool:
     """Whether debugging at specified trace LEVEL (e.g., 3 for usual)"""
     ## BAD: """Whether debugging at specified trace level, which defaults to {l}""".format(l=ERROR)
@@ -963,7 +1051,6 @@ def _getenv_int(name: str, default_value: int) -> int:
     except:
         _print_exception_info("_getenv_int")
     return result
-
 
 @docstring_parameter(max_len=max_trace_value_len)
 def format_value(value: str, max_len: Optional[int] = None,
@@ -1073,7 +1160,7 @@ def profile_function(frame, event, arg):
 
     # Resolve the names for the function (callable) and module
     name = "???"
-    module = "???"
+    module: Optional[str] = "???"
     try:
         name = frame.f_code.co_name
         if name in frame.f_globals:
@@ -1089,12 +1176,15 @@ def profile_function(frame, event, arg):
         _print_exception_info("profile_function")
 
     # Trace out the call (with other information at higher tracing levels)
+    # Common events: [c_]call, [c_]return, and [c_]exception
     if event.endswith("call"):
-        trace_fmt(DETAILED, "in: {mod}:{func}({a})", mod=module, func=name, a=arg)
+        trace_fmt(DETAILED, "in: {mod}:{func}({a}); ev={e}",
+                  mod=module, func=name, e=event, a=arg)
     elif event.endswith("return"):
-        trace_fmt(DETAILED, "out: {mod}:{func} => {a}", mod=module, func=name, a=arg)
+        trace_fmt(DETAILED, "out: {mod}:{func} => {a}; ev={e}",
+                  mod=module, func=name, e=event, a=arg)
     else:
-        trace_fmt(VERBOSE, "profile {mod}:{func} {e}: arg={a}",
+        trace_fmt(VERBOSE, "profile {mod}:{func}; ev={e}: arg={a}",
                   mod=module, func=name, e=event, a=arg)
     return
 
@@ -1136,6 +1226,18 @@ def read_line(filename: FileDescriptorOrPath, line_number: int) -> str:
 
 def main(args: List[str]) -> None:
     """Supporting/ code for command-line processing"""
+    # Check command line arguments
+    proceed = True
+    if "--help" in str(sys.argv):
+        print("Usage: {prog} [--help] [--skip-example]".format(prog=sys.argv[0]))
+        print("Note: Supporting module with minimal command line options")
+        proceed = False
+    if "--skip-example" in str(sys.argv):
+        proceed = False
+    if not proceed:
+        return
+
+    # Show results of various tracing calls
     trace_expr(DETAILED, len(args))
     trace(ERROR, "FYI: Not intended for direct invocation. Some tracing examples follow.")
     #
@@ -1151,12 +1253,15 @@ def main(args: List[str]) -> None:
         level_value = level
         trace_expr(level, level_value)
     #
-    # Maker sure trace_expr gets all arguments
+    # Make sure trace_expr gets all arguments
+    # TODO4: Revise confusing legend
     trace(ALWAYS, "n-i=N-i         for N=trace_level ({l}) and i from 1..-1".format(l=trace_level))
     n = trace_level
     i = 1
     ## TODO: for i in range(3, 0, -1):
-    trace_expr(ERROR, n+i, n, n+i)
+    trace_expr(ERROR, n-i, n, n+i)
+    ALL = True
+    trace_expr(ALWAYS, ALL, prefix="Tha-tha-that's ", suffix=" folks!")
     return
 
 
@@ -1165,14 +1270,15 @@ def main(args: List[str]) -> None:
 
 if __debug__:
 
-    def open_debug_file() -> None:
+    def open_debug_file(debug_filename: Optional[str] = None) -> None:
         """Open external file for copy of trace output"""
         trace(5, "open_debug_file()")
         global debug_file
         assertion(debug_file is None)
 
         # Open the file
-        debug_filename = os.getenv("DEBUG_FILE")
+        if debug_filename is None:
+            debug_filename = os.getenv("DEBUG_FILE")
         if debug_filename is not None:
             ## OLD: debug_file = open(debug_filename, mode="w", encoding="UTF-8")
             ## TEST: open unbuffered which requires binary output mode
@@ -1187,12 +1293,13 @@ if __debug__:
                    fn=debug_filename, f=debug_file)
         return
 
-    def reopen_debug_file() -> None:
+    def reopen_debug_file(debug_filename: Optional[str] = None) -> None:
         """Re-open debug file to work around concurrent access issues
         Note: The debug file is mainly used with pytest to work around stderr tracing issues"""
         trace(5, "reopen_debug_file()")
         global debug_file
-        assertion(debug_file is not None)
+        if not debug_filename:
+            assertion(debug_file is not None)
 
         # Close file if opened
         if debug_file:
@@ -1200,18 +1307,40 @@ if __debug__:
             debug_file = None
 
         # Open fresh
-        open_debug_file()
+        open_debug_file(debug_filename)
         return
 
-    def debug_init() -> None:
+    def display_ending_time_etc() -> None:
+        """Display ending time information"""
+        # TODO: rename to reflect generic-exit nature
+        # note: does nothing if stderr closed (e.g., other monitor)
+        # TODO: resolve pylint issue with sys.stderr.closed
+        trace_object(QUITE_VERBOSE, sys.stderr)
+        if sys.stderr.closed:       # pylint: disable=using-constant-test
+            return
+        elapsed = get_elapsed_time()
+        trace_fmtd(DETAILED, "[{f}] unloaded at {t}; elapsed={e}s",
+                   f=module_file, t=timestamp(), e=elapsed)
+        if monitor_functions:
+            sys.setprofile(None)
+        global debug_file
+        if debug_file:
+            debug_file.close()
+            debug_file = None
+    
+    def debug_init(force: Optional[bool] = False) -> None:
         """Debug-only initialization"""
         global time_start
+        if (time_start > 0 and not force):
+            ## TODO3: track down source of re-init
+            trace(DETAILED, f"debug_init early exit: {time_start=} {force=}")
+            return
         time_start = time.time()
         trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
         ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
         # note: shows command invocation unless invoked via "python -c ..."
         command_line = " ".join(sys.argv)
-        assertion(command_line)
+        ## OLD: assertion(command_line)
         if (command_line and (command_line != "-c") and (command_line != "-m")):
             # TODO2: simplify misc. trace suppression options (n.b., check shellscript repo)
             if _getenv_bool("TRACE_INVOCATION", False):
@@ -1228,10 +1357,12 @@ if __debug__:
         output_timestamps = _getenv_bool("OUTPUT_DEBUG_TIMESTAMPS", False)
     
         # Show startup time and tracing info
-        module_file = __file__
         trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
         trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
         trace_expr(QUITE_DETAILED, __file__)
+        # note: also show python path if under Unix (TODO3: generalize)
+        if (os.name == "posix"):
+            code(VERBOSE, lambda: os.system("(echo -n 'Python: '; which python) 1>&2"))
 
         # Determine other debug-only environment options
         global para_mode_tracing
@@ -1245,6 +1376,7 @@ if __debug__:
             init_logging()
         global include_trace_diagnostics
         include_trace_diagnostics = _getenv_bool("TRACE_DIAGNOSTICS", trace_level >= QUITE_DETAILED)
+        global monitor_functions
         monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
         if monitor_functions:
             sys.setprofile(profile_function)
@@ -1252,6 +1384,20 @@ if __debug__:
         ## global output_caller_info
         ## output_caller_info = _getenv_bool("OUTPUT_CALLER_INFO", output_caller_info)
         trace_expr(VERBOSE, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
+        global use_old_introspection
+        use_old_introspection = _getenv_bool("USE_OLD_INTROSPECTION", False)
+        if not use_old_introspection:
+            ## TODO2: put before trace_expr or assertion called
+            try:
+                # pylint: disable=import-outside-toplevel
+                from mezcla import introspection
+                ## TODO3: from mezcla.introspection import intro
+                global intro
+                intro = introspection.intro
+            except:
+                use_old_introspection = True
+                trace(3, "FYI: Unable to load introspection")
+                trace_exception(6, "loading introspection")
 
         # Show additional information when detailed debugging
         # TODO: sort keys to facilate comparisons of log files
@@ -1269,23 +1415,6 @@ if __debug__:
         trace_expr(MOST_DETAILED, globals(), max_len=65536)
 
         # Register to show shuttdown time and elapsed seconds
-        # TODO: rename to reflect generic-exit nature
-        def display_ending_time_etc() -> None:
-            """Display ending time information"""
-            # note: does nothing if stderr closed (e.g., other monitor)
-            # TODO: resolve pylint issue with sys.stderr.closed
-            trace_object(QUITE_VERBOSE, sys.stderr)
-            if sys.stderr.closed:       # pylint: disable=using-constant-test
-                return
-            elapsed = get_elapsed_time()
-            trace_fmtd(DETAILED, "[{f}] unloaded at {t}; elapsed={e}s",
-                       f=module_file, t=timestamp(), e=elapsed)
-            if monitor_functions:
-                sys.setprofile(None)
-            global debug_file
-            if debug_file:
-                debug_file.close()
-                debug_file = None
         # note: atexit support is enabled by default unless DEBUG_FILE used (n.b., cleanup issues)
         skip_atexit = _getenv_bool("SKIP_ATEXIT", (debug_file is not None))
         trace_expr(4, skip_atexit)

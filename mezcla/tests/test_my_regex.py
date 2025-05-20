@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../my_regex.py
 #
@@ -18,8 +18,7 @@ import re
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper
-from mezcla.unittest_wrapper import trap_exception
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
@@ -29,17 +28,25 @@ import mezcla.my_regex as THE_MODULE
 # Constants
 MEZCLA_REGEX = "M[e]zcl[a]"
 
+
 class TestMyRegex(TestWrapper):
     """Class for testcase definition"""
-    script_module = TestWrapper.get_testing_module_name(__file__)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     my_re = THE_MODULE.my_re            # TODO3: make global to cut down self usages
 
-    ## OLD:
-    ## @pytest.fixture(autouse=True)
-    ## def capsys(self, capsys):
-    ##     """Gets capsys"""
-    ##     self.capsys = capsys
-
+    def setUp(self):
+        """Performs test setup with capsys disabled
+           Note: This works around quirk with pytest stderr capturing"""
+        try:
+            with self.capsys.disabled():
+                debug.trace(6, f"TestIt.setUp(); self={self}")
+                super().setUp()
+                debug.trace_current_context(level=debug.QUITE_DETAILED)
+        except:
+            # note: trace level high so as not to affect normal testing
+            debug.trace_exception(7, "TestMyRegex.setUp")
+            super().setUp()
+   
     def helper_my_regex(self, regex, text, is_match=0):
         """Helper functions for my_regex"""
         ## TODO2: rename as get_regex_search_result
@@ -194,18 +201,29 @@ class TestMyRegex(TestWrapper):
         output = self.my_re.escape(text)
         assert(r"\*" in output)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    @trap_exception
-    def test_f_string(self):
-        """Ensure warning given about f-string like regex"""
-        debug.trace(4, f"in test_f_string(); self={self}")
+    def check_f_string(self, expected=True):
+        """Check that f-string warning is ISSUED"""
+        debug.trace(4, f"check_f_string({expected})")
         self.my_re.search("{fubar}", "foobar")
-        # TODO2: change usages elsewhere to make godawful pytest default more intuitive
         captured_stderr = self.get_stderr()
         debug.trace_expr(4, captured_stderr, max_len=4096)
-        self.do_assert(self.my_re.search("Warning:.*f-string", captured_stderr))
-        ## TEST: print(f"{self.my_re=}")
-        debug.trace(5, "out test_f_string(); self={self}")
+        has_warning = bool(self.my_re.search("Warning:.*f-string", captured_stderr))
+        self.do_assert(has_warning == expected)
+        
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_f_string_warning(self):
+        """Ensure warning given about f-string like regex"""
+        # Make sure shown by default
+        debug.trace(4, f"in test_f_string(); self={self}")
+        self.monkeypatch.setattr(THE_MODULE, 'REGEX_WARNINGS', True)
+        self.check_f_string(expected=True)
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_no_f_string_warning(self):
+        """Make sure f-string warning can be disabled"""
+        debug.trace(4, f"in test_no_f_string_warning(); self={self}")
+        self.monkeypatch.setattr(THE_MODULE, 'REGEX_WARNINGS', False)
+        self.check_f_string(expected=False)
 
     def test_simple_regex(self):
         """"Test regex search with capturing"""
@@ -224,8 +242,44 @@ class TestMyRegex(TestWrapper):
         self.do_assert(self.my_re.pre_match() == "abc_")
         self.do_assert(self.my_re.post_match() == "_ghi")
 
+    def check_pattern_helper(self, regex, expect_has_warning):
+        """Make sure check_pattern warning for REGEX matches EXPECTED_HAS_WARNING"""
+        # Note: Used in global test below, using separate tests due to capsys quirks.
+        ## DEBUG: debug.trace(4, f"check_pattern_helper{(self, regex, expect_has_warning)}")
+        ## TODO3: self.capsys.disabled() ...
+        self.my_re.check_pattern(regex)
+        captured_stderr = self.get_stderr()
+        actual_has_warning = bool(self.my_re.search("Warning", captured_stderr))
+        assert actual_has_warning == expect_has_warning
+
+
+@pytest.mark.xfail                   # TODO: remove xfail
+@pytest.mark.parametrize(
+    ## TODO3: use unittest_parametrize (see test_mezcla_to_standard.py and https://pypi.org/project/unittest-parametrize)
+    "regex, expect_warning",
+    [
+        ("{regex_var}", True),
+        (b"{binary_regex_var}", True),
+        ("regex_text", False),
+        (b"binary_regex_text", False),
+    ])
+def test_check_pattern(regex, expect_warning, capsys):
+    """Ensure check_pattern issues warning for REGEX if EXPECT_WARNING"""
+    try:
+        with capsys.disabled():
+            debug.trace(4, f"test_check_pattern{(regex, expect_warning)}")
+            debug.trace_expr(5, capsys)
+            test_inst = TestMyRegex()
+        test_inst.capsys = capsys
+        test_inst.check_pattern_helper(regex, expect_warning)
+    except AssertionError:
+        debug.trace_exception(7, "test_check_pattern [assertion]")
+        raise
+    except:
+        debug.trace_exception(5, "test_check_pattern [non-assertion]")
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

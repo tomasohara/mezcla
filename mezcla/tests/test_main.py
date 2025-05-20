@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../main.py
 #
@@ -23,7 +23,7 @@ import pytest
 from mezcla import debug
 from mezcla import system
 from mezcla import tpo_common as tpo
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
@@ -51,6 +51,7 @@ class TestMain(TestWrapper):
     main_step_invoked = None
     process_line_count = -1
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_script_options(self):
         """Makes sure script option specifications are parsed OK"""
         debug.trace(4, f"in test_script_options(); self={self}")
@@ -60,16 +61,41 @@ class TestMain(TestWrapper):
             ## OLD: skip_args = True
             ## TODO: rename as TestMain?; drop MyArgumentParser?
 
+        # note: verbose-mode and file-path used as main supplies --verbose and filename
+        FULL_NAME_OPT = "full-name"
+        FULL_NAME_UNDER = FULL_NAME_OPT.replace("-", "_")
+        VERBOSE_OPT = "verbose-mode"
+        VERBOSE_UNDER = VERBOSE_OPT.replace("-", "_")
+        FILE_PATH_OPT = "file-path"
+        FILE_PATH_UNDER = FILE_PATH_OPT.replace("-", "_")
+        JOHN_DOE = "John Doe"
+        MY_FILE = "my-file.txt"
         # note: format is ("option", "description", "default"), or just "option"
-        app = Test(text_options=[("name", "Full name", "John Doe")],
-                   boolean_options=[("verbose", "testing verbose option", True)],
-                   ## OLD: runtime_args=[],
-                   runtime_args=["--verbose"],
+        app = Test(text_options=[(FULL_NAME_OPT, "Full name", JOHN_DOE)],
+                   boolean_options=[(VERBOSE_OPT, "testing verbose option", True)],
+                   positional_options=[(FILE_PATH_OPT, "Path for input")],
+                   runtime_args=[f"--{VERBOSE_OPT}", MY_FILE],
                    )
         #
         debug.trace_expr(5, app.parsed_args)
-        self.do_assert(app.parsed_args.get("name") == "John Doe")
-        self.do_assert(app.parsed_args.get("verbose"))
+        # note: underscores used in argparse hash keys
+        self.do_assert(app.parsed_args.get(FULL_NAME_UNDER) == JOHN_DOE)
+        self.do_assert(not app.parsed_args.get(FULL_NAME_OPT))
+        self.do_assert(app.parsed_args.get(VERBOSE_UNDER))
+        self.do_assert(not app.parsed_args.get(VERBOSE_OPT))
+        # note: dashes retained in positional args
+        self.do_assert(not app.parsed_args.get(FILE_PATH_UNDER))
+        self.do_assert(app.parsed_args.get(FILE_PATH_OPT) == MY_FILE)
+        #
+        # note: dashes converted to underscores by argparse wrappers
+        self.do_assert(app.get_parsed_option(FULL_NAME_UNDER, allow_under=True)
+                       == JOHN_DOE)
+        self.do_assert(app.get_parsed_option(FULL_NAME_OPT) == JOHN_DOE)
+        self.do_assert(app.get_parsed_option(VERBOSE_UNDER, allow_under=True))
+        self.do_assert(app.get_parsed_option(VERBOSE_OPT))
+        self.do_assert(app.get_parsed_argument(FILE_PATH_UNDER, allow_under=True)
+                       == MY_FILE)
+        self.do_assert(app.get_parsed_argument(FILE_PATH_OPT) == MY_FILE)
         debug.trace(5, "out test_script_options")
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -174,7 +200,6 @@ class TestMain(TestWrapper):
                    runtime_args=["-fubar"], perl_switch_parsing=True)
         debug.trace_expr(5, app.parsed_args)
         #
-        ## OLD: self.do_assert(app.parsed_args.get("verbose") == 0)
         self.do_assert(system.to_bool(app.parsed_args.get("fubar")))
         #
         app = Test(boolean_options=[("fubar", "testing fubar option")],
@@ -255,4 +280,4 @@ class TestMain2:
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

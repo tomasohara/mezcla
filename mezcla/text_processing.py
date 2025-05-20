@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # text_processing.py: performs text processing (e.g., via NLTK), mainly for
 # word tokenization and part-of-speech tagging. To make the part-of-speech
@@ -97,6 +97,8 @@ TL = debug.TL
 speller = None
 word_freq_hash = None
 WORD_FREQ_FILE = system.getenv_text("WORD_FREQ_FILE", "word.freq")
+nltk = None
+enchant = None
 
 # Hash for returning most common part of speech for a word (or token)
 word_POS_hash = None
@@ -134,13 +136,13 @@ stopwords = None
 
 #------------------------------------------------------------------------
 # Optional libraries
+## TODO4: add init function for dynamic loading (e.g., for testing purposes)
 
 # NLP toolkit
 if not SKIP_NLTK:
     import nltk            # pylint: disable=ungrouped-imports
     if DOWNLOAD_DATA:
-        ## TODO: nltk.download('all')
-        nltk.download(['punkt', 'averaged_perceptron_tagger'])
+        download_nltk_resources()
 # spell checking
 if not SKIP_ENCHANT:
     import enchant         # pylint: disable=ungrouped-imports
@@ -336,6 +338,7 @@ def has_spelling_mistake(term):
             has_mistake = not speller.check(term)
     except:
         system.print_exception_info(f"spell checking of {term}")
+    debug.trace(6, f"has_spelling_mistake({term}) => {has_mistake}")
     return has_mistake
 
 
@@ -591,6 +594,14 @@ def create_text_proc(name, *args, **kwargs):
     except:
         system.print_exception_info("create_text_proc")
     return class_instance
+
+
+def download_nltk_resources():
+    """Download NLTK resources from their website"""
+    nltk.download(['punkt', 'punkt_tab', 
+                   'averaged_perceptron_tagger',
+                   'averaged_perceptron_tagger_eng',
+                   'stopwords'])
 
 #-------------------------------------------------------------------------------
 

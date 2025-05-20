@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Micellaneous HTML utility functions, in particular with support for resolving HTML
@@ -459,8 +459,16 @@ def _write_file(filename : str, data : Union[str, bytes], as_binary : bool) -> N
     """Wrapper around write_file or write_binary_file if AS_BINARY"""
     ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_write_file({filename}, _, {as_binary})")
-    write_fn = system.write_binary_file if as_binary else system.write_file
-    return write_fn(filename, data)
+    ## NOTE: maldito mypy is too picky
+    ## OLD:
+    ## write_fn = system.write_binary_file if as_binary else system.write_file
+    ## return write_fn(filename, data)
+    ## TODO3: see if way to specify alternative union type that is accepted by it
+    if as_binary and isinstance(data, bytes):
+        system.write_binary_file(filename, data)
+    else:
+        system.write_file(filename, data)
+    return
 
 
 def old_download_web_document(url : str, filename: Optional[str] = None, download_dir : Optional[str] = None,
@@ -515,7 +523,8 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
             if not ignore:
                 system.print_exception_info("old_download_web_document")
     if not ok:
-        local_filename = None
+        ## OLD: local_filename = None
+        local_filename = ""
     if meta_hash is not None:
         meta_hash[FILENAME] = local_filename
         meta_hash[HEADERS] = headers
@@ -722,6 +731,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     status_spec = f"{checkbox_spec} {disabled_spec}".strip()
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
+    label_misc_spec = ""
     if (label is None):
         label = (param_name.replace("-", " ") + "?")
         if not skip_capitalize:
@@ -731,11 +741,14 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
         if TARGET_BOOTSTRAP:
-            misc_spec += f" data-bs-toggle='tooltip' title='{tooltip}'"
+            spec = f" data-bs-toggle='tooltip' title='{tooltip}'"
+            misc_spec += spec
+            label_misc_spec += spec
         else:
             tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
             tooltip_end_spec = "</span>"
-    result += f"<label>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
+    ## OLD: result += f"<label>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
+    result += f"<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
 
@@ -788,14 +801,17 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
     misc_spec += (f"onchange={on_change}" if on_change else "")
+    label_misc_spec = ""
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
         if TARGET_BOOTSTRAP:
-            misc_spec += f" data-bs-toggle='tooltip' title='{tooltip}'"
+            spec = f" data-bs-toggle='tooltip' title='{tooltip}'"
+            misc_spec += spec
+            label_misc_spec += spec
         else:
             tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
             tooltip_end_spec = "</span>"
-    result = f'<label>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;'
+    result = f'<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;'
     if text_area:
         max_len_spec = (f'maxlength="{max_len}"' if max_len else "")
         value_spec = format_url_param(param_name)
@@ -1002,6 +1018,7 @@ def main(args : List[str]) -> None:
             if use_stdout:
                 print(html_data)
             else:
+                doc_filename = filename
                 system.write_file(doc_filename + ".html", html_data)
                 print(f"See {doc_filename}.html")
         else:

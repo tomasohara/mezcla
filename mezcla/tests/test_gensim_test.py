@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for gensim_test.py
 #
@@ -33,11 +33,13 @@ import pytest
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import tpo_common as tpo
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla import system
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 try:
+    ## OLD: # pylint: disable=ungrouped-imports
     import gensim
     import mezcla.gensim_test as THE_MODULE
 except:
@@ -71,7 +73,7 @@ class TestGensimTest(TestWrapper):
         """Test printing of corpus vector for simple input"""
         tpo.debug_print("test_vector_printing()", 4)
         temp_file = self.temp_base + ".txt"
-        gh.write_file(temp_file, "My dog has fleas.\n")
+        system.write_file(temp_file, "My dog has fleas.\n")
         output = self.run_script("--print --verbose", temp_file)
         assert re.search(r"\(u?'dog', 1\),.*\(u?'has', 1\)", output)
         ## TODO4: likewise do non-trivial input like LICENSE.txt
@@ -93,4 +95,4 @@ class TestGensimTest2:
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

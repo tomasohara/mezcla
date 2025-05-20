@@ -1,7 +1,8 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
 # Test(s) for ../spell.py
+# ^ TODO: More?
 #
 # Notes:
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
@@ -19,7 +20,7 @@
 # - Create test helpers to cut down on all the redundant code.
 #   ex: def check_spelling(self, lang, text, bad):
 #       """Run spelling over TEXT in TEXT looking for BAD words""
-#       output = self.run_script(env_options=f"SPELL_LANG={lang}", data_file=gh.create_temp_file(text))
+#       output = self.run_script(env_options=f"SPELL_LANG={lang}", data_file=self.create_temp_file(text))
 #       assert(system.intersection(text.split(), bad.split()))
 # TODO4:
 # - Reword "This test can take some time or may have missing libraries" so that just
@@ -38,7 +39,7 @@ import pytest
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 ## TODO: from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
@@ -102,7 +103,7 @@ class SpellFiles(TestWrapper):
         """Helper function for test_spell.py"""
         debug.trace(4, f"\nhelper_spell(); self={self}")
         
-        data_file = gh.create_temp_file(contents=phrase) if batch_file_path == "-" else batch_file_path
+        data_file = self.create_temp_file(contents=phrase) if batch_file_path == "-" else batch_file_path
         output = self.run_script(
             env_options=f"SPELL_LANG={lang_code}",
             data_file=data_file,
@@ -115,7 +116,7 @@ class SpellFiles(TestWrapper):
         # if batch_file_path == "-" and query_like == False:
         #     command = f'echo "{phrase}" | SPELL_LANG={lang_code} {SPELL_PATH} {batch_file_path}'
         # elif query_like:
-        #     temp_file = gh.create_temp_file(contents=phrase) if query_like else batch_file_path
+        #     temp_file = self.create_temp_file(contents=phrase) if query_like else batch_file_path
         #     command = f'SPELL_LANG={lang_code} {SPELL_PATH} {temp_file}'
         # else:
         #     command = f'SPELL_LANG={lang_code} {SPELL_PATH} {batch_file_path}'
@@ -142,7 +143,7 @@ class SpellFiles(TestWrapper):
     #     # output = gh.run(test_run_command_2)
     #     # output = self.run_script(self.temp_file)
         
-    #     temp_file = gh.create_temp_file(contents=phrase)
+    #     temp_file = self.create_temp_file(contents=phrase)
     #     command = f'SPELL_LANG={lang_code} {SPELL_PATH} {temp_file}'
     #     output = gh.run(command)
     #     debug.trace_expr(5, output, lang_code, phrase)
@@ -342,4 +343,4 @@ class SpellFiles(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

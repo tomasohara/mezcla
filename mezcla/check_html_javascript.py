@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Run embedded JavaScript from HTML page through code checking tools, such as
 # jslint and jshint. This includes common definitions such as for DOM object

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Utilities for working with GPU's such as via PyTorch or using NVIDIA commands.
 #

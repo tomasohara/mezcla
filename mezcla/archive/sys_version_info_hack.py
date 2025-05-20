@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # sys_version_info_hack.py: hack for redefining sys.version_info to be python3 compatible
 #

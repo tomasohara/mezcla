@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../sys_version_info_hack.py
 #
@@ -22,7 +22,7 @@ from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.sys_version_info_hack as THE_MODULE
+import mezcla.archive.sys_version_info_hack as THE_MODULE
 
 class TestSysVersionInfoHack:
     """Class for testcase definition"""
@@ -32,4 +32,4 @@ class TestSysVersionInfoHack:
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

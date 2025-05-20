@@ -79,7 +79,7 @@ class Document(object):
         """The length of the document is the number of ngrams."""
         # TODO: rename to __size__??
         if not self.__length:
-            self.__length = sum(len(x) for x in self.keywordset)
+            self.__length = sum(len(x) for x in self.keywordset.values())
         return self.__length
 
     @property
@@ -88,7 +88,7 @@ class Document(object):
         ## if not self.__max_raw_frequency:
         if self.__max_raw_frequency is None:
             biggest_kw = ''
-            for kw in self.keywordset:
+            for kw in self.keywordset.values():
                 if len(kw) > len(biggest_kw):
                     biggest_kw = kw
             self.__max_raw_frequency = len(biggest_kw)
@@ -127,7 +127,9 @@ class Document(object):
         return tf_raw
 
     def tf_log(self, ngram):
-        """The log frequency of an ngram in a document."""
+        """The log (relative) frequency of an ngram in a document.
+        Note: uses add-1 smoothing
+        """
         # TODO: is this formula right? Wikipedia is often wrong...
         return 1 + math.log(self.tf_raw(ngram))
 
@@ -208,5 +210,5 @@ def main():
 #-------------------------------------------------------------------------------
     
 if __name__ == '__main__':
-    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone. A simple test willl be run.")
+    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone. A simple test will be run.")
     main()

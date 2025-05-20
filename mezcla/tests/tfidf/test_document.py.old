@@ -1,13 +1,13 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
-# Tests for tfidf/corpus module
+# Tests for tfidf/document module
 #
 # Notes:
 # - This can be run as follows:
-#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/tfidf/test_corpus.py
+#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/tfidf/test_document.py
 #
 
-"""Tests for tfidf/corpus module"""
+"""Tests for tfidf/document module"""
 
 # Standard modules
 ## NOTE: this is empty for now
@@ -20,12 +20,14 @@ from mezcla import debug
 
 # Note: Rreference are used for the module to be tested:
 #    THE_MODULE:	    global module object
-import mezcla.tfidf.corpus as THE_MODULE
+import mezcla.tfidf.document as THE_MODULE
 
-class TestTfidfCorpus:
+
+class TestTfidfDocument:
     """Class for testcase definition"""
 
     ## TODO: TESTS WORK-IN-PROGRESS
+
 
 
 if __name__ == '__main__':

@@ -69,9 +69,18 @@ SKIP_NORMALIZATION = system.getenv_bool("SKIP_NORMALIZATION", False,
 NGRAM_EPSILON = system.getenv_float(
     "NGRAM_EPSILON", 0.000001,
     description="Occurrence count for unknown ngrams")
+MISC_EPSILON = system.getenv_float(
+    "MISC_EPSILON", 0.000001,
+    description="Epsilon for misc. TF/IDF calculations")
 TFIDF_NGRAM_LEN_WEIGHT = system.getenv_float(
     "TFIDF_NGRAM_LEN_WEIGHT", 0,
     description="Length factor for ngram token length")
+MIN_NGRAM_SIZE = system.getenv_int(
+    "MIN_NGRAM_SIZE", 2,
+    description="Minimum size of grams")
+MAX_NGRAM_SIZE = system.getenv_int(
+    "MAX_NGRAM_SIZE", 4,
+    description="Maxium size of grams")
 
 class Corpus(object):
     """A corpus is made up of Documents, and performs TF-IDF calculations on them.
@@ -236,8 +245,8 @@ class Corpus(object):
         ## if (num_occurrences == 1) and PENALIZE_SINGLETONS:
         ##     num_occurrences = len(self.__documents)
         idf = math.log(float(len(self)) / num_occurrences)
-        debug.trace_fmt(BDL + 2, "idf_basic({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
-                        ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf={idf})
+        debug.trace_fmt(BDL + 2, "idf_basic({ng} len(self)={l} max_doc_occ={mdo} num_occ={no}) => {idf}",
+                        ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf=idf)
         return idf
 
     def idf_freq(self, ngram):
@@ -248,16 +257,16 @@ class Corpus(object):
             raise ValueError(f"count_doc_occurrences 0 for {ngram}")
         num_occurrences = self.count_doc_occurrences(ngram)
         idf = 1 / num_occurrences
-        debug.trace_fmt(BDL + 2, "idf_freq({ng} len(self)={l} max_doc_occ={mdo} num_occ={no} idf={idf})\n",
-                        ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf={idf})
+        debug.trace_fmt(BDL + 2, "idf_freq({ng} len(self)={l} max_doc_occ={mdo} num_occ={no}) => {idf}",
+                        ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf=idf)
         return idf
 
     def idf_smooth(self, ngram):
         """Returns IDF using simple smoothing with add-1 relative frequency (prior to log)"""
         debug.assertion(self.count_doc_occurrences(ngram) >= 1)
         idf = math.log(1 + (float(len(self)) / self.count_doc_occurrences(ngram)))
-        debug.trace_fmt(BDL + 2, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
-                        ng=ngram, l=len(self), do=self.count_doc_occurrences(ngram), idf={idf})
+        debug.trace_fmt(BDL + 2, "idf_smooth({ng} len(self)={l} doc_occ={do}) => {idf}",
+                        ng=ngram, l=len(self), do=self.count_doc_occurrences(ngram), idf=idf)
         return idf
 
     def idf_max(self, ngram):
@@ -265,18 +274,24 @@ class Corpus(object):
         """Use maximum ngram TF in place of N and also perform add-1 smoothing"""
         debug.assertion(self.count_doc_occurrences(ngram) >= 1)
         idf = math.log(1 + self.max_raw_frequency / self.count_doc_occurrences(ngram))
-        debug.trace_fmt(BDL + 2, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
-                        ng=ngram, l=len(self), do=self.count_doc_occurrences(ngram), idf={idf})
+        debug.trace_fmt(BDL + 2, "idf_smooth({ng} len(self)={l} doc_occ={do}) => {idf}",
+                        ng=ngram, l=len(self), do=self.count_doc_occurrences(ngram), idf=idf)
         return idf
 
     def idf_probabilistic(self, ngram):
-        """Returns IDF via probabilistic interpretation: log((N - d)/d), where d is the document occcurrence count for the NGRAM"""
+        """Returns IDF via probabilistic interpretation: log((N - d)/d), where d is the document occcurrence count for the NGRAM
+        Note: Adds epsilon to avoid -inf when N equals d.
+        """
         debug.assertion(self.count_doc_occurrences(ngram) >= 1)
-        ## TODO: shouldn't this be (float(len(self) / num_doc_occurrences))
         num_doc_occurrences = self.count_doc_occurrences(ngram)
-        idf = math.log(float(len(self) - num_doc_occurrences) / num_doc_occurrences)
-        debug.trace_fmt(BDL + 2, "idf_smooth({ng} len(self)={l} doc_occ={do} idf={idf})\n",
-                        ng=ngram, l=len(self), do=num_doc_occurrences, idf={idf})
+        try:
+            # See https://tmtoolkit.readthedocs.io/en/latest/api.html#tmtoolkit.bow.bow_stats.idf_probabilistic
+            idf = math.log(float(len(self) - num_doc_occurrences) / num_doc_occurrences + MISC_EPSILON)
+        except:
+            idf = 0
+            debug.trace_exception(BDL, "idf_probabilistic")
+        debug.trace_fmt(BDL + 2, "idf_probabilistic({ng} len(self)={l} doc_occ={do}) => {idf}",
+                        ng=ngram, l=len(self), do=num_doc_occurrences, idf=idf)
         return idf
 
     def idf(self, ngram, idf_weight='basic'):
@@ -297,7 +312,7 @@ class Corpus(object):
             result = self.idf_freq(ngram)
         else:
             raise ValueError("Invalid idf_weight: " + idf_weight)
-        debug.trace_fmt(BDL + 2, "idf({ng}, idfw={idfw}) => {r}\n",
+        debug.trace_fmt(BDL + 2, "idf({ng}, idfw={idfw}) => {r}",
                         ng=ngram, l=len(self), idfw=idf_weight, r=result)
         return result
 
@@ -320,7 +335,7 @@ class Corpus(object):
             debug.trace(BDL + 3, f"Factoring in ngram weight of {round(len_weight, 3)} into score {round(score, 3)} for {ngram!r}")
             score *= len_weight
         result = CorpusKeyword(document[ngram], ngram, score)
-        debug.trace_fmt(BDL + 2, "tf_idf({ng}, id={id}, text={t} idfw={idfw}, tfw={tfw}, norm={n}) => {r}\n",
+        debug.trace_fmt(BDL + 2, "tf_idf({ng}, id={id}, text={t} idfw={idfw}, tfw={tfw}, norm={n}) => {r}",
                         ng=ngram, id=document_id, t=text, idfw=idf_weight, tfw=tf_weight, n=normalize_term, r=result)
         return result
 
@@ -357,17 +372,13 @@ class Corpus(object):
 
 def new_main():
     """New entry point for script: counts ngrams in input file (one line per document)"""
-    # TODO: reconcile with code in ngrm_tfidf.main; parameterize
+    # TODO: reconcile with code in ../ngram_tfidf.py; parameterize (e.g., ngram size)
     if (sys.argv[1] == "--help"):
         system.print_error("Usage: {prog} [--help] corpus-file".format(prog=sys.argv[0]))
         return
     input_file = sys.argv[1]
 
     # Create corpus from line documents in file
-    MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", 2,
-                                       description="Minimum size of grams")
-    MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 4,
-                                       description="Maxium size of grams")
     corp = Corpus(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE)
     doc_IDs = []
     for i, doc_text in enumerate(system.read_lines(input_file)):
@@ -377,7 +388,7 @@ def new_main():
     # Output top ngrams for each document
     SAMPLE_SIZE = system.getenv_int("SAMPLE_SIZE", 10,
                                     "Number of ngram samples to show")
-    print(f"top {SAMPLE_SIZE} ngrams in each document")
+    print(f"top {SAMPLE_SIZE} ngrams in each document/line")
     for i in range(len(doc_IDs)):
         tuples = corp.get_keywords(document_id=doc_IDs[i], limit=SAMPLE_SIZE)
         # note: ignores empty tokens
@@ -390,7 +401,7 @@ def new_main():
 def main():
     """Entry point for script: just runs a simple test"""
     # TODO: rename main as simple_test?
-    if (len(sys.argv) > 1):
+    if ((len(sys.argv) > 1) and (sys.argv[1] != "-")):
         new_main()
         return
 
@@ -401,7 +412,7 @@ def main():
                 "abc  def                pdq  rst"]
     ngrams = set()
     for i in range(len(doc_text)):
-        doc_id = ("doc" + str(i + 1))
+        doc_id = ("d" + str(i + 1))
         c[doc_id] = doc_text[i]
         print("{id}:\t{doc_text}".format(id=doc_id, doc_text=doc_text[i]))
         words = doc_text[i].split()

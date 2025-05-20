@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Performs text classification using fine-tuning of ALBERT models,
 #

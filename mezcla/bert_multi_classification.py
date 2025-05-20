@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Uses BERT or ALBERT for multiple-class text classification, based on following blog:
 #    https://towardsdatascience.com/beginners-guide-to-bert-for-multi-classification-task-92f5445c2d7c

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Wrapper class around unittest.TestCase
 #
@@ -17,6 +17,7 @@
 #   See glue_helper.py for implementation along with related ALLOW_SUBCOMMAND_TRACING.
 # TODO:
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
+#   via glue_helpers.py: default base prefix vs fixed override
 # - Add TEMP_DIR for more direct specification.
 # - Clarify that this can co-exist with pytest-based tests (see tests/test_main.py).
 # TODO2:
@@ -27,7 +28,7 @@
 #
 #   import unittest
 #   from mezcla import system
-#   from mezcla.unittest_wrapper import TestWrapper
+#   from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 #
 #   class TestIt(TestWrapper):
 #       """Class for testcase definition"""
@@ -40,7 +41,7 @@
 #           self.assertTrue("really" in output)
 #
 #   if __name__ == '__main__':
-#      unittest.main()
+#      invoke_tests(__file__)
 #-------------------------------------------------------------------------------
 # TODO:
 # - Add method to invoke unittest.main(), so clients don't need to import unittest.
@@ -82,16 +83,13 @@ from mezcla.debug import IntOrTraceLevel
 # Constants (e.g., environment options)
 
 TL = debug.TL
-## OLD:
-## KEEP_TEMP = system.getenv_bool(
-##     "KEEP_TEMP", debug.detailed_debugging(),
-##     desc="Keep temporary files")
 KEEP_TEMP = gh.KEEP_TEMP
 PRUNE_TEMP = system.getenv_bool(
     "PRUNE_TEMP", False,
     desc="Delete temporary files ahead of time")
 TODO_FILE = "TODO FILE"
 TODO_MODULE = "TODO MODULE"
+TEMP_BASE = gh.TEMP_BASE
 
 # Note: the following is for transparent resolution of dotted module names
 # for invocation of scripts via 'python -m package.module'. This is in support
@@ -115,6 +113,12 @@ RUN_SLOW_TESTS = system.getenv_bool(
     description="Run tests that can a while to run")
 debug.reference_var(RUN_SLOW_TESTS)
 
+UNDER_COVERAGE = system.getenv_bool(
+    "COVERAGE_RUN", False,
+    description="whether or not tests are being run under coverage"
+)
+
+
 # Dynamic imports
 if PROFILE_CODE:
     import cProfile
@@ -126,6 +130,7 @@ def get_temp_dir(keep: Optional[bool] = None, unique=None) -> str:
     """Get temporary directory, omitting later deletion if KEEP
     Note: Optionally returns UNIQUE dir
     """
+    # TODO2: rework keep using atexit-style callback
     debug.assertion(not ((keep is False) and (unique is False)))
     if keep is None:
         keep = KEEP_TEMP
@@ -141,7 +146,7 @@ def get_temp_dir(keep: Optional[bool] = None, unique=None) -> str:
         dir_path = dir_base
     if not system.is_directory(dir_path):
         gh.full_mkdir(dir_path, force=True)
-    debug.trace(5, f"get_temp_dir() => {dir_path}")
+    debug.trace(5, f"unittest_wrapper.get_temp_dir() => {dir_path}")
     return dir_path
 
 
@@ -194,10 +199,15 @@ def pytest_fixture_wrapper(function: Callable) -> Callable:
 
 def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
     """Invoke TESTS defined in FILENAME, optionally VIA_UNITTEST"""
-    if via_unittest:
-        unittest.main()
-    else:
-        pytest.main([filename])
+    debug.trace(5, f"invoke_tests({filename}, [{via_unittest}])")
+    try:
+        if via_unittest:
+            unittest.main(argv=sys.argv[:1])
+        else:
+            pytest.main([filename])
+    except:
+        debug.raise_exception(6)
+        system.print_exception_info("invoke_tests")
 
 
 def init_temp_settings():
@@ -225,22 +235,22 @@ class TestWrapper(unittest.TestCase):
 
     script_file = TODO_FILE             # path for invocation via 'python -m coverage run ...' (n.b., usually set via get_module_file_path)
     script_module = TODO_MODULE         # name for invocation via 'python -m' (n.b., usually set via derive_tested_module_name)
-    temp_base = system.getenv_text(
-        "TEMP_BASE", tempfile.NamedTemporaryFile().name,
-        desc="Override for basename of temporary files")
+    temp_base = TEMP_BASE
     check_coverage = system.getenv_bool(
         "CHECK_COVERAGE", False,
         desc="Check coverage during unit testing")
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
     temp_file = None
-    use_temp_base_dir = system.is_directory(temp_base)
+    use_temp_base_dir = (system.is_directory(temp_base) if temp_base else False)
     ## OLD: test_num = 1
     test_num = 0
     temp_file_count = 0
     class_setup = False
     profiler = None
-    
+    monkeypatch = None
+    capsys = None
+
     ## TEST:
     ## NOTE: leads to pytest warning. See
     ##   https://stackoverflow.com/questions/62460557/cannot-collect-test-class-testmain-because-it-has-a-init-constructor-from
@@ -257,10 +267,10 @@ class TestWrapper(unittest.TestCase):
         """Per-class initialization: make sure script_module set properly
         Note: Optional FILENAME is path for testing script and MODULE the imported object for tested script
         """
-        debug.trace(6, f"TestWrapper.setUpClass({cls}, fn={filename}, mod={module})")
+        debug.trace(5, f"TestWrapper.setUpClass({cls}, fn={filename}, mod={module})")
         super().setUpClass()
         cls.class_setup = True
-        debug.trace_object(7, cls, "TestWrapper class")
+        debug.trace_object(7, cls, "init TestWrapper class")
         debug.assertion(cls.script_module != TODO_MODULE)
         if (cls.script_module is not None):
             # Try to pull up usage via python -m mezcla.xyz --help
@@ -269,21 +279,21 @@ class TestWrapper(unittest.TestCase):
                             f"problem running via 'python -m {cls.script_module}'")
             # Warn about lack of usage statement unless "not intended for command-line" type warning issued
             # TODO: standardize the not-intended wording
-            if (not ((my_re.search(r"warning:.*not intended", help_usage,
+            if (not ((my_re.search(r"(warning|FYI):.*not intended", help_usage,
                                    flags=my_re.IGNORECASE))
                      or ("usage:" in help_usage.lower()))):
                 system.print_stderr("Warning: script should implement --help")
 
         # Optionally, setup temp-base directory (normally just a file)
+        debug.assertion(cls.init_ok)
         if cls.use_temp_base_dir is None:
-            cls.use_temp_base_dir = system.getenv_bool(
-                "USE_TEMP_BASE_DIR", False,
-                desc="Treat TEMP_BASE as a directory")
-            # TODO: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); cls.use_temp_base_dir = bool(temp_base_dir.strip()); ...
+            cls.use_temp_base_dir = gh.USE_TEMP_BASE_DIR
+        if not cls.temp_base:
+            cls.temp_base = cls.temp_file
+        if not cls.temp_base:
+            cls.temp_base = gh.get_temp_file()
         if cls.use_temp_base_dir:
-            ## TODO: pure python
-            ## TODO: gh.full_mkdir
-            gh.run("mkdir -p {dir}", dir=cls.temp_base)
+            gh.full_mkdir(cls.temp_base, force=True)
 
         # Warn that coverage support is limited
         if cls.check_coverage:
@@ -300,6 +310,7 @@ class TestWrapper(unittest.TestCase):
         # Optionally, setup up script_file and script_module
         if filename:
             cls.set_module_info(filename, module_object=module)
+        debug.trace_object(6, cls, "finalized TestWrapper class")
 
         return
 
@@ -310,6 +321,7 @@ class TestWrapper(unittest.TestCase):
         Note: *** Deprecated method *** (see get_testing_module_name)
         """
         debug.trace(3, "Warning: in deprecrated derive_tested_module_name")
+        debug.trace(5, f"TestWrapper.derive_tested_module_name({test_filename})")
         module = os.path.split(test_filename)[-1]
         module = my_re.sub(r".py[oc]?$", "", module)
         module = my_re.sub(r"^test_", "", module)
@@ -321,8 +333,9 @@ class TestWrapper(unittest.TestCase):
     def get_testing_module_name(test_filename: str, module_object: Optional[object] = None) -> str:
         """Derive the name of the module being tested from TEST_FILENAME and MODULE_OBJECT
         Note: used as follows (see tests/template.py):
-            script_module = TestWrapper.get_testing_module_name(__file__)
+            script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
         """
+        debug.trace(6, f"TestWrapper.get_testing_module_name({test_filename}, {module_object})")
         # Note: Used to resolve module name given THE_MODULE (see template).
         module_name = os.path.split(test_filename)[-1]
         module_name = my_re.sub(r".py[oc]?$", "", module_name)
@@ -360,6 +373,14 @@ class TestWrapper(unittest.TestCase):
         cls.script_file = cls.get_module_file_path(test_filename)
         return 
     
+    def ensure_file_dir_exists(self, filename):
+        """Make sure that directory for FILENAME exists"""
+        debug.trace(5, f"TestWrapper.ensure_file_dir_exists({filename})")
+        dir_path = gh.dirname(filename)
+        if not system.is_directory(dir_path):
+            debug.trace(4, f"FYI: Creating output directory {dir_path!r}\n\t{self.temp_file=}")
+            gh.full_mkdir(dir_path)
+
     def setUp(self) -> None:
         """Per-test initializations
         Notes:
@@ -378,18 +399,18 @@ class TestWrapper(unittest.TestCase):
             default_temp_file = gh.form_path(self.temp_base, "test-")
         else:
             default_temp_file = self.temp_base + "-test-"
+        temp_file_basename = default_temp_file
         TestWrapper.test_num += 1
         default_temp_file += str(TestWrapper.test_num)
         debug.trace_expr(5, default_temp_file)
 
         # Get new temp file and delete existing file and variants based on temp_file_count,
         # such as /tmp/test-2, /tmp/test-2-1, and /tmp/test-2-2 (but not /tmp/test-[13]*).
-        self.temp_file = system.getenv_text(
-            "TEMP_FILE", default_temp_file,
-            desc="Override for temporary filename")
+        # Warning: using TEMP_FILE is not recommended due to clobbering by different tests
+        self.temp_file = (gh.TEMP_FILE or default_temp_file)
         if PRUNE_TEMP:
             gh.delete_existing_file(f"{self.temp_file}")
-            for f in gh.get_matching_files(f"{self.temp_file}-[0-9]*"):
+            for f in gh.get_matching_files(f"{temp_file_basename}-[0-9]*"):
                 gh.delete_existing_file(f)
 
         # Start the profiler
@@ -430,7 +451,15 @@ class TestWrapper(unittest.TestCase):
                          env=env_options, stdin=uses_stdin, post=post_options, back=background)
         if options is None:
             options = ""
-        if env_options is None:
+        if env_options is not None:
+            suffix = ' '
+            preffix = ' '
+            if os.name == 'nt':
+                suffix = '&& '
+                preffix = 'SET '
+            list_options = [ f"{preffix}{option}{suffix}" for option in env_options.split(' ')]
+            env_options = " ".join(list_options)
+        else:
             env_options = ""
         if post_options is None:
             post_options = ""
@@ -450,6 +479,10 @@ class TestWrapper(unittest.TestCase):
         if not out_file:
             out_file = self.temp_file + ".out"
         # note: output is redirected to a file to preserve tabs
+
+        # Make sure output and log files are in valid dirs
+        self.ensure_file_dir_exists(out_file)
+        self.ensure_file_dir_exists(log_file)
 
         # Set converage script path and command spec
         coverage_spec = ''
@@ -502,6 +535,7 @@ class TestWrapper(unittest.TestCase):
             Optional[str]
         ]:
         """Returns statement text, filename, line number, and qualifier for FUNCTION_LABEL assertion failure"""
+        ## TODO2: use new introspection module
         statement = filename = line_num = expr = qual = None
         try:
             # note: accounts for trap_exception and other decorators
@@ -584,14 +618,14 @@ class TestWrapper(unittest.TestCase):
                 system.print_error("Warning: unexpected condition in do_assert_equals")
         assert equals, message
     
-    @pytest.fixture(autouse=True)
-    def monkeypatch(self, monkeypatch) -> None:
+    @pytest.fixture(autouse=True, name='monkeypatch')
+    def monkeypatch_fixture(self, monkeypatch) -> None:
         """Support for using pytest monkeypatch to modify objects (e.g., dictionaries or environment variables)"""
         # See https://docs.pytest.org/en/latest/how-to/monkeypatch.html
         self.monkeypatch = monkeypatch
 
-    @pytest.fixture(autouse=True)
-    def capsys(self, capsys) -> None:
+    @pytest.fixture(autouse=True, name='capsys')
+    def capsys_fixture(self, capsys) -> None:
         """Support for capturing stdout and stderr"""
         # See https://docs.pytest.org/en/latest/how-to/capture-stdout-stderr.html
         self.capsys = capsys
@@ -600,10 +634,21 @@ class TestWrapper(unittest.TestCase):
         """Get currently captured standard output and error
         Note: Clears both stdout and stderr captured afterwards. This might
         be needed beforehand to clear capsys buffer.
+
+        Warning: The capsys clearing workaround is not foolproof, so you
+        might need to disable capsys beforehand (e.g., in setUp): see
+        tests/template.py. Alternatively, use multiple test functions:
+            https://stackoverflow.com/questions/56187165/how-to-clear-captured-stdout-stderr-in-between-of-multiple-assert-statements
         """
-        stdout, stderr = self.capsys.readouterr()
-        ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
-        debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", maxlen=16384)
+        stdout, stderr = ("", "")
+        try:
+            with self.capsys.disabled():
+                stdout, stderr = self.capsys.readouterr()
+                ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
+                debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
+        except:
+            # note: trace level high so as not to affect normal testing
+            debug.trace_exception(7, "get_stdout_stderr")
         return stdout, stderr
         
     def get_stdout(self) -> str:
@@ -621,31 +666,60 @@ class TestWrapper(unittest.TestCase):
         return stderr
 
     def clear_stdout_stderr(self) -> None:
-        """Clears stdout and stderr by issuing dummy call"""
+        """Clears stdout and stderr by issuing dummy call.
+        Warning: See disclaimer under get_stdout_stderr.
+        """
         _result = self.get_stdout_stderr()
         return
     #
     clear_stdout = clear_stdout_stderr
     clear_stderr = clear_stdout_stderr
     
-    def get_temp_file(self, delete: Optional[bool] = None) -> str:
-        """return name of temporary file based on self.temp_file, optionally with DELETE"""
+    def get_temp_file(self, delete: Optional[bool] = None, static: Optional[bool] = None) -> str:
+        """Return name of temporary file based on self.temp_file, optionally with DELETE.
+        Normally, the file is based on the test base, current test number and usage count
+        (e.g., /tmp/_temp-fi7huvmb_-test-1-3 for third temp file used in first test).
+        Note:
+        - This returns a new file each time called unless STATIC specified.
+        - The delete option is not yet functional.
+        """
         # Note: delete defaults to False if detailed debugging
         # TODO: allow for overriding other options to NamedTemporaryFile
         if delete is None and debug.detailed_debugging():
             delete = False
-        temp_file_name = f"{self.temp_file}-{self.temp_file_count}"
+        temp_file_name = self.temp_file
+        if not static:
+            temp_file_name += f"-{self.temp_file_count}"
         self.temp_file_count += 1
         debug.assertion(not delete, "Support for delete not implemented")
-        debug.format_value(f"get_temp_file() => {temp_file_name}", 5)
+        debug.trace(5, f"TestWrapper.get_temp_file() => {temp_file_name!r}")
         return temp_file_name
 
+    def get_temp_dir(self, delete: Optional[bool] = None,
+                     skip_create: Optional[bool] = None,
+                     static: Optional[bool] = None) -> str:
+        """Return name of temporary dir based on self.temp_file, optionally with DELETE.
+        Also, the directory will be created unless SKIP_CREATE;
+        this possibly overwrites existing file with same name.
+        In addition, the directory will be unique unless STATIC specified.
+        Note: delete option not yet functional
+        """
+        temp_dir = self.get_temp_file(delete=delete, static=static)
+        if not skip_create:
+            gh.full_mkdir(temp_dir, force=True)
+        debug.trace(5, f"get_temp_dir() => {temp_dir!r}")
+        return temp_dir
+    
     def create_temp_file(self, contents: Any,  binary: bool = False) -> str:
         """Create temporary file with CONTENTS and return full path"""
         temp_filename = self.get_temp_file()
         system.write_file(temp_filename, contents, binary=binary)
         debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
         return temp_filename
+
+    def patch_trace_level(self, level):
+        """Monkey patch the trace LEVEL"""
+        self.monkeypatch.setattr("mezcla.debug.trace_level", level)
 
     def tearDown(self) -> None:
         """Per-test cleanup: deletes temp file unless detailed debugging"""

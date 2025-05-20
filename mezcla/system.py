@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Functions for system related access, such as running command or
 # getting environment values.
@@ -59,6 +59,7 @@ MAX_SIZE = six.MAXSIZE
 MAX_INT = MAX_SIZE
 TEMP_DIR = None
 ENCODING = "encoding"
+USER = None
 
 ## TODO: debug.assertion(python_maj_min_version() >= 3.8, "Require Python 3.8+ for function def's with '/' or '*'")
 ## See https://stackoverflow.com/questions/9079036/how-do-i-detect-the-python-version-at-runtime
@@ -79,15 +80,32 @@ def maxint() -> int:
 
 env_options = {}
 env_defaults = {}
+env_diagnostic_level = 6
+#
+def set_env_diagnostic_level(level):
+    """Set trace LEVEL at which getenv_xyz-related diagnostics occur"""
+    global env_diagnostic_level
+    env_diagnostic_level = level
 #
 def register_env_option(var: str, description: str, default: Any) -> None:
     """Register environment VAR as option with DESCRIPTION and DEFAULT"""
     # Note: The default value is typically the default value passes into the
     # getenv_xyz call, not the current value from the environment.
-    debug.trace_fmt(7, "register_env_option({v}, {dsc}, {dft})",
+    debug.trace_fmt(7, "register_env_option({v}, {dsc!r}, {dft!r})",
                     v=var, dsc=description, dft=default)
     global env_options
     global env_defaults
+    ok = True
+    old_description = env_options.get(var)
+    if (old_description is not None) and (old_description != description):
+         debug.trace(4, f"Warning: redefining env option description for {var}: {old_description=} {description=}")
+         ok = False
+    old_default = env_defaults.get(var)
+    if  (old_default is not None) and (old_default != default):
+         debug.trace(4, f"Warning: redefining env option default for {var}: {old_default=} {default=}")
+         ok = False
+    if not ok:
+        debug.trace_stack(env_diagnostic_level)
     env_options[var] = description
     env_defaults[var] = default
     return
@@ -196,17 +214,21 @@ def getenv_text(
         description: str = "",
         desc: str = "",
         helper: bool = False,
-        update: Optional[bool] = None
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None
     ) -> str:
     """Returns textual value for environment variable VAR (or DEFAULT value, excluding None).
     Notes:
     - Use getenv_value if default can be None, as result is always a string.
     - HELPER indicates that this call is in support of another getenv-type function (e.g., getenv_bool), so that tracing is only shown at higher verbosity level (e.g., 6 not 5).
     - DESCRIPTION used for get_environment_option_descriptions.
-    - If UPDATE, then the environment is modified with value (e.g., based on default)."""
+    - If UPDATE, then the environment is modified with value (e.g., based on default).
+    - If SKIP_REGISTER, the variable info is not recorded (see env_options global).
+    """
     # Note: default is empty string to ensure result is string (not NoneType)
     ## TODO: add way to block registration
-    register_env_option(var, description or desc, default)
+    if not skip_register:
+        register_env_option(var, description or desc, default)
     if default is None:
         debug.trace(4, f"Warning: getenv_text treats default None as ''; consider using getenv_value for '{var}' instead")
         default = ""
@@ -229,11 +251,13 @@ def getenv_value(
         default: Optional[Any] = None,
         description: str = "",
         desc: str = "",
-        update: Optional[bool] = None
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None
     ) -> Any:
-    """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE"""
+    """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE. (See getenv_text for option details.)"""
     # EX: getenv_value("bad env var") => None
-    register_env_option(var, description or desc, default)
+    if not skip_register:
+        register_env_option(var, description or desc, default)
     value = os.getenv(var, default)
     if update:
         setenv(var, value, normalize=True)
@@ -251,7 +275,8 @@ def getenv_bool(
         description: str = "",
         desc: str = "",
         allow_none: Optional[bool] = False, 
-        update: Optional[bool] = None
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None
     ) -> bool:
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note:
@@ -263,7 +288,7 @@ def getenv_bool(
     # EX: getenv_bool("bad env var", None, allow_none=True) => True
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
-    value_text = getenv_value(var, description=description, desc=desc, default=default, update=update)
+    value_text = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register)
     if (isinstance(value_text, str) and value_text.strip()):
         bool_value = to_bool(value_text)
     if not isinstance(bool_value, bool):
@@ -287,7 +312,8 @@ def getenv_number(
         desc: str = "",
         allow_none: Optional[bool] = False, 
         helper: bool = False,
-        update: Optional[bool] = None
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None
     ) -> float:
     """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note: Return is a float unless ALLOW_NONE; defaults to -1.0
@@ -296,7 +322,7 @@ def getenv_number(
     # TODO: def getenv_number(...) -> Optional(float):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
-    value = getenv_value(var, description=description, desc=desc, default=default, update=update)
+    value = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register)
     if (isinstance(value, str) and value.strip()):
         debug.assertion(is_number(value))
         num_value = to_float(value)
@@ -316,13 +342,14 @@ def getenv_int(
         description: str = "",
         desc: str = "",
         allow_none: bool = False,
-        update: Optional[bool] = None
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None
     ) -> int:
     """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
     Note: Return is an integer unless ALLOW_NONE; defaults to -1
     """
     # EX: getenv_int("?", default=1.5) => 1
-    value = getenv_number(var, description=description, desc=desc, default=default, allow_none=allow_none, helper=True, update=update)
+    value = getenv_number(var, description=description, desc=desc, default=default, allow_none=allow_none, helper=True, update=update, skip_register=skip_register)
     if (not isinstance(value, int)):
         ## OLD: if ((value is not None) and (not allow_none)):
         if (not ((value is None) and allow_none)):
@@ -540,6 +567,10 @@ def quote_url_text(text: str, unquote: bool = False) -> str:
     # EX: quote_url_text("Joe's hat") => "Joe%27s+hat"
     # EX: quote_url_text("Joe%27s+hat") => "Joe%2527s%2Bhat"
     debug.trace_fmtd(7, "in quote_url_text({t})", t=text)
+    ## TEMP: treat None as empty string
+    debug.assertion(text is not None)
+    if (text is None):
+        text = ""
     result = text
     quote = (not unquote)
     try:
@@ -650,8 +681,8 @@ def read_entire_file(filename: FileDescriptorOrPath, **kwargs) -> str:
         debug.trace_exception(1, "read_entire_file/IOError")
         report_errors = (kwargs.get("errors") != "ignore")
         if report_errors:
-            print_stderr("Error: Unable to read file '{f}': {exc}",
-                         f=filename, exc=get_exception())
+            print_stderr("Error: Unable to read file '{f}': {exc}".format(
+                f=filename, exc=get_exception()))
     debug.trace_fmtd(8, "read_entire_file({f}) => {r}", f=filename, r=data)
     return data
 #
@@ -671,6 +702,9 @@ def read_lines(filename: FileDescriptorOrPath, ignore_comments: Optional[bool] =
     lines = contents.split("\n")
     if ((lines[-1] == "") and contents.endswith("\n")):
         lines = lines[:-1]
+    ## HACK: fixup for [""]
+    if lines == [""]:
+        lines = []
     debug.trace(7, f"read_lines({filename!r}) => {lines}")
     return lines
 #
@@ -837,6 +871,7 @@ def write_file(
     Note: A newline is added at the end if missing unless SKIP_NEWLINE.
     A binary file is created if BINARY (n.b., incompatible with APPEND).
     """
+    ## TODO2: Any => Union[bytes, str]
     debug.trace_fmt(7, "write_file({f}, {t})", f=filename, t=text)
     # EX: f = "/tmp/_it.list"; write_file(f, "it"); read_file(f) => "it\n"
     # EX: write_file(f, "it", skip_newline=True); read_file(f) => "it"
@@ -901,8 +936,9 @@ def write_lines(
     return
 
 
-def write_temp_file(filename: FileDescriptorOrPath, text: str) -> None:
+def write_temp_file(filename: FileDescriptorOrPath, text: Any) -> None:
     """Create FILENAME in temp. directory using TEXT"""
+    ## TODO2: Any => Union[bytes, str]
     try:
         assert isinstance(TEMP_DIR, str) and TEMP_DIR != "", "TEMP_DIR not defined"
         temp_path = form_path(TEMP_DIR, filename)
@@ -993,7 +1029,7 @@ def get_extension(filename: str) -> str:
 def file_exists(filename: FileDescriptorOrPath) -> bool:
     """Returns True iff FILENAME exists"""
     does_exist = os.path.exists(filename)
-    debug.trace_fmtd(5, "file_exists({f}) => {r}", f=filename, r=does_exist)
+    debug.trace_fmtd(6, "file_exists({f}) => {r}", f=filename, r=does_exist)
     return does_exist
 
 
@@ -1013,9 +1049,9 @@ def path_separator(sysname: Optional[str] = None):
     # EX: path_separator(sysname="???") => "/"
     # TODO: define-tracing-fn path_separator os.path.sep 7
     result = os.path.sep
-    if (sysname != os.uname().sysname):
+    if (sysname != os.name):
         default_sep = "/"
-        result = "\\" if sysname == "Windows" else default_sep
+        result = "\\" if sysname == "nt" else default_sep
     debug.trace(7, f"path_separator() => {result}")
     return result
 #    
@@ -1026,7 +1062,7 @@ def path_separator(sysname: Optional[str] = None):
 
 def form_path(*filenames: str) -> str:
     """Wrapper around os.path.join over FILENAMEs (with tracing)"""
-    debug.assertion(not any(f.startswith(path_separator()) for f in filenames[1:]))
+    ## OLD: debug.assertion(not any(f.startswith(path_separator()) for f in filenames[1:]))
     path = os.path.join(*filenames)
     debug.trace_fmt(6, "form_path({f}) => {p}", f=tuple(filenames), p=path)
     return path
@@ -1304,28 +1340,36 @@ def is_number(text: str) -> bool:
     return ok
 
 
-def to_float(text: str, default_value: float = 0.0) -> float:
-    """Interpret TEXT as float, using DEFAULT_VALUE"""
+def to_float(text: str, default_value: float = 0.0,
+             ignore: Optional[bool] = None) -> float:
+    """Interpret TEXT as float, using DEFAULT_VALUE
+    Optional INGORE omits exception trace"""
     result = default_value
     try:
         result = float(text)
     except (TypeError, ValueError):
-        debug.trace_fmtd(7, "Exception in to_float: {exc}", exc=get_exception())
-    debug.trace_fmtd(8, "to_float({v}) => {r}", v=text, r=result)
+        if not ignore:
+            debug.trace_fmtd(7, "Exception in to_float({v!r}): {exc}",
+                             v=text, exc=get_exception())
+    debug.trace_fmtd(8, "to_float({v!r}) => {r}", v=text, r=result)
     return result
 #
 safe_float = to_float
 
 
-def to_int(text: Any, default_value: int = 0, base: Optional[int] = None) -> int:
-    """Interpret TEXT as integer with optional DEFAULT_VALUE and BASE"""
+def to_int(text: Any, default_value: int = 0,
+           base: Optional[int] = None, ignore: Optional[bool] = None) -> int:
+    """Interpret TEXT as integer with optional DEFAULT_VALUE and BASE
+    Optional INGORE omits exception trace"""
     # TODO: use generic to_num with argument specifying type
     result = default_value
     try:
         result = int(text, base) if (base and isinstance(text, str)) else int(text)
     except (TypeError, ValueError):
-        debug.trace_fmtd(7, "Exception in to_int: {exc}", exc=get_exception())
-    debug.trace_fmtd(8, "to_int({v}) => {r}", v=text, r=result)
+        if not ignore:
+            debug.trace_fmtd(7, "Exception in to_int({v!r}): {exc}",
+                             v=text, exc=get_exception())
+    debug.trace_fmtd(8, "to_int({v!r}) => {r}", v=text, r=result)
     return result
 #
 safe_int = to_int
@@ -1483,8 +1527,15 @@ def memodict(f: Callable) -> Callable:
 def init() -> None:
     """Performs module initilization"""
     # TODO: rework global initialization to avoid the need for this
-    global TEMP_DIR
-    TEMP_DIR = getenv_text("TMPDIR", "/tmp")
+    global TEMP_DIR, USER
+    TEMP_DIR = getenv_text(
+        "TMPDIR", "/tmp",
+        desc="Temporary directory")
+    USER_DEFAULT = (os.getenv("USER") or os.getenv("USERNAME") or "user")
+    USER = getenv_text(
+        ## TODO: see if standard module provides username
+        "USER", USER_DEFAULT,
+        desc="User ID")
 
     ## TODO: # Register DEBUG_LEVEL for sake of new users
     ## test_debug_level = getenv_integer("DEBUG_LEVEL", debug.get_level(), 
@@ -1501,9 +1552,8 @@ init()
 def main(args: List[str]) -> None:
     """Supporting code for command-line processing"""
     debug.trace_fmtd(6, "main({a})", a=args)
-    user = getenv_text("USER", "user")
     print_stderr("Warning, {u}: {f} not intended for direct invocation!".
-                 format(u=user, f=filename_proper(__file__)))
+                 format(u=USER, f=filename_proper(__file__)))
     debug.trace_fmt(4, "FYI: maximum integer is {maxi}", maxi=maxint())
     return
 

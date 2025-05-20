@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # 
 # Sample script using Main class. By default, this outputs lines that contain
 # "fubar". There is an option to check for lines matching a regular expression.

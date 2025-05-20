@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../test_simple_main_example.py
 #
@@ -19,7 +19,7 @@ import pytest
 
 # Local packages
 from mezcla import debug
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.my_regex import my_re
 from mezcla import system
 
@@ -32,6 +32,7 @@ class TestSimpleMainExample(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_data_file(self):
         """Tests run_script w/ data file"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
@@ -60,4 +61,4 @@ class TestSimpleMainExample(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

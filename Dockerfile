@@ -25,13 +25,17 @@
 #
 # Warning:
 # - *** Changes need to be synchronized in 3 places: Dockerfile, tools/local-workflow.sh, and .github/workflows/*.yml!
+# - Python scripts should be invoked with python3 due to quirk with distribution archive
+#   lacking plain python executable (unlike anaconda).
 #
 # TODO3: keep in synch with ~/bin version (https://github.com/tomasohara/shell-scripts)
 #
 
 ## NOTE: Uses a smaller image to speed up build
 ## TEST: FROM ghcr.io/catthehacker/ubuntu:act-latest
-FROM catthehacker/ubuntu:act-20.04
+## OLD: FROM catthehacker/ubuntu:act-20.04
+ARG UBUNTU_VERSION="22.04"
+FROM catthehacker/ubuntu:act-${UBUNTU_VERSION}
 
 ARG WORKDIR=/home/mezcla
 ARG REQUIREMENTS=$WORKDIR/requirements.txt
@@ -42,6 +46,10 @@ WORKDIR $WORKDIR
 
 # Set the Python version to install
 # Note: The workflow uses versions 3.9 to 3.11 for installations under runner VM
+#
+# To find URL links, see https://github.com/actions/python-versions:
+# ex: https://github.com/actions/python-versions/releases/tag/3.11.4-5199054971
+#
 ## OLD: ARG PYTHON_VERSION=3.8.12
 ## TODO:
 ARG PYTHON_VERSION=3.11.4
@@ -85,14 +93,16 @@ END_RUN
 # Note:
 # - Uses versions prepared for Github Actions
 # - To find URL links, see https://github.com/actions/python-versions:
-#   ex: https://github.com/actions/python-versions/releases/download/3.8.12-117929/python-3.8.12-linux-20.04-x64.tar.gz
+#   ex: https://github.com/actions/python-versions/releases/tag/3.11.4-5199054971
 # - Also see https://stackoverflow.com/questions/74673048/github-actions-setup-python-stopped-working.
+# - The wget -qO option is for quiet output to a file.
+# - TODO3: report error if download fails
 RUN if [ "$PYTHON_VERSION" != "" ]; then                                                 \
-        wget -qO /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz "https://github.com/actions/python-versions/releases/download/${PYTHON_VERSION}-${PYTHON_TAG}/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz" &&     \
+        wget -qO /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz "https://github.com/actions/python-versions/releases/download/${PYTHON_VERSION}-${PYTHON_TAG}/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz" &&     \
         mkdir -p /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 &&                    \
-        tar -xzf /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz                    \
+        tar -xzf /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz                    \
             -C /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 --strip-components=1 && \
-        rm /tmp/python-${PYTHON_VERSION}-linux-20.04-x64.tar.gz;                          \
+        rm /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz;                          \
     fi
 
 ## TODO (use streamlined python installation):
@@ -106,7 +116,9 @@ RUN if [ "$PYTHON_VERSION" != "" ]; then                                        
 ## OLD: RUN ln -s $(which python3) /usr/local/bin/python
 
 # Set the working directory visible
+# Make sure the installed python takes precedence (TODO: use var to reduce redundancy with above)
 ENV PYTHONPATH="${PYTHONPATH}:$WORKDIR"
+ENV PATH="/opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64/bin:${PATH}:$WORKDIR"
 
 # Install pip for the specified Python version (TODO rm)
 RUN if [ "$PYTHON_VERSION" == "" ]; then                                                \
@@ -118,25 +130,37 @@ RUN if [ "$PYTHON_VERSION" == "" ]; then                                        
 # Copy the project's requirements file to the container
 COPY ./requirements.txt $REQUIREMENTS
 
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    libffi-dev \
+    libssl-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    zlib1g-dev \
+    && apt-get clean
+
 # Install the package requirements
 # NOTE: The workflow only handles requirements for the runner VM, not the docker container;
 # Also, the results aren't cached to save space in the image.
 RUN <<END_RUN
-  if [ "$(which nltk)" == "" ]; then
-       python -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
-       ## TODO?
-       ## # note: makes a second pass for failed installations, doing non-binary
-       ## python -m pip install --verbose --no-cache-dir --ignore-installed --no-binary --requirement $REQUIREMENTS;
-  fi
+  ## OLD
+  ## if [ "$(which nltk)" == "" ]; then
+  ##      python3 -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
+  ##      ## TODO?
+  ##      ## # note: makes a second pass for failed installations, doing non-binary
+  ##      ## python3 -m pip install --verbose --no-cache-dir --ignore-installed --no-binary --requirement $REQUIREMENTS;
+  ## fi
+  python3 -m pip install --verbose --no-cache-dir --requirement $REQUIREMENTS;
 END_RUN
 ## TODO3: add option for optional requirements (likewise, for all via '#full#")
-##   RUN python -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')
+##   RUN python3 -m pip install --verbose $(perl -pe 's/^#opt#\s*//g;' $REQUIREMENTS | grep -v '^#')
 
 ## TEMP workaround: copy source to image
 ## COPY . $WORKDIR/mezcla
 
 # Download the NLTK required data
-RUN python -m nltk.downloader -d /usr/local/share/nltk_data punkt averaged_perceptron_tagger stopwords
+RUN python3 -m nltk.downloader -d /usr/local/share/nltk_data punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng stopwords
 
 # Install required tools and libraries (TODO: why lsb-release?)
 # Note: cleans the apt-get cache
@@ -144,12 +168,16 @@ RUN apt-get update -y && apt-get install --yes lsb-release && apt-get clean all
 # note: rcs needed for merge (TODO: place in required-packages.txt)
 RUN apt-get install --yes enchant-2 rcs
 
-# Show disk usage when debugging
+# Show disk usage and other info when debugging
 RUN <<END_RUN
     df --human-readable
     ## TODO: track down stupid problem with step failing
     ## echo "Top directories by disk usage (post-install):";
     ## du --block-size=1K / 2>&1 | sort -rn | head -20;
+    #
+    which python3
+    python3 --version
+    #
     true;                               # ensure success (quirk w/ head)
 END_RUN
 

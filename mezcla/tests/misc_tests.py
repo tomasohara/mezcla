@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Miscellaneous tests not tied to particular module.
 #
@@ -6,6 +6,12 @@
 # - This is uses to check for enforce some development
 #   -- A test exists for each module (e.g., tests/test_fubar.py for ./fubar.py).
 #   -- Python files have execute permissions (e.g., chmod ugo+x).
+#
+# TODO2: Run once a week or so (e.g., to help catch poor test stubs like
+# test_train_language_model.py)!
+#
+# TODO3:
+# - Check for common pylint issues (n.b., not nitpicking ones like spacing).
 #
 
 """Miscellaneous/non-module tests"""
@@ -21,7 +27,7 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Constants
 LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
@@ -125,3 +131,9 @@ class TestMisc(TestWrapper):
         # note: addresses change like --include-header => --header in randomize_lines.py
         #   for module in ...: for usage in module usage: assert (not "test_04_usage_statements" in run_script(usage))
         self.do_assert(False, "TODO: implement")
+    
+#------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    debug.trace_current_context()
+    invoke_tests(__file__)

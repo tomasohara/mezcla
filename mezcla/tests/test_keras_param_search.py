@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../keras_param_search.py
 #
@@ -21,18 +21,22 @@ import pytest
 from mezcla import debug
 from mezcla import system
 from mezcla import text_utils
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Load module conditionally because not part of default installation.
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)
+#    TestIt.script_module:     dotted module path (e.g., "mezcla.main")
 try:
     import mezcla.keras_param_search as THE_MODULE
 except:
     THE_MODULE = None
     debug.trace_exception(1, "keras_param_search import")
 
-class TestKerasParamSearch:
+class TestKerasParamSearch(TestWrapper):
     """Class for testcase definition"""
+    # note: script_module used in argument parsing sanity check (e.g., --help)
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
     def test_round3(self):
@@ -90,6 +94,8 @@ class TestKerasParamSearch:
         ## TODO: test main
         assert False, "TODO: code test"
 
+#------------------------------------------------------------------------
+
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

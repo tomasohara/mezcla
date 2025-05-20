@@ -1,4 +1,4 @@
-#!/bin/bash
+#! /usr/bin/env/bash
 
 # This script uses GitHub local actions via act:
 #   https://github.com/nektos/act
@@ -32,6 +32,8 @@ IMAGE_NAME="local/test-act:latest"
 ACT_PULL="false"
 DEBUG_LEVEL="${DEBUG_LEVEL:-2}"
 USER_ENV="${USER_ENV:-}"
+RUN_DOCKER="${RUN_DOCKER:-0}"
+RUN_WORKFLOW="${RUN_WORKFLOW:-1}"
 # TODO3: put all env. init up here for clarity
 #   RUN_BUILD, RUN_WORKFLOW, WORKFLOW_FILE
 #
@@ -49,6 +51,18 @@ if [ "${VERBOSE:-0}" = "1" ]; then
     set -o verbose
 fi
 
+# Do sanity checks for potential problems
+## TODO1: fix bug with image selection blocking progress (set default and disable interactive mode)
+##   choose the default image you want to use with act
+if [[ ("$RUN_WORKFLOW" == "1") && (! -e ~/.actrc) ]]; then
+    echo "Error: run act to configure default image in ~/.actrc"
+    exit
+fi
+if [[ ("$RUN_DOCKER" == "1") && ("" == "$(groups | grep docker)") ]]; then
+    echo "Error: you need to be in the docker group to use act (or docker)"
+    exit
+fi
+
 # Build the Docker image
 if [ "${RUN_BUILD:-0}" = "1" ]; then
     echo "Building Docker image: $IMAGE_NAME"
@@ -56,7 +70,7 @@ if [ "${RUN_BUILD:-0}" = "1" ]; then
 fi
 
 # Run the Github Actions workflow locally
-if [ "${RUN_WORKFLOW:-1}" = "1" ]; then
+if [[ "$RUN_WORKFLOW" == "1" ]]; then
     file="${WORKFLOW_FILE:-act.yml}"
     echo "Running Github Actions locally w/ $file"
     ## TODO2: get act environment support working
@@ -72,7 +86,7 @@ if [ "${RUN_WORKFLOW:-1}" = "1" ]; then
 fi
 
 # Run via docker directly
-if [ "${RUN_DOCKER:-0}" = "1" ]; then
+if [ "$RUN_DOCKER" = "1" ]; then
     echo "Running Tests via Docker"
     # Convert VAR1=val1 VAR2=val2 ... to "--env VAR1=val1 --env VAR2=val2 ..."
     user_env_spec=$(echo " $USER_ENV" | perl -pe 's/ (\w+=)/ --env $1/g;')

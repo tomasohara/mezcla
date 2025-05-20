@@ -1,0 +1,6 @@
+- targets: gh.rename_file
+  dests: os.rename
+
+- targets: gh.dir_path
+  dests: os.path.dirname
+  eq_params: {filename: p}

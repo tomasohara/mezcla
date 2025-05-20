@@ -13,16 +13,6 @@
 #   https://docs.docker.com/storage/bind-mounts
 # - Two separate sets of test environments are used. The GitHub Actions workflow runner VM is
 #   used for different python versions with the latest Ubuntu distribution
-# - The core of mezcla is 3.9+, but there are some utilities for older versions of python.
-#   In addition, it is helpful to use mezcla debugging with other packages, so making sure
-#   mezcla still runs under 3.8 would be good in case the package is older.
-# - In addition, Python typing went through some unfortunate changes 3.8-3.10, so they will need
-#   to be tested for a while.
-#
-# TODO2:
-# - Add support for weekly or monthly backwards compatibility testing to avoid having to run
-#   3+ versions on each commit! This should be doable via reusable workflows:
-#      https://docs.github.com/en/actions/sharing-automations/reusing-workflows
 #
 
 name: Github-Tests
@@ -46,12 +36,10 @@ jobs:
         ## TODO: os: [ubuntu-20.04, ubuntu-latest]
         ## OLD: python-version: ["3.8", "3.9", "3.10"]
         ## NOTE: Need 3.8.17+ for typing support, due to backporting limitations with typing_extensions (see html_utils.py)
-        ## TODO1?: Downloads/_github-actions-mezcla-docker-error-28sep24.logpython-version: ["3.8.17", "3.9", "3.10", "3.12"]
+        ## TODO?:
+        python-version: ["3.9", "3.10", "3.12"]
         # Note: The Dockerfile uses 3.11 so try different versions for the runner VM
         ## TODO: python-version: ["3.9", "3.10", "3.11"]
-        ##
-        ## TEMP: (Docker disabled due to dependeency issue, so 3.11 added):
-        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - name: Checkout Repository
@@ -79,7 +67,7 @@ jobs:
       - name: Download data
         run: |
           ## TODO3: put post-install support in mezcla to minimize redundancy
-          python -m nltk.downloader -d "$HOME/nltk_data" punkt averaged_perceptron_tagger stopwords
+          python3 -m nltk.downloader -d "$HOME/nltk_data" punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng stopwords
 
       - name: Run Python Tests under Runner
         run: |
@@ -87,9 +75,10 @@ jobs:
           
   build-and-test-docker:
     name: Build and Run Tests via Docker
-    runs-on: [ubuntu-20.04]
-    ## TEMP: Disable docker due to silly dependency problems (and overhead)
+    ## TEMP: disable use of Docker
+    ## TODO3: derive via environment or via github.event flags (see act.yml)
     if: false
+    runs-on: [ubuntu-20.04]
 
     steps:
       - name: Checkout Repository

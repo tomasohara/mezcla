@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # 
 # Show what the BERT model representation is for a pair of sentences. This is based on the following:
 #    https://github.com/google-research/bert/blob/master/README.md
@@ -113,6 +113,7 @@ import sys
 import numpy as np
 import scipy.spatial.distance
 try:
+    # pylint: disable=import-error
     tf = None
     if ("--help" not in sys.argv):
         import tensorflow as tf

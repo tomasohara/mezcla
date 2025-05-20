@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # merge_notes.py: merge textual note files based on timestamps
 #------------------------------------------------------------------------

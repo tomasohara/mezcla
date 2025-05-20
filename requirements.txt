@@ -1,19 +1,25 @@
 # Basic requirements for main scripts
 #
-# By default only the cases used in multuiple scripts are installed.
+# By default only the cases used in multiple scripts are installed. Several
+# types of optional dependencies are included, including devel for convenience,
+# and full for everything.
 #
 # Note:
 # - Usage examples:
 #   1. Usual
 #      pip install -r requirements.txt
 #   2. Optional (i.e., including most optional):
-#      perl -pe 's/^#opt#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | egrep -v '^(#|$)' > _opt-requirements.list
-#      pip install --verbose --upgrade --requirement _opt-requirements.list
-#   3. Full (i.e., including all optional), done one-by-one to avoid pip quirk:
-#      perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | egrep -v '^(#|$)' > _all-requirements.list
-#      cat _all-requirements.list | xargs -I '{}' pip install --verbose --upgrade '{}' 
+#      pip install --verbose $(perl -pe 's/^#opt#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
+#   3. Full (i.e., including all optional):
+#      pip install --verbose $(perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
+#      # TODO2: --ignore-errors [maldito pip]; set pip-update check
+#      perl -pe 's/^#(opt|devel|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#' | xargs -I '{}' pip install '{}'
 # - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
+#
+# Warning:
 # - installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461
+# - Workaround for silly pip installation issues (e.g., Spacy):
+#   $ perl -pe 's/\s*#.*//;' requirements.txt | xargs -I '{}' pip install '{}'
 #
 # Installation:
 # - python -m nltk.downloader punkt averaged_perceptron_tagger stopwords
@@ -26,6 +32,7 @@
 #
 HTMLParser
 absl_py
+asttokens
 beautifulsoup4
 bs4
 cachetools
@@ -33,27 +40,29 @@ cherrypy
 clip_interrogator
 datasets                      # Hugging Face (HF) data
 #opt# diffusers               # Stale Diffusion; TEMP
+#opt# xformers                # composable Transformer building blocks
 diskcache
 extcolors>=1.0.0
+executing                     # code introspection a la icecream
 flair
 flask
 git+https://github.com/tehabstract/textract.git
-gradio                        # UI support (e.g., HF-based apps)
+gradio==3.48                        # UI support (e.g., HF-based apps)
 importlib_metadata
 langchain
 langchain_community
-#opt# kenlm                   # language model support (NOTE: problem with wheel)
+#opt# kenlm                   # language model support (NOTE: problem with wheel; see https://kheafield.com/code/kenlm)
 ## OLD: librosa>=0.10.0
 lxml
 mako
 matplotlib
 more_itertools
-## bad: nltk
-nltk==3.8.1
+nltk
 numpy>=1.18.5
 pandas>=1.3.0
 pyaml
 pyctcdecode                   # CTC beam search decoder for speech recognition
+## OLD: pydantic
 pyenchant
 pysbd
 pytest
@@ -66,8 +75,9 @@ stop_words
 #opt# tensorrt                # NVidia GPU support
 transformers                  # HF models
 torch
+unittest_parametrize          # pytest-like for classes
 #opt# torchaudio
-webcolors
+webcolors==1.13
 wheel
 ## NOTE: temporarily disabled due to stupid docker disk space constraints
 ## TODO: xgboost
@@ -80,33 +90,38 @@ wheel
 #   python -m spacy download en_core_web_lg
 # - install bash kernel
 #   python -m bash_kernel.install
-# - add '#opt#deprecated#' (e,.g., useful for deprecated functions/modules)
+# - add '#opt#deprecated#' (e.g., useful for deprecated functions/modules)
 # NOTE:
 # - tensorflow and related not installed by default due to size of repo and C compilation overhead.
 # - ipython, pylint, etc. used for setting up development environment
 #
 #opt# SpeechRecognition
 #opt# accelerate
-#opt# astor
-#opt# bash_kernel
-#opt# bashlex
-#opt# colout
-#opt# coverage
-#opt# flit
+#opt# astor                             # AST utils
+#devel# bash_kernel
+#opt# ctransformers
+#devel# colout
+#devel# coverage
+#devel# flit
 #opt# gensim
 #opt# ibm-watson
 #opt# ibm_cloud_sdk_core
-#opt# ipython
-#opt# jupyter
+#devel# ipython
+#devel# jupyter
+#opt# libcst
 #opt# librosa
-#opt# numba
 #opt# pocketsphinx
-#opt# pydantic
-#opt# pylint
-#opt# pyyaml
+#devel# mypy
+## TODO?: #opt#
+pydantic==2.9.2
+#devel# pylint
+#devel# pyyaml
 #opt# scispacy
 #opt# selenium
+#opt# sentence-transformers
 #opt# Sphinx
+## TODO?: make unittest_parametrize regular dependency
+#devel# unittest_parametrize
 #
 ## OLD: #opt# spacy>=3.0.0
 ## TODO:
@@ -122,6 +137,7 @@ en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_co
 typing_extensions>=4.7.0
 #
 #opt# textract
+#devel# types-six                         # typing stubs for six
 #opt# youtube_transcript_api
 #opt# vaderSentiment
 #...............................................................................
@@ -136,5 +152,3 @@ typing_extensions>=4.7.0
 #full# tensorflow
 #full# tensorflow_hub
 #full# tensorrt
-types-six
-astor

@@ -55,7 +55,7 @@ jobs:
 
       - name: Download data
         run: |
-          python -m nltk.downloader -d "$HOME/nltk_data" punkt averaged_perceptron_tagger stopwords
+          python -m nltk.downloader -d "$HOME/nltk_data" punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng stopwords
 
       - name: Run Python Tests via Runner
         run: |

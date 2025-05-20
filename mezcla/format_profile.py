@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # format-profile.py: displays the result of python profiling via cProfile
 #

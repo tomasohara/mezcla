@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Produces abstract syntax trees from Bash snippets.
 #

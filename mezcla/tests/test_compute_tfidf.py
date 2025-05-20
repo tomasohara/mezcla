@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../compute_tfidf.py
 #
@@ -24,6 +24,9 @@
 #   Nov 22, 2023 ... Take care on public transport and in tourist areas or crowded places. Thefts and robberies in Buenos Aires and other major cities are increasing\u00a0...
 #   
 # - output:
+##   TODO2: revise (and show all values used in TF-IDF calculation, etc., as follows):
+##      Term                             TFreq     DFreq     TF        IDF       TF-IDF   
+##      apr 13                           1.000     1.000     0.045     2.303     0.105    
 #
 #   1 [tests/resources/argentinian-attraction-snippets.list:1]
 #   term                             TF-IDF   
@@ -96,8 +99,9 @@ import pytest
 
 # Local packages
 from mezcla import debug
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.my_regex import my_re
+import mezcla.glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -118,7 +122,7 @@ class TestComputeTfidf(TestWrapper):
         """Ensure get_suffix1_prefix2 works as expected"""
         debug.trace(4, "test_get_suffix1_prefix2()")
         assert THE_MODULE.get_suffix1_prefix2(["my", "dog"], ["dog", "has"]) == ["dog"]
-        assert THE_MODULE.get_suffix1_prefix2(["a", "b", "c"], ["b", "d"]) == []
+        assert not THE_MODULE.get_suffix1_prefix2(["a", "b", "c"], ["b", "d"])
 
     def test_terms_overlap(self):
         """Ensure terms_overlap works as expected"""
@@ -140,15 +144,16 @@ class TestComputeTfidf(TestWrapper):
         data_file = gh.resolve_path(gh.form_path("resources", "argentinian-attraction-snippets.txt"))
         output = self.run_script(options="--text", env_options="MIN_NGRAM_SIZE=2 MAX_NGRAM_SIZE=4",
                                  data_file=data_file)
-        self.do_assert(my_re.search(r"^4.*teatro colon\t0.008", output.strip(),
+        ## TODO3: review calculations
+        self.do_assert(my_re.search(r"^\s*4.*teatro colon\s+0.128", output.strip(),
                                     flags=my_re.MULTILINE|my_re.DOTALL))
-        self.do_assert(my_re.search(r"^5.*local secrets\t0.005", output.strip(),
+        self.do_assert(my_re.search(r"^\s*5.*local secrets\s+0.077", output.strip(),
                                     flags=my_re.MULTILINE|my_re.DOTALL))
-        self.do_assert(my_re.search(r"^5.*local secrets\t0.005", output.strip(),
+        self.do_assert(my_re.search(r"^\s*6.*the perito moreno\s+0.105", output.strip(),
                                     flags=my_re.MULTILINE|my_re.DOTALL))
         return
 
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Filesystem related functions, as well as file format conversion.
 #
@@ -21,6 +21,7 @@ import yaml
 from mezcla import debug
 from mezcla import system
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 
 #-------------------------------------------------------------------------------
 # File system
@@ -71,7 +72,7 @@ def get_directory_listing(path          = '.',
             # Avoid duplicated filenames adding the relative path
             if recursive or long:
                 for item in items:
-                    result_list.append(root + '/' + item)
+                    result_list.append(root + system.path_separator() + item)
             else:
                 result_list = items
 
@@ -130,22 +131,39 @@ def get_information(path, readable=False, return_string=False):
         get_file_size('somefile.txt', return_string=True) -> "-rwxrwxr-x\t3\tpeter\tadmins\t4096\toct 25 01:42\tsomefile.txt"
     """
     debug.assertion(not readable)
+    is_dir = is_directory(path)
+    is_windows = os.name == 'nt'
+    if is_windows:
+        system.print_stderr("Warning: Windows is not fully supported by mezcla")
+        
+        dir_flags = '/AD /Q' if is_dir else '/A-D /Q'
+        ls_result = gh.run(f'dir {dir_flags} {path}')
+        ls_result = my_re.sub(r'\s+', ' ', ls_result).split(' ')[15:]
+        
+        links = 1
+        # TODO: add group support
+        group = "None"
+        owner = ls_result[3].split('\\')[1]
+        size = ls_result[2] if not is_dir else 0
+    else:
+        if not path_exist(path):
+            return f'cannot access "{path}" No such file or directory'
 
-    if not path_exist(path):
-        return f'cannot access "{path}" No such file or directory'
+        # TODO: use pure python.
 
-    # TODO: use pure python.
-    ls_flags = '-ld' if is_directory(path) else '-l'
-    ls_result = gh.run(f'ls {ls_flags} {path}').split(' ')
+        ls_flags = '-ld' if is_dir else '-l'
+        ls_result = gh.run(f'ls {ls_flags} {path}').split(' ')
+        
 
-    if len(ls_result) < 3:
-        return ''
+        if len(ls_result) < 3:
+            return ''
 
+        links             = ls_result[1] 
+        owner             = ls_result[2]
+        group             = ls_result[3] 
+        size              = ls_result[4] # TODO: format size when readable=True
+    
     permissions       = get_permissions(path)
-    links             = ls_result[1]
-    owner             = ls_result[2]
-    group             = ls_result[3]
-    size              = ls_result[4] # TODO: format size when readable=True
 
     # Get modification date
     modification_date = get_modification_date(path)
@@ -186,10 +204,15 @@ def get_permissions(path):
 
 
 # strftime format code list can be found here: https://www.programiz.com/python-programming/datetime/strftime
-def get_modification_date(path, strftime='%b %-d %H:%M'):
+def get_modification_date(path, strftime=None):
     """Get last modification date of file"""
+    if strftime is None:
+        if os.name == 'nt':  # Windows
+            strftime = '%b %#d %H:%M'
+        else:  # Unix-like systems
+            strftime = '%b %-d %H:%M'
+    
     return datetime.fromtimestamp(os.path.getmtime(path)).strftime(strftime).lower() if path_exist(path) else 'error'
-
 
 #-------------------------------------------------------------------------------
 # File conversion
@@ -248,7 +271,9 @@ def write_json(filename, obj, indent=None, default=None):
 
 
 def read_yaml(filename):
-    """Create FILENAME using YAML representation of OBJ"""
+    """Create FILENAME using YAML representation of OBJ
+    Note: The contents need to have at least one value or None returned (e.g., just comments).
+    """
     result = None
     try:
         result = yaml.safe_load(system.open_file(filename))

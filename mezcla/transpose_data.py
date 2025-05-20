@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Takes an input table and transposes the rows and columns. In addition, there
 # is support for showing each field value on a separate line prefixed by the
@@ -73,6 +73,7 @@ def main():
     elide_fields = args['elide_fields']
     encode_newlines = args['encode_newlines']
     csv_dialect = args['dialect']
+    previous_value = []
     if args['delim']:
         delim = args['delim']
     if args['csv']:

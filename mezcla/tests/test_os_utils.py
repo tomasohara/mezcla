@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Test(s) for ../os_utils.py
 #
@@ -8,18 +8,21 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_os_utils.py
 #
+# TODO3: apply mezcla conventions (see tests/template.py).
+#
 
 """Tests for os_utils module"""
 
 # Standard packages
-## NOTE: this is empty for now
+import types
 
 # Installed packages
-## TODO: import pytest
+import pytest
 
 # Local packages
 from mezcla import debug
 from mezcla import os_utils
+from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
@@ -29,6 +32,7 @@ THE_MODULE = os_utils
 
 class TestOsUtils(TestWrapper):
     """Class for testcase definition"""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     @classmethod
     def setupClass(cls):
@@ -40,6 +44,20 @@ class TestOsUtils(TestWrapper):
     def test_split_extension(self):
         """Ensure test_split_extension works as expected"""
         assert(os_utils.split_extension("fubar.txt") == ("fubar", ".txt"))
+        assert(os_utils.split_extension("abc.def.txt") == ("abc.def", ".txt"))
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_02_no_other_functions(self):
+        """Make sure no other functions defined in the module"""
+        ## TODO3: put helper for this in tests/common_module.py; also,
+        ## use monkeypatch to check for new function
+        debug.trace(4, f"TestIt.test_02_no_other_functions(); self={self}")
+        defined_functions = [
+            m for m in dir(THE_MODULE)
+            if isinstance(getattr(THE_MODULE, m), types.FunctionType)]
+        self.do_assert(not (system.difference(
+            defined_functions, ['main', 'split_extension'])))
+        return
 
 
 if __name__ == '__main__':

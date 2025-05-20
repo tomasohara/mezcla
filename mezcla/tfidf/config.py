@@ -11,7 +11,7 @@ from mezcla import system
 TL = debug.TL
 BASE_DEBUG_LEVEL = system.getenv_int(
     "TFIDF_DEBUG_LEVEL", 6,
-    description="Base level for TF/IDF tracing--set to {TL.USUAL} for isolated debugging")
+    description=f"Base level for TF/IDF tracing--lower to TL.USUAL ({TL.USUAL}) for isolated debugging")
 BDL = BASE_DEBUG_LEVEL
 
 #-------------------------------------------------------------------------------

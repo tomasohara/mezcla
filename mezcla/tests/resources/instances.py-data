@@ -1,0 +1,18 @@
+#! /usr/bin/env python3
+#
+# note:
+# - This is data for testing mezcla_to_standard.py via test_misc_utils.py.
+# - Result must be a list of EqCall's (with implicit imports).
+#
+
+[
+    EqCall(
+	targets=gh.rename_file,
+	dests=os.rename,
+    ),
+    EqCall(
+        targets=gh.dir_path,
+	dests=os.path.dirname,
+	eq_params={"filename": "p"},
+    ),
+]

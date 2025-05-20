@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Support for performing Term Frequency (TF) Inverse Document Frequency (IDF)
 # using ngrams. This is provides a wrapper class around the tfidf package
@@ -10,7 +10,8 @@
 #
 # Note:
 # - This provides the wrapper class ngram_tfidf_analysis around tfidf for use
-#   in applications like Visual Diff Search (VDS) that use text from external sources.
+#   in applications like Visual Diff Search (VDS) that use text from external sources
+#   (e.g., http://www.scrappycito.com/init_search).
 # - This incorporates a few optional heuristics, such as filtering overlapping ngrams
 #   and boosting captialized ngrams.
 # - See compute_tfidf.py for computing tfidf over files.
@@ -31,7 +32,6 @@ Examples:
 
   echo $'a b c\\nb c d\\nc d e' | MIN_NGRAM_SIZE=2 MAX_NGRAM_SIZE=2 SKIP_TFIDF_PREPROCESSOR=1 {script} {options} -
 """
-## TODO: fix description (e.g., add pointer to VDS code)
 
 # Standard packages
 from collections import defaultdict
@@ -39,22 +39,23 @@ import re
 import sys
 
 # Installed packages
-from sklearn.feature_extraction.text import CountVectorizer
+CountVectorizer = None
 
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
-## OLD: from mezcla import spacy_nlp
 from mezcla import system
 from mezcla.system import round_num as rnd
 from mezcla import tpo_common as tpo
 from mezcla import tfidf
-from mezcla.compute_tfidf import terms_overlap
+from mezcla.compute_tfidf import terms_overlap, IDF_WEIGHTING, TF_WEIGHTING
 from mezcla.text_processing import stopwords as ENGLISH_STOPWORDS, create_text_proc, split_word_tokens
 from mezcla.tfidf.corpus import Corpus as tfidf_corpus
 from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
 from mezcla.tfidf import preprocess as tfidf_preprocess
+from mezcla.tfidf import MIN_NGRAM_SIZE, MAX_NGRAM_SIZE
+
 
 SKIP_TFIDF_PREPROCESSOR = system.getenv_bool(
     "SKIP_TFIDF_PREPROCESSOR", False,
@@ -66,52 +67,49 @@ PREPROCESSOR_LANG = system.getenv_value(
     "PREPROCESSOR_LANG", DEFAULT_PREPROCESSOR_LANG,
     description="Language for ngram preprocessor")
 # NOTE: MIN_NGRAM_SIZE (e.g., 2) is alternative to deprecated ALL_NGRAMS (implies 1)
-MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 4)
 # TODO: add descriptions to all getenv options
-MIN_NGRAM_SIZE = system.getenv_int("MIN_NGRAM_SIZE", 2)
 ALL_NGRAMS = system.getenv_boolean("ALL_NGRAMS", False)
-USE_NGRAM_SMOOTHING = system.getenv_boolean("USE_NGRAM_SMOOTHING", False)
-DEFAULT_TF_WEIGHTING = 'basic'
-TF_WEIGHTING = system.getenv_text("TF_WEIGHTING", DEFAULT_TF_WEIGHTING)
-DEFAULT_IDF_WEIGHTING = 'smooth' if USE_NGRAM_SMOOTHING else 'basic'
-IDF_WEIGHTING = system.getenv_text("IDF_WEIGHTING", DEFAULT_IDF_WEIGHTING)
 MAX_TERMS = system.getenv_int("MAX_TERMS", 100)
-ALLOW_NGRAM_SUBSUMPTION = system.getenv_boolean("ALLOW_NGRAM_SUBSUMPTION", False,
-                                                "Allow ngram subsumed by another--substring")
-ALLOW_NGRAM_OVERLAP = system.getenv_boolean("ALLOW_NGRAM_OVERLAP", False,
-                                            "Allows ngrams to overlap--token boundariese")
-ALLOW_NUMERIC_NGRAMS = system.getenv_boolean("ALLOW_NUMERIC_NGRAMS", False)
+ALLOW_NGRAM_SUBSUMPTION = system.getenv_boolean(
+    "ALLOW_NGRAM_SUBSUMPTION", False,
+    description="Allow ngram subsumed by another--substring")
+ALLOW_NGRAM_OVERLAP = system.getenv_boolean(
+    "ALLOW_NGRAM_OVERLAP", False,
+    description="Allows ngrams to overlap--token boundariese")
+ALLOW_NUMERIC_NGRAMS = system.getenv_boolean(
+    "ALLOW_NUMERIC_NGRAMS", False,
+    description="Allow ngrams with numbers")
 DEFAULT_USE_CORPUS_COUNTER = (not tfidf_preprocess.USE_SKLEARN_COUNTER)
-USE_CORPUS_COUNTER = system.getenv_boolean("USE_CORPUS_COUNTER", DEFAULT_USE_CORPUS_COUNTER,
-                                           "Use slow tfidf package ngram tabulation")
+USE_CORPUS_COUNTER = system.getenv_boolean(
+    "USE_CORPUS_COUNTER", DEFAULT_USE_CORPUS_COUNTER,
+    description="Use slow tfidf package ngram tabulation")
 TFIDF_BOOST_CAPITALIZED = system.getenv_boolean(
     "TFIDF_BOOST_CAPITALIZED", False,
     description="Treat capitalized ngrams higher others of same weight; excludes inner function words")
 TFIDF_NP_BOOST = system.getenv_float(
     "TFIDF_NP_BOOST", 0,
-    description="Boost factor for ngrams that are NP's")
+    description="Boost factor (e.g., 1.0+) for ngrams that are NP's")
 TFIDF_VP_BOOST = system.getenv_float(
     "TFIDF_VP_BOOST", 0,
-    description="Boost factor for ngrams that are VP's")
+    description="Boost factor (e.g., 1.0+) for ngrams that are VP's")
 TFIDF_NUMERIC_BOOST = system.getenv_float(
     "TFIDF_NUMERIC_BOOST", 0,
-    description="Boost factor for ngrams that have numeric tokens")
+    description="Boost factor (e.g., <1.0) for ngrams that have numeric tokens")
 TFIDF_TEXT_PROC = system.getenv_text(
     "TFIDF_TEXT_PROC", "spacy",
     description="name of text processor to use for chunking")
 TFIDF_BAD_BOOST = system.getenv_float(
     "TFIDF_BAD_BOOST", 0,
-    description="Boost factor for ngrams that bad terms")
+    description="Boost factor (e.g., <1.0) for ngrams that have bad terms")
 TFIDF_GOOD_BOOST = system.getenv_float(
     "TFIDF_GOOD_BOOST", 0,
-    description="Boost factor for ngrams that good terms")
-
-## OLD:
-## # Dynamic loading
-## spacy_nlp = None
-## if TFIDF_NP_BOOST:
-##     from mezcla import spacy_nlp
-##     debug.trace_expr(5, spacy_nlp)
+    description="Boost factor (e.g., 1.0+) for ngrams that have good terms")
+TFIDF_STOP_BOOST = system.getenv_float(
+    "TFIDF_STOP_BOOST", 0,
+    ## TODO3: reword to exclude inner stop words (once implemented)
+    description="Boost factor (e.g., <1.0) for ngrams that have stop words")
+ANY_TOKEN_BOOST = (TFIDF_NUMERIC_BOOST or TFIDF_BAD_BOOST or TFIDF_GOOD_BOOST or TFIDF_STOP_BOOST)
+## TODO3: ANY_TOKEN_BOOST = ANY_TOKEN_BOOST or TFIDF_CAPITALIZED_BOOST)
 
 # Do sanity check on TF/IDF package version
 try:
@@ -123,10 +121,14 @@ except:
     system.print_stderr("Exception in main: " + str(sys.exc_info()))
 assert(TFIDF_VERSION > 1.0)
 
+# Do dynamic load(s)
+if not USE_CORPUS_COUNTER:
+    from sklearn.feature_extraction.text import CountVectorizer
 
 def split_tokens(text, include_punct=None, include_stop=None):
     """Split TEXT into word tokens (via NLTK), optionally with INCLUDE_PUNCT and INCLUDE_STOP"""
     # EX: split_tokens("Jane's fast car") => ["Jane", "fast", "car"]
+    # EX: split_tokens("the door") => ["door"]
     result = split_word_tokens(text, omit_punct=(not include_punct), omit_stop=(not include_stop))
     debug.trace(6, f"split_tokens({text!r}, punct={include_punct}, stop={include_stop}) => {result!r}")
     return result
@@ -152,21 +154,21 @@ class ngram_tfidf_analysis(object):
         self.max_ngram_size = max_ngram_size
         self.pp = None
         self.corpus = None
-        ## OLD: self.chunker = (None if (not TFIDF_NP_BOOST) else spacy_nlp.Chunker())
         self.text_proc = None
         if TFIDF_NP_BOOST or TFIDF_VP_BOOST:
             self.text_proc = create_text_proc(TFIDF_TEXT_PROC)
         ## TODO2: add international stopwords (e.g., English plus frequent ones from common languages)
-        self.stopwords = None
+        self.stopwords = []
         self.good_terms = (good_terms or [])
         self.bad_terms = (bad_terms or [])
-        self.noun_phrases = None
-        self.verb_phrases = None
+        self.noun_phrases = []
+        self.verb_phrases = []
         self.reset()
         super().__init__(*args, **kwargs)
 
     def reset(self):
         """Re-initialize the instance"""
+        debug.trace(5, f"reset({self=})")
         self.pp = tfidf_preprocessor(language=self.pp_lang,
                                      gramsize=self.max_ngram_size,
                                      min_ngram_size=self.min_ngram_size,
@@ -177,9 +179,10 @@ class ngram_tfidf_analysis(object):
                                    all_ngrams=ALL_NGRAMS,
                                    language=self.pp_lang,
                                    preprocessor=self.pp)
-        self.stopwords = (self.pp.stopwords or ENGLISH_STOPWORDS)
+        self.stopwords = (self.pp.stopwords or ENGLISH_STOPWORDS or [])
         self.noun_phrases = []
         self.verb_phrases = []
+        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
     def set_good_terms(self, text):
         """Sets good terms to TEXT split into word tokens"""
@@ -252,13 +255,11 @@ class ngram_tfidf_analysis(object):
         top_terms = self.corpus.get_keywords(document_id=doc_id,
                                              tf_weight=tf_weight,
                                              idf_weight=idf_weight,
-                                             ## OLD: limit=(2 * limit)
                                              )
         debug.trace_fmtd(7, "top_terms={tt}", tt=top_terms)
 
         # Skip empty tokens due to spacing and to punctuation removal (e.g, " ").
         # Also skip stop words (e.g., unigram).
-        ## OLD: top_term_info = [(k.ngram, k.score) for k in top_terms if k.ngram.strip()]
         top_term_info = [(k.ngram, k.score) for k in top_terms
                          if k.ngram.strip() and not self.is_stopword(k.ngram)]
         #
@@ -273,30 +274,39 @@ class ngram_tfidf_analysis(object):
         if apply_reranking:
             boosted = False
             for (i, (ngram, score)) in enumerate(top_term_info):
-                ngram = top_term_info[i][0]
-                old_score = top_term_info[i][1]
+                ## TODO4: simplify old-score maintenance (e.g., via helper functions)
+                init_score = score
+                tokens = (split_tokens(ngram, include_stop=True) if ANY_TOKEN_BOOST else [])
 
                 # Apply boost if entire ngram is a noun phrase and likewise for verb phrase
-                ## OLD: if (TFIDF_NP_BOOST and self.text_proc.noun_phrases(ngram) == [ngram]):
+                old_score = init_score
                 if (TFIDF_NP_BOOST and (ngram in self.noun_phrases[doc_id])):
                     score = old_score * TFIDF_NP_BOOST
                     debug.trace(5, f"boosted NP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
-                ## OLD: if (TFIDF_VP_BOOST and self.text_proc.verb_phrases(ngram) == [ngram]):
+                    old_score = score
                 if (TFIDF_VP_BOOST and (ngram in self.verb_phrases[doc_id])):
                     score = old_score * TFIDF_VP_BOOST
                     debug.trace(5, f"boosted VP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
-                if (TFIDF_NUMERIC_BOOST and any(tpo.is_numeric(token) for token in split_tokens(ngram))):
+                    old_score = score
+                if (TFIDF_NUMERIC_BOOST and any(tpo.is_numeric(token) for token in tokens)):
                     score = old_score * TFIDF_NUMERIC_BOOST
                     debug.trace(5, f"boosted numeric {ngram!r} from {rnd(old_score)} to {rnd(score)}")
-                if (TFIDF_GOOD_BOOST and system.intersection(split_tokens(ngram), self.good_terms)):
+                    old_score = score
+                if (TFIDF_GOOD_BOOST and system.intersection(tokens, self.good_terms)):
                     score = old_score * TFIDF_GOOD_BOOST
                     debug.trace(5, f"boosted good-term {ngram!r} from {rnd(old_score)} to {rnd(score)}")
-                if (TFIDF_BAD_BOOST and system.intersection(split_tokens(ngram), self.bad_terms)):
+                    old_score = score
+                if (TFIDF_BAD_BOOST and system.intersection(tokens, self.bad_terms)):
                     score = old_score * TFIDF_BAD_BOOST
                     debug.trace(5, f"boosted bad-term {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                    old_score = score
+                if (TFIDF_STOP_BOOST and any(self.is_stopword(token) for token in tokens)):
+                    ## TODO3: exclude stopwords in the middle of the ngram
+                    score = old_score * TFIDF_STOP_BOOST
+                    debug.trace(5, f"boosted with-stop-word {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                    old_score = score
                 # Update changed score
-                if old_score != score:
-                    ## BAD: top_term_info[i][1] = score
+                if init_score != score:
                     top_term_info[i] = (ngram, score)
                     boosted = True
             # Re-rank if scores changed
@@ -306,6 +316,7 @@ class ngram_tfidf_analysis(object):
         
         # Move capitalized terms ahead of others with same weight
         # Note: allows for inner non-capitalized only if functions words
+        ## TODO3: rework TFIDF_BOOST_CAPITALIZED as score applied above
         for (j, (ngram, score)) in enumerate(reversed(top_term_info)):
             if (TFIDF_BOOST_CAPITALIZED and (j > 0) and self.capitalized_ngram(top_term_info[j][0])
                 and (top_term_info[j][1] == top_term_info[j - 1][1])):
@@ -350,9 +361,6 @@ class ngram_tfidf_analysis(object):
 
             # OK
             final_top_term_info.append((ngram, score))
-            ## OLD:
-            ## if (len(final_top_term_info) == limit):
-            ##     break
         debug.trace_values(6, round_terms(final_top_term_info), "final top terms")
 
         # Sanity check on number of terms displayed
@@ -371,7 +379,7 @@ class ngram_tfidf_analysis(object):
         gen = self.pp.yield_keywords(text)
         more = True
         while (more):
-            ## DEBUG: debug.trace_fmtd(6, ".")
+            ## DEBUG: debug.trace(6, ".")
             try:
                 ngrams.append(next(gen).text)
             except StopIteration:
@@ -398,7 +406,6 @@ def simple_main_test():
     """Run test extracting ngrams from this source file"""
     debug.trace(4, "simple_main_test()")
     # Tabulate ngram occurrences
-    ## BAD: ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=2, max_ngram_size=3)
     ngram_analyzer = ngram_tfidf_analysis(min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE)
     all_text = system.read_entire_file(__file__)
     all_ngrams = ngram_analyzer.get_ngrams(all_text)
@@ -464,13 +471,14 @@ def main():
     REGULAR_OPT = "regular"
     GOOD_TERMS_OPT = "good-terms"
     BAD_TERMS_OPT = "bad-terms"
-    main_app = Main(description=__doc__.format(script=gh.basename(__file__),
-                                               options=f"--{REGULAR_OPT}"),
-                    boolean_options=[(SIMPLE_TEST_OPT, "Run simple canned test--default"),
-                                     (REGULAR_OPT, "Process regular input--not canned test")],
-                    text_options=[(GOOD_TERMS_OPT, "Overlap terms for boosting ngrams scores"),
-                                  (BAD_TERMS_OPT, "Overlap terms for de-boosting ngrams scores")],
-                    skip_input=False, manual_input=True)
+    main_app = Main(
+        description=__doc__.format(script=gh.basename(__file__),
+                                   options=f"--{REGULAR_OPT}"),
+        boolean_options=[(SIMPLE_TEST_OPT, "Run simple canned test--default"),
+                         (REGULAR_OPT, "Process regular input--not canned test")],
+        text_options=[(GOOD_TERMS_OPT, "Overlap terms for boosting ngrams scores"),
+                      (BAD_TERMS_OPT, "Overlap terms for de-boosting ngrams scores")],
+        skip_input=False, manual_input=True)
     regular = main_app.get_parsed_option(REGULAR_OPT)
     simple_test = main_app.get_parsed_option(SIMPLE_TEST_OPT, not regular)
     good_terms_text = main_app.get_parsed_option(GOOD_TERMS_OPT)

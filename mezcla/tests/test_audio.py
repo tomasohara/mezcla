@@ -1,6 +1,6 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
-# Tests for Audio.py
+# Tests for audio.py
 #
 # Notes:
 # - *** All the tests are skipped if the audio packages not installed.
@@ -8,36 +8,37 @@
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_audio.py
 # - some tests will take a while.
 #
-## TODO: solve test execution long times.
+# TODO2: remove posix dependencies (e.g., path)
+#
+# TODO3: solve test execution long times.
 #
 # TODO4:
 # - Reword "this will take a while and this require a valid audio path in AUDIOFILE"
 #   so that just covers RUN_SLOW_TESTS; Check separately for path.
 #
 
+"""Tests for audio module"""
 
-
-"""Tests for Audio module"""
-
-# Standard packages
+# Standard modules
 ## NOTE: this is empty for now
 
-# Installed packages
-# note: The audio library packages are not installed by default, so tests skipped if not found.
+# Installed modules
+# note: The audio library modules are not installed by default, so tests skipped if not found.
 import pytest
 try:
     import librosa
 except:
     librosa = None
 
-# Local packages
-from mezcla.unittest_wrapper import TestWrapper
+# Local modules
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import glue_helpers as gh
 from mezcla import debug
 from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:	       module object (e.g., <module 'mezcla.main' ...>)
+#    TestIt.script_module:     dotted module path (e.g., "mezcla.main")
 if librosa:
     import mezcla.audio as THE_MODULE
 else:
@@ -51,22 +52,25 @@ RUN_SLOW_TESTS = system.getenv_bool(
     ## TODO2: enable if running Github runner
     description="Run tests that can a while to run")
 AUDIO_FILENAME = "fuzzy-testing-1-2-3.wav"
-AUDIOFILE = gh.resolve_path(AUDIO_FILENAME,
-                            base_dir=gh.form_path("..", "examples"))
+## OLD:
+## AUDIOFILE = gh.resolve_path(AUDIO_FILENAME,
+##                             base_dir=gh.form_path("..", "examples"))
+AUDIOFILE = gh.resolve_path(gh.form_path("examples", AUDIO_FILENAME))
 if system.file_exists(AUDIOFILE):
-    AUDIOFILE = gh.resolve_path(AUDIO_FILENAME, "..", heuristic=True)
+    AUDIOFILE = gh.resolve_path(AUDIO_FILENAME, base_dir=".", heuristic=True)
+AUDIOFILE_TEXT = "testing one two three testing"
+NOT_RUN_SLOW_REASON = f"this will take a while and/or a valid audio path ({AUDIOFILE})"
 
 class TestAudio(TestWrapper):
     """Class for testcase definition"""
-    script_module     = TestWrapper.derive_tested_module_name(__file__)
+    script_module     = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     use_temp_base_dir = True
     maxDiff           = None
 
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="this will take a while and this require a valid audio path in AUDIOFILE")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason=NOT_RUN_SLOW_REASON)
     def test_sphinx_engine(self):
         """Test CMUSphinx speech recognition engine class"""
         debug.trace(debug.DETAILED, f"TestAudio.test_sphinx_engine({self})")
-
         sample = THE_MODULE.Audio(AUDIOFILE)
         result_speech = sample.speech_to_text(engine='sphinx')
         assert isinstance(result_speech, str)
@@ -77,11 +81,12 @@ class TestAudio(TestWrapper):
         """Test for audio.path"""
         debug.trace(debug.DETAILED, f"TestAudio.test_audio_path({self})")
         ## TODO2: fixme
-        path = 'some/path'
-
+        ## OLD: path = 'some/path'
+        path = gh.form_path("some", "path")
+        #
         sample = THE_MODULE.Audio(path)
         assert sample.get_path() == path
-
+        #
         sample = THE_MODULE.Audio()
         assert not sample.get_path()
         sample.set_path(path)
@@ -91,13 +96,15 @@ class TestAudio(TestWrapper):
     def test_source_single_audio(self):
         """End to end test sourcing a single audio file"""
         debug.trace(debug.DETAILED, f"TestAudio.test_source_single_audio({self})")
-
+        #
         audio = self.temp_file + '.wav'
-        gh.write_file(audio, 'some content')
-
-        command  = f'python {self.script_module} --verbose {audio}'
+        system.write_file(audio, 'some content')
+        #
+        ## BAD: command  = f'python {self.script_module} --verbose {audio}'
+        actual = self.run_script(options="--verbose", data_file=audio)
         expected = f'Audio: {audio}'
-        assert gh.run(command) == expected
+        ## OLD: assert gh.run(command) == expected
+        assert actual == expected
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_source_list(self):
@@ -111,14 +118,16 @@ class TestAudio(TestWrapper):
                       'audio23.wav\n'
                       'audioN.wav')
 
-        gh.write_file(list_file, audio_list)
+        system.write_file(list_file, audio_list)
 
-        command  = f'python {self.script_module} --verbose {list_file}'
+        ## BAD: command  = f'python {self.script_module} --verbose {list_file}'
+        actual = self.run_script(options="--verbose", data_file=list_file)
         expected = ('Audio: audio1.wav\n'
                     'Audio: audio2.wav\n'
                     'Audio: audio23.wav\n'
                     'Audio: audioN.wav')
-        assert gh.run(command) == expected
+        ## OLD: assert gh.run(command) == expected
+        assert actual == expected
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_source_folder(self):
@@ -130,23 +139,26 @@ class TestAudio(TestWrapper):
 
         filenames = ['/audio1.wav', '/audio23.wav']
         for filename in filenames:
-            gh.write_file(self.temp_base + filename, 'content')
+            system.write_file(self.temp_base + filename, 'content')
 
-        actual = gh.run(f'python {self.script_module} --verbose {self.temp_base}')
+        ## BAD: actual = gh.run(f'python {self.script_module} --verbose {self.temp_base}')
+        actual = self.run_script(options="--verbose", data_file=self.temp_base)
 
         for filename in filenames:
             assert filename in actual
 
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="this will take a while and this require a valid audio path in AUDIOFILE")
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason=NOT_RUN_SLOW_REASON)
     def test_extract_speech(self):
         """End to end test extracting speech using CMUSphinx engine"""
         debug.trace(debug.DETAILED, f"TestAudio.test_extract_speech({self})")
 
-        actual = gh.run(f'python {self.script_module} --verbose --speech sphinx {AUDIOFILE}')
+        ## BAD: actual = gh.run(f'python {self.script_module} --verbose --speech sphinx {AUDIOFILE}')
+        actual = self.run_script(options="--verbose --speech sphinx ", data_file=AUDIOFILE)
         assert actual
         assert '- speech recognized' in actual
         assert isinstance(actual, str)
 
+    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason=NOT_RUN_SLOW_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_huggingface_asr(self):
         """Test Huggingface automatic speech recognition model class"""
@@ -160,8 +172,12 @@ class TestAudio(TestWrapper):
         # result_speech_expected = "testing one two three testing"
         # assert (result_speech == result_speech_expected) -> AssertionError
         assert isinstance(result_speech, str)
-        assert result_speech
+        ## OLD: assert result_speech
+        actual = result_speech.lower().split()
+        expect = AUDIOFILE_TEXT.lower().split()
+        debug.trace_expr(5, actual, expect)
+        assert system.intersection(actual, expect)
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)

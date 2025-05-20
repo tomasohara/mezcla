@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # spacy_ner.py: Runs spaCy for a variety of natural lanuage processing (NLP)
 # tasks.
@@ -62,6 +62,9 @@ SPACY_MODEL = system.getenv_text(
     "SPACY_MODEL", "en_core_web_md",
     description="Default Spacy model: see https://spacy.io/models")
 
+# Globals
+fn_pysbd_sentence_boundaries = fn_nltk_sentence_boundaries = None
+
 ## OLD:
 ## ## DEBUG:
 ## debug.trace(5, "pre-spacy import")
@@ -72,28 +75,25 @@ SPACY_MODEL = system.getenv_text(
 
 def init():
     """Load in Spacy module"""
+    # pylint: disable=import-outside-toplevel, redefined-outer-name, import-error
     global spacy
     if spacy is None:
         debug.trace(5, "pre-spacy import")
-        ## OLD:
-        ## import spacy as local_spacy     # pylint: disable=import-outside-toplevel
-        ## spacy = local_spacy
-        import spacy as spacy           # pylint: disable=import-outside-toplevel
+        import spacy as spacy
         debug.trace(5, "post-spacy import")
     
     if USE_PYSBD or USE_NLTK:
         global pysbd
-        # pylint: disable=import-outside-toplevel, import-error
         import pysbd
         ## TODO: from pysbd.utils import PySBDFactory
         debug.assertion(re.search(r"^[3-9]", spacy.__version__), "spaCy 3+ is required for pysbd")
 
     # Register pipeline component
-    global pysbd_sentence_boundaries, nltk_sentence_boundaries
-    pysbd_sentence_boundaries = spacy.Language.component('pysbd_sentence_boundaries',
-                                                         func=pysbd_sentence_boundaries)
-    nltk_sentence_boundaries = spacy.Language.component('nltk_sentence_boundaries',
-                                                        func=nltk_sentence_boundaries)
+    global fn_pysbd_sentence_boundaries, fn_nltk_sentence_boundaries
+    fn_pysbd_sentence_boundaries = spacy.Language.component('pysbd_sentence_boundaries',
+                                                            func=pysbd_sentence_boundaries)
+    fn_nltk_sentence_boundaries = spacy.Language.component('nltk_sentence_boundaries',
+                                                           func=nltk_sentence_boundaries)
 
 #...............................................................................
 
@@ -197,6 +197,9 @@ def pysbd_sentence_boundaries(doc):
 
     # Set new-sentence flag for token at each starting offset for sentence
     start_token_ids = [span[0].idx for span in spacy_sent_char_spans if span]
+    # for loop below causes error:
+    # ValueError: [E043] Refusing to write to token.sent_start if its document is parsed, 
+    # because this may cause inconsistent state.
     for token in doc:
         token.is_sent_start = (token.idx in start_token_ids)
     debug.assertion(len(custom_sent_char_spans) == sum(token.is_sent_start for token in doc))
@@ -205,6 +208,7 @@ def pysbd_sentence_boundaries(doc):
 #...............................................................................
 
 nltk = None
+TextSpan = None
 
 if USE_NLTK:
     # pylint: disable=import-outside-toplevel, import-error
@@ -238,6 +242,9 @@ def nltk_sentence_boundaries(doc):
     
     # Set new-sentence flag for token at each starting offset for sentence
     start_token_ids = [span[0].idx for span in spacy_sent_char_spans if span]
+    # for loop below causes error:
+    # ValueError: [E043] Refusing to write to token.sent_start if its document is parsed, 
+    # because this may cause inconsistent state.
     for token in doc:
         token.is_sent_start = (token.idx in start_token_ids)
     debug.assertion(len(sentence_list) == sum(token.is_sent_start for token in doc))

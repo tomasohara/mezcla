@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Tests for format_profile module
 #
@@ -30,7 +30,7 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 ## OLD: from mezcla.my_regex import my_re
 ## OLD: from mezcla import system
-from mezcla.unittest_wrapper import TestWrapper
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 ## OLD: from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
@@ -71,8 +71,8 @@ class TestFormatProfile(TestWrapper):
     #     #
         
     #     debug.trace(4, f"test_formatprofile_PK_calls(); self={self}")
-    #     ## OLD: empty_file1 = gh.get_temp_file()
-    #     ## OLD: profile_log  = gh.get_temp_file()
+    #     ## OLD: empty_file1 = self.get_temp_file()
+    #     ## OLD: profile_log  = self.get_temp_file()
     #     profile_data = self.temp_file + "-profile.data"
     #     ## OLD: test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
     #     # note: runs simple_main_example.py over itself; for example,
@@ -103,8 +103,8 @@ class TestFormatProfile(TestWrapper):
         debug.trace(4, f"helper_format_profile(); self={self}")
         
         # # OLD: Uses gh.run() approach
-        # empty_file = gh.get_temp_file()
-        # profile_log = gh.get_temp_file()
+        # empty_file = self.get_temp_file()
+        # profile_log = self.get_temp_file()
         # command1 = f"python3 -m cProfile -o {profile_log} {testing_script}"
         # command2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file}"
         # gh.run(command1)
@@ -112,7 +112,7 @@ class TestFormatProfile(TestWrapper):
         # output = gh.read_file(empty_file)
         # return output
 
-        ## OLD: profile_log = gh.get_temp_file()
+        ## OLD: profile_log = self.get_temp_file()
         profile_log = self.get_temp_file()
         command_cprofile = f"python3 -m cProfile -o {profile_log} {testing_script}"
         _cprofile_output = gh.run(command_cprofile)
@@ -154,8 +154,8 @@ class TestFormatProfile(TestWrapper):
         ]
 
         debug.trace(4, f"test_formatprofile_PK_cumulative(); self={self}")
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
         # gh.run(test_command_1)
@@ -182,8 +182,8 @@ class TestFormatProfile(TestWrapper):
         #     "_hooks.py:244(__call__)qq", 
         #     "1    0.000    0.000    0.000    0.000 <attrs generated eq attr.validators._NumberValidator>:1(<module>)"
         #     ]
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
 
@@ -208,8 +208,8 @@ class TestFormatProfile(TestWrapper):
             ]
         
         debug.trace(4, f"test_formatprofile_PK_file(); self={self}")
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
 
@@ -236,8 +236,8 @@ class TestFormatProfile(TestWrapper):
 
         ## OLD
         debug.trace(4, f"test_formatprofile_PK_filename(); self={self}")
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
 
@@ -264,8 +264,8 @@ class TestFormatProfile(TestWrapper):
 
         debug.trace(4, f"test_formatprofile_PK_module(); self={self}")
         output = self.helper_format_profile(key_arg, self.testing_script)
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
         # gh.run(test_command_1)
@@ -290,8 +290,8 @@ class TestFormatProfile(TestWrapper):
         debug.trace(4, f"test_formatprofile_PK_ncalls(); self={self}")
 
         ## OLD
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
         # gh.run(test_command_1)
@@ -316,8 +316,8 @@ class TestFormatProfile(TestWrapper):
         debug.trace(4, f"test_formatprofile_PK_pcalls(); self={self}")
         output = self.helper_format_profile(key_arg, self.testing_script)
         # SAMPLE_OUTPUT = ["{method 'extend' of 'collections.deque' objects}", "typing.py:321(__hash__)"]
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
         # gh.run(test_command_1)
@@ -344,8 +344,8 @@ class TestFormatProfile(TestWrapper):
 
         ## OLD
         # SAMPLE_OUTPUT = ["0.000    0.000    0.000    0.000 {method 'with_traceback' of 'BaseException' objects}", "0.000    0.000    0.000    0.000 {method 'replace' of 'kode' objects}"]
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
         # gh.run(test_command_1)
@@ -369,8 +369,8 @@ class TestFormatProfile(TestWrapper):
         debug.trace(4, f"test_formatprofile_PK_name(); self={self}")
         output = self.helper_format_profile(key_arg, self.testing_script)
         # SAMPLE_OUTPUT = ["{built-in method _csv.reader}", "{built-in method _sre.compiler}"]
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
         # gh.run(test_command_1)
@@ -395,8 +395,8 @@ class TestFormatProfile(TestWrapper):
         debug.trace(4, f"test_formatprofile_PK_nfl(); self={self}")
         
         # SAMPLE_OUTPUT = ["{built-in method _elementtree._set_factory}", "{built-in method _imp.is_frozen}"]
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
         # gh.run(test_command_1)
@@ -417,8 +417,8 @@ class TestFormatProfile(TestWrapper):
     ##     SAMPLE_OUTPUT = ["{built-in method _csv.reader}", "{built-in method _sre.compiler}"]
 
     ##     debug.trace(4, f"test_formatprofile_PK_name(); self={self}")
-    ##     empty_file1 = gh.get_temp_file()
-    ##     profile_log  = gh.get_temp_file()
+    ##     empty_file1 = self.get_temp_file()
+    ##     profile_log  = self.get_temp_file()
     ##     test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
     ##     test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
 
@@ -448,8 +448,8 @@ class TestFormatProfile(TestWrapper):
         #     "1(ExceptionChainReprAttributes)", 
         #     "0.000    0.000    0.000    0.000 {method 'sub' of 're.Pattern' objects}"
         # ]
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
         # gh.run(test_command_1)
@@ -481,8 +481,8 @@ class TestFormatProfile(TestWrapper):
         #     "minidom.py:966(ProcessingInstruction)", 
         #     "2    0.000    0.000    0.000    0.000 _synchronization.py:24(CapacityLimiterStatistics)"
         # ]
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
         # gh.run(test_command_1)
@@ -507,8 +507,8 @@ class TestFormatProfile(TestWrapper):
         debug.trace(4, f"test_formatprofile_PK_tottime(); self={self}")
         
         ## OLD
-        # empty_file1 = gh.get_temp_file()
-        # profile_log  = gh.get_temp_file()
+        # empty_file1 = self.get_temp_file()
+        # profile_log  = self.get_temp_file()
         # test_command_1 = f"python -m cProfile -o {profile_log} {testing_script}"
         # test_command_2 = f"PROFILE_KEY={key_arg} ../format_profile.py {profile_log} > {empty_file1}"
         # gh.run(test_command_1)
@@ -521,4 +521,4 @@ class TestFormatProfile(TestWrapper):
 
 if __name__ == '__main__':
     debug.trace_current_context()
-    pytest.main([__file__])
+    invoke_tests(__file__)
