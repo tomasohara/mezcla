@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Introspection support based on alexmojaki/executing package, such as used
 # in icecream expression printer.
