@@ -1124,13 +1124,15 @@ def init_logging() -> None:
     level = logging.DEBUG if detailed_debugging() else logging.INFO
     trace_fmt(VERBOSE, "Setting logger level to {ll}", ll=level)
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=level)
-    logging.debug("init_logging()")
 
     # Optionally make sure logging level applied globally
     if _getenv_bool("GLOBAL_LOGGING", False):
         old_level = logging.root.level
         trace_fmt(VERBOSE, "Setting root logger level from {ol} to {nl}", ol=old_level, nl=level)
         logging.root.setLevel(level)
+    level = logging.root.level
+    # pylint: disable=logging-fstring-interpolation,protected-access
+    logging.debug(f"out init_logging: level={level} {logging._levelToName[level]}")
     return
 
 
@@ -1350,10 +1352,8 @@ if __debug__:
         open_debug_file()
 
         # Determine whether tracing include time and date
+        # note: Useful for adhoc profiling
         global output_timestamps
-        ## OLD
-        ## output_timestamps = (str(os.environ.get("OUTPUT_DEBUG_TIMESTAMPS", False)).upper()
-        ##                      in ["1", "TRUE"])
         output_timestamps = _getenv_bool("OUTPUT_DEBUG_TIMESTAMPS", False)
     
         # Show startup time and tracing info
