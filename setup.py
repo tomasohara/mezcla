@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Notes:
 # - This not used: see pyproject.toml instead.
