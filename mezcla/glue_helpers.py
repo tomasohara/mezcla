@@ -322,15 +322,15 @@ def form_path(*filenames: str, create: bool = False) -> str:
     If CREATE, then the directory for the path is created if needed
     Warning: This might be deprecated: use system.form_path instead.
     """
-    ## TODO3: return system.form_path(*filenames)
     debug.assertion(not any(f.startswith(system.path_separator()) for f in filenames[1:]))
     if create:
+        ## TODO2: add dir option so that all filenames used for path
         path_dir = os.path.join(*filenames[:-1])
         if not system.file_exists(path_dir):
             full_mkdir(path_dir)
 
     path = os.path.join(*filenames)
-    debug.trace_fmtd(6, "form_path{f} => {p}", f=tuple(filenames), p=path)
+    debug.trace(6, f"form_path({filenames}, [create={create}]) => {path}")
     return path
 
 
