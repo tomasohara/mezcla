@@ -35,11 +35,12 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
 from langchain_core.documents import Document
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
-# OLD: LangChainDeprecationWarning 
-# from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_huggingface import HuggingFaceEmbeddings
+## OLD: LangChainDeprecationWarning 
+## from langchain_community.embeddings import HuggingFaceEmbeddings
+## OLD: from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.llms import CTransformers
 from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
 
 # Local modules
 # TODO: def mezcla_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
