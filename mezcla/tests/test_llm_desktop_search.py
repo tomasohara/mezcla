@@ -48,15 +48,20 @@ from mezcla import system
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
-import mezcla.llm_desktop_search as THE_MODULE
-get_last_modified_date = THE_MODULE.get_last_modified_date
+try:
+    import mezcla.llm_desktop_search as THE_MODULE
+    get_last_modified_date = THE_MODULE.get_last_modified_date
+except:
+    THE_MODULE = get_last_modified_date = None
+    system.print_exception_info("llm_desktop_search import")
 
 #------------------------------------------------------------------------
 
 class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    INDEX_STORE_DIR = THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator())
+    ## TODO2: simplify logic (e.g. lstrip) and reduce redundancy
+    INDEX_STORE_DIR = (THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator()) if THE_MODULE else None)
     use_temp_base_dir = True            # needed for self.temp_base to be a dir    
     # set a temp dir to test index indexingL setUpClass
     # Note: index_temp_dir needs to be unique
@@ -235,7 +240,7 @@ class TestLLMDesktopSearch(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
     script_file = TestWrapper.get_module_file_path(__file__)
-    INDEX_STORE_DIR = THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator())
+    INDEX_STORE_DIR = (THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator()) if THE_MODULE else None)
     use_temp_base_dir = True
     mezcla_base = gh.form_path(gh.dirname(__file__), "..", "..")   
     e2e_index_store = gh.get_temp_dir()
