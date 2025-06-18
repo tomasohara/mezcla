@@ -220,7 +220,9 @@ class TestIt(TestWrapper):
 
 ## TODO: Use self.script_output method if possible instead of gh.run()
 # Environment Variables for newer tests
+## TODO2: use getenv_value when default is empty: use DEBUG_LEVEL=4 to find out why!
 LLM_PATH = system.getenv_text(
+    ## TODO23: use default from tested script
     "LLM_PATH", "",
     description="Path for LLM model"
 )
@@ -336,14 +338,30 @@ class TestLLMDesktopSearch(TestWrapper):
         self.assertEqual(final_command, "")
 
     @pytest.mark.xfail
-    def test_e2e_generate_index_store(self):
+    def test_e2e_generate_index_store(self):   # TODO3: rename because e2e is too cryptic (n.b., no need for overly verbose function names, especially as end-to-end is generally assumed)
         """End-to-end test to ensure index files (faiss, pkl) is generated"""
+        ## TODO2: replace with test_alt_e2e_generate_index_store
         index_store_temp = gh.get_temp_dir()
         ## TODO: Replace gh.run with self.run_script method
         gh.run(f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={index_store_temp} python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {self.mezcla_base}")
         index_store_content = gh.run(f"ls {index_store_temp}")
         self.assertIn("index.faiss", index_store_content)
         self.assertIn("index.pkl", index_store_content)
+        ## TEMP: for assertIn vs assert...in
+        self.assertIn("fubar", index_store_content)
+    
+    @pytest.mark.xfail
+    def test_alt_e2e_generate_index_store(self):   # TODO3: rename: e2e is too cryptic (not need for overly verbose function names)
+        """End-to-end test to ensure index files (faiss, pkl) is generated"""
+        ## TODO2: replace test_alt_e2e_generate_index_store with this version
+        index_store_temp = gh.get_temp_dir()
+        ## TODO: Replace gh.run with self.run_script method
+        gh.run(f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={index_store_temp} python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {self.mezcla_base}")
+        index_store_content = gh.run(f"ls {index_store_temp}")
+        assert "index.faiss" in index_store_content
+        assert "index.pkl" in index_store_content
+        ## TEMP: for assertIn vs assert...in
+        assert "fubar" in index_store_content
     
     @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="--search option takes some time for operation")
