@@ -772,8 +772,7 @@ if __debug__:
         # ex: trace_exception(DETAILED, "tally_counts")
         trace(level, "Exception during {t}: {exc}".
               format(t=task, exc=sys.exc_info()))
-        # TODO: include full stack trace (e.g., at LEVEL + 2)
-        ## system.trace_stack(level + 2)
+        trace_stack(level + 2)
         return
     #
     # Note: alias to match print_exception_info in system
