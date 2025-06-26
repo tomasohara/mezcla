@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 #
-# spacy_ner.py: Runs spaCy for a variety of natural lanuage processing (NLP)
+# spacy_nlp.py: Runs spaCy for a variety of natural lanuage processing (NLP)
 # tasks.
 #
 # Notes:
@@ -49,14 +49,19 @@ DOWNLOAD_MODEL = "download-model"
 SHOW_REPRESENTATION = "show-representation"
 
 # Environment options
-COUNT_ENTITIES = system.getenv_bool("COUNT_ENTITIES", False,
-                                    "Show counts of entities in verbose output")
-SENT_TOKENIZER = system.getenv_text("SENT_TOKENIZER", " ",
-                                    "Name of (alternative) sentence tokenizer to use")
-USE_PYSBD = system.getenv_bool("USE_PYSBD", (SENT_TOKENIZER.lower() == "pysbd"),
-                               "Use pySBD--pragmatic Sentence Boundary Disambiguation")
-USE_NLTK = system.getenv_bool("USE_NLTK", (SENT_TOKENIZER.lower() == "nltk"),
-                              "Use NLTK--NL Toolkit")
+COUNT_ENTITIES = system.getenv_bool(
+    "COUNT_ENTITIES", False,
+    description="Show counts of entities in verbose output")
+SENT_TOKENIZER_ENV = system.getenv_value(
+    "SENT_TOKENIZER", None,
+    description="Name of (alternative) sentence tokenizer to use")
+SENT_TOKENIZER = (SENT_TOKENIZER_ENV or "")
+USE_PYSBD = system.getenv_bool(
+    "USE_PYSBD", (SENT_TOKENIZER.lower() == "pysbd"),
+    description="Use pySBD--pragmatic Sentence Boundary Disambiguation")
+USE_NLTK = system.getenv_bool(
+    "USE_NLTK", (SENT_TOKENIZER.lower() == "nltk"),
+    description="Use NLTK--NL Toolkit")
 SPACY_MODEL = system.getenv_text(
     ## TODO2: "SPACY_MODEL", "en_core_web_lg",
     "SPACY_MODEL", "en_core_web_md",
@@ -382,15 +387,17 @@ class Script(Main):
         debug.trace(4, f"Pipeline components: {[x[0] for x in self.nlp.pipeline]}")
 
         # Load in optional SpaCy components
+        use_spacy = (not SENT_TOKENIZER) or (SENT_TOKENIZER.lower() == "spacy")
         if USE_PYSBD:
             ## TODO: self.nlp.add_pipe(PySBDFactory(self.nlp))
             self.nlp.add_pipe("pysbd_sentence_boundaries", before="parser")
         elif USE_NLTK:
             self.nlp.add_pipe("nltk_sentence_boundaries", before="parser")
-        else:
-            debug.assertion(SENT_TOKENIZER.lower() == "spacy")
+        elif use_spacy:
             # Note: senticizer is implicitly used when parser enabled
             self.nlp.add_pipe("sentencizer")
+        else:
+            system.print_error(f"Error: Unknown tokenizer {SENT_TOKENIZER!r}: using default")
                 
         # Sanity checks
         ## OLD: debug.assertion(self.nlp)
