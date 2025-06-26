@@ -193,14 +193,18 @@ def unzip(iterable, num=None):
 
 
 def get_current_frame():
-    """Return stack frame"""
+    """Return stack frame (i.e., for caller)"""
     frame = inspect.currentframe().f_back
     debug.trace_fmt(6, "get_current_frame() => {f}", f=frame)
     return frame
 
 
 def eval_expression(expr_text, frame=None):
-    """Evaluate EXPRESSION_given_by_TEXT"""
+    """Evaluate EXPRESSION_given_by_TEXT, using FRAME
+    Note: Uses caller's frame if not given. This should only be used
+    when the expression involve local variables (see extract_matches.py
+    in shell-scripts repo).
+    """
     # EX: eval_expression("len([123, 321]) == 2")
     result = None
     try:
@@ -550,6 +554,7 @@ def convert_python_data_to_instance(python_data_file, module_name, class_name, f
 def apply_numeric_suffixes(text: str, just_once=False) -> str:
     """Converts numbers in TEXT to use K, M, G, T, etc. suffixes.
     Note: Optionally applies JUST_ONCE per line."""
+    # Note: used in shell-scripts tomohara-aliases.bash
     # EX: apply_numeric_suffixes("1024 1572864 1073741824") => "1K 1.5M 1G"
     # TODO2: preserve spacing in text (e.g., splitlines quirks)
     debug.trace(5, f"apply_numeric_suffixes({text!r}, [once={just_once})")
@@ -559,13 +564,12 @@ def apply_numeric_suffixes(text: str, just_once=False) -> str:
         max_count = len(line) / 3
         count = 0
         # note: uses negative look ahead to avoid conversion in decimals (e.g., 1023.5);
-        # also, uses non-greedy search to exclude leading question marks (e.g., ?00000000?)
-        ## OLD:
-        while (my_re.search(r"(.*)\b(\d{4,19})\b(?!\.)(.*)", line)):
-            ## TEST: while (my_re.search(r"([^\?]*+)\b(\d(\d\d\d){1,6})\b(?!\.)(.*)", line)):
-            ## TEST2: while (my_re.search(r"([^\?]*+)\b(\d{4,19})\b(?!\.)(.*)", line)):
+        # also, uses non-greedy search to support just_once (i.e., target first case even if smaller)
+        # TODO3: exclude leading question marks (e.g., ?00000000?)
+        while (my_re.search(r"^(.*?)\b(\d{4,19})\b(?!\.)(.*)", line)):
             count += 1
             if count > max_count:
+                debug.trace(6, f"max attempt count reached ({max_count})")
                 break
             (pre, numeric, post) = my_re.groups()
             (new_num, suffix) = ("", "")
@@ -577,6 +581,8 @@ def apply_numeric_suffixes(text: str, just_once=False) -> str:
                     # note: accounts for quirk in rounding (e.g., stripping N.000)
                     # TODO2: ignore special cases like 0000 (n.b., due to \d{4,N} regex)
                     new_num = my_re.sub(r"\.0+$", "", new_num)
+                    # note: drops 0's added to due rounding (e.g., 1.500 => 1.5)
+                    new_num = my_re.sub(r"(\.[1-9]+)0+$", r"\1", new_num)
                     suffix = suffixes[power]
                     debug.trace_expr(6, numeric, num, power, line)
                 except:
@@ -584,9 +590,12 @@ def apply_numeric_suffixes(text: str, just_once=False) -> str:
                     new_num = f"_{numeric}?_"
                     debug.trace_exception(5, f"apply_numeric_suffixes line {l} ({line!r})")
             else:
-                ## TODO3: rework pattern matching to exclude 0000
+                ## TODO3: rework pattern matching to exclude 0000, etc.
                 new_num = "0K"
             line = pre + str(new_num) + suffix + post
+            if just_once:
+                debug.trace(6, f"applied just once ({just_once=})")
+                break
         new_text += line + os.linesep
     if new_text.endswith(os.linesep) and not text.endswith(os.linesep):
         new_text = my_re.sub(fr"{os.linesep}$", "", new_text)
