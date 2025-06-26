@@ -154,8 +154,14 @@ def main():
     strip_entirely = main_app.get_parsed_option(STRIP_OPT)
     ce = ConvertEmoticons(strip=strip_entirely)
 
-    for line in main_app.read_entire_input().splitlines():
-        print(ce.convert(line))
+    # Print the result of conversion, trapping for errors
+    # note: awkward construct to avoid BrokenPipeError
+    # see https://stackoverflow.com/questions/26692284/how-to-prevent-brokenpipeerror-when-doing-a-flush-in-python
+    try:
+        for line in main_app.read_entire_input().splitlines():
+            print(ce.convert(line))
+    except:
+        debug.trace_exception(6, "ConvertEmoticons.convert")
     return
 
 #-------------------------------------------------------------------------------
