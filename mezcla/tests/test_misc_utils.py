@@ -273,10 +273,10 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         result_class = THE_MODULE.get_class_from_name('date', 'datetime')
         assert result_class is datetime.date
 
-    def check_apply_numeric_suffixes(self, text, expect):
+    def check_apply_numeric_suffixes(self, text, expect, just_once=False):
         """Helper for test_apply_numeric_suffixes """
         debug.trace_expr(4, text, expect, prefix="in check_apply_numeric_suffixes: ")
-        actual = THE_MODULE.apply_numeric_suffixes(text)
+        actual = THE_MODULE.apply_numeric_suffixes(text, just_once=just_once)
         assert actual.strip() == expect.strip()
     
     @pytest.mark.xfail                  # TODO: remove xfail
@@ -284,17 +284,26 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         "text, actual",
         ## TODO? ("text, actual")     # see https://github.com/adamchainz/unittest-parametrize
         [ (f"{ONE_MB - 1024 - 1} {ONE_MB} {ONE_MB + 1024}", "1022.999K 1M 1.001M"),
-          ("0000", "0K"),
+          ("0000", "0K"),                         # special cas
           ## TODO2: ("-00000000-", "-_00000000_?-"),
-          ("-00000000-", "-0K-"),
+          ("-00000000-", "-0K-"),                 # esnure nuemric context
+          (f"{int(1.5 * ONE_MB)}", "1.5M"),       # make sure not rounded
          ])
     def test_apply_numeric_suffixes(self, text, actual):
         """Check apply_numeric_suffixes"""
+        debug.trace(5, f"TestIt.test_apply_numeric_suffixes(); self={self}")
         self.check_apply_numeric_suffixes(text, actual)
+
+    def test_simple_apply_numeric_suffixes(self):
+        """Check apply_numeric_suffixes"""
+        debug.trace(5, f"TestIt.test_simple_apply_numeric_suffixes(); self={self}")
+        self.check_apply_numeric_suffixes("2048 16384", "2K 16K")
+        self.check_apply_numeric_suffixes("2048 16384", "2K 16384", just_once=True)
 
     @pytest.mark.xfail                  # TODO: remove xfail
     def test_stdin_apply_numeric_suffixes(self):
         """Check apply_numeric_suffixes_stdin"""
+        debug.trace(5, f"TestIt.test_stdin_apply_numeric_suffixes(); self={self}")
         temp_file = self.create_temp_file("999 1024")
         self.monkeypatch.setattr("sys.stdin", system.open_file(temp_file))
         THE_MODULE.apply_numeric_suffixes_stdin()
