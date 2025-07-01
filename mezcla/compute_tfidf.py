@@ -3,7 +3,10 @@
 # compute_tfidf.py: compute Term Frequency Inverse Document Frequency (TF-IDF)
 # for a collection of documents. See https://en.wikipedia.org/wiki/Tf-idf.
 #
-# TODO:
+# TODO3:
+# - Add based trace level option (as with REGEX_TRACE_LEVEL in my_regex.py).
+#
+# TODO4:
 # - Show examples.
 # - Have option for producing document/term matrix.
 # - Add option to omit TF, IDF and IDF fields (e.g., in case just interested in frequency counts).
@@ -140,7 +143,7 @@ def terms_overlap(term1, term2):
     if system.intersection(subterms1, subterms2):
         # pylint: disable=arguments-out-of-order
         overlap = " ".join((get_suffix1_prefix2(subterms1, subterms2) or get_suffix1_prefix2(subterms2, subterms1)))
-    debug.trace_fmt(6, "terms_overlap({t1}, {t2}) => {o}", t1=term1.strip(), t2=term2.strip(), o=overlap)
+    debug.trace_fmt(7, "terms_overlap({t1}, {t2}) => {o}", t1=term1.strip(), t2=term2.strip(), o=overlap)
     return overlap
 
 
