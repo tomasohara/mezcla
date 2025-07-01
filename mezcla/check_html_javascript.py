@@ -44,14 +44,23 @@ MAX_ERRORS = system.getenv_int("MAX_ERRORS", 10000,
 #
 # note: see DEFAULT_JAVASCRIPT_HEADER below for other options
 JSLINT = "jslint"
-JSLINT_OPTIONS = system.getenv_text("JSLINT_OPTIONS", f"--maxerr {MAX_ERRORS} --white",
-                                    "Options for jslint")
+JSLINT_PROGRAM = system.getenv_text(
+    "JSLINT_PROGRAM", JSLINT,
+    desc="Script to invoke jslint")
+JSLINT_OPTIONS = system.getenv_text(
+    "JSLINT_OPTIONS", f"--maxerr {MAX_ERRORS} --white",
+    desc="Options for jslint")
 JSHINT = "jshint"
-JSHINT_OPTIONS = system.getenv_text("JSHINT_OPTIONS", "--show-non-errors",
-                                    "Options for jshint")
-DEFAULT_CODE_CHECKERS = system.getenv_text("CODE_CHECKERS",
-                                           f"{JSLINT},  {JSHINT}",
-                                           "JavaScript code checking commands")
+JSHINT_PROGRAM = system.getenv_text(
+    "JSHINT_PROGRAM", JSHINT,
+    desc="Script to invoke jshint")
+JSHINT_OPTIONS = system.getenv_text(
+    "JSHINT_OPTIONS", "--show-non-errors",
+    desc="Options for jshint")
+DEFAULT_CODE_CHECKERS = system.getenv_text(
+    "CODE_CHECKERS",
+    f"{JSLINT},  {JSHINT}",
+    desc="JavaScript code checking commands")
 SAFEMODE_HEADER = """
 'use strict';            // Added for sanity checking (e.g., undefined variables)
 """
@@ -171,14 +180,20 @@ class Script(Main):
         default_options_hash = defaultdict(str)
         default_options_hash.update({JSLINT: JSLINT_OPTIONS,
                                      JSHINT: JSHINT_OPTIONS})
+        default_program_hash = defaultdict(str)
+        default_program_hash.update({JSLINT: JSLINT_PROGRAM,
+                                     JSHINT: JSHINT_PROGRAM})
         for checker in re.split(", *", self.code_checkers):
             if output is not None:
                 print("-" * 80)
             options_var = f"{checker}_OPTIONS".upper()
             checker_options = system.getenv_text(options_var,
                                                  default_options_hash[checker])
+            program_var = f"{checker}_PROGRAM".upper()
+            checker_program = system.getenv_text(program_var,
+                                              default_program_hash[checker])
             output = gh.run("{ch} {opt} {scr}",
-                            ch=checker, opt=checker_options, scr=javascript_file)
+                            ch=checker_program, opt=checker_options, scr=javascript_file)
             print("Output from {ch}:".format(ch=checker))
             print(output)
             print("")
