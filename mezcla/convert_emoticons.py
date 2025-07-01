@@ -67,7 +67,7 @@ class ConvertEmoticons:
         # TODO3: rework to remove non-standard functional interface for class
         if base_trace_level is not None:
             self.BTL = base_trace_level
-        debug.trace_expr(self.BTL + 2, replace, strip, replacement, augment,
+        debug.trace_expr(self.BTL + 3, replace, strip, replacement, augment,
                          prefix="in ConvertEmoticons.__init__: ")
         if strip is None:
             strip = STRIP_EMOTICONS
@@ -81,7 +81,7 @@ class ConvertEmoticons:
         self.strip = strip
         self.replacement = replacement
         self.augment = augment
-        debug.trace_object(self.BTL, self, label=f"{self.__class__.__name__} instance")
+        debug.trace_object(self.BTL + 2, self, label=f"{self.__class__.__name__} instance")
     #
     # EX: ce = ConvertEmoticons(); (ce.strip != cs.replace) => True
     # EX: ce.convert()("❌ Failure") => "[cross mark] Failure"  # U+274c
@@ -108,7 +108,7 @@ class ConvertEmoticons:
             replacement = self.replacement
         if augment is None:
             augment = self.augment
-        debug.trace_expr(self.BTL, replace, strip, replacement, augment,
+        debug.trace_expr(self.BTL + 1, replace, strip, replacement, augment,
                          prefix="ce.convert: text=_; ")
         in_text = text
         text = (text or "")
