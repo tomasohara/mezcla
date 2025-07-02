@@ -9,7 +9,7 @@
 #-------------------------------------------------------------------------------
 # Example usage:
 #
-# TODO: see what html_file should be set to
+# TODO3: see what html_file should be set to
 # $ PATH="$PATH:/usr/local/programs/selenium" DEBUG_LEVEL=6 MOZ_HEADLESS=1 $PYTHON html_utils.py "$html_file" > _html-utils-pubchem-ibuprofen.log7 2>&
 # $ cd $TMPDIR
 # $ wc *ibuprofen*
@@ -43,11 +43,14 @@
 #      innerHTML = HTML inside of the selected element
 #      outerHTML = HTML inside of the selected element + HTML of the selected element
 #-------------------------------------------------------------------------------
-# TODO:
+# TODO3:
 # - Standardize naming convention for URL parameter accessors (e.g., get_url_param vs. get_url_parameter).
 # - Create class for selenium support (e.g., get_browser ... wait_until_ready).
 # - * Use kawrgs to handle functions with common arguments (e.g., download_web_document, retrieve_web_document, and wrappers around them).
 # - Use thin spacing around controls (e.g., via U+202F Narrow No-Break Space or via CSS).
+#
+# TODO2:
+# - Document selenium/webdriver installation (e.g., gecko drivers).
 # 
 
 """HTML utility functions"""
@@ -150,15 +153,14 @@ def get_browser(url : str):
         # Make the browser hidden by default (i.e., headless)
         # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
         ## TODO2: add an option to use Chrome
-        ## OLD:
-        ## # pylint: disable=import-outside-toplevel
-        ## from selenium.webdriver.firefox.options import Options
         options_module = (webdriver.firefox.options if FIREFOX_WEBDRIVER else webdriver.chrome.options)
         webdriver_options = options_module.Options()
-        ## OLD: webdriver_options.headless = HEADLESS_WEBDRIVER
+        ## TEMP: Based on https://www.reddit.com/r/learnpython/comments/1fv3kiy/need_help_with_installing_geckodriver (TODO3: generalize)
+        if FIREFOX_WEBDRIVER and (system.USER == "tomohara"):
+            webdriver_options.binary_location = "/usr/lib/firefox/firefox-bin"
+            debug.trace(5, f"Warning assuming {webdriver_options.binary_location=}")
         if HEADLESS_WEBDRIVER:
             webdriver_options.add_argument('-headless')
-        ## OLD: browser = webdriver.Firefox(options=webdriver_options)
         browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
         browser = browser_class(options=webdriver_options)
         debug.trace_object(5, browser)
@@ -216,6 +218,7 @@ def get_inner_text(url : str):
         # Extract fully-rendered text
         inner_text = browser.execute_script("return document.body.innerText")
     except:
+        debug.trace_exception(6, "get_inner_text")
         system.print_exception_info("get_inner_text")
     debug.trace_fmt(7, "get_inner_text({u}) => {it}", u=url, it=inner_text)
     return inner_text
@@ -267,7 +270,7 @@ def wait_until_ready(url : str, stable_download_check : bool = STABLE_DOWNLOAD_C
     debug.trace_fmt(5, "out wait_until_ready(); elapsed={t}s",
                     t=(time.time() - start_time))
     return
-    
+
 
 def escape_hash_value(hash_table : Dict, key: str):
     """Wrapper around escape_html_value for HASH_TABLE[KEY] (or "" if missing).
@@ -523,7 +526,6 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
             if not ignore:
                 system.print_exception_info("old_download_web_document")
     if not ok:
-        ## OLD: local_filename = None
         local_filename = ""
     if meta_hash is not None:
         meta_hash[FILENAME] = local_filename
@@ -747,7 +749,6 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
         else:
             tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
             tooltip_end_spec = "</span>"
-    ## OLD: result += f"<label>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
     result += f"<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
@@ -910,12 +911,6 @@ def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] 
     base_url_info = soup.find("base") if soup else None
     base_url = base_url_info.get("href") if base_url_info else None
     debug.trace_fmtd(6, "bu1={bu}", bu=base_url)
-    ## BAD:
-    ## if not base_url:
-    ##     # Remove parts of the URL after the final slash
-    ##     # TODO: comment and example
-    ##     base_url = re.sub(r"(^.*/[^\/]+/)[^\/]+$", r"\1", url)
-    ##     debug.trace_fmtd(6, "bu2={bu}", bu=base_url)
     if not base_url:
         base_url = web_site_url
         debug.trace_fmtd(6, "bu3={bu}", bu=base_url)
