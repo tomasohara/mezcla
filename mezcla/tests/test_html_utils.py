@@ -8,6 +8,10 @@
 #   (see examples below for setUp and tearDown).
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_html_utils.py
+# - Global pylint filter:
+#   pylint: disable=protected-access
+#   -- TEMP: filter (TODO2: make sure just test_xyz)
+#       pylint: disable=missing-function-docstring
 #
 
 """Tests for html_utils module"""
@@ -21,7 +25,7 @@ import pytest
 ## OLD: import bs4
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests, trap_exception
 from mezcla import debug
 from mezcla import system
 from mezcla import glue_helpers as gh
@@ -62,6 +66,7 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE.user_parameters = save_user_parameters
         return
 
+    @trap_exception
     def test_get_inner_text(self):
         """Verify that JavaScript fills in window dimensions
         Note: requires selenium"""
@@ -70,7 +75,7 @@ class TestHtmlUtils(TestWrapper):
             debug.trace(4, "Ignoring test_get_inner_text as selenium required")
             return
         html_filename = "simple-window-dimensions.html"
-        html_path = gh.resolve_path(html_filename)
+        html_path = gh.resolve_path(html_filename, heuristic=True)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
         unrendered_text = gh.run(f"lynx -dump {url}")
@@ -88,7 +93,7 @@ class TestHtmlUtils(TestWrapper):
             debug.trace(4, "Ignoring test_get_inner_html as selenium required")
             return
         html_filename = "simple-window-dimensions.html"
-        html_path = gh.resolve_path(html_filename)
+        html_path = gh.resolve_path(html_filename, heuristic=True)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
         unrendered_html = gh.run(f"lynx -source {url}")
@@ -311,7 +316,7 @@ class TestHtmlUtils(TestWrapper):
         # Assert exception report is printed when not Ignore
         try :
             _ = THE_MODULE.download_html_document("", ignore=False)
-        except Exception as _:
+        except:
             pass
         err = self.get_stderr()
         assert "Error during retrieve_web_document" in err
@@ -320,7 +325,7 @@ class TestHtmlUtils(TestWrapper):
         self.clear_stderr()
         try :
             _ = THE_MODULE.download_html_document("", ignore=True)
-        except Exception as _:
+        except:
             pass
         err = self.get_stderr()
         assert "Error during retrieve_web_document" not in err
@@ -614,15 +619,18 @@ class TestHtmlUtils(TestWrapper):
         data = "Hello World"
         filename = self.create_temp_file(contents="")
         as_binary = False
+        # pylint: ignore disable=assignment-from-none
         result = THE_MODULE._write_file(filename, data, as_binary)
 
         assert isinstance(data, (str, bytes))
         assert isinstance(filename, str)
         assert isinstance(as_binary, bool)
         assert result is None  
-        
-    # @pytest.mark.xfail
-    # def test_download_web_document_type_hints(self):
+
+    ## TODO (test for type hint failures):
+    ## @pytest.mark.xfail
+    ## def test_download_web_document_type_hints(self):
+    ##     ...
 
 #------------------------------------------------------------------------
 
