@@ -44,10 +44,14 @@ import sys
 from importlib import reload
 
 # Installed modules
-import nltk
-import numpy as np
-import pandas as pd
-import sklearn
+try:
+    import nltk
+    import numpy as np
+    import pandas as pd
+    import sklearn
+except:
+    nltk = np = pd = sklearn = None
+    sys.stderr.write(f"Exception during installed imports: {sys.exc_info()}")
 
 # Local modules
 import mezcla
@@ -59,6 +63,7 @@ from mezcla import system
 from mezcla.my_regex import my_re
 from mezcla import data_utils as du
 from mezcla import glue_helpers as gh
+from mezcla import html_utils as html
 from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper
 
