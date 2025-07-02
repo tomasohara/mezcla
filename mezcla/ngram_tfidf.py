@@ -18,7 +18,10 @@
 #
 # TODO1: fix --regular over filename
 #
-# TODO:
+# TODO3:
+# - Add based trace level option (as with REGEX_TRACE_LEVEL in my_regex.py).
+#
+# TODO4:
 # - Add more optional heuristics: part-of-speech boosting, adjoining ngram filtering,
 #   noun-phrase boosting, etc.
 # - Isolate ngram support into separate module.
@@ -47,9 +50,10 @@ from mezcla import glue_helpers as gh
 from mezcla.main import Main
 from mezcla import system
 from mezcla.system import round_num as rnd
-from mezcla import tpo_common as tpo
+## OLD: from mezcla import tpo_common as tpo
 from mezcla import tfidf
 from mezcla.compute_tfidf import terms_overlap, IDF_WEIGHTING, TF_WEIGHTING
+from mezcla.text_utils import is_numeric
 from mezcla.text_processing import stopwords as ENGLISH_STOPWORDS, create_text_proc, split_word_tokens
 from mezcla.tfidf.corpus import Corpus as tfidf_corpus
 from mezcla.tfidf.preprocess import Preprocessor as tfidf_preprocessor
@@ -130,7 +134,7 @@ def split_tokens(text, include_punct=None, include_stop=None):
     # EX: split_tokens("Jane's fast car") => ["Jane", "fast", "car"]
     # EX: split_tokens("the door") => ["door"]
     result = split_word_tokens(text, omit_punct=(not include_punct), omit_stop=(not include_stop))
-    debug.trace(6, f"split_tokens({text!r}, punct={include_punct}, stop={include_stop}) => {result!r}")
+    debug.trace(7, f"split_tokens({text!r}, punct={include_punct}, stop={include_stop}) => {result!r}")
     return result
 
 
@@ -288,7 +292,7 @@ class ngram_tfidf_analysis(object):
                     score = old_score * TFIDF_VP_BOOST
                     debug.trace(5, f"boosted VP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
-                if (TFIDF_NUMERIC_BOOST and any(tpo.is_numeric(token) for token in tokens)):
+                if (TFIDF_NUMERIC_BOOST and any(is_numeric(token) for token in tokens)):
                     score = old_score * TFIDF_NUMERIC_BOOST
                     debug.trace(5, f"boosted numeric {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
@@ -335,7 +339,7 @@ class ngram_tfidf_analysis(object):
             if (not ngram.strip()):
                 debug.trace_fmt(6, "Omitting invalid ngram '{ng}'", ng=ngram)
                 continue
-            if ((not allow_numeric_ngrams) and any(tpo.is_numeric(token) for token in split_tokens(ngram))):
+            if ((not allow_numeric_ngrams) and any(is_numeric(token) for token in split_tokens(ngram))):
                 debug.trace_fmt(6, "Omitting ngram with numerics '{ng}'", ng=ngram)
                 continue
             
@@ -436,7 +440,7 @@ def simple_main_test():
     SAMPLE_SIZE = 10
     init_ngram_spec = "\n\t".join(all_ngrams[:SAMPLE_SIZE])
     print(f"first 10 ngrams in {__file__}:\n\t{init_ngram_spec}")
-    init_top_ngram_spec = "\n\t".join([f"{t}: {tpo.round_num(s, 3)}"
+    init_top_ngram_spec = "\n\t".join([f"{t}: {system.round_num(s, 3)}"
                                        for (t, s) in top_ngrams[:SAMPLE_SIZE]])
     print(f"top ngrams in {__file__}:\n\t{init_top_ngram_spec}")
 
@@ -459,7 +463,7 @@ def output_tfidf_analysis(main_app, good_text=None, bad_text=None):
     SAMPLE_SIZE = 10
     for l in range(num_docs):
         top_ngrams = ngram_analyzer.get_top_terms(l + 1)
-        top_ngram_spec = "; ".join([f"{t}: {tpo.round_num(s, 3)}"
+        top_ngram_spec = "; ".join([f"{t}: {system.round_num(s, 3)}"
                                     for (t, s) in top_ngrams[:SAMPLE_SIZE]])
         print(f"{l}\t{top_ngram_spec}")
     
