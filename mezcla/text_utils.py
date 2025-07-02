@@ -296,6 +296,21 @@ def is_symbolic(token):
     return result
 
 
+def is_numeric(text):
+    """Indicates whether TEXT represents a number (integer or float)"""
+    ## TODO: rename as is_number to avoid confusion with English numeric a la numeral (e.g., "two')
+    # EX: is_numeric("321") => True
+    # EX: is_numeric("zero") => False
+    numeric = False
+    try:
+        value = float(text)
+        numeric = True
+    except ValueError:
+        value = None
+    debug.trace(8, f"is_numeric({text!r}) => {numeric}; value={value}")
+    return numeric
+
+
 def make_fixed_length(text, length=16):
     """Return TEXT with padding up to LENGTH chars; similar to str.ljust except for trucation"""
     # ex: make_fixed_length("fubar", 3) => "fub"
