@@ -406,22 +406,34 @@ class TestTpoCommon(TestWrapper):
         self.do_assert(len(THE_MODULE.env_options) == 1)
         self.do_assert(len(THE_MODULE.env_defaults) == 1)
 
+    def set_test_env_var(self):
+        """Set enviroment vars to run tests"""
+        self.monkeypatch.setattr("mezcla.tpo_common.env_options", {
+            'VAR_STRING': 'this is a string variable',
+            'ANOTHER_VAR': 'this is another env. var.'
+        })
+        self.monkeypatch.setattr("mezcla.tpo_common.env_defaults", {
+            'VAR_STRING': 'empty',
+            'ANOTHER_VAR': '2022'
+        })
+
+        
     @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
     def test_formatted_environment_option_descriptions(self):
         """Ensure formatted_environment_option_descriptions works as expected"""
         debug.trace(4, "test_formatted_environment_option_descriptions()")
 
-        set_test_env_var()
+        self.set_test_env_var()
 
         # Test sort
         expected = (
             'VAR_STRING\tthis is a string variable (empty)\n'
-            '\tANOTHER_VAR\tthis is another env. var. n/a'
+            '\tANOTHER_VAR\tthis is another env. var. (2022)'
         )
         self.do_assert(THE_MODULE.formatted_environment_option_descriptions(sort=False) == expected)
         expected = (
-            'ANOTHER_VAR\tthis is another env. var. n/a\n'
+            'ANOTHER_VAR\tthis is another env. var. (2022)\n'
             '\tVAR_STRING\tthis is a string variable (empty)'
         )
         self.do_assert(THE_MODULE.formatted_environment_option_descriptions(sort=True) == expected)
@@ -432,14 +444,14 @@ class TestTpoCommon(TestWrapper):
         # Test indent
         expected = (
             'VAR_STRING + this is a string variable (empty)\n'
-            ' + ANOTHER_VAR + this is another env. var. n/a'
+            ' + ANOTHER_VAR + this is another env. var. (2022)'
         )
         self.do_assert(THE_MODULE.formatted_environment_option_descriptions(indent=' + ') == expected)
 
     def test_get_registered_env_options(self):
         """Ensure get_registered_env_options works as expected"""
         debug.trace(4, "test_get_registered_env_options()")
-        set_test_env_var()
+        self.set_test_env_var()
         result = THE_MODULE.get_registered_env_options()
         assert isinstance(result, list)
         assert 'VAR_STRING' in result
@@ -449,7 +461,7 @@ class TestTpoCommon(TestWrapper):
     def test_get_environment_option_descriptions(self):
         """Test get_environment_option_descriptions"""
         debug.trace(4, "test_get_environment_option_descriptions()")
-        set_test_env_var()
+        self.set_test_env_var()
         result = THE_MODULE.get_environment_option_descriptions(include_default=True)
         self.do_assert(isinstance(result, list))
         self.do_assert("(2022)" in str(result), "default added")
@@ -785,10 +797,14 @@ class TestTpoCommon(TestWrapper):
         """Ensure reference_variables works as expected"""
         debug.trace(4, "test_reference_variables()")
         self.monkeypatch.setattr("mezcla.debug.trace_level", 10)
-        THE_MODULE.reference_variables("\'a\'")
+        a = "dummy"
+        ## BAD: THE_MODULE.reference_variables("\'a\'")
+        THE_MODULE.reference_variables(a)
 
         stderr = self.get_stderr()
-        assert 'reference_variables("\'a\'",)' in stderr
+        ## BAD: assert 'reference_variables("\'a\'",)' in stderr
+        # note: tpo_common calls into debug version 
+        assert f"reference_var('{a}',)" in stderr
 
     @pytest.mark.xfail
     def test_memodict(self):
@@ -879,16 +895,17 @@ class TestTpoCommon(TestWrapper):
         assert isinstance(THE_MODULE.getenv_boolean("REALLY FUBAR?", False), bool)
 
 
-def set_test_env_var():
-    """Set enviroment vars to run tests"""
-    THE_MODULE.env_options = {
-        'VAR_STRING': 'this is a string variable',
-        'ANOTHER_VAR': 'this is another env. var.'
-    }
-    THE_MODULE.env_defaults = {
-        'VAR_STRING': 'empty',
-        'ANOTHER_VAR': '2022'
-    }
+## BAD (needs to use monkeypatch):
+## def set_test_env_var():
+##     """Set enviroment vars to run tests"""
+##     THE_MODULE.env_options = {
+##         'VAR_STRING': 'this is a string variable',
+##         'ANOTHER_VAR': 'this is another env. var.'
+##     }
+##     THE_MODULE.env_defaults = {
+##         'VAR_STRING': 'empty',
+##         'ANOTHER_VAR': '2022'
+##     }
 
 
 if __name__ == '__main__':
