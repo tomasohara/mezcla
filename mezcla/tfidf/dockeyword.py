@@ -38,7 +38,7 @@ Location = namedtuple('Location', ['document', 'start', 'end'])
 ADD_DUMMY_LOCATION = system.getenv_boolean(
     ## TODO2: drop and just use SKIP_LOCATION
     "ADD_DUMMY_LOCATION", False,
-    desc="Add dummy location for debugging purposes")
+    desc="Add dummy DocKeyword location for debugging purposes")
 SKIP_DOC_LOCATION = system.getenv_boolean(
     "SKIP_DOC_LOCATION", False,
     desc="Skip location tracking")
