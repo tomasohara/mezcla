@@ -143,11 +143,10 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
     """Return name of unique temporary file, optionally with DELETE"""
     # Note: delete defaults to False if detailed debugging
     # TODO: allow for overriding other options to NamedTemporaryFile
-    if ((delete is None) and debug.detailed_debugging()):
+    if ((delete is None) and not KEEP_TEMP):
         delete = False
-    ## BAD: temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
     NTF_ARGS = {'prefix': TEMP_PREFIX,
-                'delete': not KEEP_TEMP,
+                'delete': delete,
                 'suffix': TEMP_SUFFIX}
     temp_file_name = TEMP_FILE
     if not temp_file_name:
