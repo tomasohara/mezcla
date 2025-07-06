@@ -24,7 +24,7 @@ import pytest
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
-from mezcla import glue_helpers as gh
+## OLD: from mezcla import glue_helpers as gh
 from mezcla import system
 
 # Note: Two references are used for the module to be tested:
@@ -68,18 +68,6 @@ class TestRgbColorName(TestWrapper):
     def test_rgb_regex(self):
         """Test the regex for RGB specification"""
         debug.trace(4, "test_rgb_regex()")
-
-        ## OLD:
-        # script = THE_MODULE.Script(skip_args=True)
-        # self.do_assert(script.rgb_regex == r'\((0?x?[0-9A-F]+), (0?x?[0-9A-F]+), (0?x?[0-9A-F]+)\)')
-        # line = "(39, 39, 39)   :  24.35% (630)"
-        # script.process_line(line)
-        # self.do_assert("<(39, 39, 39), darkslategray>" in self.get_stdout())
-        
-        ## OLD: 
-        # rgb_regex_val = r'\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)'
-        # option = f'--rgb-regex {rgb_regex_val}'
-
         option = "--rgb-regex '\\((\\d+),\\s*(\\d+),\\s*(\\d+)\\)'"
         color_tuple = "(0, 255, 0)"
         color = "lime"
@@ -102,14 +90,6 @@ class TestRgbColorName(TestWrapper):
         )
         assert color in helper_output
 
-        ## OLD:
-        # data_file =self.create_temp_file(contents=hex3_val)
-        # output = self.run_script(
-        #     data_file=data_file,
-        #     options=option
-        # )
-        # assert color in output
-
     @pytest.mark.xfail
     def test_rgb_hex6(self):
         """Test the hex6 option"""
@@ -123,14 +103,6 @@ class TestRgbColorName(TestWrapper):
         )
         assert color in helper_output
 
-        ## OLD:
-        # data_file =self.create_temp_file(contents=hex6_val)
-        # output = self.run_script(
-        #     data_file=data_file,
-        #     options=option
-        # )
-        # assert color in output
-    
     @pytest.mark.xfail
     def test_rgb_show_hex(self):
         """Test the show-hex option"""
@@ -146,14 +118,6 @@ class TestRgbColorName(TestWrapper):
         assert color in helper_output
         assert color_hex in helper_output
 
-        ## OLD: Without helper functions
-        # data_file =self.create_temp_file(contents=color_tuple)
-        # output = self.run_script(
-        #     data_file=data_file,
-        #     options=option
-        # )
-        # assert color and color_hex in output
-
     @pytest.mark.xfail
     def test_rgb_hex(self):
         """Test the hex option"""
@@ -166,14 +130,6 @@ class TestRgbColorName(TestWrapper):
             file_content=color_tuple
         )
         assert color in helper_output
-
-        ## OLD:
-        # data_file =self.create_temp_file(contents=color_tuple)
-        # output = self.run_script(
-        #     data_file=data_file,
-        #     options=option
-        # )
-        # assert color in output
 
     @pytest.mark.xfail
     def test_rgb_skip_direct(self):
@@ -196,14 +152,6 @@ class TestRgbColorName(TestWrapper):
         )
         assert color in helper_output
 
-        ## OLD: WIthout helper function
-        # data_file = self.create_temp_file(contents=color_tuple)
-        # output = self.run_script(
-        #     data_file=data_file,
-        #     options=option
-        # )
-        # assert color in output
-        
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
