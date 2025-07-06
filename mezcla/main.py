@@ -190,6 +190,10 @@ INPUT_ERROR = system.getenv_value(
 ##     "DISABLE_RECURSIVE_DELETE", None,
 ##     description="Disable use of potentially dangerous rm -r style recursive deletions")
 DISABLE_RECURSIVE_DELETE = gh.DISABLE_RECURSIVE_DELETE
+VERBOSE_DEFAULT = bool(f"--{VERBOSE_ARG}" in sys.argv)
+VERBOSE_MODE = system.getenv_value(
+    "VERBOSE_MODE", VERBOSE_DEFAULT,
+    desc="Default for --verbose")
 
 #-------------------------------------------------------------------------------
 
@@ -638,7 +642,7 @@ class Main(object):
         ## OLD: if (not usage_notes and SHOW_ENV_OPTIONS):
         if (not usage_notes):
             env_opt_spec = ""
-            if (SHOW_ENV_OPTIONS or (f"--{VERBOSE_ARG}" in sys.argv)):
+            if (SHOW_ENV_OPTIONS or VERBOSE_MODE):
                 env_opts = system.formatted_environment_option_descriptions(sort=True, indent=INDENT)
                 env_opt_spec = f"- Available env. options:\n{INDENT}{env_opts}"
             elided_path = re.sub(r"^.*/", ".../", sys.argv[0])
@@ -775,7 +779,7 @@ class Main(object):
         # note: not trapped to allow for early exit
         self.parsed_args = vars(parser.parse_args(runtime_args))
         debug.trace(5, f"parsed_args = {self.parsed_args}")
-        self.verbose = bool(self.get_parsed_option("verbose"))
+        self.verbose = bool(self.get_parsed_option("verbose", VERBOSE_MODE))
         # Get filename unless input ignored and fixup if returned as list
         # TODO: add an option to retain self.filename as is
         if not self.skip_input:
