@@ -872,6 +872,8 @@ class TestSystem(TestWrapper):
         # Test prune_empty
         assert THE_MODULE.unique_items(['cars', 'cars', 'plane', 'train', ''], prune_empty=False) == ['cars', 'plane', 'train', '']
         assert THE_MODULE.unique_items(['cars', 'cars', 'plane', 'train', ''], prune_empty=True) == ['cars', 'plane', 'train']
+        assert THE_MODULE.unique_items(['Cars', 'cars', 'plane', 'train', ''], prune_empty=True) == ['Cars', 'cars', 'plane', 'train']
+        assert THE_MODULE.unique_items(['Cars', 'cars', 'plane', 'train', ''], prune_empty=True, ignore_case=True) == ['Cars', 'plane', 'train']
 
     def test_to_float(self):
         """Ensure to_float works as expected"""
