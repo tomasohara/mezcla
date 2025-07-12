@@ -14,9 +14,11 @@
 #
 #-------------------------------------------------------------------------------
 # Tip:
-# - Use 'git check-ignore' to test:
+# - Use 'git check-ignore' to test
+# - Example old backup rule didn't work for symbolic links (due to trailing slash):
 #   $ git check-ignore --non-matching --verbose backup
 #   .gitignore:42:**/backup/    backup
+# - Typical output for case not covered by rules:
 #   $ git check-ignore --non-matching --verbose missing-file.txt
 #   ::  missing-file.txt
 # - This uses format <file>:<line>:<pattern> (n.b., '::' indicates no match).
