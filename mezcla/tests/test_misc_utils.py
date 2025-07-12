@@ -24,6 +24,7 @@ from unittest_parametrize import ParametrizedTestCase, parametrize
 # Local packages
 from mezcla import glue_helpers as gh
 from mezcla import debug
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import SKIP_EXPECTED_ERRORS, SKIP_EXPECTED_REASON
@@ -310,6 +311,21 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         actual = self.get_stdout().strip()
         assert actual == "999 1K"
 
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_GlobalSetter(self):
+        """Ensure that GlobalSetter's changes are temporary"""
+        self.patch_trace_level(3)
+        unique_mod_3 = unique_mod_4 = []
+        def get_unique_moduli(n, l):
+            """Returns unique modulus results over N in [0, l-1]"""
+            return system.unique_items(i % n for i in range(l))
+        unique_mod_4 = get_unique_moduli(4, 13)
+        with THE_MODULE.GlobalSetter(debug, 'trace_level', 8):
+            unique_mod_3 = get_unique_moduli(3, 13)
+        stderr = self.get_stderr()
+        assert my_re.search("unique_items.*0, 1, 2", stderr)
+        assert not my_re.search("unique_items.*0, 1, 2, 3", stderr)
+        assert system.difference(unique_mod_4, unique_mod_3) == [3]
 
 @pytest.mark.skipif(not mezcla_to_standard, reason="Unable to load mezcla_to_standard")
 class TestFileToInstance(TestWrapper):
