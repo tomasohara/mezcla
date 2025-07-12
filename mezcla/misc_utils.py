@@ -21,6 +21,9 @@ import time
 import json
 import yaml
 import csv
+from types import ModuleType
+from typing import Any, Optional
+from contextlib import ContextDecorator
 
 # Installed packages
 ## NOTE: made dynamic due to import issue during shell-script repo tests
@@ -610,6 +613,83 @@ def apply_numeric_suffixes_stdin(just_once=False):
     text = dummy_app.read_entire_input()
     print(apply_numeric_suffixes(text, just_once=just_once))
 
+#-------------------------------------------------------------------------------
+# Utility class for setting contexts
+# NOTE: Based on Grok3
+# TODO3: put in new module like python_utils.py
+
+class GlobalSetter(ContextDecorator):
+    """A context manager and decorator to temporarily set a module-level global variable.
+
+    This class allows you to temporarily modify a module-level global variable within
+    a `with` block or as a decorator, restoring the original value (or removing the
+    attribute if it didn't exist) upon exit.
+
+    Args:
+        module (ModuleType): The module containing the global variable (e.g., `debug`).
+        name (str): The name of the global variable (e.g., 'trace_level').
+        value (Any): The temporary value to set for the global variable.
+
+    Example:
+        >>> import debug
+        >>> def trace_values():
+        ...     print(debug.trace_level)
+        >>> debug.trace_level = 3
+        >>> trace_values()  # Prints: 3
+        >>> with GlobalSetter(debug, 'trace_level', 6):
+        ...     trace_values()  # Prints: 6
+        >>> trace_values()  # Prints: 3
+
+    Note:
+        - This context manager is not thread-safe. Use synchronization mechanisms
+          (e.g., locks) if modifying globals in a multithreaded environment.
+        - If the module is reloaded during the context, the global variable may be reset.
+    """
+
+    def __init__(self, module: ModuleType, name: str, value: Any) -> None:
+        """Initialize the GlobalSetter with the module, attribute name, and temporary value.
+
+        Args:
+            module (ModuleType): The module containing the global variable.
+            name (str): The name of the global variable to modify.
+            value (Any): The temporary value to set for the global variable.
+        """
+        self.module: ModuleType = module
+        self.name: str = name
+        self.value: Any = value
+        self.original_value: Optional[Any] = None
+
+    def __enter__(self) -> 'GlobalSetter':
+        """Enter the context, saving the original value and setting the new value.
+
+        Returns:
+            GlobalSetter: The context manager instance (for use in `with` blocks).
+
+        Saves the original value of the module attribute (or None if it doesn't exist)
+        and sets the attribute to the specified temporary value.
+        """
+        self.original_value = getattr(self.module, self.name, None)
+        setattr(self.module, self.name, self.value)
+        return self
+
+    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], 
+                 exc_tb: Optional[Any]) -> None:
+        """Exit the context, restoring the original value or removing the attribute.
+
+        Args:
+            exc_type (Optional[type]): The type of the exception raised, if any.
+            exc_val (Optional[Exception]): The exception instance raised, if any.
+            exc_tb (Optional[Any]): The traceback of the exception, if any.
+
+        Restores the original value of the module attribute if it existed, or removes
+        the attribute if it was newly created during the context.
+        """
+        if self.original_value is None:
+            delattr(self.module, self.name)
+        else:
+            setattr(self.module, self.name, self.original_value)
+
+#-------------------------------------------------------------------------------
 
 def init():
     """MOdule initialization"""
