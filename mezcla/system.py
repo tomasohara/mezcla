@@ -1313,22 +1313,27 @@ def just_one_non_null(in_list: list, strict: bool = False) -> bool:
     return is_true
 
 
-def unique_items(in_list: list,
+def unique_items(values: list,
                  prune_empty: bool = False,
                  ignore_case: bool = None) -> list:
-    """Returns unique items from IN_LIST, preserving order
+    """Returns unique items from VALUES, preserving order
     Note: optionally PRUN[ing]_EMPTY items and IGNOR[ing]_CASE,
     in which case earlier items take precedence."""
     # EX: unique_items([1, 2, 3, 2, 1]) => [1, 2, 3]
     # EX: unique_items(["dog", "DOG", "cat"], ignore_case=True) => ["dog", "cat"]
     ordered_hash = OrderedDict()
-    for item in in_list:
+    in_values = []
+    for item in values:
+        # Make copy if debugging (TODO3: add helper for this)
+        # note: complication due to iterators (generators)
+        if debug.debugging(8):
+            in_values.append(item)
         if item or (not prune_empty):
             item_key = item if not ignore_case else str(item).lower()
             if item_key not in ordered_hash:
                 ordered_hash[item_key] = item
     result = list(ordered_hash.values())
-    debug.trace_fmt(8, "unique_items({l}) => {r}", l=in_list, r=result)
+    debug.trace_fmt(8, "unique_items({l}) => {r}", l=in_values, r=result)
     return result
 
 
