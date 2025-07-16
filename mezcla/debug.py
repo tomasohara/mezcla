@@ -766,13 +766,19 @@ if __debug__:
         return
 
 
-    def trace_exception(level: IntOrTraceLevel, task: Any) -> None:
-        """Trace exception information regarding TASK (e.g., function) at LEVEL"""
+    def trace_exception(level: IntOrTraceLevel, task: Any,
+                        show_stack: Optional[bool] = None) -> None:
+        """Trace exception information regarding TASK (e.g., function) at LEVEL.
+        Note: If SHOW_STACK, includes stack trace (default when verbose debugging)
+        """
         # Note: Conditional output version of system's print_exception_info.
         # ex: trace_exception(DETAILED, "tally_counts")
+        if show_stack is None:
+            show_stack = debugging(level + 1)
         trace(level, "Exception during {t}: {exc}".
               format(t=task, exc=sys.exc_info()))
-        trace_stack(level + 2)
+        if show_stack:
+            trace_stack(level)
         return
     #
     # Note: alias to match print_exception_info in system
