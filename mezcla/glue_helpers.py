@@ -306,7 +306,7 @@ def resolve_path(
                 break
     # Fall back to using find command
     if (not os.path.exists(path)) and heuristic:
-        debug.trace(4, "FYI: resolve_path falling back to find")
+        debug.trace(4, f"FYI: resolve_path falling back to find for {path!r}")
         debug.assertion(" " not in path)
         debug.assertion(base_dir)
         path = run(f"find {base_dir or '.'} -name '{path}'")
