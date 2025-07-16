@@ -770,6 +770,13 @@ class Main(object):
             debug.trace(4, "Just showing (brief) usage and then exiting")
             debug.trace(5, "warning: self.setup won't be invoked")
             parser.print_usage()
+
+            # Show streamlined example (e.g., using first if more than one)
+            if my_re.search(r"^.*(usage|example):\s*\n(.*)", self.description,
+                            flags=my_re.IGNORECASE|my_re.MULTILINE):
+                simple_usage = my_re.group(2)
+                simple_usage = my_re.sub(r"\n\s*\n.*", "", simple_usage)
+                print("example:\n{ex}".format(ex=gh.indent(simple_usage)))
             sys.exit()
 
         # Parse the command line and get result
