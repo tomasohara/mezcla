@@ -801,7 +801,8 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
-    misc_spec += (f"onchange={on_change}" if on_change else "")
+    debug.assertion(not "'" in str(on_change))
+    misc_spec += (f"onchange=\"{on_change}\"" if on_change else "")
     label_misc_spec = ""
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
