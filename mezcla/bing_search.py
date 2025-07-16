@@ -35,7 +35,7 @@ import json
 import sys
 from six.moves.urllib_parse import quote as quote_url       # pylint: disable=import-error
 from six.moves.urllib.request import Request, build_opener  # pylint: disable=import-error
-import tempfile
+## OLD: import tempfile
 
 # Local packages
 from mezcla import tpo_common as tpo
@@ -60,8 +60,13 @@ SEARCH_TYPE = system.getenv_text("SEARCH_TYPE", SEARCH)
 ## TEMP_FILE = system.getenv_text("TEMP_FILE", DEFAULT_TEMP_FILE)
 ## DEFAULT_TEMP_DIR = tempfile.gettempdir()
 ## TEMP_DIR = system.getenv_text("TEMP", DEFAULT_TEMP_DIR)
-TEMP_FILE = gh.TEMP_FILE
-TEMP_DIR = system.TEMP_DIR
+## OLD:
+## TEMP_FILE = gh.TEMP_FILE
+## TEMP_DIR = system.TEMP_DIR
+##
+## TODO3: track down TEMP_DIR not being set to gh.TEMP_BASE during test (subprocess issue?)
+TEMP_FILE = gh.get_temp_file()
+TEMP_DIR = gh.get_temp_dir()
 
 USE_CACHE = system.getenv_bool("USE_CACHE", False)
 
@@ -129,6 +134,9 @@ def bing_search(query, key=None, use_json=None, search_type=None, topn=None, non
         request_opener = build_opener()
         response = request_opener.open(request) 
         response_data = response.read()
+        if isinstance(response_data, bytes):
+            debug.trace(4, "FYI: decoding binary response to text")
+            response_data = response_data.decode("UTF-8", errors='ignore')
         if USE_CACHE:
             system.write_file(cache_file, response_data)
 
@@ -177,13 +185,17 @@ def main():
     if (show_usage):
         print("Usage: %s [--json | --xml] [--image] [--type label] query_word ..." % sys.argv[0])
         print("")
+        print("Example:")
+        print("    {script} ScrappyCito -dog".format(script=gh.basename(__file__)))
+        print("")
         print("Notes:")
         print("- Set BING_KEY to key obtained via Microsoft Azure; see following:")
         print("  https://learn.microsoft.com/en-us/azure/cognitive-services/bing-web-search")
         print("- Types: Web, Image, Video, News, SpellingSuggestion, RelatedSearch")
         print("- For API details, see following:")
         print("  https://docs.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference")
-        print("- The resuslt is XML file with <entry> tags for blurb info")
+        print("- The result is XML file with <entry> tags for blurb info")
+        print("- ** XML support is currently broken.")
         sys.exit()
     debug.assertion(BING_KEY)
 
