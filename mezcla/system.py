@@ -1014,14 +1014,18 @@ def remove_extension(filename: str, extension: Optional[str] = None) -> str:
     return new_filename
 
 
-def get_extension(filename: str) -> str:
+def get_extension(filename: str, keep_period=False) -> str:
     """Return extension in FILENAME"""
     # EX: get_extension("document.pdf") => "pdf"
     # EX: get_extension("it.abc.def") => "def"
+    # EX: get_extension("it.abc.def", keep_period=True) => ".def"
     # EX: get_extension("no-period") => ""
     extension = ""
     if "." in filename:
         extension = filename.split(".")[-1]
+        if keep_period:
+            extension = "." + extension
+    
     debug.trace(5, f"get_extension({filename}) => {extension}")
     return extension
 
