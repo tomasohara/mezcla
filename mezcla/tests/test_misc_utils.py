@@ -92,8 +92,16 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
     def test_extract_string_list(self):
         """Ensure extract_string_list works as expected"""
         debug.trace(4, "test_extract_string_list()")
+
+        # Check typical cases
         assert THE_MODULE.extract_string_list("  a  b,c") == ['a', 'b', 'c']
         assert THE_MODULE.extract_string_list("a\nb\tc") == ['a', 'b', 'c']
+        assert THE_MODULE.extract_string_list("a, b c") == ['a', 'b', 'c']
+
+        # Check special cases
+        assert THE_MODULE.extract_string_list("") == []
+        assert THE_MODULE.extract_string_list(",") == ['', '']
+        assert THE_MODULE.extract_string_list(",", strip_empty=True) == []
 
     def test_is_prime(self):
         """Ensure is_prime works as expected"""
