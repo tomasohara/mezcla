@@ -89,12 +89,19 @@ def read_tabular_data(filename):
     return table
 
 
-def extract_string_list(text):
-    """Extract a list of values from text using whitespace and/or commas as delimiters"""
-    # EX: extract_string_list("1  2,3") => [1, 2, 3]
+def extract_string_list(text, strip_empty=False):
+    """Extract a list of values from text using whitespace and/or commas as delimiters.
+    With STRIP_EMPTY, empty-string items are ignored.
+    """
+    # EX: extract_string_list("1  2,3") => ["1", "2", "3"]
+    # EX: extract_string_list("1,", strip_empty=True) => ["1"]
     # TODO: Add support for quoted values to allow for embedded spaces
-    trimmed_text = re.sub(r"\s+", " ", text.strip())
-    values = trimmed_text.replace(" ", ",").split(",")
+    trimmed_text = my_re.sub(r"\s+", " ", text.strip())
+    ## OLD: values = trimmed_text.replace(" ", ",").split(",")
+    trimmed_text = my_re.sub(r"([^,]) ", r"\1,", trimmed_text)
+    values = my_re.split(", ?", trimmed_text) if trimmed_text else []
+    if strip_empty:
+        values = [v for v in values if v]
     debug.trace_fmtd(5, "extract_string_list({t!r}) => {v!r}", t=text, v=values)
     return values
 
