@@ -172,6 +172,7 @@ def get_temp_dir(delete=None) -> str:
     temp_dir_path = get_temp_file(delete=delete)
     # note: removes non-dir file if exists
     full_mkdir(temp_dir_path, force=True)
+    debug.trace_fmtd(5, "gh.get_temp_dir() => {r!r}", r=temp_dir_path)
     return temp_dir_path
 
 
