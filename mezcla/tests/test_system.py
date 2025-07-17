@@ -634,6 +634,12 @@ class TestSystem(TestWrapper):
         ## TODO: Check if this is a valid test case and if the returned value is correct
         assert THE_MODULE.remove_extension("it.abc.def", "abc.dtf") == "it.abc.def"
 
+    def test_get_extension(self):
+        """Verify test_get_extension over simple filenames"""
+        assert THE_MODULE.get_extension("it.py") == "py"
+        assert THE_MODULE.get_extension("it.py", keep_period=True) == ".py"
+        assert THE_MODULE.get_extension("it") == ""        
+
     def test_file_exists(self):
         """Ensure file_exists works as expected"""
         debug.trace(4, "test_file_exists()")
