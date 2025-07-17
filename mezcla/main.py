@@ -32,8 +32,8 @@
 # - With non-trivial command processing (e.g., positional arguments), it 
 #   might be better to do this in the constructor, as follows:
 #       def __init__(*args, **kwargs) -> None:
-#           super(MyMain, self).__init__(*args, positional_options=["targets"], 
-#                                        **kwargs)
+#           super().__init__(*args, positional_options=["targets"], 
+#                            **kwargs)
 # - Changes to temporary directory/file support should be synchronized with the
 #   unit testing base class (see tests/unittest_wrapper.py.
 # - Overriding the temporary directory can be handy during debugging (via
@@ -828,8 +828,12 @@ class Main(object):
         return
 
     def init_input(self) -> None:
-        """Resolve input stream from either explicit filename or via standard input
-        Note: self.newlines is used to override stream (e.g., so \r not treated as line delim)"""
+        """Resolve input stream from either explicit filename or via standard input.
+        Note: self.newlines is used to override stream (e.g., so \r not treated as line delim).
+        Aside: The manual_input/skip_input logic is a bit convoluted, so an expedient
+        to disable input processing entirely is to override in subclass (e.g., no-op).
+        """
+        ## TODO3: cleanup manual_input/skip_input dependencies
         debug.trace(5, "Main.init_input()")
         self.input_stream = sys.stdin
         if (self.filename and (self.filename != "-")):
@@ -874,6 +878,7 @@ class Main(object):
         self.setup()
 
         # Initiate the main input processing
+        ## TODO3: skip initialize if skip_input (i.e., rework manual_input/skip_input logic)
         self.init_input()
         try:
             # If not automatic input, process the main step of script
