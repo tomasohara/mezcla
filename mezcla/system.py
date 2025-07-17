@@ -415,8 +415,8 @@ def print_stderr(text: str, **kwargs) -> None:
 
 
 def print_exception_info(task: str, show_stack: Optional[bool] = None) -> None:
-    """Output exception information to stderr regarding TASK (e.g., function);
-    Note: Optionally includes stack trace (default when detailed debugging)"""
+    """Output exception information to stderr regarding TASK (e.g., function).
+    Note: If SHOW_STACK, includes stack trace (default when verbose debugging)"""
     # Note: used to simplify exception reporting of border conditions
     # ex: print_exception_info("read_csv")
     if show_stack is None:
