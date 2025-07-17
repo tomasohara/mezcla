@@ -81,7 +81,7 @@ TODO_FUBAR = system.getenv_bool(
 ##
 
 class Script(Main):
-    """Input processing class"""
+    """Script input processing class"""
     # TODO: -or-: """Adhoc script class (e.g., no I/O loop, just run calls)"""
     ## TODO: class-level member variables for arguments (avoids need for class constructor)
     todo_arg: Optional[bool] = False
