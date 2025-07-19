@@ -1,0 +1,24 @@
+<!-- via grok3: document for which document ready takes a while -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Delayed Load Test</title>
+    <script>
+      // Simulate a delay in document readiness
+      //
+      // The DOMContentLoaded event ensures the script runs when the DOM
+      // is ready but before the document reaches the "complete" state
+      // (e.g., after all resources loaded). 
+      //
+      window.addEventListener('DOMContentLoaded', function() {
+          // Keep document in "interactive" state for 15 seconds
+          setTimeout(function() {
+              document.body.innerHTML += '<p>Loaded!</p>';
+          }, 15000);
+      });
+      </script>
+  </head>
+  <body>
+    <p>Loading...</p>
+  </body>
+</html>
