@@ -16,8 +16,8 @@
 # Warning:
 # - The use of run_script as in test_01_data_file is an older style of testing.
 #   It is better to directly invoke a helper class in the script that is independent
-#   of the Script class based on Main. (See an example of this, see python_ast.py
-#   and tests/tests_python_ast.py.)
+#   of the Script class based on Main. (For examples, see template.py,
+#   ../../python_ast.py and ../../tests/test_python_ast.py.)
 # - Moreover, debugging tests with run_script is complicated because a separate
 #   process is involved (e.g., with separate environment variables.)
 # - See discussion of SUB_DEBUG_LEVEL in unittest_wrapper.py for more info.
