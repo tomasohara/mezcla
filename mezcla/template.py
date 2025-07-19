@@ -65,20 +65,26 @@ TODO_FUBAR = system.getenv_bool(
 ##     description="X")
 
 
-## TODO: Use helper class for main logic
-## class Helper:
-##     """TODO: class for doing ..."""
-## 
-##     def __init__(self, ...) -> None:
-##         """Initializer: ..."""
-##         debug.trace(TL.VERBOSE, f"Helper.__init__(): self={self}")
-##         self.TODO = None
-##         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
-## 
-##     def process(self, ...) -> None:
-##         """TODO: ..."""
-##         # TODO: flesh out
-##
+class Helper:
+    """TODO: class for doing ..."""
+
+    def __init__(self, ...) -> None:
+        """Initializer: ..."""
+        debug.trace(TL.VERBOSE, f"Helper.__init__(): self={self}")
+        self.TODO = None
+        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+
+    def process(self, line) -> None:
+        """Handles LINE"""
+        # TODO: flesh out
+        if self.todo_arg and "TODO" in line:
+            print(f"arg1 line ({self.line_num}): {line}")
+        else:
+            debug.trace(3, f"Ignoring line ({self.line_num}): {line}")
+        ## TODO: regex pattern matching
+        ## elif my_re.search(self.text_arg, line):
+        ##     print("arg2 line: %s" % line)
+
 
 class Script(Main):
     """Script input processing class"""
@@ -86,6 +92,7 @@ class Script(Main):
     ## TODO: class-level member variables for arguments (avoids need for class constructor)
     todo_arg: Optional[bool] = False
     ## text_arg = ""
+    helper = None
 
     # TODO: add class constructor if needed for non-standard initialization
     ## WARNING: For Script classes involving complex logic, it is best to use helper classes,
@@ -101,6 +108,7 @@ class Script(Main):
         debug.trace(TL.VERBOSE, f"Script.setup(): self={self}")
         ## TODO: extract argument values
         self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
+        self.helper = Helper()
         ## TODO:
         ## self.text_arg = self.get_parsed_option(TEXT_ARG, self.text_arg)
         ## self.alt_filename = self.get_parsed_argument(ALT_FILENAME)
@@ -111,14 +119,7 @@ class Script(Main):
     def process_line(self, line) -> None:
         """Processes current line from input"""
         debug.trace_fmtd(TL.QUITE_DETAILED, "Script.process_line({l})", l=line)
-        # TODO: flesh out
-        if self.todo_arg and "TODO" in line:
-            print(f"arg1 line ({self.line_num}): {line}")
-        else:
-            debug.trace(3, f"Ignoring line ({self.line_num}): {line}")
-        ## TODO: regex pattern matching
-        ## elif my_re.search(self.text_arg, line):
-        ##     print("arg2 line: %s" % line)
+        self.helper_process(line)
 
     ## TODO: if no input prococessed, customize run_main_step instead
     ## and specify skip_input below. (Use skip_input=False for filename support.)
