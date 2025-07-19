@@ -259,7 +259,8 @@ def non_empty_file(filename: FileDescriptorOrPath) -> bool:
 def resolve_path(
         filename: str,
         base_dir: Optional[str] = None,
-        heuristic: bool = False
+        heuristic: bool = False,
+        absolute: bool = False,
     ) -> str:
     """Resolves path for FILENAME or path, relative to BASE_DIR if not in current directory. 
     Note:
@@ -269,6 +270,7 @@ def resolve_path(
       is useful for resolving resources for tests, which normally run of module dir 
       (e.g., mezcla for mezcla/tests/test_template.py): see test_heuristic_resolve_path.
     - HEURISTIC also uses find.
+    - If ABSOLUTE, then the full path is returned.
     """
     ## TODO4: rename filename to sub_path for clarity
     debug.trace(5, f"in resolve_path({filename!r})")
@@ -311,6 +313,10 @@ def resolve_path(
         debug.assertion(" " not in path)
         debug.assertion(base_dir)
         path = run(f"find {base_dir or '.'} -name '{path}'")
+
+    # Make sure full path if desired
+    if absolute:
+        path = system.absolute_path(path)
             
     debug.trace_fmtd(4, "resolve_path({f}) => {p}", f=filename, p=path)
     return path
