@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Micellaneous HTML utility functions, in particular with support for resolving HTML
-# rendered via JavaScript (via selenium). This was motivated by the desire to extract
+# rendered via JavaScript (using selenium). This was motivated by the desire to extract
 # images from pubchem.ncbi.nlm.nih.gov web pages for drugs (e.g., Ibuprofen, as
 # illustrated below).
 #
@@ -10,7 +10,7 @@
 # Example usage:
 #
 # TODO3: see what html_file should be set to
-# $ PATH="$PATH:/usr/local/programs/selenium" DEBUG_LEVEL=6 MOZ_HEADLESS=1 $PYTHON html_utils.py "$html_file" > _html-utils-pubchem-ibuprofen.log7 2>&
+# $ PATH="$PATH:/usr/local/programs/selenium" DEBUG_LEVEL=6 MOZ_HEADLESS=1 $PYTHON html_utils.py "$html_file" > _html-utils-pubchem-ibuprofen.log 2>&1
 # $ cd $TMPDIR
 # $ wc *ibuprofen*
 #     13   65337  954268 post-https%3A%2F%2Fpubchem.ncbi.nlm.nih.gov%2Fcompound%2FIbuprofen
@@ -57,7 +57,6 @@
 
 # Standard packages
 import html
-import re
 import sys
 import time
 import traceback
@@ -86,26 +85,35 @@ from mezcla.system import write_temp_file
 
 # Constants
 DEFAULT_STATUS_CODE = 0
-MAX_DOWNLOAD_TIME = system.getenv_integer("MAX_DOWNLOAD_TIME", 60,
-                                          "Time in seconds for rendered-HTML download as with get_inner_html")
-MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("MID_DOWNLOAD_SLEEP_SECONDS", 15,
-                                                   "Mid-stream delay if document not ready")
-POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("POST_DOWNLOAD_SLEEP_SECONDS", 1,
-                                                    "Courtesy delay after URL access--prior to download")
-SKIP_BROWSER_CACHE = system.getenv_boolean("SKIP_BROWSER_CACHE", False,
-                                           "Don't use cached webdriver browsers")
+MAX_DOWNLOAD_TIME = system.getenv_integer(
+    "MAX_DOWNLOAD_TIME", 60,
+    description="Time in seconds for rendered-HTML download as with get_inner_html")
+MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer(
+    "MID_DOWNLOAD_SLEEP_SECONDS", 15,
+    description="Mid-stream delay if document not ready")
+POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer(
+    "POST_DOWNLOAD_SLEEP_SECONDS", 1,
+    description="Courtesy delay after URL access--prior to download")
+SKIP_BROWSER_CACHE = system.getenv_boolean(
+    "SKIP_BROWSER_CACHE", False,
+    description="Don't use cached webdriver browsers")
 USE_BROWSER_CACHE = not SKIP_BROWSER_CACHE
-DOWNLOAD_VIA_URLLIB = system.getenv_bool("DOWNLOAD_VIA_URLLIB", False,
-                                         "Use old-style download via urllib instead of requests")
+DOWNLOAD_VIA_URLLIB = system.getenv_bool(
+    "DOWNLOAD_VIA_URLLIB", False,
+    description="Use old-style download via urllib instead of requests")
 DOWNLOAD_VIA_REQUESTS = (not DOWNLOAD_VIA_URLLIB)
-DOWNLOAD_TIMEOUT = system.getenv_float("DOWNLOAD_TIMEOUT", 5,
-                                       "Timeout in seconds for request-based as with download_web_document")
-HEADLESS_WEBDRIVER = system.getenv_bool("HEADLESS_WEBDRIVER", True,
-                                        "Whether Selenium webdriver is hidden")
-STABLE_DOWNLOAD_CHECK = system.getenv_bool("STABLE_DOWNLOAD_CHECK", False,
-                                           "Wait until download size stablizes--for dynamic content")
-EXCLUDE_IMPORTS = system.getenv_bool("EXCLUDE_IMPORTS", False,
-                                     "Sets --follow-imports=silent; no import files are checked")
+DOWNLOAD_TIMEOUT = system.getenv_float(
+    "DOWNLOAD_TIMEOUT", 5,
+    description="Timeout in seconds for request-based as with download_web_document")
+HEADLESS_WEBDRIVER = system.getenv_bool(
+    "HEADLESS_WEBDRIVER", True,
+    description="Whether Selenium webdriver is hidden")
+STABLE_DOWNLOAD_CHECK = system.getenv_bool(
+    "STABLE_DOWNLOAD_CHECK", False,
+    description="Wait until download size stablizes--for dynamic content")
+EXCLUDE_IMPORTS = system.getenv_bool(
+    "EXCLUDE_IMPORTS", False,
+    description="Sets --follow-imports=silent; no import files are checked")
 TARGET_BOOTSTRAP =  system.getenv_bool(
     "TARGET_BOOTSTRAP", False,
     description="Format tooltips, etc. for use with bootstrap")
@@ -121,8 +129,8 @@ OptBoolStr = Union[bool, str, None]
 
 # Globals
 # note: for convenience in Mako template code
-user_parameters:Dict[str, str] = {}
-issued_param_dict_warning:bool = False
+user_parameters : Dict[str, str] = {}
+issued_param_dict_warning : bool = False
 
 # Placeholders for dynamically loaded modules
 BeautifulSoup : Optional[Callable] = None
@@ -138,6 +146,7 @@ def get_browser(url : str):
     - This is for use in web automation (e.g., via selenium).
     - A large log file might be produced (e.g., geckodriver.log).
     """
+    debug.trace(6, f"get_browser({url}")
     # pylint: disable=import-error, import-outside-toplevel
     from selenium import webdriver
     from selenium.webdriver.remote.webdriver import WebDriver
@@ -177,7 +186,8 @@ def get_browser(url : str):
             time.sleep(POST_DOWNLOAD_SLEEP_SECONDS)
             
     # Make sure the bare minimum is included (i.e., "<body></body>"
-    debug.assertion(len(browser.execute_script("return document.body.outerHTML")) > 13)
+    if browser:
+        debug.assertion(len(browser.execute_script("return document.body.outerHTML")) > 13)
     debug.trace_fmt(5, "get_browser({u}) => {b}", u=url, b=browser)
     return browser
 
@@ -305,13 +315,15 @@ def set_param_dict(param_dict : Dict):
 
 def get_url_param(name : str, default_value : Optional[str] = None, param_dict : Optional[Dict] = None, escaped : bool = False):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
-    Note: It can be ESCAPED for use in HTML.
+    Note: It can be ESCAPED for use in HTML. Underscores in NAME are converted to dashes if not in dict.
     Different from get_url_parameter_value in possibly returning list.
     """
     # TODO3: default_value => default
     if default_value is None:
         default_value = ""
     param_dict = (get_param_dict(param_dict) or {})
+    if "_" in name and (name not in param_dict):
+        name = name.replace("_", "-")
     value = param_dict.get(name, default_value)
     value = system.to_unicode(value)
     if escaped:
@@ -356,10 +368,13 @@ get_url_parameter_checkbox_spec = get_url_param_checkbox_spec
 
 def get_url_parameter_value(param, default_value : Any = None, param_dict : Optional[Dict] = None):
     """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)
-    Note: different from get_url_parameter in just returning single value
+    Note: Underscores in PARAM are converted to dashes if not in dict.
+    Also, different from get_url_parameter in just returning single value.    
     """
     # TODO3?: rename as get_last_url_parameter_value (to avoid confusion with get_url_parameter)
     param_dict = (get_param_dict(param_dict) or {})
+    if "_" in param and (param not in param_dict):
+        param = param.replace("_", "-")
     result = param_dict.get(param, default_value)
     if isinstance(result, list):
         result = result[-1]
@@ -440,7 +455,7 @@ def expand_misc_param(misc_dict : Dict, param_name : str, param_dict : Optional[
     misc_params = get_url_param(param_name, "", param_dict=param_dict)
     if (misc_params and ("=" in misc_params)):
         new_misc_dict = new_misc_dict.copy()
-        for param_spec in re.split(", *", misc_params):
+        for param_spec in my_re.split(", *", misc_params):
             try:
                 param_key, param_value = param_spec.split("=")
                 new_misc_dict[param_key] = param_value
@@ -633,7 +648,7 @@ def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, i
     - Simpler version of old_download_web_document, using an optional META_HASH for recording headers
     - Works around Error 403's presumably due to urllib's user agent
     - If IGNORE, no exceptions reports are printed."""
-    # EX: re.search("Scrappy.*Cito", retrieve_web_document("www.tomasohara.trade"))
+    # EX: my_re.search("Scrappy.*Cito", retrieve_web_document("www.tomasohara.trade"))
     # Note: See https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve.
     debug.trace_fmtd(5, "retrieve_web_document({u})", u=url)
     ## TEST: result : Optional[AnyStr] = None
@@ -676,7 +691,7 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
     soup = BeautifulSoup(html_text, 'html.parser') if BeautifulSoup else None
     web_site_url = ""
     if url:
-        web_site_url = re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
+        web_site_url = my_re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
         debug.trace_fmtd(6, "wsu1={wsu}", wsu=web_site_url)
         if not web_site_url.endswith("/"):
             web_site_url += "/"
@@ -689,7 +704,7 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
         debug.trace_fmtd(6, "bu1={bu}", bu=base_url)
         if url and not base_url:
             # Remove parts of the URLafter the final slash
-            base_url = re.sub(r"(^.*/[^\/]+/)[^\/]+$", r"\1", url)
+            base_url = my_re.sub(r"(^.*/[^\/]+/)[^\/]+$", r"\1", url)
             debug.trace_fmtd(6, "bu2={bu}", bu=base_url)
         if web_site_url and not base_url:
             base_url = web_site_url
@@ -801,7 +816,7 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
-    debug.assertion(not "'" in str(on_change))
+    debug.assertion("'" not in str(on_change))
     misc_spec += (f"onchange=\"{on_change}\"" if on_change else "")
     label_misc_spec = ""
     tooltip_start_spec = tooltip_end_spec = ""
@@ -904,7 +919,7 @@ def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] 
     # Parse HTML, extract base URL if given and get website from URL.
     init_BeautifulSoup()
     soup = BeautifulSoup(document_data, 'html.parser') if BeautifulSoup else None
-    web_site_url = re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
+    web_site_url = my_re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
     debug.trace_fmtd(6, "wsu1={wsu}", wsu=web_site_url)
     if not web_site_url.endswith("/"):
         web_site_url += "/"
