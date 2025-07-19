@@ -43,26 +43,31 @@ TEST_SELENIUM = system.getenv_bool("TEST_SELENIUM", False,
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    scrappycito_url = "http://www.scrappycito.com"
-    # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
-    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
+    ## OLD: scrappycito_url = "http://www.scrappycito.com"
+    tomasohara_trade_url = "http://www.tomasohara.trade"
+    scrappycito_url = f"{tomasohara_trade_url}:9330"
+    ready_test_path = gh.resolve_path("document_ready_test.html",
+                                      heuristic=True, absolute=True)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_browser(self):
-        """Ensure get_browser() works as expected"""
+        """Verify get_browser() returns object with HTML"""
         debug.trace(4, "test_get_browser()")
-        assert False, "TODO: code test"
+        browser = THE_MODULE.get_browser(self.tomasohara_trade_url)
+        self.do_assert(my_re.search(r"<title>Tomás.*O.Hara.*Scrappy.*Cito</title>",
+                                    browser.page_source))
 
     def test_get_url_parameter_value(self):
         """Ensure get_url_parameter_value works as expected"""
         debug.trace(4, "test_get_url_parameter_value()")
         save_user_parameters = THE_MODULE.user_parameters
         THE_MODULE.user_parameters = {}
-        assert THE_MODULE.get_url_parameter_value("fubar", None) is None
-        assert THE_MODULE.get_url_parameter_value("fubar", None, {"fubar": "fu"}) == "fu"
-        THE_MODULE.user_parameters = {"fubar": "bar"}
-        assert THE_MODULE.get_url_parameter_value("fubar", None) == "bar"
-        assert THE_MODULE.get_url_parameter_value("fubar", None, {"fubar": "fu"}) == "fu"
+        assert THE_MODULE.get_url_parameter_value("fu-bar", None) is None
+        assert THE_MODULE.get_url_parameter_value("fu-bar", None, {"fu-bar": "fu"}) == "fu"
+        THE_MODULE.user_parameters = {"fu-bar": "bar"}
+        assert THE_MODULE.get_url_parameter_value("fu-bar", None) == "bar"
+        assert THE_MODULE.get_url_parameter_value("fu_bar", None) == "bar"
+        assert THE_MODULE.get_url_parameter_value("fu-bar", None, {"fu-bar": "fu"}) == "fu"
         THE_MODULE.user_parameters = save_user_parameters
         return
 
@@ -129,7 +134,13 @@ class TestHtmlUtils(TestWrapper):
     def test_document_ready(self):
         """Ensure document_ready() works as expected"""
         debug.trace(4, "test_document_ready()")
-        assert False, "TODO: code test"
+        google_search_ready = THE_MODULE.document_ready("https://www.google.com")
+        self.do_assert(google_search_ready)
+        ## TEST:
+        ## twitter_x_feed_ready = THE_MODULE.document_ready("https://x.com/X")
+        ## self.do_assert(not twitter_x_feed_ready)
+        test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_path)
+        self.do_assert(not test_document_ready)
 
     def test_escape_html_value(self):
         """Ensure escape_html_value() works as expected"""
@@ -187,6 +198,7 @@ class TestHtmlUtils(TestWrapper):
             'default-body': "Joe's hat"
         }
         assert THE_MODULE.get_url_param('redirect-status') == '302'
+        assert THE_MODULE.get_url_param('redirect_status') == '302'
         assert THE_MODULE.get_url_param('bad-request-status', default_value='400') == '400'
         assert THE_MODULE.get_url_param('default-body', escaped=True) == 'Joe&#x27;s hat'
 
@@ -418,9 +430,12 @@ class TestHtmlUtils(TestWrapper):
 
     @pytest.mark.xfail
     def test_document_ready_alt(self):
+        """Verify document_ready for simple sites"""
+        ## TODO2: merge with test_document_ready
         URL_VALID = "https://duckduckgo.com"
         assert (THE_MODULE.document_ready(URL_VALID))
-        assert not THE_MODULE.document_ready(self.scrappycito_url)
+        scrappycito_search_result = f"{self.scrappycito_url}/run_search?query=modern+art"
+        assert not THE_MODULE.document_ready(scrappycito_search_result)
         ## Exception raised:
         # E       selenium.common.exceptions.JavascriptException: Message: TypeError: document.body is null
         # E       Stacktrace:
