@@ -53,7 +53,7 @@ except:
     nltk = np = pd = sklearn = None
     sys.stderr.write(f"Exception during installed imports: {sys.exc_info()}")
 
-# Local modules
+# Local local modules
 import mezcla
 from mezcla import debug
 from mezcla import html_utils
@@ -61,11 +61,16 @@ from mezcla import main
 from mezcla.main import Main
 from mezcla import system
 from mezcla.my_regex import my_re
-from mezcla import data_utils as du
+## OLD: from mezcla import data_utils as du
 from mezcla import glue_helpers as gh
 from mezcla import html_utils as html
 from mezcla import tpo_common as tpo
-from mezcla.unittest_wrapper import TestWrapper
+try:
+    from mezcla import data_utils as du
+    from mezcla.unittest_wrapper import TestWrapper
+except:
+    du = TestWrapper = None
+    system.print_exception_info("loading local modules with dependencies")
 
 # Constants
 TL = debug.TL
@@ -86,8 +91,11 @@ h = {'a': 1, 'b': 2, 'c': 3}
 l = [1, 2, 3]
 t = "some text"
 text = t
-english_stopwords = nltk.corpus.stopwords.words('english')
-spanish_stopwords = nltk.corpus.stopwords.words('spanish')
+try:
+    english_stopwords = nltk.corpus.stopwords.words('english')
+    spanish_stopwords = nltk.corpus.stopwords.words('spanish')
+except:
+    system.print_exception_info("loading resources like NLTK")
   
 #-------------------------------------------------------------------------------
 # Helper functions
