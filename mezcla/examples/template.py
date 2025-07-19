@@ -44,6 +44,25 @@ TL = debug.TL
 
 #-------------------------------------------------------------------------------
 
+class Helper:
+    """TODO: class for doing ..."""
+
+    def __init__(self, _arg=None) -> None:
+        """Initializer: TODO: ..."""
+        debug.trace(TL.VERBOSE, f"Helper.__init__({_arg}): self={self}")
+        self.TODO = None
+        debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
+
+    def process(self, _arg) -> bool:
+        """TODO: ..."""
+        # TODO: flesh out
+        ## TODO3: system.print_error("Error: Implement me!")
+        ## NOTE: print used for sake of unit test (see examples/tests/test_template.py)
+        print("Error: Implement me!")
+        return False
+
+#-------------------------------------------------------------------------------
+
 def main():
     """Entry point"""
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
@@ -59,11 +78,15 @@ def main():
     debug.assertion(main_app.parsed_args)
     ## TODO_opt1 = main_app.get_parsed_option(TODO_BOOL_OPT)
 
+    helper = Helper()
+    helper.process("TODO: some argument")
+    
     ## TODO:
-    system.print_error("Error: Implement me!")
     ## ALT TODO:
     ## for line in main_app.read_entire_input().splitlines():
-    ##     print(TODO_fn(line))
+    ##     helper.process(TODO_fn(line))
+    ## -or-
+    ## helper.process( main_app.read_entire_input())
     return
 
 #-------------------------------------------------------------------------------
