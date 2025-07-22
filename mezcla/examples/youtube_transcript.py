@@ -85,6 +85,7 @@ def main():
     print("")
     try:
         transcript = ytt_api.YouTubeTranscriptApi.get_transcript(video_id)
+        debug.trace_expr(5, transcript, max_len=256)
         print(YouTubeLikeFormatter().format_transcript(transcript))
     except:
         system.print_exception_info("transcript access")
