@@ -68,8 +68,8 @@ TODO_FUBAR = system.getenv_bool(
 class Helper:
     """TODO: class for doing ..."""
 
-    def __init__(self, ...) -> None:
-        """Initializer: ..."""
+    def __init__(self, _arg) -> None:
+        """Initializer: _TODO_arg desc"""
         debug.trace(TL.VERBOSE, f"Helper.__init__(): self={self}")
         self.TODO = None
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
