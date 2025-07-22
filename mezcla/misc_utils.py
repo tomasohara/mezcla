@@ -618,7 +618,9 @@ def apply_numeric_suffixes_stdin(just_once=False):
     Note: supports Bash alias (see shell-scripts/tomohara-aliases.bash)
     """
     text = dummy_app.read_entire_input()
-    print(apply_numeric_suffixes(text, just_once=just_once))
+    # Note: doesn't add newline as normally stdin ends with one, and users
+    # might want stdin preserved if not (e.g., for use with `echo -n`).
+    print(apply_numeric_suffixes(text, just_once=just_once), end="")
 
 #-------------------------------------------------------------------------------
 # Utility class for setting contexts
