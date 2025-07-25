@@ -642,6 +642,19 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(as_binary, bool)
         assert result is None  
 
+    @pytest.mark.xfail
+    def test_format_input_field(self):
+        """Verify format_input_field"""
+        field_spec = THE_MODULE.format_input_field("name", label="Name:")
+        ## TODO3: rework  via regex so that spacing chnages don't break test
+        assert field_spec == '<label >Name:&nbsp;<input id="name-id" value="" name="name"    ></label>'
+        
+    @pytest.mark.xfail
+    def test_format_url_param(self):
+        """Verify format_url_param"""
+        THE_MODULE.set_param_dict({"f": "'my dog's fleas'"})
+        assert THE_MODULE.format_url_param("f") == '&#x27;my dog&#x27;s fleas&#x27;'
+        
     ## TODO (test for type hint failures):
     ## @pytest.mark.xfail
     ## def test_download_web_document_type_hints(self):
