@@ -125,7 +125,7 @@ class TestIt(TestWrapper):
         """Test for something_else: TODO..."""
         debug.trace(4, f"TestIt.test_02_something_else(); self={self}")
         self.do_assert(False, "TODO: implement")
-        ## ex: self.do_assert(THE_MODULE.TODO_function() == TODO_value)
+        self.do_assert(THE_MODULE.Helper().process("TODO")) == "TODO")
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
