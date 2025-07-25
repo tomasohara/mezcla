@@ -318,7 +318,7 @@ def get_url_param(name : str, default_value : Optional[str] = None, param_dict :
     Note: It can be ESCAPED for use in HTML. Underscores in NAME are converted to dashes if not in dict.
     Different from get_url_parameter_value in possibly returning list.
     """
-    # TODO3: default_value => default
+    # TODO3: default_value => default; rename as get_url_param_raw
     if default_value is None:
         default_value = ""
     param_dict = (get_param_dict(param_dict) or {})
@@ -784,13 +784,15 @@ def format_url_param(name : str, default : Optional[str] = None):
 # EX: format_url_param("r", "R") => "R"
 
 
-def format_input_field(param_name : str, label: Optional[str] = None, skip_capitalize=None,
-                       default_value: Optional[str] = None, max_len : Optional[int] = None,
-                       size : Optional[int] = None, disabled : Optional[int] = None,
-                       style: Optional[str] = None, misc_attr: Optional[str] = None,
-                       tooltip: Optional[str] = None, text_area: Optional[str] = None,
-                       num_rows : Optional[int] = None, on_change: Optional[str] = None):
-    """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, DISABLED, CSS STYLE, MISC_ATTR (catch all), and NUM_ROWS.    
+def format_input_field(
+        param_name : str, label: Optional[str] = None, skip_capitalize=None,
+        default_value: Optional[str] = None, max_len : Optional[int] = None,
+        size : Optional[int] = None, disabled : Optional[int] = None,
+        style: Optional[str] = None, misc_attr: Optional[str] = None,
+        tooltip: Optional[str] = None, text_area: Optional[str] = None,
+        num_rows : Optional[int] = None, on_change: Optional[str] = None,
+        field_type: Optional[str] = None):
+    """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, DISABLED, CSS STYLE, MISC_ATTR (catch all), NUM_ROWS, and FIELD_TYPE
     Note:
     - param_name + "-id" is used for the field ID.
     - SIZE should be specified if not same as MAX_LEN.
@@ -801,7 +803,9 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
     # TODO3: max_len => maxlength
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
     # For tooltip support, see https://stackoverflow.com/questions/65854934/is-a-css-only-inline-tooltip-with-html-content-inside-eg-images-possible.
-    debug.trace_expr(7, param_name, label, default_value, max_len, disabled, prefix="in format_input_field: ")
+    debug.trace_expr(7, param_name, label, skip_capitalize, default_value, max_len, size,
+                     disabled, style, misc_attr, tooltip, text_area, num_rows, on_change,
+                     field_type, prefix="in format_input_field: ")
     if (label is None):
         label = param_name.replace("-", " ")
         if not skip_capitalize:
@@ -812,6 +816,7 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
         num_rows = 1
     if (size is None):
         size = max_len
+    type_spec = (f"type='{field_type}'" if field_type else "")
     value_spec = (get_url_param(param_name) or default_value)
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
@@ -830,6 +835,7 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
             tooltip_end_spec = "</span>"
     result = f'<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;'
     if text_area:
+        debug.assertion(not type_spec)
         max_len_spec = (f'maxlength="{max_len}"' if max_len else "")
         value_spec = format_url_param(param_name)
         result += f'<textarea id="{param_name}-id" name="{param_name}" rows={num_rows} {style_spec} {max_len_spec} {disabled_spec} {misc_spec}>{value_spec}</textarea>'
@@ -839,10 +845,10 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
             len_spec += f' maxlength="{max_len}"'
         if size:
             len_spec += f' size="{size}"'
-        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {len_spec} {disabled_spec} {misc_spec}>'
+        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {len_spec} {disabled_spec} {misc_spec} {type_spec}>'
     result += "</label>"
         
-    debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
+    debug.trace(6, f"format_input_field({param_name}, ...) => {result!r}")
     return result
 #
 # EX: format_input_field("num-id", label="Num", max_len=3) => '<label>Num&nbsp;<input id="num-id-id" value="" name="num-id"  maxlength="3" size="3"  ></label>'
