@@ -13,7 +13,7 @@ import ast
 from functools import wraps
 import sys
 
-# Installed module
+# Installed modules
 try:
     from pydantic import BaseModel
     import astor

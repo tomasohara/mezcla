@@ -246,7 +246,7 @@ import os
 import json
 import ast
 
-# Installed module
+# Installed modules
 import libcst as cst
 ## TEMP:
 import libcst.tool as cst_tool

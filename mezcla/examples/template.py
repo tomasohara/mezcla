@@ -15,7 +15,7 @@ Sample usage:
 # Standard modules
 ## TODO: import json
 
-# Intalled module
+# Installed modules
 # TODO: import numpy as np
 
 # Local modules

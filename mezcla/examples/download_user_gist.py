@@ -22,7 +22,7 @@ Download user-specific gists from Github
 # Standard modules
 import os
 
-# Intalled module
+# Installed modules
 import requests
 
 # Local modules

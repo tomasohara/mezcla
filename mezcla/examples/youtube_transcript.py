@@ -18,7 +18,7 @@ Sample usages:
 # Standard modules
 ## TODO: import json
 
-# Intalled module
+# Installed modules
 import youtube_transcript_api as ytt_api
 from youtube_transcript_api import formatters
 
