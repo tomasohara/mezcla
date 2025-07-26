@@ -645,9 +645,20 @@ class TestHtmlUtils(TestWrapper):
     @pytest.mark.xfail
     def test_format_input_field(self):
         """Verify format_input_field"""
-        field_spec = THE_MODULE.format_input_field("name", label="Name:")
-        ## TODO3: rework  via regex so that spacing chnages don't break test
-        assert field_spec == '<label >Name:&nbsp;<input id="name-id" value="" name="name"    ></label>'
+        ## HACK: ensures that single quotes used in tested result
+        #
+        field_spec = THE_MODULE.format_input_field("name", label="Name:").replace('"', "'")
+        assert my_re.search(r"<label\s*>Name:&nbsp;<input id='name-id'\s*name='name'\s*></label>",
+                            field_spec)
+        #
+        field_spec = THE_MODULE.format_input_field("name", label="Name:", default_value="Joe").replace('"', "'")
+        assert my_re.search(r"<label\s*>Name:&nbsp;<input id='name-id'\s*value='Joe' name='name'\s*></label>",
+                            field_spec)
+                            
+        #
+        field_spec = THE_MODULE.format_input_field("age", label="Age:", field_type="number", default_value="19").replace('"', "'")
+        assert my_re.search(r"<label\s*>Age:&nbsp;<input id='age-id'\s*value='19'\s*name='age'\s*type='number'\s*></label>",
+                            field_spec)
         
     @pytest.mark.xfail
     def test_format_url_param(self):
