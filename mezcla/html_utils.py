@@ -731,21 +731,24 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
     return links
 
 
-def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None):
-    """Returns HTML specification for input checkbox, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, and OUTER_SPAN_CLASS.
+def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None, concat_label: Optional[str] = None, skip_hidden: Optional[str] = None):
+    """Returns HTML specification for input checkbox with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, OUTER_SPAN_CLASS, CONCAT_LABEL, and SKIP_HIDDEN.
     Note:
     - param_name + "-id" is used for the field ID.
     - The TOOLTIP requires CSS support (e.g., tooltip-control class).
     - See format_input_field for OUTER_SPAN_CLASS usage.
-    Warning: includes separate hidden field for explicit off state.
+    - With CONCAT_LABEL, no space is added after the label.
+    Warning: includes separate hidden field for explicit off state unless SKIP_HIDDEN.
     """
-    ## Note: Checkbox valuee are only submitted if checked, so a hidden field is used to provide explicit off.
+    ## Note: Checkbox values are only submitted if checked, so a hidden field is used to provide explicit off.
     ## This requires use of fix_url_parameters to give preference to final value specified (see results.mako).
     ## See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox for hidden field tip.
     ## Also see https://stackoverflow.com/questions/155291/can-html-checkboxes-be-set-to-readonly
-    ## EX: format_checkbox("disable-touch") => '<label>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" ></label>&nbsp;"'
-    ## EX: format_checkbox("disable-touch", disabled=True) => '<label>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>&nbsp;"'
-    debug.trace_expr(7, param_name, label, default_value, disabled, prefix="in format_checkbox: ")
+    ## EX: format_checkbox("disable-touch") => "<input type='hidden' name='disable-touch' value='off'><label >Disable touch?<input type='checkbox' id='disable-touch-id' name='disable-touch'   ></label>"
+    ## TODO3: add on_cange as with format_input_field
+    debug.trace_expr(7, param_name, label, skip_capitalize, default_value, disabled, style,
+                     misc_attr, tooltip, outer_span_class, concat_label, skip_hidden,
+                     prefix="in format_checkbox: ")
     checkbox_spec = get_url_param_checkbox_spec(param_name, default_value)
     disabled_spec = ("disabled" if disabled else "")
     status_spec = f"{checkbox_spec} {disabled_spec}".strip()
@@ -760,7 +763,8 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     result = ""
     if outer_span_class:
         result += f"<span class='{outer_span_class}'>"
-    result += f"<input type='hidden' name='{param_name}' value='off'>"
+    if not skip_hidden:
+        result += f"<input type='hidden' name='{param_name}' value='off'>"
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
         if TARGET_BOOTSTRAP:
@@ -770,11 +774,16 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
         else:
             tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
             tooltip_end_spec = "</span>"
-    result += f"<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
+    result += f"<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}"
+    if not concat_label:
+        result += '&nbsp;'
+    result += f"<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
     if outer_span_class:
         result += "</span>"
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
+#
+# EX: format_checkbox("disable-touch", skip_hidden=True, disabled=True) => '<label>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>"'
 
 
 def format_url_param(name : str, default : Optional[str] = None):
@@ -799,24 +808,27 @@ def format_input_field(
         style: Optional[str] = None, misc_attr: Optional[str] = None,
         tooltip: Optional[str] = None, text_area: Optional[str] = None,
         num_rows : Optional[int] = None, on_change: Optional[str] = None,
-        field_type: Optional[str] = None, outer_span_class: Optional[str] = None):
-    """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, MAX_VALUE, DISABLED, CSS STYLE, MISC_ATTR (catch all), NUM_ROWS, FIELD_TYPE, and OUTER_SPAN_CLASS.
+        field_type: Optional[str] = None, concat_label: Optional[str] = None,
+        outer_span_class: Optional[str] = None):
+    """Returns HTML specification for input field with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, MAX_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, NUM_ROWS, ON_CHANGE, FIELD_TYPE, CONCAT_LABEL, and OUTER_SPAN_CLASS.
     Note:
     - param_name + "-id" is used for the field ID.
     - SIZE should be specified if not same as MAX_LEN.
     - MAX_VALUE is for number fields.
     - ON_CHANGE specifies JavaScript to execute when values changes.
     - See format_checkbox for TOOLTIP notes.
-    - With OUTER_SPAN_CLASS the input field is wrapped in <span> with given class for styling (e.g.,
-      "display: inline-block; white-space: nowrap;" to keep field and label together).
+    - With CONCAT_LABEL, no space is added after the label.
+    - With OUTER_SPAN_CLASS the input field is wrapped in <span> with given class for styling
+      (e.g., "display: inline-block; white-space: nowrap;" to keep field and label together).
     """
+    # EX: format_input_field("quest") => '<label >Quest&nbsp;<input id="quest-id"  name="quest"     ></label>'
     # TODO2: doscument tooltip usage & add option for css classes involved (better if done via class-based interface).
     # TODO3: max_len => maxlength; make sure single quote used for attribute consistently (likewise elsewhere)
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
     # For tooltip support, see https://stackoverflow.com/questions/65854934/is-a-css-only-inline-tooltip-with-html-content-inside-eg-images-possible.
     debug.trace_expr(7, param_name, label, skip_capitalize, default_value, max_len, size, max_value,
                      disabled, style, misc_attr, tooltip, text_area, num_rows, on_change,
-                     field_type, outer_span_class, prefix="in format_input_field: ")
+                     field_type, concat_label, outer_span_class, prefix="in format_input_field: ")
     if (label is None):
         label = param_name.replace("-", " ")
         if not skip_capitalize:
@@ -848,7 +860,9 @@ def format_input_field(
     result = ""
     if outer_span_class:
         result += f"<span class='{outer_span_class}'>"
-    result += f'<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;'
+    result += f'<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}'
+    if not concat_label:
+        result += '&nbsp;'
     if text_area:
         debug.assertion(not type_spec)
         max_len_spec = (f'maxlength="{max_len}"' if max_len else "")
@@ -871,7 +885,7 @@ def format_input_field(
     debug.trace(6, f"format_input_field({param_name}, ...) => {result!r}")
     return result
 #
-# EX: format_input_field("num-id", label="Num", max_value=101, field_type="number") => '<label>Num&nbsp;<input id="num-id-id" value="" name="num-id"  max="101" size="3"  ></label>'
+# EX: format_input_field("num-id", label="Num", max_value=101, field_type="number") => '<label>Num<input id="num-id-id" value="" name="num-id"  max="101" size="3"  ></label>'
 
 #-------------------------------------------------------------------------------
 # TEMP: Code previously in other modules
