@@ -11,3 +11,4 @@ An optional priority is indicated by [Pn]
 - [P3] Make sure tests run in optimized code (i.e., __debug__=False) and likewise with DEBUG_LEVEL lower than default (2).
 - [P3] Check for tests not making assertions, as in old version of test_safe_int
        "THE_MODULE.safe_int(2.0) == 2" => "assert THE_MODULE.safe_int(2.0) == 2"
+- [P2] Make pass to cut down on xfail usage (e.g., remove if passed for past few months unless special case)!
