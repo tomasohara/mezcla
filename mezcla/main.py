@@ -772,7 +772,9 @@ class Main(object):
             parser.print_usage()
 
             # Show streamlined example (e.g., using first if more than one)
-            if my_re.search(r"^.*(usage|example):\s*\n(.*)", self.description,
+            # exs: "Sample usages:\n   echo $'stupid pet tricks.*"
+            # and: "Typical example:\n   some_script.py - <<<"Hey, Joe..."
+            if my_re.search(r"^.*(usage|example)s?:\s*\n(.*)", self.description,
                             flags=my_re.IGNORECASE|my_re.MULTILINE):
                 simple_usage = my_re.group(2)
                 simple_usage = my_re.sub(r"\n\s*\n.*", "", simple_usage)
