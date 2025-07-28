@@ -188,7 +188,7 @@ def main():
             IO_error = True
             debug.trace(4, "Exception printing line %d: %s" % (line_num, str(sys.exc_info())))
             break
-    num_output_lines = line_num - int(output_header)
+    num_output_lines = line_num - system.to_int(output_header)
     ## OLD: debug.trace(4, "%s input and %d output lines" % (num_input_lines, num_output_lines))
     debug.trace_expr(4, num_input_lines, last_line_num, num_output_lines, IO_error)
     debug.assertion((last_line_num == num_output_lines) or IO_error)
