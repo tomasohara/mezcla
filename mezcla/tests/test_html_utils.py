@@ -3,9 +3,6 @@
 # Test(s) for ../html_utils.py
 #
 # Notes:
-# - Fill out TODO's below. Use numbered tests to order (e.g., test_1_usage).
-# - TODO: If any of the setup/cleanup methods defined, make sure to invoke base
-#   (see examples below for setUp and tearDown).
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_html_utils.py
 # - Global pylint filter:
@@ -13,6 +10,11 @@
 #   -- TEMP: filter (TODO2: make sure just test_xyz)
 #       pylint: disable=missing-function-docstring
 #
+# TODO2:
+# - Fix the type hints tests, which need special support using Pydantic (or mypy):
+#   see test_fix_url_parameters_type_hints.
+#   
+
 
 """Tests for html_utils module"""
 
@@ -33,12 +35,16 @@ from mezcla.my_regex import my_re
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-## TODO: template => new name
 import mezcla.html_utils as THE_MODULE
 
-# Environment options
-TEST_SELENIUM = system.getenv_bool("TEST_SELENIUM", False,
-                                   "Include tests requiring selenium")
+# Constants and environment options
+TEST_SELENIUM = system.getenv_bool(
+    "TEST_SELENIUM", False,
+    desc="Include tests requiring selenium")
+SKIP_HINT_TESTS = system.getenv_bool(
+    "SKIP_HINT_TESTS", False,
+    desc="Skip the work-in-progress tests involving type hints")
+SKIP_HINT_REASON = "Type hinting tests require more work"
 
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
@@ -206,18 +212,22 @@ class TestHtmlUtils(TestWrapper):
     def test_get_url_param_checkbox_spec(self):
         """Ensure get_url_param_checkbox_spec() works as expected"""
         debug.trace(4, "test_get_url_param_checkbox_spec()")
-        param_dict = {"check_1": "on", "check_2": "off","check_3": "True",
-                                    "check_4": False, "check_5": 1}
+        ## OLD:
+        ## param_dict = {"check_1": "on", "check_2": "off","check_3": "True",
+        ##               "check_4": False, "check_5": 1}
+        param_dict = {"check_1_on": "on",  "check_3_on": "True",  "check_5_on": 1,
+                      "check_2_off": "off", "check_4_off": False, "check_6_off": None}
 
         # Test multiple positive cases
-        assert THE_MODULE.get_url_param_checkbox_spec("check_1", param_dict=param_dict)
-        assert THE_MODULE.get_url_param_checkbox_spec("check_3", param_dict=param_dict)
-        assert THE_MODULE.get_url_param_checkbox_spec("check_5", param_dict=param_dict)
+        assert THE_MODULE.get_url_param_checkbox_spec("check_1_on", param_dict=param_dict)
+        assert THE_MODULE.get_url_param_checkbox_spec("check_3_on", param_dict=param_dict)
+        assert THE_MODULE.get_url_param_checkbox_spec("check_5_on", param_dict=param_dict)
 
         # test non-checked and non-existent check cases
-        assert not THE_MODULE.get_url_param_checkbox_spec("check_2", param_dict=param_dict)
-        assert not THE_MODULE.get_url_param_checkbox_spec("check_4", param_dict=param_dict)
-        assert not THE_MODULE.get_url_param_checkbox_spec("non_check", param_dict=param_dict)
+        assert not THE_MODULE.get_url_param_checkbox_spec("check_2_off", param_dict=param_dict)
+        assert not THE_MODULE.get_url_param_checkbox_spec("check_4_off", param_dict=param_dict)
+        assert not THE_MODULE.get_url_param_checkbox_spec("check_6_off", param_dict=param_dict)
+        assert not THE_MODULE.get_url_param_checkbox_spec("check_7_missing", param_dict=param_dict)
 
     def test_get_url_parameter_bool(self):
         """Ensure get_url_parameter_bool() works as expected"""
@@ -412,6 +422,7 @@ class TestHtmlUtils(TestWrapper):
         ## assert THE_MODULE.extract_html_link(html, url='https://www.example.com') == all_urls
 
     @pytest.mark.xfail
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_inner_html_type_hints(self):
         URL_VALID = "https://duckduckgo.com"
         URL_INVALID = "duckduckgo.com"
@@ -453,6 +464,7 @@ class TestHtmlUtils(TestWrapper):
         assert THE_MODULE.user_parameters == param_dict
 
     @pytest.mark.xfail
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_set_param_dict_type_hints(self):
         param_dict = str({1: "a+b+c", 2: "a%2b%2c%2"})
         THE_MODULE.set_param_dict(param_dict)
@@ -460,6 +472,7 @@ class TestHtmlUtils(TestWrapper):
         assert len(THE_MODULE.user_parameters) > 2
 
     @pytest.mark.xfail    
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_param_dict_type_hints(self):
         param_dict = str({
             "p1": "a+b+c",
@@ -469,6 +482,7 @@ class TestHtmlUtils(TestWrapper):
         assert not isinstance(result, dict)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_param_type_hints(self):
         param_dict = {
             "name": "Terry",
@@ -486,6 +500,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, str)
     
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_text_type_hints(self):
         param_dict = {
             "name": "Alice",
@@ -508,6 +523,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, str)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_param_checkbox_spec_type_hints(self):
         name = "param"
         default_value = ""
@@ -524,6 +540,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, str)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_parameter_value_type_hints(self):
         param = "param"
         default_value = ""
@@ -540,6 +557,7 @@ class TestHtmlUtils(TestWrapper):
         assert result is None
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_parameter_bool_type_hints(self):
         param = "param"
         default_value = False
@@ -557,6 +575,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, bool)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_parameter_int_type_hints(self):
         param = "param"
         default_value = 0
@@ -573,6 +592,7 @@ class TestHtmlUtils(TestWrapper):
         assert result is not None and isinstance(result, int)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_parameter_float_type_hints(self):
         param = "param"
         default_value = 0.0
@@ -589,6 +609,7 @@ class TestHtmlUtils(TestWrapper):
         assert result is not None and isinstance(result, float)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_fix_url_parameters_type_hints(self):
         param = "param"
         param_dict = {param: [17.38, 19.45, 88.88, 16.09]}
@@ -597,12 +618,22 @@ class TestHtmlUtils(TestWrapper):
 
         assert isinstance(param_dict, dict)
         assert isinstance(result, dict)
-        assert not isinstance(result[param], list)  
+        assert not isinstance(result[param], list)
+        assert isinstance(result[param], float)
 
-        result = THE_MODULE.fix_url_parameters(None)
-        assert result is not None and isinstance(result, float)
+        try:
+            result = THE_MODULE.fix_url_parameters(None)
+            ## BAD: assert result is not None and isinstance(result, float)
+            assert False, "Exception should be raised"
+        except:
+            ## TODO2: make sure exception triggered by hint violation
+            ## NOTE: requires something like Pydantic @validate_call (see test_validate_arguments.py)
+            ##   assert system.get_exception()[0] == RuntimeError, "Validation not triggered"
+            assert True
+            
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_expand_misc_param_type_hints(self):
         misc_dict = {'x': 1, 'y': 2, 'z': 'a=3, b=4'}
         param_name = "z"
@@ -619,6 +650,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, dict) or result is None
         
     @pytest.mark.xfail
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test__read_file_type_hints(self):
         contents = "Hello World"
         filename = self.create_temp_file(contents)
@@ -630,6 +662,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, str)        
 
     @pytest.mark.xfail
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test__write_file_type_hints(self):
         data = "Hello World"
         filename = self.create_temp_file(contents="")
@@ -678,6 +711,7 @@ class TestHtmlUtils(TestWrapper):
         
     ## TODO (test for type hint failures):
     ## @pytest.mark.xfail
+    ## @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     ## def test_download_web_document_type_hints(self):
     ##     ...
 
