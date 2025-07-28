@@ -15,14 +15,13 @@
 ## NOTE: this is empty for now
 
 # Installed packages
-import pytest
+## OLD: import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper, invoke_tests
-from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
 from mezcla import system
 from mezcla import tpo_common as tpo
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -32,8 +31,6 @@ class TestRandomizeLines(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    @trap_exception
     def test_data_file(self):
         """Tests run_script w/ data file"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
