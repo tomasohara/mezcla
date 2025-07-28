@@ -371,12 +371,14 @@ def get_url_parameter_value(param, default_value : Any = None, param_dict : Opti
     """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)
     Note: Underscores in PARAM are converted to dashes if not in dict.
     Also, different from get_url_parameter in just returning single value.    
+    Warning: emtpy strings are treated as None.
     """
     # TODO3?: rename as get_last_url_parameter_value (to avoid confusion with get_url_parameter)
     param_dict = (get_param_dict(param_dict) or {})
     if "_" in param and (param not in param_dict):
         param = param.replace("_", "-")
-    result = param_dict.get(param, default_value)
+    ## OLD: result = param_dict.get(param, default_value)
+    result = (param_dict.get(param) or default_value)
     if isinstance(result, list):
         result = result[-1]
     debug.trace_fmtd(5, "get_url_parameter_value({p}, {dft}, _) => {r!r}",
