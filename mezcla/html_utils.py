@@ -358,7 +358,8 @@ def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", par
     param_dict = (get_param_dict(param_dict) or {})
     param_value = param_dict.get(name, default_value)
     param_value = system.to_unicode(param_value)
-    value = "checked" if (param_value in ["1", "on", True]) else ""
+    ## OLD: value = "checked" if (param_value in ["1", "on", True]) else ""
+    value = "checked" if system.to_bool(param_value) else ""
     debug.trace_fmtd(4, "get_url_param_checkbox_spec({n}, [{d}]) => {v})",
                      n=name, d=default_value, v=value)
     return value
@@ -390,10 +391,12 @@ def get_url_parameter_bool(param, default_value : bool = False, param_dict : Opt
     coerced to boolean beforehand.
     """
     # EX: get_url_parameter_bool("abc", False, { "abc": "on" }) => True
-    # TODO: implement in terms of get_url_param and also system.to_bool
     debug.assertion((default_value is None) or isinstance(default_value, bool))
-    result = (get_url_parameter_value(param, default_value, param_dict)
-              in ["1", "on", "True", True])
+    ## OLD:
+    ## result = (get_url_parameter_value(param, default_value, param_dict)
+    ##           in ["1", "on", "True", True])
+    value = get_url_parameter_value(param, default_value, param_dict)
+    result = system.to_bool(value)
     ## HACK: result = ((system.to_unicode(param_dict.get(param, default_value))) in ["on", True])
     debug.trace_fmtd(4, "get_url_parameter_bool({p}, {dft}, _) => {r}",
                      p=param, dft=default_value, r=result)
