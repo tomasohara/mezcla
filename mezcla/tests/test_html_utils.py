@@ -41,9 +41,14 @@ import mezcla.html_utils as THE_MODULE
 TEST_SELENIUM = system.getenv_bool(
     "TEST_SELENIUM", False,
     desc="Include tests requiring selenium")
-SKIP_HINT_TESTS = system.getenv_bool(
-    "SKIP_HINT_TESTS", False,
-    desc="Skip the work-in-progress tests involving type hints")
+INCLUDE_HINT_TESTS = system.getenv_bool(
+    "INCLUDE_HINT_TESTS", False,
+    desc="Include the work-in-progress tests involving type hints")
+## TODO:
+## SKIP_HINT_TESTS = system.getenv_bool(
+##     "SKIP_HINT_TESTS", False,
+##     desc="Skip the work-in-progress tests involving type hints")
+SKIP_HINT_TESTS = not INCLUDE_HINT_TESTS
 SKIP_HINT_REASON = "Type hinting tests require more work"
 
 class TestHtmlUtils(TestWrapper):
