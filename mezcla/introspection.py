@@ -11,6 +11,9 @@
 # - Other repos consulted:
 #   https://github.com/samuelcolvin/python-devtools
 #
+# Warning:
+# - Calls to debug module must not use introspection (e.g., assertion and trace_expr).
+#
 # TODO:
 # - Place within debug.py to allow for tracing and to avoid redundant functions.
 #
@@ -47,10 +50,9 @@ import ast
 import sys
 from datetime import datetime
 import inspect
+import os
 from os.path import basename, realpath
 from types import FrameType
-
-# Local packages
 
 # Installed packages
 # note: asttokens loaded dynamically when executed (so checked here for clients)
@@ -59,11 +61,27 @@ import pprint
 from textwrap import dedent
 import executing
 
-
 # Globals
 _absent = object()
-## OLD (droppped for sake of mypy):
-## intro = None
+BTL = 0                                 # base trace level
+INTROSPECTION_DEBUG_LABEL = "INTROSPECTION_DEBUG"
+INTROSPECTION_DEBUG = os.getenv(INTROSPECTION_DEBUG_LABEL)
+
+# Conditional imports
+debug = system = None
+if INTROSPECTION_DEBUG:
+    from mezcla import debug
+    from mezcla import system
+    INTROSPECTION_DEBUG = system.getenv_int(
+        INTROSPECTION_DEBUG_LABEL, INTROSPECTION_DEBUG,
+        desc="Base trace level for introspection")
+    BTL = INTROSPECTION_DEBUG
+
+def trace(text, level=BTL, **kwargs):
+    """Wrapper around debug.trace w/ sanity checks ignored
+    Options trace LEVEL and KWARGS passed along
+    """
+    debug.trace(level, text, skip_sanity_checks=True, **kwargs)
 
 
 def stderr_print(*args):
@@ -84,7 +102,6 @@ def is_literal(s):
     return True
 
 
-## OLD: DEFAULT_LINE_WRAP_WIDTH = 70  # Characters.
 DEFAULT_LINE_WRAP_WIDTH = 256            # Characters.
 DEFAULT_CONTEXT_DELIMITER = "; "
 DEFAULT_ARG_TO_STRING_FUNCTION = pprint.pformat
@@ -111,15 +128,17 @@ class Source(executing.Source):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        ## DEBUG: debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in {Source.__init__({a})")
-        ## DEBUG: debug.trace_object(5, self, label="Source instance")
+        if INTROSPECTION_DEBUG:
+            trace(f"Source.__init__{(*args, kwargs)}")
+            debug.trace_object(BTL+2, self, label="Source instance")
 
     def get_text_with_indentation(self, node):
         """
         Retrieves the text representation of the given AST node, preserving its indentation.
         """
         result = self.asttokens().get_text(node)
-        ## DEBUG: sys.stderr.write(f"{node=} {result=}\n")
+        if INTROSPECTION_DEBUG:
+            trace(f"{node=} {result=}")
         if "\n" in result:
             result = " " * node.first_token.start[1] + result
             result = dedent(result)
@@ -184,10 +203,15 @@ def argument_to_string(obj) -> str:
     s = s.replace("\\n", "\n")  # Preserve string newlines in output.
     return s
 
+
 def trace_frame(frame, label="frame"):
-    """Trace info about FRAME to stderr"""
-    ## DEBUG:
-    sys.stderr.write(f"{label}: {frame.f_code.co_name} {inspect.getfile(frame)}:{frame.f_lineno}\n")
+    """Trace info about FRAME to stderr
+    Note: Should only be called with INTROSPECTION_DEBUG enabled (to avoid overhead)"
+    """
+    if not INTROSPECTION_DEBUG:
+        debug.trace(3, "Warning: introspection.trace_frame assumes INTROSPECTION_DEBUG")
+    trace(f"{label}: {frame.f_code.co_name} {inspect.getfile(frame)}:{frame.f_lineno}")
+
 
 class MezclaDebugger:
     """
@@ -232,20 +256,23 @@ class MezclaDebugger:
         """
         # NOTE: this is not separated into a function
         # as to not generate another call frame
-        call_frame = inspect.currentframe() 
-        ## DEBUG: trace_frame(call_frame, "call_frame0")
+        call_frame = inspect.currentframe()
+        if INTROSPECTION_DEBUG:
+            trace_frame(call_frame, "call_frame0")
         if call_frame is not None:
             # note: only go back one frame from this function
             go_back = indirect or (call_frame.f_code.co_name != "__call__")
             call_frame = call_frame.f_back
-            ## DEBUG: trace_frame(call_frame, "call_frame1")
+            if INTROSPECTION_DEBUG:
+                trace_frame(call_frame, "call_frame1")
             if go_back and call_frame is not None:
                 call_frame = call_frame.f_back
-                ## DEBUG: trace_frame(call_frame, "call_frame2")
+                if INTROSPECTION_DEBUG:
+                    trace_frame(call_frame, "call_frame2")
         if call_frame is None:
             raise ValueError("Cannot access the call frame")
         self.output_function(self._format(call_frame, arg_offset, *args, **kwargs))
-        
+
         if not args:
             passthrough = None
         elif len(args) == 1:
@@ -265,15 +292,18 @@ class MezclaDebugger:
         # NOTE: this is not separated into a function
         # as to not generate another call frame
         call_frame = inspect.currentframe()
-        ## DEBUG: trace_frame(call_frame, "call_frame0")
+        if INTROSPECTION_DEBUG:
+            trace_frame(call_frame, "call_frame0")
         if call_frame is not None:
             # note: only go back one frame from this function
             go_back = indirect or (call_frame.f_code.co_name != "format")
             call_frame = call_frame.f_back
-            ## DEBUG: trace_frame(call_frame, "call_frame1")
+            if INTROSPECTION_DEBUG:
+                trace_frame(call_frame, "call_frame1")
             if go_back and call_frame is not None:
                 call_frame = call_frame.f_back
-                ## DEBUG: trace_frame(call_frame, "call_frame2")
+                if INTROSPECTION_DEBUG:
+                    trace_frame(call_frame, "call_frame2")
         if call_frame is None:
             raise ValueError("Cannot access the call frame")
         out = self._format(call_frame, arg_offset, *args, **kwargs)
@@ -289,8 +319,8 @@ class MezclaDebugger:
         """
         Formats the given arguments and returns the formatted string
         """
-        
-        ## OLD: prefix = pref if (pref := kwargs.get('prefix')) is not None else call_or_value(self.prefix)
+        if INTROSPECTION_DEBUG:
+            trace(f"_format{(call_frame, arg_offset, args, kwargs)}")
         pref = kwargs.get('prefix') or kwargs.get('_prefix')
         prefix = pref if pref is not None else call_or_value(self.prefix)
         ## HACK: uses _prefix kwarg to avoid conflict with positional arg
@@ -313,32 +343,38 @@ class MezclaDebugger:
         ignoring the first `arg_offset` arguments,
         optionally by adding `context` to the output
         """
-        ## DEBUG: sys.stderr.write(f"in _format_args: {call_frame=}, {arg_offset=}, {prefix=}, {context=}, {args=}, {kwargs=}\n")
+        if INTROSPECTION_DEBUG:
+            trace(f"in _format_args:\n\t{call_frame=}\n\t{arg_offset=}\n\t{prefix=}\n\t{context=}\n\t{args=}\n\t{kwargs=}",
+                  level=BTL+1)
         call_node = Source.executing(call_frame).node
-        ## DEBUG: sys.stderr.write(f"call_node: {ast.dump(call_node)}\n")
+        if call_node and INTROSPECTION_DEBUG:
+            try:
+                debug.trace_fmt(BTL+1, "call_node: {d}", d=ast.dump(call_node), max_len=1024)
+            except:
+                debug.trace_exception_info(BTL, f"trace for {call_node=}")
         if call_node is not None:
             source = Source.for_frame(call_frame)
             # Note: disables mypy error: "EnhancedAST" has no attribute "args" [attr-defined]
-            ## DEBUG: sys.stderr.write(f"{call_node=} {call_node.args=} {source=}\n")
+            if INTROSPECTION_DEBUG:
+                trace(f"{call_node=} {call_node.args=} {source=}")
             sanitized_arg_strs = [
                 source.get_text_with_indentation(arg)
                 for arg in call_node.args[arg_offset:]      # type: ignore [attr-defined]
             ]
-            ## DEBUG: sys.stderr.write(f"{sanitized_arg_strs=}\n")
+            if INTROSPECTION_DEBUG:
+                trace(f"{sanitized_arg_strs=}")
         else:
             sys.stderr.write(f"Warning: unable to resolve call node: {args=}\n")
             sanitized_arg_strs = [_absent] * len(args)
 
         pairs = list(zip(sanitized_arg_strs, args))
-        ## OLD: no_eol = kwargs.get('eol', False)
-        ## DEBUG: sys.stderr.write(f"{pairs=}\n")
+        if INTROSPECTION_DEBUG:
+            debug.trace_object(BTL, pairs, "pairs")
 
-        ## OLD: out = self._construct_argument_output(prefix, context, pairs, no_eol=no_eol, **kwargs)
         out = self._construct_argument_output(prefix, context, pairs, **kwargs)
         return out
 
     def _construct_argument_output(self, prefix, context, pairs, **kwargs):
-        ## OLD: def _construct_argument_output(self, prefix, context, pairs, no_eol=False, **kwargs):
         """
         Constructs the output string from the given pairs of arguments and values,
         """
@@ -361,7 +397,6 @@ class MezclaDebugger:
             for arg, val in pairs
         ]
         suffix = kwargs.get('suffix', '')
-        ## OLD: separator = sep if (sep := kwargs.get('sep')) else self._pairSeparator
         separator = sep if (sep := kwargs.get('delim')) else self._pairSeparator
         all_args_on_one_line = separator.join(pair_strs)
         multiline_args = len(all_args_on_one_line.splitlines()) > 1
@@ -369,7 +404,6 @@ class MezclaDebugger:
         # note: context stuff is relic of icecream
         context_delimiter = self._contextDelimiter if context else ""
         all_pairs = prefix + context + context_delimiter + all_args_on_one_line
-        ## BAD: first_line_too_long = len(all_pairs.splitlines()[0]) > self._lineWrapWidth
         first_line_too_long = (len(all_pairs.splitlines()[0]) > self._lineWrapWidth if all_pairs else False)
 
         if self.icecream_like and (multiline_args or first_line_too_long):
@@ -381,16 +415,13 @@ class MezclaDebugger:
                 arg_lines = [format_pair("", arg, value) for arg, value in pairs]
                 lines = prefix_first_line_indent_remaining(prefix, "\n".join(arg_lines))
         else:
-            ## OLD: lines = [prefix + context + context_delimiter + all_args_on_one_line + suffix]
-            ## OLD2: lines = "".join((v if v else "") for v in
-            ##                       [prefix, context, context_delimiter, all_args_on_one_line, suffix])
             lines = [(v if v else "") for v in
                      [prefix, context, context_delimiter, all_args_on_one_line, suffix]]
-        ## DEBUG: sys.stderr.write(f"{prefix=}\n{context=}\n{context_delimiter=}\n{all_args_on_one_line=}\n{suffix=}\n")
+        if INTROSPECTION_DEBUG:
+            trace(f"{prefix=}\n{context=}\n{context_delimiter=}\n{all_args_on_one_line=}\n{suffix=}")
 
         no_eol = kwargs.get('no_eol', False)
         end = "" if no_eol else "\n"
-        ## OLD: return end.join(lines)
         return "".join(lines) + end
 
     def _format_context(self, call_frame: FrameType) -> str:
@@ -427,9 +458,6 @@ class MezclaDebugger:
         return filepath, line_number, parent_function
 
 #...............................................................................
-
-## OLD:
-## # def init():
 
 intro = MezclaDebugger()
 
