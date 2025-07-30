@@ -230,6 +230,10 @@ if __debug__:
         """Convert TEXT to UTF-8 (e.g., for I/O)"""
         # Note: version like one from system.py to avoid circular dependency
         result = text
+        if not isinstance(result, str):
+            if verbose_debugging():
+                sys.stderr.write("Warning: _to_utf8 called with non-string: {result!r}")
+            result = str(result)
         ## NOTE: python 2 is deprecated and to avoid errors with mypy, python 2 code was removed
         ## if ((sys.version_info.major < 3) and (isinstance(text, unicode))):  # pylint: disable=undefined-variable
         ##    result = result.encode("UTF-8", 'ignore')
@@ -263,11 +267,25 @@ if __debug__:
                 result = "%s" % result
         return result
 
-    def do_print(text: str, end: Optional[str] = None) -> None:
-        """Print TEXT to stderr and optionally to DEBUG_FILE"""
-        print(text, file=sys.stderr, end=end)
-        if debug_file:
-            print(text, file=debug_file, end=end)
+    def do_print(text: str, end: Optional[str] = None) -> str:
+        """Print TEXT to stderr and optionally to DEBUG_FILE.
+        Also, returns the text printed including newline unless omitted.
+        """
+        out_text = ""
+        try:
+            ## TEMP: Optional sanity check to help track down sloppy callers
+            if __debug__:
+                assertion(7, isinstance(text, str))
+            print(text, file=sys.stderr, end=end)
+            if debug_file:
+                print(text, file=debug_file, end=end)
+            ## TODO3: out_text = text + (end if end else "")
+            out_text += str(text)
+            if end:
+                out_text += end
+        except:
+            trace_exception_info(7, "do_print")
+        return out_text
 
     def trace(
             level: IntOrTraceLevel,
@@ -276,16 +294,18 @@ if __debug__:
             no_eol: Optional[bool] = None,
             indentation: Optional[str] = None,
             skip_sanity_checks: Optional[bool] = None
-        ) -> None:
-        """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE
+        ) -> str:
+        """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE.
+        Also, returns the formatted text.
         Note: Optionally, uses \n unless no_eol, precedes trace with INDENTATION, and
         SKIPs_SANITY_CHECKS (e.g., variables in braces in f-string omission).
         """
         # TODO1: add exception handling
-        # TODO: add option to use format_value
+        # TODO2: add options to use format_value and max_len 
         # Note: trace should not be used with text that gets formatted to avoid
         # subtle errors
         ## DEBUG: sys.stderr.write("trace({l}, {t})\n".format(l=level, t=text))
+        out_text = ""
         if (trace_level >= level):
             if indentation is None:
                 indentation = INDENT0
@@ -299,7 +319,7 @@ if __debug__:
                     diff = round(1000.0 * (time.time() - last_trace_time), 3)
                     timestamp_time += f" diff={diff}ms"
                     last_trace_time = time.time()
-                do_print(indentation + "[" + timestamp_time + "]", end=": ")
+                out_text += do_print(indentation + "[" + timestamp_time + "]", end=": ")
             ## TODO1: 
             ## # Optionally show filename and line number for caller
             ## # Note: This is mainly intended for help in tweaking trace levels, such as to help
@@ -309,19 +329,19 @@ if __debug__:
             # Print trace, converted to UTF8 if necessary (Python2 only)
             # TODO: add version of assertion that doesn't use trace or trace_fmtd
             ## TODO: assertion(not ???)
-            do_print(indentation, end="")
+            out_text += do_print(indentation, end="")
             if not isinstance(text, str):
                 if trace_level >= USUAL:
-                    do_print("[Warning: converted non-text to str] ", end="")
+                    out_text += do_print("[Warning: converted non-text to str] ", end="")
                 text = str(text)
             if ((not skip_sanity_checks)
                 and re.search(r"{[^0-9]\S+}", text)
                 and not re.search(r"{{[^0-9]\S+}}", text)):
                 # TODO3: show caller info; also rework indent (pep8 quirk)
                 if include_trace_diagnostics:
-                    do_print("[FYI: f-string issue?] ", end="")
+                    out_text += do_print("[FYI: f-string issue?] ", end="")
             end = "\n" if (not no_eol) else ""
-            do_print(_to_utf8(text), end=end)
+            out_text += do_print(_to_utf8(text), end=end)
             if use_logging:
                 # TODO: see if way to specify logging terminator
                 logging.debug(indentation + _to_utf8(text))
@@ -329,7 +349,7 @@ if __debug__:
                 reopen_debug_file()
         if empty_arg is not None:
             sys.stderr.write("Error: trace only accepts two positional arguments (was trace_expr intended?)\n")
-        return
+        return out_text
 
     def check_keyword_args(level, expected, kwargs,
                            function, format_text=None, add_underscore=False):
@@ -358,6 +378,7 @@ if __debug__:
         # Note: To avoid interpolated text as being interpreted as variable
         # references, this function does the formatting.
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
+        # TODO3: return text as with trace and trace_expr
         if (trace_level >= level):
             check_keyword_args(VERBOSE, "max_len skip_sanity_checks",
                                kwargs, "trace_fmt", format_text=text, add_underscore=True)
@@ -422,6 +443,7 @@ if __debug__:
         # - See https://stackoverflow.com/questions/383944/what-is-a-python-equivalent-of-phps-var-dump.
         # TODO: support recursive trace; specialize show_all into show_private and show_methods
         # TODO: handle tuples
+        # TODO3: return text as with trace and trace_expr
         ##                                       r=(trace_level < level)))
         trace_fmt(MOST_VERBOSE, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
                   dl=level, obj=object, lbl=label, sa=show_all, ind=indentation, pp=pretty_print, md=max_depth)
@@ -534,6 +556,7 @@ if __debug__:
             max_len: Optional[int] = None
         ) -> None:
         """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
+        # TODO3: return text as with trace and trace_expr
         trace_fmt(MOST_VERBOSE, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
                   dl=level, lbl=label, coll=collection, ind=indentation)
         if (trace_level < level):
@@ -579,12 +602,14 @@ if __debug__:
         return
 
     @docstring_parameter(max_len=max_trace_value_len)
-    def trace_expr(level: IntOrTraceLevel, *values, **kwargs) -> None:
+    def trace_expr(level: IntOrTraceLevel, *values, **kwargs) -> str:
         """Trace each of the argument VALUES (if at trace LEVEL or higher), with KWARGS for options.
         Introspection is used to derive label for each expression. By default, the following format is used:
            expr1=value1; ... exprN=valueN
+        Also, returns the formatted text.
         Notes:
-        - Warning: introspection fails to resolve expressions if statement split across lines.
+        - Warning: the old-style introspection fails to resolve expressions if 
+          statement split across lines. (It is used for pre-3.9 Python.)
         - For simplicity, the values are assumed to separated by ', ' (or expression _SEP)--barebones parsing applied.
         - Use DELIM to specify delimiter; otherwise '; ' used;
           if so, NO_EOL applies to intermediate values (EOL always used at end).
@@ -609,7 +634,7 @@ if __debug__:
         ##           g=trace_level, l=level, v=(trace_level < level))
         if (trace_level < level):
             # note: Short-circuits processing to avoid errors about known problems (e.g., under ipython)
-            return
+            return ""
         # Note: checks alternative keyword first, so False ones not misintepretted
         ## TODO3: make sep deprecated
         sep = kwargs.get('_sep') or kwargs.get('sep')
@@ -637,6 +662,7 @@ if __debug__:
         trace(9, f"sep={sep!r}, del={delim!r}, noeol={no_eol}, rep={use_repr}, mlen={max_len}, pre={prefix!r} suf={suffix!r}", skip_sanity_checks=True)
 
         # Get symbolic expressions for the values
+        out_text = ""
         if not use_old_introspection:
             ## HACK: uses _prefix to avoid conflict with introspection's prefix
             ## TODO2: drop newlines due to arguments split across lines
@@ -649,14 +675,14 @@ if __debug__:
             ## expression = "@".join(expression)
             ## trace(3, f"{values=} {expression=}")
             ##
-            trace(level, expression, skip_sanity_checks=True)
+            out_text += trace(level, expression, skip_sanity_checks=True)
         else:
             ## TODO2: handle cases split across lines
             try:
                 # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
                 caller = inspect.stack()[1]
                 (_frame, filename, line_number, _function, context, _index) = caller
-                trace(9, f"filename={filename!r}, context={context!r}", skip_sanity_checks=True)
+                out_text += trace(9, f"filename={filename!r}, context={context!r}", skip_sanity_checks=True)
                 statement = read_line(filename, line_number).strip()
                 if statement == MISSING_LINE:
                     statement = str(context).replace("\\n']", "")
@@ -669,7 +695,7 @@ if __debug__:
                 statement = re.sub(r",?\s*$", "", statement)
                 # Skip first argument (level)
                 expressions = re.split(", +", statement)[1:]
-                trace(9, f"expressions={expressions!r}\nvalues={values!r}", skip_sanity_checks=True)
+                out_text += trace(9, f"expressions={expressions!r}\nvalues={values!r}", skip_sanity_checks=True)
             except:
                 trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
                            exc=sys.exc_info())
@@ -677,7 +703,7 @@ if __debug__:
 
             # Output initial text
             if prefix:
-                trace(level, prefix, no_eol=no_eol, skip_sanity_checks=True)
+                out_text += trace(level, prefix, no_eol=no_eol, skip_sanity_checks=True)
 
             # Output each expression value
             for expression, value in zip_longest(expressions, values):
@@ -690,19 +716,19 @@ if __debug__:
                               f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
                     value_spec = format_value(repr(value) if use_repr else value,
                                               max_len=max_len)
-                    trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True)
+                    out_text += trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True)
                 except:
                     trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
                            exc=sys.exc_info())
             # Output final text
             if suffix:
-                trace(level, suffix, no_eol=False, skip_sanity_checks=True)
+                out_text += trace(level, suffix, no_eol=False, skip_sanity_checks=True)
             elif (no_eol and (delim != "\n")):
-                trace(level, "", no_eol=False)
+                out_text += trace(level, "", no_eol=False)
             else:
-                trace(9, "No final text to output")
+                out_text += trace(9, "No final text to output")
 
-        return
+        return out_text
 
 
     def trace_frame(level: IntOrTraceLevel, frame, label="frame"):
