@@ -77,10 +77,9 @@ class TestIt(TestWrapper):
         var = "-" * 123
         var_expr = THE_MODULE.intro.format(var, max_len=4)
         ## TODO2: assert my_re.search("var='----\.\.\.'", var_expr)
-        ##                                            ^
-        assert my_re.search("var='----\.\.\.", var_expr)
+        ##                                            ^ (i.e., make sure quote closed)
+        assert my_re.search(r"var='----\.\.\.", var_expr)
         return
-
 
 #------------------------------------------------------------------------
 
