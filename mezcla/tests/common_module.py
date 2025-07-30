@@ -80,7 +80,7 @@ def fix_indent(code):
 def get_mezcla_root_dir():
     """Get the base directory for the mezcla distribution"""
     test_dir = gh.dir_path(__file__)
-    root_dir = gh.real_path(gh.form_path(test_dir, "..", ".."))
+    root_dir = system.real_path(gh.form_path(test_dir, "..", ".."))
     debug.assertion(system.file_exists(gh.form_path(root_dir, "LICENSE.txt")))
     debug.trace(5, f"get_mezcla_root_dir() => {root_dir!r}")
     return root_dir      
