@@ -78,7 +78,6 @@ from typing import (
 )
 from types import CodeType
 from typing_extensions import Buffer
-## OLD: from xml.dom.minidom import Element
 import six
 import sys
 import time
@@ -89,13 +88,7 @@ from mezcla.validate_arguments_types import (
 )
 
 # Local packages
-## OLD: from mezcla.introspection import intro
 intro = None
-
-## OLD:
-## # note: The following redefines sys.version_info to be python3 compatible;
-## # this is used in _to_utf8, which should be reworked via six-based wrappers.
-## import mezcla.sys_version_info_hack      # pylint: disable=unused-import
 
 
 # Constants for pre-defined tracing levels
@@ -204,12 +197,8 @@ if __debug__:
         # Note: ensures result is integer (not enum)
         # EX: (get_level() >= 0)
         # EX: type(get_level() == int)
-        ## OLD:
-        ## ## global trace_level
-        ## return trace_level
         level = 0
         try:
-            ## OLD: assertion(isinstance(level, int))
             level = int(trace_level)
         except:
             _print_exception_info("get_level")
@@ -230,10 +219,13 @@ if __debug__:
         """Convert TEXT to UTF-8 (e.g., for I/O)"""
         # Note: version like one from system.py to avoid circular dependency
         result = text
-        if not isinstance(result, str):
-            if verbose_debugging():
-                sys.stderr.write("Warning: _to_utf8 called with non-string: {result!r}")
-            result = str(result)
+        ##
+        ## TODO?:
+        ## if not isinstance(result, str):
+        ##     if debugging(7):
+        ##         sys.stderr.write(f"Warning: _to_utf8 called with non-string: {result!r}")
+        ##     result = str(result)
+        ##
         ## NOTE: python 2 is deprecated and to avoid errors with mypy, python 2 code was removed
         ## if ((sys.version_info.major < 3) and (isinstance(text, unicode))):  # pylint: disable=undefined-variable
         ##    result = result.encode("UTF-8", 'ignore')
@@ -273,9 +265,11 @@ if __debug__:
         """
         out_text = ""
         try:
+            ## TODO?
             ## TEMP: Optional sanity check to help track down sloppy callers
-            if __debug__:
-                assertion(7, isinstance(text, str))
+            ## if __debug__:
+            ##     assertion(7, isinstance(text, str))
+            ##
             print(text, file=sys.stderr, end=end)
             if debug_file:
                 print(text, file=debug_file, end=end)
@@ -391,9 +385,6 @@ if __debug__:
                     if (not skip_sanity_checks) and not (re.search(r"{\S*}", text)):
                         if include_trace_diagnostics:
                              trace(level, "[FYI: missing {}'s?] ", no_eol=True)
-                    ## OLD: assertion("{" in text)
-                    ## OLD: trace(level, text.format(**kwargs))
-                    ## OLD: kwargs_unicode = {k: _to_unicode(_to_string(v)) for (k, v) in list(kwargs.items())}
                     kwargs_unicode = {k: format_value(_to_unicode(_to_string(v)), max_len=max_len)
                                       for (k, v) in list(kwargs.items())}
                     trace(level, _to_unicode(text).format(**kwargs_unicode))
@@ -403,7 +394,6 @@ if __debug__:
                                      format(exc=sys.exc_info()))
                     # Show arguments so trace contents recoverable
                     sys.stderr.write("   text=%r\n" % _to_utf8(clip_value(text)))
-                    ## OLD: kwargs_spec = ", ".join(("%s:%r" % (k, clip_value(v))) for (k, v) in kwargs.iteritems())
                     kwargs_spec = ", ".join(("%s:%r" % (k, clip_value(v))) for (k, v) in list(kwargs.items()))
                     sys.stderr.write("   kwargs=%s\n" % _to_utf8(kwargs_spec))
             except(AttributeError):
@@ -453,8 +443,6 @@ if __debug__:
             pretty_print = (trace_level > level)
         type_id_label = str(type(obj)) + " " + hex(id(obj))
         if label is None:
-            ## BAD: label = str(type(obj)) + " " + hex(hash(obj))
-            ## OLD: label = str(type(obj)) + " " + hex(id(obj))
             label = type_id_label
         elif verbose_debugging():
             label += " [" + type_id_label + "]"
@@ -472,7 +460,6 @@ if __debug__:
         if para_mode_tracing:
             trace(ALWAYS, "")
         trace(ALWAYS, outer_indentation + label + ": {")
-        ## OLD: for (member, value) in inspect.getmembers(obj):
         member_info = []
         try:
             member_info = inspect.getmembers(obj)
@@ -518,8 +505,8 @@ if __debug__:
             ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
             try:
                 try:
-                    ## OLD: value_spec = format_value("%r" % ((value),), max_len=max_value_len)
                     if is_simple_type and not isinstance(value, str):
+                        ## TODO?: value_spec = str(value)
                         value_spec = value
                     else:
                         value_spec = format_value("%r" % ((value),), max_len=max_value_len)
@@ -579,9 +566,7 @@ if __debug__:
         if indentation is None:
             indentation = INDENT1
         if label is None:
-            ## BAD: label = str(type(collection)) + " " + hex(hash(collection))
             label = str(type(collection)) + " " + hex(id(collection))
-            ## OLD: indentation = INDENT1
         if use_repr is None:
             use_repr = False
         trace(ALWAYS, label + ": {")
@@ -640,15 +625,11 @@ if __debug__:
         sep = kwargs.get('_sep') or kwargs.get('sep')
         delim = kwargs.get('_delim') or kwargs.get('delim') or sep
         suffix = kwargs.get('_suffix') or kwargs.get('suffix')
-        ## OLD: no_eol = bool(kwargs.get('_no_eol') or kwargs.get('no_eol'))
         no_eol = kwargs.get('_no_eol') or kwargs.get('no_eol')
         in_no_eol = no_eol
         use_repr = kwargs.get('_use_repr') or kwargs.get('use_repr')
         max_len = kwargs.get('_max_len') or kwargs.get('max_len')
         prefix = kwargs.get('_prefix') or kwargs.get('prefix')
-        ## OLD:
-        ## if sep is None:
-        ##     sep = ", "
         if no_eol is None:
             no_eol = (delim and ("\n" in delim))
         if delim is None:
@@ -847,7 +828,6 @@ if __debug__:
                 trace_fmtd(MOST_VERBOSE, "Call stack: {st}", st=inspect.stack())
                 offset = 2 if indirect else 1
                 caller = inspect.stack()[offset]
-                ## OLD: (_frame, filename, line_number, _function, _context, _index) = caller
                 (_frame, filename, line_number, _function, context, _index) = caller
                 trace(8, f"filename={filename!r}, context={context!r}")
 
@@ -863,7 +843,6 @@ if __debug__:
                     # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
                     statement = read_line(filename, line_number).strip()
                     if statement == MISSING_LINE:
-                        ## OLD: statement = str(context).replace(")\\n']", "")
                         statement = str(context).replace("\\n']", "")
                         # Format expression and message
                         # note: removes comments, along with the assertion call prefix and suffix
@@ -985,8 +964,6 @@ else:
     
     ## TODO?:
     ## val = non_debug_stub
-    ## OLD:
-    ## def val(_expression: Any) -> None:
     ##
     def val(_level: IntOrTraceLevel, _value: Any) -> None:  # type: ignore [misc]
         """Non-debug stub for value()--a no-op function"""
@@ -1032,7 +1009,6 @@ def timestamp() -> str:
 
 def debugging(level: IntOrTraceLevel = USUAL) -> bool:
     """Whether debugging at specified trace LEVEL (e.g., 3 for usual)"""
-    ## BAD: """Whether debugging at specified trace level, which defaults to {l}""".format(l=ERROR)
     ## NOTE: Gotta hate python/pylint (no warning about docstring)
     ## TODO: use level=WARNING (i.e., 2)
     return (get_level() >= level)
@@ -1053,13 +1029,11 @@ def enabled() -> bool:
 
 def detailed_debugging() -> bool:
     """Whether debugging with trace level DETAILED (4) or higher"""
-    ## BAD: """Whether debugging with trace level at or above {l}""".format(l=DETAILED)
     return (get_level() >= DETAILED)
 
 
 def verbose_debugging() -> bool:
     """Whether debugging with trace level VERBOSE (5) or higher"""
-    ## BAD: """Whether debugging with trace level at or above {l}""".format(l=VERBOSE)
     return (get_level() >= VERBOSE)
 
 
@@ -1313,11 +1287,8 @@ if __debug__:
         if debug_filename is None:
             debug_filename = os.getenv("DEBUG_FILE")
         if debug_filename is not None:
-            ## OLD: debug_file = open(debug_filename, mode="w", encoding="UTF-8")
             ## TEST: open unbuffered which requires binary output mode
-            ## BAD: debug_file = open(debug_filename, mode="wb", buffering=0, encoding="UTF-8")
             ## note: uses line buffering
-            ## OLD: for_append = _getenv_bool("DEBUG_FILE_APPEND", False) or _getenv_bool("DEBUG_FILE_HACK", False)
             for_append = _getenv_bool("DEBUG_FILE_APPEND", True)
             mode = ("a" if for_append else "w")
             trace_expr(5, mode)
@@ -1373,7 +1344,6 @@ if __debug__:
         ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
         # note: shows command invocation unless invoked via "python -c ..."
         command_line = " ".join(sys.argv)
-        ## OLD: assertion(command_line)
         if (command_line and (command_line != "-c") and (command_line != "-m")):
             # TODO2: simplify misc. trace suppression options (n.b., check shellscript repo)
             if _getenv_bool("TRACE_INVOCATION", False):
