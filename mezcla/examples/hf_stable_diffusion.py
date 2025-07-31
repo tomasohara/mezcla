@@ -57,42 +57,59 @@ from mezcla.text_utils import version_to_number
 
 # Constants/globals
 TL = debug.TL
-PROMPT = system.getenv_text("PROMPT", "your favorite politician in a tutu",
-                            "Textual prompt describing image")
-NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
-                            "Negative tips for image")
+PROMPT = system.getenv_text(
+    "PROMPT", "your favorite politician in a tutu",
+    description="Positive terms for textual prompt describing image")
+NEGATIVE_PROMPT = system.getenv_text(
+    "NEGATIVE_PROMPT", "photo realistic",
+    description="Negative terms for textual prompt describing image")
 GUIDANCE_HELP = "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)--higher for more; aka Classifier Free Guidance (CFG)"
-GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
-                                   description=GUIDANCE_HELP)
-SD_URL_ENV = system.getenv_value("SD_URL", None,
-                                 "URL for SD TCP/restful server--new via flask or remote")
+GUIDANCE_SCALE = system.getenv_int(
+    "GUIDANCE_SCALE", 7,
+    description=GUIDANCE_HELP)
+SD_URL_ENV = system.getenv_value(
+    "SD_URL", None,
+    description="URL for SD TCP/restful server--new via flask or remote")
 SD_URL = (SD_URL_ENV if (SD_URL_ENV is not None) and (SD_URL_ENV.strip() not in ["", "-"]) else None)
-SD_PORT = system.getenv_int("SD_PORT", 9700,
-                            "TCP port for SD server")
-SD_DEBUG = system.getenv_int("SD_DEBUG", False,
-                             "Run SD server in debug mode")
-USE_HF_API = system.getenv_bool("USE_HF_API", not SD_URL,
-                                "Use Huggingface API instead of TCP server")
-CHECK_UNSAFE = system.getenv_bool("CHECK_UNSAFE", False,
-                                  "Apply unsafe word list regex filter")
-NUM_IMAGES = system.getenv_int("NUM_IMAGES", 1,
-                               "Number of images to generated")
-BASENAME = system.getenv_text("BASENAME", "sd-app-image",
-                              "Basename for saving images")
-FULL_PRECISION = system.getenv_bool("FULL_PRECISION", False,
-                                    "Use full precision GPU computations")
-LOW_MEMORY = system.getenv_bool("LOW_MEMORY", (not FULL_PRECISION),
-                                "Use low memory computations such as via float16")
-DUMMY_RESULT = system.getenv_bool("DUMMY_RESULT", False,
-                                  "Mock up SD server result")
-DISK_CACHE = system.getenv_value("SD_DISK_CACHE", None,
-                                 "Path to directory with disk cache")
-USE_IMG2IMG = system.getenv_bool("USE_IMG2IMG", False,
-                                 "Use image-to-image instead of text-to-image")
-USE_IMG2TXT = system.getenv_bool("USE_IMG2TXT", False,
-                                 "Use image-to-text instead of image generation")
-DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.75,
-                                       "How much of the input image to randomize--higher for more")
+SD_PORT = system.getenv_int(
+    "SD_PORT", 9700,
+    description="TCP port for SD server")
+SD_DEBUG = system.getenv_int(
+    "SD_DEBUG", False,
+    description="Run SD server in debug mode")
+USE_HF_API = system.getenv_bool(
+    "USE_HF_API", not SD_URL,
+    description="Use Huggingface API instead of TCP server")
+CHECK_UNSAFE = system.getenv_bool(
+    "CHECK_UNSAFE", False,
+    description="Apply unsafe word list regex filter")
+NUM_IMAGES = system.getenv_int(
+    "NUM_IMAGES", 1,
+    description="Number of images to generated")
+BASENAME = system.getenv_text(
+    "BASENAME", "sd-app-image",
+    description="Basename for saving images")
+FULL_PRECISION = system.getenv_bool(
+    "FULL_PRECISION", False,
+    description="Use full precision GPU computations")
+LOW_MEMORY = system.getenv_bool(
+    "LOW_MEMORY", (not FULL_PRECISION),
+    description="Use low memory computations such as via float16")
+DUMMY_RESULT = system.getenv_bool(
+    "DUMMY_RESULT", False,
+    description="Mock up SD server result")
+DISK_CACHE = system.getenv_value(
+    "SD_DISK_CACHE", None,
+    description="Path to directory with disk cache")
+USE_IMG2IMG = system.getenv_bool(
+    "USE_IMG2IMG", False,
+    description="Use image-to-image instead of text-to-image")
+USE_IMG2TXT = system.getenv_bool(
+    "USE_IMG2TXT", False,
+    description="Use image-to-text instead of image generation")
+DENOISING_FACTOR = system.getenv_float(
+    "DENOISING_FACTOR", 0.75,
+    description="How much of the input image to randomize--higher for more")
 HF_SD_MODEL = system.getenv_text(
     "HF_SD_MODEL", "CompVis/stable-diffusion-v1-4",
     description="Hugging Face model for Stable Diffusion")
