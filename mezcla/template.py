@@ -68,9 +68,10 @@ TODO_FUBAR = system.getenv_bool(
 class Helper:
     """TODO: class for doing ..."""
 
-    def __init__(self, _arg) -> None:
+    def __init__(self, _arg=None) -> None:
         """Initializer: _TODO_arg desc"""
         debug.trace(TL.VERBOSE, f"Helper.__init__(): self={self}")
+        self._arg = _arg                # TODO: revise
         self.TODO = None
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
@@ -119,7 +120,7 @@ class Script(Main):
     def process_line(self, line) -> None:
         """Processes current line from input"""
         debug.trace_fmtd(TL.QUITE_DETAILED, "Script.process_line({l})", l=line)
-        self.helper_process(line)
+        self.helper.process(line)
 
     ## TODO: if no input prococessed, customize run_main_step instead
     ## and specify skip_input below. (Use skip_input=False for filename support.)
