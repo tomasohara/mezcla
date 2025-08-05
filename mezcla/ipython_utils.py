@@ -63,7 +63,7 @@ from mezcla import system
 from mezcla.my_regex import my_re
 ## OLD: from mezcla import data_utils as du
 from mezcla import glue_helpers as gh
-from mezcla import html_utils as html
+## OLD: from mezcla import html_utils as html
 from mezcla import tpo_common as tpo
 try:
     from mezcla import data_utils as du
