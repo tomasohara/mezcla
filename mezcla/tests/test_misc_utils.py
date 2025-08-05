@@ -103,6 +103,16 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         assert THE_MODULE.extract_string_list(",") == ['', '']
         assert THE_MODULE.extract_string_list(",", strip_empty=True) == []
 
+    def test_extract_numeric_string_list(self):
+        """Verify extract_string_list with numericranges"""
+        debug.trace(4, "test_extract_numeric_string_list()")
+
+        # Check typical cases
+        self.do_assert(THE_MODULE.extract_string_list("1-4", allow_numeric_ranges=True)
+                       == ['1', '2', '3', '4'])
+        self.do_assert(THE_MODULE.extract_string_list("a b-c d", allow_numeric_ranges=True)
+                       == ['a', 'b-c', 'd'])
+        
     def test_is_prime(self):
         """Ensure is_prime works as expected"""
         debug.trace(4, "test_is_prime()")
