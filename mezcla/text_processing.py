@@ -141,8 +141,6 @@ stopwords = None
 # NLP toolkit
 if not SKIP_NLTK:
     import nltk            # pylint: disable=ungrouped-imports
-    if DOWNLOAD_DATA:
-        download_nltk_resources()
 # spell checking
 if not SKIP_ENCHANT:
     import enchant         # pylint: disable=ungrouped-imports
@@ -496,12 +494,15 @@ def is_punct(token, POS=None):
 
 
 def init():
-    """Makes sure globals defined"""
+    """Makes sure globals defined and optionally loads resources"""
 
     # Note: stop word check is done for side of effect of loading list
     unexpected_stopword = is_stopword("movement")
     debug.assertion(not unexpected_stopword)
 
+    if DOWNLOAD_DATA:
+        download_nltk_resources()
+    
 #-------------------------------------------------------------------------------
 
 class TextProc(metaclass=ABCMeta):
