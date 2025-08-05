@@ -13,7 +13,7 @@ import os
 from typing import Dict
 
 # Installed modules
-import yaml
+## OLD: import yaml
 
 # Local modules
 from mezcla import debug
