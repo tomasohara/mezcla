@@ -375,6 +375,7 @@ def get_url_parameter_value(param, default_value : Any = None, param_dict : Opti
     """
     # TODO3?: rename as get_last_url_parameter_value (to avoid confusion with get_url_parameter)
     param_dict = (get_param_dict(param_dict) or {})
+    in_param = param
     if "_" in param and (param not in param_dict):
         param = param.replace("_", "-")
     ## OLD: result = param_dict.get(param, default_value)
@@ -382,7 +383,7 @@ def get_url_parameter_value(param, default_value : Any = None, param_dict : Opti
     if isinstance(result, list):
         result = result[-1]
     debug.trace_fmtd(5, "get_url_parameter_value({p}, {dft}, _) => {r!r}",
-                     p=param, dft=default_value, r=result)
+                     p=in_param, dft=default_value, r=result)
     return result
 
 
@@ -406,7 +407,7 @@ def get_url_parameter_bool(param, default_value : bool = False, param_dict : Opt
 #
 get_url_param_bool = get_url_parameter_bool
 #
-# EX: get_url_param_bool("abc", False, { "abc": "True" }) => True
+# EX: get_url_param_bool("abc", False, param_dict={"abc": "True"}) => True
 
 
 def get_url_parameter_int(param, default_value : int = 0, param_dict : Optional[Dict] = None):
@@ -418,6 +419,9 @@ def get_url_parameter_int(param, default_value : int = 0, param_dict : Optional[
     return result
 #
 get_url_param_int = get_url_parameter_int
+#
+# EX: get_url_parameter_int("n", param_dict={"n": "1"}) => 1
+# EX: get_url_parameter_int("_", param_dict={"_": "_"}) => 0
 
 
 def get_url_parameter_float(param, default_value : float = 0.0, param_dict : Optional[Dict] = None):
@@ -803,7 +807,7 @@ def format_url_param(name : str, default : Optional[str] = None):
     return value_spec
 #
 # EX: format_url_param("r") => ""
-# EX: format_url_param("r", "R") => "R"
+# EX: format_url_param("r", default="R") => "R"
 
 
 def format_input_field(
