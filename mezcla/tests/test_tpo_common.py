@@ -26,7 +26,7 @@
 # Standard modules
 import sys
 import re
-from datetime import datetime
+## OLD: from datetime import datetime
 import os
 import math
 import trace
@@ -38,6 +38,7 @@ import pytest
 # Local modules
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.unittest_wrapper import trap_exception
@@ -168,9 +169,16 @@ class TestTpoCommon(TestWrapper):
         assert re.search(r'modulename: debug, funcname: timestamp', captured)
 
         # test behaviour of function
-        actual, expected = THE_MODULE.debug_timestamp(), str(datetime.now())
-        # truncating the timestamp to eliminate milisecond difference in calculation
-        assert actual[:22] == expected[:22]
+        #
+        ## BAD (the following timestamps might differ in seconds due to millisecond wrapping):
+        ## actual, expected = THE_MODULE.debug_timestamp(), str(datetime.now())
+        ## # truncating the timestamp to eliminate milisecond difference in calculation
+        ## assert actual[:22] == expected[:22]
+        #
+        # EX: "2025-08-05 20:49:22.053904" => "2025-08-05 20:49:22.053"
+        #     "01234567890123456789012"
+        actual = THE_MODULE.debug_timestamp()
+        assert my_re.sub("[0-9]", "N", actual[:23]) == "NNNN-NN-NN NN:NN:NN.NNN"
 
     def test_debug_raise(self):
         """Ensure debug_raise works as expected"""
