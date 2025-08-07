@@ -98,14 +98,20 @@ class TestDebug(TestWrapper):
     def test_set_level(self):
         """Ensure set_level works as expected"""
         debug.trace(4, f"test_set_level(): self={self}")
-        THE_MODULE.set_level(5)
-        assert THE_MODULE.trace_level == 5
+        ## TODO3: set_level directly; for example, rename as test_99_set_level
+        ## so tested last (thus no side effect concerns)
+        self.patch_trace_level(5)
+        assert (THE_MODULE.trace_level == 5) or (not __debug__)
+        self.patch_trace_level(6)
+        assert THE_MODULE.trace_level == 6 or (not __debug__)
 
     def test_get_level(self):
         """Ensure get_level works as expected"""
         debug.trace(4, f"test_get_level(): self={self}")
-        THE_MODULE.trace_level = 5
+        self.patch_trace_level(5)
         assert THE_MODULE.get_level() == 5
+        self.patch_trace_level(6)
+        assert THE_MODULE.get_level() == 6
 
     def test_get_output_timestamps(self):
         """Ensure get_output_timestamps works as expected"""
@@ -675,25 +681,22 @@ class TestDebug2(TestWrapper):
         debug.trace(4, f"test_level(): self={self}")
         old_level = debug.get_level()
         new_level = old_level + 1
-        debug.set_level(new_level)
+        self.patch_trace_level(new_level)
         expected_level = (new_level if __debug__ else old_level)
         level_set_ok = (debug.get_level() == expected_level)
-        debug.set_level(old_level)
         self.do_assert(level_set_ok)
 
     @pytest.mark.xfail
     def test_trace_exceptions(self):
         """"Make sure debug.trace doesn't produce exceptions"""
         debug.trace(4, f"test_trace_exceptions(): self={self}")
-        old_level = debug.get_level()
-        debug.set_level(max(1, old_level))
+        self.patch_trace_level(1)
         no_exception = True
         try:
             THE_MODULE.trace(1, 666)
         except:
             no_exception = False
             debug.trace_exception(5, "test_trace_exceptions")
-        debug.set_level(old_level)
         self.do_assert(no_exception)
 
 #------------------------------------------------------------------------
