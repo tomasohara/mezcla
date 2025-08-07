@@ -718,7 +718,7 @@ class TestWrapper(unittest.TestCase):
         return temp_filename
 
     def patch_trace_level(self, level):
-        """Monkey patch the trace LEVEL"""
+        """Monkey patch the trace LEVEL (e.g., DEBUG_LEVEL)"""
         self.monkeypatch.setattr("mezcla.debug.trace_level", level)
 
     def tearDown(self) -> None:
