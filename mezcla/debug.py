@@ -128,6 +128,7 @@ INDENT0 = ""
 INDENT1 = "    "
 INDENT = INDENT1
 MISSING_LINE = "???"
+ELLIPSIS = "..."
 
 # Globals
 # note: See below (n.b., __debug__ only)
@@ -259,10 +260,14 @@ if __debug__:
                 result = "%s" % result
         return result
 
-    def do_print(text: str, end: Optional[str] = None) -> str:
-        """Print TEXT to stderr and optionally to DEBUG_FILE.
+    def do_print(value, max_len = None, end: Optional[str] = None) -> str:
+        """Print VALUE to stderr and optionally to DEBUG_FILE.
+        Outputs up to MAX_LEN characters including added ellipses.
+        Includes END text or newline (n.b., omitted from MAX_LEN check).
         Also, returns the text printed including newline unless omitted.
         """
+        if max_len is None:
+            max_len = max_trace_value_len
         out_text = ""
         try:
             ## TODO?
@@ -270,6 +275,10 @@ if __debug__:
             ## if __debug__:
             ##     assertion(7, isinstance(text, str))
             ##
+            text = str(value)
+            if len(text) > max_len:
+                effective_max_len = min(0, max_len - len(ELLIPSIS))
+                text = text[:effective_max_len] + ELLIPSIS
             print(text, file=sys.stderr, end=end)
             if debug_file:
                 print(text, file=debug_file, end=end)
@@ -287,18 +296,21 @@ if __debug__:
             empty_arg: Optional[bool] = None,
             no_eol: Optional[bool] = None,
             indentation: Optional[str] = None,
+            max_len = None,
             skip_sanity_checks: Optional[bool] = None
         ) -> str:
         """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE.
         Also, returns the formatted text.
-        Note: Optionally, uses \n unless no_eol, precedes trace with INDENTATION, and
-        SKIPs_SANITY_CHECKS (e.g., variables in braces in f-string omission).
+        Note: Optionally, uses \n unless NO_EOL, precedes trace with INDENTATION, and
+        SKIPs_SANITY_CHECKS (e.g., variables in braces in f-string omission). Outputs up to MAX_LEN characters including added ellipses.
         """
         # TODO1: add exception handling
         # TODO2: add options to use format_value and max_len 
         # Note: trace should not be used with text that gets formatted to avoid
         # subtle errors
         ## DEBUG: sys.stderr.write("trace({l}, {t})\n".format(l=level, t=text))
+        if max_len is None:
+            max_len = max_trace_value_len
         out_text = ""
         if (trace_level >= level):
             if indentation is None:
@@ -313,7 +325,8 @@ if __debug__:
                     diff = round(1000.0 * (time.time() - last_trace_time), 3)
                     timestamp_time += f" diff={diff}ms"
                     last_trace_time = time.time()
-                out_text += do_print(indentation + "[" + timestamp_time + "]", end=": ")
+                out_text += do_print(indentation + "[" + timestamp_time + "]", end=": ", max_len=max_len)
+                max_len -= len(out_text)
             ## TODO1: 
             ## # Optionally show filename and line number for caller
             ## # Note: This is mainly intended for help in tweaking trace levels, such as to help
@@ -323,19 +336,23 @@ if __debug__:
             # Print trace, converted to UTF8 if necessary (Python2 only)
             # TODO: add version of assertion that doesn't use trace or trace_fmtd
             ## TODO: assertion(not ???)
-            out_text += do_print(indentation, end="")
+            out_text += do_print(indentation, end="", max_len=max_len)
+            max_len -= len(out_text)
             if not isinstance(text, str):
                 if trace_level >= USUAL:
-                    out_text += do_print("[Warning: converted non-text to str] ", end="")
+                    out_text += do_print("[Warning: converted non-text to str] ", end="", max_len=max_len)
+                    max_len -= len(out_text)
                 text = str(text)
             if ((not skip_sanity_checks)
                 and re.search(r"{[^0-9]\S+}", text)
                 and not re.search(r"{{[^0-9]\S+}}", text)):
                 # TODO3: show caller info; also rework indent (pep8 quirk)
                 if include_trace_diagnostics:
-                    out_text += do_print("[FYI: f-string issue?] ", end="")
+                    out_text += do_print("[FYI: f-string issue?] ", end="", max_len=max_len)
+                    max_len -= len(out_text)
             end = "\n" if (not no_eol) else ""
-            out_text += do_print(_to_utf8(text), end=end)
+            out_text += do_print(_to_utf8(text), end=end, max_len=max_len)
+            max_len -= len(out_text)
             if use_logging:
                 # TODO: see if way to specify logging terminator
                 logging.debug(indentation + _to_utf8(text))
@@ -724,17 +741,22 @@ if __debug__:
                               label: Optional[str] = None,
                               show_methods_etc: bool = False,
                               indirect: Optional[bool] = False,
-                              max_value_len: Optional[int] = 2048) -> None:
+                              max_value_len: Optional[int] = None) -> None:
         """Traces out current context (local and global variables), with output
         prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
         Notes: By default the debugging level must be quite-detailed (6).
         If the debugging level is higher, the entire stack frame is traced.
         Also, methods are omitted by default. Other optional arguments allow
-        for INDIRECT callign contexts and MAX_VALUE_LEN of traced output.
+        for INDIRECT calling contexts and MAX_VALUE_LEN of traced output.
+        Warning: Some values are only output at higher trace levels
         """
+        trace(8, f"trace_current_context{(level, label, show_methods_etc, indirect, max_value_len)}")
+        ## TODO2: clarify confusing debug level usage
         frame = None
         if label is None:
             label = "current"
+        if max_value_len is None:
+            max_value_len = 2048
         try:
             current_frame = inspect.currentframe()
             trace_frame(7, frame, "current frame")
@@ -770,6 +792,8 @@ if __debug__:
         """Output stack trace to stderr (if at trace LEVEL or higher)"""
         if (level <= trace_level):
             traceback.print_stack(file=sys.stderr)
+            if debug_file:
+                traceback.print_stack(file=debug_file)
         return
 
 
@@ -833,8 +857,8 @@ if __debug__:
 
                 # Resolve expression text
                 if not use_old_introspection:
-                    expression = intro.format(expression, indirect=True)
-                    expression = re.sub("=False$", "", expression)
+                    expression = intro.format(expression, indirect=True, omit_values=True)
+                    ## OLD: expression = re.sub("=False$", "", expression)
                     ## TODO2: drop newlines due to argument split across lines
                     ##   expression = re.sub("\n", " ", expression)???
                     expression_text = expression
@@ -856,11 +880,9 @@ if __debug__:
                 # Output information
                 # TODO: omit subsequent warnings
                 trace_fmtd(ALWAYS, "Assertion failed: {expr} (at {file}:{line}){qual}",
-                           expr=expression, file=filename, line=line_number, qual=qualification_spec)
+                           expr=expression_text, file=filename, line=line_number, qual=qualification_spec)
             except:
-                trace_fmtd(ALWAYS, "Exception formatting assertion: {exc}",
-                           exc=sys.exc_info())
-                trace_object(ALWAYS, inspect.currentframe(), "caller frame", pretty_print=True)
+                trace_exception(ALWAYS, "assertion formatting")
         return expression_text
 
     def val(level: IntOrTraceLevel, value: Any) -> Any:
@@ -1074,22 +1096,21 @@ def format_value(value: str, max_len: Optional[int] = None,
         strict = False
     result = value if isinstance(value, str) else str(value)
     result = re.sub("\n", r"\\n", result)
-    ellipsis = "..."
     extra = (len(result) - max_len)
     if (extra <= 0):
         pass
     elif not strict:
-        result = result[:-extra] + ellipsis
+        result = result[:-extra] + ELLIPSIS
     else:
         l = 2 + MOST_VERBOSE
         trace(l, f"0. {result!r}", skip_sanity_checks=skip_sanity_checks)
         extra2 = 0
-        if (len(result) - extra + len(ellipsis) > max_len):
-            extra2 = (len(result) - extra + len(ellipsis) - max_len)
+        if (len(result) - extra + len(ELLIPSIS) > max_len):
+            extra2 = (len(result) - extra + len(ELLIPSIS) - max_len)
         trace_expr(l, extra, extra2)
         result = result[:-(extra + extra2)]
         trace(l, f"1. {result!r}", skip_sanity_checks=skip_sanity_checks)
-        result += ellipsis
+        result += ELLIPSIS
         trace(l, f"2. {result!r}", skip_sanity_checks=skip_sanity_checks)
         result = result[:max_len]
         trace(l, f"3. {result!r}", skip_sanity_checks=skip_sanity_checks)
@@ -1212,7 +1233,7 @@ def clip_value(value: Any, max_len: int = CLIPPED_MAX) -> str:
     # TODO: omit conversion to text if already text [DUH!]
     clipped = "%s" % value
     if (len(clipped) > max_len):
-        clipped = clipped[:max_len] + "..."
+        clipped = clipped[:max_len] + ELLIPSIS
     return clipped
 
 def read_line(filename: FileDescriptorOrPath, line_number: int) -> str:
