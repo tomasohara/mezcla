@@ -9,9 +9,6 @@
 
 """Tests for introspection module"""
 
-# Standard modules
-## TODO: from collections import defaultdict
-
 # Installed modules
 import pytest
 
@@ -79,6 +76,42 @@ class TestIt(TestWrapper):
         ## TODO2: assert my_re.search("var='----\.\.\.'", var_expr)
         ##                                            ^ (i.e., make sure quote closed)
         assert my_re.search(r"var='----\.\.\.", var_expr)
+        return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_05_quirks(self):
+        """Test for known introspection quirks"""
+        debug.trace(4, f"TestIt.test_05_quirks(); self={self}")
+        # pylint: disable=unnecessary-lambda-assignment
+        indirect_introspection = lambda x: THE_MODULE.intro.format(x, indirect=True)
+
+        # Quirk 1: Unable to resolve variable defined on same line as call
+        #
+        ## NOTE: attempts to reproduce following:
+        ##   In [150]: fu=123; MezclaDebugger().format(fu)
+        ##   Warning: unable to resolve call node: args=(123,)
+        ##   Out[150]: '123\n'
+        ## versus:
+        ##   In [151]: MezclaDebugger().format(fu)
+        ##   Out[151]: 'fu=123\n'
+        #
+        ## TODO:
+        ## pylint: disable=multiple-statements
+        ## same_line_var = 123; expr = indirect_introspection(same_line_var)
+        ## assert my_re.search(rf"^{same_line_var}", expr)
+        #
+        other_line_var = 321
+        expr = indirect_introspection(other_line_var)
+        assert my_re.search(rf"^other_line_var={other_line_var}", expr)
+
+        # Quirk 2: Unable to resolve expressions embedded in function calls
+        num = 7
+        add1 = lambda num: 1 + num      
+        assert not my_re.search(r"^add.*add.*num.*=", indirect_introspection(add1(add1(num))))
+        #
+        add1_add1_num = add1(add1(num))
+        expr = indirect_introspection(add1_add1_num)
+        assert my_re.search(rf"^add1_add1_num={add1_add1_num}", expr)
         return
 
 #------------------------------------------------------------------------
