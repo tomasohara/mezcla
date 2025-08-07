@@ -14,7 +14,7 @@
 # Warning:
 # - Calls to debug module must not use introspection (e.g., assertion and trace_expr).
 #
-# TODO:
+# TODO?:
 # - Place within debug.py to allow for tracing and to avoid redundant functions.
 #
 #................................................................................
@@ -40,6 +40,51 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+#...............................................................................
+# Issues:
+#
+# - The introspection fails in certain circumstances, due to the interaction of the
+#   call frame inspection with AST node analysis
+#   
+#     In [150]: fu=123; MezclaDebugger().format(fu)
+#     Warning: unable to resolve call node: args=(123,)
+#     Out[150]: '123\n'
+#
+#     In [151]: MezclaDebugger().format(fu)
+#     Out[151]: 'fu=123\n'
+# - pytest can wreck havoc with introspection (e.g., OK with ipython)
+#     def pp_setting(expr):
+#         """Prettyprint setting with normalization: lowercase and int booleans"""
+#         spec = debug.intro.format(expr, indirect=True).strip()
+#         spec = spec.lower().replace("true", "1").replace("false", "0").replace("use_", "")
+#         return spec
+#   
+#     def test_pp_setting(expr):
+#        """Test prettyprint with normalization"""
+#        USE_FUBAR = False
+#        assert my_re.search("fubar=0", pp_setting(USE_FUBAR))
+#   note: based on [test_]mako_globals.py from search-diff-engine repo
+#                      
+
+    spec = f"???={expr}"
+    try:
+        ## TODO: spec = introspection.intro.format(expr, indirect=True)
+        debug.reference_var(introspection)
+        ##
+        spec = debug.intro.format(expr, indirect=True).strip()
+        spec = pp_setting_aux(spec)
+        # note: make sure ends with ';'
+        spec = my_re.sub(r"([^;])$", r"\1;", spec.strip())
+    except:
+        try:
+            caller = inspect.stack()[1]
+        except:
+            caller = "???"
+        debug.trace_exception_info(5, f"pp_setting for {expr}: {caller=}")
+    debug.trace(5, f"pp_setting({expr!r}) => {spec!r}")
+    return spec
+
+#
 
 """
 Module for introspection of arguments and source code
@@ -62,7 +107,7 @@ from textwrap import dedent
 import executing
 
 # Globals
-_absent = object()
+_ABSENT = object()
 BTL = 0                                 # base trace level
 INTROSPECTION_DEBUG_LABEL = "INTROSPECTION_DEBUG"
 INTROSPECTION_DEBUG = os.getenv(INTROSPECTION_DEBUG_LABEL)
@@ -129,7 +174,7 @@ class Source(executing.Source):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if INTROSPECTION_DEBUG:
-            trace(f"Source.__init__{(*args, kwargs)}")
+            trace(f"Source.__init__{(*args, kwargs)}", max_len=1024)
             debug.trace_object(BTL+2, self, label="Source instance")
 
     def get_text_with_indentation(self, node):
@@ -178,7 +223,7 @@ def format_pair(prefix: str, arg, value):
     """
     Format the pair of argument and value and add prefix, return formatted string
     """
-    if arg is _absent:
+    if arg is _ABSENT:
         arg_lines = []
         value_prefix = prefix
     else:
@@ -256,6 +301,9 @@ class MezclaDebugger:
         """
         # NOTE: this is not separated into a function
         # as to not generate another call frame
+        if INTROSPECTION_DEBUG:
+            trace(f"in __call__:\n\t{args=}\n\t{arg_offset=}\n\t{indirect=}\n\t{kwargs=}",
+                  level=BTL+1)
         call_frame = inspect.currentframe()
         if INTROSPECTION_DEBUG:
             trace_frame(call_frame, "call_frame0")
@@ -288,6 +336,9 @@ class MezclaDebugger:
         
         :raises ValueError: If the call frame cannot be accessed
         """
+        if INTROSPECTION_DEBUG:
+            trace(f"in format:\n\t{args=}\n\t{arg_offset=}\n\t{indirect=}\n\t{kwargs=}",
+                  level=BTL+1)
         ## TODO2: add levels_back param (e.g., 2 for gh.assertion)
         # NOTE: this is not separated into a function
         # as to not generate another call frame
@@ -307,6 +358,8 @@ class MezclaDebugger:
         if call_frame is None:
             raise ValueError("Cannot access the call frame")
         out = self._format(call_frame, arg_offset, *args, **kwargs)
+        if INTROSPECTION_DEBUG:
+            trace(f"out format: {out!r}", level=BTL+1)
         return out
     
     def get_context(self, call_frame: FrameType):
@@ -318,14 +371,20 @@ class MezclaDebugger:
     def _format(self, call_frame: FrameType, arg_offset: int, *args, **kwargs):
         """
         Formats the given arguments and returns the formatted string
+        Note: This is the main workhorse for introspection.
         """
         if INTROSPECTION_DEBUG:
-            trace(f"_format{(call_frame, arg_offset, args, kwargs)}")
+            trace(f"in _format:\n\t{call_frame=}\n\t{arg_offset=}\n\t{args=}\n\t{kwargs=}",
+                  level=BTL+1)
+
+        # Initialize, accounting for different 'prefix' usages, such as member var,
+        # format_arg positiobal arg, and debug.trace_expr keyword are (passed along).
         pref = kwargs.get('prefix') or kwargs.get('_prefix')
         prefix = pref if pref is not None else call_or_value(self.prefix)
         ## HACK: uses _prefix kwarg to avoid conflict with positional arg
         kwargs["_prefix"] = prefix
 
+        # Get call frame context and combine argument specifications (e.g., var) with values
         context = self._format_context(call_frame)
         if self.icecream_like and not args:
             time = self._format_time()
@@ -335,6 +394,11 @@ class MezclaDebugger:
                 context = ""
             out = self._format_args(call_frame, arg_offset, prefix, context, args, **kwargs)
 
+        # Special case fixup for debug.trace no_oel 
+        no_eol = kwargs.get('no_eol', False)
+        if not no_eol and out.endswith("\n"):
+            out = out[:-1]
+            
         return out
 
     def _format_args(self, call_frame, arg_offset, prefix, context, args, **kwargs):
@@ -365,19 +429,23 @@ class MezclaDebugger:
                 trace(f"{sanitized_arg_strs=}")
         else:
             sys.stderr.write(f"Warning: unable to resolve call node: {args=}\n")
-            sanitized_arg_strs = [_absent] * len(args)
+            sanitized_arg_strs = [_ABSENT] * len(args)
 
         pairs = list(zip(sanitized_arg_strs, args))
         if INTROSPECTION_DEBUG:
-            debug.trace_object(BTL, pairs, "pairs")
+            debug.trace_object(BTL, pairs, "pairs", show_all=False)
 
         out = self._construct_argument_output(prefix, context, pairs, **kwargs)
         return out
 
     def _construct_argument_output(self, prefix, context, pairs, **kwargs):
         """
-        Constructs the output string from the given pairs of arguments and values,
+        Constructs the output string from the given pairs of argument specifications and values.
+        For example, for `fu=123; MezclaDebugger().format(fu)` pairs would be ['fu', 123]
         """
+        if INTROSPECTION_DEBUG:
+            trace(f"_construct_argument_output{(prefix, context, pairs)}; kwargs={kwargs}",
+                  level=BTL+1)
         def arg_prefix(arg, delim='=') -> str:
             """Return ARG concatenated with DELIM"""
             return f"{arg}{delim}"
@@ -388,14 +456,23 @@ class MezclaDebugger:
                 result = val[:max_len + 1] + "..."
             return result
 
+        # Derive pairs of arguments (specificiations) from call with resolved value.
+        # Checks for debug.assertion's omit_values option.
+        omit_values = kwargs.get('omit_values')
         pairs = [(arg, self.arg_to_string_function(val)) for arg, val in pairs]
         if "max_len" in kwargs:
             pairs = [(arg, format_value(val, kwargs["max_len"]))
                      for (arg, val) in pairs]
-        pair_strs = [
-            val if (is_literal(arg) or arg is _absent) else (arg_prefix(arg) + val)
-            for arg, val in pairs
-        ]
+        if not omit_values:
+            pair_strs = [
+                val if (is_literal(arg) or arg is _ABSENT) else (arg_prefix(arg) + val)
+                for arg, val in pairs
+            ]
+        else:
+            # When used for debug.assertion, the value is ignored
+            pair_strs = [arg for arg, _val in pairs]
+
+        # Check for debug.trace_expr suffix and delim options.
         suffix = kwargs.get('suffix', '')
         separator = sep if (sep := kwargs.get('delim')) else self._pairSeparator
         all_args_on_one_line = separator.join(pair_strs)
