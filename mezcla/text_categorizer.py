@@ -113,7 +113,7 @@ if USE_XGB:
 XGB_BOOSTER = system.getenv_value("XGB_BOOSTER", None)
 XGB_USE_GPUS = system.getenv_bool("XGB_USE_GPUS", False)
 XGB_VERBOSITY = getenv_int("XGB_VERBOSITY", 0, "Degree of verbosity from 0 to 3")
-XGB_JSON = system.getenv_bool("XGB_USE_GPUS", False,
+XGB_JSON = system.getenv_bool("XGB_JSON", False,
                               "Use XGBoost model in JSON format")
 debug.assertion(not XGB_JSON, "JSON support is broke due to obscure manuals")
 
