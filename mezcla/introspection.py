@@ -64,26 +64,6 @@
 #        USE_FUBAR = False
 #        assert my_re.search("fubar=0", pp_setting(USE_FUBAR))
 #   note: based on [test_]mako_globals.py from search-diff-engine repo
-#                      
-
-    spec = f"???={expr}"
-    try:
-        ## TODO: spec = introspection.intro.format(expr, indirect=True)
-        debug.reference_var(introspection)
-        ##
-        spec = debug.intro.format(expr, indirect=True).strip()
-        spec = pp_setting_aux(spec)
-        # note: make sure ends with ';'
-        spec = my_re.sub(r"([^;])$", r"\1;", spec.strip())
-    except:
-        try:
-            caller = inspect.stack()[1]
-        except:
-            caller = "???"
-        debug.trace_exception_info(5, f"pp_setting for {expr}: {caller=}")
-    debug.trace(5, f"pp_setting({expr!r}) => {spec!r}")
-    return spec
-
 #
 
 """
