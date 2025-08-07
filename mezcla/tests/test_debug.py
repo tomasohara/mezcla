@@ -286,8 +286,13 @@ class TestDebug(TestWrapper):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
         number: int = 9                 # pylint: disable=unused-variable
-        self.patch_trace_level(4)
-        THE_MODULE.trace_current_context(4)
+        ## OLD: self.patch_trace_level(4)
+        ## Note: patched trace level should be 1 higher than level used in call
+        ## self.patch_trace_level(4)
+        ## TODO3: straighten out trace level usage in trace_current_context
+        base_trace_level = 4
+        self.patch_trace_level(base_trace_level + 1)
+        THE_MODULE.trace_current_context(base_trace_level, max_value_len=4096)
         err = self.get_stderr()
         script_filename = gh.basename(__file__)
         # globals: {\n  {value): {\n
@@ -359,13 +364,11 @@ class TestDebug(TestWrapper):
     def test_val(self):
         """Ensure val works as expected"""
         debug.trace(4, f"test_val(): self={self}")
-        save_trace_level = THE_MODULE.get_level()
         test_value = 22
-        THE_MODULE.set_level(5)
+        self.patch_trace_level(5)
         level5_value = THE_MODULE.val(5, test_value)
-        THE_MODULE.set_level(0)
+        self.patch_trace_level(0)
         level0_value = THE_MODULE.val(1, test_value)
-        THE_MODULE.set_level(save_trace_level)
         assert level5_value == test_value
         assert level0_value is None
 
@@ -373,15 +376,13 @@ class TestDebug(TestWrapper):
         """Ensure code works as expected"""
         debug.trace(4, f"test_code(): self={self}")
         ## TODO: debug.assertion(debug_level, debug.code(debug_level, lambda: (8 / 0 != 0.0)))
-        save_trace_level = THE_MODULE.get_level()
         count = 0
         def increment():
             """Increase counter"""
             nonlocal count
             count += 1
-        THE_MODULE.set_level(4)
+        self.patch_trace_level(4)
         THE_MODULE.code(4, lambda: increment)
-        THE_MODULE.set_level(save_trace_level)
         assert(count == 0)
 
     @pytest.mark.xfail
@@ -412,7 +413,7 @@ class TestDebug(TestWrapper):
     def test_debugging(self):
         """Ensure debugging works as expected"""
         debug.trace(4, f"test_debugging(): self={self}")
-        THE_MODULE.set_level(4)
+        self.patch_trace_level(4)
         assert THE_MODULE.debugging(2)
         assert THE_MODULE.debugging(4)
         assert not THE_MODULE.debugging(6)
@@ -420,21 +421,21 @@ class TestDebug(TestWrapper):
     def test_detailed_debugging(self):
         """Ensure detailed_debugging works as expected"""
         debug.trace(4, f"test_detailed_debugging(): self={self}")
-        THE_MODULE.set_level(2)
+        self.patch_trace_level(2)
         assert not THE_MODULE.detailed_debugging()
-        THE_MODULE.set_level(4)
+        self.patch_trace_level(4)
         assert THE_MODULE.detailed_debugging()
-        THE_MODULE.set_level(6)
+        self.patch_trace_level(6)
         assert THE_MODULE.detailed_debugging()
 
     def test_verbose_debugging(self):
         """Ensure verbose_debugging works as expected"""
         debug.trace(4, f"test_verbose_debugging(): self={self}")
-        THE_MODULE.set_level(2)
+        self.patch_trace_level(2)
         assert not THE_MODULE.verbose_debugging()
-        THE_MODULE.set_level(5)
+        self.patch_trace_level(5)
         assert THE_MODULE.verbose_debugging()
-        THE_MODULE.set_level(7)
+        self.patch_trace_level(7)
         assert THE_MODULE.verbose_debugging()
 
     def test_format_value(self):
@@ -470,7 +471,7 @@ class TestDebug(TestWrapper):
     def test_xor(self):
         """Ensure xor works as expected"""
         debug.trace(4, f"test_xor(): self={self}")
-        THE_MODULE.set_level(7)
+        self.patch_trace_level(7)
         # Test the XOR table
         assert not THE_MODULE.xor(0, 0.0)
         assert THE_MODULE.xor(0, 1.0)
@@ -483,7 +484,7 @@ class TestDebug(TestWrapper):
     def test_xor3(self):
         """Ensure xor3 works as expected"""
         debug.trace(4, f"test_xor3(): self={self}")
-        THE_MODULE.set_level(7)
+        self.patch_trace_level(7)
         # Test the XOR table
         assert not THE_MODULE.xor3(0, 0, 0)
         assert THE_MODULE.xor3(0, 0, 1)
@@ -630,11 +631,9 @@ class TestDebug(TestWrapper):
         if not __debug__:
             self.expected_stderr_trace = ""
         pre_out, pre_err = self.get_stdout_stderr()
-        save_trace_level = THE_MODULE.get_level()
-        THE_MODULE.set_level(4)
+        self.patch_trace_level(4)
         print(self.stdout_text)
         THE_MODULE.trace(3, self.stderr_text)
-        THE_MODULE.set_level(save_trace_level)
         out, err = self.get_stdout_stderr()
         assert(self.expected_stdout_trace in out)
         assert(self.expected_stderr_trace in err)
@@ -649,12 +648,10 @@ class TestDebug(TestWrapper):
         ## capsys.start_capturing()
         pre_out, pre_err = self.get_stdout_stderr()
         self.expected_stderr_trace = ""
-        save_trace_level = THE_MODULE.get_level()
-        THE_MODULE.set_level(0)
+        self.patch_trace_level(0)
         print(self.stdout_text)
         THE_MODULE.trace(1, self.stderr_text)
         out, err = self.get_stdout_stderr()
-        THE_MODULE.set_level(save_trace_level)
         assert self.expected_stdout_trace in out
         assert self.expected_stderr_trace in err
         THE_MODULE.trace_expr(6, (pre_out, pre_err), (out,err))
