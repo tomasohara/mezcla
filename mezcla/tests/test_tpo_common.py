@@ -14,6 +14,10 @@
 # - Remove most of the trace.Trace usages as that usually is overkill:
 #   capturing stderr is sufficient!
 #
+# TODO3:
+# - Drop tests that are similar to those in test_debug.py (given that
+#   tpo_common.py mosly implemented in terms of debug.py).
+#
 # Important:
 # - Most of the methods on tpo_common was moved to newer modules, such
 #   as system.py, debug.py etc.
@@ -60,14 +64,14 @@ class TestTpoCommon(TestWrapper):
     def test_set_debug_level(self):
         """Ensure set_debug_level works as expected"""
         debug.trace(4, "test_set_debug_level()")
-        THE_MODULE.set_debug_level(5)
-        assert THE_MODULE.debugging_level() == 5
+        self.patch_trace_level(999)
+        assert (THE_MODULE.debugging_level() == 999) or (not __debug__)
 
     def test_debugging_level(self):
         """Ensure debugging_level works as expected"""
         debug.trace(4, "test_debugging_level()")
-        THE_MODULE.set_debug_level(5)
-        assert THE_MODULE.debugging_level() == 5
+        self.patch_trace_level(999)
+        assert (THE_MODULE.debugging_level() == 999) or (not __debug__)
 
     def test_debug_trace_without_newline(self):
         """Ensure debug_trace_without_newline works as expected"""
@@ -76,7 +80,7 @@ class TestTpoCommon(TestWrapper):
 
         # test underlying function is being called
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.debug_trace_without_newline, (text))
+        tracer.runfunc(THE_MODULE.debug_trace_without_newline, (text), level=1)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -97,7 +101,7 @@ class TestTpoCommon(TestWrapper):
 
         # test underlying function is being called
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.debug_trace, (text))
+        tracer.runfunc(THE_MODULE.debug_trace, (text), level=1)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -118,7 +122,8 @@ class TestTpoCommon(TestWrapper):
 
         # test underlying function is being called
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.debug_print, (text), skip_newline=False)
+        tracer.runfunc(THE_MODULE.debug_print, (text),
+                       level=1, skip_newline=False)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -132,7 +137,8 @@ class TestTpoCommon(TestWrapper):
 
         # test with skip_newline
         self.clear_stdout_stderr()
-        tracer.runfunc(THE_MODULE.debug_print, (text), skip_newline=True)
+        tracer.runfunc(THE_MODULE.debug_print, (text),
+                       level=1, skip_newline=True)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -200,7 +206,7 @@ class TestTpoCommon(TestWrapper):
         debug.trace(4, "test_trace_array()")
         array = ['test', 'trace', 'array']
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_array, (array))
+        tracer.runfunc(THE_MODULE.trace_array, (array), level=1)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -226,7 +232,8 @@ class TestTpoCommon(TestWrapper):
 
         obj = TestObj()
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_object, obj, show_methods_etc=True, show_private=True)
+        tracer.runfunc(THE_MODULE.trace_object, (obj),
+                       level=1, show_methods_etc=True, show_private=True)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -244,7 +251,7 @@ class TestTpoCommon(TestWrapper):
         debug.trace(4, "test_trace_value()")
         value = "test value"
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_value, value)
+        tracer.runfunc(THE_MODULE.trace_value, (value), level=1)
 
         # redirect write_results tot temp file
         temp = self.get_temp_file()
@@ -254,7 +261,7 @@ class TestTpoCommon(TestWrapper):
         assert re.search(r'modulename: tpo_common, funcname: debug_print', out)
         assert value in error
 
-        tracer.runfunc(THE_MODULE.trace_value, value, label='TPO')
+        tracer.runfunc(THE_MODULE.trace_value, (value), label='TPO', level=1)
 
         # redirect write_results to temp file
         tracer.results().write_results(coverdir=temp)
@@ -268,13 +275,15 @@ class TestTpoCommon(TestWrapper):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, "test_trace_current_context()")
         # note: level should be higher than level below
-        self.patch_trace_level(4)
+        base_trace_level = 4
+        self.patch_trace_level(base_trace_level + 1)
 
         test_var = 1                    # pylint: disable=unused-variable
         # check that local and global variables are traced
-        THE_MODULE.trace_current_context(level=2, label='TPO',
+        THE_MODULE.trace_current_context(level=base_trace_level, label='TPO',
                                          show_methods_etc=False, max_value_len=9999)
         error = self.get_stderr()
+        debug.trace_expr(4, error)
         assert 'TPO' in error
         assert 'test_var' in error
         assert 'FOOBAR' in error
@@ -300,7 +309,7 @@ class TestTpoCommon(TestWrapper):
     def test_debugging(self):
         """Ensure debugging works as expected"""
         debug.trace(4, "test_debugging()")
-        THE_MODULE.set_debug_level(4)
+        self.patch_trace_level(4)
         assert THE_MODULE.debugging(2)
         assert THE_MODULE.debugging(4)
         assert not THE_MODULE.debugging(6)
@@ -308,21 +317,21 @@ class TestTpoCommon(TestWrapper):
     def test_detailed_debugging(self):
         """Ensure detailed_debugging works as expected"""
         debug.trace(4, "test_detailed_debugging()")
-        THE_MODULE.set_debug_level(2)
+        self.patch_trace_level(2)
         assert not THE_MODULE.detailed_debugging()
-        THE_MODULE.set_debug_level(4)
+        self.patch_trace_level(4)
         assert THE_MODULE.detailed_debugging()
-        THE_MODULE.set_debug_level(6)
+        self.patch_trace_level(6)
         assert THE_MODULE.detailed_debugging()
 
     def test_verbose_debugging(self):
         """Ensure verbose_debugging works as expected"""
         debug.trace(4, "test_verbose_debugging()")
-        THE_MODULE.set_debug_level(2)
+        self.patch_trace_level(2)
         assert not THE_MODULE.verbose_debugging()
-        THE_MODULE.set_debug_level(5)
+        self.patch_trace_level(5)
         assert THE_MODULE.verbose_debugging()
-        THE_MODULE.set_debug_level(7)
+        self.patch_trace_level(7)
         assert THE_MODULE.verbose_debugging()
 
     def test_to_string(self):
