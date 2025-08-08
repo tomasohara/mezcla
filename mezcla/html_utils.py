@@ -316,8 +316,10 @@ def set_param_dict(param_dict : Dict):
 def get_url_param(name : str, default_value : Optional[str] = None, param_dict : Optional[Dict] = None, escaped : bool = False):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
     Note: It can be ESCAPED for use in HTML. Underscores in NAME are converted to dashes if not in dict.
-    Different from get_url_parameter_value in possibly returning list.
+    Warning: Can return a list (unlike get_url_parameter_value).
     """
+    # EX: get_url_param("fu", param_dict={"fu": "123"}) => "123"
+    # EX: get_url_param("fu", param_dict={"fu": ["123", "321"]}) => ["123", "321"]
     # TODO3: default_value => default; rename as get_url_param_raw
     if default_value is None:
         default_value = ""
@@ -350,13 +352,14 @@ def get_url_text(name : str, default_value : Any = None, param_dict : Optional[D
 def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", param_dict : Optional[Dict] = None):
     """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT
     Note: the value is only specified/submitted if checked"""
-    # TODO3?: extend to handle case with multiple values (see get_url_parameter_value)
     # EX: get_url_param_checkbox_spec("param", param_dict={"param": "on"}) => "checked"
     # EX: get_url_param_checkbox_spec("param", param_dict={"param": "off"}) => ""
     # NOTE: 1 also treated as True
     # TODO: implement in terms of get_url_param
     param_dict = (get_param_dict(param_dict) or {})
     param_value = param_dict.get(name, default_value)
+    if isinstance(param_value, list):
+        param_value = param_value[-1]
     param_value = system.to_unicode(param_value)
     ## OLD: value = "checked" if (param_value in ["1", "on", True]) else ""
     value = "checked" if system.to_bool(param_value) else ""
@@ -371,8 +374,9 @@ def get_url_parameter_value(param, default_value : Any = None, param_dict : Opti
     """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)
     Note: Underscores in PARAM are converted to dashes if not in dict.
     Also, different from get_url_parameter in just returning single value.    
-    Warning: emtpy strings are treated as None.
+    Warning: empty strings are treated as None.
     """
+    # EX: get_url_parameter_value("fu", param_dict={"fu": ["123", "321"]}) => "123"
     # TODO3?: rename as get_last_url_parameter_value (to avoid confusion with get_url_parameter)
     param_dict = (get_param_dict(param_dict) or {})
     in_param = param
@@ -385,7 +389,8 @@ def get_url_parameter_value(param, default_value : Any = None, param_dict : Opti
     debug.trace_fmtd(5, "get_url_parameter_value({p}, {dft}, _) => {r!r}",
                      p=in_param, dft=default_value, r=result)
     return result
-
+#
+# EX: get_url_parameter_value("fu", param_dict={"fu": "321"}) => "321"
 
 def get_url_parameter_bool(param, default_value : bool = False, param_dict : Optional[Dict] = None):
     """Get boolean value for PARAM from PARAM_DICT, with "on" treated as True. @note the hash defaults to user_parameters, and the default value is False
@@ -740,8 +745,8 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
     return links
 
 
-def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None, concat_label: Optional[str] = None, skip_hidden: Optional[str] = None):
-    """Returns HTML specification for input checkbox with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, OUTER_SPAN_CLASS, CONCAT_LABEL, and SKIP_HIDDEN.
+def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None, concat_label: Optional[str] = None, skip_hidden: Optional[str] = None, param_dict : Optional[Dict] = None):
+    """Returns HTML specification for input checkbox with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, OUTER_SPAN_CLASS, CONCAT_LABEL, SKIP_HIDDEN, and PARAM_DICT.
     Note:
     - param_name + "-id" is used for the field ID.
     - The TOOLTIP requires CSS support (e.g., tooltip-control class).
@@ -756,9 +761,10 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     ## EX: format_checkbox("disable-touch") => "<input type='hidden' name='disable-touch' value='off'><label >Disable touch?<input type='checkbox' id='disable-touch-id' name='disable-touch'   ></label>"
     ## TODO3: add on_cange as with format_input_field
     debug.trace_expr(7, param_name, label, skip_capitalize, default_value, disabled, style,
-                     misc_attr, tooltip, outer_span_class, concat_label, skip_hidden,
+                     misc_attr, tooltip, outer_span_class, concat_label, skip_hidden, param_dict,
                      prefix="in format_checkbox: ")
-    checkbox_spec = get_url_param_checkbox_spec(param_name, default_value)
+    checkbox_spec = get_url_param_checkbox_spec(param_name, default_value,
+                                                param_dict=param_dict)
     disabled_spec = ("disabled" if disabled else "")
     status_spec = f"{checkbox_spec} {disabled_spec}".strip()
     style_spec = (f"style='{style}'" if style else "")
@@ -818,8 +824,8 @@ def format_input_field(
         tooltip: Optional[str] = None, text_area: Optional[str] = None,
         num_rows : Optional[int] = None, on_change: Optional[str] = None,
         field_type: Optional[str] = None, concat_label: Optional[str] = None,
-        outer_span_class: Optional[str] = None):
-    """Returns HTML specification for input field with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, MAX_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, NUM_ROWS, ON_CHANGE, FIELD_TYPE, CONCAT_LABEL, and OUTER_SPAN_CLASS.
+        outer_span_class: Optional[str] = None, param_dict : Optional[Dict] = None):
+    """Returns HTML specification for input field with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, MAX_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, NUM_ROWS, ON_CHANGE, FIELD_TYPE, CONCAT_LABEL, OUTER_SPAN_CLASS, and PARAM_DICT.
     Note:
     - param_name + "-id" is used for the field ID.
     - SIZE should be specified if not same as MAX_LEN.
@@ -837,7 +843,8 @@ def format_input_field(
     # For tooltip support, see https://stackoverflow.com/questions/65854934/is-a-css-only-inline-tooltip-with-html-content-inside-eg-images-possible.
     debug.trace_expr(7, param_name, label, skip_capitalize, default_value, max_len, size, max_value,
                      disabled, style, misc_attr, tooltip, text_area, num_rows, on_change,
-                     field_type, concat_label, outer_span_class, prefix="in format_input_field: ")
+                     field_type, concat_label, outer_span_class, param_dict,
+                     prefix="in format_input_field: ")
     if (label is None):
         label = param_name.replace("-", " ")
         if not skip_capitalize:
@@ -849,7 +856,7 @@ def format_input_field(
     if (size is None):
         size = max_len
     type_spec = (f"type='{field_type}'" if field_type else "")
-    field_value = (get_url_param(param_name) or default_value)
+    field_value = (get_url_parameter_value(param_name, param_dict=param_dict) or default_value)
     value_spec = (f"value='{field_value}'" if field_value else "")
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
