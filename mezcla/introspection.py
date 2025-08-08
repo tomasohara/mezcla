@@ -322,22 +322,29 @@ class MezclaDebugger:
         ## TODO2: add levels_back param (e.g., 2 for gh.assertion)
         # NOTE: this is not separated into a function
         # as to not generate another call frame
-        call_frame = inspect.currentframe()
-        if INTROSPECTION_DEBUG:
-            trace_frame(call_frame, "call_frame0")
-        if call_frame is not None:
-            # note: only go back one frame from this function
-            go_back = indirect or (call_frame.f_code.co_name != "format")
-            call_frame = call_frame.f_back
+        call_frame = None
+        try:
+            call_frame = inspect.currentframe()
             if INTROSPECTION_DEBUG:
-                trace_frame(call_frame, "call_frame1")
-            if go_back and call_frame is not None:
+                trace_frame(call_frame, "call_frame0")
+            if call_frame is not None:
+                # note: only go back one frame from this function
+                go_back = indirect or (call_frame.f_code.co_name != "format")
                 call_frame = call_frame.f_back
                 if INTROSPECTION_DEBUG:
-                    trace_frame(call_frame, "call_frame2")
-        if call_frame is None:
-            raise ValueError("Cannot access the call frame")
-        out = self._format(call_frame, arg_offset, *args, **kwargs)
+                    trace_frame(call_frame, "call_frame1")
+                if go_back and call_frame is not None:
+                    call_frame = call_frame.f_back
+                    if INTROSPECTION_DEBUG:
+                        trace_frame(call_frame, "call_frame2")
+            if call_frame is None:
+                raise ValueError("Cannot access the call frame")
+            out = self._format(call_frame, arg_offset, *args, **kwargs)
+        except:
+            out = f"Introspection Error: {str(args)}"
+            sys.stderr.write(f"Error: unable to format arg spec:\n")
+            sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
+            sys.stderr.write(f"\t{sys.exc_info()}\n")
         if INTROSPECTION_DEBUG:
             trace(f"out format: {out!r}", level=BTL+1)
         return out
@@ -408,7 +415,9 @@ class MezclaDebugger:
             if INTROSPECTION_DEBUG:
                 trace(f"{sanitized_arg_strs=}")
         else:
-            sys.stderr.write(f"Warning: unable to resolve call node: {args=}\n")
+            sys.stderr.write(f"Warning: unable to extract args:\n")
+            sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
+            sys.stderr.write(f"\t{sys.exc_info()}\n")
             sanitized_arg_strs = [_ABSENT] * len(args)
 
         pairs = list(zip(sanitized_arg_strs, args))
