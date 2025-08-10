@@ -185,11 +185,22 @@ def formatted_environment_option_descriptions(
 
 
 def getenv(var: str, default_value: Any = None) -> Any:
-    """Simple wrapper around os.getenv, with tracing"""
-    # Note: Use getenv_* for type-specific versions with env. option description
+    """Simple wrapper around os.getenv, with tracing.
+    Note: Use getenv_* for type-specific versions with env. option description.
+    """
+    ## TODO3: add support for normalization as with getenv_text
     result = os.getenv(var, default_value)
     debug.trace_fmt(5, "getenv({v}, {dv}) => {r}", v=var, dv=default_value, r=result)
     return result
+
+
+def normalize_env_var(var: str) -> str:
+    """Makes sure env VAR use normal conventios: uppercase and no dashes"""
+    # EX: normalize_env_var("fu-bar") => "FU_BAR"
+    in_var = var
+    var = var.replace("-", "_").upper()
+    debug.trace(7, f"normalize_env_var({in_var!r}) => {var!r}")
+    return var
 
 
 def setenv(
@@ -197,13 +208,14 @@ def setenv(
         value: Any,
         normalize: bool = False
     ) -> None:
-    """Set environment VAR to non-Null VALUE
-    If normalize, the var is converted to uppercase and dashes to underscores
+    """Set environment VAR to non-null VALUE.
+    Note: If optional NORMALIZE, the var is converted to uppercase and dashes to underscores.
     """
     debug.trace_fmtd(5, "setenv({v}, {val})", v=var, val=value)
     debug.assertion(value is not None)
     if normalize:
-        var = var.replace("-", "_").upper()
+        ## OLD: var = var.replace("-", "_").upper()
+        var = normalize_env_var(var)
     os.environ[var] = str(value)
     return
 
@@ -215,7 +227,8 @@ def getenv_text(
         desc: str = "",
         helper: bool = False,
         update: Optional[bool] = None,
-        skip_register: Optional[bool] = None
+        skip_register: Optional[bool] = None,
+        skip_normalize = None,
     ) -> str:
     """Returns textual value for environment variable VAR (or DEFAULT value, excluding None).
     Notes:
@@ -224,6 +237,7 @@ def getenv_text(
     - DESCRIPTION used for get_environment_option_descriptions.
     - If UPDATE, then the environment is modified with value (e.g., based on default).
     - If SKIP_REGISTER, the variable info is not recorded (see env_options global).
+    - Unless SKIP_NORMALIZE, the variable name is normalized before lookup (e.g., uppercase and dashes).
     """
     # Note: default is empty string to ensure result is string (not NoneType)
     ## TODO: add way to block registration
@@ -232,17 +246,27 @@ def getenv_text(
     if default is None:
         debug.trace(4, f"Warning: getenv_text treats default None as ''; consider using getenv_value for '{var}' instead")
         default = ""
+        
+    # Get value, falling back to underscores instead of dashes
+    in_var = var
     text_value = os.getenv(var)
+    if (text_value is None):
+        if (not skip_normalize) and re.search("[A-Z-]", var):
+            var = var.replace("-", "_").upper()
+            debug.trace(4, f"FYI: Normalizing env.var {in_var!r} to {var!r}")
     ## TODO?: if ((not helper and (text_value is None)) or (not text_value)):
     if (text_value is None):
         debug.trace_fmtd(6, "getenv_text: no value for var {v}", v=var)
         text_value = default
+
+    # Optionally, update the environment
     if update:
+        debug.assertion(not skip_normalize)
         setenv(var, text_value, normalize=True)
     trace_level = 6 if helper else 5
     ## DEBUG: sys.stderr.write("debug.trace_fmtd({trace_level} \"getenv_text('{v}', [def={dft}], [desc={desc}], [helper={hlpr}]) => {r}\"".format(trace_level=trace_level, v=var, dft=default, desc=description, hlpr=helper, r=text_value))
     debug.trace_fmtd(trace_level, "getenv_text('{v}', [def={dft}], [desc={desc}], [helper={hlpr}]) => {r}",
-                     v=var, dft=default, desc=description, hlpr=helper, r=text_value)
+                     v=in_var, dft=default, desc=description, hlpr=helper, r=text_value)
     return (text_value)
 
 
@@ -252,14 +276,26 @@ def getenv_value(
         description: str = "",
         desc: str = "",
         update: Optional[bool] = None,
-        skip_register: Optional[bool] = None
+        skip_register: Optional[bool] = None,
+        skip_normalize = None,
     ) -> Any:
     """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE. (See getenv_text for option details.)"""
     # EX: getenv_value("bad env var") => None
+    # TODO2: reconcile with getenv_value (e.g., via common helper)
     if not skip_register:
         register_env_option(var, description or desc, default)
+
+    # Get value, falling back to underscores instead of dashes
+    in_var = var
     value = os.getenv(var, default)
+    if (value is None):
+        if (not skip_normalize) and re.search("[A-Z-]", var):
+            var = var.replace("-", "_").upper()
+            debug.trace(4, f"FYI: Normalizing env.var {in_var!r} to {var!r}")
+
+    # Optionally, update the environment
     if update:
+        debug.assertion(not skip_normalize)
         setenv(var, value, normalize=True)
     # note: uses !r for repr()
     debug.trace_fmtd(5, "getenv_value({v!r}, [def={dft!r}], [desc={dsc!r}]]) => {val!r}",
@@ -276,7 +312,8 @@ def getenv_bool(
         desc: str = "",
         allow_none: Optional[bool] = False, 
         update: Optional[bool] = None,
-        skip_register: Optional[bool] = None
+        skip_register: Optional[bool] = None,
+        **kwargs
     ) -> bool:
     """Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note:
@@ -288,14 +325,14 @@ def getenv_bool(
     # EX: getenv_bool("bad env var", None, allow_none=True) => True
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
-    value_text = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register)
+    value_text = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register, **kwargs)
     if (isinstance(value_text, str) and value_text.strip()):
         bool_value = to_bool(value_text)
     if not isinstance(bool_value, bool):
         if (bool_value is None):
             bool_value = False if (not allow_none) else None
         else:
-            debug.assertion(bool_value != default, f"Check {var!r} default {default!r}")
+            ## OLD: debug.assertion(bool_value != default, f"Check {var!r} default {default!r}")
             bool_value = to_bool(bool_value)
     debug.assertion(isinstance(bool_value, bool) or allow_none)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
@@ -313,7 +350,8 @@ def getenv_number(
         allow_none: Optional[bool] = False, 
         helper: bool = False,
         update: Optional[bool] = None,
-        skip_register: Optional[bool] = None
+        skip_register: Optional[bool] = None,
+        **kwargs
     ) -> float:
     """Returns number based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
     Note: Return is a float unless ALLOW_NONE; defaults to -1.0
@@ -322,7 +360,7 @@ def getenv_number(
     # TODO: def getenv_number(...) -> Optional(float):
     # Note: use getenv_int or getenv_float for typed variants
     num_value = default
-    value = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register)
+    value = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register, **kwargs)
     if (isinstance(value, str) and value.strip()):
         debug.assertion(is_number(value))
         num_value = to_float(value)
@@ -343,13 +381,14 @@ def getenv_int(
         desc: str = "",
         allow_none: bool = False,
         update: Optional[bool] = None,
-        skip_register: Optional[bool] = None
+        skip_register: Optional[bool] = None,
+        **kwargs
     ) -> int:
     """Version of getenv_number for integers, with optional DESCRIPTION and env. UPDATE
     Note: Return is an integer unless ALLOW_NONE; defaults to -1
     """
     # EX: getenv_int("?", default=1.5) => 1
-    value = getenv_number(var, description=description, desc=desc, default=default, allow_none=allow_none, helper=True, update=update, skip_register=skip_register)
+    value = getenv_number(var, description=description, desc=desc, default=default, allow_none=allow_none, helper=True, update=update, skip_register=skip_register, **kwargs)
     if (not isinstance(value, int)):
         ## OLD: if ((value is not None) and (not allow_none)):
         if (not ((value is None) and allow_none)):
