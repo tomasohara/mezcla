@@ -159,6 +159,27 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.env_defaults['NEW_ENV_VAR'] == 'empty'
         assert THE_MODULE.env_options['NEW_ENV_VAR'] == 'another test env var'
 
+    def test_getenv_normalization(self):
+        """Verify getenv_value/text env var normalization"""
+        self.monkeypatch.setenv("MY_VAR", "my value")
+        assert THE_MODULE.getenv_value("my-var") is None
+        assert THE_MODULE.getenv_text("my-var") == ""
+        assert THE_MODULE.getenv_value("my-var", normalize=True) == "my value"
+        assert THE_MODULE.getenv_text("my-var", normalize=True) == "my value"
+        
+    def test_getenv_missing(self):
+        """Verify getenv_xyz with mising env"""
+        var = "NULL_VAR"
+        self.monkeypatch.delenv(var, raising=False)
+        assert THE_MODULE.getenv_value(var) is None
+        assert THE_MODULE.getenv_text(var) == ""
+        assert THE_MODULE.getenv_int(var) == -1
+        assert THE_MODULE.getenv_int(var, default=666) == 666
+        assert THE_MODULE.getenv_float(var) == -1.0
+        assert THE_MODULE.getenv_float(var, default=1.5) == 1.5
+        assert THE_MODULE.getenv_float(var, default=1, update=True) == 1
+        assert THE_MODULE.getenv_value(var) == "1"
+        
     def test_getenv_bool(self):
         """Ensure getenv_bool works as expected"""
         debug.trace(4, "test_getenv_bool()")
