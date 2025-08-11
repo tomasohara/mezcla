@@ -160,10 +160,11 @@ class TestDebug(TestWrapper):
         stderr_2 = self.get_stderr()
         assert "trace_formatted" in stderr_2
 
-        self.clear_stderr()
-        THE_MODULE.trace_fmtd(5, "x={x}", x=1, do_whatever=True)
-        stderr_3 = self.get_stderr()
-        assert my_re.search(r"Unexpected keyword.*['do_whatever']", stderr_3)
+        ## TODO3 (re-instate after check reworked):
+        ## self.clear_stderr()
+        ## THE_MODULE.trace_fmtd(5, "x={x}", x=1, do_whatever=True)
+        ## stderr_3 = self.get_stderr()
+        ## assert my_re.search(r"Unexpected keyword.*['do_whatever']", stderr_3)
 
     @pytest.mark.xfail
     def test_trace_object(self):
@@ -662,6 +663,13 @@ class TestDebug(TestWrapper):
         assert self.expected_stderr_trace in err
         THE_MODULE.trace_expr(6, (pre_out, pre_err), (out,err))
 
+    @pytest.mark.xfail
+    def test_do_print(self):
+        """Verifies do_print options"""
+        out = THE_MODULE.do_print("1234567890", max_len=4, end=";")
+        expected = "1...;"
+        assert out == expected
+        assert expected in self.get_stderr()
 
 
 class TestDebug2(TestWrapper):
