@@ -391,7 +391,7 @@ if __debug__:
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
         # TODO3: return text as with trace and trace_expr
         if (trace_level >= level):
-            ## OLD:
+            ## TODO3 (rework by checking unknown args not in format string):
             ## check_keyword_args(VERBOSE, "max_len skip_sanity_checks",
             ##                    kwargs, "trace_fmt", format_text=text, add_underscore=True)
             # Note: checks alternative keyword first, so False ones not misintepretted
