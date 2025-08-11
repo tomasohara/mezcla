@@ -277,9 +277,9 @@ if __debug__:
             ##
             text = str(value)
             if len(text) > max_len:
-                effective_max_len = min(0, max_len - len(ELLIPSIS))
+                effective_max_len = max(0, max_len - len(ELLIPSIS))
                 text = text[:effective_max_len] + ELLIPSIS
-            print(text, file=sys.stderr, end=end)
+            print(text, file=sys.stderr, end=end,flush=True)
             if debug_file:
                 print(text, file=debug_file, end=end)
             ## TODO3: out_text = text + (end if end else "")
@@ -391,8 +391,9 @@ if __debug__:
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
         # TODO3: return text as with trace and trace_expr
         if (trace_level >= level):
-            check_keyword_args(VERBOSE, "max_len skip_sanity_checks",
-                               kwargs, "trace_fmt", format_text=text, add_underscore=True)
+            ## OLD:
+            ## check_keyword_args(VERBOSE, "max_len skip_sanity_checks",
+            ##                    kwargs, "trace_fmt", format_text=text, add_underscore=True)
             # Note: checks alternative keyword first, so False ones not misintepretted
             max_len = kwargs.get('_max_len') or kwargs.get('max_len')
             skip_sanity_checks = kwargs.get('_skip_sanity_checks') or kwargs.get('skip_sanity_checks')
