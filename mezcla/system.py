@@ -208,7 +208,7 @@ def setenv(
         value: Any,
         normalize: bool = False
     ) -> None:
-    """Set environment VAR to non-null VALUE.
+    """Set environment VAR to non-null VALUE (converted to str).
     Note: If optional NORMALIZE, the var is converted to uppercase and dashes to underscores.
     """
     debug.trace_fmtd(5, "setenv({v}, {val})", v=var, val=value)
@@ -228,7 +228,7 @@ def getenv_text(
         helper: bool = False,
         update: Optional[bool] = None,
         skip_register: Optional[bool] = None,
-        skip_normalize = None,
+        normalize = None,
     ) -> str:
     """Returns textual value for environment variable VAR (or DEFAULT value, excluding None).
     Notes:
@@ -237,7 +237,7 @@ def getenv_text(
     - DESCRIPTION used for get_environment_option_descriptions.
     - If UPDATE, then the environment is modified with value (e.g., based on default).
     - If SKIP_REGISTER, the variable info is not recorded (see env_options global).
-    - Unless SKIP_NORMALIZE, the variable name is normalized before lookup (e.g., uppercase and dashes).
+    - If NORMALIZE, then lookup falls back to variable uppercased and with underscores for dashes.
     """
     # Note: default is empty string to ensure result is string (not NoneType)
     ## TODO: add way to block registration
@@ -249,19 +249,24 @@ def getenv_text(
         
     # Get value, falling back to underscores instead of dashes
     in_var = var
-    text_value = os.getenv(var)
-    if (text_value is None):
-        if (not skip_normalize) and re.search("[A-Z-]", var):
+    value = os.getenv(var)
+    if (value is None):
+        if normalize and re.search("[a-z-]", var):
             var = var.replace("-", "_").upper()
-            debug.trace(4, f"FYI: Normalizing env.var {in_var!r} to {var!r}")
+            value = os.getenv(var, default)
+            level = 5 if value else 7
+            debug.trace(level, f"FYI: Normalized env.var {in_var!r} to {var!r}")
+    if (value is None):
+        value = default
+
     ## TODO?: if ((not helper and (text_value is None)) or (not text_value)):
+    text_value = value
     if (text_value is None):
         debug.trace_fmtd(6, "getenv_text: no value for var {v}", v=var)
         text_value = default
 
-    # Optionally, update the environment
+    # Optionally, update the environment (n.b., always normalizes)
     if update:
-        debug.assertion(not skip_normalize)
         setenv(var, text_value, normalize=True)
     trace_level = 6 if helper else 5
     ## DEBUG: sys.stderr.write("debug.trace_fmtd({trace_level} \"getenv_text('{v}', [def={dft}], [desc={desc}], [helper={hlpr}]) => {r}\"".format(trace_level=trace_level, v=var, dft=default, desc=description, hlpr=helper, r=text_value))
@@ -277,25 +282,30 @@ def getenv_value(
         desc: str = "",
         update: Optional[bool] = None,
         skip_register: Optional[bool] = None,
-        skip_normalize = None,
+        normalize = None,
     ) -> Any:
-    """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE. (See getenv_text for option details.)"""
+    """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE. (See getenv_text for option details.)
+    Note: If NORMALIZE, then lookup falls back to variable uppercased and with underscores for dashes.
+    """
     # EX: getenv_value("bad env var") => None
-    # TODO2: reconcile with getenv_value (e.g., via common helper)
+    # TODO2: reconcile with getenv_value (e.g., via common helper); add way to set normalization as default
     if not skip_register:
         register_env_option(var, description or desc, default)
 
     # Get value, falling back to underscores instead of dashes
     in_var = var
-    value = os.getenv(var, default)
+    value = os.getenv(var)
     if (value is None):
-        if (not skip_normalize) and re.search("[A-Z-]", var):
+        if normalize and re.search("[a-z-]", var):
             var = var.replace("-", "_").upper()
-            debug.trace(4, f"FYI: Normalizing env.var {in_var!r} to {var!r}")
+            value = os.getenv(var, default)
+            level = 5 if value else 7
+            debug.trace(level, f"FYI: Normalized env.var {in_var!r} to {var!r}")
+    if (value is None):
+        value = default
 
-    # Optionally, update the environment
+    # Optionally, update the environment (n.b., always normalizes)
     if update:
-        debug.assertion(not skip_normalize)
         setenv(var, value, normalize=True)
     # note: uses !r for repr()
     debug.trace_fmtd(5, "getenv_value({v!r}, [def={dft!r}], [desc={dsc!r}]]) => {val!r}",
