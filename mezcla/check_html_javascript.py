@@ -7,7 +7,11 @@
 #
 #
 
-"""Run JavaScript embedded in <script> tags through lint-style code checkers"""
+"""Run JavaScript embedded in <script> tags through lint-style code checkers
+
+Usage example:
+   {script} tests/resources/document_ready_test.html
+"""
 
 # Standard modules
 from collections import defaultdict
@@ -235,7 +239,7 @@ class Script(Main):
 def main():
     """Entry point"""
     app = Script(
-        description=__doc__,
+        description=__doc__.format(script=gh.basename(__file__)),
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
         # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
         skip_input=False,
