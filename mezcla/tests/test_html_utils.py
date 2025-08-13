@@ -683,12 +683,12 @@ class TestHtmlUtils(TestWrapper):
     @pytest.mark.xfail
     def test_format_checkbox(self):
         """Verify simple format_checkbox usage"""
-        # ex: <input type='hidden' name='fubar' value='off'><label >Fubar?<input type='checkbox' id='fubar-id' name='fubar'   ></label>"
+        # ex: <input type='hidden' name='fubar' value='off'><label id='fubar-label-id' >Fubar?<input type='checkbox' id='fubar-id' name='fubar'   ></label>"
         field_spec = THE_MODULE.format_checkbox("fubar")
-        assert my_re.search(r"<input type='hidden'\s*name='fubar'\s*value='off'><label\s*>Fubar\?&nbsp;<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*></label>",
+        assert my_re.search(r"<input type='hidden'\s*name='fubar'\s*value='off'><label\s*id='fubar-id'\s*>Fubar\?&nbsp;<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*></label>",
                             field_spec)
         field_spec = THE_MODULE.format_checkbox("fubar", disabled=True, concat_label=True)
-        assert my_re.search(r"<label\s*>Fubar\?<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*disabled\s*></label>",
+        assert my_re.search(r"<label\s*id='fubar-id'\s*>Fubar\?<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*disabled\s*></label>",
                             field_spec)
 
     @pytest.mark.xfail
@@ -697,15 +697,15 @@ class TestHtmlUtils(TestWrapper):
         ## HACK: ensures that single quotes used in tested result
         #
         field_spec = THE_MODULE.format_input_field("first", label="First:").replace('"', "'")
-        assert my_re.search(r"<label\s*>First:&nbsp;<input id='first-id'\s*name='first'\s*></label>",
+        assert my_re.search(r"<label\s*id='first-label-id'\s*>First:&nbsp;<input id='first-id'\s*name='first'\s*></label>",
                             field_spec)
         #
         field_spec = THE_MODULE.format_input_field("last", label="Last:", default_value="Doe").replace('"', "'")
-        assert my_re.search(r"<label\s*>Last:&nbsp;<input id='last-id'\s*value='Doe' name='last'\s*></label>",
+        assert my_re.search(r"<label\s*id='last-label-id'\s*>Last:&nbsp;<input id='last-id'\s*value='Doe' name='last'\s*></label>",
                             field_spec)
         #
         field_spec = THE_MODULE.format_input_field("age", label="Age:", field_type="number", default_value="19").replace('"', "'")
-        assert my_re.search(r"<label\s*>Age:&nbsp;<input id='age-id'\s*value='19'\s*name='age'\s*type='number'\s*></label>",
+        assert my_re.search(r"<label\s*id='age-label-id'\s*>Age:&nbsp;<input id='age-id'\s*value='19'\s*name='age'\s*type='number'\s*></label>",
                             field_spec)
         
     @pytest.mark.xfail
