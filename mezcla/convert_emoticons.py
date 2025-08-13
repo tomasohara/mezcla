@@ -22,9 +22,20 @@
 Replace emoticons with name (or remove entirely)
 
 Sample usage:
-
-   echo 'github-\U0001f917_Transformers' | {script} -
-"""                          # 🤗 (HuggingFace logo: U+1f917)
+   echo "some \u24DB\u2009 please" | {script} -
+"""
+#
+# note: uses U+24D8 [Circled Latin Small Letter I] and U+2009 [Thin Space]
+#
+##
+## OLD2:
+##    echo "some \U0001F6C8 please" | {script} -
+## """                             # 🛈 (Circled Information Source: U+1F6C8)
+## TODO3: fix spacing after info icon (wider than default characters)
+##
+## OLD:
+##     echo 'github-\U0001f917_Transformers' | {script} -
+## """                          # 🤗 (HuggingFace logo: U+1f917)
 
 # Standard modules
 import unicodedata
