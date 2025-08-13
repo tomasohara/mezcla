@@ -758,7 +758,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     ## This requires use of fix_url_parameters to give preference to final value specified (see results.mako).
     ## See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox for hidden field tip.
     ## Also see https://stackoverflow.com/questions/155291/can-html-checkboxes-be-set-to-readonly
-    ## EX: format_checkbox("disable-touch") => "<input type='hidden' name='disable-touch' value='off'><label >Disable touch?<input type='checkbox' id='disable-touch-id' name='disable-touch'   ></label>"
+    ## EX: format_checkbox("disable-touch") => "<input type='hidden' name='disable-touch' value='off'><label id='disable-touch-label-id'>Disable touch?<input type='checkbox' id='disable-touch-id' name='disable-touch'   ></label>"
     ## TODO3: add on_cange as with format_input_field
     debug.trace_expr(7, param_name, label, skip_capitalize, default_value, disabled, style,
                      misc_attr, tooltip, outer_span_class, concat_label, skip_hidden, param_dict,
@@ -789,7 +789,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
         else:
             tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
             tooltip_end_spec = "</span>"
-    result += f"<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}"
+    result += f"<label id='{param_name}-label-id' {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}"
     if not concat_label:
         result += '&nbsp;'
     result += f"<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
@@ -798,7 +798,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
 #
-# EX: format_checkbox("disable-touch", skip_hidden=True, disabled=True) => '<label>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>"'
+# EX: format_checkbox("disable-touch", skip_hidden=True, disabled=True) => '<label id='disable-touch-id'>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>"'
 
 
 def format_url_param(name : str, default : Optional[str] = None):
@@ -876,7 +876,7 @@ def format_input_field(
     result = ""
     if outer_span_class:
         result += f"<span class='{outer_span_class}'>"
-    result += f'<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}'
+    result += f"<label id='{param_name}-label-id' {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}"
     if not concat_label:
         result += '&nbsp;'
     if text_area:
