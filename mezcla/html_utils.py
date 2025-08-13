@@ -821,7 +821,7 @@ def format_input_field(
         default_value: Optional[str] = None, max_len : Optional[int] = None,
         size : Optional[int] = None, max_value : Optional[int] = None, disabled : Optional[int] = None,
         style: Optional[str] = None, misc_attr: Optional[str] = None,
-        tooltip: Optional[str] = None, text_area: Optional[str] = None,
+        tooltip: Optional[str] = None, text_area: Optional[bool] = None,
         num_rows : Optional[int] = None, on_change: Optional[str] = None,
         field_type: Optional[str] = None, concat_label: Optional[str] = None,
         outer_span_class: Optional[str] = None, param_dict : Optional[Dict] = None):
