@@ -822,7 +822,7 @@ def format_input_field(
         size : Optional[int] = None, max_value : Optional[int] = None, disabled : Optional[int] = None,
         style: Optional[str] = None, misc_attr: Optional[str] = None,
         tooltip: Optional[str] = None, text_area: Optional[bool] = None,
-        num_rows : Optional[int] = None, on_change: Optional[str] = None,
+        num_rows : Optional[int] = None, on_change: Optional[str] = None, on_input: Optional[str] = None,
         field_type: Optional[str] = None, concat_label: Optional[str] = None,
         outer_span_class: Optional[str] = None, param_dict : Optional[Dict] = None):
     """Returns HTML specification for input field with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, MAX_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, NUM_ROWS, ON_CHANGE, FIELD_TYPE, CONCAT_LABEL, OUTER_SPAN_CLASS, and PARAM_DICT.
@@ -830,7 +830,8 @@ def format_input_field(
     - param_name + "-id" is used for the field ID.
     - SIZE should be specified if not same as MAX_LEN.
     - MAX_VALUE is for number fields.
-    - ON_CHANGE specifies JavaScript to execute when values changes.
+    - ON_INPUT specifies JavaScript to execute when values changes.
+    - ON_CHANGE is similar but waits for item to loose focus
     - See format_checkbox for TOOLTIP notes.
     - With CONCAT_LABEL, no space is added after the label.
     - With OUTER_SPAN_CLASS the input field is wrapped in <span> with given class for styling
@@ -863,6 +864,8 @@ def format_input_field(
     misc_spec = (misc_attr if misc_attr else "")
     debug.assertion("'" not in str(on_change))
     misc_spec += (f"onchange=\"{on_change}\"" if on_change else "")
+    debug.assertion("'" not in str(on_input))
+    misc_spec += (f"oninput=\"{on_input}\"" if on_input else "")
     label_misc_spec = ""
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
