@@ -77,9 +77,11 @@ def read_csv(filename, **in_kw):
     df = None
     try:
         df = pd.read_csv(filename, **kw)
+        debug.assertion(not(any(c.startswith(" ") for c in list(df.columns))),
+                        'make sure CSV FILE delim not ", "')
     except:
         debug.trace(3, f"Exception during read_csv: {system.get_exception()}")
-    debug.trace(4, f"read_csv({filename}) => {df}")
+    debug.trace(4, f"read_csv({filename}) =>\n{df}")
     return df
 
 
