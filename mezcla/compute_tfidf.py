@@ -45,6 +45,8 @@ from mezcla.system import PRECISION
 from mezcla.text_utils import make_fixed_length
 
 # Determine environment-based options
+## TODO3: take before and after snapshots of environment options to support pruning
+## in formatted_environment_option_descriptions.
 DEFAULT_NUM_TOP_TERMS = system.getenv_int("NUM_TOP_TERMS", 10)
 ## OLD:
 ## MAX_NGRAM_SIZE = system.getenv_int("MAX_NGRAM_SIZE", 1)
@@ -78,25 +80,33 @@ SCORE_WIDTH = system.getenv_int("SCORE_WIDTH", PRECISION + 6,
 MAX_FIELD_SIZE = system.getenv_int(
     "MAX_FIELD_SIZE", -1,
     desc="Overide for default max field size (128k)")
+SORT_FIELD = system.getenv_text(
+    "SORT_FIELD", None,
+    desc="Field name for override to default TF-IDF sorting")
 
 # Option names and defaults
 NGRAM_SIZE_OPT = "--ngram-size"
 NUM_TOP_TERMS_OPT = "--num-top-terms"
 SHOW_SUBSCORES = "--show-subscores"
 SHOW_FREQUENCY = "--show-frequency"
+SHOW_ALL = "--show-all"
 CSV = "--csv"
 TSV = "--tsv"
 TEXT = "--text"
+VERBOSE_OPT = "--verbose"
+HEADER_OPT = "--header"
+TEXT_DELIMITER = "\xFF"
 
 #...............................................................................
 
-def show_usage_and_quit():
+def show_usage_and_quit(verbose=False):
     """Show command-line usage for script and then exit"""
-    # TODO: make 
+    # TODO: make [???]
     usage = """
 Usage: {prog} [options] file1 [... fileN]
 
-Options: [--help] [{ngram_size_opt}=N] [{top_terms_opt}=N] [{subscores}] [{frequencies}] [{csv} | {tsv} | {text}]
+Options: [--help] [{ngram_size_opt}=N] [{top_terms_opt}=N] [{subscores}] [{frequencies}]
+         [{all}] [{csv} | {tsv} | {text}] [{header}]
 
 Notes:
 - Derives TF-IDF for set of documents, using single word tokens (unigrams), by default. 
@@ -109,8 +119,16 @@ Notes:
       MAX_NGRAM_SIZE ({max_ngram_size})
       TF_WEIGHTING ({tf_weighting}): {{log, norm_50, binary, basic, freq}}
       IDF_WEIGHTING ({idf_weighting}): {{smooth, max, prob, basic, freq}}
-""".format(prog=sys.argv[0], ngram_size_opt=NGRAM_SIZE_OPT, top_terms_opt=NUM_TOP_TERMS_OPT, subscores=SHOW_SUBSCORES, frequencies=SHOW_FREQUENCY, default_topn=DEFAULT_NUM_TOP_TERMS, min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE, tf_weighting=TF_WEIGHTING, idf_weighting=IDF_WEIGHTING, csv=CSV, tsv=TSV, text=TEXT)
+""".format(prog=sys.argv[0], ngram_size_opt=NGRAM_SIZE_OPT, top_terms_opt=NUM_TOP_TERMS_OPT, subscores=SHOW_SUBSCORES, frequencies=SHOW_FREQUENCY, all=SHOW_ALL, default_topn=DEFAULT_NUM_TOP_TERMS, min_ngram_size=MIN_NGRAM_SIZE, max_ngram_size=MAX_NGRAM_SIZE, tf_weighting=TF_WEIGHTING, idf_weighting=IDF_WEIGHTING, csv=CSV, tsv=TSV, text=TEXT, header=HEADER_OPT)
     print(usage)
+    if verbose:
+        print("- Full set of environment options")
+        indent = "      "
+        env_opts = system.formatted_environment_option_descriptions(sort=True, indent=indent)
+        print(env_opts)
+    else:
+        print("- For others, use --verbose")
+
     sys.exit()
 
 
@@ -181,12 +199,18 @@ def main():
     show_frequency = False
     csv_file = False
     is_text = False
+    verbose = False
+    include_text_header = False
     global DELIMITER
+    ## TODO2: use main.Script for argument parsing
     while ((i < len(args)) and args[i].startswith("-")):
         option = args[i]
         debug.trace_fmtd(5, "arg[{i}]: {opt}", i=i, opt=option)
-        if (option == "--help"):
-            show_usage_and_quit()
+        if (option == VERBOSE_OPT):
+            verbose = True
+        elif (option == "--help"):
+            ## TODO2: put after option parsing (so --help --verbose works)
+            show_usage_and_quit(verbose=verbose)
         elif (option == NGRAM_SIZE_OPT):
             i += 1
             max_ngram_size = int(args[i])
@@ -197,15 +221,9 @@ def main():
             show_subscores = True
         elif (option == SHOW_FREQUENCY):
             show_frequency = True
-            # Make sure TF-IDF package supports occurrence counts for TF
-            tfidf_version = 1.0
-            try:
-                # Note major and minor revision values assumed to be integral
-                major_minor = re.sub(r"^(\d+\.\d+).*", r"\1", tfidf.__version__)
-                tfidf_version = float(major_minor)
-            except:
-                system.print_stderr("Exception in main: " + str(sys.exc_info()))
-            assert(tfidf_version >= 1.2)
+        elif (option == SHOW_ALL):
+            show_subscores = True
+            show_frequency = True
         elif (option == CSV):
             csv_file = True 
         elif (option == TSV):
@@ -214,11 +232,14 @@ def main():
         elif (option == TEXT):
             csv_file = True
             is_text = True
-            DELIMITER = "\xFF"
+            DELIMITER = TEXT_DELIMITER
+        elif (option == HEADER_OPT):
+            include_text_header = True
         else:
             sys.stderr.write("Error: unknown option '{o}'\n".format(o=option))
             show_usage_and_quit()
         i += 1
+    debug.assertion((not (csv_file and is_text) or (DELIMITER == TEXT_DELIMITER)))
     args = args[i:]
     if (len(args) < 1):
         system.print_stderr("Error: missing filename(s)\n")
@@ -227,6 +248,17 @@ def main():
         ## TODO: only issue warning if include-frequencies not specified
         system.print_stderr("Warning: TF-IDF not relevant with only one document")
 
+    # Make sure TF-IDF package supports occurrence counts for TF
+    ## TODO4: drop since now five versions ago
+    tfidf_version = 1.0
+    try:
+        # Note major and minor revision values assumed to be integral
+        major_minor = re.sub(r"^(\d+\.\d+).*", r"\1", tfidf.__version__)
+        tfidf_version = float(major_minor)
+    except:
+        system.print_stderr("Exception in main: " + str(sys.exc_info()))
+        assert(tfidf_version >= 1.2)
+        
     # Initialize Tf-IDF module
     debug.assertion(not re.search(r"^en(_\w+)?$", LANGUAGE, re.IGNORECASE))
     # Note: disables stemming via no-op lambda by default
@@ -241,18 +273,22 @@ def main():
         csv.field_size_limit(MAX_FIELD_SIZE)
         debug.trace(4, f"Set max field size to {MAX_FIELD_SIZE}; was {old_limit}")
 
-    # Process each of the arguments
+    # Process each of the filename arguments
     doc_filenames = {}
     for i, filename in enumerate(args):
-        # If CSS file, treat each row as separate document, using ID from first column and data from second
+        # If CSV file, treat each row as separate document, using ID from first column and data from second
+        # Note: Special case with one-line per document using delimited 0xFF.
         if csv_file:
             text_col = 0 if is_text else 1
             with system.open_file(filename) as fh:
                 csv_reader = csv.reader(iter(fh.readlines()), delimiter=DELIMITER, quotechar='"')
-                # TODO: skip over the header line
                 line = 0
                 for r, row in enumerate(csv_reader):
-                    debug.trace_fmt(6, "{l}: {r}", l=line, r=row)
+                    debug.trace(6, f"{line}: {r=} {row}")
+                    if (not r) and (DELIMITER != TEXT_DELIMITER) and (not include_text_header):
+                        debug.assertion((len(row) > 1) or (DELIMITER not in row[0]))
+                        debug.trace(5, f"Ignoring header: {line=} {row=}")
+                        continue
                     doc_id = str(r + 1) if is_text else row[0]
                     try:
                         doc_text = system.from_utf8(row[text_col])
@@ -289,6 +325,7 @@ def main():
         headers += ["TF", "IDF"]
     headers += ["TF-IDF"]
     debug.assertion(headers[0] == "term")
+    sort_field_offset = (headers.index(SORT_FIELD) if SORT_FIELD in headers else 0)
 
     # Output the top terms per document with scores
     # TODO: change the IDF weighting
@@ -312,11 +349,12 @@ def main():
             top_terms = [term_info.ngram.strip() for term_info in top_term_info]
             top_term_info = [ti for (i, ti) in enumerate(top_term_info) 
                              if (not is_subsumed(ti.ngram, top_terms[0: i]))]
+        all_scores = []
         for (term, score) in [(ti.ngram, ti.score)
                               for ti in top_term_info if ti.ngram.strip()]:
             # Get scores including component values (e.g., IDF)
             # TODO: don't round the frequency counts (e.g., 10.000 => 10)
-            scores = []
+            scores = [term]
             if show_frequency:
                 scores.append(corpus[doc_id].tf_freq(term))
                 scores.append(corpus.df_freq(term))
@@ -325,13 +363,18 @@ def main():
                 # TODO; idf_weight=TDF_WEIGHTING
                 scores.append(corpus.idf(term))
             scores.append(score)
+            all_scores.append(scores)
 
-            # Print term and rounded scores
+        if SORT_FIELD:
+            all_scores = sorted(all_scores, reverse=True,
+                                key=lambda scores: scores[sort_field_offset])
+        for scores in all_scores:
+             # Print term and rounded scores
             if TAB_FORMAT:
-                print(term + "\t" + "\t".join(map(system.round_as_str, scores)))
+                print(scores[0] + "\t" + "\t".join(map(system.round_as_str, scores[1:])))
             else:
-                rounded_scores = [make_fixed_length(system.round_as_str(s), SCORE_WIDTH) for s in scores]
-                term_spec = make_fixed_length(system.to_utf8(term), TERM_WIDTH)
+                rounded_scores = [make_fixed_length(system.round_as_str(s), SCORE_WIDTH) for s in scores[1:]]
+                term_spec = make_fixed_length(system.to_utf8(scores[0]), TERM_WIDTH)
                 score_spec = " ".join(rounded_scores)
                 print(term_spec + " " + score_spec)
                 ## TODO: debug.assertion((len(rounded_scores) * PRECISION) < len(score_spec) < (len(rounded_scores) * (1 + SCORE_WIDTH)))
