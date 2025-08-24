@@ -330,18 +330,24 @@ def main():
     # Parse command line options, show usage if --help given
     LIST_MODELS_ARG = "list-models"
     COMMAND_ARG = "command"
+    STDIO_ARG = "stdio"
     main_app = Main(
         description=__doc__.format(script=gh.basename(__file__)),
-        boolean_options=[(LIST_MODELS_ARG, "List available LLM models")],
+        boolean_options=[(LIST_MODELS_ARG, "List available LLM models"),
+                         (STDIO_ARG, "Use stdin for command (and plain stdout for output)")],
         text_options=[(COMMAND_ARG, "Command or question for LLM")],
     )
     debug.assertion(main_app.parsed_args)
     list_models = main_app.get_parsed_option(LIST_MODELS_ARG)
     llm_command = main_app.get_parsed_option(COMMAND_ARG)
+    use_stdio = main_app.get_parsed_option(STDIO_ARG)
+    if use_stdio:
+        debug.assertion(not llm_command)
+        llm_command = main_app.read_entire_input()
     
     # Example usage
     if not POE_API:
-        system.exit("POE_API environment variable not set. Cannot test client.")
+        system.exit("Error: POE_API environment variable not set. Cannot run client.")
     try:
         client = POEClient()
         
@@ -353,7 +359,7 @@ def main():
         # Test basic ask functionality
         if llm_command:
             response = client.ask(llm_command)
-            print(f"Response:\n\t{response}")
+            print(f"Response:\n\t{response}" if not use_stdio else response)
         
     except:
         system.print_exception_info("Error testing client")
