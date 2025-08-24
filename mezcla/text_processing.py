@@ -116,6 +116,9 @@ SKIP_CLASS_TAGS = not USE_CLASS_TAGS
 KEEP_PUNCT = system.getenv_boolean("KEEP_PUNCT", False, "Use punctuation symbol as part-of-speech label")
 TERSE_OUTPUT = system.getenv_boolean("TERSE_OUTPUT", JUST_TAGS, "Terse output mode")
 VERBOSE = not TERSE_OUTPUT
+UNDO_NLTK_QUOTING = system.getenv_boolean(
+    "UNDO_NLTK_QUOTING", False,
+    desc="Undo NLTK's unintuitive ``...'' handling of double quotes")
 
 # Skip use of NLTK and/or ENCHANT packages (using simple versions of functions)
 # TODO: make misspellings optional (add --classic mode???)
@@ -174,16 +177,28 @@ def split_sentences(text):
     return sentences
 
 
-def split_word_tokens(text, omit_punct=False, omit_stop=None):
+def split_word_tokens(text, omit_punct=False, omit_stop=None,
+                      skip_nltk=SKIP_NLTK, undo_nltk_quoting=UNDO_NLTK_QUOTING):
     """Splits TEXT into word tokens (i.e., words, punctuation, etc.), optionally with OMIT_PUNCT and OMIT_STOP.
     Note: run split_sentences first (e.g., to allow for proper handling of periods).
     By default, this uses NLTK's PunktSentenceTokenizer."""
     # EX: split_word_tokens("How now, brown cow?") => ['How', 'now', ',', 'brown', 'cow', '?']
     debug.trace(7, "split_word_tokens(%s); type=%s" % (text, type(text)))
-    if SKIP_NLTK:
+    if skip_nltk:
         tokens = [t.strip() for t in re.split(r"(\W+)", text) if (len(t.strip()) > 0)]
     else:
         tokens = nltk.word_tokenize(text)
+
+        # Restore awkward double quote tokenization
+        # ex: ['``', 'Bond', ',', 'James', 'Bond', "''"] => ['""', 'Bond', ',', 'James', 'Bond', '""']
+        if undo_nltk_quoting:
+            is_nltk_quote = {"``": True, "''": True}
+            ## TEST:
+            ## new_text = my_re.sub("``(.*)''", r'"\1"', " ".join(tokens))
+            ## debug.assertion(text.count('"') ==  new_text.count('"')
+            tokens = [t if not is_nltk_quote.get(t) else '"' for t in tokens]
+            debug.assertion(text.count('"') == " ".join(tokens).count('"'),
+                            f"Problem restoring double quotes in {text!r}: {tokens=}")
     if omit_punct:
         tokens = [t for t in tokens if not is_punct(t)]
     if omit_stop:
