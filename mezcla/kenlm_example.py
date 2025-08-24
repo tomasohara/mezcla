@@ -26,6 +26,10 @@
 #   interface to initialize it):
 #     Module 'kenlm' has no 'LanguageModel' member (no-member)
 #
+# TODO2: show sample output
+#
+# TODO3: Integrate train_language_model.py.
+#
 
 """Example for using the KenLM language modeling utility"""
 
@@ -48,6 +52,7 @@ TL = debug.TL
 
 # Environment options
 # OLD: Initialize globals, including adhoc options via environment variables
+# Note: test.arpa is from kenlm repo (https://github.com/kpu/kenlm),
 DEFAULT_LM_FILE = os.path.join(os.path.dirname(__file__), '..', 'lm', 'test.arpa')
 LM = getenv_text("LM", DEFAULT_LM_FILE)
 SENT_DELIM = getenv_text("SENT_DELIM", "\n", "Delimiter for sentence splitting")
@@ -74,7 +79,7 @@ def main():
     # Sanity check
     show_usage = (len(sys.argv) > 1) and ("--help" in sys.argv[1])
     if (not show_usage) and (not gh.non_empty_file(LM)):
-        print("Unable to find usable language model file '%s'" % LM)
+        print("Warning: Unable to find usable language model file '%s'" % LM)
         show_usage = True
     if show_usage:
         print("Usage: %s [--help] [sentence | -]" % sys.argv[0])
@@ -86,6 +91,7 @@ def main():
         print("  %s" % __file__)
         print("")
         print("Notes:")
+        print("- Assumes lmplz already run: see train_language_model.py.")
         print("- Use LM environment variable to specify alternative language model (see lmplz)")
         print("- Use SENT_DELIM to specify sentence delimiter (default is newline)")
         print("- To use standard input, specify - for sentence above.")
