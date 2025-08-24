@@ -63,6 +63,14 @@ class TestTextProcessing(TestWrapper):
         debug.trace(4, "test_split_word_tokens()")
         assert THE_MODULE.split_word_tokens("How now, brown cow?") == ['How', 'now', ',', 'brown', 'cow', '?']
 
+    def test_nltk_double_quotes(self):
+        """Verify double quoting restored with NLTK tokenization"""
+        debug.trace(4, "test_nltk_double_quotes()")
+        assert (THE_MODULE.split_word_tokens('I said "No!"', undo_nltk_quoting=False)
+                == ['I', 'said', '``', 'No', '!', "''"])
+        assert (THE_MODULE.split_word_tokens('I said "No!"', undo_nltk_quoting=True)
+                == ['I', 'said', '"', 'No', '!', '"'])
+
     def test_label_for_tag(self):
         """Ensure label_for_tag works as expected"""
         debug.trace(4, "test_label_for_tag()")
