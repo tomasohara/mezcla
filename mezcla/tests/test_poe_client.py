@@ -45,6 +45,7 @@ class TestIt(TestWrapper):
     # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.skipif(NO_POE_API, reason=NO_POE_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_01_list_models(self):
         """Tests run_script w/ --list-models"""
