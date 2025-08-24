@@ -1,4 +1,5 @@
-
+# Sample language model from KenLM repo
+#    https://github.com/kpu/kenlm
 \data\
 ngram 1=37
 ngram 2=47
