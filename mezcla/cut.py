@@ -11,8 +11,6 @@
 # - The CSV dialect defaults to Excel as with csv module (see csv.py).
 # - Warning: by default quotes are added to all values --csv output (a la QUOTE_ALL) unless Excel dialect used.
 #
-
-#
 # TODO:
 # - ** Make --csv output default to pyspark dialect.
 # - * Isolate csv support from Script class.
