@@ -18,6 +18,7 @@ from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla.tests.common_module import SKIP_TBD_TESTS, SKIP_TBD_REASON
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)
@@ -44,6 +45,7 @@ class TestIt(TestWrapper):
     """Class for command-line based testcase definition"""
     # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    poe_model = THE_MODULE.POE_MODEL or "o4-mini"
 
     @pytest.mark.skipif(NO_POE_API, reason=NO_POE_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -60,17 +62,20 @@ class TestIt(TestWrapper):
     def test_02_color_question(self):
         """Test for simple what-is-color questions"""
         debug.trace(4, f"TestIt.test_02_color_question(); self={self}")
-        poe = THE_MODULE.POEClient(model="o4-mini")
+        ## OLD: poe = THE_MODULE.POEClient(model="o4-mini")
+        poe = THE_MODULE.POEClient(model=self.poe_model)
         self.do_assert("red" in poe.ask("What is the color of blood?").lower())
         return
 
     @pytest.mark.skipif(NO_POE_API, reason=NO_POE_REASON)
+    @pytest.mark.skipif(not SKIP_TBD_TESTS, reason=SKIP_TBD_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_expression_evaluation(self):
         """Test out expression evaluation via funciton calling"""
         # Note: you might need to disable tracing during setUp (see notes above).
         debug.trace(4, f"TestIt.test_03_expression_evaluation(); self={self}")
-        poe = THE_MODULE.POEClient(model="o4-mini")
+        ## OLD: poe = THE_MODULE.POEClient(model="o4-mini")
+        poe = THE_MODULE.POEClient(model=self.poe_model)
         poe.call_function("evaluate", {"expression": "2 + 2"},
                            model="fubar")
         captured = self.get_stderr()
