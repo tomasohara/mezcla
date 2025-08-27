@@ -115,10 +115,17 @@ USE_CLASS_TAGS = system.getenv_boolean("USE_CLASS_TAGS", False, "Use class-based
 SKIP_CLASS_TAGS = not USE_CLASS_TAGS
 KEEP_PUNCT = system.getenv_boolean("KEEP_PUNCT", False, "Use punctuation symbol as part-of-speech label")
 TERSE_OUTPUT = system.getenv_boolean("TERSE_OUTPUT", JUST_TAGS, "Terse output mode")
-VERBOSE = not TERSE_OUTPUT
+## OLD: VERBOSE = not TERSE_OUTPUT
+VERBOSE_DEFAULT = not TERSE_OUTPUT
+VERBOSE = system.getenv_boolean(         ## TODO3?: reconcile with main.py
+    "VERBOSE", VERBOSE_DEFAULT,
+    desc="Verbose output mode")
 UNDO_NLTK_QUOTING = system.getenv_boolean(
     "UNDO_NLTK_QUOTING", False,
     desc="Undo NLTK's unintuitive ``...'' handling of double quotes")
+SKIP_TOKENIZATION = system.getenv_boolean(
+    "SKIP_TOKENIZATION", False,
+    desc="Omit sentence and word tokenization, such as for LINE_MODE")
 
 # Skip use of NLTK and/or ENCHANT packages (using simple versions of functions)
 # TODO: make misspellings optional (add --classic mode???)
@@ -281,7 +288,7 @@ def tag_part_of_speech(tokens):
         part_of_speech_taggings = []
         previous = None
         raw_part_of_speech_taggings = nltk.pos_tag(tokens)
-        debug.trace(3, "raw tags: %s" % [t for (_w, t) in raw_part_of_speech_taggings])
+        debug.trace(5, "raw tags: %s" % [t for (_w, t) in raw_part_of_speech_taggings])
         for (word, POS) in raw_part_of_speech_taggings:
             tag = label_for_tag(POS, word) if SKIP_CLASS_TAGS else class_for_tag(POS, word, previous)
             part_of_speech_taggings.append((word, tag))
@@ -297,12 +304,16 @@ def tokenize_and_tag(text):
     debug.trace(7, "tokenize_and_tag(%s)" % text)
     ## OLD: text = tpo.ensure_unicode(text)
     text_taggings = []
-    for sentence in split_sentences(text):
-        debug.trace(4, "sentence: %s" % sentence.strip())
-        tokens = split_word_tokens(sentence)
-        debug.trace(4, "tokens: %s" % tokens)
+    sentences = split_sentences(text) if not SKIP_TOKENIZATION else [text]
+    for sentence in sentences:
+        if not SKIP_TOKENIZATION:
+            debug.trace(5, "sentence: %s" % sentence.strip())
+            tokens = split_word_tokens(sentence)
+            debug.trace(5, "tokens: %s" % tokens)
+        else:
+            tokens = sentence.split()
         taggings = tag_part_of_speech(tokens)
-        debug.trace(4, "taggings: %s" % taggings)
+        debug.trace(5, "taggings: %s" % taggings)
         text_taggings += taggings
     return text_taggings
 
@@ -312,7 +323,7 @@ def tokenize_text(text):
     tokenized_lines = []
     for sentence in split_sentences(text):
         sent_tokens = split_word_tokens(sentence)
-        debug.trace(4, "sent_tokens: %s" % sent_tokens)
+        debug.trace(5, "sent_tokens: %s" % sent_tokens)
         tokenized_lines.append(sent_tokens)
     return tokenized_lines
 
@@ -327,7 +338,7 @@ def is_stopword(word):
             stopwords = ['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', 'should', 'now']
         else:
             stopwords = nltk.corpus.stopwords.words('english')
-        debug.trace(4, "stopwords: %s" % stopwords)
+        debug.trace(6, "stopwords: %s" % stopwords)
     return (word.lower() in stopwords)
 
 
@@ -364,7 +375,7 @@ def read_freq_data(filename):
     #   is  99390
     #   and 95920
     #   a   76679
-    debug.trace(3, "read_freq_data(%s)" % filename)
+    debug.trace(4, "read_freq_data(%s)" % filename)
     freq_hash = {}
 
     # Process each line of the file
@@ -405,7 +416,7 @@ def read_word_POS_data(filename):
     #   .           .       372550
     #   the         DT      158317
     #   to          TO      122189
-    debug.trace(3, "read_word_POS_freq(%s)" % filename)
+    debug.trace(4, "read_word_POS_freq(%s)" % filename)
     global word_POS_hash
     word_POS_hash = {}
 
@@ -646,7 +657,7 @@ def main():
     Note: Used to avoid conflicts with globals (e.g., if this were done at end of script).
     """
     # Initialize
-    debug.trace(4, "main(): sys.argv=%s" % sys.argv)
+    debug.trace(5, "main(): sys.argv=%s" % sys.argv)
 
     # Show usage statement if no arguments or if --help specified
     just_tokenize = False
@@ -697,9 +708,11 @@ def main():
                 text_proc = create_text_proc(TEXT_PROC)
                 if VERBOSE:
                     print(f"text: {text}")
-                    print("NP chunks:")
+                    print("NP chunks: ", end="")
                 ## TODO: print(OUTPUT_DELIM.join(text_proc.noun_phrases(text)))
                 print(text_proc.noun_phrases(text))
+                if VERBOSE:
+                    print("")
             else:
                 # Show complete pipeline step-by-step
                 taggings = tokenize_and_tag(text)
@@ -726,7 +739,7 @@ def main():
                     print("")
 
     # Cleanup
-    debug.trace(4, "stop %s: %s" % (__file__, debug.timestamp()))
+    debug.trace(5, "stop %s: %s" % (__file__, debug.timestamp()))
     return
 
 #------------------------------------------------------------------------
