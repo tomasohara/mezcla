@@ -19,10 +19,9 @@ Sample usage:
 from typing import Optional
 
 # Installed modules
-## TODO: import numpy
+## TODO: import numpy as np
 
 # Local modules
-# TODO: def mezcla_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main
@@ -30,6 +29,7 @@ from mezcla.my_regex import my_re
 from mezcla import system
 ## TODO:
 ## from mezcla import data_utils as du
+## TODO2: streamline imports by exposing common functions, etc. in mezcla
 ##
 ## Optional:
 ## # Increase trace level for regex searching, etc. (e.g., from 6 to 7)
@@ -37,6 +37,9 @@ from mezcla import system
 debug.trace(5, f"global __doc__: {__doc__}")
 debug.assertion(__doc__)
 
+# Constants
+TL = debug.TL
+#
 ## TODO: Constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
 ## Note: Run following in Emacs to interactively replace TODO_ARG with option label
 ##    M-: (query-replace-regexp "todo\\([-_]\\)arg" "arg\\1name")
@@ -45,48 +48,38 @@ TODO_ARG = "TODO-arg"
 ## TEXT_ARG = "text-arg"
 ## ALT_FILENAME = "alt_filename"
 
-# Constants
-TL = debug.TL
-
 # Environment options
-# Note: These are just intended for internal options, not for end users.
-# It also allows for enabling options in one place rather than four
-# (e.g., [Main member] initialization, run-time value, and argument spec., along
-# with string constant definition).
+# Notes:
+# - These are just intended for internal options, not for end users.
+# - They also allow for enabling options in one place rather than four
+#   when using main.Main (e.g., [Main member] initialization, run-time
+#   value, and argument spec., along with string constant definition).
 # WARNING: To minimize environment comflicts with other programs make the names
 # longer such as two or more tokens (e.g., "FUBAR" => "FUBAR_LEVEL").
 #
-TODO_FUBAR = system.getenv_bool(
-    "TODO_FUBAR", False,
-    description="TODO:Fouled Up Beyond All Recognition processing")
-## TODO
-## X = system.getenv_int(
-##     "X", X,
-##     description="X")
+## TODO_FUBAR = system.getenv_bool(
+##     "TODO_FUBAR", False,
+##     description="TODO:Fouled Up Beyond All Recognition processing")
 
+#-------------------------------------------------------------------------------
 
 class Helper:
     """TODO: class for doing ..."""
 
-    def __init__(self, _arg=None) -> None:
-        """Initializer: _TODO_arg desc"""
-        debug.trace(TL.VERBOSE, f"Helper.__init__(): self={self}")
+    def __init__(self, _arg=None, **kwargs) -> None:
+        """Initializer: TODO_arg desc"""
+        debug.trace_expr(TL.VERBOSE, _arg, kwargs, prefix="in Helper.__init__: ")
         self._arg = _arg                # TODO: revise
-        self.TODO = None
+        self.TODO: Optional[bool] = None
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
-    def process(self, line) -> None:
-        """Handles LINE"""
-        # TODO: flesh out
-        if self.todo_arg and "TODO" in line:
-            print(f"arg1 line ({self.line_num}): {line}")
-        else:
-            debug.trace(3, f"Ignoring line ({self.line_num}): {line}")
-        ## TODO: regex pattern matching
-        ## elif my_re.search(self.text_arg, line):
-        ##     print("arg2 line: %s" % line)
+    def process(self, _arg) -> bool:
+        """TODO: Process _ARG to do ..."""
+        ## NOTE: print used for sake of unit test (see tests/test_template.py)
+        print("Error: TODO Implement me!")
+        return False
 
-
+    
 class Script(Main):
     """Script input processing class"""
     # TODO: -or-: """Adhoc script class (e.g., no I/O loop, just run calls)"""
@@ -139,8 +132,12 @@ class Script(Main):
     ##     debug.trace(6, f"Script.wrap_up(); self={self}")
     ##     # ...
 
+#-------------------------------------------------------------------------------
+
 def main() -> None:
     """Entry point"""
+    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+
     app = Script(
         description=__doc__.format(script=gh.basename(__file__)),
         # Note: if not manual_input, line-by-line processing is done via process_line;
@@ -156,14 +153,16 @@ def main() -> None:
         boolean_options=[(TODO_ARG, "TODO-desc--currently greps for TODO")],
         ## TODO
         ## Note: FILENAME is default argument unless skip_input
-        ## positional_arguments=[ALT_FILENAME], 
+        ## positional_arguments=[FILENAME, ALT_FILENAME], 
         ## text_options=[(TEXT_ARG, "TODO-desc")],
         ## Note: Following added for indentation float options not common (TODO: remove?)
         float_options=None)
     app.run()
-    # Make sure no TODO_vars above (i.e., in namespace)
+
+    ## Make sure no TODO_vars above (i.e., in namespace); TODO: delete check when stable
     debug.assertion(not any(my_re.search(r"^TODO_", m, my_re.IGNORECASE)
                             for m in dir(app)))
+    return
 
 #-------------------------------------------------------------------------------
 
