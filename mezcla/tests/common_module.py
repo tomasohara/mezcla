@@ -30,6 +30,8 @@ HOME = system.getenv_bool(
 UNDER_RUNNER = system.getenv_bool(
     "UNDER_RUNNER", HOME == "/home/runner",
     description="Whether running under Github actions")
+##
+## TODO3: remove alias RUN_SLOW_TESTS
 RUN_SLOW_TESTS = system.getenv_bool(
     "RUN_SLOW_TESTS", 
     description="Alias for not[-]SKIP_SLOW_TESTS")
@@ -38,6 +40,7 @@ SKIP_SLOW_TESTS = system.getenv_bool(
     (not (UNDER_RUNNER or RUN_SLOW_TESTS)),
     description="Omit tests that can a while to run")
 SKIP_SLOW_REASON="Ignoring slow test"
+##
 SKIP_UNIMPLEMENTED_TESTS = system.getenv_bool(
     # Note: used to avoid clutter due to (so many) unimplemented tests, such as
     # when using --runxfail for better test failure diagnostics.
@@ -53,6 +56,11 @@ SKIP_EXPECTED_ERRORS = system.getenv_bool(
     "SKIP_EXPECTED_ERRORS",
     False,
     description="Skip cases intentionally causing conversion errors, etc.")
+#
+SKIP_TBD_REASON="Ignore test to be designed"
+SKIP_TBD_TESTS = system.getenv_bool(
+    "SKIP_TBD_TESTS", False,
+    description=SKIP_TBD_REASON)
 
 # Globals
 mezcla_root_dir = None
