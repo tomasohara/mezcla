@@ -35,11 +35,15 @@ POE_API = system.getenv_value(
     "POE_API", None,
     desc="API key for POE")
 POE_MODEL = system.getenv_value(
-    "POE_MODEL", "GPT-4.1-nano",
+    ## OLD: "POE_MODEL", "GPT-4.1-nano",
+    "POE_MODEL", None,
     desc="Default model for POE")
 POE_URL = system.getenv_text(
     "POE_URL", "https://api.poe.com/v1",
     desc="Base URL for POE API")
+POE_TIMEOUT = system.getenv_float(
+    "POE_TIMEOUT", 30,
+    desc="Timeout for POE API call")
 
 
 class POEClient:
@@ -48,14 +52,14 @@ class POEClient:
     Supports basic Q&A functionality and is designed to be extensible.
     """
 
-    def __init__(self, base_url: Optional[str] = None, api_key: Optional[str] = None, timeout: int = 30, model: Optional[str] = None):
+    def __init__(self, base_url: Optional[str] = None, api_key: Optional[str] = None, timeout: Optional[float] = None, model: Optional[str] = None):
         """
         Initialize the client with the base URL of the POE API and an API key.
 
         Args:
             base_url (str): The base URL of the POE API.
             api_key (str): The API key for authentication.
-            timeout (int): Timeout for HTTP requests in seconds (default: 30).
+            timeout (float): Timeout for HTTP requests in seconds (e.g., 30).
             model (str): Default model to use.
         """
         debug.trace_expr(6, base_url, api_key, timeout, model,
@@ -66,8 +70,11 @@ class POEClient:
         if api_key is None:
             api_key = POE_API
         self.api_key = api_key
+        if timeout is None:
+            timeout = POE_TIMEOUT
         self.timeout = timeout
         if model is None:
+            debug.assertion(POE_MODEL)
             model = POE_MODEL
         self.model = model
         self.headers = {
@@ -219,7 +226,6 @@ class POEClient:
         result = self._send_request("chat/completions", payload)
         debug.trace(5, f"create_chat_completion() => {result}")
         return result
-
 
     def list_models(self) -> Dict[str, Any]:
         """
