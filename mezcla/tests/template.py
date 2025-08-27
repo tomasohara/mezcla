@@ -24,7 +24,6 @@
 # - TODO: Feel free to delete this warning as well as the related one below.
 #
 
-
 ## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
 ## example, only delete todo comments not regular code, unless suggested in tip).
 ## In particular, it is critical that script_module gets initialized properly.
@@ -32,7 +31,7 @@
 """TODO: Tests for <module> module"""
 
 # Standard modules
-## TODO: from collections import defaultdict
+from typing import Optional
 
 # Installed modules
 import pytest
@@ -43,6 +42,7 @@ from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+## TODO: from mezcla.tests.common_module import RUN_SLOW_TESTS
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)
@@ -53,12 +53,10 @@ try:
     pass                                ## TODO: delete
 except:
     system.print_exception_info("<module> import") 
-## 
-## TODO: make sure import above syntactically valid
-#
+
 # Note: sanity test for customization (TODO: remove if desired)
 if not my_re.search(r"\btemplate.py$", __file__):
-    debug.assertion("mezcla.template" not in str(THE_MODULE))
+    debug.assertion("mezcla.*template" not in str(THE_MODULE))
 
 ## TODO:
 ## # Environment options
@@ -77,7 +75,7 @@ class TestIt(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     #
     # TODO: use_temp_base_dir = True    # treat TEMP_BASE as dir (e.g., for simpler organization with many tests)
-    # note: temp_file defined by parent (e.g., also temp_base and test_num)
+    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
     ## TODO: optional setup methods
     ##
@@ -114,9 +112,10 @@ class TestIt(TestWrapper):
         # Warning: see notes above about potential issues with run_script-based tests.
         debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
-        system.write_lines(self.temp_file, data)
+        self.create_temp_file(data)
         ## TODO: add use_stdin=True to following if no file argument
-        output = self.run_script(options="", data_file=self.temp_file)
+        output = self.run_script(options="--TODO-arg", env_options="-TODO-ENV=VAL",
+                                 data_file=self.temp_file)
         self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         return
 
@@ -171,6 +170,7 @@ class TestIt(TestWrapper):
     ##     super().tearDownClass()
     ##     ...
     ##     return
+
 
 ## TODO: define optional tests with tabular input
 ## #................................................................................
