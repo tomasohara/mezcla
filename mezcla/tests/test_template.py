@@ -3,28 +3,55 @@
 # Test(s) for ../template.py
 #
 # Notes:
-# - This is simple test of module not the test template (see ./template.py).
-# - This can be run as follows:
-#   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_template.py
+# - Fill out TODO's below. Use numbered tests to order (e.g., test_1_usage).
+# - * See test_python_ast.py for simple example of customization.
+# - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
+#   option shows tracing output normally suppressed by unittest_wrapper.py.
+# - This can be run as follows (e.g., from root of repo):
+#   $ pytest ./mezclatests/test_template.py
+# - TODO: Remove TODO notes when stable.
+#
+# Warning:
+# - The use of run_script as in test_01_data_file is an older style of testing.
+#   It is better to directly invoke a helper class in the script that is independent
+#   of the Script class based on Main. (See an example of this, see python_ast.py
+#   and tests/tests_python_ast.py.)
 #
 
-"""Tests for template module"""
+## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
+## example, only delete todo comments not regular code, unless suggested in tip).
+## In particular, it is critical that script_module gets initialized properly.
 
-# Standard packages
-import re
 
-# Installed packages
+"""TODO: Tests for template module"""
+
+# Standard modules
+from typing import Optional
+
+# Installed modules
 import pytest
 
-# Local packages
+# Local modules
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
-from mezcla import glue_helpers as gh
+## TODO: from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
-import mezcla.template as THE_MODULE
+#    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)
+#    TestIt.script_module:     dotted module path (e.g., "mezcla.main")
+THE_MODULE = None
+try:
+    ## TODO: import mezcla.<module> as THE_MODULE
+    pass                                ## TODO: delete
+except:
+    system.print_exception_info("<module> import") 
+#
+# Note: sanity test for customization (TODO: remove if desired)
+if not my_re.search(__file__, r"\btemplate.py$"):
+    debug.assertion("mezcla.template" not in str(THE_MODULE))
+
 
 
 class TestTemplate(TestWrapper):
@@ -38,25 +65,38 @@ class TestTemplate(TestWrapper):
         debug.trace(4, "TestTemplate.test_01_data_file()")
         data = ["TEMP", "TODO", "DONE"]
         system.write_lines(self.temp_file, data)
-        # note: the support for --TODO-arg placeholder involves grepping for TODO
-        output = self.run_script("--TODO-arg", self.temp_file)
-        assert re.search(r"arg1 line \(2\): TODO", output.strip())
+        output = self.run_script(options="--TODO-arg", env_options="TODO_ENV=VAL",
+                                 data_file=self.temp_file)
+        self.do_assert(my_re.search(r"Error.*Implement.me", output.strip()))
         return
 
-    def test_02_captured_input_line(self):
-        """Ensure that lines are correctly processed and 
-        irrelevant lines are effectively ignored"""
-        debug.trace(4, "test_02_captured_input_line()")
-        data = "hey"
-        ## BAD:
-        ## self.run_script(env_options=f"echo {data} | DEBUG_LEVEL=4", log_file=self.temp_file)
-        ## assert f"Ignoring line (1): {data}" in gh.read_file(self.temp_file)
-        data_file = f"{self.temp_file}.txt"
-        log_file = f"{self.temp_file}.log"
-        system.write_lines(data_file, ["data"])
-        self.run_script(env_options="DEBUG_LEVEL=4", data_file=data_file, log_file=log_file)
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_02_helper(self):
+        """Test for helper class"""
+        debug.trace(4, f"TestIt.test_02_helper(); self={self}")
+        TODO_var: Optional[bool] = None
+        helper = THE_MODULE.Helper(TODO_var)
+        self.do_assert(not helper.process("TODO: some arg"))
+        return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_03_captured_stdout(self):
+        """Ensure that stdout and/or stderr captured properly"""
+        debug.trace(4, "test_03_captured_IO()")
+        helper = THE_MODULE.Helper()
+        self.do_assert(not helper.process("TODO: some arg"))
         stdout = self.get_stdout()
-        self.do_assert(f"Ignoring line (1): {data}", stdout)
+        self.do_assert(my_re.search(r"Error.*Implement.me", stdout.strip()))
+        return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_04_captured_stderr(self):
+        """Ensure that stderr captured properly"""
+        debug.trace(4, "test_04_captured_stderr()")
+        self.patch_trace_level(5)
+        THE_MODULE.Helper()
+        stderr = self.get_stderr()
+        self.do_assert(my_re.search(r"Helper.*instance", stderr.strip()))
         return
 
 #------------------------------------------------------------------------
