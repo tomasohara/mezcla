@@ -13,6 +13,8 @@
 # TODO2:
 # - Fix the type hints tests, which need special support using Pydantic (or mypy):
 #   see test_fix_url_parameters_type_hints.
+# - Use website accessible to all ScrappyCito assistants. For example,
+#      www.tomasohara.trade => new www.scrappycito.trade
 #   
 
 
@@ -54,9 +56,13 @@ SKIP_HINT_REASON = "Type hinting tests require more work"
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    ## OLD: scrappycito_url = "http://www.scrappycito.com"
+    ##
+    ## NOTE: Using personal site instead of LLC in order to avoid issues
+    ## with the production server (i.e., www.scrappycito.com).
+    scrappycito_url = "www.scrappycito.com"
     tomasohara_trade_url = "http://www.tomasohara.trade"
-    scrappycito_url = f"{tomasohara_trade_url}:9330"
+    ## OLD: scrappycito_url = f"{tomasohara_trade_url}:9330"
+    scrappycito_like_url = f"{tomasohara_trade_url}:9330"
     ready_test_path = gh.resolve_path("document_ready_test.html",
                                       heuristic=True, absolute=True)
 
@@ -126,10 +132,24 @@ class TestHtmlUtils(TestWrapper):
             )
 
     @pytest.mark.xfail                   # TODO: remove xfail
+    def test_scrappycito_urls(self):
+        """Some sanity checks on URLs for ScrappyCito, LLC and Tom O'Hara's consulting.
+        Note: www.scrappycito.com should be avoided and www.tomasohara.trade used instead.
+        """
+        debug.trace(4, f"TestIt.test_scrappycito_urls(); self={self}")
+        self.do_assert("scrappycito" in self.scrappycito_url)
+        self.do_assert("scrappycito" not in self.scrappycito_like_url,
+                       f"The production server should not be used in tests: {self.scrappycito_url}")        
+        self.do_assert("tomasohara" in self.scrappycito_like_url)
+        return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_html_alt(self):
         """Alternative test of get_inner_html"""
         debug.trace(4, f"TestIt.test_get_inner_html_alt(); self={self}")
-        output = THE_MODULE.get_inner_html(self.scrappycito_url)
+        debug.assertion("scrappycito" not in self.scrappycito_like_url,
+                        f"The production server should not be used in tests: {self.scrappycito_url}")
+        output = THE_MODULE.get_inner_html(self.scrappycito_like_url)
         self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
         return
 
@@ -137,7 +157,7 @@ class TestHtmlUtils(TestWrapper):
     def test_run_script_for_inner_html(self):
         """Test of getting inner HTML via script invocation"""
         debug.trace(4, f"TestIt.test_run_script_for_inner_html(); self={self}")
-        output = self.run_script(options=f"--inner --stdout {self.scrappycito_url}", data_file=self.temp_file)
+        output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url}", data_file=self.temp_file)
         self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
         return
 
@@ -315,16 +335,22 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, "test_old_download_web_document()")
         assert "<!doctype html>" in THE_MODULE.old_download_web_document("https://www.google.com")
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_web_document(self):
         """Ensure download_web_document() works as expected"""
         debug.trace(4, "test_download_web_document()")
-        assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
+        ## NOTE: Wikipedia/WikiMedia complaining about robots (even though single document access)
+        ## diring GitHub actions rub. See https://wikitech.wikimedia.org/wiki/Robot_policy.
+        ## OLD: assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
+        ## TODO2: use website accessible to all team members
+        assert "currency" in THE_MODULE.download_web_document("http://www.tomasohara.trade/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
         assert THE_MODULE.download_web_document("www. bogus. url.html") is None
 
     def test_test_download_html_document(self):
         """Ensure test_download_html_document() works as expected"""
         debug.trace(4, "test_test_download_html_document()")
         assert "Google" in THE_MODULE.test_download_html_document("www.google.com")
+        ## TODO2: use website accessible to all team members
         assert "Tomás" not in THE_MODULE.test_download_html_document("http://www.tomasohara.trade", encoding="big5")
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -447,17 +473,20 @@ class TestHtmlUtils(TestWrapper):
     @pytest.mark.xfail
     def test_document_ready_alt(self):
         """Verify document_ready for simple sites"""
-        ## TODO2: merge with test_document_ready
+        ## TODO2: merge with test_document_ready; use simple site (not production web search)
+        ##
         URL_VALID = "https://duckduckgo.com"
         assert (THE_MODULE.document_ready(URL_VALID))
-        scrappycito_search_result = f"{self.scrappycito_url}/run_search?query=modern+art"
+        ##
+        ## Note: following should not be ready at first due to JavaScript
+        scrappycito_search_result = f"{self.scrappycito_like_url}/run_search?query=modern+art"
         assert not THE_MODULE.document_ready(scrappycito_search_result)
         ## Exception raised:
-        # E       selenium.common.exceptions.JavascriptException: Message: TypeError: document.body is null
-        # E       Stacktrace:
-        # E       @http://www.scrappycito.com:9330/:2:7
-        # E       @http://www.scrappycito.com:9330/:3:8
-        # /home/zavee/.local/lib/python3.10/site-packages/selenium/webdriver/remote/errorhandler.py:229: JavascriptException
+        ## E       selenium.common.exceptions.JavascriptException: Message: TypeError: document.body is null
+        ## E       Stacktrace:
+        ## E       @http://www.scrappycito.com:9330/:2:7
+        ## E       @http://www.scrappycito.com:9330/:3:8
+        ## /home/zavee/.local/lib/python3.10/site-packages/selenium/webdriver/remote/errorhandler.py:229: JavascriptException
 
     @pytest.mark.xfail
     def test_set_param_dict_alt(self):
@@ -685,10 +714,10 @@ class TestHtmlUtils(TestWrapper):
         """Verify simple format_checkbox usage"""
         # ex: <input type='hidden' name='fubar' value='off'><label id='fubar-label-id' >Fubar?<input type='checkbox' id='fubar-id' name='fubar'   ></label>"
         field_spec = THE_MODULE.format_checkbox("fubar")
-        assert my_re.search(r"<input type='hidden'\s*name='fubar'\s*value='off'><label\s*id='fubar-id'\s*>Fubar\?&nbsp;<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*></label>",
+        assert my_re.search(r"<input type='hidden'\s*name='fubar'\s*value='off'><label\s*id='fubar-label-id'\s*>Fubar\?&nbsp;<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*></label>",
                             field_spec)
         field_spec = THE_MODULE.format_checkbox("fubar", disabled=True, concat_label=True)
-        assert my_re.search(r"<label\s*id='fubar-id'\s*>Fubar\?<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*disabled\s*></label>",
+        assert my_re.search(r"<label\s*id='fubar-label-id'\s*>Fubar\?<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*disabled\s*></label>",
                             field_spec)
 
     @pytest.mark.xfail
