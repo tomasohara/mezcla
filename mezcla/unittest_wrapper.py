@@ -21,7 +21,11 @@
 # - Add TEMP_DIR for more direct specification.
 # - Clarify that this can co-exist with pytest-based tests (see tests/test_main.py).
 # TODO2:
-# - Clean up script_file usage (and unncessary settings in test scripts).
+# - Clean up script_file usage (and unnecessary settings in test scripts).
+#
+# TODO1:
+# - Diagnose problem with TEMP_BASE reuse (e.g., missing test-1.out/log on
+#   subsequent runs w/ TEMP_BASE="/tmp/test-123/").
 #
 #-------------------------------------------------------------------------------
 # Sample test (streamlined version of test_simple_main_example.py):
@@ -279,7 +283,7 @@ class TestWrapper(unittest.TestCase):
                             f"problem running via 'python -m {cls.script_module}'")
             # Warn about lack of usage statement unless "not intended for command-line" type warning issued
             # TODO: standardize the not-intended wording
-            if (not ((my_re.search(r"(warning|FYI):.*not intended", help_usage,
+            if (not ((my_re.search(r"(error|warning|FYI):.*not intended", help_usage,
                                    flags=my_re.IGNORECASE))
                      or ("usage:" in help_usage.lower()))):
                 system.print_stderr("Warning: script should implement --help")
