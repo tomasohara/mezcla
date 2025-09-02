@@ -221,7 +221,7 @@ def label_for_tag(POS, word=None):
     label = POS
     if KEEP_PUNCT and word and re.match(r"\W", word[0]):
         label = word
-        debug.trace_fmtd(5, "label_for_tag({t}, {w}) => {l}", t=POS, w=word, l=label)
+    debug.trace_fmtd(7, "label_for_tag({t}, {w}) => {l}", t=POS, w=word, l=label)
     return label
 
 
@@ -298,15 +298,19 @@ def tag_part_of_speech(tokens):
     return part_of_speech_taggings
 
 
-def tokenize_and_tag(text):
-    """Run sentence(s) and word tokenization over text and then part-of-speech tag it"""
+def tokenize_and_tag(text, skip_tokenization=None):
+    """Run sentence(s) and word tokenization over text and then part-of-speech tag it
+    Note: tokenization omitted if SKIP_TOKENIZATION.
+    """
     # TODO: return one list per sentence not just one combined list
-    debug.trace(7, "tokenize_and_tag(%s)" % text)
+    debug.trace(7, f"tokenize_and_tag({text!r})")
+    if skip_tokenization is None:
+        skip_tokenization = SKIP_TOKENIZATION
     ## OLD: text = tpo.ensure_unicode(text)
     text_taggings = []
-    sentences = split_sentences(text) if not SKIP_TOKENIZATION else [text]
+    sentences = split_sentences(text) if not skip_tokenization else [text]
     for sentence in sentences:
-        if not SKIP_TOKENIZATION:
+        if not skip_tokenization:
             debug.trace(5, "sentence: %s" % sentence.strip())
             tokens = split_word_tokens(sentence)
             debug.trace(5, "tokens: %s" % tokens)
