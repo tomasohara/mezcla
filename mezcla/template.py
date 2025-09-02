@@ -76,7 +76,10 @@ class Helper:
     def process(self, _arg) -> bool:
         """TODO: Process _ARG to do ..."""
         ## NOTE: print used for sake of unit test (see tests/test_template.py)
-        print("Error: TODO Implement me!")
+        try:
+            print("Error: TODO Implement me!")
+        except:
+            system.print_exception_info("process")
         return False
 
     
