@@ -745,13 +745,14 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
     return links
 
 
-def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None, concat_label: Optional[str] = None, skip_hidden: Optional[str] = None, param_dict : Optional[Dict] = None):
-    """Returns HTML specification for input checkbox with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, OUTER_SPAN_CLASS, CONCAT_LABEL, SKIP_HIDDEN, and PARAM_DICT.
+def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None, concat_label: Optional[str] = None, skip_hidden: Optional[str] = None, on_change: Optional[str] = None, param_dict : Optional[Dict] = None):
+    """Returns HTML specification for input checkbox with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, OUTER_SPAN_CLASS, CONCAT_LABEL, SKIP_HIDDEN, ON_CHANGE, and PARAM_DICT.
     Note:
     - param_name + "-id" is used for the field ID.
     - The TOOLTIP requires CSS support (e.g., tooltip-control class).
     - See format_input_field for OUTER_SPAN_CLASS usage.
     - With CONCAT_LABEL, no space is added after the label.
+    - ON_CHANGE specifies JavaScript to execute when values changes.
     Warning: includes separate hidden field for explicit off state unless SKIP_HIDDEN.
     """
     ## Note: Checkbox values are only submitted if checked, so a hidden field is used to provide explicit off.
@@ -761,7 +762,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     ## EX: format_checkbox("disable-touch") => "<input type='hidden' name='disable-touch' value='off'><label id='disable-touch-label-id'>Disable touch?<input type='checkbox' id='disable-touch-id' name='disable-touch'   ></label>"
     ## TODO3: add on_cange as with format_input_field
     debug.trace_expr(7, param_name, label, skip_capitalize, default_value, disabled, style,
-                     misc_attr, tooltip, outer_span_class, concat_label, skip_hidden, param_dict,
+                     misc_attr, tooltip, outer_span_class, concat_label, skip_hidden, on_change, param_dict,
                      prefix="in format_checkbox: ")
     checkbox_spec = get_url_param_checkbox_spec(param_name, default_value,
                                                 param_dict=param_dict)
@@ -769,6 +770,8 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     status_spec = f"{checkbox_spec} {disabled_spec}".strip()
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
+    debug.assertion("'" not in str(on_change))
+    misc_spec += (f" onchange=\"{on_change}\"" if on_change else "")
     label_misc_spec = ""
     if (label is None):
         label = (param_name.replace("-", " ") + "?")
@@ -863,9 +866,9 @@ def format_input_field(
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
     debug.assertion("'" not in str(on_change))
-    misc_spec += (f"onchange=\"{on_change}\"" if on_change else "")
+    misc_spec += (f" onchange=\"{on_change}\"" if on_change else "")
     debug.assertion("'" not in str(on_input))
-    misc_spec += (f"oninput=\"{on_input}\"" if on_input else "")
+    misc_spec += (f" oninput=\"{on_input}\"" if on_input else "")
     label_misc_spec = ""
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
