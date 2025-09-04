@@ -322,13 +322,20 @@ def tokenize_and_tag(text, skip_tokenization=None):
     return text_taggings
 
 
-def tokenize_text(text):
-    """Run sentence and word tokenization over text returning a list of sentence word lists"""
+def tokenize_text(text, skip_tokenization=None):
+    """Run sentence and word tokenization over text returning a list of sentence word lists.
+    Note: sentence tokenization omitted if SKIP_TOKENIZATION and whitespace used as well.
+    """
+    debug.trace(7, f"tokenize_text({text!r})")
+    if skip_tokenization is None:
+        skip_tokenization = SKIP_TOKENIZATION
     tokenized_lines = []
-    for sentence in split_sentences(text):
-        sent_tokens = split_word_tokens(sentence)
+    sentences = (split_sentences(text) if not skip_tokenization else [text])
+    for sentence in sentences:
+        sent_tokens = (split_word_tokens(sentence) if not skip_tokenization else sentence.split())
         debug.trace(5, "sent_tokens: %s" % sent_tokens)
         tokenized_lines.append(sent_tokens)
+    debug.trace(6, f"tokenize_text() => {tokenized_lines!r}")
     return tokenized_lines
 
 
@@ -702,8 +709,8 @@ def main():
             if just_tokenize:
                 # Just tokenize sentence and words
                 # Note: text lowercased at end to allow for case clues (e.g., "Dr. Jones")
-                for tokenized_line in tokenize_text(text):
-                    tokenized_text = " ".join(tokenized_line)
+                for line in ([text] if LINE_MODE else split_sentences(text)):
+                    tokenized_text = " ".join(tokenize_text(line)[0])
                     if make_lowercase:
                         tokenized_text = tokenized_text.lower()
                     print(tokenized_text)
