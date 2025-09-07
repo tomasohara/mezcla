@@ -855,13 +855,17 @@ def format_input_field(
             label = label.capitalize()
     if (default_value is None):
         default_value = ""
+    if not isinstance(default_value, str):
+        debug.trace(5, f"FYI: Use string for {param_name} default {default_value!r}")
+        default_value = str(default_value)        
     if (num_rows is None):
         num_rows = 1
     if (size is None):
         size = max_len
     type_spec = (f"type='{field_type}'" if field_type else "")
     field_value = (get_url_parameter_value(param_name, param_dict=param_dict) or default_value)
-    value_spec = (f"value='{field_value}'" if field_value else "")
+    ## TEST: value_spec = (f"value='{field_value}'" if field_value else "")
+    value_spec = (f"value='{escape_html_text(field_value)}'" if field_value else "")
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
@@ -907,6 +911,7 @@ def format_input_field(
     debug.trace(6, f"format_input_field({param_name}, ...) => {result!r}")
     return result
 #
+# EX: format_input_field("quest" default_value="O'What?") => '<label id=\'quest-label-id\' >Quest&nbsp;<input id="quest-id" value=\'O&#x27;What?\' name="quest"     ></label>'
 # EX: format_input_field("num-id", label="Num", max_value=101, field_type="number") => '<label>Num<input id="num-id-id" value="" name="num-id"  max="101" size="3"  ></label>'
 
 #-------------------------------------------------------------------------------
