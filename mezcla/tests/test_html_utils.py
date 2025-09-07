@@ -729,8 +729,8 @@ class TestHtmlUtils(TestWrapper):
         assert my_re.search(r"<label\s*id='first-label-id'\s*>First:&nbsp;<input id='first-id'\s*name='first'\s*></label>",
                             field_spec)
         #
-        field_spec = THE_MODULE.format_input_field("last", label="Last:", default_value="Doe").replace('"', "'")
-        assert my_re.search(r"<label\s*id='last-label-id'\s*>Last:&nbsp;<input id='last-id'\s*value='Doe' name='last'\s*></label>",
+        field_spec = THE_MODULE.format_input_field("last", label="Last:", default_value="O'Doe").replace('"', "'")
+        assert my_re.search(r"<label\s*id='last-label-id'\s*>Last:&nbsp;<input id='last-id'\s*value='O&#x27;Doe' name='last'\s*></label>",
                             field_spec)
         #
         field_spec = THE_MODULE.format_input_field("age", label="Age:", field_type="number", default_value="19").replace('"', "'")
