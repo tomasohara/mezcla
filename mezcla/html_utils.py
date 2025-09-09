@@ -911,7 +911,7 @@ def format_input_field(
     debug.trace(6, f"format_input_field({param_name}, ...) => {result!r}")
     return result
 #
-# EX: format_input_field("quest" default_value="O'What?") => '<label id=\'quest-label-id\' >Quest&nbsp;<input id="quest-id" value=\'O&#x27;What?\' name="quest"     ></label>'
+# EX: format_input_field("quest", default_value="O'What?") => '<label id=\'quest-label-id\' >Quest&nbsp;<input id="quest-id" value=\'O&#x27;What?\' name="quest"     ></label>'
 # EX: format_input_field("num-id", label="Num", max_value=101, field_type="number") => '<label>Num<input id="num-id-id" value="" name="num-id"  max="101" size="3"  ></label>'
 
 #-------------------------------------------------------------------------------
