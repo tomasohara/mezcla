@@ -40,6 +40,7 @@ Examples:
 from collections import defaultdict
 import re
 import sys
+import unicodedata
 
 # Installed packages
 CountVectorizer = None
@@ -73,7 +74,9 @@ PREPROCESSOR_LANG = system.getenv_value(
 # NOTE: MIN_NGRAM_SIZE (e.g., 2) is alternative to deprecated ALL_NGRAMS (implies 1)
 # TODO: add descriptions to all getenv options
 ALL_NGRAMS = system.getenv_boolean("ALL_NGRAMS", False)
-MAX_TERMS = system.getenv_int("MAX_TERMS", 100)
+MAX_TERMS = system.getenv_int(
+    "MAX_TERMS", 100,
+    desc="Maximum number of terms returned in analysis")
 ALLOW_NGRAM_SUBSUMPTION = system.getenv_boolean(
     "ALLOW_NGRAM_SUBSUMPTION", False,
     description="Allow ngram subsumed by another--substring")
@@ -90,30 +93,64 @@ USE_CORPUS_COUNTER = system.getenv_boolean(
 TFIDF_BOOST_CAPITALIZED = system.getenv_boolean(
     "TFIDF_BOOST_CAPITALIZED", False,
     description="Treat capitalized ngrams higher others of same weight; excludes inner function words")
+## OLD:
+## TFIDF_NP_BOOST = system.getenv_float(
+##     "TFIDF_NP_BOOST", 0,
+##     description="Boost factor (e.g., 1.0+) for ngrams that are NP's")
+## TFIDF_VP_BOOST = system.getenv_float(
+##     "TFIDF_VP_BOOST", 0,
+##     description="Boost factor (e.g., 1.0+) for ngrams that are VP's")
+## TFIDF_NUMERIC_BOOST = system.getenv_float(
+##     "TFIDF_NUMERIC_BOOST", 0,
+##     description="Boost factor (e.g., <1.0) for ngrams that have numeric tokens")
+## TFIDF_TEXT_PROC = system.getenv_text(
+##     "TFIDF_TEXT_PROC", "spacy",
+##     description="name of text processor to use for chunking")
+## TFIDF_BAD_BOOST = system.getenv_float(
+##     "TFIDF_BAD_BOOST", 0,
+##     description="Boost factor (e.g., <1.0) for ngrams that have bad terms")
+## TFIDF_GOOD_BOOST = system.getenv_float(
+##     "TFIDF_GOOD_BOOST", 0,
+##     description="Boost factor (e.g., 1.0+) for ngrams that have good terms")
+## TFIDF_STOP_BOOST = system.getenv_float(
+##     "TFIDF_STOP_BOOST", 0,
+##     ## TODO3: reword to exclude inner stop words (once implemented)
+##     description="Boost factor (e.g., <1.0) for ngrams that have stop words")
+POS_FACTOR = "Positive boost factor (e.g., 1.0+)"
+NEG_FACTOR = "Negative boost factor (e.g., <1.0)"
 TFIDF_NP_BOOST = system.getenv_float(
     "TFIDF_NP_BOOST", 0,
-    description="Boost factor (e.g., 1.0+) for ngrams that are NP's")
+    description=f"{POS_FACTOR} for ngrams that are NP's")
 TFIDF_VP_BOOST = system.getenv_float(
     "TFIDF_VP_BOOST", 0,
-    description="Boost factor (e.g., 1.0+) for ngrams that are VP's")
+    description=f"{POS_FACTOR} for ngrams that are VP's")
 TFIDF_NUMERIC_BOOST = system.getenv_float(
     "TFIDF_NUMERIC_BOOST", 0,
-    description="Boost factor (e.g., <1.0) for ngrams that have numeric tokens")
+    description=f"{NEG_FACTOR} for ngrams that have numeric tokens")
 TFIDF_TEXT_PROC = system.getenv_text(
     "TFIDF_TEXT_PROC", "spacy",
     description="name of text processor to use for chunking")
 TFIDF_BAD_BOOST = system.getenv_float(
     "TFIDF_BAD_BOOST", 0,
-    description="Boost factor (e.g., <1.0) for ngrams that have bad terms")
+    description=f"{NEG_FACTOR} for ngrams that have bad terms")
 TFIDF_GOOD_BOOST = system.getenv_float(
     "TFIDF_GOOD_BOOST", 0,
-    description="Boost factor (e.g., 1.0+) for ngrams that have good terms")
+    description=f"{POS_FACTOR} for ngrams that have good terms")
 TFIDF_STOP_BOOST = system.getenv_float(
     "TFIDF_STOP_BOOST", 0,
     ## TODO3: reword to exclude inner stop words (once implemented)
-    description="Boost factor (e.g., <1.0) for ngrams that have stop words")
-ANY_TOKEN_BOOST = (TFIDF_NUMERIC_BOOST or TFIDF_BAD_BOOST or TFIDF_GOOD_BOOST or TFIDF_STOP_BOOST)
-## TODO3: ANY_TOKEN_BOOST = ANY_TOKEN_BOOST or TFIDF_CAPITALIZED_BOOST)
+    description=f"{NEG_FACTOR} for ngrams that have stop words")
+TFIDF_ALL_PUNCT_BOOST = system.getenv_float(
+    "TFIDF_ALL_PUNCT_BOOST", 0,
+    description=f"{NEG_FACTOR} for ngrams that are just punctuation marks")
+# Whether any of the token-level boost factors active (e.g., most except for NP and VP)
+ANY_TOKEN_BOOST = (TFIDF_NUMERIC_BOOST or TFIDF_BAD_BOOST or TFIDF_GOOD_BOOST or TFIDF_STOP_BOOST or TFIDF_ALL_PUNCT_BOOST)
+## TODO3: ANY_TOKEN_BOOST = ANY_TOKEN_BOOST or TFIDF_BOOST_CAPITALIZED)
+
+# Perform sanity checks
+ALL_BOOST_SCORES = [TFIDF_ALL_PUNCT_BOOST, TFIDF_BAD_BOOST, TFIDF_GOOD_BOOST, TFIDF_NP_BOOST, TFIDF_NUMERIC_BOOST, TFIDF_STOP_BOOST, TFIDF_VP_BOOST]
+debug.assertion(not any(b == 1 for b in ALL_BOOST_SCORES), "Boost scores shouldn't be 1 (i.e., vacuous)")
+debug.assertion(not any(b < 0 for b in ALL_BOOST_SCORES), "Boost scores should be non-negative")
 
 # Do sanity check on TF/IDF package version
 try:
@@ -129,6 +166,9 @@ assert(TFIDF_VERSION > 1.0)
 if not USE_CORPUS_COUNTER:
     from sklearn.feature_extraction.text import CountVectorizer
 
+#--------------------------------------------------------------------------------
+# Utility functions
+
 def split_tokens(text, include_punct=None, include_stop=None):
     """Split TEXT into word tokens (via NLTK), optionally with INCLUDE_PUNCT and INCLUDE_STOP"""
     # EX: split_tokens("Jane's fast car") => ["Jane", "fast", "car"]
@@ -137,6 +177,25 @@ def split_tokens(text, include_punct=None, include_stop=None):
     debug.trace(7, f"split_tokens({text!r}, punct={include_punct}, stop={include_stop}) => {result!r}")
     return result
 
+
+def all_punct(token):
+    """Whether TOKEN consists just of punctuation marks
+    Note: This includes symbols (e.g., mathematical and currency); currently,
+    categories P and S from the Unicode character categroes DB:
+        https://www.unicode.org/reports/tr44/tr44-30.html#General_Category_Values
+    """
+    # https://www.unicode.org/reports/tr44/tr44-30.html#General_Category_Values
+    # EX: all_punct("^$")
+    # EX: not all_punct("$100")
+    punct_like_cats = ('P', 'S')
+    result = all(unicodedata.category(char).startswith(punct_like_cats) for char in token)
+    debug.trace(8, f"all_punct({token!r}) => {result}")
+    return result
+#
+# EX: all_punct("'\"")
+# EX: not all_punct("I'm")
+
+#-------------------------------------------------------------------------------
 
 class ngram_tfidf_analysis(object):
     """Class for performing TF-IDF over ngrams and returning sorted list"""
@@ -280,7 +339,9 @@ class ngram_tfidf_analysis(object):
             for (i, (ngram, score)) in enumerate(top_term_info):
                 ## TODO4: simplify old-score maintenance (e.g., via helper functions)
                 init_score = score
+                ## TODO3: tokens => word_tokens; rework to avoid duplicate splitting
                 tokens = (split_tokens(ngram, include_stop=True) if ANY_TOKEN_BOOST else [])
+                all_tokens = (split_tokens(ngram, include_punct=True, include_stop=True) if ANY_TOKEN_BOOST else [])
 
                 # Apply boost if entire ngram is a noun phrase and likewise for verb phrase
                 old_score = init_score
@@ -308,6 +369,10 @@ class ngram_tfidf_analysis(object):
                     ## TODO3: exclude stopwords in the middle of the ngram
                     score = old_score * TFIDF_STOP_BOOST
                     debug.trace(5, f"boosted with-stop-word {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                    old_score = score
+                if (TFIDF_ALL_PUNCT_BOOST and any(all_punct(token) for token in all_tokens)):
+                    score = old_score * TFIDF_ALL_PUNCT_BOOST
+                    debug.trace(5, f"boosted all-punct-token {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
                 # Update changed score
                 if init_score != score:
@@ -405,6 +470,9 @@ class ngram_tfidf_analysis(object):
         debug.trace_fmt(6, "ngram_tfidf_analysis.get_ngrams({t}) [self={s}] => {nl}", 
                         t=text, s=self, nl=ngram_list)
         return ngram_list
+
+#-------------------------------------------------------------------------------
+# Command-line support
 
 def simple_main_test():
     """Run test extracting ngrams from this source file"""
