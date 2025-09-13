@@ -38,10 +38,12 @@
 #
 #................................................................................
 # Note:
-#  - via https://dirask.com/posts/JavaScript-difference-between-innerHTML-and-outerHTML-MDg8mp:
-#    The difference between innerHTML and outerHTML html:
-#      innerHTML = HTML inside of the selected element
-#      outerHTML = HTML inside of the selected element + HTML of the selected element
+# - via https://dirask.com/posts/JavaScript-difference-between-innerHTML-and-outerHTML-MDg8mp:
+#   The difference between innerHTML and outerHTML html:
+#     innerHTML = HTML inside of the selected element
+#     outerHTML = HTML inside of the selected element + HTML of the selected element
+# - via grok:
+#   In short, inner HTML is just the content inside the tags, while outer HTML includes the tags themselves.
 #-------------------------------------------------------------------------------
 # TODO3:
 # - Standardize naming convention for URL parameter accessors (e.g., get_url_param vs. get_url_parameter).
@@ -89,8 +91,11 @@ MAX_DOWNLOAD_TIME = system.getenv_integer(
     "MAX_DOWNLOAD_TIME", 60,
     description="Time in seconds for rendered-HTML download as with get_inner_html")
 MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer(
-    "MID_DOWNLOAD_SLEEP_SECONDS", 15,
+    "MID_DOWNLOAD_SLEEP_SECONDS", 5,
     description="Mid-stream delay if document not ready")
+NUM_MID_DOWNLOAD_CHECKS = system.getenv_integer(
+    "NUM_MID_DOWNLOAD_CHECKS", 3,
+    description="Number of mid-stream delays to use")
 POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer(
     "POST_DOWNLOAD_SLEEP_SECONDS", 1,
     description="Courtesy delay after URL access--prior to download")
@@ -108,9 +113,10 @@ DOWNLOAD_TIMEOUT = system.getenv_float(
 HEADLESS_WEBDRIVER = system.getenv_bool(
     "HEADLESS_WEBDRIVER", True,
     description="Whether Selenium webdriver is hidden")
-STABLE_DOWNLOAD_CHECK = system.getenv_bool(
-    "STABLE_DOWNLOAD_CHECK", False,
-    description="Wait until download size stablizes--for dynamic content")
+OMIT_STABLE_DOWNLOAD_CHECK = system.getenv_bool(
+    "OMIT_STABLE_DOWNLOAD_CHECK", False,
+    description="Omit waiting until download size stablizes--for dynamic content")
+STABLE_DOWNLOAD_CHECK = not OMIT_STABLE_DOWNLOAD_CHECK
 EXCLUDE_IMPORTS = system.getenv_bool(
     "EXCLUDE_IMPORTS", False,
     description="Sets --follow-imports=silent; no import files are checked")
@@ -245,11 +251,14 @@ def document_ready(url : str):
     return is_ready
 
 
-def wait_until_ready(url : str, stable_download_check : bool = STABLE_DOWNLOAD_CHECK):
+def wait_until_ready(url : str, stable_download_check : bool = None):
     """Wait for document_ready (q.v.) and pause to allow loading to finish (via selenium)
     Note: If STABLE_DOWNLOAD_CHECK, the wait incoporates check for download size differences"""
     # TODO: make sure the sleep is proper way to pause
     debug.trace_fmt(5, "in wait_until_ready({u})", u=url)
+    if stable_download_check is None:
+        stable_download_check = STABLE_DOWNLOAD_CHECK
+    debug.trace_expr(6, stable_download_check)
     start_time = time.time()
     end_time = start_time + MAX_DOWNLOAD_TIME
     browser = get_browser(url)
@@ -258,13 +267,20 @@ def wait_until_ready(url : str, stable_download_check : bool = STABLE_DOWNLOAD_C
     done = False
 
     # Wait until document ready and optionally that the size is the same after a delay
+    # and for a specified number of checks (e.g., same size for 3 checks).
+    count = 0
     while ((time.time() < end_time) and (not done)):
         done = document_ready(url)
         if (done and stable_download_check):
             size = len(browser.page_source)
             done = (size == last_size)
-            debug.trace_fmt(5, "Stable size check: last={l} size={s} done={d}",
-                            l=last_size, s=size, d=done)
+            if done:
+                count += 1
+                done = (count == NUM_MID_DOWNLOAD_CHECKS)
+            else:
+                count = 0
+            debug.trace_fmt(5, "Stable size check: last={l} size={s} count={c} done={d}",
+                            l=last_size, s=size, c=count, d=done)
             last_size = size
         if not done:
             debug.trace_fmt(6, "Mid-stream download sleep ({s} secs)", s=MID_DOWNLOAD_SLEEP_SECONDS)
