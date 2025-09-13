@@ -16,16 +16,18 @@ Simple usage:
     from mezcla.ipython_utils import *
 
 Advanced usage:
+    # Make sure import-globals util active
     import mezcla.ipython_utils
     reload(mezcla.ipython_utils)
     import_module_globals = mezcla.ipython_utils.import_module_globals
-    import_module_globals("mezcla.misc_utils", globals_dict=builtins.globals());
+    # Run over misc_utils.py
+    import_module_globals("mezcla.misc_utils", globals_dict=builtins.globals())
     (TYPICAL_EPSILON, VALUE_EPSILON)
     >>>
     (1e-06, 0.001)
 
 Misc. usage:
-    set_xterm_title(f"ipython: {os.getcwd()}")
+    set_xterm_title("ipython: " + os.getcwd())
 """
 
 # Note: most imports are done for the sake of ipython usage
@@ -57,7 +59,6 @@ except:
 import mezcla
 from mezcla import debug
 from mezcla import html_utils
-from mezcla import main
 from mezcla.main import Main
 from mezcla import system
 from mezcla.my_regex import my_re
@@ -145,12 +146,12 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
             system.print_exception_info(import_command)
         else:
             debug.trace_exception(6, import_command)
-    debug.trace(5, module)
+    debug.trace_expr(5, module)
 
     # Import each individually
     num_ok = 0
     for var in module_attrs:
-        debug.trace_expr(4, var)
+        debug.trace_expr(6, var)
 
         # Optionally, include "dunder" attributes like __name__ or private ones like _name
         include = True
@@ -211,15 +212,23 @@ class Fubar():
 
 #-------------------------------------------------------------------------------
 # Initialization
+# note: self and dummy_main are for interactive usage
 
 self = Fubar()
 
-dummy_main = main.Main([])
+
+dummy_main = Main([])
 
 #-------------------------------------------------------------------------------
     
+def main() -> None:
+    """Entry point"""
+    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone\n")
+    _main_app = Main(description=__doc__.format(script=gh.basename(__file__)))
+
+
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
     debug.trace(5, f"module __doc__: {__doc__}")
-    debug.assertion("TODO:" not in __doc__)
-    system.print_stderr(f"Warning: {__file__} is not intended to be run standalone\n")
+    main()
