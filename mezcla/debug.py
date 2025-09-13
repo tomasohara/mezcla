@@ -344,11 +344,12 @@ if __debug__:
                     max_len -= len(out_text)
                 text = str(text)
             if ((not skip_sanity_checks)
-                and re.search(r"{[^0-9]\S+}", text)
+                and (match := re.search(r"{[^0-9]\S+}", text))
                 and not re.search(r"{{[^0-9]\S+}}", text)):
                 # TODO3: show caller info; also rework indent (pep8 quirk)
                 if include_trace_diagnostics:
-                    out_text += do_print("[FYI: f-string issue?] ", end="", max_len=max_len)
+                    out_text += do_print(f"[FYI: potential f-string issue in trace: unresolved {match.group()}] ",
+                                         end="", max_len=max_len)
                     max_len -= len(out_text)
             end = "\n" if (not no_eol) else ""
             out_text += do_print(_to_utf8(text), end=end, max_len=max_len)
@@ -402,7 +403,7 @@ if __debug__:
                     # TODO: add version of assertion that doesn't use trace or trace_fmtd
                     if (not skip_sanity_checks) and not (re.search(r"{\S*}", text)):
                         if include_trace_diagnostics:
-                             trace(level, "[FYI: missing {}'s?] ", no_eol=True)
+                             trace(level, "[FYI: potential extraneous f-string issue in  in trace_fmt: missing {}'s?] ", no_eol=True)
                     kwargs_unicode = {k: format_value(_to_unicode(_to_string(v)), max_len=max_len)
                                       for (k, v) in list(kwargs.items())}
                     trace(level, _to_unicode(text).format(**kwargs_unicode))
