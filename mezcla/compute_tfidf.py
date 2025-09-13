@@ -80,7 +80,7 @@ SCORE_WIDTH = system.getenv_int("SCORE_WIDTH", PRECISION + 6,
 MAX_FIELD_SIZE = system.getenv_int(
     "MAX_FIELD_SIZE", -1,
     desc="Overide for default max field size (128k)")
-SORT_FIELD = system.getenv_text(
+SORT_FIELD = system.getenv_bool(
     "SORT_FIELD", None,
     desc="Field name for override to default TF-IDF sorting")
 
@@ -325,7 +325,12 @@ def main():
         headers += ["TF", "IDF"]
     headers += ["TF-IDF"]
     debug.assertion(headers[0] == "term")
-    sort_field_offset = (headers.index(SORT_FIELD) if SORT_FIELD in headers else 0)
+    sort_field_offset = -1
+    if SORT_FIELD:
+        valid_sort_field = (SORT_FIELD in headers)
+        debug.assertion(valid_sort_field)
+        # note: defaults to term if invalid
+        sort_field_offset = (headers.index(SORT_FIELD) if valid_sort_field else 0)
 
     # Output the top terms per document with scores
     # TODO: change the IDF weighting
