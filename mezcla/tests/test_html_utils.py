@@ -29,7 +29,7 @@ import pytest
 ## OLD: import bs4
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper, invoke_tests, trap_exception
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla import system
 from mezcla import glue_helpers as gh
@@ -40,9 +40,13 @@ from mezcla.my_regex import my_re
 import mezcla.html_utils as THE_MODULE
 
 # Constants and environment options
+TEST_SELENIUM_DESC = "Include tests requiring selenium"
 TEST_SELENIUM = system.getenv_bool(
     "TEST_SELENIUM", False,
-    desc="Include tests requiring selenium")
+    desc=TEST_SELENIUM_DESC)
+SKIP_SELENIUM = not TEST_SELENIUM
+SKIP_SELENIUM_REASON = f"Not-{TEST_SELENIUM_DESC}"
+#
 INCLUDE_HINT_TESTS = system.getenv_bool(
     "INCLUDE_HINT_TESTS", False,
     desc="Include the work-in-progress tests involving type hints")
@@ -88,14 +92,12 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE.user_parameters = save_user_parameters
         return
 
-    @trap_exception
+    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     def test_get_inner_text(self):
         """Verify that JavaScript fills in window dimensions
         Note: requires selenium"""
         debug.trace(4, "test_get_inner_text()")
-        if not TEST_SELENIUM:
-            debug.trace(4, "Ignoring test_get_inner_text as selenium required")
-            return
         html_filename = "simple-window-dimensions.html"
         html_path = gh.resolve_path(html_filename, heuristic=True)
         url = ("file:" + system.absolute_path(html_path))
@@ -107,13 +109,11 @@ class TestHtmlUtils(TestWrapper):
         debug.trace_expr(5, rendered_text)
         assert re.search(r"Browser dimensions: \d+x\d+", rendered_text)
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     def test_get_inner_html(self):
         """Verify that JavaScript fills in window dimensions
         Note: requires selenium"""
         debug.trace(4, "test_get_inner_html()")
-        if not TEST_SELENIUM:
-            debug.trace(4, "Ignoring test_get_inner_html as selenium required")
-            return
         html_filename = "simple-window-dimensions.html"
         html_path = gh.resolve_path(html_filename, heuristic=True)
         url = ("file:" + system.absolute_path(html_path))
@@ -143,22 +143,42 @@ class TestHtmlUtils(TestWrapper):
         self.do_assert("tomasohara" in self.scrappycito_like_url)
         return
 
+    def check_inner_html(self, regular, inner):
+        """Helper for inner html tests: makes sure that Javascript generated output not in REGULAR but is in INNER output for ScrappyCito's landing page
+        Note: This assumes inner produced with ?section=tips option.
+        """
+        # note: oncontextmenu gets added by ScrappyCito's Javascript support for (i) icons
+        # TODO3: use HTML file in repo
+        tips_section_open_regex = r"tips-id.*ui-icon-triangle-1-s"
+        self.do_assert(not my_re.search(tips_section_open_regex, inner.strip(), flags=my_re.IGNORECASE))
+        self.do_assert(my_re.search(tips_section_open_regex, regular.strip(), flags=my_re.IGNORECASE))
+    
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_html_alt(self):
         """Alternative test of get_inner_html"""
         debug.trace(4, f"TestIt.test_get_inner_html_alt(); self={self}")
         debug.assertion("scrappycito" not in self.scrappycito_like_url,
                         f"The production server should not be used in tests: {self.scrappycito_url}")
-        output = THE_MODULE.get_inner_html(self.scrappycito_like_url)
-        self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
+        ## OLD:
+        ## output = THE_MODULE.get_inner_html(self.scrappycito_like_url)
+        ## self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
+        ## TODO: regular_output = THE_MODULE.download_web_document(self.scrappycito_like_url)
+        regular_output = gh.run(f"lynx -source {self.scrappycito_like_url}")
+        inner_output = THE_MODULE.get_inner_html(self.scrappycito_like_url + "/?section=tips")
+        self.check_inner_html(regular_output, inner_output)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_run_script_for_inner_html(self):
         """Test of getting inner HTML via script invocation"""
         debug.trace(4, f"TestIt.test_run_script_for_inner_html(); self={self}")
-        output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url}", data_file=self.temp_file)
-        self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
+        ## OLD:
+        ## output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url}", data_file=self.temp_file)
+        ## self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
+        regular_output = self.run_script(options=f"--stdout {self.scrappycito_like_url}")
+        self.temp_file += "-2"
+        inner_output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url + '/?section=tips'}")
+        self.check_inner_html(regular_output, inner_output)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
