@@ -274,7 +274,7 @@ def resolve_path(
     """
     ## TODO4: rename filename to sub_path for clarity
     debug.trace(5, f"in resolve_path({filename!r})")
-    debug.trace_expr(6,  base_dir, heuristic)
+    debug.trace_expr(6, base_dir, heuristic, absolute)
     # TODO: give preference to script directory over current directory
     path = filename
     if not os.path.exists(path):
@@ -308,10 +308,12 @@ def resolve_path(
                 path = check_path
                 break
     # Fall back to using find command
+    ## TODO4: move base_dir sanity check earlier
     if (not os.path.exists(path)) and heuristic:
         debug.trace(4, f"FYI: resolve_path falling back to find for {path!r}")
         debug.assertion(" " not in path)
-        debug.assertion(base_dir)
+        if (not base_dir):
+            debug.trace(5, f"FYI: using . for base_dir (i.e., {system.real_path('.')})")
         path = run(f"find {base_dir or '.'} -name '{path}'")
 
     # Make sure full path if desired
