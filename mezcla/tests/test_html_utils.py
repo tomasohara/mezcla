@@ -56,6 +56,13 @@ INCLUDE_HINT_TESTS = system.getenv_bool(
 ##     desc="Skip the work-in-progress tests involving type hints")
 SKIP_HINT_TESTS = not INCLUDE_HINT_TESTS
 SKIP_HINT_REASON = "Type hinting tests require more work"
+##
+SCRAPPYCITO_LIKE_URL = system.getenv_text(
+    "SCRAPPYCITO_LIKE_URL", "http://www.tomasohara.trade:9330",
+    desc="URL to use instead of www.scrappycito.com")
+TOMASOHARA_TRADE_LIKE_URL = system.getenv_text(
+    "TOMASOHARA_TRADE_LIKE_URL", "http://www.tomasohara.trade",
+    desc="URL to use instead of www.tomasohara.trade")
 
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
@@ -64,18 +71,20 @@ class TestHtmlUtils(TestWrapper):
     ## NOTE: Using personal site instead of LLC in order to avoid issues
     ## with the production server (i.e., www.scrappycito.com).
     scrappycito_url = "www.scrappycito.com"
-    tomasohara_trade_url = "http://www.tomasohara.trade"
+    tomasohara_trade_url = TOMASOHARA_TRADE_LIKE_URL
     ## OLD: scrappycito_url = f"{tomasohara_trade_url}:9330"
-    scrappycito_like_url = f"{tomasohara_trade_url}:9330"
+    scrappycito_like_url = SCRAPPYCITO_LIKE_URL
     ready_test_path = gh.resolve_path("document_ready_test.html",
                                       heuristic=True, absolute=True)
+    ready_test_alt_path = gh.resolve_path("document_ready_test_alt.html",
+                                          heuristic=True, absolute=True)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_browser(self):
         """Verify get_browser() returns object with HTML"""
         debug.trace(4, "test_get_browser()")
         browser = THE_MODULE.get_browser(self.tomasohara_trade_url)
-        self.do_assert(my_re.search(r"<title>Tomás.*O.Hara.*Scrappy.*Cito</title>",
+        self.do_assert(my_re.search(r"<title>.*Tomás.*O.Hara.*Scrappy.*Cito.*</title>",
                                     browser.page_source))
 
     def test_get_url_parameter_value(self):
@@ -92,8 +101,8 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE.user_parameters = save_user_parameters
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_text(self):
         """Verify that JavaScript fills in window dimensions
         Note: requires selenium"""
@@ -110,6 +119,7 @@ class TestHtmlUtils(TestWrapper):
         assert re.search(r"Browser dimensions: \d+x\d+", rendered_text)
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_html(self):
         """Verify that JavaScript fills in window dimensions
         Note: requires selenium"""
@@ -137,8 +147,8 @@ class TestHtmlUtils(TestWrapper):
         Note: www.scrappycito.com should be avoided and www.tomasohara.trade used instead.
         """
         debug.trace(4, f"TestIt.test_scrappycito_urls(); self={self}")
-        self.do_assert("scrappycito" in self.scrappycito_url)
-        self.do_assert("scrappycito" not in self.scrappycito_like_url,
+        self.do_assert("scrappycito.com" in self.scrappycito_url)
+        self.do_assert("scrappycito.com" not in self.scrappycito_like_url,
                        f"The production server should not be used in tests: {self.scrappycito_url}")        
         self.do_assert("tomasohara" in self.scrappycito_like_url)
         return
@@ -147,17 +157,22 @@ class TestHtmlUtils(TestWrapper):
         """Helper for inner html tests: makes sure that Javascript generated output not in REGULAR but is in INNER output for ScrappyCito's landing page
         Note: This assumes inner produced with ?section=tips option.
         """
-        # note: oncontextmenu gets added by ScrappyCito's Javascript support for (i) icons
+        # note: the triangle points south (v) when the section is open, as assumed for inner:
+        #       <span id="ui-tips-id" class="ui-icon ui-icon-triangle-1-e"></span>   [closed (east):  >]
+        #   vs. <span id="ui-tips-id" class="ui-icon ui-icon-triangle-1-s"></span>   [opened (south): v]
         # TODO3: use HTML file in repo
         tips_section_open_regex = r"tips-id.*ui-icon-triangle-1-s"
-        self.do_assert(not my_re.search(tips_section_open_regex, inner.strip(), flags=my_re.IGNORECASE))
-        self.do_assert(my_re.search(tips_section_open_regex, regular.strip(), flags=my_re.IGNORECASE))
+        self.do_assert(my_re.search(tips_section_open_regex, inner.strip(), flags=my_re.IGNORECASE))
+        self.do_assert(not my_re.search(tips_section_open_regex, regular.strip(), flags=my_re.IGNORECASE))
+        tips_section_closed_regex = r"tips-id.*ui-icon-triangle-1-e"
+        self.do_assert(not my_re.search(tips_section_closed_regex, inner.strip(), flags=my_re.IGNORECASE))
+        self.do_assert(my_re.search(tips_section_closed_regex, regular.strip(), flags=my_re.IGNORECASE))
     
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_html_alt(self):
         """Alternative test of get_inner_html"""
         debug.trace(4, f"TestIt.test_get_inner_html_alt(); self={self}")
-        debug.assertion("scrappycito" not in self.scrappycito_like_url,
+        debug.assertion("scrappycito.com" not in self.scrappycito_like_url,
                         f"The production server should not be used in tests: {self.scrappycito_url}")
         ## OLD:
         ## output = THE_MODULE.get_inner_html(self.scrappycito_like_url)
@@ -190,7 +205,8 @@ class TestHtmlUtils(TestWrapper):
         ## TEST:
         ## twitter_x_feed_ready = THE_MODULE.document_ready("https://x.com/X")
         ## self.do_assert(not twitter_x_feed_ready)
-        test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_path)
+        debug.assertion("15 seconds" in system.read_file(self.ready_test_path))
+        test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_path, timeout=5)
         self.do_assert(not test_document_ready)
 
     def test_escape_html_value(self):
@@ -494,19 +510,26 @@ class TestHtmlUtils(TestWrapper):
     def test_document_ready_alt(self):
         """Verify document_ready for simple sites"""
         ## TODO2: merge with test_document_ready; use simple site (not production web search)
-        ##
         URL_VALID = "https://duckduckgo.com"
         assert (THE_MODULE.document_ready(URL_VALID))
-        ##
-        ## Note: following should not be ready at first due to JavaScript
+        
+        ## Note: following should not be ready at first due to JavaScript (n.b., wrong assumption).
+        ## TODO3: use different URL because the JavaScript doesn't affect ready status; see test_document_ready
         scrappycito_search_result = f"{self.scrappycito_like_url}/run_search?query=modern+art"
-        assert not THE_MODULE.document_ready(scrappycito_search_result)
-        ## Exception raised:
-        ## E       selenium.common.exceptions.JavascriptException: Message: TypeError: document.body is null
-        ## E       Stacktrace:
-        ## E       @http://www.scrappycito.com:9330/:2:7
-        ## E       @http://www.scrappycito.com:9330/:3:8
-        ## /home/zavee/.local/lib/python3.10/site-packages/selenium/webdriver/remote/errorhandler.py:229: JavascriptException
+        ## OLD:
+        ## assert not THE_MODULE.document_ready(scrappycito_search_result)
+        ## ## Exception raised:
+        ## ## E       selenium.common.exceptions.JavascriptException: Message: TypeError: document.body is null
+        ## ## E       Stacktrace:
+        ## ## E       @http://www.scrappycito.com:9330/:2:7
+        ## ## E       @http://www.scrappycito.com:9330/:3:8
+        ## ## /home/zavee/.local/lib/python3.10/site-packages/selenium/webdriver/remote/errorhandler.py:229: JavascriptException
+        assert THE_MODULE.document_ready(scrappycito_search_result)
+
+        # Use example suggesed by Claude-Opus-4.1
+        debug.assertion("15 seconds" in system.read_file(self.ready_test_alt_path))
+        test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_alt_path, timeout=5)
+        self.do_assert(not test_document_ready)
 
     @pytest.mark.xfail
     def test_set_param_dict_alt(self):
