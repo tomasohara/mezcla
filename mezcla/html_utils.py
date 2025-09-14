@@ -146,13 +146,15 @@ BeautifulSoup : Optional[Callable] = None
 
 browser_cache : Dict = {}
 ##
-def get_browser(url : str):
+def get_browser(url : str, timeout : Optional[int] = None):
     """Get existing browser for URL or create new one
     Notes: 
     - This is for use in web automation (e.g., via selenium).
     - A large log file might be produced (e.g., geckodriver.log).
+    - If TIMEOUT specified, it only waits specified seconds.
+    - Warning:can return null browser object.
     """
-    debug.trace(6, f"get_browser({url}")
+    debug.trace(6, f"in get_browser({url}); {timeout=}")
     # pylint: disable=import-error, import-outside-toplevel
     from selenium import webdriver
     from selenium.webdriver.remote.webdriver import WebDriver
@@ -165,35 +167,42 @@ def get_browser(url : str):
     # Check for cached version of browser. If none, create one and access page.
     browser = browser_cache.get(url) if USE_BROWSER_CACHE else None
     if not browser:
-        # Make the browser hidden by default (i.e., headless)
-        # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
-        ## TODO2: add an option to use Chrome
-        options_module = (webdriver.firefox.options if FIREFOX_WEBDRIVER else webdriver.chrome.options)
-        webdriver_options = options_module.Options()
-        ## TEMP: Based on https://www.reddit.com/r/learnpython/comments/1fv3kiy/need_help_with_installing_geckodriver (TODO3: generalize)
-        if FIREFOX_WEBDRIVER and (system.USER == "tomohara"):
-            webdriver_options.binary_location = "/usr/lib/firefox/firefox-bin"
-            debug.trace(5, f"Warning assuming {webdriver_options.binary_location=}")
-        if HEADLESS_WEBDRIVER:
-            webdriver_options.add_argument('-headless')
-        browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
-        browser = browser_class(options=webdriver_options)
-        debug.trace_object(5, browser)
+        try:
+            # Make the browser hidden by default (i.e., headless)
+            # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
+            ## TODO2: add an option to use Chrome
+            options_module = (webdriver.firefox.options if FIREFOX_WEBDRIVER else webdriver.chrome.options)
+            webdriver_options = options_module.Options()
+            ## TEMP: Based on https://www.reddit.com/r/learnpython/comments/1fv3kiy/need_help_with_installing_geckodriver (TODO3: generalize)
+            if FIREFOX_WEBDRIVER and (system.USER == "tomohara"):
+                ## TODO2: remove user-specific location hack
+                webdriver_options.binary_location = "/usr/lib/firefox/firefox-bin"
+                debug.trace(4, f"Warning: assuming {webdriver_options.binary_location=} as with Tom's setup")
+            if HEADLESS_WEBDRIVER:
+                webdriver_options.add_argument('-headless')
+            browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
+            browser = browser_class(options=webdriver_options)
+            if timeout:
+                browser.set_page_load_timeout(timeout)
+            debug.trace_object(5, browser)
+    
+            # Get the page, setting optional cache entry and sleeping afterwards
+            if USE_BROWSER_CACHE:
+                browser_cache[url] = browser
+            browser.get(url)
+    
+            # Optionally pause after accessing the URL (to avoid overloading the same server).
+            # Note: This assumes that the URL's are accessed sequentially. ("Post-download" is
+            # a bit of a misnomer as this occurs before the download from browser, as in get_inner_html.)
+            if POST_DOWNLOAD_SLEEP_SECONDS:
+                time.sleep(POST_DOWNLOAD_SLEEP_SECONDS)
+        except:
+            browser = None
+            system.print_exception_info("get_browser")
 
-        # Get the page, setting optional cache entry and sleeping afterwards
-        if USE_BROWSER_CACHE:
-            browser_cache[url] = browser
-        browser.get(url)
-
-        # Optionally pause after accessing the URL (to avoid overloading the same server).
-        # Note: This assumes that the URL's are accessed sequentially. ("Post-download" is
-        # a bit of a misnomer as this occurs before the download from browser, as in get_inner_html.)
-        if POST_DOWNLOAD_SLEEP_SECONDS:
-            time.sleep(POST_DOWNLOAD_SLEEP_SECONDS)
-            
-    # Make sure the bare minimum is included (i.e., "<body></body>"
+    # Make sure the bare minimum is included (i.e., "<body></body>" of length 13)
     if browser:
-        debug.assertion(len(browser.execute_script("return document.body.outerHTML")) > 13)
+        debug.assertion(len(browser.execute_script("return document.body.outerHTML")) >= 13)
     debug.trace_fmt(5, "get_browser({u}) => {b}", u=url, b=browser)
     return browser
 
@@ -207,15 +216,16 @@ def get_inner_html(url : str):
     # Also see https://stackoverflow.com/questions/8049520/web-scraping-javascript-page-with-python.
     # Note: The retrieved HTML might not match the version rendered in a browser due to a variety of reasons such as timing of dynamic updates and server controls to minimize web crawling.
     debug.trace_fmt(5, "get_inner_html({u})", u=url)
+    inner_html: str = ""
     try:
         # Navigate to the page (or get browser instance with existing page)
         browser = get_browser(url)
-        # Wait for Javascript to finish processing
-        wait_until_ready(url)
-        # Extract fully-rendered HTML
-        inner_html:str = browser.page_source
+        if browser:
+            # Wait for Javascript to finish processing
+            wait_until_ready(url)
+            # Extract fully-rendered HTML
+            inner_html = browser.page_source
     except:
-        inner_html = ""
         system.print_exception_info("get_inner_html")
     debug.trace_fmt(7, "get_inner_html({u}) => {h}", u=url, h=inner_html)
     return inner_html
@@ -229,10 +239,11 @@ def get_inner_text(url : str):
     try:
         # Navigate to the page (or get browser instance with existing page)
         browser = get_browser(url)
-        # Wait for Javascript to finish processing
-        wait_until_ready(url)
-        # Extract fully-rendered text
-        inner_text = browser.execute_script("return document.body.innerText")
+        if browser:
+            # Wait for Javascript to finish processing
+            wait_until_ready(url)
+            # Extract fully-rendered text
+            inner_text = browser.execute_script("return document.body.innerText")
     except:
         debug.trace_exception(6, "get_inner_text")
         system.print_exception_info("get_inner_text")
@@ -240,14 +251,22 @@ def get_inner_text(url : str):
     return inner_text
 
 
-def document_ready(url : str):
-    """Determine whether document for URL has completed loading (via selenium)"""
+def document_ready(url : str, timeout : Optional[float] = None):
+    """Determine whether document for URL has completed loading (via selenium).
+    Note: If TIMEOUT specified, it only waits specified seconds.
+    """
     # See https://developer.mozilla.org/en-US/docs/Web/API/Document/readyState
-    browser = get_browser(url)
-    ready_state = browser.execute_script("return document.readyState")
-    is_ready:bool = (ready_state == "complete")
-    debug.trace_fmt(6, "document_ready({u}) => {r}; state={s}",
-                    u=url, r=is_ready, s=ready_state)
+    is_ready: bool = False
+    ready_state: str = ""
+    try:
+        browser = get_browser(url, timeout=timeout)
+        if browser:
+            ready_state = browser.execute_script("return document.readyState")
+            is_ready = (ready_state == "complete")
+    except:
+        system.print_exception_info("document_ready")
+    debug.trace_fmt(6, "document_ready({u}, {to}) => {r}; state={s}",
+                    u=url, to=timeout, r=is_ready, s=ready_state)
     return is_ready
 
 
@@ -269,7 +288,7 @@ def wait_until_ready(url : str, stable_download_check : bool = None):
     # Wait until document ready and optionally that the size is the same after a delay
     # and for a specified number of checks (e.g., same size for 3 checks).
     count = 0
-    while ((time.time() < end_time) and (not done)):
+    while (browser and (time.time() < end_time) and (not done)):
         done = document_ready(url)
         if (done and stable_download_check):
             size = len(browser.page_source)
