@@ -324,7 +324,7 @@ class ngram_tfidf_analysis(object):
         # Skip empty tokens due to spacing and to punctuation removal (e.g, " ").
         # Also skip stop words (e.g., unigram).
         top_term_info = [(k.ngram, k.score) for k in top_terms
-                         if k.ngram.strip() and not self.is_stopword(k.ngram)]
+                         if k.ngram.strip() and not ((" " in k.ngram) and self.is_stopword(k.ngram))]
         #
         def round_terms(term_info):
             """Round scores for terms in TERM_INFO"""
@@ -365,10 +365,10 @@ class ngram_tfidf_analysis(object):
                     score = old_score * TFIDF_BAD_BOOST
                     debug.trace(5, f"boosted bad-term {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
-                if (TFIDF_STOP_BOOST and any(self.is_stopword(token) for token in tokens)):
-                    ## TODO3: exclude stopwords in the middle of the ngram
-                    score = old_score * TFIDF_STOP_BOOST
-                    debug.trace(5, f"boosted with-stop-word {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                if (TFIDF_STOP_BOOST and (num_stop := sum([self.is_stopword(token) for token in tokens])) and num_stop):
+                    # TODO2: apply lower penalty to inner stop words
+                    score = old_score * (TFIDF_STOP_BOOST ** num_stop)
+                    debug.trace(5, f"boosted with-stop-word[{num_stop}] {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
                 if (TFIDF_ALL_PUNCT_BOOST and any(all_punct(token) for token in all_tokens)):
                     score = old_score * TFIDF_ALL_PUNCT_BOOST
