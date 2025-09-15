@@ -113,7 +113,7 @@ class TestIt(TestWrapper):
         debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
         self.create_temp_file(data)
-        ## TODO: add use_stdin=True to following if no file argument
+        ## TODO: add uses_stdin=True to following if no file argument
         output = self.run_script(options="--TODO-arg", env_options="-TODO-ENV=VAL",
                                  data_file=self.temp_file)
         self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
@@ -134,7 +134,7 @@ class TestIt(TestWrapper):
         debug.trace(4, f"TestIt.test_03_whatever(); self={self}")
         THE_MODULE.TODO_whatever()
         captured = self.get_stderr()
-        self.do_assert("whatever" in captured, "TODO_whatever trace")
+        self.do_assert("whatever gets traced" in captured, "TODO_whatever not trace")
         return
 
     ## TODO: get pytest.mark.parametrize inside of class
