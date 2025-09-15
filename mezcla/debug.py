@@ -108,17 +108,17 @@ class TraceLevel(enum.IntEnum):
     MOST_VERBOSE = 9                    # for internal debugging
 #
 TL = TraceLevel
-ALWAYS = TL.ALWAYS
-ERROR = TL.ERROR
-WARNING = TL.WARNING
-DEFAULT = TL.DEFAULT
-USUAL = TL.USUAL
-DETAILED = TL.DETAILED
-VERBOSE = TL.VERBOSE
-QUITE_DETAILED = TL.QUITE_DETAILED
-QUITE_VERBOSE = TL.QUITE_VERBOSE
-MOST_DETAILED = TL.MOST_DETAILED
-MOST_VERBOSE = TL.MOST_VERBOSE
+ALWAYS = int(TL.ALWAYS)
+ERROR = int(TL.ERROR)
+WARNING = int(TL.WARNING)
+DEFAULT = int(TL.DEFAULT)
+USUAL = int(TL.USUAL)
+DETAILED = int(TL.DETAILED)
+VERBOSE = int(TL.VERBOSE)
+QUITE_DETAILED = int(TL.QUITE_DETAILED)
+QUITE_VERBOSE = int(TL.QUITE_VERBOSE)
+MOST_DETAILED = int(TL.MOST_DETAILED)
+MOST_VERBOSE = int(TL.MOST_VERBOSE)
 
 # Other constants
 UTF8 = "UTF-8"
@@ -1270,6 +1270,10 @@ def main(args: List[str]) -> None:
     # Show results of various tracing calls
     trace_expr(DETAILED, len(args))
     trace(ERROR, "FYI: Not intended for direct invocation. Some tracing examples follow.")
+    #
+    # Show tracing levels
+    trace_expr(USUAL, ALWAYS, ERROR, WARNING, DEFAULT, USUAL, DETAILED, VERBOSE,
+               QUITE_DETAILED, QUITE_VERBOSE, MOST_DETAILED, MOST_VERBOSE)
     #
     trace(ALWAYS, "date record for now at trace level 1")
     trace_object(ERROR, datetime.now(), label="now")
