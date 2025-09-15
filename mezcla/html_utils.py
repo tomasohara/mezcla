@@ -90,13 +90,13 @@ DEFAULT_STATUS_CODE = 0
 MAX_DOWNLOAD_TIME = system.getenv_integer(
     "MAX_DOWNLOAD_TIME", 60,
     description="Time in seconds for rendered-HTML download as with get_inner_html")
-MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer(
+MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_float(
     "MID_DOWNLOAD_SLEEP_SECONDS", 1,
     description="Mid-stream delay if document not ready")
 NUM_MID_DOWNLOAD_CHECKS = system.getenv_integer(
     "NUM_MID_DOWNLOAD_CHECKS", 3,
     description="Number of mid-stream delays to use")
-POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer(
+POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_float(
     "POST_DOWNLOAD_SLEEP_SECONDS", 1,
     description="Courtesy delay after URL access--prior to download")
 SKIP_BROWSER_CACHE = system.getenv_boolean(
@@ -152,7 +152,7 @@ def get_browser(url : str, timeout : Optional[int] = None):
     - This is for use in web automation (e.g., via selenium).
     - A large log file might be produced (e.g., geckodriver.log).
     - If TIMEOUT specified, it only waits specified seconds.
-    - Warning:can return null browser object.
+    - Warning: can return null browser object.
     """
     debug.trace(6, f"in get_browser({url}); {timeout=}")
     # pylint: disable=import-error, import-outside-toplevel
@@ -195,7 +195,7 @@ def get_browser(url : str, timeout : Optional[int] = None):
             # Note: This assumes that the URL's are accessed sequentially. ("Post-download" is
             # a bit of a misnomer as this occurs before the download from browser, as in get_inner_html.)
             if POST_DOWNLOAD_SLEEP_SECONDS:
-                time.sleep(POST_DOWNLOAD_SLEEP_SECONDS)
+                system.sleep(POST_DOWNLOAD_SLEEP_SECONDS, message="Post-download")
         except:
             browser = None
             system.print_exception_info("get_browser")
@@ -302,8 +302,8 @@ def wait_until_ready(url : str, stable_download_check : bool = None):
                             l=last_size, s=size, c=count, d=done)
             last_size = size
         if not done:
-            debug.trace_fmt(6, "Mid-stream download sleep ({s} secs)", s=MID_DOWNLOAD_SLEEP_SECONDS)
-            time.sleep(MID_DOWNLOAD_SLEEP_SECONDS)
+            ## OLD: debug.trace_fmt(6, "Mid-stream download sleep ({s} secs)", s=MID_DOWNLOAD_SLEEP_SECONDS)
+            system.sleep(MID_DOWNLOAD_SLEEP_SECONDS, message="Mid-stream download")
 
     # Issue warning if unexpected condition
     if (not document_ready(url)):
