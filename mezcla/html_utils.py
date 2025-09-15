@@ -91,7 +91,7 @@ MAX_DOWNLOAD_TIME = system.getenv_integer(
     "MAX_DOWNLOAD_TIME", 60,
     description="Time in seconds for rendered-HTML download as with get_inner_html")
 MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer(
-    "MID_DOWNLOAD_SLEEP_SECONDS", 5,
+    "MID_DOWNLOAD_SLEEP_SECONDS", 1,
     description="Mid-stream delay if document not ready")
 NUM_MID_DOWNLOAD_CHECKS = system.getenv_integer(
     "NUM_MID_DOWNLOAD_CHECKS", 3,
