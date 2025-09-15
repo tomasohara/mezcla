@@ -604,7 +604,7 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
 
 def download_web_document(url : str, filename: Optional[str] = None, download_dir: Optional[str] = None, meta_hash=None, use_cached : bool = False, as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
     """Download document contents at URL, returning as unicode text (unless AS_BINARY).
-    Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED. If IGNORE, no exceptions reports are printed."""
+    Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to 'downloads'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED. If IGNORE, no exceptions reports are printed."""
     # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
     # EX: download_web_document("www. bogus. url.html") => None
     ## TODO: def download_web_document(url, /, filename=None, download_dir=None, meta_hash=None, use_cached=False):
@@ -641,8 +641,10 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
             _write_file(local_filename, doc_data, as_binary)
         if meta_hash:
             headers = meta_hash.get(HEADERS, {})
-    debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
-                     f=local_filename, h=headers)
+    ## OLD:
+    ## debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
+    ##                  f=local_filename, h=headers)
+    debug.trace_expr(5, local_filename, meta_hash)
 
     ## TODO: show hex dump of initial data
     debug.trace_fmtd(6, "download_web_document() => _; len(_)={l}",
