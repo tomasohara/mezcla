@@ -675,7 +675,11 @@ def encode_PIL_image(image):
 def decode_base64_image(image_encoding):
     """Decode IMAGE_ENCODING from base64 returning bytes"""
     # note: "encodes" UTF-8 text of base-64 encoding as bytes object for str, and then decodes into image bytes
-    result = base64.decodebytes(image_encoding.encode())
+    result = bytes()
+    try:
+        result = base64.decodebytes(image_encoding.encode())
+    except:
+        system.print_exception_info("decode_base64_image")
     debug.trace(6, f"decode_base64_image({gh.elide(image_encoding)}) => {gh.elide(result)}")
     return result
 
