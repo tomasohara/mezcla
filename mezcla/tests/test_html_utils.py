@@ -79,6 +79,7 @@ class TestHtmlUtils(TestWrapper):
     ready_test_alt_path = gh.resolve_path("document_ready_test_alt.html",
                                           heuristic=True, absolute=True)
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_browser(self):
         """Verify get_browser() returns object with HTML"""
@@ -196,6 +197,7 @@ class TestHtmlUtils(TestWrapper):
         self.check_inner_html(regular_output, inner_output)
         return
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_document_ready(self):
         """Ensure document_ready() works as expected"""
@@ -506,6 +508,7 @@ class TestHtmlUtils(TestWrapper):
         assert all(word in inner_text_valid for word in keywords)
         assert not inner_text_invalid
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail
     def test_document_ready_alt(self):
         """Verify document_ready for simple sites"""
