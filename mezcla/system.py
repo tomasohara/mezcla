@@ -1488,11 +1488,14 @@ def round3(num: float) -> float:
     return round_num(num, 3)
 
 
-def sleep(num_seconds: float, trace_level: int = 5) -> None:
-    """Sleep for NUM_SECONDS"""
+def sleep(num_seconds: float, message: Optional[str] = None, trace_level: int = 5) -> None:
+    """Sleep for NUM_SECONDS.
+    Optionally adds MESSAGE to trace and uses TRACE_LEVEL.
+    """
     # TODO: annotate num_seconds with float
-    debug.trace_fmtd(trace_level, "sleep({ns}, [tl={tl}])",
-                     ns=num_seconds, tl=trace_level)
+    message_spec = (f": {message}" if message else "")
+    debug.trace_fmtd(trace_level, "sleep({ns}, [tl={tl}]){msg}",
+                     ns=num_seconds, tl=trace_level, msg=message_spec)
     time.sleep(num_seconds)
     return
 
