@@ -134,7 +134,8 @@ en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_co
 ## spacy==3.2.6
 ## en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.2.0/en_core_web_md-3.2.0.tar.gz
 ## typing_extensions==4.7.0
-typing_extensions>=4.7.0
+## OLD: typing_extensions>=4.7.0
+typing_extensions==4.12.2
 #
 #opt# textract
 #devel# types-six                         # typing stubs for six
