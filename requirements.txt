@@ -135,6 +135,7 @@ en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_co
 ## en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.2.0/en_core_web_md-3.2.0.tar.gz
 ## typing_extensions==4.7.0
 ## OLD: typing_extensions>=4.7.0
+## TODO2: un pin after updating code
 typing_extensions==4.12.2
 #
 #opt# textract
