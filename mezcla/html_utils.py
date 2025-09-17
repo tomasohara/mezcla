@@ -126,6 +126,9 @@ TARGET_BOOTSTRAP =  system.getenv_bool(
 FIREFOX_WEBDRIVER = system.getenv_bool(
     "FIREFOX_WEBDRIVER", True,          ## TODO: "FIREFOX_WEBDRIVER", False,
     description="Use Firefox webdriver for Selenium")
+FIREFOX_PATH = system.getenv_value(
+    "FIREFOX_PATH", None,
+    desc="Path override for Firefox binary for use with selenium")
 HEADERS = "headers"
 FILENAME = "filename"
 
@@ -174,9 +177,8 @@ def get_browser(url : str, timeout : Optional[int] = None):
             options_module = (webdriver.firefox.options if FIREFOX_WEBDRIVER else webdriver.chrome.options)
             webdriver_options = options_module.Options()
             ## TEMP: Based on https://www.reddit.com/r/learnpython/comments/1fv3kiy/need_help_with_installing_geckodriver (TODO3: generalize)
-            if FIREFOX_WEBDRIVER and (system.USER == "tomohara"):
-                ## TODO2: remove user-specific location hack
-                webdriver_options.binary_location = "/usr/lib/firefox/firefox-bin"
+            if FIREFOX_PATH and FIREFOX_WEBDRIVER:
+                webdriver_options.binary_location = FIREFOX_PATH
                 debug.trace(4, f"Warning: assuming {webdriver_options.binary_location=} as with Tom's setup")
             if HEADLESS_WEBDRIVER:
                 webdriver_options.add_argument('-headless')
@@ -630,7 +632,7 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
     local_filename = gh.form_path(download_dir, filename)
     if meta_hash is not None:
         meta_hash[FILENAME] = local_filename
-    headers = {}
+    ## OLD: headers = {}
     doc_data: OptStrBytes = ""
     if use_cached and system.non_empty_file(local_filename):
         debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
@@ -639,8 +641,9 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
         doc_data = retrieve_web_document(url, meta_hash=meta_hash, as_binary=as_binary, ignore=ignore)
         if doc_data:
             _write_file(local_filename, doc_data, as_binary)
-        if meta_hash:
-            headers = meta_hash.get(HEADERS, {})
+        ## OLD:
+        ## if meta_hash:
+        ##     headers = meta_hash.get(HEADERS, {})
     ## OLD:
     ## debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
     ##                  f=local_filename, h=headers)
