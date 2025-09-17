@@ -15,5 +15,7 @@ python3-pip
 python3
 python-is-python3
 #-------------------------------------------------------------------------------
+#devel# lynx
+#-------------------------------------------------------------------------------
 # TODO: nvidia-utils-NNN		# for nvidia-smi
 #full# http://kheafield.com/code/kenlm

@@ -73,7 +73,6 @@ Helpful answer:
 NUM_SIMILAR = system.getenv_int(
     "NUM_SIMILAR", 10,
     description="Number of similar documents to show")
-## OLD: HOME_DIR = system.getenv_text("HOME", description="home directory")
 HOME_DIR = gh.HOME_DIR
 EMBEDDING_MODEL = system.getenv_text(
     "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2",
@@ -86,7 +85,6 @@ QA_LLM_MODEL = system.getenv_text(
 QA_LLM_TYPE = system.getenv_text(
     "QA_LLM_TYPE", "llama",
     description="Type of transformer model for Q&A, such as llama or gpt2")
-## OLD: ALLOW_UNSAFE_MODELS_DEFAULT = None if (TORCH_DEVICE != "mps") else True
 ALLOW_UNSAFE_MODELS_DEFAULT = True
 ALLOW_UNSAFE_MODELS = system.getenv_value(
     "ALLOW_UNSAFE_MODELS", ALLOW_UNSAFE_MODELS_DEFAULT,
@@ -145,11 +143,6 @@ def correct_metadata(doc: Document, base_dir: str) -> Document:
     doc_metadata = doc.metadata
     old_source = doc_metadata['source']
     debug.trace_expr(4, old_source)
-    ## BAD:
-    ## split_source = doc_metadata['source'].split(system.path_separator(),maxsplit=3)
-    ## TODO2: make sure this works for other temp directories (e.g., /home/tomohara/temp)
-    ## # removing the first two parts of path, which would represent /tmp/llm_desktop_search.'timestamp'/
-    ## new_source = system.real_path(split_source[3])
     new_source = old_source.replace(base_dir, "")
     debug.assertion(new_source != old_source)
     debug.trace_expr(4, new_source)
@@ -170,6 +163,7 @@ def convert_to_txt(in_file: str) -> str:
         debug.trace_exception(6, "convert_to_txt")
     debug.trace(7, f"convert_to_txt({in_file}) => {text!r}")
     return text
+
 
 class DesktopSearch:
     """Class for searching local computer"""
@@ -325,7 +319,6 @@ class DesktopSearch:
         if not self.db:
             self.load_index()
         docs = self.db.similarity_search_with_score(query=query, k=num)
-        ## OLD: print(docs)
         print("Similar documents:")
         for doc in docs:
             print(doc)

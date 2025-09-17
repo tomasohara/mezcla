@@ -11,8 +11,6 @@
 # - The CSV dialect defaults to Excel as with csv module (see csv.py).
 # - Warning: by default quotes are added to all values --csv output (a la QUOTE_ALL) unless Excel dialect used.
 #
-
-#
 # TODO:
 # - ** Make --csv output default to pyspark dialect.
 # - * Isolate csv support from Script class.
@@ -29,7 +27,6 @@ import re
 import sys
 
 # Installed modules
-## OLD: import more_itertools
 import functools
 import operator
 
@@ -164,7 +161,6 @@ csv.register_dialect("hive", pyspark_dialect)
 class tab_dialect(csv.Dialect):
     """TSV module dialect for tab-separated values (non-Excel)."""
     delimiter = TAB
-    ## OLD: quotechar = ''               # default of '"' leads to multiline rows
     quotechar = ('"' if not FORCE_SINGLE_LINE else '')
     doublequote = False          # uses escaped double quote when embedded
     # TODO: use special Unicode space-like character
@@ -185,7 +181,6 @@ class Script(Main):
     exclude_fields = []
     encode_values = False
     fix = False
-    ## OLD: delimiter = TAB
     delimiter = None
     output_delimiter = None
     csv = CSV_FORMAT
@@ -206,7 +201,6 @@ class Script(Main):
 
         # Check main options
         # note: several options regarding fields including --Fn aliases
-        ## OLD: fields = self.get_parsed_option(FIELDS, self.fields)
         for i in range(NUM_FN_SHORTCUTS):
             if self.get_parsed_option(f"F{i + 1}"):
                 self.fields.append(str(i + 1))
@@ -220,9 +214,6 @@ class Script(Main):
         debug.assertion(not (self.inclusion_spec and self.exclusion_spec))
         self.encode_values = self.get_parsed_option(ENCODE_OPT, self.encode_values)
         ## NOTES: Fields initialization postponed until columns reads to allow ffor symbolic names
-        ## OLD:
-        ## if fields:
-        ##     self.fields = self.parse_field_spec(fields)
         self.all_fields = self.get_parsed_option(ALL_FIELDS, (not self.fields))
         debug.assertion(not (self.fields and self.all_fields))
         #
@@ -385,7 +376,6 @@ class Script(Main):
             temp_file_stream = system.open_file(self.temp_file, mode="w")
             num_fixed = 0
             for line in self.input_stream.readlines():
-                ## OLD: line = re.sub(r"   *", TAB, line)
                 new_line = re.sub(r" +", TAB, line)
                 if (new_line != line):
                     num_fixed += 1
@@ -393,7 +383,6 @@ class Script(Main):
                 debug.assertion(SPACE not in line)
                 temp_file_stream.write(line)
             debug.trace(4, f"Fixed {num_fixed} lines")
-            ## OLD: self.input_stream.seek(0)
             temp_file_stream.close()
             self.input_stream = system.open_file(self.temp_file, mode="r")
             ## HACK: pretend reading from stdin
@@ -401,7 +390,6 @@ class Script(Main):
 
         # Create reader and writer
         debug.trace_expr(4, self.delimiter, self.output_delimiter, self.dialect, self.output_dialect)
-        ## BAD: self.csv_reader = csv.reader(iter(system.stdin_reader()), delimiter=self.delimiter, quotechar='"')
         if (self.input_stream != sys.stdin):
             # note: silly csv.reader requirement for newline option to open (TODO, open what?)
             # TODO: add support for multiple filenames
@@ -425,8 +413,6 @@ class Script(Main):
             if NEW_FIX and (self.delimiter == TAB):
                 # Strip leading spaces and replace other multiple spaces by a tab
                 debug.trace_fmt(7, "old R{n}: {r}", n=(i + 1), r=row)
-                ## OLD: row = list(more_itertools.flatten([re.sub(" +", TAB, f) for f in row]))
-                ## OLD: row = flatten_list_of_strings([re.split(r" +", f) for f in row])
                 line = TAB.join(row)
                 line = re.sub("^ +", "", line)
                 line = re.sub(" +", TAB, line)
@@ -455,34 +441,18 @@ class Script(Main):
             # Derive the fields to extract if all to be extracted
             debug.trace_fmt(7, "pre f={f} all={a}", f=self.fields, a=self.all_fields)
             if ((not self.fields) and self.all_fields):
-                ## OLD: self.fields = [(c + 1) for c in range(len(row))]
                 self.fields = [(c + 1) for c in range(len(row)) if (c + 1) not in self.exclude_fields]
                 if not self.fields:
-                    ## OLD: system.print_stderr("Error: No items in header row at line {l}", l=(i + 1))
                     system.print_stderr("Error: No items in row at line {l}", l=(i + 1))
             debug.trace_fmt(7, "post f={f}", f=self.fields)
             debug.assertion(self.fields)
 
             # Output line with fields joined by (output) separator
-            ## OLD:
-            ## line = ""
-            ## for f in self.fields:
-            ##     valid_field_number = (1 <= f <= len(row))
-            ##     debug.assertion(valid_field_number)
-            ##     ## OLD: line += (row[f - 1] if (1 <= f <= len(row)) else "")
-            ##     line += (row[f - 1] if valid_field_number else "")
-            ##     line += self.output_delimiter
-            ## if line.endswith(self.output_delimiter):
-            ##    line = line[:-1]
-            ## debug.trace_fmt(8, "line={l}", l=line)
-            ## print(line)
-            ##
             output_row = []
             for f in self.fields:
                 valid_field_number = (1 <= f <= len(row))
                 debug.trace_expr(5, f)
                 debug.assertion(valid_field_number, f"field {f}")
-                ## OLD: output_row.append(row[f - 1] if valid_field_number else "")
                 column = row[f - 1] if valid_field_number else ""
                 if self.single_line:
                     column = re.sub(r"\s", SPACE, column)
@@ -501,10 +471,8 @@ class Script(Main):
 
         # Do sanity checks
         # Note: this compares row extraction against Pandas dataframe
-        ## OLD: if (self.input_stream != sys.stdin):
         if (debug.debugging() and (self.input_stream != sys.stdin)):
             debug.trace(4, "note: csv vs. pandas row count sanity check")
-            ## BAD: debug.assertion(num_rows == len(du.read_csv(self.filename, delimiter=self.delimiter))
             dataframe = du.read_csv(self.filename, delimiter=self.delimiter, dialect=self.dialect)
             valid_dataframe = (dataframe is not None)
             debug.assertion(valid_dataframe)

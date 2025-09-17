@@ -18,11 +18,10 @@
 import pytest
 
 # Local packages
-from mezcla.unittest_wrapper import TestWrapper, invoke_tests
-from mezcla.unittest_wrapper import trap_exception
 from mezcla import debug
 from mezcla import system
 from mezcla import tpo_common as tpo
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -33,7 +32,6 @@ class TestRandomizeLines(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     @pytest.mark.xfail                   # TODO: remove xfail
-    @trap_exception
     def test_data_file(self):
         """Tests run_script w/ data file"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
@@ -43,6 +41,7 @@ class TestRandomizeLines(TestWrapper):
         ## TODO: add use_stdin=True to following if no file argument
         output = self.run_script(options="--percent 10", data_file=self.temp_file)
         random_lines = output.splitlines()
+        debug.trace_values(5, random_lines)
         self.do_assert(len(random_lines) == 10)
         self.do_assert(tpo.is_subset(random_lines, data))
         return

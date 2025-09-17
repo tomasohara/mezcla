@@ -44,14 +44,11 @@
 r"""Convert RGB tuples into color names
 
 Sample usage:
-   {script} --hex3 <<<"#eee"
+   {script} --hex6 <<<"#36454F"
 
    extcolors tests/resources/orange-gradient.png | {script} -
-
-   green_wiki="https://en.wikipedia.org/wiki/Shades_of_green"
-   curl --silent "$green_wiki" | HTML=1 STDOUT-1 extract_document_text.py - | {script} --hex6 - | egrep '\|'
 """
-#
+
 ## TODO3: modernize extract_document_text.py (e.g., --html --stdout)
 ##
 ## TODO4: add extcolors-style one-liner:
@@ -68,7 +65,7 @@ from scipy.spatial import KDTree
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla.main import Main
+from mezcla.main import Main, VERBOSE_MODE
 from mezcla import system
 from mezcla.my_regex import my_re
 
@@ -82,6 +79,14 @@ HEX6 = "hex6"
 SKIP_DIRECT = "skip-direct"
 SHOW_HEX = "show-hex"
 HEX_CH = "[0-9A-F]"
+
+VERBOSE_SAMPLE_USAGE = r"""
+   {script} --hex3 <<<"#eee"
+
+   green_wiki="https://en.wikipedia.org/wiki/Shades_of_green"
+   curl --silent "$green_wiki" | HTML=1 STDOUT-1 extract_document_text.py - | {script} --hex6 - | egrep '\|'
+"""
+
 
 class Script(Main):
     """Input processing class: convert RGB tuples to <RGB, label> pairs"""
@@ -123,8 +128,8 @@ class Script(Main):
         else:
             ## TODO3: try to find non-private way to get list (without iterating
             ## through 16 million!)
-            # pylint: disable=protected-access, no-member
             try:
+                # pylint: disable=protected-access, no-member
                 hexnames = webcolors._definitions._CSS3_HEX_TO_NAMES
             except:
                 hexnames = {}
@@ -225,8 +230,12 @@ class Script(Main):
 
 def main():
     """Entry point"""
+    
+    usage = __doc__
+    if VERBOSE_MODE:
+        usage += "\n\n" + VERBOSE_SAMPLE_USAGE
     app = Script(
-        description=__doc__.format(script=gh.basename(__file__)),
+        description=usage.format(script=gh.basename(__file__)),
         usage_notes="Note: Input is not an image (e.g., use extcolors)",
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
         # understand; in contrast, manual_input controls iterator-based input (the opposite of both).

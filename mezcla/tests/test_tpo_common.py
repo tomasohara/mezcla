@@ -14,6 +14,10 @@
 # - Remove most of the trace.Trace usages as that usually is overkill:
 #   capturing stderr is sufficient!
 #
+# TODO3:
+# - Drop tests that are similar to those in test_debug.py (given that
+#   tpo_common.py mosly implemented in terms of debug.py).
+#
 # Important:
 # - Most of the methods on tpo_common was moved to newer modules, such
 #   as system.py, debug.py etc.
@@ -26,7 +30,7 @@
 # Standard modules
 import sys
 import re
-from datetime import datetime
+## OLD: from datetime import datetime
 import os
 import math
 import trace
@@ -38,6 +42,7 @@ import pytest
 # Local modules
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.unittest_wrapper import trap_exception
@@ -59,14 +64,14 @@ class TestTpoCommon(TestWrapper):
     def test_set_debug_level(self):
         """Ensure set_debug_level works as expected"""
         debug.trace(4, "test_set_debug_level()")
-        THE_MODULE.set_debug_level(5)
-        assert THE_MODULE.debugging_level() == 5
+        self.patch_trace_level(999)
+        assert (THE_MODULE.debugging_level() == 999) or (not __debug__)
 
     def test_debugging_level(self):
         """Ensure debugging_level works as expected"""
         debug.trace(4, "test_debugging_level()")
-        THE_MODULE.set_debug_level(5)
-        assert THE_MODULE.debugging_level() == 5
+        self.patch_trace_level(999)
+        assert (THE_MODULE.debugging_level() == 999) or (not __debug__)
 
     def test_debug_trace_without_newline(self):
         """Ensure debug_trace_without_newline works as expected"""
@@ -75,7 +80,7 @@ class TestTpoCommon(TestWrapper):
 
         # test underlying function is being called
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.debug_trace_without_newline, (text))
+        tracer.runfunc(THE_MODULE.debug_trace_without_newline, (text), level=1)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -96,7 +101,7 @@ class TestTpoCommon(TestWrapper):
 
         # test underlying function is being called
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.debug_trace, (text))
+        tracer.runfunc(THE_MODULE.debug_trace, (text), level=1)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -117,7 +122,8 @@ class TestTpoCommon(TestWrapper):
 
         # test underlying function is being called
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.debug_print, (text), skip_newline=False)
+        tracer.runfunc(THE_MODULE.debug_print, (text),
+                       level=1, skip_newline=False)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -131,7 +137,8 @@ class TestTpoCommon(TestWrapper):
 
         # test with skip_newline
         self.clear_stdout_stderr()
-        tracer.runfunc(THE_MODULE.debug_print, (text), skip_newline=True)
+        tracer.runfunc(THE_MODULE.debug_print, (text),
+                       level=1, skip_newline=True)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -168,9 +175,16 @@ class TestTpoCommon(TestWrapper):
         assert re.search(r'modulename: debug, funcname: timestamp', captured)
 
         # test behaviour of function
-        actual, expected = THE_MODULE.debug_timestamp(), str(datetime.now())
-        # truncating the timestamp to eliminate milisecond difference in calculation
-        assert actual[:22] == expected[:22]
+        #
+        ## BAD (the following timestamps might differ in seconds due to millisecond wrapping):
+        ## actual, expected = THE_MODULE.debug_timestamp(), str(datetime.now())
+        ## # truncating the timestamp to eliminate milisecond difference in calculation
+        ## assert actual[:22] == expected[:22]
+        #
+        # EX: "2025-08-05 20:49:22.053904" => "2025-08-05 20:49:22.053"
+        #     "01234567890123456789012"
+        actual = THE_MODULE.debug_timestamp()
+        assert my_re.sub("[0-9]", "N", actual[:23]) == "NNNN-NN-NN NN:NN:NN.NNN"
 
     def test_debug_raise(self):
         """Ensure debug_raise works as expected"""
@@ -192,7 +206,7 @@ class TestTpoCommon(TestWrapper):
         debug.trace(4, "test_trace_array()")
         array = ['test', 'trace', 'array']
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_array, (array))
+        tracer.runfunc(THE_MODULE.trace_array, (array), level=1)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -218,7 +232,8 @@ class TestTpoCommon(TestWrapper):
 
         obj = TestObj()
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_object, obj, show_methods_etc=True, show_private=True)
+        tracer.runfunc(THE_MODULE.trace_object, (obj),
+                       level=1, show_methods_etc=True, show_private=True)
 
         # redirect write_results to temp file
         temp = self.get_temp_file()
@@ -236,7 +251,7 @@ class TestTpoCommon(TestWrapper):
         debug.trace(4, "test_trace_value()")
         value = "test value"
         tracer = trace.Trace(countfuncs=1)
-        tracer.runfunc(THE_MODULE.trace_value, value)
+        tracer.runfunc(THE_MODULE.trace_value, (value), level=1)
 
         # redirect write_results tot temp file
         temp = self.get_temp_file()
@@ -246,7 +261,7 @@ class TestTpoCommon(TestWrapper):
         assert re.search(r'modulename: tpo_common, funcname: debug_print', out)
         assert value in error
 
-        tracer.runfunc(THE_MODULE.trace_value, value, label='TPO')
+        tracer.runfunc(THE_MODULE.trace_value, (value), label='TPO', level=1)
 
         # redirect write_results to temp file
         tracer.results().write_results(coverdir=temp)
@@ -260,13 +275,15 @@ class TestTpoCommon(TestWrapper):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, "test_trace_current_context()")
         # note: level should be higher than level below
-        self.patch_trace_level(4)
+        base_trace_level = 4
+        self.patch_trace_level(base_trace_level + 1)
 
         test_var = 1                    # pylint: disable=unused-variable
         # check that local and global variables are traced
-        THE_MODULE.trace_current_context(level=2, label='TPO',
+        THE_MODULE.trace_current_context(level=base_trace_level, label='TPO',
                                          show_methods_etc=False, max_value_len=9999)
         error = self.get_stderr()
+        debug.trace_expr(4, error)
         assert 'TPO' in error
         assert 'test_var' in error
         assert 'FOOBAR' in error
@@ -292,7 +309,7 @@ class TestTpoCommon(TestWrapper):
     def test_debugging(self):
         """Ensure debugging works as expected"""
         debug.trace(4, "test_debugging()")
-        THE_MODULE.set_debug_level(4)
+        self.patch_trace_level(4)
         assert THE_MODULE.debugging(2)
         assert THE_MODULE.debugging(4)
         assert not THE_MODULE.debugging(6)
@@ -300,21 +317,21 @@ class TestTpoCommon(TestWrapper):
     def test_detailed_debugging(self):
         """Ensure detailed_debugging works as expected"""
         debug.trace(4, "test_detailed_debugging()")
-        THE_MODULE.set_debug_level(2)
+        self.patch_trace_level(2)
         assert not THE_MODULE.detailed_debugging()
-        THE_MODULE.set_debug_level(4)
+        self.patch_trace_level(4)
         assert THE_MODULE.detailed_debugging()
-        THE_MODULE.set_debug_level(6)
+        self.patch_trace_level(6)
         assert THE_MODULE.detailed_debugging()
 
     def test_verbose_debugging(self):
         """Ensure verbose_debugging works as expected"""
         debug.trace(4, "test_verbose_debugging()")
-        THE_MODULE.set_debug_level(2)
+        self.patch_trace_level(2)
         assert not THE_MODULE.verbose_debugging()
-        THE_MODULE.set_debug_level(5)
+        self.patch_trace_level(5)
         assert THE_MODULE.verbose_debugging()
-        THE_MODULE.set_debug_level(7)
+        self.patch_trace_level(7)
         assert THE_MODULE.verbose_debugging()
 
     def test_to_string(self):
@@ -406,22 +423,34 @@ class TestTpoCommon(TestWrapper):
         self.do_assert(len(THE_MODULE.env_options) == 1)
         self.do_assert(len(THE_MODULE.env_defaults) == 1)
 
+    def set_test_env_var(self):
+        """Set enviroment vars to run tests"""
+        self.monkeypatch.setattr("mezcla.tpo_common.env_options", {
+            'VAR_STRING': 'this is a string variable',
+            'ANOTHER_VAR': 'this is another env. var.'
+        })
+        self.monkeypatch.setattr("mezcla.tpo_common.env_defaults", {
+            'VAR_STRING': 'empty',
+            'ANOTHER_VAR': '2022'
+        })
+
+        
     @pytest.mark.xfail                   # TODO: remove xfail
     @trap_exception
     def test_formatted_environment_option_descriptions(self):
         """Ensure formatted_environment_option_descriptions works as expected"""
         debug.trace(4, "test_formatted_environment_option_descriptions()")
 
-        set_test_env_var()
+        self.set_test_env_var()
 
         # Test sort
         expected = (
             'VAR_STRING\tthis is a string variable (empty)\n'
-            '\tANOTHER_VAR\tthis is another env. var. n/a'
+            '\tANOTHER_VAR\tthis is another env. var. (2022)'
         )
         self.do_assert(THE_MODULE.formatted_environment_option_descriptions(sort=False) == expected)
         expected = (
-            'ANOTHER_VAR\tthis is another env. var. n/a\n'
+            'ANOTHER_VAR\tthis is another env. var. (2022)\n'
             '\tVAR_STRING\tthis is a string variable (empty)'
         )
         self.do_assert(THE_MODULE.formatted_environment_option_descriptions(sort=True) == expected)
@@ -432,14 +461,14 @@ class TestTpoCommon(TestWrapper):
         # Test indent
         expected = (
             'VAR_STRING + this is a string variable (empty)\n'
-            ' + ANOTHER_VAR + this is another env. var. n/a'
+            ' + ANOTHER_VAR + this is another env. var. (2022)'
         )
         self.do_assert(THE_MODULE.formatted_environment_option_descriptions(indent=' + ') == expected)
 
     def test_get_registered_env_options(self):
         """Ensure get_registered_env_options works as expected"""
         debug.trace(4, "test_get_registered_env_options()")
-        set_test_env_var()
+        self.set_test_env_var()
         result = THE_MODULE.get_registered_env_options()
         assert isinstance(result, list)
         assert 'VAR_STRING' in result
@@ -449,7 +478,7 @@ class TestTpoCommon(TestWrapper):
     def test_get_environment_option_descriptions(self):
         """Test get_environment_option_descriptions"""
         debug.trace(4, "test_get_environment_option_descriptions()")
-        set_test_env_var()
+        self.set_test_env_var()
         result = THE_MODULE.get_environment_option_descriptions(include_default=True)
         self.do_assert(isinstance(result, list))
         self.do_assert("(2022)" in str(result), "default added")
@@ -785,10 +814,14 @@ class TestTpoCommon(TestWrapper):
         """Ensure reference_variables works as expected"""
         debug.trace(4, "test_reference_variables()")
         self.monkeypatch.setattr("mezcla.debug.trace_level", 10)
-        THE_MODULE.reference_variables("\'a\'")
+        a = "dummy"
+        ## BAD: THE_MODULE.reference_variables("\'a\'")
+        THE_MODULE.reference_variables(a)
 
         stderr = self.get_stderr()
-        assert 'reference_variables("\'a\'",)' in stderr
+        ## BAD: assert 'reference_variables("\'a\'",)' in stderr
+        # note: tpo_common calls into debug version 
+        assert f"reference_var('{a}',)" in stderr
 
     @pytest.mark.xfail
     def test_memodict(self):
@@ -879,16 +912,17 @@ class TestTpoCommon(TestWrapper):
         assert isinstance(THE_MODULE.getenv_boolean("REALLY FUBAR?", False), bool)
 
 
-def set_test_env_var():
-    """Set enviroment vars to run tests"""
-    THE_MODULE.env_options = {
-        'VAR_STRING': 'this is a string variable',
-        'ANOTHER_VAR': 'this is another env. var.'
-    }
-    THE_MODULE.env_defaults = {
-        'VAR_STRING': 'empty',
-        'ANOTHER_VAR': '2022'
-    }
+## BAD (needs to use monkeypatch):
+## def set_test_env_var():
+##     """Set enviroment vars to run tests"""
+##     THE_MODULE.env_options = {
+##         'VAR_STRING': 'this is a string variable',
+##         'ANOTHER_VAR': 'this is another env. var.'
+##     }
+##     THE_MODULE.env_defaults = {
+##         'VAR_STRING': 'empty',
+##         'ANOTHER_VAR': '2022'
+##     }
 
 
 if __name__ == '__main__':

@@ -199,6 +199,7 @@ class Preprocessor(object):
     stopwords = set()
     contractions = r"(n't|'s|'re|'ll)$"
     ## OLD: negative_gram_breaks = r'[^:;!^,\?\.\[|\]\(|\)"`]+'
+    ## TODO3: document the first regex (e.g., apparent redundancy w/ '|')
     negative_gram_breaks = r'[^:;!^,\?\.\[|\]\(|\)"`]+' if not TFIDF_ALLOW_PUNCT else  r'[^:;!\?\.]+'
     supported_languages = (
         'danish', 'dutch', 'english', 'finnish', 'french', 'german', 'hungarian',

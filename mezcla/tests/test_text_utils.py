@@ -16,7 +16,7 @@ import re
 import os
 
 # Installed packages
-import pytest
+## OLD: import pytest
 
 # Local packages
 from mezcla import debug
@@ -182,6 +182,12 @@ class TestTextUtils(TestWrapper):
         assert not THE_MODULE.is_symbolic(123)
         assert not THE_MODULE.is_symbolic(0.1)
 
+    def test_is_numeric(self):
+        """Ensure is_numeric works as expected"""
+        debug.trace(4, "test_is_numeric()")
+        assert THE_MODULE.is_numeric("456")
+        assert not THE_MODULE.is_numeric("three")
+        
     def test_make_fixed_length(self):
         """Ensure make_fixed_length works as expected"""
         debug.trace(4, "make_fixed_length()")

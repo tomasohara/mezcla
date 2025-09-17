@@ -153,6 +153,29 @@ class TestComputeTfidf(TestWrapper):
                                     flags=my_re.MULTILINE|my_re.DOTALL))
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_csv_file(self):
+        """Tests run_script w/ data file"""
+        debug.trace(4, f"TestIt.test_csv_file(); self={self}")
+
+        # Run unigram TF/IDF over the file
+        ## TODO3: derive the CSV file from the text file
+        data_file = gh.resolve_path(gh.form_path("resources", "argentinian-attraction-snippets.csv"))
+        output = self.run_script(options="--csv --show-all --num-top-terms 100", env_options="MIN_NGRAM_SIZE=1 MAX_NGRAM_SIZE=1",
+                                 data_file=data_file)
+        # Covert multiple spaces to one
+        output = my_re.sub(r"  +", " ", output.strip())
+        docs = output.split("\n\n")
+
+        # Check for following output (ignoring spacing):
+        #   term       TFreq  DFreq  TF     IDF    TF-IDF
+        #   argentina  1.000  5.000  0.040  0.693  0.028
+        debug.trace_values(5, docs)
+        self.do_assert(all(("term TFreq DFreq TF IDF TF-IDF" in docs[i])
+                           for i in range(10)))
+        self.do_assert("argentina 1.000 5.000 0.040 0.693 0.028" in docs[0])
+        return
+
 
 if __name__ == '__main__':
     debug.trace_current_context()

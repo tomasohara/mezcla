@@ -10,6 +10,7 @@
 # - Alternatively, this can be run as:
 #       export LM=./lm/test.arpa
 #       ./tests/test_kenlm_example.py
+# - The test.arpa file is based on kenlm repo (https://github.com/kpu/kenlm).
 #
 #-------------------------------------------------------------------------------
 # Sample test and output:

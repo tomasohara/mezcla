@@ -21,6 +21,9 @@ import time
 import json
 import yaml
 import csv
+from types import ModuleType
+from typing import Any, Optional
+from contextlib import ContextDecorator
 
 # Installed packages
 ## NOTE: made dynamic due to import issue during shell-script repo tests
@@ -86,14 +89,34 @@ def read_tabular_data(filename):
     return table
 
 
-def extract_string_list(text):
-    """Extract a list of values from text using whitespace and/or commas as delimiters"""
-    # EX: extract_string_list("1  2,3") => [1, 2, 3]
+def extract_string_list(text, strip_empty=False, allow_numeric_ranges=False):
+    """Extract a list of values from text using whitespace and/or commas as delimiters.
+    With STRIP_EMPTY, empty-string items are ignored.
+    """
+    # EX: extract_string_list("1  2,3") => ["1", "2", "3"]
     # TODO: Add support for quoted values to allow for embedded spaces
-    trimmed_text = re.sub(r"\s+", " ", text.strip())
-    values = trimmed_text.replace(" ", ",").split(",")
+    trimmed_text = my_re.sub(r"\s+", " ", text.strip())
+    ## OLD: values = trimmed_text.replace(" ", ",").split(",")
+    trimmed_text = my_re.sub(r"([^,]) ", r"\1,", trimmed_text)
+    values = my_re.split(", ?", trimmed_text) if trimmed_text else []
+    #
+    if allow_numeric_ranges:
+        new_values = []
+        for value in values:
+            if my_re.search(r"^(\d+)-(\d+)", value):
+                new_values += list(str(v) for v in
+                                   range(int(my_re.group(1)), int(my_re.group(2))+ 1))
+            else:
+                new_values.append(value)
+        values = new_values
+    #
+    if strip_empty:
+        values = [v for v in values if v]
     debug.trace_fmtd(5, "extract_string_list({t!r}) => {v!r}", t=text, v=values)
     return values
+#
+# EX: extract_string_list("1,", strip_empty=True) => ["1"]
+# EX: extract_string_list("1-3") => ["1", "2", "3"]
 
 
 def is_prime(num):
@@ -193,14 +216,18 @@ def unzip(iterable, num=None):
 
 
 def get_current_frame():
-    """Return stack frame"""
+    """Return stack frame (i.e., for caller)"""
     frame = inspect.currentframe().f_back
     debug.trace_fmt(6, "get_current_frame() => {f}", f=frame)
     return frame
 
 
 def eval_expression(expr_text, frame=None):
-    """Evaluate EXPRESSION_given_by_TEXT"""
+    """Evaluate EXPRESSION_given_by_TEXT, using FRAME
+    Note: Uses caller's frame if not given. This should only be used
+    when the expression involve local variables (see extract_matches.py
+    in shell-scripts repo).
+    """
     # EX: eval_expression("len([123, 321]) == 2")
     result = None
     try:
@@ -550,6 +577,7 @@ def convert_python_data_to_instance(python_data_file, module_name, class_name, f
 def apply_numeric_suffixes(text: str, just_once=False) -> str:
     """Converts numbers in TEXT to use K, M, G, T, etc. suffixes.
     Note: Optionally applies JUST_ONCE per line."""
+    # Note: used in shell-scripts tomohara-aliases.bash
     # EX: apply_numeric_suffixes("1024 1572864 1073741824") => "1K 1.5M 1G"
     # TODO2: preserve spacing in text (e.g., splitlines quirks)
     debug.trace(5, f"apply_numeric_suffixes({text!r}, [once={just_once})")
@@ -559,13 +587,12 @@ def apply_numeric_suffixes(text: str, just_once=False) -> str:
         max_count = len(line) / 3
         count = 0
         # note: uses negative look ahead to avoid conversion in decimals (e.g., 1023.5);
-        # also, uses non-greedy search to exclude leading question marks (e.g., ?00000000?)
-        ## OLD:
-        while (my_re.search(r"(.*)\b(\d{4,19})\b(?!\.)(.*)", line)):
-            ## TEST: while (my_re.search(r"([^\?]*+)\b(\d(\d\d\d){1,6})\b(?!\.)(.*)", line)):
-            ## TEST2: while (my_re.search(r"([^\?]*+)\b(\d{4,19})\b(?!\.)(.*)", line)):
+        # also, uses non-greedy search to support just_once (i.e., target first case even if smaller)
+        # TODO3: exclude leading question marks (e.g., ?00000000?)
+        while (my_re.search(r"^(.*?)\b(\d{4,19})\b(?!\.)(.*)", line)):
             count += 1
             if count > max_count:
+                debug.trace(6, f"max attempt count reached ({max_count})")
                 break
             (pre, numeric, post) = my_re.groups()
             (new_num, suffix) = ("", "")
@@ -577,6 +604,8 @@ def apply_numeric_suffixes(text: str, just_once=False) -> str:
                     # note: accounts for quirk in rounding (e.g., stripping N.000)
                     # TODO2: ignore special cases like 0000 (n.b., due to \d{4,N} regex)
                     new_num = my_re.sub(r"\.0+$", "", new_num)
+                    # note: drops 0's added to due rounding (e.g., 1.500 => 1.5)
+                    new_num = my_re.sub(r"(\.[1-9]+)0+$", r"\1", new_num)
                     suffix = suffixes[power]
                     debug.trace_expr(6, numeric, num, power, line)
                 except:
@@ -584,9 +613,12 @@ def apply_numeric_suffixes(text: str, just_once=False) -> str:
                     new_num = f"_{numeric}?_"
                     debug.trace_exception(5, f"apply_numeric_suffixes line {l} ({line!r})")
             else:
-                ## TODO3: rework pattern matching to exclude 0000
+                ## TODO3: rework pattern matching to exclude 0000, etc.
                 new_num = "0K"
             line = pre + str(new_num) + suffix + post
+            if just_once:
+                debug.trace(6, f"applied just once ({just_once=})")
+                break
         new_text += line + os.linesep
     if new_text.endswith(os.linesep) and not text.endswith(os.linesep):
         new_text = my_re.sub(fr"{os.linesep}$", "", new_text)
@@ -599,8 +631,87 @@ def apply_numeric_suffixes_stdin(just_once=False):
     Note: supports Bash alias (see shell-scripts/tomohara-aliases.bash)
     """
     text = dummy_app.read_entire_input()
-    print(apply_numeric_suffixes(text, just_once=just_once))
+    # Note: doesn't add newline as normally stdin ends with one, and users
+    # might want stdin preserved if not (e.g., for use with `echo -n`).
+    print(apply_numeric_suffixes(text, just_once=just_once), end="")
 
+#-------------------------------------------------------------------------------
+# Utility class for setting contexts
+# NOTE: Based on Grok3
+# TODO3: put in new module like python_utils.py
+
+class GlobalSetter(ContextDecorator):
+    """A context manager and decorator to temporarily set a module-level global variable.
+
+    This class allows you to temporarily modify a module-level global variable within
+    a `with` block or as a decorator, restoring the original value (or removing the
+    attribute if it didn't exist) upon exit.
+
+    Args:
+        module (ModuleType): The module containing the global variable (e.g., `debug`).
+        name (str): The name of the global variable (e.g., 'trace_level').
+        value (Any): The temporary value to set for the global variable.
+
+    Example:
+        >>> import debug
+        >>> def trace_values():
+        ...     print(debug.trace_level)
+        >>> debug.trace_level = 3
+        >>> trace_values()  # Prints: 3
+        >>> with GlobalSetter(debug, 'trace_level', 6):
+        ...     trace_values()  # Prints: 6
+        >>> trace_values()  # Prints: 3
+
+    Note:
+        - This context manager is not thread-safe. Use synchronization mechanisms
+          (e.g., locks) if modifying globals in a multithreaded environment.
+        - If the module is reloaded during the context, the global variable may be reset.
+    """
+
+    def __init__(self, module: ModuleType, name: str, value: Any) -> None:
+        """Initialize the GlobalSetter with the module, attribute name, and temporary value.
+
+        Args:
+            module (ModuleType): The module containing the global variable.
+            name (str): The name of the global variable to modify.
+            value (Any): The temporary value to set for the global variable.
+        """
+        self.module: ModuleType = module
+        self.name: str = name
+        self.value: Any = value
+        self.original_value: Optional[Any] = None
+
+    def __enter__(self) -> 'GlobalSetter':
+        """Enter the context, saving the original value and setting the new value.
+
+        Returns:
+            GlobalSetter: The context manager instance (for use in `with` blocks).
+
+        Saves the original value of the module attribute (or None if it doesn't exist)
+        and sets the attribute to the specified temporary value.
+        """
+        self.original_value = getattr(self.module, self.name, None)
+        setattr(self.module, self.name, self.value)
+        return self
+
+    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], 
+                 exc_tb: Optional[Any]) -> None:
+        """Exit the context, restoring the original value or removing the attribute.
+
+        Args:
+            exc_type (Optional[type]): The type of the exception raised, if any.
+            exc_val (Optional[Exception]): The exception instance raised, if any.
+            exc_tb (Optional[Any]): The traceback of the exception, if any.
+
+        Restores the original value of the module attribute if it existed, or removes
+        the attribute if it was newly created during the context.
+        """
+        if self.original_value is None:
+            delattr(self.module, self.name)
+        else:
+            setattr(self.module, self.name, self.original_value)
+
+#-------------------------------------------------------------------------------
 
 def init():
     """MOdule initialization"""

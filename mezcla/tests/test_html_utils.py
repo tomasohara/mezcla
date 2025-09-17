@@ -3,12 +3,20 @@
 # Test(s) for ../html_utils.py
 #
 # Notes:
-# - Fill out TODO's below. Use numbered tests to order (e.g., test_1_usage).
-# - TODO: If any of the setup/cleanup methods defined, make sure to invoke base
-#   (see examples below for setUp and tearDown).
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_html_utils.py
+# - Global pylint filter:
+#   pylint: disable=protected-access
+#   -- TEMP: filter (TODO2: make sure just test_xyz)
+#       pylint: disable=missing-function-docstring
 #
+# TODO2:
+# - Fix the type hints tests, which need special support using Pydantic (or mypy):
+#   see test_fix_url_parameters_type_hints.
+# - Use website accessible to all ScrappyCito assistants. For example,
+#      www.tomasohara.trade => new www.scrappycito.trade
+#   
+
 
 """Tests for html_utils module"""
 
@@ -29,48 +37,79 @@ from mezcla.my_regex import my_re
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
-## TODO: template => new name
 import mezcla.html_utils as THE_MODULE
 
-# Environment options
-TEST_SELENIUM = system.getenv_bool("TEST_SELENIUM", False,
-                                   "Include tests requiring selenium")
+# Constants and environment options
+TEST_SELENIUM_DESC = "Include tests requiring selenium"
+TEST_SELENIUM = system.getenv_bool(
+    "TEST_SELENIUM", False,
+    desc=TEST_SELENIUM_DESC)
+SKIP_SELENIUM = not TEST_SELENIUM
+SKIP_SELENIUM_REASON = f"Not-{TEST_SELENIUM_DESC}"
+#
+INCLUDE_HINT_TESTS = system.getenv_bool(
+    "INCLUDE_HINT_TESTS", False,
+    desc="Include the work-in-progress tests involving type hints")
+## TODO:
+## SKIP_HINT_TESTS = system.getenv_bool(
+##     "SKIP_HINT_TESTS", False,
+##     desc="Skip the work-in-progress tests involving type hints")
+SKIP_HINT_TESTS = not INCLUDE_HINT_TESTS
+SKIP_HINT_REASON = "Type hinting tests require more work"
+##
+SCRAPPYCITO_LIKE_URL = system.getenv_text(
+    "SCRAPPYCITO_LIKE_URL", "http://www.tomasohara.trade:9330",
+    desc="URL to use instead of www.scrappycito.com")
+TOMASOHARA_TRADE_LIKE_URL = system.getenv_text(
+    "TOMASOHARA_TRADE_LIKE_URL", "http://www.tomasohara.trade",
+    desc="URL to use instead of www.tomasohara.trade")
 
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-    scrappycito_url = "http://www.scrappycito.com"
-    # TODO: use_temp_base_dir = True            # treat TEMP_BASE as directory
-    # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
+    ##
+    ## NOTE: Using personal site instead of LLC in order to avoid issues
+    ## with the production server (i.e., www.scrappycito.com).
+    scrappycito_url = "www.scrappycito.com"
+    tomasohara_trade_url = TOMASOHARA_TRADE_LIKE_URL
+    ## OLD: scrappycito_url = f"{tomasohara_trade_url}:9330"
+    scrappycito_like_url = SCRAPPYCITO_LIKE_URL
+    ready_test_path = gh.resolve_path("document_ready_test.html",
+                                      heuristic=True, absolute=True)
+    ready_test_alt_path = gh.resolve_path("document_ready_test_alt.html",
+                                          heuristic=True, absolute=True)
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_browser(self):
-        """Ensure get_browser() works as expected"""
+        """Verify get_browser() returns object with HTML"""
         debug.trace(4, "test_get_browser()")
-        assert False, "TODO: code test"
+        browser = THE_MODULE.get_browser(self.tomasohara_trade_url)
+        self.do_assert(my_re.search(r"<title>.*Tomás.*O.Hara.*Scrappy.*Cito.*</title>",
+                                    browser.page_source))
 
     def test_get_url_parameter_value(self):
         """Ensure get_url_parameter_value works as expected"""
         debug.trace(4, "test_get_url_parameter_value()")
         save_user_parameters = THE_MODULE.user_parameters
         THE_MODULE.user_parameters = {}
-        assert THE_MODULE.get_url_parameter_value("fubar", None) is None
-        assert THE_MODULE.get_url_parameter_value("fubar", None, {"fubar": "fu"}) == "fu"
-        THE_MODULE.user_parameters = {"fubar": "bar"}
-        assert THE_MODULE.get_url_parameter_value("fubar", None) == "bar"
-        assert THE_MODULE.get_url_parameter_value("fubar", None, {"fubar": "fu"}) == "fu"
+        assert THE_MODULE.get_url_parameter_value("fu-bar", None) is None
+        assert THE_MODULE.get_url_parameter_value("fu-bar", None, {"fu-bar": "fu"}) == "fu"
+        THE_MODULE.user_parameters = {"fu-bar": "bar"}
+        assert THE_MODULE.get_url_parameter_value("fu-bar", None) == "bar"
+        assert THE_MODULE.get_url_parameter_value("fu_bar", None) == "bar"
+        assert THE_MODULE.get_url_parameter_value("fu-bar", None, {"fu-bar": "fu"}) == "fu"
         THE_MODULE.user_parameters = save_user_parameters
         return
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_text(self):
         """Verify that JavaScript fills in window dimensions
         Note: requires selenium"""
         debug.trace(4, "test_get_inner_text()")
-        if not TEST_SELENIUM:
-            debug.trace(4, "Ignoring test_get_inner_text as selenium required")
-            return
         html_filename = "simple-window-dimensions.html"
-        html_path = gh.resolve_path(html_filename)
+        html_path = gh.resolve_path(html_filename, heuristic=True)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
         unrendered_text = gh.run(f"lynx -dump {url}")
@@ -80,15 +119,14 @@ class TestHtmlUtils(TestWrapper):
         debug.trace_expr(5, rendered_text)
         assert re.search(r"Browser dimensions: \d+x\d+", rendered_text)
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_html(self):
         """Verify that JavaScript fills in window dimensions
         Note: requires selenium"""
         debug.trace(4, "test_get_inner_html()")
-        if not TEST_SELENIUM:
-            debug.trace(4, "Ignoring test_get_inner_html as selenium required")
-            return
         html_filename = "simple-window-dimensions.html"
-        html_path = gh.resolve_path(html_filename)
+        html_path = gh.resolve_path(html_filename, heuristic=True)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
         unrendered_html = gh.run(f"lynx -source {url}")
@@ -105,26 +143,73 @@ class TestHtmlUtils(TestWrapper):
             )
 
     @pytest.mark.xfail                   # TODO: remove xfail
+    def test_scrappycito_urls(self):
+        """Some sanity checks on URLs for ScrappyCito, LLC and Tom O'Hara's consulting.
+        Note: www.scrappycito.com should be avoided and www.tomasohara.trade used instead.
+        """
+        debug.trace(4, f"TestIt.test_scrappycito_urls(); self={self}")
+        self.do_assert("scrappycito.com" in self.scrappycito_url)
+        self.do_assert("scrappycito.com" not in self.scrappycito_like_url,
+                       f"The production server should not be used in tests: {self.scrappycito_url}")        
+        self.do_assert("tomasohara" in self.scrappycito_like_url)
+        return
+
+    def check_inner_html(self, regular, inner):
+        """Helper for inner html tests: makes sure that Javascript generated output not in REGULAR but is in INNER output for ScrappyCito's landing page
+        Note: This assumes inner produced with ?section=tips option.
+        """
+        # note: the triangle points south (v) when the section is open, as assumed for inner:
+        #       <span id="ui-tips-id" class="ui-icon ui-icon-triangle-1-e"></span>   [closed (east):  >]
+        #   vs. <span id="ui-tips-id" class="ui-icon ui-icon-triangle-1-s"></span>   [opened (south): v]
+        # TODO3: use HTML file in repo
+        tips_section_open_regex = r"tips-id.*ui-icon-triangle-1-s"
+        self.do_assert(my_re.search(tips_section_open_regex, inner.strip(), flags=my_re.IGNORECASE))
+        self.do_assert(not my_re.search(tips_section_open_regex, regular.strip(), flags=my_re.IGNORECASE))
+        tips_section_closed_regex = r"tips-id.*ui-icon-triangle-1-e"
+        self.do_assert(not my_re.search(tips_section_closed_regex, inner.strip(), flags=my_re.IGNORECASE))
+        self.do_assert(my_re.search(tips_section_closed_regex, regular.strip(), flags=my_re.IGNORECASE))
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_html_alt(self):
         """Alternative test of get_inner_html"""
         debug.trace(4, f"TestIt.test_get_inner_html_alt(); self={self}")
-        output = THE_MODULE.get_inner_html(self.scrappycito_url)
-        self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
+        debug.assertion("scrappycito.com" not in self.scrappycito_like_url,
+                        f"The production server should not be used in tests: {self.scrappycito_url}")
+        ## OLD:
+        ## output = THE_MODULE.get_inner_html(self.scrappycito_like_url)
+        ## self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
+        ## TODO: regular_output = THE_MODULE.download_web_document(self.scrappycito_like_url)
+        regular_output = gh.run(f"lynx -source {self.scrappycito_like_url}")
+        inner_output = THE_MODULE.get_inner_html(self.scrappycito_like_url + "/?section=tips")
+        self.check_inner_html(regular_output, inner_output)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_run_script_for_inner_html(self):
         """Test of getting inner HTML via script invocation"""
         debug.trace(4, f"TestIt.test_run_script_for_inner_html(); self={self}")
-        output = self.run_script(options=f"--inner --stdout {self.scrappycito_url}", data_file=self.temp_file)
-        self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
+        ## OLD:
+        ## output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url}", data_file=self.temp_file)
+        ## self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
+        regular_output = self.run_script(options=f"--stdout {self.scrappycito_like_url}")
+        self.temp_file += "-2"
+        inner_output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url + '/?section=tips'}")
+        self.check_inner_html(regular_output, inner_output)
         return
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_document_ready(self):
         """Ensure document_ready() works as expected"""
         debug.trace(4, "test_document_ready()")
-        assert False, "TODO: code test"
+        google_search_ready = THE_MODULE.document_ready("https://www.google.com")
+        self.do_assert(google_search_ready)
+        ## TEST:
+        ## twitter_x_feed_ready = THE_MODULE.document_ready("https://x.com/X")
+        ## self.do_assert(not twitter_x_feed_ready)
+        debug.assertion("15 seconds" in system.read_file(self.ready_test_path))
+        test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_path, timeout=5)
+        self.do_assert(not test_document_ready)
 
     def test_escape_html_value(self):
         """Ensure escape_html_value() works as expected"""
@@ -182,6 +267,7 @@ class TestHtmlUtils(TestWrapper):
             'default-body': "Joe's hat"
         }
         assert THE_MODULE.get_url_param('redirect-status') == '302'
+        assert THE_MODULE.get_url_param('redirect_status') == '302'
         assert THE_MODULE.get_url_param('bad-request-status', default_value='400') == '400'
         assert THE_MODULE.get_url_param('default-body', escaped=True) == 'Joe&#x27;s hat'
 
@@ -189,18 +275,22 @@ class TestHtmlUtils(TestWrapper):
     def test_get_url_param_checkbox_spec(self):
         """Ensure get_url_param_checkbox_spec() works as expected"""
         debug.trace(4, "test_get_url_param_checkbox_spec()")
-        param_dict = {"check_1": "on", "check_2": "off","check_3": "True",
-                                    "check_4": False, "check_5": 1}
+        ## OLD:
+        ## param_dict = {"check_1": "on", "check_2": "off","check_3": "True",
+        ##               "check_4": False, "check_5": 1}
+        param_dict = {"check_1_on": "on",  "check_3_on": "True",  "check_5_on": 1,
+                      "check_2_off": "off", "check_4_off": False, "check_6_off": None}
 
         # Test multiple positive cases
-        assert THE_MODULE.get_url_param_checkbox_spec("check_1", param_dict=param_dict)
-        assert THE_MODULE.get_url_param_checkbox_spec("check_3", param_dict=param_dict)
-        assert THE_MODULE.get_url_param_checkbox_spec("check_5", param_dict=param_dict)
+        assert THE_MODULE.get_url_param_checkbox_spec("check_1_on", param_dict=param_dict)
+        assert THE_MODULE.get_url_param_checkbox_spec("check_3_on", param_dict=param_dict)
+        assert THE_MODULE.get_url_param_checkbox_spec("check_5_on", param_dict=param_dict)
 
         # test non-checked and non-existent check cases
-        assert not THE_MODULE.get_url_param_checkbox_spec("check_2", param_dict=param_dict)
-        assert not THE_MODULE.get_url_param_checkbox_spec("check_4", param_dict=param_dict)
-        assert not THE_MODULE.get_url_param_checkbox_spec("non_check", param_dict=param_dict)
+        assert not THE_MODULE.get_url_param_checkbox_spec("check_2_off", param_dict=param_dict)
+        assert not THE_MODULE.get_url_param_checkbox_spec("check_4_off", param_dict=param_dict)
+        assert not THE_MODULE.get_url_param_checkbox_spec("check_6_off", param_dict=param_dict)
+        assert not THE_MODULE.get_url_param_checkbox_spec("check_7_missing", param_dict=param_dict)
 
     def test_get_url_parameter_bool(self):
         """Ensure get_url_parameter_bool() works as expected"""
@@ -283,16 +373,22 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, "test_old_download_web_document()")
         assert "<!doctype html>" in THE_MODULE.old_download_web_document("https://www.google.com")
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_web_document(self):
         """Ensure download_web_document() works as expected"""
         debug.trace(4, "test_download_web_document()")
-        assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
+        ## NOTE: Wikipedia/WikiMedia complaining about robots (even though single document access)
+        ## diring GitHub actions rub. See https://wikitech.wikimedia.org/wiki/Robot_policy.
+        ## OLD: assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
+        ## TODO2: use website accessible to all team members
+        assert "currency" in THE_MODULE.download_web_document("http://www.tomasohara.trade/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
         assert THE_MODULE.download_web_document("www. bogus. url.html") is None
 
     def test_test_download_html_document(self):
         """Ensure test_download_html_document() works as expected"""
         debug.trace(4, "test_test_download_html_document()")
         assert "Google" in THE_MODULE.test_download_html_document("www.google.com")
+        ## TODO2: use website accessible to all team members
         assert "Tomás" not in THE_MODULE.test_download_html_document("http://www.tomasohara.trade", encoding="big5")
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -311,7 +407,7 @@ class TestHtmlUtils(TestWrapper):
         # Assert exception report is printed when not Ignore
         try :
             _ = THE_MODULE.download_html_document("", ignore=False)
-        except Exception as _:
+        except:
             pass
         err = self.get_stderr()
         assert "Error during retrieve_web_document" in err
@@ -320,7 +416,7 @@ class TestHtmlUtils(TestWrapper):
         self.clear_stderr()
         try :
             _ = THE_MODULE.download_html_document("", ignore=True)
-        except Exception as _:
+        except:
             pass
         err = self.get_stderr()
         assert "Error during retrieve_web_document" not in err
@@ -395,6 +491,7 @@ class TestHtmlUtils(TestWrapper):
         ## assert THE_MODULE.extract_html_link(html, url='https://www.example.com') == all_urls
 
     @pytest.mark.xfail
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_inner_html_type_hints(self):
         URL_VALID = "https://duckduckgo.com"
         URL_INVALID = "duckduckgo.com"
@@ -411,17 +508,31 @@ class TestHtmlUtils(TestWrapper):
         assert all(word in inner_text_valid for word in keywords)
         assert not inner_text_invalid
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail
     def test_document_ready_alt(self):
+        """Verify document_ready for simple sites"""
+        ## TODO2: merge with test_document_ready; use simple site (not production web search)
         URL_VALID = "https://duckduckgo.com"
         assert (THE_MODULE.document_ready(URL_VALID))
-        assert not THE_MODULE.document_ready(self.scrappycito_url)
-        ## Exception raised:
-        # E       selenium.common.exceptions.JavascriptException: Message: TypeError: document.body is null
-        # E       Stacktrace:
-        # E       @http://www.scrappycito.com:9330/:2:7
-        # E       @http://www.scrappycito.com:9330/:3:8
-        # /home/zavee/.local/lib/python3.10/site-packages/selenium/webdriver/remote/errorhandler.py:229: JavascriptException
+        
+        ## Note: following should not be ready at first due to JavaScript (n.b., wrong assumption).
+        ## TODO3: use different URL because the JavaScript doesn't affect ready status; see test_document_ready
+        scrappycito_search_result = f"{self.scrappycito_like_url}/run_search?query=modern+art"
+        ## OLD:
+        ## assert not THE_MODULE.document_ready(scrappycito_search_result)
+        ## ## Exception raised:
+        ## ## E       selenium.common.exceptions.JavascriptException: Message: TypeError: document.body is null
+        ## ## E       Stacktrace:
+        ## ## E       @http://www.scrappycito.com:9330/:2:7
+        ## ## E       @http://www.scrappycito.com:9330/:3:8
+        ## ## /home/zavee/.local/lib/python3.10/site-packages/selenium/webdriver/remote/errorhandler.py:229: JavascriptException
+        assert THE_MODULE.document_ready(scrappycito_search_result)
+
+        # Use example suggesed by Claude-Opus-4.1
+        debug.assertion("15 seconds" in system.read_file(self.ready_test_alt_path))
+        test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_alt_path, timeout=5)
+        self.do_assert(not test_document_ready)
 
     @pytest.mark.xfail
     def test_set_param_dict_alt(self):
@@ -433,6 +544,7 @@ class TestHtmlUtils(TestWrapper):
         assert THE_MODULE.user_parameters == param_dict
 
     @pytest.mark.xfail
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_set_param_dict_type_hints(self):
         param_dict = str({1: "a+b+c", 2: "a%2b%2c%2"})
         THE_MODULE.set_param_dict(param_dict)
@@ -440,6 +552,7 @@ class TestHtmlUtils(TestWrapper):
         assert len(THE_MODULE.user_parameters) > 2
 
     @pytest.mark.xfail    
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_param_dict_type_hints(self):
         param_dict = str({
             "p1": "a+b+c",
@@ -449,6 +562,7 @@ class TestHtmlUtils(TestWrapper):
         assert not isinstance(result, dict)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_param_type_hints(self):
         param_dict = {
             "name": "Terry",
@@ -466,6 +580,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, str)
     
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_text_type_hints(self):
         param_dict = {
             "name": "Alice",
@@ -488,6 +603,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, str)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_param_checkbox_spec_type_hints(self):
         name = "param"
         default_value = ""
@@ -504,6 +620,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, str)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_parameter_value_type_hints(self):
         param = "param"
         default_value = ""
@@ -520,6 +637,7 @@ class TestHtmlUtils(TestWrapper):
         assert result is None
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_parameter_bool_type_hints(self):
         param = "param"
         default_value = False
@@ -537,6 +655,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, bool)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_parameter_int_type_hints(self):
         param = "param"
         default_value = 0
@@ -553,6 +672,7 @@ class TestHtmlUtils(TestWrapper):
         assert result is not None and isinstance(result, int)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_get_url_parameter_float_type_hints(self):
         param = "param"
         default_value = 0.0
@@ -569,6 +689,7 @@ class TestHtmlUtils(TestWrapper):
         assert result is not None and isinstance(result, float)
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_fix_url_parameters_type_hints(self):
         param = "param"
         param_dict = {param: [17.38, 19.45, 88.88, 16.09]}
@@ -577,12 +698,22 @@ class TestHtmlUtils(TestWrapper):
 
         assert isinstance(param_dict, dict)
         assert isinstance(result, dict)
-        assert not isinstance(result[param], list)  
+        assert not isinstance(result[param], list)
+        assert isinstance(result[param], float)
 
-        result = THE_MODULE.fix_url_parameters(None)
-        assert result is not None and isinstance(result, float)
+        try:
+            result = THE_MODULE.fix_url_parameters(None)
+            ## BAD: assert result is not None and isinstance(result, float)
+            assert False, "Exception should be raised"
+        except:
+            ## TODO2: make sure exception triggered by hint violation
+            ## NOTE: requires something like Pydantic @validate_call (see test_validate_arguments.py)
+            ##   assert system.get_exception()[0] == RuntimeError, "Validation not triggered"
+            assert True
+            
 
     @pytest.mark.xfail 
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test_expand_misc_param_type_hints(self):
         misc_dict = {'x': 1, 'y': 2, 'z': 'a=3, b=4'}
         param_name = "z"
@@ -599,6 +730,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, dict) or result is None
         
     @pytest.mark.xfail
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test__read_file_type_hints(self):
         contents = "Hello World"
         filename = self.create_temp_file(contents)
@@ -610,19 +742,58 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(result, str)        
 
     @pytest.mark.xfail
+    @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
     def test__write_file_type_hints(self):
         data = "Hello World"
         filename = self.create_temp_file(contents="")
         as_binary = False
+        # pylint: ignore disable=assignment-from-none
         result = THE_MODULE._write_file(filename, data, as_binary)
 
         assert isinstance(data, (str, bytes))
         assert isinstance(filename, str)
         assert isinstance(as_binary, bool)
         assert result is None  
+
+    @pytest.mark.xfail
+    def test_format_checkbox(self):
+        """Verify simple format_checkbox usage"""
+        # ex: <input type='hidden' name='fubar' value='off'><label id='fubar-label-id' >Fubar?<input type='checkbox' id='fubar-id' name='fubar'   ></label>"
+        field_spec = THE_MODULE.format_checkbox("fubar")
+        assert my_re.search(r"<input type='hidden'\s*name='fubar'\s*value='off'><label\s*id='fubar-label-id'\s*>Fubar\?&nbsp;<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*></label>",
+                            field_spec)
+        field_spec = THE_MODULE.format_checkbox("fubar", disabled=True, concat_label=True)
+        assert my_re.search(r"<label\s*id='fubar-label-id'\s*>Fubar\?<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*disabled\s*></label>",
+                            field_spec)
+
+    @pytest.mark.xfail
+    def test_format_input_field(self):
+        """Verify simple format_input_field usage"""
+        ## HACK: ensures that single quotes used in tested result
+        #
+        field_spec = THE_MODULE.format_input_field("first", label="First:").replace('"', "'")
+        assert my_re.search(r"<label\s*id='first-label-id'\s*>First:&nbsp;<input id='first-id'\s*name='first'\s*></label>",
+                            field_spec)
+        #
+        field_spec = THE_MODULE.format_input_field("last", label="Last:", default_value="O'Doe").replace('"', "'")
+        assert my_re.search(r"<label\s*id='last-label-id'\s*>Last:&nbsp;<input id='last-id'\s*value='O&#x27;Doe' name='last'\s*></label>",
+                            field_spec)
+        #
+        field_spec = THE_MODULE.format_input_field("age", label="Age:", field_type="number", default_value="19").replace('"', "'")
+        assert my_re.search(r"<label\s*id='age-label-id'\s*>Age:&nbsp;<input id='age-id'\s*value='19'\s*name='age'\s*type='number'\s*></label>",
+                            field_spec)
         
-    # @pytest.mark.xfail
-    # def test_download_web_document_type_hints(self):
+    @pytest.mark.xfail
+    def test_format_url_param(self):
+        """Verify format_url_param"""
+        THE_MODULE.set_param_dict({"f": "'my dog's fleas'"})
+        assert THE_MODULE.format_url_param("f") == '&#x27;my dog&#x27;s fleas&#x27;'
+        
+    ## TODO (test for type hint failures):
+    ## @pytest.mark.xfail
+    ## @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    ## def test_download_web_document_type_hints(self):
+    ##     ...
 
 #------------------------------------------------------------------------
 

@@ -22,9 +22,20 @@
 Replace emoticons with name (or remove entirely)
 
 Sample usage:
-
-   echo 'github-\U0001f917_Transformers' | {script} -
-"""                          # 🤗 (HuggingFace logo: U+1f917)
+   echo "some \u24DB\u2009 please" | {script} -
+"""
+#
+# note: uses U+24D8 [Circled Latin Small Letter I] and U+2009 [Thin Space]
+#
+##
+## OLD2:
+##    echo "some \U0001F6C8 please" | {script} -
+## """                             # 🛈 (Circled Information Source: U+1F6C8)
+## TODO3: fix spacing after info icon (wider than default characters)
+##
+## OLD:
+##     echo 'github-\U0001f917_Transformers' | {script} -
+## """                          # 🤗 (HuggingFace logo: U+1f917)
 
 # Standard modules
 import unicodedata
@@ -67,7 +78,7 @@ class ConvertEmoticons:
         # TODO3: rework to remove non-standard functional interface for class
         if base_trace_level is not None:
             self.BTL = base_trace_level
-        debug.trace_expr(self.BTL + 2, replace, strip, replacement, augment,
+        debug.trace_expr(self.BTL + 3, replace, strip, replacement, augment,
                          prefix="in ConvertEmoticons.__init__: ")
         if strip is None:
             strip = STRIP_EMOTICONS
@@ -81,7 +92,7 @@ class ConvertEmoticons:
         self.strip = strip
         self.replacement = replacement
         self.augment = augment
-        debug.trace_object(self.BTL, self, label=f"{self.__class__.__name__} instance")
+        debug.trace_object(self.BTL + 2, self, label=f"{self.__class__.__name__} instance")
     #
     # EX: ce = ConvertEmoticons(); (ce.strip != cs.replace) => True
     # EX: ce.convert()("❌ Failure") => "[cross mark] Failure"  # U+274c
@@ -108,7 +119,7 @@ class ConvertEmoticons:
             replacement = self.replacement
         if augment is None:
             augment = self.augment
-        debug.trace_expr(self.BTL, replace, strip, replacement, augment,
+        debug.trace_expr(self.BTL + 1, replace, strip, replacement, augment,
                          prefix="ce.convert: text=_; ")
         in_text = text
         text = (text or "")
@@ -154,8 +165,14 @@ def main():
     strip_entirely = main_app.get_parsed_option(STRIP_OPT)
     ce = ConvertEmoticons(strip=strip_entirely)
 
-    for line in main_app.read_entire_input().splitlines():
-        print(ce.convert(line))
+    # Print the result of conversion, trapping for errors
+    # note: awkward construct to avoid BrokenPipeError
+    # see https://stackoverflow.com/questions/26692284/how-to-prevent-brokenpipeerror-when-doing-a-flush-in-python
+    try:
+        for line in main_app.read_entire_input().splitlines():
+            print(ce.convert(line))
+    except:
+        debug.trace_exception(6, "ConvertEmoticons.convert")
     return
 
 #-------------------------------------------------------------------------------

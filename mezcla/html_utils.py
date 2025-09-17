@@ -2,15 +2,15 @@
 # -*- coding: utf-8 -*-
 #
 # Micellaneous HTML utility functions, in particular with support for resolving HTML
-# rendered via JavaScript (via selenium). This was motivated by the desire to extract
+# rendered via JavaScript (using selenium). This was motivated by the desire to extract
 # images from pubchem.ncbi.nlm.nih.gov web pages for drugs (e.g., Ibuprofen, as
 # illustrated below).
 #
 #-------------------------------------------------------------------------------
 # Example usage:
 #
-# TODO: see what html_file should be set to
-# $ PATH="$PATH:/usr/local/programs/selenium" DEBUG_LEVEL=6 MOZ_HEADLESS=1 $PYTHON html_utils.py "$html_file" > _html-utils-pubchem-ibuprofen.log7 2>&
+# TODO3: see what html_file should be set to
+# $ PATH="$PATH:/usr/local/programs/selenium" DEBUG_LEVEL=6 MOZ_HEADLESS=1 $PYTHON html_utils.py "$html_file" > _html-utils-pubchem-ibuprofen.log 2>&1
 # $ cd $TMPDIR
 # $ wc *ibuprofen*
 #     13   65337  954268 post-https%3A%2F%2Fpubchem.ncbi.nlm.nih.gov%2Fcompound%2FIbuprofen
@@ -38,23 +38,27 @@
 #
 #................................................................................
 # Note:
-#  - via https://dirask.com/posts/JavaScript-difference-between-innerHTML-and-outerHTML-MDg8mp:
-#    The difference between innerHTML and outerHTML html:
-#      innerHTML = HTML inside of the selected element
-#      outerHTML = HTML inside of the selected element + HTML of the selected element
+# - via https://dirask.com/posts/JavaScript-difference-between-innerHTML-and-outerHTML-MDg8mp:
+#   The difference between innerHTML and outerHTML html:
+#     innerHTML = HTML inside of the selected element
+#     outerHTML = HTML inside of the selected element + HTML of the selected element
+# - via grok:
+#   In short, inner HTML is just the content inside the tags, while outer HTML includes the tags themselves.
 #-------------------------------------------------------------------------------
-# TODO:
+# TODO3:
 # - Standardize naming convention for URL parameter accessors (e.g., get_url_param vs. get_url_parameter).
 # - Create class for selenium support (e.g., get_browser ... wait_until_ready).
 # - * Use kawrgs to handle functions with common arguments (e.g., download_web_document, retrieve_web_document, and wrappers around them).
 # - Use thin spacing around controls (e.g., via U+202F Narrow No-Break Space or via CSS).
+#
+# TODO2:
+# - Document selenium/webdriver installation (e.g., gecko drivers).
 # 
 
 """HTML utility functions"""
 
 # Standard packages
 import html
-import re
 import sys
 import time
 import traceback
@@ -83,32 +87,48 @@ from mezcla.system import write_temp_file
 
 # Constants
 DEFAULT_STATUS_CODE = 0
-MAX_DOWNLOAD_TIME = system.getenv_integer("MAX_DOWNLOAD_TIME", 60,
-                                          "Time in seconds for rendered-HTML download as with get_inner_html")
-MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("MID_DOWNLOAD_SLEEP_SECONDS", 15,
-                                                   "Mid-stream delay if document not ready")
-POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_integer("POST_DOWNLOAD_SLEEP_SECONDS", 1,
-                                                    "Courtesy delay after URL access--prior to download")
-SKIP_BROWSER_CACHE = system.getenv_boolean("SKIP_BROWSER_CACHE", False,
-                                           "Don't use cached webdriver browsers")
+MAX_DOWNLOAD_TIME = system.getenv_integer(
+    "MAX_DOWNLOAD_TIME", 60,
+    description="Time in seconds for rendered-HTML download as with get_inner_html")
+MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_float(
+    "MID_DOWNLOAD_SLEEP_SECONDS", 1,
+    description="Mid-stream delay if document not ready")
+NUM_MID_DOWNLOAD_CHECKS = system.getenv_integer(
+    "NUM_MID_DOWNLOAD_CHECKS", 3,
+    description="Number of mid-stream delays to use")
+POST_DOWNLOAD_SLEEP_SECONDS = system.getenv_float(
+    "POST_DOWNLOAD_SLEEP_SECONDS", 1,
+    description="Courtesy delay after URL access--prior to download")
+SKIP_BROWSER_CACHE = system.getenv_boolean(
+    "SKIP_BROWSER_CACHE", False,
+    description="Don't use cached webdriver browsers")
 USE_BROWSER_CACHE = not SKIP_BROWSER_CACHE
-DOWNLOAD_VIA_URLLIB = system.getenv_bool("DOWNLOAD_VIA_URLLIB", False,
-                                         "Use old-style download via urllib instead of requests")
+DOWNLOAD_VIA_URLLIB = system.getenv_bool(
+    "DOWNLOAD_VIA_URLLIB", False,
+    description="Use old-style download via urllib instead of requests")
 DOWNLOAD_VIA_REQUESTS = (not DOWNLOAD_VIA_URLLIB)
-DOWNLOAD_TIMEOUT = system.getenv_float("DOWNLOAD_TIMEOUT", 5,
-                                       "Timeout in seconds for request-based as with download_web_document")
-HEADLESS_WEBDRIVER = system.getenv_bool("HEADLESS_WEBDRIVER", True,
-                                        "Whether Selenium webdriver is hidden")
-STABLE_DOWNLOAD_CHECK = system.getenv_bool("STABLE_DOWNLOAD_CHECK", False,
-                                           "Wait until download size stablizes--for dynamic content")
-EXCLUDE_IMPORTS = system.getenv_bool("EXCLUDE_IMPORTS", False,
-                                     "Sets --follow-imports=silent; no import files are checked")
+DOWNLOAD_TIMEOUT = system.getenv_float(
+    "DOWNLOAD_TIMEOUT", 5,
+    description="Timeout in seconds for request-based as with download_web_document")
+HEADLESS_WEBDRIVER = system.getenv_bool(
+    "HEADLESS_WEBDRIVER", True,
+    description="Whether Selenium webdriver is hidden")
+OMIT_STABLE_DOWNLOAD_CHECK = system.getenv_bool(
+    "OMIT_STABLE_DOWNLOAD_CHECK", False,
+    description="Omit waiting until download size stablizes--for dynamic content")
+STABLE_DOWNLOAD_CHECK = not OMIT_STABLE_DOWNLOAD_CHECK
+EXCLUDE_IMPORTS = system.getenv_bool(
+    "EXCLUDE_IMPORTS", False,
+    description="Sets --follow-imports=silent; no import files are checked")
 TARGET_BOOTSTRAP =  system.getenv_bool(
     "TARGET_BOOTSTRAP", False,
     description="Format tooltips, etc. for use with bootstrap")
 FIREFOX_WEBDRIVER = system.getenv_bool(
     "FIREFOX_WEBDRIVER", True,          ## TODO: "FIREFOX_WEBDRIVER", False,
     description="Use Firefox webdriver for Selenium")
+FIREFOX_PATH = system.getenv_value(
+    "FIREFOX_PATH", None,
+    desc="Path override for Firefox binary for use with selenium")
 HEADERS = "headers"
 FILENAME = "filename"
 
@@ -118,8 +138,8 @@ OptBoolStr = Union[bool, str, None]
 
 # Globals
 # note: for convenience in Mako template code
-user_parameters:Dict[str, str] = {}
-issued_param_dict_warning:bool = False
+user_parameters : Dict[str, str] = {}
+issued_param_dict_warning : bool = False
 
 # Placeholders for dynamically loaded modules
 BeautifulSoup : Optional[Callable] = None
@@ -129,12 +149,15 @@ BeautifulSoup : Optional[Callable] = None
 
 browser_cache : Dict = {}
 ##
-def get_browser(url : str):
+def get_browser(url : str, timeout : Optional[int] = None):
     """Get existing browser for URL or create new one
     Notes: 
     - This is for use in web automation (e.g., via selenium).
     - A large log file might be produced (e.g., geckodriver.log).
+    - If TIMEOUT specified, it only waits specified seconds.
+    - Warning: can return null browser object.
     """
+    debug.trace(6, f"in get_browser({url}); {timeout=}")
     # pylint: disable=import-error, import-outside-toplevel
     from selenium import webdriver
     from selenium.webdriver.remote.webdriver import WebDriver
@@ -147,35 +170,41 @@ def get_browser(url : str):
     # Check for cached version of browser. If none, create one and access page.
     browser = browser_cache.get(url) if USE_BROWSER_CACHE else None
     if not browser:
-        # Make the browser hidden by default (i.e., headless)
-        # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
-        ## TODO2: add an option to use Chrome
-        ## OLD:
-        ## # pylint: disable=import-outside-toplevel
-        ## from selenium.webdriver.firefox.options import Options
-        options_module = (webdriver.firefox.options if FIREFOX_WEBDRIVER else webdriver.chrome.options)
-        webdriver_options = options_module.Options()
-        ## OLD: webdriver_options.headless = HEADLESS_WEBDRIVER
-        if HEADLESS_WEBDRIVER:
-            webdriver_options.add_argument('-headless')
-        ## OLD: browser = webdriver.Firefox(options=webdriver_options)
-        browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
-        browser = browser_class(options=webdriver_options)
-        debug.trace_object(5, browser)
+        try:
+            # Make the browser hidden by default (i.e., headless)
+            # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
+            ## TODO2: add an option to use Chrome
+            options_module = (webdriver.firefox.options if FIREFOX_WEBDRIVER else webdriver.chrome.options)
+            webdriver_options = options_module.Options()
+            ## TEMP: Based on https://www.reddit.com/r/learnpython/comments/1fv3kiy/need_help_with_installing_geckodriver (TODO3: generalize)
+            if FIREFOX_PATH and FIREFOX_WEBDRIVER:
+                webdriver_options.binary_location = FIREFOX_PATH
+                debug.trace(4, f"Warning: assuming {webdriver_options.binary_location=} as with Tom's setup")
+            if HEADLESS_WEBDRIVER:
+                webdriver_options.add_argument('-headless')
+            browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
+            browser = browser_class(options=webdriver_options)
+            if timeout:
+                browser.set_page_load_timeout(timeout)
+            debug.trace_object(5, browser)
+    
+            # Get the page, setting optional cache entry and sleeping afterwards
+            if USE_BROWSER_CACHE:
+                browser_cache[url] = browser
+            browser.get(url)
+    
+            # Optionally pause after accessing the URL (to avoid overloading the same server).
+            # Note: This assumes that the URL's are accessed sequentially. ("Post-download" is
+            # a bit of a misnomer as this occurs before the download from browser, as in get_inner_html.)
+            if POST_DOWNLOAD_SLEEP_SECONDS:
+                system.sleep(POST_DOWNLOAD_SLEEP_SECONDS, message="Post-download")
+        except:
+            browser = None
+            system.print_exception_info("get_browser")
 
-        # Get the page, setting optional cache entry and sleeping afterwards
-        if USE_BROWSER_CACHE:
-            browser_cache[url] = browser
-        browser.get(url)
-
-        # Optionally pause after accessing the URL (to avoid overloading the same server).
-        # Note: This assumes that the URL's are accessed sequentially. ("Post-download" is
-        # a bit of a misnomer as this occurs before the download from browser, as in get_inner_html.)
-        if POST_DOWNLOAD_SLEEP_SECONDS:
-            time.sleep(POST_DOWNLOAD_SLEEP_SECONDS)
-            
-    # Make sure the bare minimum is included (i.e., "<body></body>"
-    debug.assertion(len(browser.execute_script("return document.body.outerHTML")) > 13)
+    # Make sure the bare minimum is included (i.e., "<body></body>" of length 13)
+    if browser:
+        debug.assertion(len(browser.execute_script("return document.body.outerHTML")) >= 13)
     debug.trace_fmt(5, "get_browser({u}) => {b}", u=url, b=browser)
     return browser
 
@@ -189,15 +218,16 @@ def get_inner_html(url : str):
     # Also see https://stackoverflow.com/questions/8049520/web-scraping-javascript-page-with-python.
     # Note: The retrieved HTML might not match the version rendered in a browser due to a variety of reasons such as timing of dynamic updates and server controls to minimize web crawling.
     debug.trace_fmt(5, "get_inner_html({u})", u=url)
+    inner_html: str = ""
     try:
         # Navigate to the page (or get browser instance with existing page)
         browser = get_browser(url)
-        # Wait for Javascript to finish processing
-        wait_until_ready(url)
-        # Extract fully-rendered HTML
-        inner_html:str = browser.page_source
+        if browser:
+            # Wait for Javascript to finish processing
+            wait_until_ready(url)
+            # Extract fully-rendered HTML
+            inner_html = browser.page_source
     except:
-        inner_html = ""
         system.print_exception_info("get_inner_html")
     debug.trace_fmt(7, "get_inner_html({u}) => {h}", u=url, h=inner_html)
     return inner_html
@@ -211,32 +241,45 @@ def get_inner_text(url : str):
     try:
         # Navigate to the page (or get browser instance with existing page)
         browser = get_browser(url)
-        # Wait for Javascript to finish processing
-        wait_until_ready(url)
-        # Extract fully-rendered text
-        inner_text = browser.execute_script("return document.body.innerText")
+        if browser:
+            # Wait for Javascript to finish processing
+            wait_until_ready(url)
+            # Extract fully-rendered text
+            inner_text = browser.execute_script("return document.body.innerText")
     except:
+        debug.trace_exception(6, "get_inner_text")
         system.print_exception_info("get_inner_text")
     debug.trace_fmt(7, "get_inner_text({u}) => {it}", u=url, it=inner_text)
     return inner_text
 
 
-def document_ready(url : str):
-    """Determine whether document for URL has completed loading (via selenium)"""
+def document_ready(url : str, timeout : Optional[float] = None):
+    """Determine whether document for URL has completed loading (via selenium).
+    Note: If TIMEOUT specified, it only waits specified seconds.
+    """
     # See https://developer.mozilla.org/en-US/docs/Web/API/Document/readyState
-    browser = get_browser(url)
-    ready_state = browser.execute_script("return document.readyState")
-    is_ready:bool = (ready_state == "complete")
-    debug.trace_fmt(6, "document_ready({u}) => {r}; state={s}",
-                    u=url, r=is_ready, s=ready_state)
+    is_ready: bool = False
+    ready_state: str = ""
+    try:
+        browser = get_browser(url, timeout=timeout)
+        if browser:
+            ready_state = browser.execute_script("return document.readyState")
+            is_ready = (ready_state == "complete")
+    except:
+        system.print_exception_info("document_ready")
+    debug.trace_fmt(6, "document_ready({u}, {to}) => {r}; state={s}",
+                    u=url, to=timeout, r=is_ready, s=ready_state)
     return is_ready
 
 
-def wait_until_ready(url : str, stable_download_check : bool = STABLE_DOWNLOAD_CHECK):
+def wait_until_ready(url : str, stable_download_check : bool = None):
     """Wait for document_ready (q.v.) and pause to allow loading to finish (via selenium)
     Note: If STABLE_DOWNLOAD_CHECK, the wait incoporates check for download size differences"""
     # TODO: make sure the sleep is proper way to pause
     debug.trace_fmt(5, "in wait_until_ready({u})", u=url)
+    if stable_download_check is None:
+        stable_download_check = STABLE_DOWNLOAD_CHECK
+    debug.trace_expr(6, stable_download_check)
     start_time = time.time()
     end_time = start_time + MAX_DOWNLOAD_TIME
     browser = get_browser(url)
@@ -245,17 +288,24 @@ def wait_until_ready(url : str, stable_download_check : bool = STABLE_DOWNLOAD_C
     done = False
 
     # Wait until document ready and optionally that the size is the same after a delay
-    while ((time.time() < end_time) and (not done)):
+    # and for a specified number of checks (e.g., same size for 3 checks).
+    count = 0
+    while (browser and (time.time() < end_time) and (not done)):
         done = document_ready(url)
         if (done and stable_download_check):
             size = len(browser.page_source)
             done = (size == last_size)
-            debug.trace_fmt(5, "Stable size check: last={l} size={s} done={d}",
-                            l=last_size, s=size, d=done)
+            if done:
+                count += 1
+                done = (count == NUM_MID_DOWNLOAD_CHECKS)
+            else:
+                count = 0
+            debug.trace_fmt(5, "Stable size check: last={l} size={s} count={c} done={d}",
+                            l=last_size, s=size, c=count, d=done)
             last_size = size
         if not done:
-            debug.trace_fmt(6, "Mid-stream download sleep ({s} secs)", s=MID_DOWNLOAD_SLEEP_SECONDS)
-            time.sleep(MID_DOWNLOAD_SLEEP_SECONDS)
+            ## OLD: debug.trace_fmt(6, "Mid-stream download sleep ({s} secs)", s=MID_DOWNLOAD_SLEEP_SECONDS)
+            system.sleep(MID_DOWNLOAD_SLEEP_SECONDS, message="Mid-stream download")
 
     # Issue warning if unexpected condition
     if (not document_ready(url)):
@@ -267,7 +317,7 @@ def wait_until_ready(url : str, stable_download_check : bool = STABLE_DOWNLOAD_C
     debug.trace_fmt(5, "out wait_until_ready(); elapsed={t}s",
                     t=(time.time() - start_time))
     return
-    
+
 
 def escape_hash_value(hash_table : Dict, key: str):
     """Wrapper around escape_html_value for HASH_TABLE[KEY] (or "" if missing).
@@ -302,13 +352,17 @@ def set_param_dict(param_dict : Dict):
 
 def get_url_param(name : str, default_value : Optional[str] = None, param_dict : Optional[Dict] = None, escaped : bool = False):
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
-    Note: It can be ESCAPED for use in HTML.
-    Different from get_url_parameter_value in possibly returning list.
+    Note: It can be ESCAPED for use in HTML. Underscores in NAME are converted to dashes if not in dict.
+    Warning: Can return a list (unlike get_url_parameter_value).
     """
-    # TODO3: default_value => default
+    # EX: get_url_param("fu", param_dict={"fu": "123"}) => "123"
+    # EX: get_url_param("fu", param_dict={"fu": ["123", "321"]}) => ["123", "321"]
+    # TODO3: default_value => default; rename as get_url_param_raw
     if default_value is None:
         default_value = ""
     param_dict = (get_param_dict(param_dict) or {})
+    if "_" in name and (name not in param_dict):
+        name = name.replace("_", "-")
     value = param_dict.get(name, default_value)
     value = system.to_unicode(value)
     if escaped:
@@ -335,15 +389,17 @@ def get_url_text(name : str, default_value : Any = None, param_dict : Optional[D
 def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", param_dict : Optional[Dict] = None):
     """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT
     Note: the value is only specified/submitted if checked"""
-    # TODO3?: extend to handle case with multiple values (see get_url_parameter_value)
     # EX: get_url_param_checkbox_spec("param", param_dict={"param": "on"}) => "checked"
     # EX: get_url_param_checkbox_spec("param", param_dict={"param": "off"}) => ""
     # NOTE: 1 also treated as True
     # TODO: implement in terms of get_url_param
     param_dict = (get_param_dict(param_dict) or {})
     param_value = param_dict.get(name, default_value)
+    if isinstance(param_value, list):
+        param_value = param_value[-1]
     param_value = system.to_unicode(param_value)
-    value = "checked" if (param_value in ["1", "on", True]) else ""
+    ## OLD: value = "checked" if (param_value in ["1", "on", True]) else ""
+    value = "checked" if system.to_bool(param_value) else ""
     debug.trace_fmtd(4, "get_url_param_checkbox_spec({n}, [{d}]) => {v})",
                      n=name, d=default_value, v=value)
     return value
@@ -353,17 +409,25 @@ get_url_parameter_checkbox_spec = get_url_param_checkbox_spec
 
 def get_url_parameter_value(param, default_value : Any = None, param_dict : Optional[Dict] = None):
     """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)
-    Note: different from get_url_parameter in just returning single value
+    Note: Underscores in PARAM are converted to dashes if not in dict.
+    Also, different from get_url_parameter in just returning single value.    
+    Warning: empty strings are treated as None.
     """
+    # EX: get_url_parameter_value("fu", param_dict={"fu": ["123", "321"]}) => "123"
     # TODO3?: rename as get_last_url_parameter_value (to avoid confusion with get_url_parameter)
     param_dict = (get_param_dict(param_dict) or {})
-    result = param_dict.get(param, default_value)
+    in_param = param
+    if "_" in param and (param not in param_dict):
+        param = param.replace("_", "-")
+    ## OLD: result = param_dict.get(param, default_value)
+    result = (param_dict.get(param) or default_value)
     if isinstance(result, list):
         result = result[-1]
     debug.trace_fmtd(5, "get_url_parameter_value({p}, {dft}, _) => {r!r}",
-                     p=param, dft=default_value, r=result)
+                     p=in_param, dft=default_value, r=result)
     return result
-
+#
+# EX: get_url_parameter_value("fu", param_dict={"fu": "321"}) => "321"
 
 def get_url_parameter_bool(param, default_value : bool = False, param_dict : Optional[Dict] = None):
     """Get boolean value for PARAM from PARAM_DICT, with "on" treated as True. @note the hash defaults to user_parameters, and the default value is False
@@ -372,10 +436,12 @@ def get_url_parameter_bool(param, default_value : bool = False, param_dict : Opt
     coerced to boolean beforehand.
     """
     # EX: get_url_parameter_bool("abc", False, { "abc": "on" }) => True
-    # TODO: implement in terms of get_url_param and also system.to_bool
     debug.assertion((default_value is None) or isinstance(default_value, bool))
-    result = (get_url_parameter_value(param, default_value, param_dict)
-              in ["1", "on", "True", True])
+    ## OLD:
+    ## result = (get_url_parameter_value(param, default_value, param_dict)
+    ##           in ["1", "on", "True", True])
+    value = get_url_parameter_value(param, default_value, param_dict)
+    result = system.to_bool(value)
     ## HACK: result = ((system.to_unicode(param_dict.get(param, default_value))) in ["on", True])
     debug.trace_fmtd(4, "get_url_parameter_bool({p}, {dft}, _) => {r}",
                      p=param, dft=default_value, r=result)
@@ -383,7 +449,7 @@ def get_url_parameter_bool(param, default_value : bool = False, param_dict : Opt
 #
 get_url_param_bool = get_url_parameter_bool
 #
-# EX: get_url_param_bool("abc", False, { "abc": "True" }) => True
+# EX: get_url_param_bool("abc", False, param_dict={"abc": "True"}) => True
 
 
 def get_url_parameter_int(param, default_value : int = 0, param_dict : Optional[Dict] = None):
@@ -395,6 +461,9 @@ def get_url_parameter_int(param, default_value : int = 0, param_dict : Optional[
     return result
 #
 get_url_param_int = get_url_parameter_int
+#
+# EX: get_url_parameter_int("n", param_dict={"n": "1"}) => 1
+# EX: get_url_parameter_int("_", param_dict={"_": "_"}) => 0
 
 
 def get_url_parameter_float(param, default_value : float = 0.0, param_dict : Optional[Dict] = None):
@@ -437,7 +506,7 @@ def expand_misc_param(misc_dict : Dict, param_name : str, param_dict : Optional[
     misc_params = get_url_param(param_name, "", param_dict=param_dict)
     if (misc_params and ("=" in misc_params)):
         new_misc_dict = new_misc_dict.copy()
-        for param_spec in re.split(", *", misc_params):
+        for param_spec in my_re.split(", *", misc_params):
             try:
                 param_key, param_value = param_spec.split("=")
                 new_misc_dict[param_key] = param_value
@@ -523,7 +592,6 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
             if not ignore:
                 system.print_exception_info("old_download_web_document")
     if not ok:
-        ## OLD: local_filename = None
         local_filename = ""
     if meta_hash is not None:
         meta_hash[FILENAME] = local_filename
@@ -538,7 +606,7 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
 
 def download_web_document(url : str, filename: Optional[str] = None, download_dir: Optional[str] = None, meta_hash=None, use_cached : bool = False, as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
     """Download document contents at URL, returning as unicode text (unless AS_BINARY).
-    Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to '.'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED. If IGNORE, no exceptions reports are printed."""
+    Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to 'downloads'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED. If IGNORE, no exceptions reports are printed."""
     # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
     # EX: download_web_document("www. bogus. url.html") => None
     ## TODO: def download_web_document(url, /, filename=None, download_dir=None, meta_hash=None, use_cached=False):
@@ -564,7 +632,7 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
     local_filename = gh.form_path(download_dir, filename)
     if meta_hash is not None:
         meta_hash[FILENAME] = local_filename
-    headers = {}
+    ## OLD: headers = {}
     doc_data: OptStrBytes = ""
     if use_cached and system.non_empty_file(local_filename):
         debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
@@ -573,10 +641,13 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
         doc_data = retrieve_web_document(url, meta_hash=meta_hash, as_binary=as_binary, ignore=ignore)
         if doc_data:
             _write_file(local_filename, doc_data, as_binary)
-        if meta_hash:
-            headers = meta_hash.get(HEADERS, {})
-    debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
-                     f=local_filename, h=headers)
+        ## OLD:
+        ## if meta_hash:
+        ##     headers = meta_hash.get(HEADERS, {})
+    ## OLD:
+    ## debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
+    ##                  f=local_filename, h=headers)
+    debug.trace_expr(5, local_filename, meta_hash)
 
     ## TODO: show hex dump of initial data
     debug.trace_fmtd(6, "download_web_document() => _; len(_)={l}",
@@ -631,7 +702,7 @@ def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, i
     - Simpler version of old_download_web_document, using an optional META_HASH for recording headers
     - Works around Error 403's presumably due to urllib's user agent
     - If IGNORE, no exceptions reports are printed."""
-    # EX: re.search("Scrappy.*Cito", retrieve_web_document("www.tomasohara.trade"))
+    # EX: my_re.search("Scrappy.*Cito", retrieve_web_document("www.tomasohara.trade"))
     # Note: See https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve.
     debug.trace_fmtd(5, "retrieve_web_document({u})", u=url)
     ## TEST: result : Optional[AnyStr] = None
@@ -674,7 +745,7 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
     soup = BeautifulSoup(html_text, 'html.parser') if BeautifulSoup else None
     web_site_url = ""
     if url:
-        web_site_url = re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
+        web_site_url = my_re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
         debug.trace_fmtd(6, "wsu1={wsu}", wsu=web_site_url)
         if not web_site_url.endswith("/"):
             web_site_url += "/"
@@ -687,7 +758,7 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
         debug.trace_fmtd(6, "bu1={bu}", bu=base_url)
         if url and not base_url:
             # Remove parts of the URLafter the final slash
-            base_url = re.sub(r"(^.*/[^\/]+/)[^\/]+$", r"\1", url)
+            base_url = my_re.sub(r"(^.*/[^\/]+/)[^\/]+$", r"\1", url)
             debug.trace_fmtd(6, "bu2={bu}", bu=base_url)
         if web_site_url and not base_url:
             base_url = web_site_url
@@ -714,30 +785,44 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
     return links
 
 
-def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None):
-    """Returns HTML specification for input checkbox, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, CSS STYLE and MISC_ATTR (catch all).
-    Note: param_name + "-id" is used for the field ID.
-    The TOOLTIP requires CSS support (e.g., tooltip-control class).
-    Warning: includes separate hidden field for explicit off state"""
-    ## Note: Checkbox valuee are only submitted if checked, so a hidden field is used to provide explicit off.
+def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None, concat_label: Optional[str] = None, skip_hidden: Optional[str] = None, on_change: Optional[str] = None, param_dict : Optional[Dict] = None):
+    """Returns HTML specification for input checkbox with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, OUTER_SPAN_CLASS, CONCAT_LABEL, SKIP_HIDDEN, ON_CHANGE, and PARAM_DICT.
+    Note:
+    - param_name + "-id" is used for the field ID.
+    - The TOOLTIP requires CSS support (e.g., tooltip-control class).
+    - See format_input_field for OUTER_SPAN_CLASS usage.
+    - With CONCAT_LABEL, no space is added after the label.
+    - ON_CHANGE specifies JavaScript to execute when values changes.
+    Warning: includes separate hidden field for explicit off state unless SKIP_HIDDEN.
+    """
+    ## Note: Checkbox values are only submitted if checked, so a hidden field is used to provide explicit off.
     ## This requires use of fix_url_parameters to give preference to final value specified (see results.mako).
     ## See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox for hidden field tip.
     ## Also see https://stackoverflow.com/questions/155291/can-html-checkboxes-be-set-to-readonly
-    ## EX: format_checkbox("disable-touch") => '<label>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" ></label>&nbsp;"'
-    ## EX: format_checkbox("disable-touch", disabled=True) => '<label>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>&nbsp;"'
-    debug.trace_expr(7, param_name, label, default_value, disabled, prefix="in format_checkbox: ")
-    checkbox_spec = get_url_param_checkbox_spec(param_name, default_value)
+    ## EX: format_checkbox("disable-touch") => "<input type='hidden' name='disable-touch' value='off'><label id='disable-touch-label-id'>Disable touch?<input type='checkbox' id='disable-touch-id' name='disable-touch'   ></label>"
+    ## TODO3: add on_cange as with format_input_field
+    debug.trace_expr(7, param_name, label, skip_capitalize, default_value, disabled, style,
+                     misc_attr, tooltip, outer_span_class, concat_label, skip_hidden, on_change, param_dict,
+                     prefix="in format_checkbox: ")
+    checkbox_spec = get_url_param_checkbox_spec(param_name, default_value,
+                                                param_dict=param_dict)
     disabled_spec = ("disabled" if disabled else "")
     status_spec = f"{checkbox_spec} {disabled_spec}".strip()
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
+    debug.assertion("'" not in str(on_change))
+    misc_spec += (f" onchange=\"{on_change}\"" if on_change else "")
     label_misc_spec = ""
     if (label is None):
         label = (param_name.replace("-", " ") + "?")
         if not skip_capitalize:
             label = label.capitalize()
     ## TODO: use hidden only if (default_value in ["1", "on", True])???
-    result = f"<input type='hidden' name='{param_name}' value='off'>"
+    result = ""
+    if outer_span_class:
+        result += f"<span class='{outer_span_class}'>"
+    if not skip_hidden:
+        result += f"<input type='hidden' name='{param_name}' value='off'>"
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
         if TARGET_BOOTSTRAP:
@@ -747,10 +832,16 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
         else:
             tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
             tooltip_end_spec = "</span>"
-    ## OLD: result += f"<label>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
-    result += f"<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
+    result += f"<label id='{param_name}-label-id' {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}"
+    if not concat_label:
+        result += '&nbsp;'
+    result += f"<input type='checkbox' id='{param_name}-id' name='{param_name}' {style_spec} {status_spec} {misc_spec}></label>"
+    if outer_span_class:
+        result += "</span>"
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
+#
+# EX: format_checkbox("disable-touch", skip_hidden=True, disabled=True) => '<label id='disable-touch-id'>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>"'
 
 
 def format_url_param(name : str, default : Optional[str] = None):
@@ -765,42 +856,63 @@ def format_url_param(name : str, default : Optional[str] = None):
     return value_spec
 #
 # EX: format_url_param("r") => ""
-# EX: format_url_param("r", "R") => "R"
+# EX: format_url_param("r", default="R") => "R"
 
 
-def format_input_field(param_name : str, label: Optional[str] = None, skip_capitalize=None,
-                       default_value: Optional[str] = None, max_len : Optional[int] = None,
-                       size : Optional[int] = None, disabled : Optional[int] = None,
-                       style: Optional[str] = None, misc_attr: Optional[str] = None,
-                       tooltip: Optional[str] = None, text_area: Optional[str] = None,
-                       num_rows : Optional[int] = None, on_change: Optional[str] = None):
-    """Returns HTML specification for input field, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, DISABLED, CSS STYLE, MISC_ATTR (catch all), and NUM_ROWS.    
+def format_input_field(
+        param_name : str, label: Optional[str] = None, skip_capitalize=None,
+        default_value: Optional[str] = None, max_len : Optional[int] = None,
+        size : Optional[int] = None, max_value : Optional[int] = None, disabled : Optional[int] = None,
+        style: Optional[str] = None, misc_attr: Optional[str] = None,
+        tooltip: Optional[str] = None, text_area: Optional[bool] = None,
+        num_rows : Optional[int] = None, on_change: Optional[str] = None, on_input: Optional[str] = None,
+        field_type: Optional[str] = None, concat_label: Optional[str] = None,
+        outer_span_class: Optional[str] = None, param_dict : Optional[Dict] = None):
+    """Returns HTML specification for input field with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, MAX_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, NUM_ROWS, ON_CHANGE, FIELD_TYPE, CONCAT_LABEL, OUTER_SPAN_CLASS, and PARAM_DICT.
     Note:
     - param_name + "-id" is used for the field ID.
     - SIZE should be specified if not same as MAX_LEN.
-    - ON_CHANGE specifies JavaScript to execute when values changes.
+    - MAX_VALUE is for number fields.
+    - ON_INPUT specifies JavaScript to execute when values changes.
+    - ON_CHANGE is similar but waits for item to loose focus
     - See format_checkbox for TOOLTIP notes.
+    - With CONCAT_LABEL, no space is added after the label.
+    - With OUTER_SPAN_CLASS the input field is wrapped in <span> with given class for styling
+      (e.g., "display: inline-block; white-space: nowrap;" to keep field and label together).
     """
+    # EX: format_input_field("quest") => '<label >Quest&nbsp;<input id="quest-id"  name="quest"     ></label>'
     # TODO2: doscument tooltip usage & add option for css classes involved (better if done via class-based interface).
-    # TODO3: max_len => maxlength
+    # TODO3: max_len => maxlength; make sure single quote used for attribute consistently (likewise elsewhere)
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
     # For tooltip support, see https://stackoverflow.com/questions/65854934/is-a-css-only-inline-tooltip-with-html-content-inside-eg-images-possible.
-    debug.trace_expr(7, param_name, label, default_value, max_len, disabled, prefix="in format_input_field: ")
+    debug.trace_expr(7, param_name, label, skip_capitalize, default_value, max_len, size, max_value,
+                     disabled, style, misc_attr, tooltip, text_area, num_rows, on_change,
+                     field_type, concat_label, outer_span_class, param_dict,
+                     prefix="in format_input_field: ")
     if (label is None):
         label = param_name.replace("-", " ")
         if not skip_capitalize:
             label = label.capitalize()
     if (default_value is None):
         default_value = ""
+    if not isinstance(default_value, str):
+        debug.trace(5, f"FYI: Use string for {param_name} default {default_value!r}")
+        default_value = str(default_value)        
     if (num_rows is None):
         num_rows = 1
     if (size is None):
         size = max_len
-    value_spec = (get_url_param(param_name) or default_value)
+    type_spec = (f"type='{field_type}'" if field_type else "")
+    field_value = (get_url_parameter_value(param_name, param_dict=param_dict) or default_value)
+    ## TEST: value_spec = (f"value='{field_value}'" if field_value else "")
+    value_spec = (f"value='{escape_html_text(field_value)}'" if field_value else "")
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
-    misc_spec += (f"onchange={on_change}" if on_change else "")
+    debug.assertion("'" not in str(on_change))
+    misc_spec += (f" onchange=\"{on_change}\"" if on_change else "")
+    debug.assertion("'" not in str(on_input))
+    misc_spec += (f" oninput=\"{on_input}\"" if on_input else "")
     label_misc_spec = ""
     tooltip_start_spec = tooltip_end_spec = ""
     if tooltip:
@@ -811,8 +923,14 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
         else:
             tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
             tooltip_end_spec = "</span>"
-    result = f'<label {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}&nbsp;'
+    result = ""
+    if outer_span_class:
+        result += f"<span class='{outer_span_class}'>"
+    result += f"<label id='{param_name}-label-id' {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}"
+    if not concat_label:
+        result += '&nbsp;'
     if text_area:
+        debug.assertion(not type_spec)
         max_len_spec = (f'maxlength="{max_len}"' if max_len else "")
         value_spec = format_url_param(param_name)
         result += f'<textarea id="{param_name}-id" name="{param_name}" rows={num_rows} {style_spec} {max_len_spec} {disabled_spec} {misc_spec}>{value_spec}</textarea>'
@@ -822,13 +940,19 @@ def format_input_field(param_name : str, label: Optional[str] = None, skip_capit
             len_spec += f' maxlength="{max_len}"'
         if size:
             len_spec += f' size="{size}"'
-        result += f'<input id="{param_name}-id" value="{value_spec}" name="{param_name}" {style_spec} {len_spec} {disabled_spec} {misc_spec}>'
+        if max_value:
+            debug.assertion(field_type == "number")
+            len_spec += f' max="{max_value}"'
+        result += f'<input id="{param_name}-id" {value_spec} name="{param_name}" {style_spec} {len_spec} {disabled_spec} {misc_spec} {type_spec}>'
     result += "</label>"
+    if outer_span_class:
+        result += "</span>"
         
-    debug.trace(6, f"format_input_field({param_name}, ...) => {result}")
+    debug.trace(6, f"format_input_field({param_name}, ...) => {result!r}")
     return result
 #
-# EX: format_input_field("num-id", label="Num", max_len=3) => '<label>Num&nbsp;<input id="num-id-id" value="" name="num-id"  maxlength="3" size="3"  ></label>'
+# EX: format_input_field("quest", default_value="O'What?") => '<label id=\'quest-label-id\' >Quest&nbsp;<input id="quest-id" value=\'O&#x27;What?\' name="quest"     ></label>'
+# EX: format_input_field("num-id", label="Num", max_value=101, field_type="number") => '<label>Num<input id="num-id-id" value="" name="num-id"  max="101" size="3"  ></label>'
 
 #-------------------------------------------------------------------------------
 # TEMP: Code previously in other modules
@@ -902,7 +1026,7 @@ def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] 
     # Parse HTML, extract base URL if given and get website from URL.
     init_BeautifulSoup()
     soup = BeautifulSoup(document_data, 'html.parser') if BeautifulSoup else None
-    web_site_url = re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
+    web_site_url = my_re.sub(r"(https?://[^\/]+)/?.*", r"\1", url)
     debug.trace_fmtd(6, "wsu1={wsu}", wsu=web_site_url)
     if not web_site_url.endswith("/"):
         web_site_url += "/"
@@ -910,12 +1034,6 @@ def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] 
     base_url_info = soup.find("base") if soup else None
     base_url = base_url_info.get("href") if base_url_info else None
     debug.trace_fmtd(6, "bu1={bu}", bu=base_url)
-    ## BAD:
-    ## if not base_url:
-    ##     # Remove parts of the URL after the final slash
-    ##     # TODO: comment and example
-    ##     base_url = re.sub(r"(^.*/[^\/]+/)[^\/]+$", r"\1", url)
-    ##     debug.trace_fmtd(6, "bu2={bu}", bu=base_url)
     if not base_url:
         base_url = web_site_url
         debug.trace_fmtd(6, "bu3={bu}", bu=base_url)

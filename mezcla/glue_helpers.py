@@ -143,11 +143,10 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
     """Return name of unique temporary file, optionally with DELETE"""
     # Note: delete defaults to False if detailed debugging
     # TODO: allow for overriding other options to NamedTemporaryFile
-    if ((delete is None) and debug.detailed_debugging()):
+    if ((delete is None) and not KEEP_TEMP):
         delete = False
-    ## BAD: temp_file_name = (TEMP_FILE or tempfile.NamedTemporaryFile(**NTF_ARGS).name)
     NTF_ARGS = {'prefix': TEMP_PREFIX,
-                'delete': not KEEP_TEMP,
+                'delete': delete,
                 'suffix': TEMP_SUFFIX}
     temp_file_name = TEMP_FILE
     if not temp_file_name:
@@ -173,6 +172,7 @@ def get_temp_dir(delete=None) -> str:
     temp_dir_path = get_temp_file(delete=delete)
     # note: removes non-dir file if exists
     full_mkdir(temp_dir_path, force=True)
+    debug.trace_fmtd(5, "gh.get_temp_dir() => {r!r}", r=temp_dir_path)
     return temp_dir_path
 
 
@@ -259,7 +259,8 @@ def non_empty_file(filename: FileDescriptorOrPath) -> bool:
 def resolve_path(
         filename: str,
         base_dir: Optional[str] = None,
-        heuristic: bool = False
+        heuristic: bool = False,
+        absolute: bool = False,
     ) -> str:
     """Resolves path for FILENAME or path, relative to BASE_DIR if not in current directory. 
     Note:
@@ -269,10 +270,11 @@ def resolve_path(
       is useful for resolving resources for tests, which normally run of module dir 
       (e.g., mezcla for mezcla/tests/test_template.py): see test_heuristic_resolve_path.
     - HEURISTIC also uses find.
+    - If ABSOLUTE, then the full path is returned.
     """
     ## TODO4: rename filename to sub_path for clarity
     debug.trace(5, f"in resolve_path({filename!r})")
-    debug.trace_expr(6,  base_dir, heuristic)
+    debug.trace_expr(6, base_dir, heuristic, absolute)
     # TODO: give preference to script directory over current directory
     path = filename
     if not os.path.exists(path):
@@ -306,11 +308,17 @@ def resolve_path(
                 path = check_path
                 break
     # Fall back to using find command
+    ## TODO4: move base_dir sanity check earlier
     if (not os.path.exists(path)) and heuristic:
-        debug.trace(4, "FYI: resolve_path falling back to find")
+        debug.trace(4, f"FYI: resolve_path falling back to find for {path!r}")
         debug.assertion(" " not in path)
-        debug.assertion(base_dir)
+        if (not base_dir):
+            debug.trace(5, f"FYI: using . for base_dir (i.e., {system.real_path('.')})")
         path = run(f"find {base_dir or '.'} -name '{path}'")
+
+    # Make sure full path if desired
+    if absolute:
+        path = system.absolute_path(path)
             
     debug.trace_fmtd(4, "resolve_path({f}) => {p}", f=filename, p=path)
     return path
@@ -322,15 +330,15 @@ def form_path(*filenames: str, create: bool = False) -> str:
     If CREATE, then the directory for the path is created if needed
     Warning: This might be deprecated: use system.form_path instead.
     """
-    ## TODO3: return system.form_path(*filenames)
     debug.assertion(not any(f.startswith(system.path_separator()) for f in filenames[1:]))
     if create:
+        ## TODO2: add dir option so that all filenames used for path
         path_dir = os.path.join(*filenames[:-1])
         if not system.file_exists(path_dir):
             full_mkdir(path_dir)
 
     path = os.path.join(*filenames)
-    debug.trace_fmtd(6, "form_path{f} => {p}", f=tuple(filenames), p=path)
+    debug.trace(6, f"form_path({filenames}, [create={create}]) => {path}")
     return path
 
 

@@ -8,7 +8,7 @@
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by unittest_wrapper.py.
 # - This can be run as follows (e.g., from root of repo):
-#   $ pytest ./mezclatests/test_template.py
+#   $ pytest ./mezcla/examples/tests/test_template.py
 # - TODO: Remove TODO notes when stable.
 #
 # Warning:
@@ -21,7 +21,6 @@
 ## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
 ## example, only delete todo comments not regular code, unless suggested in tip).
 ## In particular, it is critical that script_module gets initialized properly.
-
 
 """TODO: Tests for template module"""
 
@@ -44,6 +43,7 @@ from mezcla import system
 THE_MODULE = None
 try:
     ## TODO: import mezcla.<module> as THE_MODULE
+    ## -or-: import <module> as THE_MODULE
     pass                                ## TODO: delete
 except:
     system.print_exception_info("<module> import") 
@@ -52,22 +52,22 @@ except:
 if not my_re.search(__file__, r"\btemplate.py$"):
     debug.assertion("mezcla.template" not in str(THE_MODULE))
 
+#------------------------------------------------------------------------
 
-
-class TestTemplate(TestWrapper):
-    """Class for testcase definition"""
-    script_file = TestWrapper.get_module_file_path(__file__)
+class TestIt(TestWrapper):
+    """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_01_data_file(self):
-        """Makes sure to-do grep works as expected"""
-        debug.trace(4, "TestTemplate.test_01_data_file()")
+        """Tests run_script w/ data file"""
+        # Warning: see notes above about potential issues with run_script-based tests.
+        debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
         data = ["TEMP", "TODO", "DONE"]
         system.write_lines(self.temp_file, data)
         output = self.run_script(options="--TODO-arg", env_options="TODO_ENV=VAL",
                                  data_file=self.temp_file)
-        self.do_assert(my_re.search(r"Error.*Implement.me", output.strip()))
+        self.do_assert(my_re.search(r"TODO Implement.me", output.strip()))
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail

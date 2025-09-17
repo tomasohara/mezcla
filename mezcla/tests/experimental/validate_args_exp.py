@@ -11,7 +11,7 @@ from typing import Optional
 import importlib.util
 import sys
 
-# Installed module
+# Installed modules
 from pydantic import validate_call
 
 # Local modules

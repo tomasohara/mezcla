@@ -24,6 +24,7 @@ from unittest_parametrize import ParametrizedTestCase, parametrize
 # Local packages
 from mezcla import glue_helpers as gh
 from mezcla import debug
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import SKIP_EXPECTED_ERRORS, SKIP_EXPECTED_REASON
@@ -91,9 +92,27 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
     def test_extract_string_list(self):
         """Ensure extract_string_list works as expected"""
         debug.trace(4, "test_extract_string_list()")
+
+        # Check typical cases
         assert THE_MODULE.extract_string_list("  a  b,c") == ['a', 'b', 'c']
         assert THE_MODULE.extract_string_list("a\nb\tc") == ['a', 'b', 'c']
+        assert THE_MODULE.extract_string_list("a, b c") == ['a', 'b', 'c']
 
+        # Check special cases
+        assert THE_MODULE.extract_string_list("") == []
+        assert THE_MODULE.extract_string_list(",") == ['', '']
+        assert THE_MODULE.extract_string_list(",", strip_empty=True) == []
+
+    def test_extract_numeric_string_list(self):
+        """Verify extract_string_list with numericranges"""
+        debug.trace(4, "test_extract_numeric_string_list()")
+
+        # Check typical cases
+        self.do_assert(THE_MODULE.extract_string_list("1-4", allow_numeric_ranges=True)
+                       == ['1', '2', '3', '4'])
+        self.do_assert(THE_MODULE.extract_string_list("a b-c d", allow_numeric_ranges=True)
+                       == ['a', 'b-c', 'd'])
+        
     def test_is_prime(self):
         """Ensure is_prime works as expected"""
         debug.trace(4, "test_is_prime()")
@@ -273,10 +292,10 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         result_class = THE_MODULE.get_class_from_name('date', 'datetime')
         assert result_class is datetime.date
 
-    def check_apply_numeric_suffixes(self, text, expect):
+    def check_apply_numeric_suffixes(self, text, expect, just_once=False):
         """Helper for test_apply_numeric_suffixes """
         debug.trace_expr(4, text, expect, prefix="in check_apply_numeric_suffixes: ")
-        actual = THE_MODULE.apply_numeric_suffixes(text)
+        actual = THE_MODULE.apply_numeric_suffixes(text, just_once=just_once)
         assert actual.strip() == expect.strip()
     
     @pytest.mark.xfail                  # TODO: remove xfail
@@ -284,23 +303,47 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         "text, actual",
         ## TODO? ("text, actual")     # see https://github.com/adamchainz/unittest-parametrize
         [ (f"{ONE_MB - 1024 - 1} {ONE_MB} {ONE_MB + 1024}", "1022.999K 1M 1.001M"),
-          ("0000", "0K"),
+          ("0000", "0K"),                         # special cas
           ## TODO2: ("-00000000-", "-_00000000_?-"),
-          ("-00000000-", "-0K-"),
+          ("-00000000-", "-0K-"),                 # esnure nuemric context
+          (f"{int(1.5 * ONE_MB)}", "1.5M"),       # make sure not rounded
          ])
     def test_apply_numeric_suffixes(self, text, actual):
         """Check apply_numeric_suffixes"""
+        debug.trace(5, f"TestIt.test_apply_numeric_suffixes(); self={self}")
         self.check_apply_numeric_suffixes(text, actual)
+
+    def test_simple_apply_numeric_suffixes(self):
+        """Check apply_numeric_suffixes"""
+        debug.trace(5, f"TestIt.test_simple_apply_numeric_suffixes(); self={self}")
+        self.check_apply_numeric_suffixes("2048 16384", "2K 16K")
+        self.check_apply_numeric_suffixes("2048 16384", "2K 16384", just_once=True)
 
     @pytest.mark.xfail                  # TODO: remove xfail
     def test_stdin_apply_numeric_suffixes(self):
         """Check apply_numeric_suffixes_stdin"""
+        debug.trace(5, f"TestIt.test_stdin_apply_numeric_suffixes(); self={self}")
         temp_file = self.create_temp_file("999 1024")
         self.monkeypatch.setattr("sys.stdin", system.open_file(temp_file))
         THE_MODULE.apply_numeric_suffixes_stdin()
         actual = self.get_stdout().strip()
         assert actual == "999 1K"
 
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_GlobalSetter(self):
+        """Ensure that GlobalSetter's changes are temporary"""
+        self.patch_trace_level(3)
+        unique_mod_3 = unique_mod_4 = []
+        def get_unique_moduli(n, l):
+            """Returns unique modulus results over N in [0, l-1]"""
+            return system.unique_items(i % n for i in range(l))
+        unique_mod_4 = get_unique_moduli(4, 13)
+        with THE_MODULE.GlobalSetter(debug, 'trace_level', 8):
+            unique_mod_3 = get_unique_moduli(3, 13)
+        stderr = self.get_stderr()
+        assert my_re.search("unique_items.*0, 1, 2", stderr)
+        assert not my_re.search("unique_items.*0, 1, 2, 3", stderr)
+        assert system.difference(unique_mod_4, unique_mod_3) == [3]
 
 @pytest.mark.skipif(not mezcla_to_standard, reason="Unable to load mezcla_to_standard")
 class TestFileToInstance(TestWrapper):

@@ -7,12 +7,16 @@
 #
 #
 
-"""Run JavaScript embedded in <script> tags through lint-style code checkers"""
+"""Run JavaScript embedded in <script> tags through lint-style code checkers
+
+Usage example:
+   {script} tests/resources/document_ready_test.html
+"""
 
 # Standard modules
 from collections import defaultdict
 import re
-import tempfile
+## OLD: import tempfile
 
 # Local modules
 # TODO: def tomas_import(name): ... components = eval(name).split(); ... import nameN-1.nameN as nameN
@@ -28,54 +32,89 @@ SKIP_SAFE_MODE = "skip-safe-mode"
 SKIP_COMMON_DEFINES = "skip-common-defines"
 JAVASCRIPT_HEADER = "javascript-header"
 #
-# TODO: put script-based temporary filename basename support into main
-DEFAULT_PREFIX = (system.remove_extension(__file__) or "check-js")
-TEMP_PREFIX = system.getenv_text("TEMP_PREFIX", DEFAULT_PREFIX,
-                                 "Temporary file prefix (see tempfile.mkstemp)")
-TEMP_SUFFIX = system.getenv_text("TEMP_SUFFIX", "-",
-                                 "Temporary file suffix (see tempfile.mkstemp)")
-# NOTE: see tempfile.mkstemp for NamedTemporaryFile keyword args
-DEFAULT_TEMP_BASE = tempfile.NamedTemporaryFile(prefix=TEMP_PREFIX, suffix=TEMP_SUFFIX).name
-TEMP_BASE = system.getenv_text("TEMP_BASE", DEFAULT_TEMP_BASE,
-                               "Basename with directory for temporary files")
+## OLD:
+## # TODO: put script-based temporary filename basename support into main
+## DEFAULT_PREFIX = (system.remove_extension(__file__) or "check-js")
+## TEMP_PREFIX = system.getenv_text("TEMP_PREFIX", DEFAULT_PREFIX,
+##                                  "Temporary file prefix (see tempfile.mkstemp)")
+## TEMP_SUFFIX = system.getenv_text("TEMP_SUFFIX", "-",
+##                                  "Temporary file suffix (see tempfile.mkstemp)")
+## # NOTE: see tempfile.mkstemp for NamedTemporaryFile keyword args
+## DEFAULT_TEMP_BASE = tempfile.NamedTemporaryFile(prefix=TEMP_PREFIX, suffix=TEMP_SUFFIX).name
+## TEMP_BASE = system.getenv_text("TEMP_BASE", DEFAULT_TEMP_BASE,
+##                                "Basename with directory for temporary files")
 #
 MAX_ERRORS = system.getenv_int("MAX_ERRORS", 10000,
                                "Maxmium number of erros to report")
 #
 # note: see DEFAULT_JAVASCRIPT_HEADER below for other options
 JSLINT = "jslint"
-JSLINT_OPTIONS = system.getenv_text("JSLINT_OPTIONS", f"--maxerr {MAX_ERRORS} --white",
-                                    "Options for jslint")
+JSLINT_PROGRAM = system.getenv_text(
+    "JSLINT_PROGRAM", JSLINT,
+    desc="Script to invoke jslint")
+JSLINT_OPTIONS = system.getenv_text(
+    "JSLINT_OPTIONS", f"--maxerr {MAX_ERRORS} --white",
+    desc="Options for jslint")
 JSHINT = "jshint"
-JSHINT_OPTIONS = system.getenv_text("JSHINT_OPTIONS", "--show-non-errors",
-                                    "Options for jshint")
-DEFAULT_CODE_CHECKERS = system.getenv_text("CODE_CHECKERS",
-                                           f"{JSLINT},  {JSHINT}",
-                                           "JavaScript code checking commands")
+JSHINT_PROGRAM = system.getenv_text(
+    "JSHINT_PROGRAM", JSHINT,
+    desc="Script to invoke jshint")
+JSHINT_OPTIONS = system.getenv_text(
+    "JSHINT_OPTIONS", "--show-non-errors",
+    desc="Options for jshint")
+DEFAULT_CODE_CHECKERS = system.getenv_text(
+    "CODE_CHECKERS",
+    f"{JSLINT},  {JSHINT}",
+    desc="JavaScript code checking commands")
+SKIP_STRICT_MODE = system.getenv_bool(
+    "SKIP_STRICT_MODE", False,
+    desc="Whether to skip strict more: trumps command line args")
+USE_STRICT_MODE = not SKIP_STRICT_MODE
 SAFEMODE_HEADER = """
-'use strict';            // Added for sanity checking (e.g., undefined variables)
-"""
+    // Added for sanity checking (e.g., undefined variables)
+    "use strict";               // jshint ignore:line
+""" if USE_STRICT_MODE else ""
 
 # TODO: use separate headers for jslint and jshint
-DEFAULT_JAVASCRIPT_HEADER = f"""
-// Start of added header (JavaScript and jQuery definitions)
-function $(selector, context) {{ selector = context; }}
-var document;
-var window;
-var jQuery;
+DEFAULT_JAVASCRIPT_HEADER = (f"""
+    // note: silly need to work around inflexible parsers of both programs
 
-// Stuff for jslint:
-//    global $, jQuery, alert
-//    jslint browser: true
-//    jslint devel          // Allow console.log() and friends.
-//    jslint long           // Allow long lines.
-//    jslint white          // Allow messy whitespace.
+    // Stuff for jslint:
+          /*global $, jQuery, alert*/   // jshint ignore:line
+    // Assume browser environment
+          /*jslint browser*/            // jshint ignore:line
+    // Allow console.log() and friends.
+          /*jslint devel*/              // jshint ignore:line
+    // Allow long lines.
+          /*jslint long*/               // jshint ignore:line
+    // Allow messy whitespace.
+          /*jslint white*/              // jshint ignore:line
 
-// Stuff for jshint:
-//    jshint maxerr: {MAX_ERRORS}
-
-// End of added header
+    // Stuff for jshint:
+          /* jshint maxerr: {MAX_ERRORS} */
+          /* jshint esversion: 6 */
 """
++ ("""
+    // note: same as "use strict"
+          /* jshint globalstrict: false */
+          /* jshint strict: true */
+""" if USE_STRICT_MODE else "")
++ """
+    // Start of added header (JavaScript and jQuery definitions)
+    // TEMP: includes workaround for silly jslint filters
+    // TODO: make jQuery and bootstrap individually conditional
+    var document;
+    var window;
+    var jQuery;
+    var bootstrap;
+    var console;
+    function $(selector, context) { selector = context; }
+    function trace () { return; }
+    console.log = trace;
+    console.debug = trace;
+
+    // End of added header
+""")
 # TODO3: add pointer to definition (e.g., https://www.jslint.com)
 
 class Script(Main):
@@ -114,6 +153,7 @@ class Script(Main):
         script_tag_count = 0
 
         # Check for start of code section, ignoring external script via src attribute
+        # TODO2: exclude <script> in quoted text (e.g., 'console.log("in <script>");')
         while my_re.search(r"^([^<>]*)<\/?script[^<>]*>(.*)", line):
             remainder = my_re.group(2)
             if my_re.search(r"^\s*<script[^<>]*>(.*)$", line):
@@ -156,9 +196,12 @@ class Script(Main):
 
     def wrap_up(self):
         """Run the accumulated script through code checkers"""
+        debug.trace(5, "Script.wrap_up()")
+        debug.trace_expr(5, self.script_code)
         if (not self.script_code.strip()):
             system.print_stderr("Error: No code found within <script> tags")
-        javascript_file = (TEMP_BASE + ".js")
+        ## OLD: javascript_file = (TEMP_BASE + ".js")
+        javascript_file = (gh.get_temp_file() + ".js")
 
         # Add in header for strict mode (optional) and a few JavaScript defines
         code_header = ""
@@ -171,24 +214,32 @@ class Script(Main):
         default_options_hash = defaultdict(str)
         default_options_hash.update({JSLINT: JSLINT_OPTIONS,
                                      JSHINT: JSHINT_OPTIONS})
+        default_program_hash = defaultdict(str)
+        default_program_hash.update({JSLINT: JSLINT_PROGRAM,
+                                     JSHINT: JSHINT_PROGRAM})
         for checker in re.split(", *", self.code_checkers):
             if output is not None:
                 print("-" * 80)
+            ## TODO3: clarify why options being re-initialized
             options_var = f"{checker}_OPTIONS".upper()
-            checker_options = system.getenv_text(options_var,
-                                                 default_options_hash[checker])
+            checker_options = system.getenv_text(
+                options_var, default_options_hash[checker],
+                skip_register=True)
+            program_var = f"{checker}_PROGRAM".upper()
+            checker_program = system.getenv_text(
+                program_var, default_program_hash[checker],
+                skip_register=True)
             output = gh.run("{ch} {opt} {scr}",
-                            ch=checker, opt=checker_options, scr=javascript_file)
+                            ch=checker_program, opt=checker_options, scr=javascript_file)
             print("Output from {ch}:".format(ch=checker))
             print(output)
             print("")
 
-#-------------------------------------------------------------------------------
-    
-if __name__ == '__main__':
-    debug.trace_current_context(level=debug.QUITE_DETAILED)
+            
+def main():
+    """Entry point"""
     app = Script(
-        description=__doc__,
+        description=__doc__.format(script=gh.basename(__file__)),
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
         # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
         skip_input=False,
@@ -200,3 +251,9 @@ if __name__ == '__main__':
             (CODE_CHECKERS, "Comma-separated list of code checking invocations (e.g., '{dfc}')".format(dfc=DEFAULT_CODE_CHECKERS)),
             (JAVASCRIPT_HEADER, "JavaScript header with common definitions (e.g., document, window, jQuery)")])
     app.run()
+       
+#-------------------------------------------------------------------------------
+    
+if __name__ == '__main__':
+    debug.trace_current_context(level=debug.QUITE_DETAILED)
+    main()

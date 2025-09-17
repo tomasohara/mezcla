@@ -18,6 +18,8 @@
 #   Filesystem     1K-blocks      Used Available Use% Mounted on
 #   none           422983676 418510272   4473404  99% /media/sf_D_DRIVE
 #
+# TODO2: show sample output
+#
 
 """Derive language model by tabulating n-grams"""
 

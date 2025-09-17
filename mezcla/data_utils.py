@@ -31,8 +31,9 @@ from mezcla.text_utils import version_to_number as version_as_float
 # Note: Delim defaults to None so that dialect inference can be used.
 # This is a quirk with Pandas compared to the cvs module.
 ## TODO3: rename to CVS_DELIM to avoid conflict with other usage
-DELIM = system.getenv_value("DELIM", None,
-                            "Delimiter for input and output tables")
+DELIM = system.getenv_value(
+    "DELIM", None,
+    desc="Delimiter for input and output tables")
 COMMENT = 'comment'
 DIALECT = 'dialect'
 EXCEL = 'excel'
@@ -55,7 +56,6 @@ def read_csv(filename, **in_kw):
     # EX: tf = read_csv("examples/iris.csv"); tf.shape => (150, 5)
     ## TODO: clarify dtype usage
     kw = {SEP: DELIM, 'dtype': str,
-          ## BAD: 'error_bad_lines': False, 'keep_default_na': False}
           'on_bad_lines': 'skip', 'keep_default_na': False}
     # Hack: make sure only one of "sep" and "delimiter" specified
     if DELIMITER in in_kw:
@@ -65,21 +65,23 @@ def read_csv(filename, **in_kw):
     # Overide settings based on explicit keyword arguments
     kw.update(**in_kw)
     kw['engine'] = 'python'
-    # Turn off quotoing if tab delimited
+    # Turn off quoting if tab delimited
     if kw[SEP] == "\t":
         kw['quoting'] = csv.QUOTE_NONE
     # Add special processing (n.b., a bit idiosyncratic)
     if ((COMMENT not in kw) and (kw.get(DIALECT) != EXCEL)):
-        debug.trace_fmt(4, "Enabling comments in read_csv")
+        debug.trace_fmt(4, "FYI: Enabling comments in data_utils.read_csv")
         kw[COMMENT] = "#"
-    debug.trace_fmt(5, "read_csv({f}, [in_kw={ikw}])", f=filename, ikw=in_kw)
-    debug.trace_fmt(6, "\tkw={k}", k=kw)
+    debug.trace_fmt(4, "in data_utils.read_csv({f}, [in_kw={ikw}])", f=filename, ikw=in_kw)
+    debug.trace_fmt(4, "\tFYI: kw={k}", k=kw)
     df = None
     try:
         df = pd.read_csv(filename, **kw)
+        debug.assertion(not(any(c.startswith(" ") for c in list(df.columns))),
+                        'make sure CSV FILE delim not ", "')
     except:
         debug.trace(3, f"Exception during read_csv: {system.get_exception()}")
-    debug.trace(4, f"read_csv({filename}) => {df}")
+    debug.trace(4, f"read_csv({filename}) =>\n{df}")
     return df
 
 
@@ -90,11 +92,13 @@ def to_csv(filename, data_frame, **in_kw):
     result = None
     kw = {SEP: DELIM, 'index': False}
     kw.update(**in_kw)
+    debug.trace_fmt(4, "in data_utils.to_csv({f}, _df) [in_kw={ikw}])", f=filename, ikw=in_kw)
+    debug.trace_fmt(4, "\tFYI: kw={k}", k=kw)
     try:
         result = data_frame.to_csv(filename, **kw)
     except:
         debug.trace(4, f"Exception during write_csv: {system.get_exception()}")
-    debug.trace(4, f"to_csv({filename}, {data_frame}) => {result}")
+    debug.trace(5, f"data_utils.to_csv({filename}, {data_frame}) => {result}")
     return result
 #
 write_csv = to_csv

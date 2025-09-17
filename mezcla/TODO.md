@@ -11,3 +11,5 @@ An optional priority is indicated by [Pn]
 - [P4] Avoid use of atexit for deleting temporary files: by default they are
   put under /tmp, which gets cleaned up by the system!
 - [P4] Avoid using tempfile directly: use glue_helper.get_temp_file instead.
+- [P5] Drop old 'use_stdin=True' TODO comments in tests.
+- [P5] Change obsolete TestIt2.test_xyz method traces to TestIt.test_xyz.

@@ -208,7 +208,9 @@ class TestIt(TestWrapper):
         ## TODO: NUM_IMAGES = 2
         NUM_IMAGES = 1
         # note: generate image with high adherence guidance for prompt
-        image_specs = sd.infer(prompt="cute puppy", negative_prompt="pitbull", scale=20, num_images=NUM_IMAGES, skip_img_spec=True)
+        # also, the method should pass along the kwargs (e.g., to infer_non_cached)
+        kwargs = {"sampler_name": "my_sampler"}
+        image_specs = sd.infer(prompt="cute puppy", negative_prompt="pitbull", scale=20, num_images=NUM_IMAGES, skip_img_spec=True, **kwargs)
         images = self.check_images(image_specs, label="txt2img")
         self.do_assert(len(images) == NUM_IMAGES)
         description = sd.infer_img2txt(image_b64=image_specs[0])
@@ -227,9 +229,11 @@ class TestIt(TestWrapper):
         # TODO2: use larger image
         PACMAC_LIKE_IMAGE = gh.resolve_path("sd-spooky-pacman.png", heuristic=True)
         pacmac_like_base64 = THE_MODULE.encode_image_file(PACMAC_LIKE_IMAGE)
-        # note: generate derived image with high fidelity to original and low adherence guidance to prompt
+        # note: generate derived image with high fidelity to original and low adherence guidance to prompt;
+        # also, the method should pass along the kwargs (e.g., to infer_img2img_non_cached)
+        kwargs = {"sampler_name": "my_sampler"}
         image_specs = sd.infer_img2img(image_b64=pacmac_like_base64, denoise=0.25, prompt="cute puppy", negative_prompt="pitbull",
-                                       scale=3.5, num_images=NUM_IMAGES, skip_img_spec=True)
+                                       scale=3.5, num_images=NUM_IMAGES, skip_img_spec=True, **kwargs)
         self.do_assert(len(image_specs) == NUM_IMAGES)
         ## BAD: self.do_assert(isinstance(images[0], PIL.Image.Image))
         # TODO1: image recognition doesn't yield dog

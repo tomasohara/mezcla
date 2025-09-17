@@ -115,7 +115,17 @@ USE_CLASS_TAGS = system.getenv_boolean("USE_CLASS_TAGS", False, "Use class-based
 SKIP_CLASS_TAGS = not USE_CLASS_TAGS
 KEEP_PUNCT = system.getenv_boolean("KEEP_PUNCT", False, "Use punctuation symbol as part-of-speech label")
 TERSE_OUTPUT = system.getenv_boolean("TERSE_OUTPUT", JUST_TAGS, "Terse output mode")
-VERBOSE = not TERSE_OUTPUT
+## OLD: VERBOSE = not TERSE_OUTPUT
+VERBOSE_DEFAULT = not TERSE_OUTPUT
+VERBOSE = system.getenv_boolean(         ## TODO3?: reconcile with main.py
+    "VERBOSE", VERBOSE_DEFAULT,
+    desc="Verbose output mode")
+UNDO_NLTK_QUOTING = system.getenv_boolean(
+    "UNDO_NLTK_QUOTING", False,
+    desc="Undo NLTK's unintuitive ``...'' handling of double quotes")
+SKIP_TOKENIZATION = system.getenv_boolean(
+    "SKIP_TOKENIZATION", False,
+    desc="Omit sentence and word tokenization, such as for LINE_MODE")
 
 # Skip use of NLTK and/or ENCHANT packages (using simple versions of functions)
 # TODO: make misspellings optional (add --classic mode???)
@@ -141,8 +151,6 @@ stopwords = None
 # NLP toolkit
 if not SKIP_NLTK:
     import nltk            # pylint: disable=ungrouped-imports
-    if DOWNLOAD_DATA:
-        download_nltk_resources()
 # spell checking
 if not SKIP_ENCHANT:
     import enchant         # pylint: disable=ungrouped-imports
@@ -176,16 +184,28 @@ def split_sentences(text):
     return sentences
 
 
-def split_word_tokens(text, omit_punct=False, omit_stop=None):
+def split_word_tokens(text, omit_punct=False, omit_stop=None,
+                      skip_nltk=SKIP_NLTK, undo_nltk_quoting=UNDO_NLTK_QUOTING):
     """Splits TEXT into word tokens (i.e., words, punctuation, etc.), optionally with OMIT_PUNCT and OMIT_STOP.
     Note: run split_sentences first (e.g., to allow for proper handling of periods).
     By default, this uses NLTK's PunktSentenceTokenizer."""
     # EX: split_word_tokens("How now, brown cow?") => ['How', 'now', ',', 'brown', 'cow', '?']
     debug.trace(7, "split_word_tokens(%s); type=%s" % (text, type(text)))
-    if SKIP_NLTK:
+    if skip_nltk:
         tokens = [t.strip() for t in re.split(r"(\W+)", text) if (len(t.strip()) > 0)]
     else:
         tokens = nltk.word_tokenize(text)
+
+        # Restore awkward double quote tokenization
+        # ex: ['``', 'Bond', ',', 'James', 'Bond', "''"] => ['""', 'Bond', ',', 'James', 'Bond', '""']
+        if undo_nltk_quoting:
+            is_nltk_quote = {"``": True, "''": True}
+            ## TEST:
+            ## new_text = my_re.sub("``(.*)''", r'"\1"', " ".join(tokens))
+            ## debug.assertion(text.count('"') ==  new_text.count('"')
+            tokens = [t if not is_nltk_quote.get(t) else '"' for t in tokens]
+            debug.assertion(text.count('"') == " ".join(tokens).count('"'),
+                            f"Problem restoring double quotes in {text!r}: {tokens=}")
     if omit_punct:
         tokens = [t for t in tokens if not is_punct(t)]
     if omit_stop:
@@ -201,7 +221,7 @@ def label_for_tag(POS, word=None):
     label = POS
     if KEEP_PUNCT and word and re.match(r"\W", word[0]):
         label = word
-        debug.trace_fmtd(5, "label_for_tag({t}, {w}) => {l}", t=POS, w=word, l=label)
+    debug.trace_fmtd(7, "label_for_tag({t}, {w}) => {l}", t=POS, w=word, l=label)
     return label
 
 
@@ -268,7 +288,7 @@ def tag_part_of_speech(tokens):
         part_of_speech_taggings = []
         previous = None
         raw_part_of_speech_taggings = nltk.pos_tag(tokens)
-        debug.trace(3, "raw tags: %s" % [t for (_w, t) in raw_part_of_speech_taggings])
+        debug.trace(5, "raw tags: %s" % [t for (_w, t) in raw_part_of_speech_taggings])
         for (word, POS) in raw_part_of_speech_taggings:
             tag = label_for_tag(POS, word) if SKIP_CLASS_TAGS else class_for_tag(POS, word, previous)
             part_of_speech_taggings.append((word, tag))
@@ -278,29 +298,44 @@ def tag_part_of_speech(tokens):
     return part_of_speech_taggings
 
 
-def tokenize_and_tag(text):
-    """Run sentence(s) and word tokenization over text and then part-of-speech tag it"""
+def tokenize_and_tag(text, skip_tokenization=None):
+    """Run sentence(s) and word tokenization over text and then part-of-speech tag it
+    Note: tokenization omitted if SKIP_TOKENIZATION.
+    """
     # TODO: return one list per sentence not just one combined list
-    debug.trace(7, "tokenize_and_tag(%s)" % text)
+    debug.trace(7, f"tokenize_and_tag({text!r})")
+    if skip_tokenization is None:
+        skip_tokenization = SKIP_TOKENIZATION
     ## OLD: text = tpo.ensure_unicode(text)
     text_taggings = []
-    for sentence in split_sentences(text):
-        debug.trace(4, "sentence: %s" % sentence.strip())
-        tokens = split_word_tokens(sentence)
-        debug.trace(4, "tokens: %s" % tokens)
+    sentences = split_sentences(text) if not skip_tokenization else [text]
+    for sentence in sentences:
+        if not skip_tokenization:
+            debug.trace(5, "sentence: %s" % sentence.strip())
+            tokens = split_word_tokens(sentence)
+            debug.trace(5, "tokens: %s" % tokens)
+        else:
+            tokens = sentence.split()
         taggings = tag_part_of_speech(tokens)
-        debug.trace(4, "taggings: %s" % taggings)
+        debug.trace(5, "taggings: %s" % taggings)
         text_taggings += taggings
     return text_taggings
 
 
-def tokenize_text(text):
-    """Run sentence and word tokenization over text returning a list of sentence word lists"""
+def tokenize_text(text, skip_tokenization=None):
+    """Run sentence and word tokenization over text returning a list of sentence word lists.
+    Note: sentence tokenization omitted if SKIP_TOKENIZATION and whitespace used as well.
+    """
+    debug.trace(7, f"tokenize_text({text!r})")
+    if skip_tokenization is None:
+        skip_tokenization = SKIP_TOKENIZATION
     tokenized_lines = []
-    for sentence in split_sentences(text):
-        sent_tokens = split_word_tokens(sentence)
-        debug.trace(4, "sent_tokens: %s" % sent_tokens)
+    sentences = (split_sentences(text) if not skip_tokenization else [text])
+    for sentence in sentences:
+        sent_tokens = (split_word_tokens(sentence) if not skip_tokenization else sentence.split())
+        debug.trace(5, "sent_tokens: %s" % sent_tokens)
         tokenized_lines.append(sent_tokens)
+    debug.trace(6, f"tokenize_text() => {tokenized_lines!r}")
     return tokenized_lines
 
 
@@ -314,7 +349,7 @@ def is_stopword(word):
             stopwords = ['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', 'should', 'now']
         else:
             stopwords = nltk.corpus.stopwords.words('english')
-        debug.trace(4, "stopwords: %s" % stopwords)
+        debug.trace(6, "stopwords: %s" % stopwords)
     return (word.lower() in stopwords)
 
 
@@ -351,7 +386,7 @@ def read_freq_data(filename):
     #   is  99390
     #   and 95920
     #   a   76679
-    debug.trace(3, "read_freq_data(%s)" % filename)
+    debug.trace(4, "read_freq_data(%s)" % filename)
     freq_hash = {}
 
     # Process each line of the file
@@ -392,7 +427,7 @@ def read_word_POS_data(filename):
     #   .           .       372550
     #   the         DT      158317
     #   to          TO      122189
-    debug.trace(3, "read_word_POS_freq(%s)" % filename)
+    debug.trace(4, "read_word_POS_freq(%s)" % filename)
     global word_POS_hash
     word_POS_hash = {}
 
@@ -496,12 +531,15 @@ def is_punct(token, POS=None):
 
 
 def init():
-    """Makes sure globals defined"""
+    """Makes sure globals defined and optionally loads resources"""
 
     # Note: stop word check is done for side of effect of loading list
     unexpected_stopword = is_stopword("movement")
     debug.assertion(not unexpected_stopword)
 
+    if DOWNLOAD_DATA:
+        download_nltk_resources()
+    
 #-------------------------------------------------------------------------------
 
 class TextProc(metaclass=ABCMeta):
@@ -630,7 +668,7 @@ def main():
     Note: Used to avoid conflicts with globals (e.g., if this were done at end of script).
     """
     # Initialize
-    debug.trace(4, "main(): sys.argv=%s" % sys.argv)
+    debug.trace(5, "main(): sys.argv=%s" % sys.argv)
 
     # Show usage statement if no arguments or if --help specified
     just_tokenize = False
@@ -671,8 +709,8 @@ def main():
             if just_tokenize:
                 # Just tokenize sentence and words
                 # Note: text lowercased at end to allow for case clues (e.g., "Dr. Jones")
-                for tokenized_line in tokenize_text(text):
-                    tokenized_text = " ".join(tokenized_line)
+                for line in ([text] if LINE_MODE else split_sentences(text)):
+                    tokenized_text = " ".join(tokenize_text(line)[0])
                     if make_lowercase:
                         tokenized_text = tokenized_text.lower()
                     print(tokenized_text)
@@ -681,9 +719,11 @@ def main():
                 text_proc = create_text_proc(TEXT_PROC)
                 if VERBOSE:
                     print(f"text: {text}")
-                    print("NP chunks:")
+                    print("NP chunks: ", end="")
                 ## TODO: print(OUTPUT_DELIM.join(text_proc.noun_phrases(text)))
                 print(text_proc.noun_phrases(text))
+                if VERBOSE:
+                    print("")
             else:
                 # Show complete pipeline step-by-step
                 taggings = tokenize_and_tag(text)
@@ -710,7 +750,7 @@ def main():
                     print("")
 
     # Cleanup
-    debug.trace(4, "stop %s: %s" % (__file__, debug.timestamp()))
+    debug.trace(5, "stop %s: %s" % (__file__, debug.timestamp()))
     return
 
 #------------------------------------------------------------------------

@@ -32,7 +32,7 @@ USE_INTERFACE=1 {script} -
 # Standard modules
 ## TODO: import json
 
-# Intalled modules
+# Installed modules
 # Note: done dynamically below
 
 # Local modules

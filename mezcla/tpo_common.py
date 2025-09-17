@@ -75,6 +75,7 @@ except ImportError:
 from mezcla import debug
 from mezcla.debug import trace_level as debug_level
 from mezcla import system
+from mezcla import text_utils
             
 # Defaults for globals
 ## OLD:
@@ -1285,18 +1286,11 @@ def normalize(num_list):
 
 
 def is_numeric(text):
-    """Indicates whether TEXT represents a number (integer or float)"""
-    ## TODO: rename as is_number to avoid confusion with English numeric a la numeral (e.g., "two')
-    # EX: is_numeric("123") => True
-    # EX: is_numeric("one") => False
-    numeric = False
-    try:
-        _value = float(text)
-        numeric = True
-    except ValueError:
-        _value = None
-    debug_format("is_numeric({t}) => {n}; value={v}", 8, t=text, n=numeric, v=_value)
-    return numeric
+    """Indicates whether TEXT represents a number (integer or float)
+    Deprecated: uses version in text_utils.py"
+    """
+    debug.trace(3, "Warning: in deprecated text_utils.is_numeric")
+    return text_utils.is_numeric(text)
 
 
 ## OLD:

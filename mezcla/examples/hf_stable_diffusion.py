@@ -53,45 +53,63 @@ from mezcla import glue_helpers as gh
 from mezcla.main import Main
 from mezcla.my_regex import my_re
 from mezcla import system
+from mezcla.text_utils import version_to_number
 
 # Constants/globals
 TL = debug.TL
-PROMPT = system.getenv_text("PROMPT", "your favorite politician in a tutu",
-                            "Textual prompt describing image")
-NEGATIVE_PROMPT = system.getenv_text("NEGATIVE_PROMPT", "photo realistic",
-                            "Negative tips for image")
+PROMPT = system.getenv_text(
+    "PROMPT", "your favorite politician in a tutu",
+    description="Positive terms for textual prompt describing image")
+NEGATIVE_PROMPT = system.getenv_text(
+    "NEGATIVE_PROMPT", "photo realistic",
+    description="Negative terms for textual prompt describing image")
 GUIDANCE_HELP = "Degree of fidelity to prompt (1-to-30 w/ 7 suggested)--higher for more; aka Classifier Free Guidance (CFG)"
-GUIDANCE_SCALE = system.getenv_int("GUIDANCE_SCALE", 7,
-                                   description=GUIDANCE_HELP)
-SD_URL_ENV = system.getenv_value("SD_URL", None,
-                             "URL for SD TCP/restful server--new via flask or remote")
+GUIDANCE_SCALE = system.getenv_int(
+    "GUIDANCE_SCALE", 7,
+    description=GUIDANCE_HELP)
+SD_URL_ENV = system.getenv_value(
+    "SD_URL", None,
+    description="URL for SD TCP/restful server--new via flask or remote")
 SD_URL = (SD_URL_ENV if (SD_URL_ENV is not None) and (SD_URL_ENV.strip() not in ["", "-"]) else None)
-SD_PORT = system.getenv_int("SD_PORT", 9700,
-                            "TCP port for SD server")
-SD_DEBUG = system.getenv_int("SD_DEBUG", False,
-                             "Run SD server in debug mode")
-USE_HF_API = system.getenv_bool("USE_HF_API", not SD_URL,
-                                "Use Huggingface API instead of TCP server")
-CHECK_UNSAFE = system.getenv_bool("CHECK_UNSAFE", False,
-                                  "Apply unsafe word list regex filter")
-NUM_IMAGES = system.getenv_int("NUM_IMAGES", 1,
-                               "Number of images to generated")
-BASENAME = system.getenv_text("BASENAME", "sd-app-image",
-                              "Basename for saving images")
-FULL_PRECISION = system.getenv_bool("FULL_PRECISION", False,
-                                    "Use full precision GPU computations")
-LOW_MEMORY = system.getenv_bool("LOW_MEMORY", (not FULL_PRECISION),
-                                "Use low memory computations such as via float16")
-DUMMY_RESULT = system.getenv_bool("DUMMY_RESULT", False,
-                                  "Mock up SD server result")
-DISK_CACHE = system.getenv_value("SD_DISK_CACHE", None,
-                                 "Path to directory with disk cache")
-USE_IMG2IMG = system.getenv_bool("USE_IMG2IMG", False,
-                                 "Use image-to-image instead of text-to-image")
-USE_IMG2TXT = system.getenv_bool("USE_IMG2TXT", False,
-                                 "Use image-to-text instead of image generation")
-DENOISING_FACTOR = system.getenv_float("DENOISING_FACTOR", 0.75,
-                                       "How much of the input image to randomize--higher for more")
+SD_PORT = system.getenv_int(
+    "SD_PORT", 9700,
+    description="TCP port for SD server")
+SD_DEBUG = system.getenv_int(
+    "SD_DEBUG", False,
+    description="Run SD server in debug mode")
+USE_HF_API = system.getenv_bool(
+    "USE_HF_API", not SD_URL,
+    description="Use Huggingface API instead of TCP server")
+CHECK_UNSAFE = system.getenv_bool(
+    "CHECK_UNSAFE", False,
+    description="Apply unsafe word list regex filter")
+NUM_IMAGES = system.getenv_int(
+    "NUM_IMAGES", 1,
+    description="Number of images to generated")
+BASENAME = system.getenv_text(
+    "BASENAME", "sd-app-image",
+    description="Basename for saving images")
+FULL_PRECISION = system.getenv_bool(
+    "FULL_PRECISION", False,
+    description="Use full precision GPU computations")
+LOW_MEMORY = system.getenv_bool(
+    "LOW_MEMORY", (not FULL_PRECISION),
+    description="Use low memory computations such as via float16")
+DUMMY_RESULT = system.getenv_bool(
+    "DUMMY_RESULT", False,
+    description="Mock up SD server result")
+DISK_CACHE = system.getenv_value(
+    "SD_DISK_CACHE", None,
+    description="Path to directory with disk cache")
+USE_IMG2IMG = system.getenv_bool(
+    "USE_IMG2IMG", False,
+    description="Use image-to-image instead of text-to-image")
+USE_IMG2TXT = system.getenv_bool(
+    "USE_IMG2TXT", False,
+    description="Use image-to-text instead of image generation")
+DENOISING_FACTOR = system.getenv_float(
+    "DENOISING_FACTOR", 0.75,
+    description="How much of the input image to randomize--higher for more")
 HF_SD_MODEL = system.getenv_text(
     "HF_SD_MODEL", "CompVis/stable-diffusion-v1-4",
     description="Hugging Face model for Stable Diffusion")
@@ -157,7 +175,8 @@ def init():
 
     # Load blacklist for prompt terms
     global word_list
-    if CHECK_UNSAFE:
+    # pylint: disable=possibly-used-before-assignment
+    if CHECK_UNSAFE and load_dataset:
         word_list_dataset = load_dataset("stabilityai/word-list", data_files="list.txt", use_auth_token=True)
         word_list = word_list_dataset["train"]['text']
         debug.trace_expr(5, word_list)
@@ -277,14 +296,15 @@ class StableDiffusion:
         self.img2txt_engine = Interrogator(clip_config)
 
     def infer(self, prompt=None, negative_prompt=None, scale=None, num_images=None,
-              skip_img_spec=False, width=None, height=None, skip_cache=False):
+              skip_img_spec=False, width=None, height=None, skip_cache=False, **kwargs):
         """Generate images using positive PROMPT and NEGATIVE one, along with guidance SCALE,
         and targetting a WIDTHxHEIGHT image.
         Returns list of NUM image specifications in base64 format (e.g., for use in HTML).
         Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag.
         If SKIP_CACHE, then new results are always generated.
+        The KWARGS are used for sub-classing.
         """
-        debug.trace_expr(4, prompt, negative_prompt, scale, num_images, skip_img_spec, skip_cache, prefix=f"\nin {self.__class__.__name__}.infer:\n\t", delim="\n\t",  suffix="}\n", max_len=1024)
+        debug.trace_expr(4, prompt, negative_prompt, scale, num_images, skip_img_spec, skip_cache, kwargs, prefix=f"\nin {self.__class__.__name__}.infer:\n\t", delim="\n\t",  suffix="}\n", max_len=1024)
         if num_images is None:
             num_images = NUM_IMAGES
         if scale is None:
@@ -304,17 +324,17 @@ class StableDiffusion:
             ##                 p=params, r=images)
             debug.trace_fmt(5, "Using cached infer result: ({r})", r=images)
         else:
-            images = self.infer_non_cached(*params)
+            images = self.infer_non_cached(*params, **kwargs)
             if self.cache is not None:
                 self.cache.set(params, images)
                 debug.trace_fmt(6, "Setting cached result (r={r})", r=images)
         return images
 
     def infer_non_cached(self, prompt=None, negative_prompt=None, scale=None, num_images=None,
-                         skip_img_spec=False, width=None, height=None):
+                         skip_img_spec=False, width=None, height=None, **kwargs):
         """Non-cached version of infer"""
         params = (prompt, negative_prompt, scale, num_images, skip_img_spec, width, height)
-        debug.trace(5, f"{self.__class__.__name__}.infer_non_cached{params}")
+        debug.trace(5, f"{self.__class__.__name__}.infer_non_cached{params}; kwargs={kwargs}")
         images = []
         if self.use_hf_api:
             if DUMMY_RESULT:
@@ -365,13 +385,14 @@ class StableDiffusion:
         return result
 
     def infer_img2img(self, image_b64=None, denoise=None,  prompt=None, negative_prompt=None, scale=None, num_images=None,
-                      skip_img_spec=False, skip_cache=False):
+                      skip_img_spec=False, skip_cache=False, **kwargs):
         """Generate images from IMAGE_B64 using positive PROMPT and NEGATIVE one, along with guidance SCALE and NUM_IMAGES
         Returns list of NUM image specifications in base64 format (e.g., for use in HTML).
         Note: If SKIP_IMG_SPEC specified, result is formatted for HTML IMG tag.
         If SKIP_CACHE, then new results are always generated.
+        The KWARGS are used for sub-classing.
         """
-        debug.trace_expr(4, image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec, skip_cache, prefix=f"\nin {self.__class__.__name__}.infer_img2img: {{\n\t", delim="\n\t", suffix="}\n", max_len=1024)
+        debug.trace_expr(4, image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec, skip_cache, kwargs, prefix=f"\nin {self.__class__.__name__}.infer_img2img: {{\n\t", delim="\n\t", suffix="}\n", max_len=1024)
         if num_images is None:
             num_images = NUM_IMAGES
         if scale is None:
@@ -393,20 +414,20 @@ class StableDiffusion:
             ##                 p=params, r=images)
             debug.trace_fmt(5, "Using cached infer result: ({r})", r=images)
         else:
-            images = self.infer_img2img_non_cached(*params)
+            images = self.infer_img2img_non_cached(*params, **kwargs)
             if self.cache is not None:
                 self.cache.set(params, images)
                 debug.trace_fmt(6, "Setting cached result (r={r})", r=images)
         return images
 
     def infer_img2img_non_cached(self, image_b64=None, denoise=None, prompt=None, negative_prompt=None, scale=None, num_images=None,
-                                 skip_img_spec=False):
+                                 skip_img_spec=False, **kwargs):
         """Non-cached version of infer_img2img"""
         params = (image_b64, denoise, prompt, negative_prompt, scale, num_images, skip_img_spec)
         params_spec = params
         if debug.detailed_debugging():
             params_spec = tuple(map(gh.elide, params))
-        debug.trace(5, f"{self.__class__.__name__}.infer_img2img_non_cached{params_spec}")
+        debug.trace(5, f"{self.__class__.__name__}.infer_img2img_non_cached{params_spec}; kwargs={kwargs}")
         images = []
         if self.use_hf_api:
             if DUMMY_RESULT:
@@ -654,7 +675,11 @@ def encode_PIL_image(image):
 def decode_base64_image(image_encoding):
     """Decode IMAGE_ENCODING from base64 returning bytes"""
     # note: "encodes" UTF-8 text of base-64 encoding as bytes object for str, and then decodes into image bytes
-    result = base64.decodebytes(image_encoding.encode())
+    result = bytes()
+    try:
+        result = base64.decodebytes(image_encoding.encode())
+    except:
+        system.print_exception_info("decode_base64_image")
     debug.trace(6, f"decode_base64_image({gh.elide(image_encoding)}) => {gh.elide(result)}")
     return result
 
@@ -691,7 +716,10 @@ def upload_image_file(files):
 def run_ui(use_img2img=None):
     """Run user interface via gradio serving by default at localhost:7860
     Note: The environment variable GRADIO_SERVER_NAME can be used to serve via 0.0.0.0"""
+    ## TEMP: pylint has problem with dynamic classes
+    # pylint: disable=no-member
     import gradio as gr                 # pylint: disable=import-outside-toplevel, redefined-outer-name
+    is_gradio_4 = version_to_number(gr.__version__) >= 4
     css = """
             .gradio-container {
                 font-family: 'IBM Plex Sans', sans-serif;
@@ -913,10 +941,25 @@ def run_ui(use_img2img=None):
             """
         )
 
+        # TEMP HACK: make style a no-op under gradio 4
+        # NOTE: this is just for sake of testing the API part of the code (i.e., with crippled UI)
+        if is_gradio_4:
+            def no_op (self, *_args, **_kwargs):
+                """No-op[eration] function for gradio 4 breaking changes (without suitable workarounds)"""
+                return self
+            gr.Textbox.style = no_op
+            gr.Button.style = no_op
+            gr.Gallery.style = no_op
+            gr.Row.style = no_op
+        
         # Specify the main form
         # TODO3: be consistent in use of xyz_control
+        # NOTE: maldito gradio couldn't care less about backward compatibility; see
+        #    https://github.com/gradio-app/gradio/issues/6815 [no attribute 'Box']
         with gr.Group():
-            with gr.Box():
+            ## TODO3: make sure box behavior honored (e.g., border)
+            box = gr.Group if is_gradio_4 else gr.Box
+            with box():
                 ## TODO: drop 'rounded', border, margin, and other options no longer supported (see log)
                 with gr.Row(elem_id="prompt-container").style(mobile_collapse=False, equal_height=True):
                     with gr.Column():
@@ -968,7 +1011,7 @@ def run_ui(use_img2img=None):
                  ## TODO?:
                  input_image_control = gr.Image(label="Input image")  ## TODO?: type='pil'
                  upload_control = gr.UploadButton(label="Upload image", file_types=["image"])
-                 interrogate_control = gr.Button(label="CLIP Interrogator")
+                 interrogate_control = gr.Button(value="CLIP Interrogator")
                  
             #    seed = gr.Slider(
             #        label="Seed",
@@ -1045,9 +1088,11 @@ def run_ui(use_img2img=None):
                    </div>
                     """
                 )
-                
-    block.queue(concurrency_count=80, max_size=100).launch(max_threads=150)
 
+    if not is_gradio_4:
+        block.queue(concurrency_count=80, max_size=100).launch(max_threads=150)
+    else:
+        block.launch()
                 
 #-------------------------------------------------------------------------------
 # Runtime support

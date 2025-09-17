@@ -32,8 +32,8 @@
 # - With non-trivial command processing (e.g., positional arguments), it 
 #   might be better to do this in the constructor, as follows:
 #       def __init__(*args, **kwargs) -> None:
-#           super(MyMain, self).__init__(*args, positional_options=["targets"], 
-#                                        **kwargs)
+#           super().__init__(*args, positional_options=["targets"], 
+#                            **kwargs)
 # - Changes to temporary directory/file support should be synchronized with the
 #   unit testing base class (see tests/unittest_wrapper.py.
 # - Overriding the temporary directory can be handy during debugging (via
@@ -190,6 +190,10 @@ INPUT_ERROR = system.getenv_value(
 ##     "DISABLE_RECURSIVE_DELETE", None,
 ##     description="Disable use of potentially dangerous rm -r style recursive deletions")
 DISABLE_RECURSIVE_DELETE = gh.DISABLE_RECURSIVE_DELETE
+VERBOSE_DEFAULT = bool(f"--{VERBOSE_ARG}" in sys.argv)
+VERBOSE_MODE = system.getenv_value(
+    "VERBOSE_MODE", VERBOSE_DEFAULT,
+    desc="Default for --verbose")
 
 #-------------------------------------------------------------------------------
 
@@ -638,7 +642,7 @@ class Main(object):
         ## OLD: if (not usage_notes and SHOW_ENV_OPTIONS):
         if (not usage_notes):
             env_opt_spec = ""
-            if (SHOW_ENV_OPTIONS or (f"--{VERBOSE_ARG}" in sys.argv)):
+            if (SHOW_ENV_OPTIONS or VERBOSE_MODE):
                 env_opts = system.formatted_environment_option_descriptions(sort=True, indent=INDENT)
                 env_opt_spec = f"- Available env. options:\n{INDENT}{env_opts}"
             elided_path = re.sub(r"^.*/", ".../", sys.argv[0])
@@ -766,6 +770,15 @@ class Main(object):
             debug.trace(4, "Just showing (brief) usage and then exiting")
             debug.trace(5, "warning: self.setup won't be invoked")
             parser.print_usage()
+
+            # Show streamlined example (e.g., using first if more than one)
+            # exs: "Sample usages:\n   echo $'stupid pet tricks.*"
+            # and: "Typical example:\n   some_script.py - <<<"Hey, Joe..."
+            if my_re.search(r"^.*(usage|example)s?:\s*\n(.*)", self.description,
+                            flags=my_re.IGNORECASE|my_re.MULTILINE):
+                simple_usage = my_re.group(2)
+                simple_usage = my_re.sub(r"\n\s*\n.*", "", simple_usage)
+                print("example:\n{ex}".format(ex=gh.indent(simple_usage)))
             sys.exit()
 
         # Parse the command line and get result
@@ -775,7 +788,7 @@ class Main(object):
         # note: not trapped to allow for early exit
         self.parsed_args = vars(parser.parse_args(runtime_args))
         debug.trace(5, f"parsed_args = {self.parsed_args}")
-        self.verbose = bool(self.get_parsed_option("verbose"))
+        self.verbose = bool(self.get_parsed_option("verbose", VERBOSE_MODE))
         # Get filename unless input ignored and fixup if returned as list
         # TODO: add an option to retain self.filename as is
         if not self.skip_input:
@@ -817,8 +830,12 @@ class Main(object):
         return
 
     def init_input(self) -> None:
-        """Resolve input stream from either explicit filename or via standard input
-        Note: self.newlines is used to override stream (e.g., so \r not treated as line delim)"""
+        """Resolve input stream from either explicit filename or via standard input.
+        Note: self.newlines is used to override stream (e.g., so \r not treated as line delim).
+        Aside: The manual_input/skip_input logic is a bit convoluted, so an expedient
+        to disable input processing entirely is to override in subclass (e.g., no-op).
+        """
+        ## TODO3: cleanup manual_input/skip_input dependencies
         debug.trace(5, "Main.init_input()")
         self.input_stream = sys.stdin
         if (self.filename and (self.filename != "-")):
@@ -863,6 +880,7 @@ class Main(object):
         self.setup()
 
         # Initiate the main input processing
+        ## TODO3: skip initialize if skip_input (i.e., rework manual_input/skip_input logic)
         self.init_input()
         try:
             # If not automatic input, process the main step of script

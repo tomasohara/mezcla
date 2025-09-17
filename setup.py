@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # Notes:
 # - This not used: see pyproject.toml instead.
@@ -23,7 +23,7 @@ setup(name='Mezcla',
       packages=['mezcla', 'mezcla.tfidf'],
       module="mezcla",
       ## TODO2: import mezcla; version=mezcla.VERSION
-      version="1.4.0.3",
+      version="1.4.0.5",
       ## BAD: description-file="README.txt",
       description_file="README.txt",
       ## BAD: dist-name="Mezcla",

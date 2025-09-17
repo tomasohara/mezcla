@@ -35,35 +35,38 @@ import json
 import sys
 from six.moves.urllib_parse import quote as quote_url       # pylint: disable=import-error
 from six.moves.urllib.request import Request, build_opener  # pylint: disable=import-error
-import tempfile
+## OLD: import tempfile
 
 # Local packages
-from mezcla import tpo_common as tpo
+## OLD: from mezcla import tpo_common as tpo
 # TODO: import xml.dom.minidom
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
 
-BING_KEY = (tpo.getenv_value("BING_KEY", None,
-                             "API key (via Microsoft Azure)") or "")
-BING_BASE_URL = tpo.getenv_text("BING_BASE_URL",
-                                "https://api.bing.microsoft.com/v7.0/")
+BING_KEY = (system.getenv_value(
+    "BING_KEY", None,
+    desc="API key (via Microsoft Azure)") or "")
+BING_BASE_URL = system.getenv_text(
+    "BING_BASE_URL", "https://api.bing.microsoft.com/v7.0/",
+    desc="URL for Bing API")
 SEARCH = "search"
 NEWS = "news/search"
 IMAGES = "images"
 VALID_SEARCH_TYPES = {SEARCH, IMAGES, "videos", NEWS}
 DEFAULT_SEARCH_TYPE = SEARCH
-SEARCH_TYPE = system.getenv_text("SEARCH_TYPE", SEARCH)
+SEARCH_TYPE = system.getenv_text(
+    "SEARCH_TYPE", SEARCH,
+    desc=f"Bing search type: {VALID_SEARCH_TYPES}"
+)
 
-## OLD:
-## DEFAULT_TEMP_FILE = tempfile.NamedTemporaryFile().name
-## TEMP_FILE = system.getenv_text("TEMP_FILE", DEFAULT_TEMP_FILE)
-## DEFAULT_TEMP_DIR = tempfile.gettempdir()
-## TEMP_DIR = system.getenv_text("TEMP", DEFAULT_TEMP_DIR)
-TEMP_FILE = gh.TEMP_FILE
-TEMP_DIR = system.TEMP_DIR
+## TODO3: track down TEMP_DIR not being set to gh.TEMP_BASE during test (subprocess issue?)
+TEMP_FILE = gh.get_temp_file()
+TEMP_DIR = gh.get_temp_dir()
 
-USE_CACHE = system.getenv_bool("USE_CACHE", False)
+USE_CACHE = system.getenv_bool(
+    "USE_CACHE", False,
+    desc="Use cached search results")
 
 #...............................................................................
 
@@ -71,7 +74,7 @@ def bing_search(query, key=None, use_json=None, search_type=None, topn=None, non
     """Issue QUERY bing using API KEY returning result, optionally using JSON format by default or with alternative SEARCH_TYPE (e.g., image) or limited to TOPN results. The query is quoted unless NON_PHRASAL.
     Note: SEARCH_TYPE in {search, images, videos, news, SpellCheck}."""
     ## TODO: see if old search types RelatedSearch and Composite still supported
-    tpo.debug_print("bing_search(%s, %s, %s, %s, %s)" % (query, key, use_json, search_type, topn), 4)
+    debug.trace(4, f"bing_search{(query, key, use_json, search_type, topn)}")
     if search_type is None:
         search_type = SEARCH_TYPE
     if use_json is None:
@@ -99,7 +102,7 @@ def bing_search(query, key=None, use_json=None, search_type=None, topn=None, non
     debug.assertion(use_json)
     format_spec = ""
     topn_spec = ("&count=%d" % topn) if topn else ""
-    tpo.debug_print("format_spec=%s topn_spec=%s" % (format_spec, topn_spec), 5)
+    debug.trace_expr(5, format_spec, topn_spec)
     sources_spec = ""
     # HACK: if multiple types specified, comvert into Composite search
     if " " in search_type:
@@ -120,20 +123,23 @@ def bing_search(query, key=None, use_json=None, search_type=None, topn=None, non
     # Download data from URL (unless cached).
     # Note: Also caches result
     if not response_data:
-        tpo.debug_print("Accessing URL %s" % url, 3)
+        debug.trace(3, f"Accessing URL {url!r}")
         request = Request(url)
         ## OLD: request.add_header("Authorization", auth)
         request.add_header("Ocp-Apim-Subscription-Key", key)
         request.add_header("User-Agent", user_agent)
-        tpo.debug_print("Headers: %s" % request.header_items(), 5)
+        debug.trace(5, f"Headers: {request.header_items()!r}")
         request_opener = build_opener()
         response = request_opener.open(request) 
         response_data = response.read()
+        if isinstance(response_data, bytes):
+            debug.trace(4, "FYI: decoding binary response to text")
+            response_data = response_data.decode("UTF-8", errors='ignore')
         if USE_CACHE:
             system.write_file(cache_file, response_data)
 
     # Format result
-    tpo.debug_print("Response: %s" % response_data, 5)
+    debug.trace(5, f"Response: {response_data!r}")
     if use_json:
         json_result = json.loads(response_data)
         if debug.verbose_debugging():
@@ -177,13 +183,17 @@ def main():
     if (show_usage):
         print("Usage: %s [--json | --xml] [--image] [--type label] query_word ..." % sys.argv[0])
         print("")
+        print("Example:")
+        print("    {script} ScrappyCito -dog".format(script=gh.basename(__file__)))
+        print("")
         print("Notes:")
         print("- Set BING_KEY to key obtained via Microsoft Azure; see following:")
         print("  https://learn.microsoft.com/en-us/azure/cognitive-services/bing-web-search")
         print("- Types: Web, Image, Video, News, SpellingSuggestion, RelatedSearch")
         print("- For API details, see following:")
         print("  https://docs.microsoft.com/en-us/rest/api/cognitiveservices-bingsearch/bing-web-api-v7-reference")
-        print("- The resuslt is XML file with <entry> tags for blurb info")
+        print("- The result is XML file with <entry> tags for blurb info")
+        print("- ** XML support is currently broken.")
         sys.exit()
     debug.assertion(BING_KEY)
 

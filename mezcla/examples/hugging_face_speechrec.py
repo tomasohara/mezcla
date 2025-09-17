@@ -22,7 +22,7 @@ USE_INTERFACE=1 {script} -
 # Standard modules
 # TODO: import re
 
-# Intalled modules
+# Installed modules
 # Note: done dynamically below
 
 # Local modules
