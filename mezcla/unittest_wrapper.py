@@ -121,6 +121,10 @@ UNDER_COVERAGE = system.getenv_bool(
     "COVERAGE_RUN", False,
     description="whether or not tests are being run under coverage"
 )
+# note: following added for diagnosing CherryPy hangups
+ABORT_AFTER_TEARDOWN = system.getenv_bool(
+    "ABORT_AFTER_TEARDOWN", False,
+    desc="Abort python unittest session after class shutdown")
 
 
 # Dynamic imports
@@ -763,6 +767,8 @@ class TestWrapper(unittest.TestCase):
             else:
                 gh.run("rm -vf {base}*", base=cls.temp_base)
         super().tearDownClass()
+        if ABORT_AFTER_TEARDOWN:
+            system.exit("aborted after tearDownClass")
         return
 
 ## TODO: TestWrapper.assert = TestWrapper.do_assert
