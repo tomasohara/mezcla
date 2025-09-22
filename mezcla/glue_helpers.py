@@ -326,10 +326,10 @@ def resolve_path(
 
 def form_path(*filenames: str, create: bool = False) -> str:
     """Wrapper around os.path.join over FILENAMEs (with tracing)
-    Note: includes sanity check about absolute filenames except for first
-    If CREATE, then the directory for the path is created if needed
-    Warning: This might be deprecated: use system.form_path instead.
-    """
+    Note: includes sanity check about absolute filenames except for first.
+    If CREATE, then the directory for the path is created if needed.
+    (See system.py for a version that is strictly a wrapper.)
+    """    
     debug.assertion(not any(f.startswith(system.path_separator()) for f in filenames[1:]))
     if create:
         ## TODO2: add dir option so that all filenames used for path
