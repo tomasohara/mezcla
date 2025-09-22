@@ -86,6 +86,7 @@ from mezcla import system
 from mezcla.system import write_temp_file
 
 # Constants
+TL = debug.TL
 DEFAULT_STATUS_CODE = 0
 MAX_DOWNLOAD_TIME = system.getenv_integer(
     "MAX_DOWNLOAD_TIME", 60,
@@ -1084,21 +1085,29 @@ def main(args : List[str]) -> None:
     plain_html = False
     show_usage = False
     use_stdout = False
+    use_inner = True
     quiet = False
+    verbose = False
     filename : Optional[str] = None
     for i, arg in enumerate(args[1:]):
         if (arg == "--help"):
             show_usage = True
         elif (arg == "--regular"):
             plain_text = True
+            use_inner = False
         elif (arg == "--html"):
             plain_html = True
+        elif (arg == "--text"):
+            plain_html = False
+            use_inner = True
         elif (arg == "--inner"):
-            pass
+            use_inner = True
         elif (arg == "--stdout"):
             use_stdout = True
         elif (arg == "--quiet"):
             quiet = True
+        elif (arg == "--verbose"):
+            verbose = True
         elif (not arg.startswith("-")):
             filename = arg
             break
@@ -1110,6 +1119,7 @@ def main(args : List[str]) -> None:
 
     # HACK: Convert local html document to text
     if (filename and (not my_re.search("www|http", filename) or plain_text)):
+        debug.assertion(not use_inner)
         doc_filename = filename
         document_data = system.read_file(doc_filename)
         document_text = html_to_text(document_data)
@@ -1123,62 +1133,95 @@ def main(args : List[str]) -> None:
     # TODO: Do simpler test of download_web_document
     # TODO1: add explicit argument for inner-html support
     elif (filename):
+        debug.assertion(use_inner)
         # Get web page text
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
         url = filename
-        debug.trace_expr(6, retrieve_web_document(url))
-        html_data = download_web_document(url)
+        ## TODO3: make the debug-level-based processing more explicit
+        USUAL_DEBUGGING = debug.debugging()
+        VERBOSE_DEBUGGING = TL.VERBOSE
+        if debug.debugging(TL.QUITE_VERBOSE):
+            debug.trace_expr(1, retrieve_web_document(url), max_len=32768)
+        html_data = ""
+        if plain_html or USUAL_DEBUGGING:
+            html_data = download_web_document(url)
         filename = system.quote_url_text(url)
         if not filename:
-            filename = ""
+            filename = "output.html"
+        if not filename.endswith(".html"):
+            filename += ".html"
 
         if plain_html:
             if use_stdout:
                 print(html_data)
             else:
-                doc_filename = filename
-                system.write_file(doc_filename + ".html", html_data)
-                print(f"See {doc_filename}.html")
+                ## OLD:
+                ## doc_filename = filename
+                ## system.write_file(doc_filename + ".html", html_data)
+                ## print(f"See {doc_filename}.html")
+                system.write_file(filename, html_data)
+                print(f"See {filename!r} for regular HTML.")
         else:
-            if debug.debugging():
-                write_temp_file("pre-" + filename, html_data)
+            if USUAL_DEBUGGING:
+                out_path = write_temp_file("pre-" + filename, html_data)
+                debug.trace(1, f"See {out_path!r} for non-inner HTML")
             
             # Show inner/outer HTML
-            # Note: The browser is hidden unless MOZ_HEADLESS false
-            # TODO: Support Chrome
-            system.setenv("MOZ_HEADLESS",
-                          str(int(system.getenv_bool("MOZ_HEADLESS", True))))
+            ## OLD:
+            ## # Note: The browser is hidden unless MOZ_HEADLESS false
+            ## # TODO: Support Chrome
+            ## system.setenv("MOZ_HEADLESS",
+            ##               str(int(system.getenv_bool("MOZ_HEADLESS", True))))
             rendered_html = get_inner_html(url)
             output_filename = "post-" + filename
-            if (not use_stdout) or debug.debugging():
-                write_temp_file(output_filename, rendered_html)
+            out_path = ""
+            if (not use_stdout) or USUAL_DEBUGGING:
+                out_path = write_temp_file(output_filename, rendered_html)
             if use_stdout:
                 if not quiet:
                     print("Rendered html:")
                 print(system.to_utf8(rendered_html))            
             else:
-                print(f"See {output_filename}")
+                print(f"See {out_path!r} for inner HTML")
                 
-            if debug.debugging():
+            if USUAL_DEBUGGING:
+                ## TODO3: isolate for use as main output
                 rendered_text = get_inner_text(url)
                 debug.trace_fmt(5, "type(rendered_text): {t}", t=rendered_text)
-                write_temp_file("post-" + filename + ".txt", rendered_text)
+                out_path = write_temp_file("post-" + filename + ".txt", rendered_text)
+                debug.trace(1, f"See {out_path!r} for inner text")
             debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
     else:
         show_usage = True
 
-    # Not sure what to do
+    # Show usage if user not sure what to do or invalid option.
+    ## TODO3: rework via Main class (see summarize_pytest.py).
+    # 
     if show_usage:
         script = gh.basename(__file__)
-        print("Usage: {prog} [--help] [--stdout] [--quiet] [[--regular | --inner | --html] [filename]]")
+        print(f"Usage: {script} [--help] [--verbose] [--stdout] [--quiet] [[--regular | --inner | --html] [filename]]")
+        print()
+        print("Notes:")
         print("- Specify a local HTML file to download (e.g., save as text).")
         print("- Otherwise, specify a URL for a simple test of inner html access (n.b., via stdout).")
         print("- Use --regular to bypass default inner processing (and save as text).")
         ## TODO3: add explicit option like --text to make processing more consistent
         print("- With --html or --inner, the result is saved as html.")
+        print("- The --inner option involves JavaScript access via selenium.")
+        print("- Some options controlled by environment variables (e.g., TMPDIR).")
+        print("- Use HEADLESS_WEBDRIVER=0 ... to show the browser during the download.")
+        print(f"- Additional output produced when DEBUG_LEVEL is {TL.USUAL} or higher.")
+        if verbose:
+            INDENT = "    "
+            env_opts = system.formatted_environment_option_descriptions(sort=True, indent=INDENT)
+            print(f"- Other env. options:\n{INDENT}{env_opts}")
+        else:
+            print(f"- Use --verbose to see other env. options.")
+            
         print()
         print("Examples:")
-        print(f"- {script} --inner --stdout --quiet https://twitter.com/home > twitter-home.html")
+        ## OLD: print(f"- {script} --inner --stdout --quiet https://twitter.com/home > twitter-home.html")
+        print(f"- {script} --inner --stdout --quiet https://x.com/home > x-home.html")
         print(f"- {script} --regular --stdout bootstrap-hello-world.html > bootstrap-hello-world.txt")
     return
 
