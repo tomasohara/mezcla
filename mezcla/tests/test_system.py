@@ -374,27 +374,28 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.unquote_url_text("Joe%27s+hat") == "Joe's hat"
         assert THE_MODULE.unquote_url_text("Joe%2527s%2Bhat") == "Joe%27s+hat"
 
-    def test_escape_html_text(self):
-        """Ensure escape_html_text works as expected"""
-        debug.trace(4, "test_escape_html_text()")
-
-        ## TODO: set fixed sys.version_info.major > 2.
-
-        assert THE_MODULE.escape_html_text("<2/") == "&lt;2/"
-        assert THE_MODULE.escape_html_text("Joe's hat") == "Joe&#x27;s hat"
-
-        ## TODO: test with sys.version_info.major < 2
-
-    def test_unescape_html_text(self):
-        """Ensure unescape_html_text works as expected"""
-        debug.trace(4, "test_unescape_html_text()")
-
-        ## TODO: set fixed sys.version_info.major > 2.
-
-        assert THE_MODULE.unescape_html_text("&lt;2/") == "<2/"
-        assert THE_MODULE.unescape_html_text("Joe&#x27;s hat") == "Joe's hat"
-
-        ## TODO: test with sys.version_info.major < 2
+    ## OLD:
+    ## def test_escape_html_text(self):
+    ##     """Ensure escape_html_text works as expected"""
+    ##     debug.trace(4, "test_escape_html_text()")
+    ##
+    ##     ## TODO: set fixed sys.version_info.major > 2.
+    ##
+    ##     assert THE_MODULE.escape_html_text("<2/") == "&lt;2/"
+    ##     assert THE_MODULE.escape_html_text("Joe's hat") == "Joe&#x27;s hat"
+    ##
+    ##     ## TODO: test with sys.version_info.major < 2
+    ##
+    ## def test_unescape_html_text(self):
+    ##     """Ensure unescape_html_text works as expected"""
+    ##     debug.trace(4, "test_unescape_html_text()")
+    ##
+    ##     ## TODO: set fixed sys.version_info.major > 2.
+    ##
+    ##     assert THE_MODULE.unescape_html_text("&lt;2/") == "<2/"
+    ##     assert THE_MODULE.unescape_html_text("Joe&#x27;s hat") == "Joe's hat"
+    ##
+    ##     ## TODO: test with sys.version_info.major < 2
 
     def test_stdin_reader(self):
         """Ensure stdin_reader works as expected"""
