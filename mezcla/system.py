@@ -985,16 +985,17 @@ def write_lines(
     return
 
 
-def write_temp_file(filename: FileDescriptorOrPath, text: Any) -> None:
-    """Create FILENAME in temp. directory using TEXT"""
+def write_temp_file(filename: FileDescriptorOrPath, text: Any) -> str:
+    """Create FILENAME in temp. directory using TEXT. Returns path to result."""
     ## TODO2: Any => Union[bytes, str]
+    temp_path = ""
     try:
         assert isinstance(TEMP_DIR, str) and TEMP_DIR != "", "TEMP_DIR not defined"
         temp_path = form_path(TEMP_DIR, filename)
         write_file(temp_path, text)
     except:
         print_exception_info("write_temp_file")
-    return 
+    return temp_path
 
 
 def get_file_modification_time(
@@ -1114,7 +1115,9 @@ def path_separator(sysname: Optional[str] = None):
 
 
 def form_path(*filenames: str) -> str:
-    """Wrapper around os.path.join over FILENAMEs (with tracing)"""
+    """Wrapper around os.path.join over FILENAMEs (with tracing).
+    Note: See glue_helpers.py for a version that creates directories and applies sanity checks.
+    """
     ## OLD: debug.assertion(not any(f.startswith(path_separator()) for f in filenames[1:]))
     path = os.path.join(*filenames)
     debug.trace_fmt(6, "form_path({f}) => {p}", f=tuple(filenames), p=path)
