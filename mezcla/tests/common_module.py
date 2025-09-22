@@ -16,25 +16,30 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
+from mezcla.unittest_wrapper import RUN_SLOW_TESTS
 
 # Constants and environment options
 # Note: These are just intended for internal options, not for end users.
 # It also allows for enabling options in one place.
 #
-USER = system.getenv_bool(
-    "USER", "user",
-    description="Current user")
-HOME = system.getenv_bool(
-    "HOME", "/home/user",
-    description="Home directory")
+## OLD:
+## USER = system.getenv_bool(
+##    "USER", "user",
+##    description="Current user")
+## HOME = system.getenv_bool(
+##     "HOME", "/home/user",
+##     description="Home directory")
+USER = system.USER
+HOME = gh.HOME_DIR
 UNDER_RUNNER = system.getenv_bool(
     "UNDER_RUNNER", HOME == "/home/runner",
     description="Whether running under Github actions")
 ##
 ## TODO3: remove alias RUN_SLOW_TESTS
-RUN_SLOW_TESTS = system.getenv_bool(
-    "RUN_SLOW_TESTS", 
-    description="Alias for not[-]SKIP_SLOW_TESTS")
+## OLD:
+## RUN_SLOW_TESTS = system.getenv_bool(
+##     "RUN_SLOW_TESTS", 
+##     description="Alias for not[-]SKIP_SLOW_TESTS")
 SKIP_SLOW_TESTS = system.getenv_bool(
     "SKIP_SLOW_TESTS",
     (not (UNDER_RUNNER or RUN_SLOW_TESTS)),
