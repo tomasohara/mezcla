@@ -648,19 +648,24 @@ def unquote_url_text(text: str) -> str:
 
 def escape_html_value(value: str) -> str:
     """Escape VALUE for HTML embedding
-    Warning: deprecated function; import from html_utils instead
+    Warning: no-op function; import from html_utils instead
     """
-    from mezcla import html_utils       # pylint: disable=import-outside-toplevel
-    return html_utils.escape_html_text(value)
+    raise RuntimeError("Use version in glue_helpers.py")
+    ## OLD:
+    ## from mezcla import html_utils       # pylint: disable=import-outside-toplevel
+    ## return html_utils.escape_html_text(value)
 #
 escape_html_text = escape_html_value
 
 def unescape_html_value(value: str) -> str:
     """Undo escaped VALUE for HTML embedding
-    Warning: deprecated function; import from html_utils instead
+    Warning: no-op function; import from html_utils instead
     """
-    from mezcla import html_utils       # pylint: disable=import-outside-toplevel
-    return html_utils.unescape_html_text(value)
+    raise RuntimeError("Use version in glue_helpers.py")
+    ## OLD:
+    ## debug.trace(3, "Warning: deprecated function")
+    ## from mezcla import html_utils       # pylint: disable=import-outside-toplevel
+    ## return html_utils.unescape_html_text(value)
 #
 unescape_html_text = unescape_html_value
 
