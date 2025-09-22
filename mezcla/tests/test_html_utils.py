@@ -214,14 +214,12 @@ class TestHtmlUtils(TestWrapper):
     def test_escape_html_value(self):
         """Ensure escape_html_value() works as expected"""
         debug.trace(4, "test_escape_html_value()")
-        # note: this test is the same as system.test_escape_html_text
         assert THE_MODULE.escape_html_value("<2/") == "&lt;2/"
         assert THE_MODULE.escape_html_value("Joe's hat") == "Joe&#x27;s hat"
 
     def test_unescape_html_value(self):
         """Ensure unescape_html_value() works as expected"""
         debug.trace(4, "test_unescape_html_value()")
-        # note: this test is the same as test_system.test_unescape_html_text
         assert THE_MODULE.unescape_html_value("&lt;2/") == "<2/"
         assert THE_MODULE.unescape_html_value("Joe&#x27;s hat") == "Joe's hat"
 
@@ -789,6 +787,34 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE.set_param_dict({"f": "'my dog's fleas'"})
         assert THE_MODULE.format_url_param("f") == '&#x27;my dog&#x27;s fleas&#x27;'
         
+    def test_extract_html_images(self):
+        """Ensure extract_html_images works as expected"""
+        debug.trace(4, "test_extract_html_images()")
+
+        url = 'example.com'
+        html = (
+            '<!DOCTYPE html>\n'
+            '<html>\n'
+            '<body>\n'
+            '<h2>The target Attribute</h2>\n'
+            '<div class="some-class">this is a div</div>\n'
+            '<div class="some-class another-class">'
+            '<img src="smiley.gif" alt="Smiley face" width="42" height="42" style="border:5px solid black">\n'
+            '<img src="some_image.jpg" alt="Some image" width="42" height="42" style="border:5px solid black">\n'
+            '<img src="hidden.jpg" alt="this is a hidden image" width="42" height="42" style="display:none">\n'
+            '</div>'
+            '</body>\n'
+            '</html>\n'
+        )
+        images_urls = [
+            f'{url}/smiley.gif',
+            f'{url}/some_image.jpg'
+        ]
+
+        result = THE_MODULE.extract_html_images(html, url)
+        assert result == images_urls
+        assert 'hidden.jpg' not in images_urls
+
     ## TODO (test for type hint failures):
     ## @pytest.mark.xfail
     ## @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
