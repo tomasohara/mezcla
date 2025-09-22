@@ -83,7 +83,8 @@ from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
-from mezcla.system import write_temp_file
+## OLD: from mezcla.system import write_temp_file
+write_temp_file = gh.write_temp_file
 
 # Constants
 TL = debug.TL
