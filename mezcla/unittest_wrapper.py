@@ -414,7 +414,8 @@ class TestWrapper(unittest.TestCase):
 
         # Get new temp file and delete existing file and variants based on temp_file_count,
         # such as /tmp/test-2, /tmp/test-2-1, and /tmp/test-2-2 (but not /tmp/test-[13]*).
-        # Warning: using TEMP_FILE is not recommended due to clobbering by different tests
+        # Warning: using self.temp_file is not recommended due to clobbering by different tests:
+        # instead use self.get_temp_file().
         self.temp_file = (gh.TEMP_FILE or default_temp_file)
         if PRUNE_TEMP:
             gh.delete_existing_file(f"{self.temp_file}")
