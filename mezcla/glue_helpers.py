@@ -184,6 +184,23 @@ def create_temp_file(contents: Any, binary: bool = False) -> str:
     return temp_filename
 
 
+def write_temp_file(filename: FileDescriptorOrPath, text: Any,
+                    temp_dir: Optional[str]=None) -> str:
+    """Create FILENAME in temp. directory using TEXT. Returns path to result.
+    Note: Version of system.py function allowing for TEMP DIR override.
+    """
+    ## TODO2: Any => Union[bytes, str]
+    if temp_dir is None:
+        temp_dir = get_temp_dir()
+    temp_path = ""
+    try:
+        temp_path = form_path(temp_dir, filename)
+        system.write_file(temp_path, text)
+    except:
+        system.print_exception_info("gh.write_temp_file")
+    return temp_path
+
+
 def basename(filename: str, extension: Optional[str] = None) -> str:
     """Remove directory from FILENAME along with optional EXTENSION, as with Unix basename command. Note: the period in the extension must be explicitly supplied (e.g., '.data' not 'data')"""
     # EX: basename("fubar.py", ".py") => "fubar"
