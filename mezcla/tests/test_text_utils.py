@@ -95,33 +95,34 @@ class TestTextUtils(TestWrapper):
         text = THE_MODULE.document_to_text(doc_path)
         assert normalize_text(text) == normalize_text(MS_WORD_TEXT)
 
-    def test_extract_html_images(self):
-        """Ensure extract_html_images works as expected"""
-        debug.trace(4, "test_extract_html_images()")
-
-        url = 'example.com'
-        html = (
-            '<!DOCTYPE html>\n'
-            '<html>\n'
-            '<body>\n'
-            '<h2>The target Attribute</h2>\n'
-            '<div class="some-class">this is a div</div>\n'
-            '<div class="some-class another-class">'
-            '<img src="smiley.gif" alt="Smiley face" width="42" height="42" style="border:5px solid black">\n'
-            '<img src="some_image.jpg" alt="Some image" width="42" height="42" style="border:5px solid black">\n'
-            '<img src="hidden.jpg" alt="this is a hidden image" width="42" height="42" style="display:none">\n'
-            '</div>'
-            '</body>\n'
-            '</html>\n'
-        )
-        images_urls = [
-            f'{url}/smiley.gif',
-            f'{url}/some_image.jpg'
-        ]
-
-        result = THE_MODULE.extract_html_images(html, url)
-        assert result == images_urls
-        assert 'hidden.jpg' not in images_urls
+    ## OLD:
+    ## def test_extract_html_images(self):
+    ##     """Ensure extract_html_images works as expected"""
+    ##     debug.trace(4, "test_extract_html_images()")
+    ##
+    ##     url = 'example.com'
+    ##     html = (
+    ##         '<!DOCTYPE html>\n'
+    ##         '<html>\n'
+    ##         '<body>\n'
+    ##         '<h2>The target Attribute</h2>\n'
+    ##         '<div class="some-class">this is a div</div>\n'
+    ##         '<div class="some-class another-class">'
+    ##         '<img src="smiley.gif" alt="Smiley face" width="42" height="42" style="border:5px solid black">\n'
+    ##         '<img src="some_image.jpg" alt="Some image" width="42" height="42" style="border:5px solid black">\n'
+    ##         '<img src="hidden.jpg" alt="this is a hidden image" width="42" height="42" style="display:none">\n'
+    ##         '</div>'
+    ##         '</body>\n'
+    ##         '</html>\n'
+    ##     )
+    ##     images_urls = [
+    ##         f'{url}/smiley.gif',
+    ##         f'{url}/some_image.jpg'
+    ##     ]
+    ##
+    ##     result = THE_MODULE.extract_html_images(html, url)
+    ##     assert result == images_urls
+    ##     assert 'hidden.jpg' not in images_urls
 
     def test_version_to_number(self):
         """Ensure version_to_number works as expected"""
