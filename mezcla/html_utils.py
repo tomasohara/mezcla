@@ -1140,12 +1140,16 @@ def main(args : List[str]) -> None:
         url = filename
         ## TODO3: make the debug-level-based processing more explicit
         USUAL_DEBUGGING = debug.debugging()
-        VERBOSE_DEBUGGING = TL.VERBOSE
+        VERBOSE_DEBUGGING = debug.debugging(TL.VERBOSE)
         if debug.debugging(TL.QUITE_VERBOSE):
-            debug.trace_expr(1, retrieve_web_document(url), max_len=32768)
+            alt_html_data = retrieve_web_document(url)
+            debug.trace_expr(1, alt_html_data, max_len=32768)
         html_data = ""
-        if plain_html or USUAL_DEBUGGING:
+        if plain_html or VERBOSE_DEBUGGING:
             html_data = download_web_document(url)
+            debug.trace_expr(TL.VERBOSE, html_data, max_len=32768)
+            debug.assertion(system.relative_intersection(alt_html_data.split(),
+                                                         html_data.split()) > 0.9)
         filename = system.quote_url_text(url)
         if not filename:
             filename = "output.html"
@@ -1217,7 +1221,7 @@ def main(args : List[str]) -> None:
             env_opts = system.formatted_environment_option_descriptions(sort=True, indent=INDENT)
             print(f"- Other env. options:\n{INDENT}{env_opts}")
         else:
-            print(f"- Use --verbose to see other env. options.")
+            print("- Use --verbose to see other env. options.")
             
         print()
         print("Examples:")
