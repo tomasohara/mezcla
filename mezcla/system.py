@@ -1314,6 +1314,16 @@ def intersection(list1: list, list2: list, as_set: bool = False) -> Union[list, 
     return result
 
 
+def relative_intersection(list1: list, list2: list, as_set: bool = False):
+    """Compute relative size of intersection for LIST1 and LIST2"""
+    # EX: relative_intersection([1, 2], [2]) => 0.5
+    min_size = max(len(list1), len(list2))
+    result = (system.intersection(list1, list2, as_set=True) / min_size
+              if min_size else 0)
+    debug.trace(6, f"relative_intersection({list1}, {list2}, {as_set=}) => {result}")
+    return result
+
+
 def union(list1: list, list2: list, as_set: bool = False) -> Union[list, set]:
     """Return union of LIST1 and LIST2
     Note: result is a list unless AS_SET specified
