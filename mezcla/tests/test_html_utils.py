@@ -21,7 +21,6 @@
 """Tests for html_utils module"""
 
 # Standard packages
-import re
 import os
 
 # Installed packages
@@ -34,6 +33,7 @@ from mezcla import debug
 from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
+from mezcla.tests.common_module import normalize_text
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
@@ -63,6 +63,25 @@ SCRAPPYCITO_LIKE_URL = system.getenv_text(
 TOMASOHARA_TRADE_LIKE_URL = system.getenv_text(
     "TOMASOHARA_TRADE_LIKE_URL", "http://www.tomasohara.trade",
     desc="URL to use instead of www.tomasohara.trade")
+##
+DIMENSIONS_HTML_FILENAME = "./resources/simple-window-dimensions.html"
+DIMENSIONS_EXPECTED_TEXT = """
+   Simple window dimensions
+
+   Simple window dimensions
+
+      Legend:
+        Screen dimensions:    ???
+        Browser dimensions:   ???
+
+   JavaScript is required
+"""
+#
+# NOTE: Whitespace and punctuation gets normalized
+# TODO: restore bullet points (e.g., "* Screen dimensions")
+
+#-------------------------------------------------------------------------------
+
 
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
@@ -114,10 +133,10 @@ class TestHtmlUtils(TestWrapper):
         # TODO: use direct API call to return unrendered text
         unrendered_text = gh.run(f"lynx -dump {url}")
         debug.trace_expr(5, unrendered_text)
-        assert re.search(r"Browser dimensions: \?", unrendered_text)
+        assert my_re.search(r"Browser dimensions: \?", unrendered_text)
         rendered_text = THE_MODULE.get_inner_text(url)
         debug.trace_expr(5, rendered_text)
-        assert re.search(r"Browser dimensions: \d+x\d+", rendered_text)
+        assert my_re.search(r"Browser dimensions: \d+x\d+", rendered_text)
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -131,13 +150,13 @@ class TestHtmlUtils(TestWrapper):
         # TODO: use direct API call to return unrendered text
         unrendered_html = gh.run(f"lynx -source {url}")
         debug.trace_expr(5, unrendered_html)
-        assert re.search(
+        assert my_re.search(
             r"<li>Browser dimensions:\s*<span.*>\?\?\?</span></li>",
             unrendered_html,
             )
         rendered_html = THE_MODULE.get_inner_html(url)
         debug.trace_expr(5, rendered_html)
-        assert re.search(
+        assert my_re.search(
             r"<li>Browser dimensions:\s*<span.*>\d+x\d+</span></li>",
             rendered_html,
             )
@@ -428,14 +447,14 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, "test_download_binary_file()")
         binary_doc = THE_MODULE.download_binary_file(url="www.tomasohara.trade")
         non_binary_doc = THE_MODULE.download_web_document(url="www.tomasohara.trade")
-        assert re.search(b"Scrappy.*Cito", binary_doc)
+        assert my_re.search(b"Scrappy.*Cito", binary_doc)
         assert bytes(non_binary_doc, encoding="UTF-8") == binary_doc
 
 
     def test_retrieve_web_document(self):
         """Ensure retrieve_web_document() works as expected"""
         debug.trace(4, "test_retrieve_web_document()")
-        assert re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document("www.tomasohara.trade"))
+        assert my_re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document("www.tomasohara.trade"))
 
     def test_init_BeautifulSoup(self):
         """Ensure init_BeautifulSoup() works as expected"""
@@ -819,10 +838,11 @@ class TestHtmlUtils(TestWrapper):
         """Ensure html_to_text works as expected"""
         # TODO: move into test_html_utils.py
         debug.trace(4, "test_html_to_text()")
-        html_path = gh.resolve_path(HTML_FILENAME)
+        ## TODO4: use gh.form_path
+        html_path = gh.resolve_path(DIMENSIONS_HTML_FILENAME)
         html = system.read_file(html_path)
         text = THE_MODULE.html_to_text(html)
-        assert normalize_text(text) == normalize_text(EXPECTED_TEXT)
+        assert normalize_text(text) == normalize_text(DIMENSIONS_EXPECTED_TEXT)
 
     ## TODO (test for type hint failures):
     ## @pytest.mark.xfail
