@@ -12,7 +12,7 @@
 """Tests for text_utils module"""
 
 # Standard packages
-import re
+## OLD: import re
 import os
 
 # Installed packages
@@ -21,43 +21,17 @@ import os
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla import system
+## OLD: from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla.tests.common_module import normalize_text
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:	    global module object
 import mezcla.text_utils as THE_MODULE
 
-HTML_FILENAME = "./resources/simple-window-dimensions.html"
-
-EXPECTED_TEXT = """
-   Simple window dimensions
-
-   Simple window dimensions
-
-      Legend:
-        Screen dimensions:    ???
-        Browser dimensions:   ???
-
-   JavaScript is required
-"""
-#
-# NOTE: Whitespace and punctuation gets normalized
-# TODO: restore bullet points (e.g., "* Screen dimensions")
-
 MS_WORD_FILENAME = "./resources/spanish-accents.docx"
 
 MS_WORD_TEXT = "Tío Tomás\t\t\t\tUncle Tom\n\n¡Buenos días!\t\t\t\tGood morning\n\nçãêâôöèäàÃëÇÂîòïÔìðÊÅåùÀŠý\t\tcaeaooeaaAeCAioiOioEAauASy"
-
-
-def normalize_text(text):
-    """Trim excess whitespace and convert punctuation to <PUNCT>"""
-    # EX: normalize_test_text("   h  e y?! ") => "h e y<PUNCT>"
-    result = text.strip()
-    result = re.sub(r"\s+", " ", result)
-    result = re.sub(r"[^\w\s]+", "<PUNCT>", result)
-    debug.trace(4, f"normalize_test_text({text}) => {result}")
-    return result
 
 
 class TestTextUtils(TestWrapper):
