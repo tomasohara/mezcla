@@ -102,7 +102,7 @@ class PytestSummarizer:
         debug.trace(TL.QUITE_DETAILED, f"parse_pytest_line({line[:50]}...)")
         
         # Check if this is a pytest summary line
-        if not my_re.search(r"=== .* ===", line):
+        if not my_re.search(r"= .*(passed|failed|skipped).* =", line):
             debug.trace(TL.VERBOSE, "Not a pytest summary line")
             return None
         
