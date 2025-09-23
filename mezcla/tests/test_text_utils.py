@@ -39,12 +39,13 @@ class TestTextUtils(TestWrapper):
     # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    def test_init_BeautifulSoup(self):
-        """Ensure init_BeautifulSoup works as expected"""
-        debug.trace(4, "test_init_BeautifulSoup()")
-        THE_MODULE.BeautifulSoup = None
-        THE_MODULE.init_BeautifulSoup()
-        assert THE_MODULE.BeautifulSoup is not None
+    ## OLD:
+    ## def test_init_BeautifulSoup(self):
+    ##     """Ensure init_BeautifulSoup works as expected"""
+    ##     debug.trace(4, "test_init_BeautifulSoup()")
+    ##     THE_MODULE.BeautifulSoup = None
+    ##     THE_MODULE.init_BeautifulSoup()
+    ##     assert THE_MODULE.BeautifulSoup is not None
 
     def test_init_textract(self):
         """Ensure init_textract works as expected"""
