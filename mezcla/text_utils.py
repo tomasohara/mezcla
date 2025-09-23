@@ -97,7 +97,7 @@ def html_to_text(document_data):
     """Returns text version of html DATA
     Warning: no-op function; import from html_utils instead
     """
-    raise RuntimeError("Use version in glue_helpers.py")
+    raise RuntimeError("Use version in html_utils.py")
 
 
 def init_textract():
@@ -128,7 +128,7 @@ def extract_html_images(document_data=None, url=None, filename=None):
     """Returns list of all images in HTML DOC from URL (n.b., URL used to determine base URL)
     Warning: no-op function; import from html_utils instead
     """
-    raise RuntimeError("Use version in glue_helpers.py")
+    raise RuntimeError("Use version in html_utils.py")
 
 
 def version_to_number(version, max_padding=3):
