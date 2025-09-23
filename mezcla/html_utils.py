@@ -612,6 +612,7 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
     # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
     # EX: download_web_document("www. bogus. url.html") => None
     ## TODO: def download_web_document(url, /, filename=None, download_dir=None, meta_hash=None, use_cached=False):
+    ## TODO3: add user-agent
     debug.trace_fmtd(4, "download_web_document({u}, d={d}, f={f}, h={mh}, cached={uc}, binary={ab})",
                      u=url, d=download_dir, f=filename, mh=meta_hash,
                      uc=use_cached, ab=as_binary)
@@ -713,6 +714,7 @@ def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, i
     if "//" not in url:
         url = "http://" + url
     try:
+        ## TODO3: add headers with 'User-Agent'
         r = requests.get(url, timeout=DOWNLOAD_TIMEOUT)
         status_code = r.status_code
         result = r.content
