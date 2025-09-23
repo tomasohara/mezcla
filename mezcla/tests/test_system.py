@@ -37,6 +37,7 @@ from mezcla import debug
 import mezcla.system as THE_MODULE
 # note: 'system.function' used for functions not being tested (out of habit)
 system = THE_MODULE
+MOD = THE_MODULE
 
 class TestSystem(TestWrapper):
     """Class for test case definitions"""
@@ -848,6 +849,12 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4]) == [2, 4]
         assert THE_MODULE.intersection([1, 2], [5, 7, 8], as_set=True) == set()
         assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4], as_set=True) == {2, 4}
+
+    def test_relative_intersection(self):
+        """Verify relative_intersection"""
+        debug.trace(4, "test_relative_intersection()")
+        assert (MOD.round3(MOD.relative_intersection([1, 2, 3], [3, 4, 5]))
+                == 0.333)
 
     def test_union(self):
         """Ensure union works as expected"""
