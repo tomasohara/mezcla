@@ -99,6 +99,18 @@ def get_mezcla_root_dir():
     debug.trace(5, f"get_mezcla_root_dir() => {root_dir!r}")
     return root_dir      
 
+
+def normalize_text(text):
+    """Trim excess whitespace and convert punctuation to <PUNCT>"""
+    # EX: normalize_test_text("   h  e y?! ") => "h e y<PUNCT>"
+    result = text.strip()
+    result = my_re.sub(r"\s+", " ", result)
+    result = my_re.sub(r"[^\w\s]+", "<PUNCT>", result)
+    debug.trace(4, f"normalize_test_text({text}) => {result}")
+    return result
+
+#-------------------------------------------------------------------------------
+
 mezcla_root_dir = get_mezcla_root_dir()
 
 #-------------------------------------------------------------------------------
