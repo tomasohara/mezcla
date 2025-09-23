@@ -48,21 +48,22 @@ from mezcla import system
 from mezcla.system import to_int
 
 # TEMP: Placeholders for dynamically loaded modules
-BeautifulSoup = None
+## OLD: BeautifulSoup = None
 textract = None
 
-def init_BeautifulSoup():
-    """Make sure bs4.BeautifulSoup is loaded"""
-    import bs4                           # pylint: disable=import-outside-toplevel, import-error
-    global BeautifulSoup
-    BeautifulSoup = bs4.BeautifulSoup
-
+## OLD:
+## def init_BeautifulSoup():
+##     """Make sure bs4.BeautifulSoup is loaded"""
+##     import bs4                           # pylint: disable=import-outside-toplevel, import-error
+##     global BeautifulSoup
+##     BeautifulSoup = bs4.BeautifulSoup
 
 def extract_soup_text_with_breaks(soup):
     """Extract text from SOUP parse, accounting for implicit newlines"""
-    # TODO: def extract_soup_text(soup: bs4.Tag) -> str:
+    # TODO: def extract_soup_text_with_breaks(soup: bs4.Tag) -> str:
     # Based on https://stackoverflow.com/questions/30337528/make-beautifulsoup-handle-line-breaks-as-a-browser-would
-    debug.trace_fmtd(6, f"extract_soup_text({soup})")
+    ## TODO4: move to html_utils
+    debug.trace_fmtd(6, f"extract_soup_text_with_breaks({soup})")
     _inline_elements = {"a", "span", "em", "strong", "u", "i", "font", "mark", "label", "s",
                         "sub", "sup", "tt", "bdo", "button", "cite", "del", "b"}
     import bs4                           # pylint: disable=import-outside-toplevel, import-error
@@ -89,7 +90,7 @@ def extract_soup_text_with_breaks(soup):
 
     # Extract all the text
     result = "".join(_get_text(soup))    
-    debug.trace_fmtd(6, f"extract_soup_text() => {result}")
+    debug.trace_fmtd(6, f"extract_soup_text_with_breaks() => {result}")
     return result
 
 
