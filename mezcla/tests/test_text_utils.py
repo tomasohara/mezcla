@@ -72,15 +72,6 @@ class TestTextUtils(TestWrapper):
         THE_MODULE.init_BeautifulSoup()
         assert THE_MODULE.BeautifulSoup is not None
 
-    def test_html_to_text(self):
-        """Ensure html_to_text works as expected"""
-        # TODO: move into test_html_utils.py
-        debug.trace(4, "test_html_to_text()")
-        html_path = gh.resolve_path(HTML_FILENAME)
-        html = system.read_file(html_path)
-        text = THE_MODULE.html_to_text(html)
-        assert normalize_text(text) == normalize_text(EXPECTED_TEXT)
-
     def test_init_textract(self):
         """Ensure init_textract works as expected"""
         debug.trace(4, "test_init_textract()")

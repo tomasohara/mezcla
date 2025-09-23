@@ -815,6 +815,15 @@ class TestHtmlUtils(TestWrapper):
         assert result == images_urls
         assert 'hidden.jpg' not in images_urls
 
+    def test_html_to_text(self):
+        """Ensure html_to_text works as expected"""
+        # TODO: move into test_html_utils.py
+        debug.trace(4, "test_html_to_text()")
+        html_path = gh.resolve_path(HTML_FILENAME)
+        html = system.read_file(html_path)
+        text = THE_MODULE.html_to_text(html)
+        assert normalize_text(text) == normalize_text(EXPECTED_TEXT)
+
     ## TODO (test for type hint failures):
     ## @pytest.mark.xfail
     ## @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
