@@ -63,14 +63,6 @@ class TestIt(TestWrapper):
         """Tests run_script w/ data file"""
         debug.trace(4, f"TestIt.test_data_file(); self={self}")
         
-        ## OLD:
-        ## system.write_file(self.temp_file, "Hi, Paul")
-        ## system.write_file(self.temp_file, "Hi, Paul")
-        ## output = self.run_script(options="", env_options="FROM=es TO=en",
-        ##                          data_file=self.temp_file)
-        ## self.do_assert("hola" in output.lower())
-        ## self.do_assert("pablo" in output.lower())
-        ##
         ## NOTE: Translation is fickle with proper names so use proper noun phrase.
         system.write_file(self.temp_file, "John the Baptist")
         output = self.run_script(options="", env_options="FROM=en TO=es",
@@ -78,8 +70,6 @@ class TestIt(TestWrapper):
         self.do_assert("juan" in output.lower())
         self.do_assert("bautista" in output.lower())
         return
-    
-    ## NEW: Revised tests from mezcla/tests/test_huggingface_translation.py
     
     @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=SKIP_SLOW_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -115,9 +105,10 @@ class TestIt(TestWrapper):
         ## Test 3 - Translation II: EN -> NON_EN (e.g. French)
         debug.trace(4, "test_translation_en2fr()")
         source_lang, target_lang = "en", "fr"
-        ## OLD: Use of string with quotes halts the test
-        # source_sentence = "It's cute."
-        # target_sentence = "C'est mignon."
+        ## NOTE: Use of string with quotes halts the test
+        ## TODO3:
+        ## source_sentence = "It's cute."
+        ## target_sentence = "C'est mignon."
         source_sentence = "The people love croissant."
         target_sentence = "Les gens aiment les croissants."
         command = f"echo {source_sentence} | FROM={source_lang} TO={target_lang} python3 {HF_TRANSLATION_PATH} - 2> /dev/null"
