@@ -112,8 +112,11 @@ PROFILE_CODE = system.getenv_boolean(
     description="Profile each test invocation")
 #
 # For use in tests
+UNDER_RUNNER = system.getenv_bool(
+    "UNDER_RUNNER", gh.HOME_DIR == "/home/runner",
+    description="Whether running under Github actions")
 RUN_SLOW_TESTS = system.getenv_bool(
-    "RUN_SLOW_TESTS", False,
+    "RUN_SLOW_TESTS", UNDER_RUNNER,
     description="Run tests that can a while to run")
 debug.reference_var(RUN_SLOW_TESTS)
 
