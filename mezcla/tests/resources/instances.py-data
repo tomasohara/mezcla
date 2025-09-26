@@ -7,12 +7,12 @@
 
 [
     EqCall(
-	targets=gh.rename_file,
-	dests=os.rename,
+        targets=gh.rename_file,
+        dests=os.rename,
     ),
     EqCall(
         targets=gh.dir_path,
-	dests=os.path.dirname,
-	eq_params={"filename": "p"},
+        dests=os.path.dirname,
+        eq_params={"filename": "p"},
     ),
 ]

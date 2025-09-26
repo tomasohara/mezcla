@@ -11,11 +11,11 @@
 # hours: 0
 # 
 # Tues:
-# 2	3	appserver overview; diagnosing hg update issues on systen repository
-# 5	6	re-cloning and reviewing system repository source structure
-# 7	8	adding new repository branch; checking old system repository differences (e.g., TODO notes in code)
-# 9:30	11:30	exporting related-title code from search prototype into appserver; adding prequisites for running appserver locally (for syntax checking)
-# 12	2	trying to get @route-based dispatching for relatedJobs method
+# 2     3       appserver overview; diagnosing hg update issues on systen repository
+# 5     6       re-cloning and reviewing system repository source structure
+# 7     8       adding new repository branch; checking old system repository differences (e.g., TODO notes in code)
+# 9:30  11:30   exporting related-title code from search prototype into appserver; adding prequisites for running appserver locally (for syntax checking)
+# 12    2       trying to get @route-based dispatching for relatedJobs method
 # hours: 7
 #
 # Wed:
@@ -238,7 +238,7 @@ def main():
             debug.trace_fmt(6, "After misc. normalized for L{n}:\n\t{l}", n=line_num, l=line)
         
         # Strip trailing comments
-        # ex: "Fri:	    ;; 28" => "Fri:"
+        # ex: "Fri:         ;; 28" => "Fri:"
         # Note: double-comment now required, unless two or more preceding spaces
         if ignore_comments:
             line_save = line
@@ -321,8 +321,8 @@ def main():
                 system.print_stderr("Error: Invalid day '{d}' at line {n}", d=day_of_week, n=line_num)
 
         # Check for hours specification
-        # ex: "2:30pm	4:30	debugging check_time_tracking.py"
-        # ex: "7-9	trying to get SpaCy NER via Anaconda under edgenode and win10
+        # ex: "2:30pm   4:30    debugging check_time_tracking.py"
+        # ex: "7-9      trying to get SpaCy NER via Anaconda under edgenode and win10
         # Notes:
         # - The am or pm suffix is optional.
         # - If start time is greater than end time, the latter is assumed to be afternoon.

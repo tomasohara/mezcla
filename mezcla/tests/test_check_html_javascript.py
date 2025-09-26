@@ -60,7 +60,7 @@ SIMPLE_HTML_TEXT = """
            console.log("in script");
            text = "fubar";
            text -= 666
-	   console.log("out script");
+           console.log("out script");
         </script>
       </head>
     

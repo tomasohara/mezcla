@@ -31,7 +31,7 @@
 # food  False   False   0.0     False
 # was   False   True    0.0     False
 # bland False   False   0.0     False
-# .	False	False	0.0	False
+# .     False   False   0.0     False
 #
 
 """Tests for spacy_nlp module"""

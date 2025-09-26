@@ -25,7 +25,7 @@ from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.data_utils as THE_MODULE
 
 class TestDataUtils(TestWrapper):
