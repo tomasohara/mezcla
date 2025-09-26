@@ -146,12 +146,21 @@ issued_param_dict_warning : bool = False
 # Placeholders for dynamically loaded modules
 BeautifulSoup : Optional[Callable] = None
 
+# Conditional imports
+try:
+    from selenium import webdriver
+    from selenium.webdriver.remote.webdriver import WebDriver
+except:
+    debug.trace_exception(5, "selenium imports")
+    webdriver = None
+    WebDriver = object
+
 #-------------------------------------------------------------------------------
 # HTML utility functions
 
 browser_cache : Dict = {}
 ##
-def get_browser(url : str, timeout : Optional[int] = None):
+def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriver]:
     """Get existing browser for URL or create new one
     Notes: 
     - This is for use in web automation (e.g., via selenium).
@@ -160,9 +169,10 @@ def get_browser(url : str, timeout : Optional[int] = None):
     - Warning: can return null browser object.
     """
     debug.trace(6, f"in get_browser({url}); {timeout=}")
-    # pylint: disable=import-error, import-outside-toplevel
-    from selenium import webdriver
-    from selenium.webdriver.remote.webdriver import WebDriver
+    ## OLD:
+    ## # pylint: disable=import-error, import-outside-toplevel
+    ## from selenium import webdriver
+    ## from selenium.webdriver.remote.webdriver import WebDriver
     #
     browser : Optional[WebDriver] = None
     global browser_cache
@@ -255,7 +265,7 @@ def get_inner_text(url : str):
     return inner_text
 
 
-def document_ready(url : str, timeout : Optional[float] = None):
+def document_ready(url : str, timeout : Optional[float] = None) -> bool:
     """Determine whether document for URL has completed loading (via selenium).
     Note: If TIMEOUT specified, it only waits specified seconds.
     """
@@ -274,7 +284,7 @@ def document_ready(url : str, timeout : Optional[float] = None):
     return is_ready
 
 
-def wait_until_ready(url : str, stable_download_check : bool = None):
+def wait_until_ready(url : str, stable_download_check : Optional[bool] = None) -> None:
     """Wait for document_ready (q.v.) and pause to allow loading to finish (via selenium)
     Note: If STABLE_DOWNLOAD_CHECK, the wait incoporates check for download size differences"""
     # TODO: make sure the sleep is proper way to pause
@@ -454,7 +464,7 @@ get_url_param_bool = get_url_parameter_bool
 # EX: get_url_param_bool("abc", False, param_dict={"abc": "True"}) => True
 
 
-def get_url_parameter_int(param, default_value : int = 0, param_dict : Optional[Dict] = None):
+def get_url_parameter_int(param, default_value : int = 0, param_dict : Optional[Dict] = None) -> int:
     """Get integer value for PARAM from PARAM_DICT.
     Note: the hash defaults to user_parameters, and the default value is 0"""
     result = system.to_int(get_url_parameter_value(param, default_value, param_dict))
@@ -468,7 +478,7 @@ get_url_param_int = get_url_parameter_int
 # EX: get_url_parameter_int("_", param_dict={"_": "_"}) => 0
 
 
-def get_url_parameter_float(param, default_value : float = 0.0, param_dict : Optional[Dict] = None):
+def get_url_parameter_float(param, default_value : float = 0.0, param_dict : Optional[Dict] = None) -> float:
     """Get floating-point value for PARAM from PARAM_DICT.
     Note: the hash defaults to user_parameters, and the default value is 0.0"""
     result = system.to_float(get_url_parameter_value(param, default_value, param_dict))
@@ -1144,14 +1154,15 @@ def main(args : List[str]) -> None:
         USUAL_DEBUGGING = debug.debugging()
         VERBOSE_DEBUGGING = debug.debugging(TL.VERBOSE)
         if debug.debugging(TL.QUITE_VERBOSE):
-            alt_html_data = retrieve_web_document(url)
+            alt_html_data: OptStrBytes = retrieve_web_document(url)
             debug.trace_expr(1, alt_html_data, max_len=32768)
-        html_data = ""
+        html_data: OptStrBytes = ""
         if plain_html or VERBOSE_DEBUGGING:
             html_data = download_web_document(url)
-            debug.trace_expr(TL.VERBOSE, html_data, max_len=32768)
-            debug.assertion(system.relative_intersection(alt_html_data.split(),
-                                                         html_data.split()) > 0.9)
+            if (isinstance(html_data, str) and isinstance(alt_html_data, str)):
+                debug.trace_expr(TL.VERBOSE, html_data, max_len=32768)
+                debug.assertion(system.relative_intersection(alt_html_data.split(),
+                                                             html_data.split()) > 0.9)
         filename = system.quote_url_text(url)
         if not filename:
             filename = "output.html"
