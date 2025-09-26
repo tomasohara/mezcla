@@ -57,12 +57,14 @@ INCLUDE_HINT_TESTS = system.getenv_bool(
 SKIP_HINT_TESTS = not INCLUDE_HINT_TESTS
 SKIP_HINT_REASON = "Type hinting tests require more work"
 ##
+SCRAPPYCITO_URL = "http://www.scrappycito.com"
+TOMASOHARA_TRADE_URL = "http://www.tomasohara.trade"
 SCRAPPYCITO_LIKE_URL = system.getenv_text(
-    "SCRAPPYCITO_LIKE_URL", "http://www.tomasohara.trade:9330",
-    desc="URL to use instead of www.scrappycito.com")
+    "SCRAPPYCITO_LIKE_URL", f"{TOMASOHARA_TRADE_URL}:9330",
+    desc=f"URL to use instead of {SCRAPPYCITO_URL}")
 TOMASOHARA_TRADE_LIKE_URL = system.getenv_text(
-    "TOMASOHARA_TRADE_LIKE_URL", "http://www.tomasohara.trade",
-    desc="URL to use instead of www.tomasohara.trade")
+    "TOMASOHARA_TRADE_LIKE_URL", TOMASOHARA_TRADE_URL,
+    desc=f"URL to use instead of {TOMASOHARA_TRADE_URL}")
 ##
 DIMENSIONS_HTML_FILENAME = "./resources/simple-window-dimensions.html"
 DIMENSIONS_EXPECTED_TEXT = """
@@ -90,9 +92,9 @@ class TestHtmlUtils(TestWrapper):
     ## NOTE: Using personal site instead of LLC in order to avoid issues
     ## with the production server (i.e., www.scrappycito.com).
     scrappycito_url = "www.scrappycito.com"
-    tomasohara_trade_url = TOMASOHARA_TRADE_LIKE_URL
-    ## OLD: scrappycito_url = f"{tomasohara_trade_url}:9330"
     scrappycito_like_url = SCRAPPYCITO_LIKE_URL
+    tomasohara_trade_url = TOMASOHARA_TRADE_URL
+    tomasohara_trade_like_url = TOMASOHARA_TRADE_LIKE_URL
     ready_test_path = gh.resolve_path("document_ready_test.html",
                                       heuristic=True, absolute=True)
     ready_test_alt_path = gh.resolve_path("document_ready_test_alt.html",
@@ -173,6 +175,15 @@ class TestHtmlUtils(TestWrapper):
         self.do_assert("tomasohara" in self.scrappycito_like_url)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_main_url_content(self):
+        """Make sure expected web content at scrappycito-like and tomasohara.trade[-like] URLs"""
+        debug.trace(4, f"TestIt.test_main_url_content(); self={self}")
+        content = THE_MODULE.download_web_document(self.scrappycito_like_url)
+        assert "Welcome to ScrappyCito" in content
+        content = THE_MODULE.download_web_document(self.tomasohara_trade_url)
+        assert "Little Scrap" in content
+        
     def check_inner_html(self, regular, inner):
         """Helper for inner html tests: makes sure that Javascript generated output not in REGULAR but is in INNER output for ScrappyCito's landing page
         Note: This assumes inner produced with ?section=tips option.
@@ -181,6 +192,8 @@ class TestHtmlUtils(TestWrapper):
         #       <span id="ui-tips-id" class="ui-icon ui-icon-triangle-1-e"></span>   [closed (east):  >]
         #   vs. <span id="ui-tips-id" class="ui-icon ui-icon-triangle-1-s"></span>   [opened (south): v]
         # TODO3: use HTML file in repo
+        debug.trace_expr(5, self, regular, inner,
+                         prefix="TestIt.check_inner_html: ", max_len=128)
         tips_section_open_regex = r"tips-id.*ui-icon-triangle-1-s"
         self.do_assert(my_re.search(tips_section_open_regex, inner.strip(), flags=my_re.IGNORECASE))
         self.do_assert(not my_re.search(tips_section_open_regex, regular.strip(), flags=my_re.IGNORECASE))
@@ -398,7 +411,7 @@ class TestHtmlUtils(TestWrapper):
         ## diring GitHub actions rub. See https://wikitech.wikimedia.org/wiki/Robot_policy.
         ## OLD: assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
         ## TODO2: use website accessible to all team members
-        assert "currency" in THE_MODULE.download_web_document("http://www.tomasohara.trade/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
+        assert "currency" in THE_MODULE.download_web_document(f"{self.tomasohara_trade_like_url}/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
         assert THE_MODULE.download_web_document("www. bogus. url.html") is None
 
     def test_test_download_html_document(self):
@@ -406,7 +419,7 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, "test_test_download_html_document()")
         assert "Google" in THE_MODULE.test_download_html_document("www.google.com")
         ## TODO2: use website accessible to all team members
-        assert "Tomás" not in THE_MODULE.test_download_html_document("http://www.tomasohara.trade", encoding="big5")
+        assert "Tomás" not in THE_MODULE.test_download_html_document(f"{self.tomasohara_trade_like_url}", encoding="big5")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_html_document(self):
@@ -418,7 +431,7 @@ class TestHtmlUtils(TestWrapper):
         filename = "test_download_file"
 
         # Assert file is downloaded and created in tmp_dir
-        THE_MODULE.download_html_document("http://www.tomasohara.trade", download_dir=tmp_dir, filename=filename)
+        THE_MODULE.download_html_document(self.tomasohara_trade_like_url, download_dir=tmp_dir, filename=filename)
         assert filename in system.read_directory(tmp_dir)
 
         # Assert exception report is printed when not Ignore
@@ -445,8 +458,8 @@ class TestHtmlUtils(TestWrapper):
     def test_download_binary_file(self):
         """Ensure download_binary_file() works as expected"""
         debug.trace(4, "test_download_binary_file()")
-        binary_doc = THE_MODULE.download_binary_file(url="www.tomasohara.trade")
-        non_binary_doc = THE_MODULE.download_web_document(url="www.tomasohara.trade")
+        binary_doc = THE_MODULE.download_binary_file(url=self.tomasohara_trade_like_url)
+        non_binary_doc = THE_MODULE.download_web_document(url=self.tomasohara_trade_like_url)
         assert my_re.search(b"Scrappy.*Cito", binary_doc)
         assert bytes(non_binary_doc, encoding="UTF-8") == binary_doc
 
@@ -454,7 +467,7 @@ class TestHtmlUtils(TestWrapper):
     def test_retrieve_web_document(self):
         """Ensure retrieve_web_document() works as expected"""
         debug.trace(4, "test_retrieve_web_document()")
-        assert my_re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document("www.tomasohara.trade"))
+        assert my_re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document(self.tomasohara_trade_like_url))
 
     def test_init_BeautifulSoup(self):
         """Ensure init_BeautifulSoup() works as expected"""
