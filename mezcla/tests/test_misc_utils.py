@@ -47,7 +47,7 @@ except:
     debug.trace_exception(4, "mezcla.mezcla_to_standard import")
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.misc_utils as THE_MODULE
 
 # Make sure more_itertools available

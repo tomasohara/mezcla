@@ -24,7 +24,7 @@ from mezcla import system
 from mezcla import misc_utils
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 ## OLD: system.setenv("USE_XGB", "1")
 THE_MODULE = None
 try:

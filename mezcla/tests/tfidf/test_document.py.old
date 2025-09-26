@@ -19,7 +19,7 @@ import pytest
 from mezcla import debug
 
 # Note: Rreference are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.tfidf.document as THE_MODULE
 
 

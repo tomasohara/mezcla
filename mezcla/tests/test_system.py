@@ -32,7 +32,7 @@ from mezcla.my_regex import my_re
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 #    TestIt.script_module:              path to file
 import mezcla.system as THE_MODULE
 # note: 'system.function' used for functions not being tested (out of habit)

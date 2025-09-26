@@ -26,7 +26,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import normalize_text
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.text_utils as THE_MODULE
 
 MS_WORD_FILENAME = "./resources/spanish-accents.docx"

@@ -43,7 +43,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 ## TODO: from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 #    TestIt.script_module:              path to file
 try:
     # note: requires enchant-2 library package under Ubuntu (besides pyenchant)

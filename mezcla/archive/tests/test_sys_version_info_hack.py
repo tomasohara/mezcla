@@ -21,7 +21,7 @@ import pytest
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.archive.sys_version_info_hack as THE_MODULE
 
 class TestSysVersionInfoHack:

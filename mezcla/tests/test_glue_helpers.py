@@ -38,7 +38,7 @@ from mezcla import system
 from mezcla.tests.common_module import mezcla_root_dir
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 
 class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)

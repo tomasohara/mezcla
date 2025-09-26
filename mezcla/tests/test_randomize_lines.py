@@ -24,7 +24,7 @@ from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.randomize_lines as THE_MODULE
 
 class TestRandomizeLines(TestWrapper):

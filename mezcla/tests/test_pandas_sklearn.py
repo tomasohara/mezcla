@@ -23,7 +23,7 @@ from mezcla import glue_helpers as gh
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.pandas_sklearn as THE_MODULE
 
 # Constants

@@ -23,7 +23,7 @@ from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Rreference are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 system.setenv("USE_XGB", "1")
 THE_MODULE = None
 try:

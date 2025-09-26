@@ -36,7 +36,7 @@ from mezcla.my_regex import my_re
 from mezcla.tests.common_module import normalize_text
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.html_utils as THE_MODULE
 
 # Constants and environment options

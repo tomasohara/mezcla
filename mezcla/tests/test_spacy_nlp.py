@@ -57,7 +57,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 system.setenv("SPACY_MODEL", "en_core_web_md")
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 try:
     import mezcla.spacy_nlp as THE_MODULE
 except:
