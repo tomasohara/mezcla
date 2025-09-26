@@ -4,7 +4,11 @@
 #   https://stackoverflow.com/questions/6317818/eat-memory-using-python
 #
 
-"""Consume all available memory"""
+"""Consume all available memory
+
+Typical usage:
+   {script} -
+"""
 
 # Standard modules
 import os
@@ -12,24 +16,26 @@ import psutil
 
 # Local modules
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla import system
+from mezcla.main import Main
 
 PROCESS = psutil.Process(os.getpid())
 MEGA = 10 ** 6
 MEGA_STR = ' ' * MEGA
 GIGA = 10 ** 9
 
-STR_INCR = system.getenv_int("STR_INCR", 10,
-                             "Number of MB per increment for string method")
-ARRAY_INCR = system.getenv_int("ARRAY_INCR", 1,
-                               "Number of MB per increment for array method")
+STR_INCR = system.getenv_int(
+    "STR_INCR", 10,
+    desc="Number of MB per increment for string method")
+ARRAY_INCR = system.getenv_int(
+    "ARRAY_INCR", 1,
+    desc="Number of MB per increment for array method")
 
 def pmem():
     """Show memory usage"""
-    ## OLD: tot, avail, percent, used, free = psutil.virtual_memory()
     tot, avail, percent, used, free = tuple((list(psutil.virtual_memory()))[:5])
     tot, avail, used, free = tot / MEGA, avail / MEGA, used / MEGA, free / MEGA
-    ## OLD: proc = PROCESS.get_memory_info()[1] / MEGA
     proc = PROCESS.memory_info()[1] / MEGA
     # pylint: disable=consider-using-f-string
     print('process = %s total = %s avail = %s used = %s free = %s percent = %s'
@@ -44,8 +50,6 @@ def alloc_max_array():
         if (((i * ARRAY_INCR * MEGA) % GIGA) == 0):
             print(i)
         try:
-            ## OLD: ar.append(MEGA_STR)  # no copy if reusing the same string!
-            ## OLD: ar.append(ARRAY_INCR * MEGA_STR + str(i))
             ar.append(ARRAY_INCR * MEGA_STR + ' ')
         except MemoryError:
             break
@@ -74,6 +78,13 @@ def alloc_max_str():
 
 def main():
     """Entry poit for script"""
+    # Parse command line options, show usage if --help given
+    main_app = Main(
+        description=__doc__.format(script=gh.basename(__file__)),
+    )
+    debug.assertion(main_app.parsed_args)
+
+    # Run the memory test
     print("initial")
     pmem()
     alloc_max_array()
