@@ -150,7 +150,7 @@ class regex_wrapper():
             ## OLD: regex = regex.encode()
             check_regex = check_regex.encode()
         if REGEX_WARNINGS:
-            debug.trace_expr(self.TRACE_LEVEL + 1, check_regex, delim="\n")
+            debug.trace_expr(self.TRACE_LEVEL + 2, check_regex, delim="\n")
             match = re.search(check_regex, regex, flags=re.IGNORECASE)
             if match:
                 # Ignore regex operators within f-string replacement
