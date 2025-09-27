@@ -89,11 +89,13 @@ def main() -> None:
     # TODO: manual_input=True; short_options=True
     # Note: Uses Main without subclassing, so some methods are stubs (e.g., run_main_step).
     main_app = Main(
+        ## TODO2 (fix support): skip_input=True,
         description=__doc__.format(script=gh.basename(__file__)),
         ## TODO: boolean_options=[(TODO_BOOL_OPT, "TODO desc1")],
         ## TODO: text_options=[(TODO_TEXT_OPT, "TODO desc2")],
         ## TODO: positional_arguments=[FILENAME, ALT_FILENAME], 
     )
+    debug.reference_var(FILENAME)
     debug.assertion(main_app.parsed_args)
     ## TODO_opt1 = main_app.get_parsed_option(TODO_BOOL_OPT)
 
