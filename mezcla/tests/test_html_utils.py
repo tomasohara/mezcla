@@ -272,7 +272,7 @@ class TestHtmlUtils(TestWrapper):
             'not-found-status': '404',
             'redirect-status': '302'
         }
-        assert THE_MODULE.get_param_dict('not-found-status') == 'not-found-status'
+        assert THE_MODULE.get_param_dict().get('not-found-status') == '404'
         assert THE_MODULE.get_param_dict() == THE_MODULE.user_parameters
 
     def test_set_param_dict(self):
