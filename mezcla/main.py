@@ -127,6 +127,7 @@ SysArgInfoType = Tuple[str, str, Optional[Any], Optional[str]]
 HELP_ARG = "--help"
 USAGE_ARG = "--usage"
 VERBOSE_ARG = "verbose"
+FILENAME = "filename"
 USE_PARAGRAPH_MODE_DEFAULT = getenv_bool("USE_PARAGRAPH_MODE", False)
 USE_PARAGRAPH_MODE = getenv_bool("PARAGRAPH_MODE", USE_PARAGRAPH_MODE_DEFAULT,
                                  "Process input in Perl-style paragraph mode")
@@ -746,7 +747,7 @@ class Main(object):
         if not self.skip_input:
             filename_nargs = ("?" if (not self.multiple_files) else "+")
             debug.trace_fmtd(6, "filename_nargs={nargs}", nargs=filename_nargs)
-            parser.add_argument("filename", nargs=filename_nargs, default="-",
+            parser.add_argument(FILENAME, nargs=filename_nargs, default="-",
                                 help="Input filename")
         elif self.auto_help:
             dash_nargs = "?"
@@ -786,13 +787,15 @@ class Main(object):
         debug.trace_object(8, parser, max_depth=2)
         self.parser = parser
         # note: not trapped to allow for early exit
+        ## TODO2: track down problem when skip_input with streamlined scripts:
+        ## see examples/template.py (e.g., uncomment "skip_input=True,").
         self.parsed_args = vars(parser.parse_args(runtime_args))
         debug.trace(5, f"parsed_args = {self.parsed_args}")
         self.verbose = bool(self.get_parsed_option("verbose", VERBOSE_MODE))
         # Get filename unless input ignored and fixup if returned as list
         # TODO: add an option to retain self.filename as is
         if not self.skip_input:
-            self.filename = self.parsed_args["filename"]
+            self.filename = self.parsed_args[FILENAME]
             if (isinstance(self.filename, list)):
                 if not self.multiple_files:
                     debug.trace(3, "Warning: Making (list) self.filename a string & setting self.other_filenames to remainder")
