@@ -53,15 +53,23 @@ def read_csv(filename, **in_kw):
     """Wrapper around pandas read_csv
     Note: delimiter SEP defaults to DELIM env. var (n.b., uses sniffing if unset), dtype to str, and both error_bad_lines & keep_default_na to False. (Override these via keyword parameters.)
     """
-    # EX: tf = read_csv("examples/iris.csv"); tf.shape => (150, 5)
+    ## TODO2: make the defaults more unintuitive and add option to disable
+    # EX: df = read_csv("examples/iris.csv"); df.shape => (150, 5)
     ## TODO: clarify dtype usage
     kw = {SEP: DELIM, 'dtype': str,
           'on_bad_lines': 'skip', 'keep_default_na': False}
-    # Hack: make sure only one of "sep" and "delimiter" specified
+    # Hack: make sure only one of "sep" and "delimiter" specified.
+    # Note: delimiter is now an alias for sep.
     if DELIMITER in in_kw:
         debug.assertion(not (kw[SEP] and in_kw[DELIMITER]))
         kw[SEP] = (kw[SEP] or in_kw[DELIMITER])
         in_kw[DELIMITER] = None
+    # Use comma (tab) for delimiter if unspecified and file ext is CSV (TSV)
+    if not kw[SEP]:
+        if filename.lower().endswith(".csv"):
+            kw[SEP] = ","
+        if filename.lower().endswith(".tsv"):
+            kw[SEP] = "\t"
     # Overide settings based on explicit keyword arguments
     kw.update(**in_kw)
     kw['engine'] = 'python'
@@ -106,7 +114,7 @@ write_csv = to_csv
 
 def lookup_df_value(data_frame, return_field, lookup_field, lookup_value):
     """Return value for DATA_FRAME's RETURN_FIELD given LOOKUP_FIELD value LOOKUP_VALUE"""
-    # EX: lookup_df_value(tf, "sepal_length", "petal_length", "3.8") => "5.5"
+    # EX: lookup_df_value(df, "sepal_length", "petal_length", "3.8") => "5.5"
     ## TODO: rework in terms of Pandas primitives
     value = None
     try:
