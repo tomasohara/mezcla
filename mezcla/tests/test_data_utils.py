@@ -12,11 +12,11 @@
 """Tests for data_utils module"""
 
 # Standard packages
-## OLD: import os
+## TODO: from typing import Optional
 
 # Installed packages
 import pandas as pd
-## OLD: import pytest
+import pytest
 
 # Local packages
 from mezcla import debug
@@ -36,11 +36,28 @@ class TestDataUtils(TestWrapper):
     iris_csv_path = gh.resolve_path("iris.csv", base_dir=".", heuristic=True)
 
     def test_read_csv(self):
-        """Ensure read_csv works as expected"""
+        """Ensure read_csv works as expected over actual CSV files"""
         debug.trace(4, "test_read_csv()")
-        ## OLD: tf = THE_MODULE.read_csv(f"{self.path}/../examples/iris.csv")
-        tf = THE_MODULE.read_csv(self.iris_csv_path)
-        assert tf.shape == (150, 5)
+        df = THE_MODULE.read_csv(self.iris_csv_path)
+        assert df.shape == (150, 5)
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_simple_read_csv(self):
+        """Verify read_csv over simple CSV files"""
+        debug.trace(4, "test_simple_read_csv()")
+        temp_csv = self.temp_file + ".csv"
+        system.write_lines(temp_csv, [
+            "query,style",
+            '"modern art","Dan Rothko"'])
+        df = THE_MODULE.read_csv(temp_csv)
+        assert df.shape == (1, 2)
+        #
+        temp_tsv = self.temp_file + ".tsv"
+        system.write_lines(temp_tsv, [
+            "query\tstyle",
+            "modern art\tDan Rothko"])
+        df = THE_MODULE.read_csv(temp_tsv)
+        assert df.shape == (1, 2)
 
     def test_to_csv(self):
         """Ensure to_csv works as expected"""
@@ -67,9 +84,8 @@ class TestDataUtils(TestWrapper):
     def test_lookup_df_value(self):
         """Ensure lookup_df_value works as expected"""
         debug.trace(4, "test_lookup_df_value()")
-        ## OLD: tf = THE_MODULE.read_csv(f"{self.path}/../examples/iris.csv")
-        tf = THE_MODULE.read_csv(self.iris_csv_path)
-        assert THE_MODULE.lookup_df_value(tf, "sepal_length", "petal_length", "3.8") == "5.5" 
+        df = THE_MODULE.read_csv(self.iris_csv_path)
+        assert THE_MODULE.lookup_df_value(df, "sepal_length", "petal_length", "3.8") == "5.5" 
 
     def test_main(self):
         """Ensure main works as expected"""
