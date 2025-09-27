@@ -340,16 +340,19 @@ def escape_hash_value(hash_table : Dict, key: str):
     return escaped_value
 
 
-def get_param_dict(param_dict : Optional[Dict] = None):
-    """Returns parameter dict using PARAM_DICT if non-Null else USER_PARAMETERS
-       Note: """
+def get_param_dict(param_dict : Optional[Dict] = None) -> Dict:
+    """Returns parameter dict using PARAM_DICT if non-Null else global USER_PARAMETERS
+       Note: The PARAM_DICT argument can be used by functions like get_url_parameter_value 
+       to allow thread-safe access for different users (see set_param_dict)."""
     result = (param_dict if (param_dict is not None) else user_parameters)
     debug.trace(7, f"get_param_dict([pd={param_dict}]) => {result}")
     return result
 
 
-def set_param_dict(param_dict : Dict):
-    """Sets global user_parameters to value of PARAM_DICT"""
+def set_param_dict(param_dict : Dict) -> None:
+    """Sets global user_parameters to value of PARAM_DICT.
+    Warning: not thread-safe (see get_param_dict).
+    """
     # EX: set_param_dict({"param1": "a+b+c", "param2": "a%2Bb%2Bc"}); len(user_parameters) => 2
     debug.trace(7, f"set_param_dict({param_dict})")
     global issued_param_dict_warning
@@ -799,7 +802,7 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
     return links
 
 
-def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None, concat_label: Optional[str] = None, skip_hidden: Optional[str] = None, on_change: Optional[str] = None, param_dict : Optional[Dict] = None):
+def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None, concat_label: Optional[bool] = None, skip_hidden: Optional[str] = None, on_change: Optional[str] = None, param_dict : Optional[Dict] = None) -> str:
     """Returns HTML specification for input checkbox with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, OUTER_SPAN_CLASS, CONCAT_LABEL, SKIP_HIDDEN, ON_CHANGE, and PARAM_DICT.
     Note:
     - param_name + "-id" is used for the field ID.
@@ -880,7 +883,7 @@ def format_input_field(
         style: Optional[str] = None, misc_attr: Optional[str] = None,
         tooltip: Optional[str] = None, text_area: Optional[bool] = None,
         num_rows : Optional[int] = None, on_change: Optional[str] = None, on_input: Optional[str] = None,
-        field_type: Optional[str] = None, concat_label: Optional[str] = None,
+        field_type: Optional[str] = None, concat_label: Optional[bool] = None,
         outer_span_class: Optional[str] = None, param_dict : Optional[Dict] = None):
     """Returns HTML specification for input field with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, MAX_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, NUM_ROWS, ON_CHANGE, FIELD_TYPE, CONCAT_LABEL, OUTER_SPAN_CLASS, and PARAM_DICT.
     Note:
