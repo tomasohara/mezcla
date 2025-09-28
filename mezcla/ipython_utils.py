@@ -134,7 +134,8 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
             exec(import_command)
             loaded = True
         except:
-            debug.trace(4, f"Warning: {module_name} should have been imported previously")
+            debug.trace_exception_info(4, f"{module_name} reload")
+            debug.trace(3, f"Warning: {module_name} should have been imported previously")
         if not loaded:
             # note: might fail (e.g., 'from package import module' required(
             import_command = f"import {module_name}"
@@ -145,7 +146,7 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
         if not ignore_errors:
             system.print_exception_info(import_command)
         else:
-            debug.trace_exception(6, import_command)
+            debug.trace_exception_info(6, import_command)
     debug.trace_expr(5, module)
 
     # Import each individually
@@ -165,13 +166,13 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
 
         # Import the value
         if include:
-            import_desc = (f"importing {var} from {module_name}")
-            debug.trace(5, import_desc)
+            import_desc = (f"import[ing] {var} from {module_name}")
             try:
+                debug.trace(5, import_desc)
                 globals_dict[var] = eval(f"{module_name}.{var}")
                 num_ok += 1
             except:
-                debug.trace_exception(4, import_desc)
+                debug.trace_exception_info(4, import_desc)
     debug.trace(5, f"{num_ok} of {len(module_attrs)} attributes loaded OK")
     return
 
