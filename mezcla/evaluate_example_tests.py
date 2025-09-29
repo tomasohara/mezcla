@@ -87,10 +87,12 @@ class TestConverter:
             debug.trace(4, f"Ignoring invocation of background job at {line_num}: {line}")
             OK = False
 
-        # Normalize result
+        # Normalize result (e.g., change double quote to single)
         ## TODO3: my_re.search(r'^".*[^"].*"$', result)
-        if result and NORMALIZE_RESULT and my_re.search(r'^".*"$', result):
-            result = f'{result[1:-1]}'
+        if result and NORMALIZE_RESULT and my_re.search(r'^\s*(".*")\s*$', result):
+            ## OLD: result = f'{result[1:-1]}'
+            result_proper = my_re.sub(r"[^\\]'", "\\'", result[1:-1])
+            result = f"'{result_proper}'"
 
         # Add to tests
         if ((not OK) or ((expression is None) and (result is None))):
