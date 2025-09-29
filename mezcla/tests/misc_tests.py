@@ -259,6 +259,7 @@ class TestMisc(TestWrapper):
     def test_06_type_hinting(self):
         """Test type hinting by running tests over code with pydantic decorators.
         Note: This creates copy of mezcla scripts and checks pytest result over original vs modified.
+        Warning: TEST_REGEX must be set to *.py to run all scripts; otherwise main scripts tested(e.g., system.py, glue_helpers.py, etc.).
         """
         debug.trace(4, "test_06_type_hinting()")
         ## TODO: create a module with very broken python code to test the test (for false positives)
@@ -279,6 +280,8 @@ class TestMisc(TestWrapper):
 
         # Test each of the main scripts and check for test result differences
         num_bad = 0
+        test_scripts = (main_scripts if not TEST_REGEX
+                        else self.get_python_module_files(include_tests=False))
         num_cases = len(main_scripts)
         for script in main_scripts:
             # Add dynamic type checking to scripts (e.g., via pydantic)
