@@ -62,6 +62,10 @@ from mezcla.validate_arguments_types import (
     FileDescriptorOrPath, StrOrBytesPath
 )
 
+# Custom Types
+MatchResult = Union[str, List[str]]
+MatchResultList = List[MatchResult]
+
 # Constants
 TL = debug.TL
 
@@ -678,7 +682,7 @@ def extract_matches(
         multiple: bool = False,
         re_flags: int = 0,
         para_mode: Optional[bool] = False
-    ) -> List[str]:
+    ) -> MatchResultList:
     """Checks for PATTERN matches in LINES of text returning list of tuples with replacement groups.
     Notes: The number of FIELDS can be greater than 1.
     Optionally allows for MULTIPLE matches within a line.
@@ -740,7 +744,7 @@ def extract_match(
         multiple: bool = False,
         re_flags: int = 0,
         para_mode: Optional[bool] = None
-    ):
+    ) -> Optional[MatchResult]:
     """Extracts first match of PATTERN in LINES for FIELDS"""
     matches = extract_matches(pattern, lines, fields, multiple, re_flags, para_mode)
     result = (matches[0] if matches else None)
@@ -755,7 +759,7 @@ def extract_match_from_text(
         multiple: bool = False,
         re_flags: int = 0,
         para_mode: Optional[bool] = None
-    ) -> Optional[str]:
+    ) -> Optional[MatchResult]:
     """Wrapper around extract_match for text input"""
     ## TODO: rework to allow for multiple-line matching
     return extract_match(pattern, text.split("\n"), fields, multiple, re_flags, para_mode)
@@ -768,7 +772,7 @@ def extract_matches_from_text(
         multiple: Optional[bool] = None,
         re_flags: int = 0,
         para_mode: Optional[bool] = None
-    ) -> List[str]:
+    ) -> MatchResultList:
     """Wrapper around extract_matches for text input
     Note: By default MULTIPLE matches are returned"""
     # EX: extract_matches_from_text(".", "abc") => ["a", "b", "c"]
@@ -779,9 +783,10 @@ def extract_matches_from_text(
     return extract_matches(pattern, text.split("\n"), fields, multiple, re_flags, para_mode)
 
 
-def extract_pattern(pattern: str, text: str, **kwargs) -> Optional[str]:
+def extract_pattern(pattern: str, text: str, **kwargs) -> Optional[MatchResult]:
     """Yet another wrapper around extract_match for text input"""
     return extract_match(pattern, text.split("\n"), **kwargs)
+
 
 def count_it(
         pattern: str,
@@ -796,6 +801,8 @@ def count_it(
     debug.trace(7, f"count_it({pattern}, _, {field}, {multiple}")
     value_counts: Dict[str, int] = defaultdict(int)
     for value in extract_matches_from_text(pattern, text, field, multiple):
+        if isinstance(value, List):
+            value = str(value)
         value_counts[value] += 1
     debug.trace_values(6, value_counts, "count_it()")
     return value_counts
@@ -1031,17 +1038,19 @@ if __debug__:
         if debug.assertion(condition, indirect=True):
             try:
                 frame = inspect.currentframe()
-                frame = frame.f_back
-                filename = frame.f_globals.get("__file__")
-                line_num = frame.f_lineno
+                if frame:
+                    frame = frame.f_back
+                if frame:
+                    filename = frame.f_globals.get("__file__")
+                    line_num = frame.f_lineno
                 debug.trace(TL.WARNING, f"FYI: Assertion failed at {filename}:{line_num}")
             except:
                 system.print_exception_info("gh.assertion")
         return
 
 else:
-
-    def assertion(_condition: bool) -> None:
+                                                  # note: ignores silly mypy signature diff bug
+    def assertion(_condition: bool) -> None:      # type: ignore[misc]
         """Non-debug stub for assertion"""
         return
 

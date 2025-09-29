@@ -78,8 +78,8 @@ def maxint() -> int:
 # Support for environment variable access
 # TODO: Put in separate module
 
-env_options = {}
-env_defaults = {}
+env_options: dict[str, str] = {}
+env_defaults: dict[str, Any] = {}
 env_diagnostic_level = 6
 #
 def set_env_diagnostic_level(level):
@@ -374,8 +374,10 @@ def getenv_number(
     if (isinstance(value, str) and value.strip()):
         debug.assertion(is_number(value))
         num_value = to_float(value)
+    ## TODO3: see whether the following is redundant
     if (not ((num_value is None) and allow_none)):
-        num_value = to_float(num_value)
+        if not isinstance(num_value, float):
+            num_value = to_float(num_value)
     trace_level = 6 if helper else 5
     debug.trace_fmtd(trace_level, "getenv_number({v}, {d}) => {r}",
                      v=var, d=default, r=num_value)
@@ -508,13 +510,13 @@ def print_full_stack(stream: IO = sys.stderr) -> None:
         # Show call stack excluding caller
         for item in reversed(inspect.stack()[2:]):
             stream.write('  File "{1}", line {2}, in {3}\n'.format(*item))
-        for line in item[4]:
+        for line in item[4] or []:
             stream.write('  ' + line.lstrip())
         # Show context of the exception from caller to offending line
         stream.write("  ----------\n")
         for item in inspect.trace():
             stream.write('  File "{1}", line {2}, in {3}\n'.format(*item))
-        for line in item[4]:
+        for line in item[4] or []:
             stream.write('  ' + line.lstrip())
     except:
         debug.trace_fmtd(3, "Unable to produce stack trace: {exc}", exc=get_exception())
@@ -794,7 +796,7 @@ def read_directory(directory: Union[Optional[str], bytes, int]) -> Union[List[st
     """Returns list of files in DIRECTORY"""
     # Note simple wrapper around os.listdir with tracing
     # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
-    files = []
+    files: Union[List[str], List[bytes]] = []
     try:
         files = os.listdir(directory)
     except:
@@ -1385,8 +1387,8 @@ def just_one_non_null(in_list: list, strict: bool = False) -> bool:
 
 
 def unique_items(values: list,
-                 prune_empty: bool = False,
-                 ignore_case: bool = None) -> list:
+                 prune_empty: Optional[bool] = False,
+                 ignore_case: Optional[bool] = None) -> list:
     """Returns unique items from VALUES, preserving order
     Note: optionally PRUN[ing]_EMPTY items and IGNOR[ing]_CASE,
     in which case earlier items take precedence."""
@@ -1423,13 +1425,14 @@ def is_number(text: str) -> bool:
     return ok
 
 
-def to_float(text: str, default_value: float = 0.0,
+def to_float(text: Optional[str], default_value: float = 0.0,
              ignore: Optional[bool] = None) -> float:
     """Interpret TEXT as float, using DEFAULT_VALUE
     Optional INGORE omits exception trace"""
     result = default_value
     try:
-        result = float(text)
+        if text:
+            result = float(text)
     except (TypeError, ValueError):
         if not ignore:
             debug.trace_fmtd(7, "Exception in to_float({v!r}): {exc}",

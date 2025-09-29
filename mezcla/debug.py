@@ -62,7 +62,7 @@
 
 """Debugging functions (e.g., tracing)"""
 
-# Standard packages
+# Standard modules
 import atexit
 from _collections_abc import Mapping
 from datetime import datetime
@@ -87,7 +87,7 @@ from mezcla.validate_arguments_types import (
     FileDescriptorOrPath,
 )
 
-# Local packages
+# Local modules
 intro = None
 
 
@@ -666,8 +666,10 @@ if __debug__:
         if not use_old_introspection:
             ## HACK: uses _prefix to avoid conflict with introspection's prefix
             ## TODO2: drop newlines due to arguments split across lines
-            expression = intro.format(*values, arg_offset=1, indirect=True, max_len=max_len,
-                                      no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
+            expression = "???"
+            if intro:
+                expression = intro.format(*values, arg_offset=1, indirect=True, max_len=max_len,
+                                          no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
             ## TEST:
             ## expression = []
             ## for i, value in enumerate(values):
@@ -859,7 +861,9 @@ if __debug__:
 
                 # Resolve expression text
                 if not use_old_introspection:
-                    expression = intro.format(expression, indirect=True, omit_values=True)
+                    expression = "???"
+                    if intro:
+                        expression = intro.format(expression, indirect=True, omit_values=True)
                     ## OLD: expression = re.sub("=False$", "", expression)
                     ## TODO2: drop newlines due to argument split across lines
                     ##   expression = re.sub("\n", " ", expression)???
@@ -945,7 +949,7 @@ else:
 
     trace_level = 0
     
-    def non_debug_stub(*_args, **_kwargs) -> None:
+    def non_debug_stub(*_args, **_kwargs) -> Any:
         """Non-debug stub (i.e., no-op function)"""
         # Note: no return value assumed by debug.expr
         return
@@ -1020,7 +1024,7 @@ cond_val = val
 # TODO: alias trace to trace_fmt as well (add something like trace_out if format not desired)
 trace_fmt = trace_fmtd
 
-def debug_print(text: str, level: IntOrTraceLevel) -> None:
+def debug_print(text: str, level: IntOrTraceLevel) -> str:
     """Wrapper around trace() for backward compatibility
     Note: debug_print will soon be deprecated."""
     return trace(level, text)

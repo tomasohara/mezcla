@@ -654,10 +654,11 @@ class TestWrapper(unittest.TestCase):
         """
         stdout, stderr = ("", "")
         try:
-            with self.capsys.disabled():
-                stdout, stderr = self.capsys.readouterr()
-                ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
-                debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
+            if self.capsys:
+                with self.capsys.disabled():
+                    stdout, stderr = self.capsys.readouterr()
+                    ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
+                    debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
         except:
             # note: trace level high so as not to affect normal testing
             debug.trace_exception(7, "get_stdout_stderr")
@@ -699,7 +700,7 @@ class TestWrapper(unittest.TestCase):
         # TODO: allow for overriding other options to NamedTemporaryFile
         if delete is None and debug.detailed_debugging():
             delete = False
-        temp_file_name = self.temp_file
+        temp_file_name = self.temp_file or ""
         if not static:
             temp_file_name += f"-{self.temp_file_count}"
         self.temp_file_count += 1
