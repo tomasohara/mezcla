@@ -3,7 +3,7 @@
 # Note:
 # - This is work-in-progress code in much need of improvement.
 # - For example, the code was adapted from type hinting checks,
-#   but not sufficiently updated (see type-hinting-integration repo).
+#   but not sufficiently updated (see old-type-hinting-integration branch).
 # - To disable caching of pytests, use the PYTEST_ADDOPTS environment variable externally
 #   $ export PYTEST_ADDOPTS="--cache-clear"
 #
