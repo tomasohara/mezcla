@@ -35,6 +35,7 @@ LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
 ## TODO1: don't hardcode /tmp (see below)
 ## OLD: OUTPUT_PATH_PYDANTIC = "/tmp/temp_"
 DECORATOR_VALIDATION_CALL = "@validate_call\ndef"
+MEZCLA_DIR = gh.form_path(gh.dir_path(__file__), "..")
 ##
 TEST_REGEX = system.getenv_value(
     "TEST_REGEX", None,
@@ -92,6 +93,7 @@ class TestMisc(TestWrapper):
     
     def transform_for_validation(self, file_path):
         """Creates a temporary copy of the script for validation of argument calls (using pydantic)"""
+        debug.trace(6, f"transform_for_validation({file_path})")
         content = system.read_file(file_path)
         content = my_re.sub(r"^def ", r"@validate_call\n\g<0>", content, flags=my_re.MULTILINE)
         ## Uncomment the line below (and comment the line above) if the decorators are previously used
@@ -111,6 +113,49 @@ class TestMisc(TestWrapper):
         output_path = gh.form_path(self.get_temp_dir(), gh.basename(file_path))
         system.write_file(filename=output_path, text=content)
         return output_path
+
+    def save_transformed_for_validation(self, from_dir, to_dir, script_name):
+        """Creates a copy of the script for validation of argument calls (using pydantic)"""
+        debug.trace_expr(6, from_dir, to_dir, script_name,
+                    prefix="in save_transformed_for_validation: ")
+        original_path = gh.form_path(from_dir, script_name)
+        ## OLD: new_code = self.transform_for_validation(original_path)
+        new_code_path = self.transform_for_validation(original_path)
+        new_code = system.read_file(new_code_path)
+        destination_path = gh.form_path(to_dir, script_name)
+        system.write_file(destination_path, new_code)
+    
+    def run_test(self, label, temp_dir, test_name):
+        """Run a test script in a temporary directory.
+           Note: Example invocation: run_test("orig", "/tmp/mezcla-original", "html_utils.py")"""
+        debug.trace_expr(6, label, temp_dir, test_name,
+                    prefix="in run_test: ")
+        test_script = gh.form_path(temp_dir, "tests", f"test_{test_name}")
+        result = gh.run(f"PYTHONPATH='{temp_dir}/..' pytest {test_script}")
+        if debug.verbose_debugging():
+            ## OLD:
+            ## number = random.randint(10000, 99999)
+            ## system.write_file(f"test_{test_name}_{number}.{name}.out", result)
+            result_file = gh.form_path(self.get_temp_dir(), f"test_{test_name}.{label}.out")
+            system.write_file(result_file, result)
+            check_errors_script = gh.run("which check_errors.perl")
+            if system.file_exists(check_errors_script):
+                gh.run("perl -sw {check_errors_script} {result_file}")
+            else:
+                debug.trace(5, "FYI: Install shell-script repo for useful utilities like check_errors.perl")
+        return result    
+
+    def count_serious_errors(self, results):
+        """Return number of errors in RESULTS
+        Note: This mostly covers exceptions butalso includes some errors"""
+        # This doesn't user check_errors.perl as above because not part of repo
+        num_errors = len(my_re.findall(r"Exception|ModuleNotFoundError|RuntimeError|SyntaxError|TypeError", results))
+        debug.trace(6, f"count_serious_errors({gh.elide(results)!r}) => {num_errors}")
+        return num_errors
+    
+    def count_failures(self, results):
+        """Count the number of failures in the test results"""
+        return sum(map(system.to_int, gh.extract_matches_from_text(r"(\d+) x?failed", results)))
     
     @pytest.mark.xfail
     def test_01_check_for_tests(self):
@@ -209,6 +254,62 @@ class TestMisc(TestWrapper):
                 for option in my_re.findall(r"--[\w-]+", usage):
                     self.do_assert(option in module_synopsis)
 
+    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason="Skipping long tests")
+    @pytest.mark.xfail
+    def test_06_type_hinting(self):
+        """Test type hinting by running tests over code with pydantic decorators.
+        Note: This creates copy of mezcla scripts and checks pytest result over original vs modified.
+        """
+        debug.trace(4, "test_06_type_hinting()")
+        ## TODO: create a module with very broken python code to test the test (for false positives)
+        main_scripts = [
+            "debug.py", "glue_helpers.py", "html_utils.py",
+            "my_regex.py", "system.py", "unittest_wrapper.py",
+        ]
+        orig_mezcla_dir = MEZCLA_DIR
+        ## OLD: temp_mezcla_dir = self.temp_file + "-mezcla"
+        temp_mezcla_dir = gh.form_path(self.get_temp_dir(), "mezcla")
+
+        # Create copy of mezcla scripts (n.b., expedient to allow simple PYTHONPATH change)
+        temp_mezcla_test_dir = gh.form_path(temp_mezcla_dir, "tests")
+        ## TODO2: copy_dir
+        gh.full_mkdir(temp_mezcla_test_dir)
+        gh.run(f"cp -vf {orig_mezcla_dir}/*.py {temp_mezcla_dir}")
+        gh.run(f"cp -vf {orig_mezcla_dir}/tests/*.py {temp_mezcla_test_dir}")
+
+        # Test each of the main scripts and check for test result differences
+        num_bad = 0
+        num_cases = len(main_scripts)
+        for script in main_scripts:
+            # Add dynamic type checking to scripts (e.g., via pydantic)
+            self.save_transformed_for_validation(orig_mezcla_dir, temp_mezcla_dir, script)
+
+            # Run tests using transformed and original script
+            temp_results = self.run_test("temp", temp_mezcla_dir, script)
+            orig_results = self.run_test("orig", orig_mezcla_dir, script)
+
+            # Check for errors
+            # exs: 1) more exceptions in transformed run vs original; 2) differences in number of failures
+            bad_results = False
+            ## OLD: if (temp_results.count("Exception") > orig_results.count("Exception")):
+            if (self.count_serious_errors(temp_results) > self.count_serious_errors(orig_results)):
+                debug.trace(4, f"Warning: more exceptions or errors running test of transformed script {script}")
+                bad_results = True
+            num_temp_failed = self.count_failures(temp_results)
+            num_orig_failed = self.count_failures(orig_results)
+            debug.assertion(num_temp_failed >= num_orig_failed)
+            debug.trace_expr(5, num_temp_failed, num_orig_failed, script)
+            if (num_temp_failed > num_orig_failed):
+                bad_results = True
+            if bad_results:
+                num_bad += 1
+
+        # Only allow for a relatively small number of failures
+        bad_pct = round(num_bad / num_cases * 100, 2)
+        debug.trace_expr(5, bad_pct, num_bad, num_cases)
+        assert bad_pct < 20
+
+                    
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
