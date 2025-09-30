@@ -34,6 +34,7 @@ from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla.tests.common_module import normalize_text
+from mezcla.tests.misc_tests import UNDER_UNIX, UNDER_UNIX_REASON
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:            global module object
@@ -99,6 +100,8 @@ class TestHtmlUtils(TestWrapper):
                                       heuristic=True, absolute=True)
     ready_test_alt_path = gh.resolve_path("document_ready_test_alt.html",
                                           heuristic=True, absolute=True)
+    dimensions_html_path = gh.resolve_path(DIMENSIONS_HTML_FILENAME,
+                                           heuristic=True, absolute=True)
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -564,6 +567,24 @@ class TestHtmlUtils(TestWrapper):
         test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_alt_path, timeout=5)
         self.do_assert(not test_document_ready)
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.skipif(not UNDER_UNIX, reason=UNDER_UNIX_REASON)
+    @pytest.mark.xfail
+    def test_16k_resolution(self):
+        """Verify that 16k resolution possible with headless selenium driver"""
+        # Note: The cache is disabled, so browser object for URL has right options.
+        # Also, resolution based on https://en.wikipedia.org/wiki/16K_resolutionm:
+        # it is comparable to four 4k monitors.
+        self.monkeypatch.setattr(THE_MODULE, "USE_BROWSER_CACHE", False)
+        self.monkeypatch.setattr(THE_MODULE, "BROWSER_DIMENSIONS", "15360,8640")
+        browser = THE_MODULE.get_browser("file://" + self.dimensions_html_path)
+        screenshot_path = gh.form_path(self.get_temp_dir(), "16k-screenshot.png")
+        browser.get_screenshot_as_file(screenshot_path)
+        ## TODO4: get resolution via PIL
+        image_info = gh.run(f"file {screenshot_path}")
+        # ex: PNG image data, 15360 x 8554, 8-bit/color RGBA, non-interlaced
+        assert my_re.search(r"PNG.* 15\d\d\d x 8\d\d\d,", image_info)
+
     @pytest.mark.xfail
     def test_set_param_dict_alt(self):
         param_dict = {
@@ -849,9 +870,7 @@ class TestHtmlUtils(TestWrapper):
 
     def test_html_to_text(self):
         """Ensure html_to_text works as expected"""
-        # TODO: move into test_html_utils.py
         debug.trace(4, "test_html_to_text()")
-        ## TODO4: use gh.form_path
         html_path = gh.resolve_path(DIMENSIONS_HTML_FILENAME)
         html = system.read_file(html_path)
         text = THE_MODULE.html_to_text(html)
