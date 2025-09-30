@@ -125,12 +125,24 @@ EXCLUDE_IMPORTS = system.getenv_bool(
 TARGET_BOOTSTRAP =  system.getenv_bool(
     "TARGET_BOOTSTRAP", False,
     description="Format tooltips, etc. for use with bootstrap")
+CHROME_WEBDRIVER = system.getenv_bool(
+    "CHROME_WEBDRIVER", False,
+    description="Use Chrome webdriver for Selenium")
 FIREFOX_WEBDRIVER = system.getenv_bool(
-    "FIREFOX_WEBDRIVER", True,          ## TODO: "FIREFOX_WEBDRIVER", False,
+    "FIREFOX_WEBDRIVER", not CHROME_WEBDRIVER,
     description="Use Firefox webdriver for Selenium")
-FIREFOX_PATH = system.getenv_value(
+FIREFOX_PATH = system.getenv_value(     ## TODO3: drop
     "FIREFOX_PATH", None,
-    desc="Path override for Firefox binary for use with selenium")
+    desc="Path override for Firefox binary (for use with selenium)")
+CHROME_PATH = system.getenv_value(      ## TODO3: drop
+    "CHROME_PATH", None,
+    desc="Path override for Chrome binary (for use with selenium)")
+WEBDRIVER_PATH = system.getenv_value(
+    "WEBDRIVER_PATH", (FIREFOX_PATH if FIREFOX_WEBDRIVER else CHROME_PATH),
+    desc="Path override for webdriver binary for use with selenium")
+BROWSER_PATH = system.getenv_value(
+    "BROWSER_PATH", None,
+    desc="Path override for browser binary (for use with selenium)")
 HEADERS = "headers"
 FILENAME = "filename"
 
@@ -150,10 +162,14 @@ BeautifulSoup : Optional[Callable] = None
 try:
     from selenium import webdriver
     from selenium.webdriver.remote.webdriver import WebDriver
+    from selenium.webdriver.chrome.service import Service as ChromeService
+    from selenium.webdriver.firefox.service import Service as FirefoxService
 except:
     debug.trace_exception(5, "selenium imports")
     webdriver = None
     WebDriver = object
+    ChromeService = None
+    FirefoxService = None
 
 #-------------------------------------------------------------------------------
 # HTML utility functions
@@ -189,13 +205,25 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
             options_module = (webdriver.firefox.options if FIREFOX_WEBDRIVER else webdriver.chrome.options)
             webdriver_options = options_module.Options()
             ## TEMP: Based on https://www.reddit.com/r/learnpython/comments/1fv3kiy/need_help_with_installing_geckodriver (TODO3: generalize)
-            if FIREFOX_PATH and FIREFOX_WEBDRIVER:
-                webdriver_options.binary_location = FIREFOX_PATH
-                debug.trace(4, f"Warning: assuming {webdriver_options.binary_location=} as with Tom's setup")
+            ## OLD:
+            ## if FIREFOX_PATH and FIREFOX_WEBDRIVER:
+            ##     webdriver_options.binary_location = FIREFOX_PATH
+            ##     debug.trace(4, f"Warning: overriding webdriver path: {webdriver_options.binary_location=}")
+            if BROWSER_PATH:
+                webdriver_options.binary_location = BROWSER_PATH
+                debug.trace(4, f"Warning: overriding webdriver path: {webdriver_options.binary_location=}")
             if HEADLESS_WEBDRIVER:
                 webdriver_options.add_argument('-headless')
-            browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
-            browser = browser_class(options=webdriver_options)
+            debug.assertion(not (FIREFOX_WEBDRIVER and CHROME_WEBDRIVER))
+            if FIREFOX_WEBDRIVER:
+                service = FirefoxService(executable_path=WEBDRIVER_PATH) if WEBDRIVER_PATH else None
+                browser = webdriver.Firefox(service=service, options=webdriver_options)
+            else:                        # CHROME_WEBDRIVER
+                service = ChromeService(executable_path=WEBDRIVER_PATH) if WEBDRIVER_PATH else None
+                browser = webdriver.Chrome(service=service, options=webdriver_options)
+            ## OLD:
+            ## browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
+            ## browser = browser_class(options=webdriver_options)
             if timeout:
                 browser.set_page_load_timeout(timeout)
             debug.trace_object(5, browser)
@@ -212,6 +240,7 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
                 system.sleep(POST_DOWNLOAD_SLEEP_SECONDS, message="Post-download")
         except:
             browser = None
+            debug.raise_exception(6)
             system.print_exception_info("get_browser")
 
     # Make sure the bare minimum is included (i.e., "<body></body>" of length 13)
