@@ -15,7 +15,8 @@
 import math
 import datetime
 import time
-import os 
+import os
+from typing import List
 
 # Installed packages
 import pytest
@@ -375,7 +376,7 @@ class TestFileToInstance(TestWrapper):
 
         json_data = gh.form_path(gh.dirname(__file__), "resources", "instances.json")
 
-        instances: list[EqCall] = THE_MODULE.convert_json_to_instance(
+        instances: List[EqCall] = THE_MODULE.convert_json_to_instance(
             json_data,
             "mezcla.mezcla_to_standard",
             "EqCall",
@@ -390,7 +391,7 @@ class TestFileToInstance(TestWrapper):
 
         yaml_data = gh.form_path(gh.dirname(__file__), "resources", "instances.yaml")
 
-        instances: list[EqCall] = THE_MODULE.convert_yaml_to_instance(
+        instances: List[EqCall] = THE_MODULE.convert_yaml_to_instance(
             yaml_data,
             "mezcla.mezcla_to_standard",
             "EqCall",
@@ -406,7 +407,7 @@ class TestFileToInstance(TestWrapper):
 
         csv_data = gh.form_path(gh.dirname(__file__), "resources", "instances.csv")
 
-        instances: list[EqCall] = THE_MODULE.convert_csv_to_instance(
+        instances: List[EqCall] = THE_MODULE.convert_csv_to_instance(
             csv_data,
             "mezcla.mezcla_to_standard",
             "EqCall",
@@ -421,7 +422,7 @@ class TestFileToInstance(TestWrapper):
 
         py_data = gh.form_path(gh.dirname(__file__), "resources", "instances.py-data")
 
-        instances: list[EqCall] = THE_MODULE.convert_python_data_to_instance(
+        instances: List[EqCall] = THE_MODULE.convert_python_data_to_instance(
             py_data,
             "mezcla.mezcla_to_standard",
             "EqCall",
