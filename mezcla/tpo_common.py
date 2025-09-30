@@ -227,7 +227,7 @@ USE_SIMPLE_FORMAT = (sys.version_info[0] <= 2) and (sys.version_info[1] <= 5)
 ## 
 ##     def debug_timestamp():
 ##         """Return timestamp for use in debugging traces"""
-##         # EX: debug_timestamp() => "2015-01-18 16:39:45.224768"
+##         # old-EX: debug_timestamp() => "2015-01-18 16:39:45.224768"
 ##         # TODO: use format compatible with logging (e.g., comma in place of period before micrososeconds)
 ##         return to_string(datetime.now())
 ## 
@@ -501,9 +501,11 @@ def debug_format(text, level=1, skip_newline=False, **namespace):
 
 def debug_timestamp():
     """Return timestamp for use in debugging traces"""
-    # EX: debug_timestamp() => "2015-01-18 16:39:45.224768"
+    # Example: debug_timestamp() => "2015-01-18 16:39:45.224768"
     # TODO: use format compatible with logging (e.g., comma in place of period before micrososeconds)
     return debug.timestamp()
+#
+# EX: re.sub(r"[0-9]", "N", debug_timestamp()) => "NNNN-NN-NN NN:NN:NN.NNNNNN"
 
 
 def debug_raise(level=1):
@@ -612,7 +614,7 @@ def normalize_unicode(text, encoding="utf8"):
 #
 def _normalize_unicode(text, encoding="utf8"):
     """Implementation of normalize_unicode (q.v.)"""
-    # EX: normalize_unicode(u'\u1234') => '\xe1\x88\xb4'
+    # old-EX: _normalize_unicode(u'\u1234') => '\xe1\x88\xb4'
     # Note: As this is used in suport for debug_print, no tracing is done.
     # TODO: work out more-untuitive name
     result = text
@@ -624,7 +626,7 @@ def _normalize_unicode(text, encoding="utf8"):
 
 def ensure_unicode(text, encoding="utf8"):
     """Ensures TEXT is encoded as unicode, using ENCODING (e.g., UTF8). Note: this is a no-op in Python 3 or higher"""
-    # EX: ensure_unicode('\xe1\x88\xb4') => u'\u1234'
+    # old-EX: ensure_unicode('\xe1\x88\xb4') => u'\u1234'
     result = _ensure_unicode(text, encoding)
     debug_format("ensure_unicode({t}) => {r}", 10, 
                  t=text, r=result)
@@ -1251,7 +1253,7 @@ def round_num(num, precision=None, zero_fill=True):
 
 def round_nums(numbers, precision=None, zero_fill=True):
     """Rounds each of the NUMBERS to PRECISION places (normally 3): returned as list of strings, optionally zero-filled on the right"""
-    # EX: round_nums([0.333333, 0.666666, 0.99999]) = ['0.333', '0.667', '1.000']
+    # EX: round_nums([0.333333, 0.666666, 0.99999]) => ['0.333', '0.667', '1.000']
     return [round_num(v, precision, zero_fill) for v in numbers]
 
 
