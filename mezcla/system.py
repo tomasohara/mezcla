@@ -36,7 +36,7 @@ import sys
 import time
 from typing import (
     Any, IO, Optional, Union, overload, List,
-    Tuple, Callable,
+    Tuple, Callable, Dict
 )
 from io import TextIOWrapper
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
@@ -78,8 +78,8 @@ def maxint() -> int:
 # Support for environment variable access
 # TODO: Put in separate module
 
-env_options: dict[str, str] = {}
-env_defaults: dict[str, Any] = {}
+env_options: Dict[str, str] = {}
+env_defaults: Dict[str, Any] = {}
 env_diagnostic_level = 6
 #
 def set_env_diagnostic_level(level):
