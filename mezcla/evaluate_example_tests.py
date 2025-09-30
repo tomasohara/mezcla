@@ -68,13 +68,15 @@ class TestConverter:
 
     def add_module(self, module_spec, dir_path=None):
         """Add import-* spec from MODULE_SPEC"""
+        ## TODO2: use sandbox namespace to avoid contaminating global one
         debug.trace(6, f"add_module({module_spec}, [{dir_path}])")
-        # pylint: disable=eval-used, exec-used
-        ## TODO2: debug.assertion(eval("isintance(eval({module_spec!r}, module)"))
+        # pylint: disable=eval-used,exec-used,
         if dir_path is not None:
             debug.trace(5, f"Appending {dir_path!r} to python path")
             sys.path.append(dir_path)
         exec(f"import {module_spec}")
+        ## TEMP:
+        exec(f"from {module_spec} import *")
         debug.assertion(eval(f"isinstance({module_spec}, ModuleType)"))
         self.test_text += f">>> from {module_spec} import *\n\n"
 
@@ -110,17 +112,31 @@ class TestConverter:
             OK = False
 
         # Normalize result (e.g., change double quote to single)
-        ## TODO3: my_re.search(r'^".*[^"].*"$', result)
-        if result and NORMALIZE_RESULT and my_re.search(r'^\s*(".*")\s*$', result):
-            ## OLD: result = f'{result[1:-1]}'
-            result_proper = my_re.sub(r"[^\\]'", "\\'", result[1:-1])
-            result = f"'{result_proper}'"
+        ## OLD:
+        ## ## TODO3: my_re.search(r'^".*[^"].*"$', result)
+        ## if result and NORMALIZE_RESULT and my_re.search(r'^\s*(".*")\s*$', result):
+        ##     ## OLD: result = f'{result[1:-1]}'
+        ##     result_proper = my_re.sub(r"[^\\]'", "\\'", result[1:-1])
+        ##     result = f"'{result_proper}'"
+        if OK and result and NORMALIZE_RESULT:
+            debug.trace_expr(5, expression, result)
+            new_result = result
+            try:
+                ## TODO2: use sandbox namespace to avoid contaminating global one
+                new_result = eval(f"""{result}""")    # pylint: disable=eval-used
+            except:
+                system.print_exception_info("normalization")
+            if new_result != result:
+                debug.trace(5, f"FYI: Normalized result to {new_result!r}")
+                result = new_result
 
         # Add to tests
         if ((not OK) or ((expression is None) and (result is None))):
             debug.trace(6, f"Ignoring line {line_num}: {in_line}")
         else:
-            self.test_text += f">>> {expression.strip()}\n{result.strip()}\n\n"
+            if isinstance(result, str):
+                result = repr(result)
+            self.test_text += f">>> {expression.strip()}\n{result}\n\n"
         return OK
 
 
