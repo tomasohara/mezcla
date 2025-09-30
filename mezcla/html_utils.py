@@ -82,6 +82,7 @@ import requests
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
+from mezcla import misc_utils
 from mezcla import system
 ## OLD: from mezcla.system import write_temp_file
 write_temp_file = gh.write_temp_file
@@ -140,6 +141,9 @@ CHROME_PATH = system.getenv_value(      ## TODO3: drop
 WEBDRIVER_PATH = system.getenv_value(
     "WEBDRIVER_PATH", (FIREFOX_PATH if FIREFOX_WEBDRIVER else CHROME_PATH),
     desc="Path override for webdriver binary for use with selenium")
+BROWSER_DIMENSIONS = system.getenv_value(
+    "BROWSER_DIMENSIONS", None,
+    desc="WxH Dimensions for browser with Selenium/URL--allows higher resolution with headless")
 BROWSER_PATH = system.getenv_value(
     "BROWSER_PATH", None,
     desc="Path override for browser binary (for use with selenium)")
@@ -184,6 +188,7 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
     - If TIMEOUT specified, it only waits specified seconds.
     - Warning: can return null browser object.
     """
+    ## TODO3: create a class-based interface to simplify repeated us
     debug.trace(6, f"in get_browser({url}); {timeout=}")
     ## OLD:
     ## # pylint: disable=import-error, import-outside-toplevel
@@ -192,8 +197,9 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
     #
     browser : Optional[WebDriver] = None
     global browser_cache
-    debug.assertion(USE_BROWSER_CACHE, 
-                    "Note: Browser automation without cache not well tested!")
+    ## OLD:
+    ## debug.assertion(USE_BROWSER_CACHE, 
+    ##                 "Note: Browser automation without cache not well tested!")
 
     # Check for cached version of browser. If none, create one and access page.
     browser = browser_cache.get(url) if USE_BROWSER_CACHE else None
@@ -221,6 +227,10 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
             else:                        # CHROME_WEBDRIVER
                 service = ChromeService(executable_path=WEBDRIVER_PATH) if WEBDRIVER_PATH else None
                 browser = webdriver.Chrome(service=service, options=webdriver_options)
+            if BROWSER_DIMENSIONS:
+                dims = [system.to_float(d) for d in misc_utils.extract_string_list(BROWSER_DIMENSIONS)]
+                debug.assertion(len(dims) == 2)
+                browser.set_window_size(*dims)
             ## OLD:
             ## browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
             ## browser = browser_class(options=webdriver_options)
