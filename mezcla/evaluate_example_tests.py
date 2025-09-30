@@ -1,11 +1,14 @@
 #! /usr/bin/env python3
 # 
-# Evaluate '#: EX' tests placed in python source. This reformats EX comments
+# Evaluate '# EX:' tests placed in python source. This reformats EX comments
 # into the doctest text format. For example,
-#    # EX: is_symbolic("3.14159") => False
+#    # EX: system.is_number("3.14159") => False    # conventional PI
 # gets converted as follows:
-#    >>> is_symbolic("3.14159")
+#    >>> system.is_number("3.14159")
 #    False
+#
+# Note:
+# - Post-expression comments are stripped if preceded by 2+ spaces (as above).
 #
 
 """
@@ -16,7 +19,9 @@ Sample usage:
 """
 
 # Standard modules
+import sys
 from types import ModuleType            # pylint: disable=unused-import
+from typing import Optional
 
 # Installed modules
 ## TODO2: import ast_tools
@@ -29,7 +34,7 @@ from mezcla.my_regex import my_re
 from mezcla import system
 
 # Constants for switches, omitting leading dashes
-OUTPUT_ARG = "output"                   # TODO: => just-output
+OUTPUT_ARG = "just-output"
 
 # Constants
 TL = debug.TL
@@ -38,8 +43,11 @@ TL = debug.TL
 SKIP_BACKGROUND = system.getenv_bool(
     "SKIP_BACKGROUND", False,
     description="Skip example tests involving background jobs")
+SKIP_NORMALIZE = system.getenv_bool(
+    "SKIP_NORMALIZE", False,
+    description="Skip normalization of outout for doctest")
 NORMALIZE_RESULT = system.getenv_bool(
-    "NORMALIZE_RESULT", False,
+    "NORMALIZE_RESULT", not SKIP_NORMALIZE,
     description="Normalize result to acount for doctest quirks as with quotes")
 
 
@@ -58,24 +66,38 @@ class TestConverter:
         debug.trace(6, f"get_tests() => {result}")
         return result
 
-    def add_module(self, module_spec):
+    def add_module(self, module_spec, dir_path=None):
         """Add import-* spec from MODULE_SPEC"""
+        debug.trace(6, f"add_module({module_spec}, [{dir_path}])")
         # pylint: disable=eval-used, exec-used
         ## TODO2: debug.assertion(eval("isintance(eval({module_spec!r}, module)"))
+        if dir_path is not None:
+            debug.trace(5, f"Appending {dir_path!r} to python path")
+            sys.path.append(dir_path)
         exec(f"import {module_spec}")
         debug.assertion(eval(f"isinstance({module_spec}, ModuleType)"))
         self.test_text += f">>> from {module_spec} import *\n\n"
 
-    def convert(self, line, line_num):
+    def convert(self, line, line_num: Optional[int] = 0):
         """Convert example test in LINE at LINE_NUM"""
+        debug.trace(7, f"convert({line}, [{line_num}])")
         expression = result = None
         OK = False
+        in_line = line
 
+        # Ignore comments (n.b., requires 2+ spaces before # and uses non-greedy search for expr)
+        ## TODO2: make sure the comment start isn't part of the result (i.e., within quotes)
+        line = line.strip()
+        if my_re.search(r"^(.* EX: .*?)   *(#.*)$", line):
+            line = my_re.group(1)
+            comment = my_re.group(2)
+            debug.trace(4, f"FYI: Ignoring comment at line {line_num}: {comment}")
+        
         # Parse test expression
-        if my_re.search(r"EX: (.*)\s*=>\s*(.*)", line):
+        if my_re.search(r"# +EX: (.*)\s*=>\s*(.*)", line):
             expression, result = my_re.groups()
             OK = True
-        elif my_re.search(r"EX: (.*)", line):
+        elif my_re.search(r"# +EX: (.*)", line):
             expression = my_re.group(1)
             result = "True"
             OK = True
@@ -84,7 +106,7 @@ class TestConverter:
 
         # Exclude certain commands
         if expression and SKIP_BACKGROUND and my_re.search(r"run|issue(.*&)", expression):
-            debug.trace(4, f"Ignoring invocation of background job at {line_num}: {line}")
+            debug.trace(4, f"FYI: Ignoring invocation of background job at {line_num}: {in_line}")
             OK = False
 
         # Normalize result (e.g., change double quote to single)
@@ -96,7 +118,7 @@ class TestConverter:
 
         # Add to tests
         if ((not OK) or ((expression is None) and (result is None))):
-            debug.trace(6, f"Ignoring line {line_num}: {line}")
+            debug.trace(6, f"Ignoring line {line_num}: {in_line}")
         else:
             self.test_text += f">>> {expression.strip()}\n{result.strip()}\n\n"
         return OK
@@ -107,14 +129,18 @@ class Script(Main):
     output_arg = False
     exc = None
     num_tests = 0
+    module = "???"
 
     def setup(self):
         """Check results of command line processing"""
         debug.trace_fmtd(TL.VERBOSE, "Script.setup(): self={s}", s=self)
         self.output_arg = self.get_parsed_option(OUTPUT_ARG, self.output_arg)
         self.exc = TestConverter()
-        module = gh.basename(self.filename, ".py")
-        self.exc.add_module(module)
+        dir_path, module_file = system.split_path(self.filename)
+        self.module = gh.basename(module_file, ".py")
+        debug.assertion(my_re.search(r"^\w+$", self.module),
+                        f"Module name {self.module!r} should be a valid python identifier")
+        self.exc.add_module(self.module, dir_path=dir_path)
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
     def process_line(self, line):
@@ -134,7 +160,7 @@ class Script(Main):
             system.write_file(self.temp_file, test_spec)
             print(gh.run(f"python -m doctest -v {self.temp_file}"))
         else:
-            debug.trace(4, "FYI: No tests extracted")
+            debug.trace(4, "FYI: No tests extracted from module {self.module}")
         
 def main():
     """Entry point"""
