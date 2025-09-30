@@ -18,6 +18,7 @@ import pytest
 # Local modules
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
+from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
 
@@ -37,10 +38,18 @@ class TestIt(TestWrapper):
     def test_01_data_file(self):
         """Tests run_script w/ data file"""
         debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
+
+        # Create valid python file from dummy data (i.e., valid basename and code)
         data = ["def fu(): return 123",
                 "# EX: fu() => 123"]
-        system.write_lines(self.temp_file, data)
-        output = self.run_script(options="--output", data_file=self.temp_file)
+        temp_dir, temp_file = system.split_path(self.temp_file)
+        temp_file = my_re.sub("-", "_", temp_file)
+        temp_file += ".py"
+        temp_base = gh.form_path(temp_dir, temp_file)
+        system.write_lines(temp_base, data)
+
+        # Run and evaluate the test
+        output = self.run_script(options="--just-output", data_file=temp_base)
         self.do_assert(my_re.search(r">>> fu\(\)\n123", output.strip()))
         return
 
@@ -49,8 +58,8 @@ class TestIt(TestWrapper):
         """Test TestConverter class"""
         debug.trace(4, f"TestIt.test_02_TestConverter(); self={self}")
         tc = THE_MODULE.TestConverter()
-        self.do_assert(tc.convert("# EX: func() => 987", 1))
-        self.do_assert(not tc.convert("# example: func() => 987", 1))
+        self.do_assert(tc.convert("# EX: func() => 987", line_num=1))
+        self.do_assert(not tc.convert("# example: func() => 987", line_num=2))
         self.do_assert(my_re.search(r">>> func\(\)\n987\n", tc.get_tests()))
         return
 #------------------------------------------------------------------------
