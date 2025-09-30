@@ -16,10 +16,11 @@ Simple usage:
     from mezcla.ipython_utils import *
 
 Advanced usage:
-    # Make sure import-globals util active
+    # Make sure import-globals utility active
     import mezcla.ipython_utils
     reload(mezcla.ipython_utils)
     import_module_globals = mezcla.ipython_utils.import_module_globals
+    #
     # Run over misc_utils.py
     import_module_globals("mezcla.misc_utils", globals_dict=builtins.globals())
     (TYPICAL_EPSILON, VALUE_EPSILON)
@@ -134,14 +135,17 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
             exec(import_command)
             loaded = True
         except:
-            debug.trace_exception_info(4, f"{module_name} reload")
-            debug.trace(3, f"Warning: {module_name} should have been imported previously")
-        if not loaded:
-            # note: might fail (e.g., 'from package import module' required(
-            import_command = f"import {module_name}"
-            exec(import_command)
-        module = eval(module_name)
-        module_attrs = dir(module)
+            try:
+                import_command = f"import {module_name}"
+                exec(import_command)
+                loaded = True
+            except:
+                debug.trace_exception_info(4, f"{module_name} import")
+        if loaded:
+            module = eval(module_name)
+            module_attrs = dir(module)
+        elif not ignore_errors:
+            system.print_error("Error: unable to import or reload {module_name}")
     except:
         if not ignore_errors:
             system.print_exception_info(import_command)
