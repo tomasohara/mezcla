@@ -41,7 +41,7 @@ TEST_REGEX = system.getenv_value(
     "TEST_REGEX", None,
     "Regex for tests to include; ex: '^test_c.*' for debugging")
 UNDER_UNIX = (os.name == 'posix')
-
+UNDER_UNIX_REASON = "Only applies to Unix"
 
 class TestMisc(TestWrapper):
     """Class for test case definitions"""
@@ -231,7 +231,7 @@ class TestMisc(TestWrapper):
                 debug.trace(4, f"FYI: Ignoring validation call check for {input_file}, which has no def's")
 
     @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=SKIP_SLOW_REASON)
-    @pytest.mark.skipif(not UNDER_UNIX, reason="Only applies to Unix")
+    @pytest.mark.skipif(not UNDER_UNIX, reason=UNDER_UNIX_REASON)
     @pytest.mark.xfail
     def test_05_usage_statements(self):
         """Make sure usage statments refer to valid arguments"""
