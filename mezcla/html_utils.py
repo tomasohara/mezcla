@@ -260,6 +260,14 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
     return browser
 
 
+def shutdown_browser(browser: Optional[WebDriver]):
+    """Close the browser web driver instance"""
+    try:
+        browser.quit()
+    except:
+        system.print_exception_info("shutdown_browser")
+
+
 def get_inner_html(url : str):
     """Return the fully-rendered version of the URL HTML source (e.g., after JavaScript DOM manipulation)
     Note:
