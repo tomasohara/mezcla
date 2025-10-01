@@ -1388,10 +1388,13 @@ def just_one_non_null(in_list: list, strict: bool = False) -> bool:
 
 def unique_items(values: list,
                  prune_empty: Optional[bool] = False,
-                 ignore_case: Optional[bool] = None) -> list:
+                 ignore_case: Optional[bool] = None,
+                 key: Optional[Callable] = None) -> list:
     """Returns unique items from VALUES, preserving order
-    Note: optionally PRUN[ing]_EMPTY items and IGNOR[ing]_CASE,
-    in which case earlier items take precedence."""
+    Note: Optionally PRUN[ing]_EMPTY items and IGNOR[ing]_CASE,
+    in which case earlier items take precedence.
+    Also allows for optional KEY, assuming VALUES is a list of dict's.
+    """
     # EX: unique_items([1, 2, 3, 2, 1]) => [1, 2, 3]
     # EX: unique_items(["dog", "DOG", "cat"], ignore_case=True) => ["dog", "cat"]
     ordered_hash = OrderedDict()
@@ -1402,13 +1405,17 @@ def unique_items(values: list,
         if debug.debugging(8):
             in_values.append(item)
         if item or (not prune_empty):
-            item_key = item if not ignore_case else str(item).lower()
+            if key is None:
+                item_key = item if not ignore_case else str(item).lower()
+            else:
+                item_key = key(item)
             if item_key not in ordered_hash:
                 ordered_hash[item_key] = item
     result = list(ordered_hash.values())
     debug.trace_fmt(8, "unique_items({l}) => {r}", l=in_values, r=result)
     return result
-
+#
+# unique_items([{"name": "john"}, {"name": "jane"}, {"name": "john"}], key=lambda x: x.get("name")) => [{"name", "john"}, {"name", "jane"}]
 
 def is_number(text: str) -> bool:
     """Indicates whether TEXT represents a number (integer or float)"""
