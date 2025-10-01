@@ -24,17 +24,18 @@
 import os
 
 # Installed packages
+from PIL import Image
 import pytest
 ## OLD: import bs4
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
+from mezcla import misc_utils
 from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla.tests.common_module import normalize_text
-from mezcla.tests.misc_tests import UNDER_UNIX, UNDER_UNIX_REASON
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:            global module object
@@ -67,7 +68,7 @@ TOMASOHARA_TRADE_LIKE_URL = system.getenv_text(
     "TOMASOHARA_TRADE_LIKE_URL", TOMASOHARA_TRADE_URL,
     desc=f"URL to use instead of {TOMASOHARA_TRADE_URL}")
 ##
-DIMENSIONS_HTML_FILENAME = "./resources/simple-window-dimensions.html"
+DIMENSIONS_HTML_FILENAME = gh.form_path("resources", "simple-window-dimensions.html")
 DIMENSIONS_EXPECTED_TEXT = """
    Simple window dimensions
 
@@ -567,23 +568,40 @@ class TestHtmlUtils(TestWrapper):
         test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_alt_path, timeout=5)
         self.do_assert(not test_document_ready)
 
-    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
-    @pytest.mark.skipif(not UNDER_UNIX, reason=UNDER_UNIX_REASON)
-    @pytest.mark.xfail
-    def test_16k_resolution(self):
-        """Verify that 16k resolution possible with headless selenium driver"""
+    def check_browser_dimensions(self, width, height, label):
+        """Verify that browser accepts dimensions of WIDTH x HEIGHT via selenium"""
+        debug.trace(5, f"check_browser_dimensions{(width, height, label)}")
         # Note: The cache is disabled, so browser object for URL has right options.
-        # Also, resolution based on https://en.wikipedia.org/wiki/16K_resolutionm:
-        # it is comparable to four 4k monitors.
         self.monkeypatch.setattr(THE_MODULE, "USE_BROWSER_CACHE", False)
-        self.monkeypatch.setattr(THE_MODULE, "BROWSER_DIMENSIONS", "15360,8640")
+        self.monkeypatch.setattr(THE_MODULE, "BROWSER_DIMENSIONS", f"{width},{height}")
         browser = THE_MODULE.get_browser("file://" + self.dimensions_html_path)
-        screenshot_path = gh.form_path(self.get_temp_dir(), "16k-screenshot.png")
-        browser.get_screenshot_as_file(screenshot_path)
-        ## TODO4: get resolution via PIL
-        image_info = gh.run(f"file {screenshot_path}")
-        # ex: PNG image data, 15360 x 8554, 8-bit/color RGBA, non-interlaced
-        assert my_re.search(r"PNG.* 15\d\d\d x 8\d\d\d,", image_info)
+        screenshot_path = gh.form_path(self.get_temp_dir(), f"{label}-screenshot.png")
+        try:
+            browser.get_screenshot_as_file(screenshot_path)
+            ok = True
+            with Image.open(screenshot_path) as img:
+                actual_width, actual_height = img.size
+                debug.trace_expr(5, actual_width, actual_height)
+        except:
+            ok = False
+            debug.trace_exception_info(6, "get_screenshot_as_file")
+        ok = ok and misc_utils.is_close(width, actual_width, epsilon=1000)
+        ok = ok and misc_utils.is_close(height, actual_height, epsilon=1000)
+        return ok
+        
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail
+    def test_browser_dimensions(self):
+        """Verify that 8k and 16k resolution possible with headless selenium driver but not 32k"""
+        # In addition, the target 16k resolution is based on
+        #    https://en.wikipedia.org/wiki/16K_resolution
+        # It is comparable to four 4k monitors. Also see
+        #    https://en.wikipedia.org/wiki/Display_resolution_standards
+        debug.trace(4, "test_browser_dimensions()")
+        assert self.check_browser_dimensions(3840, 2160, "4k")
+        assert self.check_browser_dimensions(7680, 4320, "8k")
+        assert self.check_browser_dimensions(15360, 8640, "16k")
+        assert not self.check_browser_dimensions(30720, 17280, "32k")
 
     @pytest.mark.xfail
     def test_set_param_dict_alt(self):
