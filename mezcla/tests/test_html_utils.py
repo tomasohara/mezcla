@@ -112,6 +112,7 @@ class TestHtmlUtils(TestWrapper):
         browser = THE_MODULE.get_browser(self.tomasohara_trade_url)
         self.do_assert(my_re.search(r"<title>.*Tomás.*O.Hara.*Scrappy.*Cito.*</title>",
                                     browser.page_source))
+        THE_MODULE.shutdown_browser(browser)
 
     def test_get_url_parameter_value(self):
         """Ensure get_url_parameter_value works as expected"""
@@ -587,6 +588,7 @@ class TestHtmlUtils(TestWrapper):
             debug.trace_exception_info(6, "get_screenshot_as_file")
         ok = ok and misc_utils.is_close(width, actual_width, epsilon=1000)
         ok = ok and misc_utils.is_close(height, actual_height, epsilon=1000)
+        THE_MODULE.shutdown_browser(browser)
         return ok
         
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
