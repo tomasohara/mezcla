@@ -287,7 +287,7 @@ def getenv_value(
     """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE. (See getenv_text for option details.)
     Note: If NORMALIZE, then lookup falls back to variable uppercased and with underscores for dashes.
     """
-    # EX: getenv_value("bad env var") => None
+    # EX: getenv_value("bad env var") is None
     # TODO2: reconcile with getenv_value (e.g., via common helper); add way to set normalization as default
     if not skip_register:
         register_env_option(var, description or desc, default)
@@ -332,7 +332,7 @@ def getenv_bool(
     - TODO2: Return is a bool unless ALLOW_NONE; defaults to False.
     """
     # EX: getenv_bool("bad env var", None) => False
-    # EX: getenv_bool("bad env var", None, allow_none=True) => True
+    # EX: getenv_bool("bad env var", None, allow_none=True) is None
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
     value_text = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register, **kwargs)
@@ -485,7 +485,7 @@ def exit(                               # pylint: disable=redefined-builtin
         **namespace) -> None:
     """Display error MESSAGE to stderr and then exit, using optional
     NAMESPACE for format. The STATUS_CODE can be overrided (n.b., 0 if None)."""
-    # EX: exit("Error: {reason}!", status_code=123, reason="Whatever")
+    # example: exit("Error: {reason}!", status_code=123, reason="Whatever")
     debug.trace(6, f"system.exit{(message, status_code, namespace)}")
     if namespace:
         message = message.format(**namespace)
@@ -614,7 +614,7 @@ def load_object(file_name: FileDescriptorOrPath, ignore_error: bool = False) -> 
 def quote_url_text(text: str, unquote: bool = False) -> str:
     """(un)Quote/encode TEXT to make suitable for use in URL. Note: This return the input if the text has encoded characters (i.e., %HH) where H is uppercase hex digit."""
     # Note: This is a wrapper around quote_plus and thus escapes slashes, along with spaces and other special characters (";?:@&=+$,\"'").
-    # EX: quote_url_text("<2/") => "%3C2%2f"
+    # EX: quote_url_text("<2/") => "%3C2%2F"
     # EX: quote_url_text("Joe's hat") => "Joe%27s+hat"
     # EX: quote_url_text("Joe%27s+hat") => "Joe%2527s%2Bhat"
     debug.trace_fmtd(7, "in quote_url_text({t})", t=text)
@@ -750,7 +750,9 @@ def read_lines(filename: FileDescriptorOrPath, ignore_comments: Optional[bool] =
     Note: If IGNORE_COMMENTS, then comments of the form '[#;] text' are stripped
     """
     # TODO: add support for open() keyword args (e.g., via read_entire_file)
-    # EX: read_lines("/tmp/fu123.list") => ["1", "2", "3"]
+    # EX: read_lines("/dev/null") => []
+    # EX: (len(read_lines("/etc/passwd")) > 5)
+    # old-EX: read_lines("/tmp/fu123.list") => ["1", "2", "3"]
     # note: The final newline is ignored, s[TODO ...]
     contents = read_entire_file(filename)
     if ignore_comments:
@@ -764,7 +766,8 @@ def read_lines(filename: FileDescriptorOrPath, ignore_comments: Optional[bool] =
     debug.trace(7, f"read_lines({filename!r}) => {lines}")
     return lines
 #
-# EX: l = ["1", "2"]; f="/tmp/12.list"; write_lines(f, l); read_lines(f) => l
+# EX: (len(read_file("/etc/passwd")) > len(read_lines("/etc/passwd")))
+# EX: l = ["1", "2"]; f="/tmp/12.list"; write_lines(f, l); (read_lines(f) == l)
 
 
 def read_binary_file(filename: FileDescriptorOrPath) -> bytes:
@@ -795,7 +798,7 @@ def read_directory(directory: int) -> List[str]:
 def read_directory(directory: Union[Optional[str], bytes, int]) -> Union[List[str], List[bytes]]:
     """Returns list of files in DIRECTORY"""
     # Note simple wrapper around os.listdir with tracing
-    # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
+    # EX: (bool(intersection(["init.d", "passwd"], read_directory("/etc"))))
     files: Union[List[str], List[bytes]] = []
     try:
         files = os.listdir(directory)
@@ -808,7 +811,7 @@ def read_directory(directory: Union[Optional[str], bytes, int]) -> Union[List[st
 def get_directory_filenames(directory: str, just_regular_files: bool = False) -> List[str]:
     """Returns full pathname for files in DIRECTORY, optionally restrictded to JUST_REGULAR_FILES
     Note: The files are returned in lexicographical order"""
-    # EX: ("/etc/passwd" in get_directory_filenames("/etc")
+    # EX: ("/etc/passwd" in get_directory_filenames("/etc"))
     # EX: ("/boot" not in get_directory_filenames("/", just_regular_files=True))
     return_all_files = (not just_regular_files)
     files = []
@@ -1026,7 +1029,7 @@ def split_path(path: str) -> Tuple[str, str]:
     """Split file PATH into directory and filename
     Note: wrapper around os.path.split with tracing and sanity checks
     """
-    # EX: split_path("/etc/passwd") => ["etc", "passwd"]
+    # EX: split_path("/etc/passwd") => ("/etc", "passwd")
     dir_name, filename = os.path.split(path)
     debug.assertion((not dir_name.endswith(os.path.sep)) or (dir_name == os.path.sep))
     result = dir_name, filename
@@ -1041,9 +1044,9 @@ def filename_proper(path: str) -> str:
     """Return PATH sans directories
     Note: unlike os.path.split, this always returns filename component
     """
-    # EX: filename_proper("/tmp/document.pdf") => "document.pdf")
-    # EX: filename_proper("/tmp") => "tmp")
-    # EX: filename_proper("/") => "/")
+    # EX: filename_proper("/tmp/document.pdf") => "document.pdf"
+    # EX: filename_proper("/tmp") => "tmp"
+    # EX: filename_proper("/") => "/"
     (directory, filename) = split_path(path)
     if not filename:
         filename = directory
@@ -1054,9 +1057,9 @@ def filename_proper(path: str) -> str:
 def remove_extension(filename: str, extension: Optional[str] = None) -> str:
     """Return FILENAME without final EXTENSION
     Note: Unless extension specified, only last dot is included"""
-    # EX: remove_extension("/tmp/document.pdf") => "/tmp/document")
-    # EX: remove_extension("it.abc.def") => "it.abc")
-    # EX: remove_extension("it.abc.def", "abc.def") => "it")
+    # EX: remove_extension("/tmp/document.pdf") => "/tmp/document"
+    # EX: remove_extension("it.abc.def") => "it.abc"
+    # EX: remove_extension("it.abc.def", "abc.def") => "it"
     in_extension = extension
     new_filename = filename
     if extension is None:
@@ -1112,14 +1115,15 @@ def path_separator(sysname: Optional[str] = None):
     result = os.path.sep
     if (sysname != os.name):
         default_sep = "/"
-        result = "\\" if sysname == "nt" else default_sep
+        ## OLD: result = "\\" if sysname == "nt" else default_sep
+        result = "\\" if (str(sysname).lower() in ["nt", "windows"]) else default_sep
     debug.trace(7, f"path_separator() => {result}")
     return result
 #    
 # EX: path_separator(sysname="Windows") => "\\"
-# EX-SETUP: def when(cond, value): return value if cond else None
-# EX: path_separator() => (when((os.uname().sysname == "Linux"), "/"))
-
+## TODO4-EX-SETUP: def when(cond, value): return value if cond else None
+## TODO4-EX: path_separator() => (when((os.uname().sysname == "Linux"), "/"))
+# EX: (path_separator() == ("/" if (os.uname().sysname == "Linux") else os.path.sep))
 
 def form_path(*filenames: str) -> str:
     """Wrapper around os.path.join over FILENAMEs (with tracing).
@@ -1175,7 +1179,7 @@ def set_current_directory(PATH: FileDescriptorOrPath) -> None:
 
 def to_utf8(text: str) -> str:
     """obsolete no-op: Convert TEXT to UTF-8 (e.g., for I/O)"""
-    # EX: to_utf8(u"\ufeff") => "\xEF\xBB\xBF"
+    # old-EX: to_utf8(u"\ufeff") => "\xEF\xBB\xBF"
     result = text
     ## OLD: ... result = result.encode(UTF8, 'ignore')
     debug.trace_fmtd(8, "to_utf8({t}) => {r}", t=text, r=result)
@@ -1186,7 +1190,7 @@ def to_str(value: Any) -> str:
     """Convert VALUE to text (i.e., of type str)
     Note: use to_utf8 for output or to_string to use default string type"""
     # Note: included for sake of completeness with other basic types
-    # EX: to_str(math.pi) = "3.141592653589793"
+    # EX: import math; to_str(math.pi) => "3.141592653589793"
     result = "%s" % value
     debug.trace_fmtd(8, "to_str({v}) => {r}", v=value, r=result)
     debug.assertion(isinstance(result, str))
@@ -1194,16 +1198,20 @@ def to_str(value: Any) -> str:
 
 
 def from_utf8(text: str) -> str:
-    """Convert TEXT to Unicode from UTF-8"""
-    # EX: to_utf8("\xEF\xBB\xBF") => u"\ufeff"
+    """Convert TEXT to Unicode from UTF-8
+    Note: now a no-op
+    """
+    # old-EX: to_utf8("\xEF\xBB\xBF") => u"\ufeff"
     result = text
     debug.trace_fmtd(8, "from_utf8({t}) => {r}", t=text, r=result)
     return result
 
 
 def to_unicode(text: str, encoding: Optional[str] = None):
-    """Ensure TEXT in ENCODING is Unicode, such as from the default UTF8"""
-    # EX: to_unicode("\xEF\xBB\xBF") => u"\ufeff"
+    """Ensure TEXT in ENCODING is Unicode, such as from the default UTF8
+    Note: now a no-op
+    """
+    # old-EX: to_unicode("\xEF\xBB\xBF") => u"\ufeff"
     # TODO: rework from_utf8 in terms of this
     result = text
     ## OLD: ... result = result.decode(encoding, 'ignore')
@@ -1254,7 +1262,7 @@ def chomp(text: str, line_separator: str = os.linesep) -> str:
 
 def normalize_dir(path: str) -> str:
     """Normalize the directory PATH (e.g., removing ending path delim)"""
-    # EX: normalize_dir("/etc/") => "/etc")
+    # EX: normalize_dir("/etc/") => "/etc"
     result = chomp(path, path_separator())
     debug.trace(6, f"normalize_dir({path}) => {result}")
     return result
@@ -1306,7 +1314,7 @@ def intersection(list1: list, list2: list, as_set: bool = False) -> Union[list, 
     """
     # note: wrapper around set.intersection used for tracing
     # EX: sorted(intersection([1, 2, 3, 4, 5], [2, 4])) => [2, 4]
-    # EX: intersection([1, 2, 3, 4, 5], [2, 4], as_set=True)) => {2, 4}
+    # EX: intersection([1, 2, 3, 4, 5], [2, 4], as_set=True) => {2, 4}
     # TODO: have option for returning list
     result: Union[list, set] = set(list1).intersection(set(list2))
     if not as_set:
@@ -1544,7 +1552,7 @@ def time_in_secs() -> float:
 
 def python_maj_min_version() -> float:
     """Return Python version as a float of form Major.Minor"""
-    # EX: debug.assertion(python_maj_min_version() >= 3.6, "F-Strings are used")
+    # EX: bool(debug.assertion(10 * python_maj_min_version() >= 36, "F-Strings are used"))
     version = sys.version_info
     epsilon = 1e-6
     py_maj_min = (to_float("{M}.{m}".format(M=version.major, m=version.minor))
