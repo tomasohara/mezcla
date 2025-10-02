@@ -155,6 +155,7 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
 
     # Import each individually
     num_ok = 0
+    num_ignored = 0
     for var in module_attrs:
         debug.trace_expr(6, var)
 
@@ -177,7 +178,9 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
                 num_ok += 1
             except:
                 debug.trace_exception_info(4, import_desc)
-    debug.trace(5, f"{num_ok} of {len(module_attrs)} attributes loaded OK")
+        else:
+            num_ignored += 1
+    debug.trace(5, f"{num_ok} of {len(module_attrs)} attributes loaded OK; {num_ignored=}")
     return
 
 
