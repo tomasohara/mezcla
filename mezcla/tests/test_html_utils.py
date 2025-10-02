@@ -67,6 +67,7 @@ SCRAPPYCITO_LIKE_URL = system.getenv_text(
 TOMASOHARA_TRADE_LIKE_URL = system.getenv_text(
     "TOMASOHARA_TRADE_LIKE_URL", TOMASOHARA_TRADE_URL,
     desc=f"URL to use instead of {TOMASOHARA_TRADE_URL}")
+PACMAN_FILENAME = gh.form_path("examples", "sd-spooky-pacman.png")
 ##
 DIMENSIONS_HTML_FILENAME = gh.form_path("resources", "simple-window-dimensions.html")
 DIMENSIONS_EXPECTED_TEXT = """
@@ -86,6 +87,22 @@ DIMENSIONS_EXPECTED_TEXT = """
 
 #-------------------------------------------------------------------------------
 
+def resolve_mezcla_path(filename):
+    """Determine path for FILENAME using heurtics based on repo layout"""
+    # example: resolve_mezcla_path("examples/sd-spooky-pacman.png") => "/home/tomohara/Mezcla/mezcla/examples/sd-spooky-pacman.png"
+    result = gh.resolve_path(filename, heuristic=True, absolute=True)
+    debug.trace(6, f"resolve_mezcla_path({filename!r}) => {result!r}")
+    return result
+
+def resolve_mezcla_url(filename):
+    """Determine URL for mezcla FILENAME in repo"""
+    # example: resolve_mezcla_url("examples/sd-spooky-pacman.png") => "https://github.com/tomasohara/mezcla/blob/main/mezcla/examples/sd-spooky-pacman.png"
+    ## TEST: url = f"https://github.com/tomasohara/mezcla/blob/main/mezcla/{filename}"
+    url = f"http://localhost/mezcla/mezcla/{filename}"
+    debug.trace(6, f"resolve_mezcla_url({filename!r}) => {url!r}")
+    return url
+
+#-------------------------------------------------------------------------------
 
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
@@ -97,12 +114,11 @@ class TestHtmlUtils(TestWrapper):
     scrappycito_like_url = SCRAPPYCITO_LIKE_URL
     tomasohara_trade_url = TOMASOHARA_TRADE_URL
     tomasohara_trade_like_url = TOMASOHARA_TRADE_LIKE_URL
-    ready_test_path = gh.resolve_path("document_ready_test.html",
-                                      heuristic=True, absolute=True)
-    ready_test_alt_path = gh.resolve_path("document_ready_test_alt.html",
-                                          heuristic=True, absolute=True)
-    dimensions_html_path = gh.resolve_path(DIMENSIONS_HTML_FILENAME,
-                                           heuristic=True, absolute=True)
+    ready_test_path = resolve_mezcla_path("document_ready_test.html")
+    ready_test_alt_path = resolve_mezcla_path("document_ready_test_alt.html")
+    dimensions_html_path = resolve_mezcla_path(DIMENSIONS_HTML_FILENAME)
+    pacman_path = resolve_mezcla_path(PACMAN_FILENAME)
+    pacman_url = resolve_mezcla_url(PACMAN_FILENAME)
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -135,7 +151,7 @@ class TestHtmlUtils(TestWrapper):
         Note: requires selenium"""
         debug.trace(4, "test_get_inner_text()")
         html_filename = "simple-window-dimensions.html"
-        html_path = gh.resolve_path(html_filename, heuristic=True)
+        html_path = resolve_mezcla_path(html_filename)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
         unrendered_text = gh.run(f"lynx -dump {url}")
@@ -152,7 +168,7 @@ class TestHtmlUtils(TestWrapper):
         Note: requires selenium"""
         debug.trace(4, "test_get_inner_html()")
         html_filename = "simple-window-dimensions.html"
-        html_path = gh.resolve_path(html_filename, heuristic=True)
+        html_path = resolve_mezcla_path(html_filename)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
         unrendered_html = gh.run(f"lynx -source {url}")
@@ -401,23 +417,34 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE._write_file(filename, data=bytes("it", encoding="UTF-8"), as_binary=True)
         assert THE_MODULE._read_file(filename=filename, as_binary=True) == b"it"
 
+    def check_download_web_document(self, download_func):
+        """Check web downloads via DOWNLOAD_FUNC"""
+        ## TODO2: change to html file from repo
+        assert "currency" in THE_MODULE.download_web_document(f"{self.tomasohara_trade_like_url}/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
+        assert download_func("www. bogus. url.html") is None
+        remote_pacman_image_data = download_func(self.pacman_url, as_binary=True)
+        local_pacman_image_data = system.read_binary_file(self.pacman_path)
+        assert len(remote_pacman_image_data) == len(local_pacman_image_data)
+        assert remote_pacman_image_data == local_pacman_image_data
+
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_old_download_web_document(self):
         """Ensure old_download_web_document() works as expected"""
-        ## NOTE: Currently fails if UTF-8 error occurs
-        debug.trace(4, "test_old_download_web_document()")
-        assert "<!doctype html>" in THE_MODULE.old_download_web_document("https://www.google.com")
+        ## OLD: assert "<!doctype html>" in THE_MODULE.old_download_web_document("https://www.google.com")
+        self.check_download_web_document(download_func=THE_MODULE.old_download_web_document)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_web_document(self):
         """Ensure download_web_document() works as expected"""
         debug.trace(4, "test_download_web_document()")
         ## NOTE: Wikipedia/WikiMedia complaining about robots (even though single document access)
-        ## diring GitHub actions rub. See https://wikitech.wikimedia.org/wiki/Robot_policy.
+        ## during GitHub actions run. See https://wikitech.wikimedia.org/wiki/Robot_policy.
         ## OLD: assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
         ## TODO2: use website accessible to all team members
-        assert "currency" in THE_MODULE.download_web_document(f"{self.tomasohara_trade_like_url}/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
-        assert THE_MODULE.download_web_document("www. bogus. url.html") is None
+        ## OLD:
+        ## assert "currency" in THE_MODULE.download_web_document(f"{self.tomasohara_trade_like_url}/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
+        ## assert THE_MODULE.download_web_document("www. bogus. url.html") is None
+        self.check_download_web_document(download_func=THE_MODULE.download_web_document)
 
     def test_test_download_html_document(self):
         """Ensure test_download_html_document() works as expected"""
@@ -455,9 +482,6 @@ class TestHtmlUtils(TestWrapper):
             pass
         err = self.get_stderr()
         assert "Error during retrieve_web_document" not in err
-
-
-
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_binary_file(self):
@@ -891,7 +915,7 @@ class TestHtmlUtils(TestWrapper):
     def test_html_to_text(self):
         """Ensure html_to_text works as expected"""
         debug.trace(4, "test_html_to_text()")
-        html_path = gh.resolve_path(DIMENSIONS_HTML_FILENAME)
+        html_path = resolve_mezcla_path(DIMENSIONS_HTML_FILENAME)
         html = system.read_file(html_path)
         text = THE_MODULE.html_to_text(html)
         assert normalize_text(text) == normalize_text(DIMENSIONS_EXPECTED_TEXT)
