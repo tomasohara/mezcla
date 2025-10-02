@@ -527,7 +527,7 @@ class Main(object):
         """Whether option for LABEL specified (i.e., non-null value)
         Note: OLD version that checks for non-null value)
         """
-        # EX: self.parsed_args = {"it": False}; self.has_parsed_option_old("nonit") => False
+        # EX: dummy_app.parsed_args = {"it": False}; dummy_app.has_parsed_option_old("nonit") => False
         name = self.get_option_name(label)
         has_option = (name in self.parsed_args and (self.parsed_args[name] is not None))
         debug.trace_fmtd(6, "has_parsed_option_old({l}) => {r}",
@@ -538,7 +538,7 @@ class Main(object):
         """Value for LABEL specified or None if not applicable
         Note: This is a deprecated method (use get_parsed_option instead)
         """
-        # EX: self.parsed_args = {"it": False}; self.has_parsed_option("notit") => None
+        # EX: dummy_app.parsed_args = {"it": False}; dummy_app.has_parsed_option("notit") => None
         ## TEMP HACK: if called by a subclass, treate as alias to get_parsed_option
         if (self.__class__ != "__main__.Script"):
             debug.trace(3, "Warning: deprecated method: has_parsed_option => get_parsed_option")
