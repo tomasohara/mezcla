@@ -149,6 +149,7 @@ BROWSER_PATH = system.getenv_value(
     desc="Path override for browser binary (for use with selenium)")
 HEADERS = "headers"
 FILENAME = "filename"
+USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
 
 # Custom Types
 OptStrBytes = Union[str, bytes, None]
@@ -255,7 +256,7 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
 
     # Make sure the bare minimum is included (i.e., "<body></body>" of length 13)
     if browser:
-        debug.assertion(len(browser.execute_script("return document.body.outerHTML")) >= 13)
+        debug.assertion(len(browser.execute_script("return document.body.outerHTML") or "") >= 13)
     debug.trace_fmt(5, "get_browser({u}) => {b}", u=url, b=browser)
     return browser
 
@@ -445,7 +446,7 @@ def get_url_text(name : str, default_value : Any = None, param_dict : Optional[D
                     n=name, d=param_dict, v=value)
     return value
 #
-# EX: get_url_text("param2") => "a b c"
+# EX: get_url_text("param2") => "a+b+c"           # where '+' is 0x2B
    
 
 def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", param_dict : Optional[Dict] = None):
@@ -475,7 +476,7 @@ def get_url_parameter_value(param, default_value : Any = None, param_dict : Opti
     Also, different from get_url_parameter in just returning single value.    
     Warning: empty strings are treated as None.
     """
-    # EX: get_url_parameter_value("fu", param_dict={"fu": ["123", "321"]}) => "123"
+    # EX: get_url_parameter_value("fu", param_dict={"fu": ["123", "321"]}) => "321"
     # TODO3?: rename as get_last_url_parameter_value (to avoid confusion with get_url_parameter)
     param_dict = (get_param_dict(param_dict) or {})
     in_param = param
@@ -562,6 +563,7 @@ def expand_misc_param(misc_dict : Dict, param_name : str, param_dict : Optional[
     # EX: expand_misc_param({'x': 1, 'y': 2, 'z': 'a=3, b=4'}, 'z') => {'x': 1, 'y':, 2, 'z': 'a=3 b=4', 'a': '3', 'b': '4'}
     debug.trace(6, f"expand_misc_param({misc_dict}, {param_name}, {param_dict})")
     ## TODO: debug.trace_expr(6, misc_dict, param_name, param_dict=None, prefix="expand_misc_param: ")
+    ## TODO3: document more of the logic
     if param_dict is None:
         param_dict = (user_parameters or misc_dict)
     new_misc_dict = misc_dict
@@ -640,9 +642,18 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
     else:
         try:
             ## TEMP: issue separate call to get status code (TODO: figure out how to do after urlretrieve call)
-            with urllib.request.urlopen(url) as fp:
+            headers = {
+                'User-Agent': USER_AGENT
+            }
+            # Create a Request with the URL and headers and then open the URL
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req) as fp:
                 status_code = fp.getcode()
-            local_filename, headers = urllib.request.urlretrieve(url, local_filename)      # pylint: disable=no-member
+                content = fp.read()
+            ## OLD: local_filename, headers = urllib.request.urlretrieve(url, local_filename)      # pylint: disable=no-member
+
+            # Save the content to a local file
+            _write_file(local_filename, content, as_binary)
             debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
                              f=local_filename, h=headers)
             ok = True
@@ -722,7 +733,8 @@ def test_download_html_document(url : str, encoding : Optional[str] = None, look
     """Wrapper around download_web_document for HTML or text (i.e., non-binary), using ENCODING.
     Note: If ENCODING unspecified, checks result LOOKAHEAD bytes for meta encoding spec and uses UTF-8 as a fallback."""
     # EX: "Google" in test_download_html_document("www.google.com")
-    # EX: "Tomás" not in test_download_html_document("http://www.tomasohara.trade", encoding="big5"¨)
+    ## bad-EX: "Tomás" not in test_download_html_document("http://www.tomasohara.trade", encoding="big5"¨)
+    # EX: "Tomás" not in test_download_html_document("http://www.tomasohara.trade", encoding="big5")
     result = (download_web_document(url, as_binary=True, **kwargs) or b"")
     ## TEMP: for mypy
     if isinstance(result, str):
@@ -765,7 +777,7 @@ def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, i
     - Simpler version of old_download_web_document, using an optional META_HASH for recording headers
     - Works around Error 403's presumably due to urllib's user agent
     - If IGNORE, no exceptions reports are printed."""
-    # EX: my_re.search("Scrappy.*Cito", retrieve_web_document("www.tomasohara.trade"))
+    # EX: bool(my_re.search("Scrappy.*Cito", retrieve_web_document("www.tomasohara.trade")))
     # Note: See https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve.
     debug.trace_fmtd(5, "retrieve_web_document({u})", u=url)
     ## TEST: result : Optional[AnyStr] = None
@@ -774,8 +786,10 @@ def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, i
     if "//" not in url:
         url = "http://" + url
     try:
-        ## TODO3: add headers with 'User-Agent'
-        r = requests.get(url, timeout=DOWNLOAD_TIMEOUT)
+        headers = {
+            'User-Agent': USER_AGENT
+        }
+        r = requests.get(url, timeout=DOWNLOAD_TIMEOUT, headers=headers)
         status_code = r.status_code
         result = r.content
         debug.assertion(isinstance(result, bytes))
@@ -863,7 +877,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     ## This requires use of fix_url_parameters to give preference to final value specified (see results.mako).
     ## See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/checkbox for hidden field tip.
     ## Also see https://stackoverflow.com/questions/155291/can-html-checkboxes-be-set-to-readonly
-    ## EX: format_checkbox("disable-touch") => "<input type='hidden' name='disable-touch' value='off'><label id='disable-touch-label-id'>Disable touch?<input type='checkbox' id='disable-touch-id' name='disable-touch'   ></label>"
+    ## EX: format_checkbox("disable-touch") => "<input type='hidden' name='disable-touch' value='off'><label id='disable-touch-label-id' >Disable touch?&nbsp;<input type='checkbox' id='disable-touch-id' name='disable-touch'   ></label>"
     ## TODO3: add on_cange as with format_input_field
     debug.trace_expr(7, param_name, label, skip_capitalize, default_value, disabled, style,
                      misc_attr, tooltip, outer_span_class, concat_label, skip_hidden, on_change, param_dict,
@@ -905,7 +919,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     debug.trace(6, f"format_checkbox({param_name}, ...) => {result}")
     return result
 #
-# EX: format_checkbox("disable-touch", skip_hidden=True, disabled=True) => '<label id='disable-touch-id'>Disable touch?<input id="disable-touch" type="checkbox" name="disable-touch" disabled></label>"'
+# EX: format_checkbox("disable-touch", skip_hidden=True, disabled=True) => "<label id='disable-touch-label-id' >Disable touch?&nbsp;<input type='checkbox' id='disable-touch-id' name='disable-touch'  disabled ></label>"
 
 
 def format_url_param(name : str, default : Optional[str] = None):
@@ -944,7 +958,7 @@ def format_input_field(
     - With OUTER_SPAN_CLASS the input field is wrapped in <span> with given class for styling
       (e.g., "display: inline-block; white-space: nowrap;" to keep field and label together).
     """
-    # EX: format_input_field("quest") => '<label >Quest&nbsp;<input id="quest-id"  name="quest"     ></label>'
+    # EX: format_input_field("quest") => '<label id=\'quest-label-id\' >Quest&nbsp;<input id="quest-id"  name="quest"     ></label>'
     # TODO2: doscument tooltip usage & add option for css classes involved (better if done via class-based interface).
     # TODO3: max_len => maxlength; make sure single quote used for attribute consistently (likewise elsewhere)
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
@@ -1016,7 +1030,7 @@ def format_input_field(
     return result
 #
 # EX: format_input_field("quest", default_value="O'What?") => '<label id=\'quest-label-id\' >Quest&nbsp;<input id="quest-id" value=\'O&#x27;What?\' name="quest"     ></label>'
-# EX: format_input_field("num-id", label="Num", max_value=101, field_type="number") => '<label>Num<input id="num-id-id" value="" name="num-id"  max="101" size="3"  ></label>'
+# EX: format_input_field("num-id", label="Num", max_value=101, field_type="number") => '<label id=\'num-id-label-id\' >Num&nbsp;<input id="num-id-id"  name="num-id"   max="101"   type=\'number\'></label>'
 
 #-------------------------------------------------------------------------------
 # TEMP: Code previously in other modules
@@ -1051,7 +1065,7 @@ unescape_html_value = unescape_html_text
 
 def html_to_text(document_data : str):
     """Returns text version of html DATA"""
-    # EX: html_to_text("<html><body><!-- a cautionary tale -->\nMy <b>fat</b> dog has fleas</body></html>") => "My fat dog has fleas"
+    # EX: html_to_text("<html><body><!-- a cautionary tale -->\nMy <b>fat</b> dog has fleas</body></html>") => '\nMy  fat  dog has fleas'
     # Note: stripping javascript and style sections based on following:
     #   https://stackoverflow.com/questions/22799990/beatifulsoup4-get-text-still-has-javascript
     debug.trace_fmtd(7, "html_to_text(_):\n\tdata={d}", d=document_data)
