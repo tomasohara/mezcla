@@ -106,6 +106,9 @@ SKIP_BROWSER_CACHE = system.getenv_boolean(
     "SKIP_BROWSER_CACHE", False,
     description="Don't use cached webdriver browsers")
 USE_BROWSER_CACHE = not SKIP_BROWSER_CACHE
+DOWNLOAD_DIR = system.getenv_text(
+    "DOWNLOAD_DIR", "downloads",
+    description="Default download directory")
 DOWNLOAD_VIA_URLLIB = system.getenv_bool(
     "DOWNLOAD_VIA_URLLIB", False,
     description="Use old-style download via urllib instead of requests")
@@ -624,7 +627,7 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
     if "//" not in url:
         url = "http://" + url
     if download_dir is None:
-        download_dir = "downloads"
+        download_dir = DOWNLOAD_DIR
     if (not system.file_exists(download_dir)):
         gh.full_mkdir(download_dir)
     local_filename = gh.form_path(download_dir, filename)
@@ -664,6 +667,10 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
             debug.reference_var(URLError)
             if not ignore:
                 system.print_exception_info("old_download_web_document")
+        # Optionally pause after accessing the URL (to avoid overloading the same server).
+        if POST_DOWNLOAD_SLEEP_SECONDS:
+            system.sleep(POST_DOWNLOAD_SLEEP_SECONDS, message="Post-download")
+                
     if not ok:
         local_filename = ""
     if meta_hash is not None:
@@ -700,7 +707,7 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
     if "//" not in url:
         url = "http://" + url
     if download_dir is None:
-        download_dir = "downloads"
+        download_dir = DOWNLOAD_DIR
     if not gh.is_directory(download_dir):
         gh.full_mkdir(download_dir)
     local_filename = gh.form_path(download_dir, filename)
@@ -801,6 +808,9 @@ def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, i
     except:
         if not ignore:
             system.print_exception_info("retrieve_web_document")
+    # Optionally pause after accessing the URL (to avoid overloading the same server).
+    if POST_DOWNLOAD_SLEEP_SECONDS:
+        system.sleep(POST_DOWNLOAD_SLEEP_SECONDS, message="Post-download")
     debug.trace(5, f"status_code={status_code}")
     debug.trace_fmtd(7, "retrieve_web_document() => {r}", r=result)
     return result
