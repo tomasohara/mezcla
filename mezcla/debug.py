@@ -322,8 +322,8 @@ if __debug__:
                 timestamp_time = re.sub(r"^\d+-\d+-\d+\s*", "", timestamp())
                 if detailed_debugging():
                     global last_trace_time
-                    diff = round(1000.0 * (time.time() - last_trace_time), 3)
-                    timestamp_time += f" diff={diff}ms"
+                    diff = 1000.0 * (time.time() - last_trace_time)
+                    timestamp_time += f" diff={diff:.3f}ms"
                     last_trace_time = time.time()
                 out_text += do_print(indentation + "[" + timestamp_time + "]", end=": ", max_len=max_len)
                 max_len -= len(out_text)
