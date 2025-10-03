@@ -373,6 +373,11 @@ class Corpus(object):
         assert document_id or text
         document = None
         if document_id:
+            if document_id not in self.documents:
+                system.print_error(f"Error: document {document_id!r} not in corpus")
+                result = []
+                debug.trace(BDL + 3, f"get_keywords() => {result}")
+                return result
             document = self[document_id]
         if text:
             debug.assertion(document is None)
