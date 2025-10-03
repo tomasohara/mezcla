@@ -144,7 +144,9 @@ initialized = False
 #------------------------------------------------------------------------
 
 def get_temp_file(delete: Optional[bool] = None) -> str:
-    """Return name of unique temporary file, optionally with DELETE"""
+    """Return name of unique temporary file, optionally with DELETE.
+    Note: when debugging this might be based on TEMP_BASE (see init).
+    """
     # Note: delete defaults to False if detailed debugging
     # TODO: allow for overriding other options to NamedTemporaryFile
     if ((delete is None) and not KEEP_TEMP):
@@ -168,12 +170,16 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
     return temp_file_name
 
 
-def get_temp_dir(delete=None) -> str:
+def get_temp_dir(delete=None, use_temp_base=None) -> str:
     """Gets temporary file to use as a directory
-    note: Optionally DELETEs directory afterwards
+    Note: Optionally DELETEs directory afterwards. 
+    With USE_TEMP_BASE, uses gh.TEMP_BASE if defined, which normally is only used when debugging
+    tests (via explicit CLI option).
     """
-    ## TODO3: make option to bypass creation
-    temp_dir_path = get_temp_file(delete=delete)
+    ## TODO3: make option to bypass creation; extend to use TEMP_BASE automatically
+    temp_dir_path = None if (not (use_temp_base and TEMP_BASE)) else TEMP_BASE
+    if not temp_dir_path:
+        temp_dir_path = get_temp_file(delete=delete)
     # note: removes non-dir file if exists
     full_mkdir(temp_dir_path, force=True)
     debug.trace_fmtd(5, "gh.get_temp_dir() => {r!r}", r=temp_dir_path)
@@ -1038,6 +1044,8 @@ if __debug__:
         if debug.assertion(condition, indirect=True):
             try:
                 frame = inspect.currentframe()
+                filename = "???"
+                line_num = -1
                 if frame:
                     frame = frame.f_back
                 if frame:
