@@ -66,7 +66,7 @@ SCRAPPYCITO_LIKE_URL = system.getenv_text(
     desc=f"URL to use instead of {SCRAPPYCITO_URL}")
 TOMASOHARA_TRADE_LIKE_URL = system.getenv_text(
     "TOMASOHARA_TRADE_LIKE_URL", TOMASOHARA_TRADE_URL,
-    desc=f"URL to use instead of {TOMASOHARA_TRADE_URL}")
+    desc=f"URL to use instead of {TOMASOHARA_TRADE_URL} like localhost://tomasohara")
 PACMAN_FILENAME = gh.form_path("examples", "sd-spooky-pacman.png")
 ##
 DIMENSIONS_HTML_FILENAME = gh.form_path("resources", "simple-window-dimensions.html")
@@ -85,6 +85,13 @@ DIMENSIONS_EXPECTED_TEXT = """
 # NOTE: Whitespace and punctuation gets normalized
 # TODO: restore bullet points (e.g., "* Screen dimensions")
 
+# Global initialization
+## TODO3: Do via class setup method(s), monkey patching, and/or download-dir arg
+## (e.g., download_dir for download_web_document).
+## TODO4: Also, extend get_temp_dir to use TEMP_BASE automatically.
+THE_MODULE.DOWNLOAD_DIR = gh.form_path(gh.get_temp_dir(use_temp_base=True),
+                                       "downloads", create=True)
+
 #-------------------------------------------------------------------------------
 
 def resolve_mezcla_path(filename):
@@ -98,7 +105,8 @@ def resolve_mezcla_url(filename):
     """Determine URL for mezcla FILENAME in repo"""
     # example: resolve_mezcla_url("examples/sd-spooky-pacman.png") => "https://github.com/tomasohara/mezcla/blob/main/mezcla/examples/sd-spooky-pacman.png"
     ## TEST: url = f"https://github.com/tomasohara/mezcla/blob/main/mezcla/{filename}"
-    url = f"http://localhost/mezcla/mezcla/{filename}"
+    url = f"{TOMASOHARA_TRADE_LIKE_URL}/mezcla/mezcla/{filename}"
+    ## TODO?: url = f"http://localhost/mezcla/mezcla/{filename}"
     debug.trace(6, f"resolve_mezcla_url({filename!r}) => {url!r}")
     return url
 
@@ -107,6 +115,7 @@ def resolve_mezcla_url(filename):
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    use_temp_base_dir = True
     ##
     ## NOTE: Using personal site instead of LLC in order to avoid issues
     ## with the production server (i.e., www.scrappycito.com).
