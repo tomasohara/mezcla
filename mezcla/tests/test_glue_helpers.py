@@ -173,10 +173,10 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_create_temp_file(self):
         """Ensure create_temp_file works as expected"""
         debug.trace(4, "test_create_temp_file()")
-        temp_file = self.get_temp_file()
-        temp_path = THE_MODULE.create_temp_file('some content')
-        assert system.read_file(temp_file) == 'some content\n'
-        assert temp_path.startswith(THE_MODULE.get_temp_dir())
+        # NOTE: might fail when TEMP_BASE set (e.g., stale temp dir)
+        temp_path = self.create_temp_file('some content')
+        assert system.read_file(temp_path) == 'some content\n'
+        assert temp_path.startswith(self.get_temp_dir(static=True))
         
     @pytest.mark.xfail
     def test_write_temp_file(self):
