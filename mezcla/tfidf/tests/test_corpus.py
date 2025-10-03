@@ -114,6 +114,11 @@ class TestPreprocess(TestWrapper):
         doc = self.corp['doc_1']
         for keyword in keywords:
             assert keyword.ngram in doc
+
+        # Check for missing docs
+        self.do_assert(len(self.corp.get_keywords('doc_-1')) == 0,
+                       "Missing documents should return empty list")
+        
 # ------------------------------------------------------------------------
 
 if __name__ == "__main__":
