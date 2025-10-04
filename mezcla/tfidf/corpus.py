@@ -213,6 +213,8 @@ class Corpus(object):
     def count_doc_occurrences(self, ngram):
         """Count the number of documents the corpus has with the matching ngram."""
         # Note: caches the values as called multiple times for TFIDF calculation
+        ## TODO2: make copy of document values to avoid dict-changed runtime error
+        ## See https://stackoverflow.com/questions/11941817/how-to-avoid-runtimeerror-dictionary-changed-size-during-iteration-error.
         if ngram in self.document_occurrences:
             count = self.document_occurrences[ngram]
         else:
