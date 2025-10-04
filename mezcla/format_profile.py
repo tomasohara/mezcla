@@ -68,7 +68,7 @@ def usage():
 Usage: {program} profile-log
 
 Notes:
-- Use FULL_PATH to include directoy for filename
+- Use FULL_PATH to include directory for filename
   (e.g., helps to resolve all those __init__.py entries).
 - Use PROFILE_KEY to over default sorting (cumulative).
 - Main keys: 
@@ -78,7 +78,8 @@ Notes:
 - Alternative keys:
        calls, cumulative, file, time
 - Unfortunately, memory profiling is not supported.
-- See http://docs.python.org/3/library/profile.html.
+- For more details, check following:
+    http://docs.python.org/3/library/profile.html
 
 Example (assumes bash):
     $ python -m cProfile -o /tmp/profile.data simple_main_example.py
