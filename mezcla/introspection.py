@@ -342,7 +342,7 @@ class MezclaDebugger:
             out = self._format(call_frame, arg_offset, *args, **kwargs)
         except:
             out = f"Introspection Error: {str(args)}"
-            sys.stderr.write(f"Error: unable to format arg spec:\n")
+            sys.stderr.write("Error: unable to format arg spec:\n")
             sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
             sys.stderr.write(f"\t{sys.exc_info()}\n")
         if INTROSPECTION_DEBUG:
@@ -415,7 +415,7 @@ class MezclaDebugger:
             if INTROSPECTION_DEBUG:
                 trace(f"{sanitized_arg_strs=}")
         else:
-            sys.stderr.write(f"Warning: unable to extract args:\n")
+            sys.stderr.write("Warning: unable to extract args:\n")
             sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
             sys.stderr.write(f"\t{sys.exc_info()}\n")
             sanitized_arg_strs = [_ABSENT] * len(args)
