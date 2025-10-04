@@ -49,10 +49,9 @@ import pstats
 
 # Local packages
 from mezcla import debug
-## OLD: from tpo_common import *
 from mezcla.system import getenv_bool, getenv_text, print_stderr
 
-## OLD: PROFILE_KEY = getenv_text("PROFILE_KEY", "cumulative")
+# Env. Constants
 PROFILE_KEY = getenv_text(
     "PROFILE_KEY", "cumulative",
     desc="Sort key (e.g., cumtime, filename, ncalls, tottime)")
@@ -66,26 +65,24 @@ FULL_PATH = getenv_bool(
 def usage():
     """Displays usage notes for script"""
     print_stderr("""
-
 Usage: {program} profile-log
 
 Notes:
-- use FULL_PATH to include directoy for filename
-  (e.g., helps to resolve all those __init__.py entries)
-- use PROFILE_KEY to over default sorting (cumulative)
-- main keys: 
+- Use FULL_PATH to include directoy for filename
+  (e.g., helps to resolve all those __init__.py entries).
+- Use PROFILE_KEY to over default sorting (cumulative).
+- Main keys: 
        cumtime, filename, ncalls, tottime
-- other keys: 
+- Other keys: 
        module, pcalls, line, name, nfl, stdname
-- alternative keys:
+- Alternative keys:
        calls, cumulative, file, time
-- unfortunately, memory profiling is not supported
-- see http://docs.python.org/3/library/profile.html
+- Unfortunately, memory profiling is not supported.
+- See http://docs.python.org/3/library/profile.html.
 
 Example (assumes bash):
-    $ python -m cProfile -o profile.data fubar.py
-    $ PROFILE_KEY=calls {program} profile.data
-
+    $ python -m cProfile -o /tmp/profile.data simple_main_example.py
+    $ PROFILE_KEY=calls {program} /tmp/profile.data | head
 """.format(program=sys.argv[0]))
     return
                 
