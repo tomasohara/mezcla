@@ -4,6 +4,11 @@
 # respect to term differentiation, including support for filtering based on inclusion
 # and exclusion lists.
 #
+# Warning:
+# - This is basically the same version from the misc-scripts repo,
+#   so the style is archaic compared to other mezcla scripts.
+# - It was inadvertently added when misc-scripts was coverted to mezcla.
+#
 # TODO:
 # - drop from mezcla (likewise check for other older scripts)
 # - add save option
