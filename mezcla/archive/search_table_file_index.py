@@ -10,6 +10,13 @@
 #   into UTF-8 under Python 2.x (see comments in show_unicode_info.py for details).
 # - The Solr implementation is not as comprehensive as the Lucene support (e.g., term vectors not yet supported).
 #
+# Warning:
+# - This is basically the same version from the misc-scripts repo,
+#   so the style is archaic compared to other mezcla scripts.
+# - This is mainly included for sake of completeness, because
+#   analyze_tfidf.py got added to the repo inadvertantly.
+# - It is also used in the test_format_profile.py as unlikely to change.
+#
 # TODO:
 # - *** Add support for searching ngram tokens ***
 # - Have option to use relative term frequency: tf(t, d) = f(t, d) / max(f(t', d) for t' in d).
