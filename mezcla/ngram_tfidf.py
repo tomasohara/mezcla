@@ -289,7 +289,7 @@ class ngram_tfidf_analysis(object):
         if (result and (len(tokens) > 2)):
             for w in tokens[1: -1]:
                 if not (w.istitle() or self.is_stopword(w)):
-                    debug.trace(5, f"ngram with lower inner non-stop word {w!r}: {tokens!r}")
+                    debug.trace(6, f"ngram with lower inner non-stop word {w!r}: {tokens!r}")
                     result = False
                     break
         debug.trace(7, f"capitalized_ngram({ngram!r}) => {result}")
@@ -347,32 +347,32 @@ class ngram_tfidf_analysis(object):
                 old_score = init_score
                 if (TFIDF_NP_BOOST and (ngram in self.noun_phrases[doc_id])):
                     score = old_score * TFIDF_NP_BOOST
-                    debug.trace(5, f"boosted NP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                    debug.trace(6, f"boosted NP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
                 if (TFIDF_VP_BOOST and (ngram in self.verb_phrases[doc_id])):
                     score = old_score * TFIDF_VP_BOOST
-                    debug.trace(5, f"boosted VP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                    debug.trace(6, f"boosted VP {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
                 if (TFIDF_NUMERIC_BOOST and any(is_numeric(token) for token in tokens)):
                     score = old_score * TFIDF_NUMERIC_BOOST
-                    debug.trace(5, f"boosted numeric {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                    debug.trace(6, f"boosted numeric {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
                 if (TFIDF_GOOD_BOOST and system.intersection(tokens, self.good_terms)):
                     score = old_score * TFIDF_GOOD_BOOST
-                    debug.trace(5, f"boosted good-term {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                    debug.trace(6, f"boosted good-term {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
                 if (TFIDF_BAD_BOOST and system.intersection(tokens, self.bad_terms)):
                     score = old_score * TFIDF_BAD_BOOST
-                    debug.trace(5, f"boosted bad-term {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                    debug.trace(6, f"boosted bad-term {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
                 if (TFIDF_STOP_BOOST and (num_stop := sum([self.is_stopword(token) for token in tokens])) and num_stop):
                     # TODO2: apply lower penalty to inner stop words
                     score = old_score * (TFIDF_STOP_BOOST ** num_stop)
-                    debug.trace(5, f"boosted with-stop-word[{num_stop}] {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                    debug.trace(6, f"boosted with-stop-word[{num_stop}] {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
                 if (TFIDF_ALL_PUNCT_BOOST and any(all_punct(token) for token in all_tokens)):
                     score = old_score * TFIDF_ALL_PUNCT_BOOST
-                    debug.trace(5, f"boosted all-punct-token {ngram!r} from {rnd(old_score)} to {rnd(score)}")
+                    debug.trace(6, f"boosted all-punct-token {ngram!r} from {rnd(old_score)} to {rnd(score)}")
                     old_score = score
                 # Update changed score
                 if init_score != score:
@@ -390,7 +390,7 @@ class ngram_tfidf_analysis(object):
             if (TFIDF_BOOST_CAPITALIZED and (j > 0) and self.capitalized_ngram(top_term_info[j][0])
                 and (top_term_info[j][1] == top_term_info[j - 1][1])):
                 top_term_info[j - 1], top_term_info[j] = top_term_info[j], top_term_info[j - 1]
-                debug.trace(5, f"moved capitalized ngram '{top_term_info[j - 1]}' up in list from {j} to {j - 1}")
+                debug.trace(6, f"moved capitalized ngram '{top_term_info[j - 1]}' up in list from {j} to {j - 1}")
         debug.trace_values(6, round_terms(top_term_info), "interim top terms")
         
         # Put spaces around ngrams to aid in subsumption tests
