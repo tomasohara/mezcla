@@ -91,7 +91,7 @@ write_temp_file = gh.write_temp_file
 TL = debug.TL
 DEFAULT_STATUS_CODE = 0
 MAX_DOWNLOAD_TIME = system.getenv_integer(
-    "MAX_DOWNLOAD_TIME", 60,
+    "MAX_DOWNLOAD_TIME", 30,
     description="Time in seconds for rendered-HTML download as with get_inner_html")
 MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_float(
     "MID_DOWNLOAD_SLEEP_SECONDS", 1,
@@ -194,6 +194,8 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
     """
     ## TODO3: create a class-based interface to simplify repeated us
     debug.trace(6, f"in get_browser({url}); {timeout=}")
+    if timeout is None:
+        timeout = DOWNLOAD_TIMEOUT
     ## OLD:
     ## # pylint: disable=import-error, import-outside-toplevel
     ## from selenium import webdriver
@@ -242,7 +244,7 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
                 browser.set_page_load_timeout(timeout)
             debug.trace_object(5, browser)
     
-            # Get the page, setting optional cache entry and sleeping afterwards
+            # Load the page, setting optional cache entry
             if USE_BROWSER_CACHE:
                 browser_cache[url] = browser
             browser.get(url)
@@ -1173,6 +1175,8 @@ def main(args : List[str]) -> None:
     show_usage = False
     use_stdout = False
     use_inner = True
+    take_snapshot = False
+    pause_at_end = False
     quiet = False
     verbose = False
     filename : Optional[str] = None
@@ -1189,6 +1193,10 @@ def main(args : List[str]) -> None:
             use_inner = True
         elif (arg == "--inner"):
             use_inner = True
+        elif (arg == "--snapshot"):
+            take_snapshot = True
+        elif (arg == "--pause"):
+            pause_at_end = True
         elif (arg == "--stdout"):
             use_stdout = True
         elif (arg == "--quiet"):
@@ -1220,19 +1228,19 @@ def main(args : List[str]) -> None:
     # TODO: Do simpler test of download_web_document
     # TODO1: add explicit argument for inner-html support
     elif (filename):
-        debug.assertion(use_inner)
         # Get web page text
         debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
         url = filename
         ## TODO3: make the debug-level-based processing more explicit
         USUAL_DEBUGGING = debug.debugging()
         VERBOSE_DEBUGGING = debug.debugging(TL.VERBOSE)
+        alt_html_data: OptStrBytes = None
         if debug.debugging(TL.QUITE_VERBOSE):
-            alt_html_data: OptStrBytes = retrieve_web_document(url)
+            alt_html_data = retrieve_web_document(url) or ""
             debug.trace_expr(1, alt_html_data, max_len=32768)
-        html_data: OptStrBytes = ""
+        html_data: OptStrBytes = None
         if plain_html or VERBOSE_DEBUGGING:
-            html_data = download_web_document(url)
+            html_data = download_web_document(url) or ""
             if (isinstance(html_data, str) and isinstance(alt_html_data, str)):
                 debug.trace_expr(TL.VERBOSE, html_data, max_len=32768)
                 debug.assertion(system.relative_intersection(alt_html_data.split(),
@@ -1242,6 +1250,7 @@ def main(args : List[str]) -> None:
             filename = "output.html"
         if not filename.endswith(".html"):
             filename += ".html"
+        basename = gh.remove_extension(filename, ".html")
 
         if plain_html:
             if use_stdout:
@@ -1254,8 +1263,9 @@ def main(args : List[str]) -> None:
                 system.write_file(filename, html_data)
                 print(f"See {filename!r} for regular HTML.")
         else:
+            debug.assertion(use_inner)
             if USUAL_DEBUGGING:
-                out_path = write_temp_file("pre-" + filename, html_data)
+                out_path = write_temp_file("pre-" + filename, html_data or "")
                 debug.trace(1, f"See {out_path!r} for non-inner HTML")
             
             # Show inner/outer HTML
@@ -1275,6 +1285,10 @@ def main(args : List[str]) -> None:
                 print(system.to_utf8(rendered_html))            
             else:
                 print(f"See {out_path!r} for inner HTML")
+            if take_snapshot:
+                browser = get_browser(url)
+                browser.get_screenshot_as_file(f"{basename}.png")
+                print(f"Snapshot: {basename}.png")
                 
             if USUAL_DEBUGGING:
                 ## TODO3: isolate for use as main output
@@ -1283,6 +1297,13 @@ def main(args : List[str]) -> None:
                 out_path = write_temp_file("post-" + filename + ".txt", rendered_text)
                 debug.trace(1, f"See {out_path!r} for inner text")
             debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
+
+            # Wait for user and then quit browser
+            if pause_at_end:
+                system.print_error("Press enter to proceed")
+                sys.stdin.readline()
+            if browser:
+                shutdown_browser(browser)
     else:
         show_usage = True
 
@@ -1291,7 +1312,7 @@ def main(args : List[str]) -> None:
     # 
     if show_usage:
         script = gh.basename(__file__)
-        print(f"Usage: {script} [--help] [--verbose] [--stdout] [--quiet] [[--regular | --inner | --html] [filename]]")
+        print(f"Usage: {script} [--help] [--verbose] [--stdout] [--quiet] [[--regular | [--inner [--snapshot] [--pause]] | --html] [filename]]")
         print()
         print("Notes:")
         print("- Specify a local HTML file to download (e.g., save as text).")
