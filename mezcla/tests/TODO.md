@@ -12,3 +12,4 @@ An optional priority is indicated by [Pn]
 - [P3] Check for tests not making assertions, as in old version of test_safe_int
        "THE_MODULE.safe_int(2.0) == 2" => "assert THE_MODULE.safe_int(2.0) == 2"
 - [P2] Make pass to cut down on xfail usage (e.g., remove if passed for past few months unless special case)!
+- [P3] Make sure the tests differ from any EX-based comments in the source file: they tend to be simple for sake of illustration and get tested via evaluate_example_tests.py.
