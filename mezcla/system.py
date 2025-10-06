@@ -1008,6 +1008,7 @@ def write_lines(
 def write_temp_file(filename: FileDescriptorOrPath, text: Any) -> str:
     """Create FILENAME in temp. directory using TEXT. Returns path to result."""
     ## TODO2: Any => Union[bytes, str]
+    ## TODO3: replace with version from glue_helpers.py
     temp_path = ""
     try:
         assert isinstance(TEMP_DIR, str) and TEMP_DIR != "", "TEMP_DIR not defined"
