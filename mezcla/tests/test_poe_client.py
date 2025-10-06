@@ -68,7 +68,7 @@ class TestIt(TestWrapper):
         return
 
     @pytest.mark.skipif(NO_POE_API, reason=NO_POE_REASON)
-    @pytest.mark.skipif(not SKIP_TBD_TESTS, reason=SKIP_TBD_REASON)
+    @pytest.mark.skipif(SKIP_TBD_TESTS, reason=SKIP_TBD_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_expression_evaluation(self):
         """Test out expression evaluation via funciton calling"""
