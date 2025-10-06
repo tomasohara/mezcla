@@ -226,11 +226,14 @@ def basename(filename: str, extension: Optional[str] = None) -> str:
 
 
 def remove_extension(filename: str, extension: str) -> str:
-    """Returns FILENAME without EXTENSION. Note: similar to basename() but retaining directory portion."""
+    """Returns FILENAME without EXTENSION. Note: similar to basename() but retaining directory portion.
+    Note: Use system.remove_extension for a more flexible version.
+    """
     # EX: remove_extension("/tmp/solr-4888.log", ".log") => "/tmp/solr-4888"
     # EX: remove_extension("/tmp/fubar.py", ".py") => "/tmp/fubar"
     # EX: remove_extension("/tmp/fubar.py", "py") => "/tmp/fubar."
     # NOTE: Unlike os.path.splitext, only the specific extension is removed (not whichever extension used).
+    ## TODO3: merge into system.remove_extension
     pos = filename.find(extension)
     base = filename[:pos] if (pos > -1) else filename
     debug.trace(5, f"remove_extension({filename!r}, {extension}) => {base!r}")
