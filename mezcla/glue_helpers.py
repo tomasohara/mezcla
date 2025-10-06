@@ -197,7 +197,7 @@ def create_temp_file(contents: Any, binary: bool = False) -> str:
 def write_temp_file(filename: FileDescriptorOrPath, text: Any,
                     temp_dir: Optional[str]=None) -> str:
     """Create FILENAME in temp. directory using TEXT. Returns path to result.
-    Note: Version of system.py function allowing for TEMP DIR override.
+    Note: Version of system.py write_temp_file allowing for TEMP DIR override.
     """
     ## TODO2: Any => Union[bytes, str]
     if temp_dir is None:
