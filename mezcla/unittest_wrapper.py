@@ -417,7 +417,7 @@ class TestWrapper(unittest.TestCase):
 
         # Get new temp file and delete existing file and variants based on temp_file_count,
         # such as /tmp/test-2, /tmp/test-2-1, and /tmp/test-2-2 (but not /tmp/test-[13]*).
-        # Warning: using self.temp_file is not recommended due to clobbering by different tests:
+        # Warning: using self.temp_file directly is not recommended (e.g., conflicting tests):
         # instead use self.get_temp_file().
         self.temp_file = (gh.TEMP_FILE or default_temp_file)
         if PRUNE_TEMP:
@@ -688,7 +688,8 @@ class TestWrapper(unittest.TestCase):
     clear_stdout = clear_stdout_stderr
     clear_stderr = clear_stdout_stderr
     
-    def get_temp_file(self, delete: Optional[bool] = None, static: Optional[bool] = None) -> str:
+    def get_temp_file(self, delete: Optional[bool] = None,
+                      static: Optional[bool] = None, as_dir: Optional[bool] = None) -> str:
         """Return name of temporary file based on self.temp_file, optionally with DELETE.
         Normally, the file is based on the test base, current test number and usage count
         (e.g., /tmp/_temp-fi7huvmb_-test-1-3 for third temp file used in first test).
@@ -706,6 +707,14 @@ class TestWrapper(unittest.TestCase):
         self.temp_file_count += 1
         debug.assertion(not delete, "Support for delete not implemented")
         debug.trace(5, f"TestWrapper.get_temp_file() => {temp_file_name!r}")
+
+        # Make sure the temporary file is not directory unless specifically requested
+        # Note: This accounts for bookkeeping quirks with glue_helpers.py
+        if ((not as_dir) and system.is_directory(temp_file_name)):
+            new_temp_file_name = gh.form_path(temp_file_name, "temp-file")
+            debug.trace(4, ("Warning: ensuring temp file non-dir: {temp_file_name!r} " +
+                            f"to {new_temp_file_name}"))
+            temp_file_name = new_temp_file_name
         return temp_file_name
 
     def get_temp_dir(self, delete: Optional[bool] = None,
@@ -717,7 +726,7 @@ class TestWrapper(unittest.TestCase):
         In addition, the directory will be unique unless STATIC specified.
         Note: delete option not yet functional
         """
-        temp_dir = self.get_temp_file(delete=delete, static=static)
+        temp_dir = self.get_temp_file(delete=delete, static=static, as_dir=True)
         if not skip_create:
             gh.full_mkdir(temp_dir, force=True)
         debug.trace(5, f"get_temp_dir() => {temp_dir!r}")
