@@ -349,8 +349,10 @@ class TestSystem(TestWrapper):
 
         ## TODO: set fixed sys.version_info.major > 2.
         ## TODO1: please explain the issue here and below
+        ## TODO3: use different examples than the EX comments
 
         # Test quoting
+        assert THE_MODULE.quote_url_text("a/b") == "a%2Fb"
         assert THE_MODULE.quote_url_text("<2/") == "%3C2%2F"
         assert THE_MODULE.quote_url_text("Joe's hat") == "Joe%27s+hat"
         assert THE_MODULE.quote_url_text("Joe%27s+hat") == "Joe%2527s%2Bhat"
@@ -371,9 +373,19 @@ class TestSystem(TestWrapper):
     def test_unquote_url_text(self):
         """Ensure unquote_url_text works as expected"""
         debug.trace(4, "test_unquote_url_text()")
+        assert THE_MODULE.unquote_url_text("a%2Fb") == "a/b"
         assert THE_MODULE.unquote_url_text("%3C2%2f") == "<2/"
         assert THE_MODULE.unquote_url_text("Joe%27s+hat") == "Joe's hat"
         assert THE_MODULE.unquote_url_text("Joe%2527s%2Bhat") == "Joe%27s+hat"
+
+    def test_idempotent_quote_url_text(self):
+        """Verify quote_url_text with idempotent option"""
+        debug.trace(4, "test_idempotent_quote_url_text()")
+        
+        actual = THE_MODULE.quote_url_text("?a=a&b=2")
+        assert(actual == "%3Fa%3Da%26b%3D2")
+        assert THE_MODULE.quote_url_text(actual, idempotent=True) == actual
+        assert THE_MODULE.quote_url_text(actual) != actual
 
     ## OLD:
     ## def test_escape_html_text(self):
