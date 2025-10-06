@@ -119,6 +119,9 @@ DOWNLOAD_TIMEOUT = system.getenv_float(
 HEADLESS_WEBDRIVER = system.getenv_bool(
     "HEADLESS_WEBDRIVER", True,
     description="Whether Selenium webdriver is hidden")
+KIOSK_MODE = system.getenv_bool(
+    "KIOSK_MODE", True,
+    description="Run browser in kiosk mode (e.g., no window controls)")
 OMIT_STABLE_DOWNLOAD_CHECK = system.getenv_bool(
     "OMIT_STABLE_DOWNLOAD_CHECK", False,
     description="Omit waiting until download size stablizes--for dynamic content")
@@ -193,9 +196,9 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
     - Warning: can return null browser object.
     """
     ## TODO3: create a class-based interface to simplify repeated us
-    debug.trace(6, f"in get_browser({url}); {timeout=}")
     if timeout is None:
         timeout = DOWNLOAD_TIMEOUT
+    debug.trace(5, f"in get_browser({url}); {timeout=}")
     ## OLD:
     ## # pylint: disable=import-error, import-outside-toplevel
     ## from selenium import webdriver
@@ -226,6 +229,8 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
                 debug.trace(4, f"Warning: overriding webdriver path: {webdriver_options.binary_location=}")
             if HEADLESS_WEBDRIVER:
                 webdriver_options.add_argument('-headless')
+            if KIOSK_MODE:
+                webdriver_options.add_argument('-kiosk')
             debug.assertion(not (FIREFOX_WEBDRIVER and CHROME_WEBDRIVER))
             if FIREFOX_WEBDRIVER:
                 service = FirefoxService(executable_path=WEBDRIVER_PATH) if WEBDRIVER_PATH else None
@@ -237,6 +242,11 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
                 dims = [system.to_float(d) for d in misc_utils.extract_string_list(BROWSER_DIMENSIONS)]
                 debug.assertion(len(dims) == 2)
                 browser.set_window_size(*dims)
+                ## TEST: browser.fullscreen_window()
+            if debug.get_level() >= 6:
+                debug.trace_fmt(1, "Window dimensions: {w}x{h}",
+                                w=browser.execute_script("return window.outerWidth"),
+                                h=browser.execute_script("return window.outerHeight"))
             ## OLD:
             ## browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
             ## browser = browser_class(options=webdriver_options)
@@ -266,15 +276,17 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
     return browser
 
 
-def shutdown_browser(browser: Optional[WebDriver]):
+def shutdown_browser(browser: WebDriver) -> None:
     """Close the browser web driver instance"""
     try:
+        browser.close()
         browser.quit()
     except:
         system.print_exception_info("shutdown_browser")
+    return
 
 
-def get_inner_html(url : str):
+def get_inner_html(url : str, browser: Optional[WebDriver] = None) -> str:
     """Return the fully-rendered version of the URL HTML source (e.g., after JavaScript DOM manipulation)
     Note:
     - requires selenium webdriver (browser specific)
@@ -285,8 +297,9 @@ def get_inner_html(url : str):
     debug.trace_fmt(5, "get_inner_html({u})", u=url)
     inner_html: str = ""
     try:
-        # Navigate to the page (or get browser instance with existing page)
-        browser = get_browser(url)
+        if browser is None:
+            # Navigate to the page (or get browser instance with existing page)
+            browser = get_browser(url)
         if browser:
             # Wait for Javascript to finish processing
             wait_until_ready(url)
@@ -298,14 +311,15 @@ def get_inner_html(url : str):
     return inner_html
 
 
-def get_inner_text(url : str):
+def get_inner_text(url : str, browser: Optional[WebDriver] = None) -> str:
     """Get text of URL (i.e., without HTML tags) after JavaScript processing (via selenium)"""
     debug.trace_fmt(5, "get_inner_text({u})", u=url)
     # See https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText
     inner_text: str = ""
     try:
-        # Navigate to the page (or get browser instance with existing page)
-        browser = get_browser(url)
+        if browser is None:
+            # Navigate to the page (or get browser instance with existing page)
+            browser = get_browser(url)
         if browser:
             # Wait for Javascript to finish processing
             wait_until_ready(url)
@@ -318,7 +332,8 @@ def get_inner_text(url : str):
     return inner_text
 
 
-def document_ready(url : str, timeout : Optional[float] = None) -> bool:
+def document_ready(url : str, timeout : Optional[float] = None,
+                   browser: Optional[WebDriver] = None) -> bool:
     """Determine whether document for URL has completed loading (via selenium).
     Note: If TIMEOUT specified, it only waits specified seconds.
     """
@@ -326,28 +341,32 @@ def document_ready(url : str, timeout : Optional[float] = None) -> bool:
     is_ready: bool = False
     ready_state: str = ""
     try:
-        browser = get_browser(url, timeout=timeout)
+        if browser is None:
+            browser = get_browser(url, timeout=timeout)
         if browser:
             ready_state = browser.execute_script("return document.readyState")
             is_ready = (ready_state == "complete")
     except:
         system.print_exception_info("document_ready")
-    debug.trace_fmt(6, "document_ready({u}, {to}) => {r}; state={s}",
-                    u=url, to=timeout, r=is_ready, s=ready_state)
+    debug.trace_fmt(6, "document_ready({u}, [{to}, {b}]) => {r}; state={s}",
+                    u=url, to=timeout, r=is_ready, s=ready_state, b=browser)
     return is_ready
 
 
-def wait_until_ready(url : str, stable_download_check : Optional[bool] = None) -> None:
+def wait_until_ready(url : str, stable_download_check : Optional[bool] = None,
+                     browser: Optional[WebDriver] = None) -> None:
     """Wait for document_ready (q.v.) and pause to allow loading to finish (via selenium)
     Note: If STABLE_DOWNLOAD_CHECK, the wait incoporates check for download size differences"""
     # TODO: make sure the sleep is proper way to pause
-    debug.trace_fmt(5, "in wait_until_ready({u})", u=url)
+    debug.trace_expr(5, url, stable_download_check, browser,
+                     prefix="in wait_until_ready: ")
     if stable_download_check is None:
         stable_download_check = STABLE_DOWNLOAD_CHECK
     debug.trace_expr(6, stable_download_check)
     start_time = time.time()
     end_time = start_time + MAX_DOWNLOAD_TIME
-    browser = get_browser(url)
+    if browser is None:
+        browser = get_browser(url)
     last_size = -1
     size = 0
     done = False
@@ -379,10 +398,11 @@ def wait_until_ready(url : str, stable_download_check : Optional[bool] = None) -
     elif (stable_download_check and (size > last_size)):
         debug.trace_fmt(5, "Warning: size not stable after {s} secs when accessing URL '{u}')'",
                         s=system.round_num(end_time - start_time, 1), u=url)
-    debug.trace_fmt(5, "out wait_until_ready(); elapsed={t}s",
+    debug.trace_fmt(5, "out wait_until_ready; elapsed={t}s",
                     t=(time.time() - start_time))
     return
 
+#...............................................................................
 
 def escape_hash_value(hash_table : Dict, key: str):
     """Wrapper around escape_html_value for HASH_TABLE[KEY] (or "" if missing).
@@ -870,6 +890,10 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
             link_src = web_site_url + link_src
         elif base_url and not link_src.startswith("http"):
             link_src = base_url + "/" + link_src
+        # Apply special case fixups (e.g., extraneous slashes)
+        if my_re.search(r"(^.*://.*/)/(.*)", link_src):
+            debug.trace(4, "FYI: Fixing up extract_html_link link: {link_src!r}")
+            link_src = my_re.group(1) + my_re.group(2)
         links.append(link_src)
     debug.trace_fmtd(6, "extract_html_links() => {i}", i=links)
     return links
@@ -1229,7 +1253,7 @@ def main(args : List[str]) -> None:
     # TODO1: add explicit argument for inner-html support
     elif (filename):
         # Get web page text
-        debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
+        debug.trace_fmt(6, "browser_cache: {bc}", bc=browser_cache)
         url = filename
         ## TODO3: make the debug-level-based processing more explicit
         USUAL_DEBUGGING = debug.debugging()
@@ -1245,11 +1269,12 @@ def main(args : List[str]) -> None:
                 debug.trace_expr(TL.VERBOSE, html_data, max_len=32768)
                 debug.assertion(system.relative_intersection(alt_html_data.split(),
                                                              html_data.split()) > 0.9)
-        filename = system.quote_url_text(url)
-        if not filename:
-            filename = "output.html"
-        if not filename.endswith(".html"):
-            filename += ".html"
+        base_filename = system.quote_url_text(url)
+        if not base_filename:
+            base_filename = "output.html"
+        if not base_filename.endswith(".html"):
+            base_filename += ".html"
+        filename = gh.form_path(DOWNLOAD_DIR, base_filename, create=True)
         basename = gh.remove_extension(filename, ".html")
 
         if plain_html:
@@ -1265,20 +1290,19 @@ def main(args : List[str]) -> None:
         else:
             debug.assertion(use_inner)
             if USUAL_DEBUGGING:
-                out_path = write_temp_file("pre-" + filename, html_data or "")
+                out_path = write_temp_file("pre-" + base_filename, html_data or "")
                 debug.trace(1, f"See {out_path!r} for non-inner HTML")
-            
+
             # Show inner/outer HTML
-            ## OLD:
-            ## # Note: The browser is hidden unless MOZ_HEADLESS false
-            ## # TODO: Support Chrome
-            ## system.setenv("MOZ_HEADLESS",
-            ##               str(int(system.getenv_bool("MOZ_HEADLESS", True))))
-            rendered_html = get_inner_html(url)
-            output_filename = "post-" + filename
+            browser = get_browser(url)
+            rendered_html = get_inner_html(url, browser=browser)
+            output_filename = "post-" + base_filename + ".html"
             out_path = ""
-            if (not use_stdout) or USUAL_DEBUGGING:
-                out_path = write_temp_file(output_filename, rendered_html)
+            output_to_file = (not use_stdout) or USUAL_DEBUGGING
+            if output_to_file:
+                output_dir = DOWNLOAD_DIR if (not use_stdout) else None
+                out_path = write_temp_file(output_filename, rendered_html,
+                                           temp_dir=output_dir)
             if use_stdout:
                 if not quiet:
                     print("Rendered html:")
@@ -1286,15 +1310,15 @@ def main(args : List[str]) -> None:
             else:
                 print(f"See {out_path!r} for inner HTML")
             if take_snapshot:
-                browser = get_browser(url)
                 browser.get_screenshot_as_file(f"{basename}.png")
                 print(f"Snapshot: {basename}.png")
-                
+
             if USUAL_DEBUGGING:
                 ## TODO3: isolate for use as main output
-                rendered_text = get_inner_text(url)
+                rendered_text = get_inner_text(url, browser=browser)
                 debug.trace_fmt(5, "type(rendered_text): {t}", t=rendered_text)
-                out_path = write_temp_file("post-" + filename + ".txt", rendered_text)
+                output_filename = "post-" + base_filename + ".txt"
+                out_path = write_temp_file(output_filename, rendered_text)
                 debug.trace(1, f"See {out_path!r} for inner text")
             debug.trace_fmt(4, "browser_cache: {bc}", bc=browser_cache)
 
@@ -1302,8 +1326,7 @@ def main(args : List[str]) -> None:
             if pause_at_end:
                 system.print_error("Press enter to proceed")
                 sys.stdin.readline()
-            if browser:
-                shutdown_browser(browser)
+            shutdown_browser(browser)
     else:
         show_usage = True
 
