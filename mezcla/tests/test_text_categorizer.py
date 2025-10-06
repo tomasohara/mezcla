@@ -22,6 +22,7 @@ from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla import misc_utils
+from mezcla.tests.common_module import SKIP_TBD_TESTS, SKIP_TBD_REASON
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:            global module object
@@ -37,8 +38,9 @@ except:
     system.print_exception_info("text_categorizer import")
 
 # Environment options
-TEST_TBD = system.getenv_bool("TEST_TBD", False,
-                              description="Test features to be designed: TBD")
+## OLD:
+## TEST_TBD = system.getenv_bool("TEST_TBD", False,
+##                               description="Test features to be designed: TBD")
 
 
 class TestTextCategorizerUtils(TestWrapper):
@@ -153,7 +155,7 @@ class TestTextCategorizerUtils(TestWrapper):
         ## TODO3: check individually for specific segments
         assert output.strip() == expected_output.strip()
 
-    @pytest.mark.skipif(not TEST_TBD, reason="Ignoring feature to be designed")
+    @pytest.mark.skipif(SKIP_TBD_TESTS, reason=SKIP_TBD_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_start_web_controller(self):
         """Ensure start_web_controller works as expected"""
