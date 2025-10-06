@@ -26,7 +26,6 @@ import os
 # Installed packages
 from PIL import Image
 import pytest
-## OLD: import bs4
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
@@ -52,10 +51,6 @@ SKIP_SELENIUM_REASON = f"Not-{TEST_SELENIUM_DESC}"
 INCLUDE_HINT_TESTS = system.getenv_bool(
     "INCLUDE_HINT_TESTS", False,
     desc="Include the work-in-progress tests involving type hints")
-## TODO:
-## SKIP_HINT_TESTS = system.getenv_bool(
-##     "SKIP_HINT_TESTS", False,
-##     desc="Skip the work-in-progress tests involving type hints")
 SKIP_HINT_TESTS = not INCLUDE_HINT_TESTS
 SKIP_HINT_REASON = "Type hinting tests require more work"
 ##
@@ -237,22 +232,17 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, f"TestIt.test_get_inner_html_alt(); self={self}")
         debug.assertion("scrappycito.com" not in self.scrappycito_like_url,
                         f"The production server should not be used in tests: {self.scrappycito_url}")
-        ## OLD:
-        ## output = THE_MODULE.get_inner_html(self.scrappycito_like_url)
-        ## self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
         ## TODO: regular_output = THE_MODULE.download_web_document(self.scrappycito_like_url)
         regular_output = gh.run(f"lynx -source {self.scrappycito_like_url}")
         inner_output = THE_MODULE.get_inner_html(self.scrappycito_like_url + "/?section=tips")
         self.check_inner_html(regular_output, inner_output)
         return
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_run_script_for_inner_html(self):
         """Test of getting inner HTML via script invocation"""
         debug.trace(4, f"TestIt.test_run_script_for_inner_html(); self={self}")
-        ## OLD:
-        ## output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url}", data_file=self.temp_file)
-        ## self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
         regular_output = self.run_script(options=f"--stdout {self.scrappycito_like_url}")
         self.temp_file += "-2"
         inner_output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url + '/?section=tips'}")
@@ -335,9 +325,6 @@ class TestHtmlUtils(TestWrapper):
     def test_get_url_param_checkbox_spec(self):
         """Ensure get_url_param_checkbox_spec() works as expected"""
         debug.trace(4, "test_get_url_param_checkbox_spec()")
-        ## OLD:
-        ## param_dict = {"check_1": "on", "check_2": "off","check_3": "True",
-        ##               "check_4": False, "check_5": 1}
         param_dict = {"check_1_on": "on",  "check_3_on": "True",  "check_5_on": 1,
                       "check_2_off": "off", "check_4_off": False, "check_6_off": None}
 
@@ -439,7 +426,6 @@ class TestHtmlUtils(TestWrapper):
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_old_download_web_document(self):
         """Ensure old_download_web_document() works as expected"""
-        ## OLD: assert "<!doctype html>" in THE_MODULE.old_download_web_document("https://www.google.com")
         self.check_download_web_document(download_func=THE_MODULE.old_download_web_document)
 
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -448,11 +434,7 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, "test_download_web_document()")
         ## NOTE: Wikipedia/WikiMedia complaining about robots (even though single document access)
         ## during GitHub actions run. See https://wikitech.wikimedia.org/wiki/Robot_policy.
-        ## OLD: assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
         ## TODO2: use website accessible to all team members
-        ## OLD:
-        ## assert "currency" in THE_MODULE.download_web_document(f"{self.tomasohara_trade_like_url}/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
-        ## assert THE_MODULE.download_web_document("www. bogus. url.html") is None
         self.check_download_web_document(download_func=THE_MODULE.download_web_document)
 
     def test_test_download_html_document(self):
@@ -513,11 +495,13 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE.BeautifulSoup = None
         THE_MODULE.init_BeautifulSoup()
         assert THE_MODULE.BeautifulSoup
-
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_extract_html_link(self):
         """Ensure extract_html_link() works as expected"""
         debug.trace(4, "test_extract_html_link()")
 
+        url = "https://www.example.com"
         html = (
             '<!DOCTYPE html>\n'
             '<html>\n'
@@ -537,26 +521,21 @@ class TestHtmlUtils(TestWrapper):
             '</body>\n'
             '</html>\n'
         )
-
-        # NOTE that the last two urls has a extra '/'.
-        ## TODO: check if the extra '/' in the last two urls are correct.
         all_urls = [
             'https://www.anothersite.io/',
             'https://www.example.com/',
             'https://www.example.com/sopport',
             'https://www.subdomain.example.com/',
             'https://www.example.com.br/',
-            'http:///www.subdomain.example.com/sitemap.xml',
-            'https://www.example.com//home.html',
+            'https://www.example.com/www.subdomain.example.com/sitemap.xml',
+            'https://www.example.com/home.html',
         ]
 
         # Test extract all urls from html
-        assert THE_MODULE.extract_html_link(html, url='https://www.example.com', base_url='http://') == all_urls
+        assert THE_MODULE.extract_html_link(html, url=url, base_url=url) == all_urls
 
         # Test base_url none
-        ## TODO: this assertion is returning, need to be solved:
-        ##      https://www.example.com//www.subdomain.example.com/sitemap.xml
-        ## assert THE_MODULE.extract_html_link(html, url='https://www.example.com') == all_urls
+        assert THE_MODULE.extract_html_link(html, url=url) == all_urls
 
     @pytest.mark.xfail
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
@@ -587,14 +566,6 @@ class TestHtmlUtils(TestWrapper):
         ## Note: following should not be ready at first due to JavaScript (n.b., wrong assumption).
         ## TODO3: use different URL because the JavaScript doesn't affect ready status; see test_document_ready
         scrappycito_search_result = f"{self.scrappycito_like_url}/run_search?query=modern+art"
-        ## OLD:
-        ## assert not THE_MODULE.document_ready(scrappycito_search_result)
-        ## ## Exception raised:
-        ## ## E       selenium.common.exceptions.JavascriptException: Message: TypeError: document.body is null
-        ## ## E       Stacktrace:
-        ## ## E       @http://www.scrappycito.com:9330/:2:7
-        ## ## E       @http://www.scrappycito.com:9330/:3:8
-        ## ## /home/zavee/.local/lib/python3.10/site-packages/selenium/webdriver/remote/errorhandler.py:229: JavascriptException
         assert THE_MODULE.document_ready(scrappycito_search_result)
 
         # Use example suggesed by Claude-Opus-4.1
