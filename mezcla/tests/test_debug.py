@@ -45,8 +45,10 @@ import mezcla.debug as THE_MODULE # pylint: disable=reimported
 # Note: These are just intended for internal options, not for end users.
 # It also allows for enabling options in one place.
 #
-TEST_TBD = system.getenv_bool("TEST_TBD", False,
-                              description="Test features to be designed: TBD")
+## OLD:
+## TEST_TBD = system.getenv_bool("TEST_TBD", False,
+##                               description="Test features to be designed: TBD")
+
 
 #................................................................................
 # Classes for testing
@@ -293,9 +295,8 @@ class TestDebug(TestWrapper):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
         number: int = 9                 # pylint: disable=unused-variable
-        ## OLD: self.patch_trace_level(4)
+
         ## Note: patched trace level should be 1 higher than level used in call
-        ## self.patch_trace_level(4)
         ## TODO3: straighten out trace level usage in trace_current_context
         base_trace_level = 4
         self.patch_trace_level(base_trace_level + 1)
