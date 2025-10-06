@@ -125,32 +125,54 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
     if ignore_errors is None:
         ignore_errors = False
     
+    # Ensure module_name is a string
+    if not isinstance(module_name, str):
+        if not ignore_errors:
+            system.print_error(f"Error: module_name must be a string, got {type(module_name)}")
+        debug.trace(5, f"module_name is not a string: {type(module_name)}")
+        return
+    
     # Get list of modules attributes (e.g., variables)
     module = None
     module_attrs = []
     try:
+        debug.trace(7, "in try")
         loaded = False
-        try:
-            import_command = f"reload({module_name})"
-            exec(import_command)
-            loaded = True
-        except:
+        
+        # Check if module already exists in sys.modules
+        module_exists = module_name in sys.modules
+        
+        if module_exists:
             try:
+                debug.trace(6, "Module exists - trying reload")
+                # First import it into the namespace if not already there
                 import_command = f"import {module_name}"
-                exec(import_command)
+                exec(import_command, globals_dict)
+                module = eval(module_name, globals_dict)
+                module = reload(module)
+                loaded = True
+            except:
+                debug.trace_exception_info(7, "existing reload")
+        
+        if not loaded:
+            try:
+                debug.trace(5, "Trying import")
+                import_command = f"import {module_name}"
+                exec(import_command, globals_dict)
+                module = eval(module_name, globals_dict)
                 loaded = True
             except:
                 debug.trace_exception_info(4, f"{module_name} import")
+        
         if loaded:
-            module = eval(module_name)
             module_attrs = dir(module)
         elif not ignore_errors:
-            system.print_error("Error: unable to import or reload {module_name}")
+            system.print_error(f"Error: unable to import or reload {module_name}")
     except:
         if not ignore_errors:
-            system.print_exception_info(import_command)
+            system.print_exception_info("import_module_globals")
         else:
-            debug.trace_exception_info(6, import_command)
+            debug.trace_exception_info(6, "import_module_globals")
     debug.trace_expr(5, module)
 
     # Import each individually
@@ -174,7 +196,7 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
             import_desc = (f"import[ing] {var} from {module_name}")
             try:
                 debug.trace(5, import_desc)
-                globals_dict[var] = eval(f"{module_name}.{var}")
+                globals_dict[var] = getattr(module, var)
                 num_ok += 1
             except:
                 debug.trace_exception_info(4, import_desc)
