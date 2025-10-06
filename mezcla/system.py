@@ -611,12 +611,15 @@ def load_object(file_name: FileDescriptorOrPath, ignore_error: bool = False) -> 
     return obj
 
 
-def quote_url_text(text: str, unquote: bool = False) -> str:
-    """(un)Quote/encode TEXT to make suitable for use in URL. Note: This return the input if the text has encoded characters (i.e., %HH) where H is uppercase hex digit."""
-    # Note: This is a wrapper around quote_plus and thus escapes slashes, along with spaces and other special characters (";?:@&=+$,\"'").
+def quote_url_text(text: str, unquote: bool = False, idempotent: bool = False) -> str:
+    """(un)Quote/encode TEXT to make suitable for use in URL via encoded hex values (e.g., using '%3F' for '?').
+    This is a wrapper around quote_plus and thus escapes slashes, along with spaces and other special characters (";?:@&=+$,\"'").
+    Note: With optional IDEMPOTENT, this return the input if the text has encoded characters (i.e., %HH) where H is uppercase hex digit.
+    """
     # EX: quote_url_text("<2/") => "%3C2%2F"
     # EX: quote_url_text("Joe's hat") => "Joe%27s+hat"
     # EX: quote_url_text("Joe%27s+hat") => "Joe%2527s%2Bhat"
+    ## TODO3: move in to html_utils.py
     debug.trace_fmtd(7, "in quote_url_text({t})", t=text)
     ## TEMP: treat None as empty string
     debug.assertion(text is not None)
@@ -633,7 +636,10 @@ def quote_url_text(text: str, unquote: bool = False) -> str:
             import urllib.parse   # pylint: disable=redefined-outer-name, import-outside-toplevel
             ## TODO: debug.trace_fmt(6, "take 2 urllib.parse", m=urllib.parse, show_all=True)
             if quote:
-                result = urllib.parse.quote_plus(text)
+                ## NOTE: Unfortunately quote_plus uses '' as a default
+                ## BAD: safe = None if not idempotent else "%"
+                safe = "" if not idempotent else "%"
+                result = urllib.parse.quote_plus(text, safe=safe)
             else:
                 result = urllib.parse.unquote_plus(text)
     except (TypeError, ValueError):
@@ -646,7 +652,11 @@ def quote_url_text(text: str, unquote: bool = False) -> str:
 def unquote_url_text(text: str) -> str:
     """Unquotes/decodes URL TEXT:
     Note: Wrapper around quote_url_text w/ UNQUOTE set"""
+    # EX: unquote_url_text("%3C2%2F") => "<2/"
     return quote_url_text(text, unquote=True)
+#
+# EX: (text =: "?"; quote_url_text(quote_url_text(text)) != text)
+# EX: (text =: "?"; quote_url_text(quote_url_text(text), idempotent=True) == text)
 
 def escape_html_value(value: str) -> str:
     """Escape VALUE for HTML embedding
@@ -1060,6 +1070,8 @@ def remove_extension(filename: str, extension: Optional[str] = None) -> str:
     # EX: remove_extension("/tmp/document.pdf") => "/tmp/document"
     # EX: remove_extension("it.abc.def") => "it.abc"
     # EX: remove_extension("it.abc.def", "abc.def") => "it"
+    ## TODO3: make sure supercedes version in glue_helpers.remove_extension and make that an alias to this
+    ## TODO4: likewise make sure supercedes os.path.splitext (see os_util.split_extension)
     in_extension = extension
     new_filename = filename
     if extension is None:
@@ -1171,11 +1183,12 @@ def get_current_directory() -> str:
     return current_dir
 
 
-def set_current_directory(PATH: FileDescriptorOrPath) -> None:
+def set_current_directory(path: FileDescriptorOrPath) -> None:
     """Tracing wrapper around os.chdir(PATH)"""
-    os.chdir(PATH)
-    debug.trace_fmt(6, "set_current_directory({p}) => None")
-
+    os.chdir(path)
+    debug.trace(6, f"set_current_directory({path}) => None")
+#
+# TODO3?: change_directory = set_current_directory
 
 def to_utf8(text: str) -> str:
     """obsolete no-op: Convert TEXT to UTF-8 (e.g., for I/O)"""
