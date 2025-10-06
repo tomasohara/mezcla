@@ -63,9 +63,12 @@ SKIP_EXPECTED_ERRORS = system.getenv_bool(
     False,
     description="Skip cases intentionally causing conversion errors, etc.")
 #
+TEST_TBD_TESTS = system.getenv_bool(
+    "TEST_TBD_TESTS", False,
+    description="Run tests to be designed")
 SKIP_TBD_REASON="Ignore test to be designed"
 SKIP_TBD_TESTS = system.getenv_bool(
-    "SKIP_TBD_TESTS", False,
+    "SKIP_TBD_TESTS", not TEST_TBD_TESTS,
     description=SKIP_TBD_REASON)
 
 # Globals
