@@ -63,9 +63,7 @@ from mezcla import html_utils
 from mezcla.main import Main
 from mezcla import system
 from mezcla.my_regex import my_re
-## OLD: from mezcla import data_utils as du
 from mezcla import glue_helpers as gh
-## OLD: from mezcla import html_utils as html
 from mezcla import tpo_common as tpo
 try:
     from mezcla import data_utils as du
@@ -105,7 +103,7 @@ except:
 def grep_obj_methods(obj, pattern, flags=None):
     """Return methods for OBJ matching PATTERN (with optional re.search FLAGS)
     Note: in practice, all object members are grepped"""
-    ## TODO3: rename as grep_obj_methods
+    ## TODO3: rename as grep_obj_attributes
     # EX: grep_obj_methods(str, "strip") => ["lstrip", "strip", "rstrip"]
     if flags is None:
         flags = re.IGNORECASE
