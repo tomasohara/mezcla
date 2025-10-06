@@ -176,12 +176,30 @@ def get_temp_dir(delete=None, use_temp_base=None) -> str:
     With USE_TEMP_BASE, uses gh.TEMP_BASE if defined, which normally is only used when debugging
     tests (via explicit CLI option).
     """
+
+    # Try to use temporary file override
     ## TODO3: make option to bypass creation; extend to use TEMP_BASE automatically
-    temp_dir_path = None if (not (use_temp_base and TEMP_BASE)) else TEMP_BASE
+    ## BAD:
+    ## temp_dir_path = None if (not (use_temp_base and TEMP_BASE)) else TEMP_BASE
+    ## if not temp_dir_path:
+    ##    temp_dir_path = get_temp_file(delete=delete)
+    ## NOTE: there is an intermittent issue with the temp file support for unit tests:
+    ## (see unittest_wrapper.py's get_temp_dir/file methods.
+    temp_dir_path = None
+    if use_temp_base and TEMP_BASE:
+        temp_dir_path = TEMP_BASE
+        if (not system.file_exists(temp_dir_path)):
+            full_mkdir(temp_dir_path, force=True)
+        if (not system.is_directory(temp_dir_path)):
+            temp_dir_path = None
+            debug.trace(4, "Warning: existing TEMP_BASE is not a directory: {TEMP_BASE!r}")
+    
+    # Otherwise fallback to entirely new temp file
     if not temp_dir_path:
         temp_dir_path = get_temp_file(delete=delete)
     # note: removes non-dir file if exists
     full_mkdir(temp_dir_path, force=True)
+
     debug.trace_fmtd(5, "gh.get_temp_dir() => {r!r}", r=temp_dir_path)
     return temp_dir_path
 
