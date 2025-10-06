@@ -14,11 +14,12 @@
 #
 #    export TEST_REGEX="tips|README"    # run tests with tips or README in file
 #
-## export DEBUG_LEVEL=4               # use verbose tracing
+##
+export DEBUG_LEVEL=4                    # use detailed tracing
+##
 ## TEMP:
-export DEBUG_LEVEL=6                  # use "quite detailed" tracing
-export SUB_DEBUG_LEVEL=6              # for sub-process scripts invoked via gh.run
-
+## export DEBUG_LEVEL=6                 # use "quite detailed" tracing
+## export SUB_DEBUG_LEVEL=6             # for sub-process scripts invoked via gh.run
 
 # Override settings if under testing VM
 # Note: 1. Most settings off so user can override when running locally,
