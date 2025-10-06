@@ -90,7 +90,7 @@ write_temp_file = gh.write_temp_file
 # Constants
 TL = debug.TL
 DEFAULT_STATUS_CODE = 0
-MAX_DOWNLOAD_TIME = system.getenv_integer(
+MAX_DOWNLOAD_TIME = system.getenv_float(
     "MAX_DOWNLOAD_TIME", 30,
     description="Time in seconds for rendered-HTML download as with get_inner_html")
 MID_DOWNLOAD_SLEEP_SECONDS = system.getenv_float(
@@ -153,6 +153,10 @@ BROWSER_DIMENSIONS = system.getenv_value(
 BROWSER_PATH = system.getenv_value(
     "BROWSER_PATH", None,
     desc="Path override for browser binary (for use with selenium)")
+BROWSER_TIMEOUT = system.getenv_value(
+    "TIMEOUT", None,
+    description="Time in seconds for selenium broswer load")
+
 HEADERS = "headers"
 FILENAME = "filename"
 USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
@@ -197,8 +201,8 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
     """
     ## TODO3: create a class-based interface to simplify repeated us
     if timeout is None:
-        timeout = DOWNLOAD_TIMEOUT
-    debug.trace(5, f"in get_browser({url}); {timeout=}")
+        timeout = BROWSER_TIMEOUT
+    debug.trace(4, f"in get_browser({url}); {timeout=}")
     ## OLD:
     ## # pylint: disable=import-error, import-outside-toplevel
     ## from selenium import webdriver
@@ -251,7 +255,9 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
             ## browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
             ## browser = browser_class(options=webdriver_options)
             if timeout:
-                browser.set_page_load_timeout(timeout)
+                ## TODO2: determine way for timeout to honored without timeout exception during get below
+                debug.assertion(False, "Selenium timeout support not functional")
+                browser.set_page_load_timeout(system.to_float(timeout))
             debug.trace_object(5, browser)
     
             # Load the page, setting optional cache entry
@@ -1237,7 +1243,7 @@ def main(args : List[str]) -> None:
         i += 1
 
     # HACK: Convert local html document to text
-    if (filename and (not my_re.search("www|http", filename) or plain_text)):
+    if (filename and (not my_re.search("www|http|file:", filename) or plain_text)):
         debug.assertion(not use_inner)
         doc_filename = filename
         document_data = system.read_file(doc_filename)
