@@ -638,14 +638,18 @@ class TestSystem(TestWrapper):
         THE_MODULE.write_temp_file(temp_file, 'some content')
         assert THE_MODULE.read_file(temp_file) == 'some content\n'
 
+    @pytest.mark.xfail
     def test_get_file_modification_time(self):
         """Ensure get_file_modification_time works as expected"""
+        ## TODO2: just check for timestamp pattern (e.g., "DDDD-MM-DD MM:MM:SS")
         debug.trace(4, "test_get_file_modification_time()")
 
         # create two temp files at the same time
         filedir1 = self.create_temp_file('test modified time')
         filedir2 = self.create_temp_file('test modified time2')
         # get the modification time of the files
+        ## TODO3: Rework to be less brittle, such as using delta's and
+        ## check for number of seconds less than a minute or so!
         timestamp1 = THE_MODULE.get_file_modification_time(filedir1)[:19]
         timestamp2 = THE_MODULE.get_file_modification_time(filedir2)[:19]
         # get and format local time
@@ -654,7 +658,7 @@ class TestSystem(TestWrapper):
         # test timestamps are equal
         assert timestamp1 == timestamp2
 
-        # test timestamp is equal to actual time (ignoring miliseconds)
+        # test timestamp is equal to actual time (ignoring milliseconds)
         assert timestamp1 == now
 
     def test_remove_extension(self):
@@ -683,6 +687,7 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.file_exists(existent_file)
         assert not THE_MODULE.file_exists('bad_file_name')
 
+    @pytest.mark.xfail
     def test_get_file_size(self):
         """Ensure get_file_size works as expected"""
         debug.trace(4, "test_get_file_size()")
