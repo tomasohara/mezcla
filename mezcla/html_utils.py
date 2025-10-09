@@ -349,8 +349,8 @@ def browser_command(url: str, command: str, timeout : Optional[float] = None,
             result = browser.execute_script(command)
     except:
         system.print_exception_info(f"browser_command {command!r}")
-    debug.trace_fmt(6, "document_ready({u}, {c}, [{to}, {b}]) => {r}; state={s}",
-                    u=url, c=command, r=result, b=browser)
+    debug.trace_fmt(6, "browser_command({u}, {c}, [{to}, {b}]) => {r}",
+                    u=url, c=command, r=result, b=browser, to=timeout)
     return result
 
 
@@ -418,20 +418,26 @@ def wait_until_ready(url : str, stable_download_check : Optional[bool] = None,
     return
 
 
-def selenium_function(url: str, function: str, args: Optional[str] = None,
-                      timeout : Optional[float] = None, browser: Optional[WebDriver] = None) -> Any:
+def selenium_function(url: str, function: Optional[str] = None, args: Optional[str] = None,
+                      call: Optional[str] = None, timeout : Optional[float] = None,
+                      browser: Optional[WebDriver] = None) -> Any:
     """Evaluate selenium FUNCTION with ARGS using BROWSER (for URL).
+    With optional CALL specified, the function and args are ignored.
     Note: This is just a wrapper around FUNCTION(ARGS) with tracing and exception handling.
     """
     if args is None:
         args = ""
+    if call is None:
+        call = f"{function}({args})"
+    else:
+        debug.assertion(not function, "Use CALL or FUNCTION but not both")
     result: Any = None
     try:
         if browser is None:
             browser = get_browser(url, timeout=timeout)
         if browser:
             # pylint: disable=eval-used
-            result = eval(f"browser.{function}({args})")
+            result = eval(f"browser.{call}")
     except:
         system.print_exception_info(f"selenium_function {function!r})")
     debug.trace_fmt(6, "selenium_function({u}, {f}, {a}, [{b}]) => {r}",
