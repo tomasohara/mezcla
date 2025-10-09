@@ -338,22 +338,30 @@ def get_inner_text(url : str, browser: Optional[WebDriver] = None) -> str:
     return inner_text
 
 
+def browser_command(url: str, command: str, timeout : Optional[float] = None,
+                    browser: Optional[WebDriver] = None) -> Any:
+    """Issue COMMAND to BROWSER via selenium (for URL) with optional TIMEOUT"""
+    result: Any = None
+    try:
+        if browser is None:
+            browser = get_browser(url, timeout=timeout)
+        if browser:
+            result = browser.execute_script(command)
+    except:
+        system.print_exception_info(f"browser_command {command!r}")
+    debug.trace_fmt(6, "document_ready({u}, {c}, [{to}, {b}]) => {r}; state={s}",
+                    u=url, c=command, r=result, b=browser)
+    return result
+
+
 def document_ready(url : str, timeout : Optional[float] = None,
                    browser: Optional[WebDriver] = None) -> bool:
     """Determine whether document for URL has completed loading (via selenium).
     Note: If TIMEOUT specified, it only waits specified seconds.
     """
     # See https://developer.mozilla.org/en-US/docs/Web/API/Document/readyState
-    is_ready: bool = False
-    ready_state: str = ""
-    try:
-        if browser is None:
-            browser = get_browser(url, timeout=timeout)
-        if browser:
-            ready_state = browser.execute_script("return document.readyState")
-            is_ready = (ready_state == "complete")
-    except:
-        system.print_exception_info("document_ready")
+    ready_state: str = browser_command(url, "return document.readyState", timeout=timeout, browser=browser)
+    is_ready: bool = (ready_state == "complete")
     debug.trace_fmt(6, "document_ready({u}, [{to}, {b}]) => {r}; state={s}",
                     u=url, to=timeout, r=is_ready, s=ready_state, b=browser)
     return is_ready
@@ -407,6 +415,37 @@ def wait_until_ready(url : str, stable_download_check : Optional[bool] = None,
     debug.trace_fmt(5, "out wait_until_ready; elapsed={t}s",
                     t=(time.time() - start_time))
     return
+
+
+def selenium_function(url: str, function: str, args: Optional[str] = None,
+                      timeout : Optional[float] = None, browser: Optional[WebDriver] = None) -> Any:
+    """Evaluate selenium FUNCTION with ARGS using BROWSER (for URL).
+    Note: This is just a wrapper around FUNCTION(ARGS) with tracing and exception handling.
+    """
+    if args is None:
+        args = ""
+    result: Any = None
+    try:
+        if browser is None:
+            browser = get_browser(url, timeout=timeout)
+        if browser:
+            # pylint: disable=eval-used
+            result = eval(f"browser.{function}({args})")
+    except:
+        system.print_exception_info(f"selenium_function {function!r})")
+    debug.trace_fmt(6, "selenium_function({u}, {f}, {a}, [{b}]) => {r}",
+                    u=url, f=function, a=args, r=result, b=browser)
+    return result
+
+
+def save_browser_screenshot(url, path: str, browser: Optional[WebDriver] = None) -> bool:
+    """Save screenshot for URL to PATH using BROWSER"""
+    return selenium_function(url, "get_screenshot_as_file", args=path, browser=browser)
+
+
+def get_browser_log(url, browser: Optional[WebDriver] = None) -> bool:
+    """Get console log for URL using BROWSER"""
+    return selenium_function(url, "get_log", args="'browser'", browser=browser)
 
 #...............................................................................
 
@@ -602,6 +641,8 @@ def expand_misc_param(misc_dict : Dict, param_name : str, param_dict : Optional[
     if (misc_params and ("=" in misc_params)):
         new_misc_dict = new_misc_dict.copy()
         for param_spec in my_re.split(", *", misc_params):
+            if not param_spec.strip():
+                continue
             try:
                 param_key, param_value = param_spec.split("=")
                 new_misc_dict[param_key] = param_value
@@ -1206,9 +1247,11 @@ def main(args : List[str]) -> None:
     use_stdout = False
     use_inner = True
     take_snapshot = False
+    console_log = False
     pause_at_end = False
     quiet = False
     verbose = False
+    debug_hooks = False
     filename : Optional[str] = None
     for i, arg in enumerate(args[1:]):
         if (arg == "--help"):
@@ -1225,6 +1268,8 @@ def main(args : List[str]) -> None:
             use_inner = True
         elif (arg == "--snapshot"):
             take_snapshot = True
+        elif (arg == "--console-log"):
+            console_log = True
         elif (arg == "--pause"):
             pause_at_end = True
         elif (arg == "--stdout"):
@@ -1233,6 +1278,8 @@ def main(args : List[str]) -> None:
             quiet = True
         elif (arg == "--verbose"):
             verbose = True
+        elif (arg == "--debug"):
+            debug_hooks = True
         elif (not arg.startswith("-")):
             filename = arg
             break
@@ -1253,7 +1300,7 @@ def main(args : List[str]) -> None:
         else:
             system.write_file(doc_filename + ".list", document_text)
             print(f"See {doc_filename}.list")
-    
+
     # HACK: Do simple test of inner-HTML support
     # TODO: Do simpler test of download_web_document
     # TODO1: add explicit argument for inner-html support
@@ -1262,10 +1309,11 @@ def main(args : List[str]) -> None:
         debug.trace_fmt(6, "browser_cache: {bc}", bc=browser_cache)
         url = filename
         ## TODO3: make the debug-level-based processing more explicit
-        USUAL_DEBUGGING = debug.debugging()
-        VERBOSE_DEBUGGING = debug.debugging(TL.VERBOSE)
+        USUAL_DEBUGGING = debug_hooks and debug.debugging()
+        VERBOSE_DEBUGGING = debug_hooks and debug.debugging(TL.VERBOSE)
+        QUITE_VERBOSE_DEBUGGING = debug_hooks and debug.debugging(TL.QUITE_VERBOSE)
         alt_html_data: OptStrBytes = None
-        if debug.debugging(TL.QUITE_VERBOSE):
+        if QUITE_VERBOSE_DEBUGGING:
             alt_html_data = retrieve_web_document(url) or ""
             debug.trace_expr(1, alt_html_data, max_len=32768)
         html_data: OptStrBytes = None
@@ -1302,7 +1350,7 @@ def main(args : List[str]) -> None:
             # Show inner/outer HTML
             browser = get_browser(url)
             rendered_html = get_inner_html(url, browser=browser)
-            output_filename = "post-" + base_filename + ".html"
+            output_filename = "post-" + base_filename
             out_path = ""
             output_to_file = (not use_stdout) or USUAL_DEBUGGING
             if output_to_file:
@@ -1318,6 +1366,10 @@ def main(args : List[str]) -> None:
             if take_snapshot:
                 browser.get_screenshot_as_file(f"{basename}.png")
                 print(f"Snapshot: {basename}.png")
+            if console_log:
+                log_contents = browser.get_log('browser')
+                system.write_file(f"{basename}.console.log", log_contents)
+                print(f"Console log: {basename}.console.log")
 
             if USUAL_DEBUGGING:
                 ## TODO3: isolate for use as main output
@@ -1341,7 +1393,8 @@ def main(args : List[str]) -> None:
     # 
     if show_usage:
         script = gh.basename(__file__)
-        print(f"Usage: {script} [--help] [--verbose] [--stdout] [--quiet] [[--regular | [--inner [--snapshot] [--pause]] | --html] [filename]]")
+        print(f"Usage: {script} [--help] [misc] [[--regular | [--inner [--snapshot] [--pause]] | --html] [filename]]")
+        print("   misc: [--verbose] [--stdout] [--quiet] [--debug]")
         print()
         print("Notes:")
         print("- Specify a local HTML file to download (e.g., save as text).")
@@ -1359,10 +1412,10 @@ def main(args : List[str]) -> None:
             print(f"- Other env. options:\n{INDENT}{env_opts}")
         else:
             print("- Use --verbose to see other env. options.")
+        print("- Use --debug for sanity checks.")
             
         print()
         print("Examples:")
-        ## OLD: print(f"- {script} --inner --stdout --quiet https://twitter.com/home > twitter-home.html")
         print(f"- {script} --inner --stdout --quiet https://x.com/home > x-home.html")
         print(f"- {script} --regular --stdout bootstrap-hello-world.html > bootstrap-hello-world.txt")
     return
