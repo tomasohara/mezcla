@@ -17,7 +17,6 @@
 #      www.tomasohara.trade => new www.scrappycito.trade
 #   
 
-
 """Tests for html_utils module"""
 
 # Standard packages
@@ -388,7 +387,7 @@ class TestHtmlUtils(TestWrapper):
             'file\nwith\nmultiple\nlines\n')
 
         # Test invalid file
-        debug.set_level(3)
+        self.patch_trace_level(3)
         THE_MODULE._read_file(filename='invalid_file', as_binary=False)
         captured = self.get_stderr()
         assert "Unable to read file" in captured
@@ -608,6 +607,18 @@ class TestHtmlUtils(TestWrapper):
         assert self.check_browser_dimensions(7680, 4320, "8k")
         assert self.check_browser_dimensions(15360, 8640, "16k")
         assert not self.check_browser_dimensions(30720, 17280, "32k")
+
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail
+    def test_wait_until_ready(self):
+        """Verify that wait_until_ready works as expected"""
+        debug.trace(4, "test_wait_until_ready()")
+        url = "file://" + self.dimensions_html_path
+        self.patch_trace_level(5)
+        THE_MODULE.wait_until_ready(url)
+        captured = self.get_stderr()
+        # ex: Stable size check: last=-1 size=1140 diff=1140 count=0 done=False
+        assert my_re.search(r"diff=[0-9]", captured)
 
     @pytest.mark.xfail
     def test_set_param_dict_alt(self):
