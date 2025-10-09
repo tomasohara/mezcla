@@ -20,12 +20,13 @@ Advanced usage:
     import mezcla.ipython_utils
     reload(mezcla.ipython_utils)
     import_module_globals = mezcla.ipython_utils.import_module_globals
-    #
+
     # Run over misc_utils.py
     import_module_globals("mezcla.misc_utils", globals_dict=builtins.globals())
-    (TYPICAL_EPSILON, VALUE_EPSILON)
-    >>>
-    (1e-06, 0.001)
+    #
+    # note: ipython chokes over the following when preceding comment included:
+    # >>> (TYPICAL_EPSILON, VALUE_EPSILON)
+    # (1e-06, 0.001)
 
 Misc. usage:
     set_xterm_title("ipython: " + os.getcwd())
