@@ -13,3 +13,4 @@ An optional priority is indicated by [Pn]
        "THE_MODULE.safe_int(2.0) == 2" => "assert THE_MODULE.safe_int(2.0) == 2"
 - [P2] Make pass to cut down on xfail usage (e.g., remove if passed for past few months unless special case)!
 - [P3] Make sure the tests differ from any EX-based comments in the source file: they tend to be simple for sake of illustration and get tested via evaluate_example_tests.py.
+- [P2] replace debug.set_level(N), etc. with self.patch_trace_level(N)
