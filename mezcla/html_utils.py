@@ -328,7 +328,7 @@ def get_inner_text(url : str, browser: Optional[WebDriver] = None) -> str:
             browser = get_browser(url)
         if browser:
             # Wait for Javascript to finish processing
-            wait_until_ready(url)
+            wait_until_ready(url, browser=browser)
             # Extract fully-rendered text
             inner_text = browser.execute_script("return document.body.innerText")
     except:
@@ -389,7 +389,7 @@ def wait_until_ready(url : str, stable_download_check : Optional[bool] = None,
     # and for a specified number of checks (e.g., same size for 3 checks).
     count = 0
     while (browser and (time.time() < end_time) and (not done)):
-        done = document_ready(url)
+        done = document_ready(url, browser=browser)
         if (done and stable_download_check):
             size = len(browser.page_source)
             done = (size == last_size)
@@ -398,15 +398,16 @@ def wait_until_ready(url : str, stable_download_check : Optional[bool] = None,
                 done = (count == NUM_MID_DOWNLOAD_CHECKS)
             else:
                 count = 0
-            debug.trace_fmt(5, "Stable size check: last={l} size={s} count={c} done={d}",
-                            l=last_size, s=size, c=count, d=done)
+            diff = (size - last_size) if (last_size > -1) else size
+            debug.trace_fmt(5, "Stable size check: last={l} size={s} diff={df} count={c} done={d}",
+                            l=last_size, s=size, c=count, d=done, df=diff)
             last_size = size
         if not done:
             ## OLD: debug.trace_fmt(6, "Mid-stream download sleep ({s} secs)", s=MID_DOWNLOAD_SLEEP_SECONDS)
             system.sleep(MID_DOWNLOAD_SLEEP_SECONDS, message="Mid-stream download")
 
     # Issue warning if unexpected condition
-    if (not document_ready(url)):
+    if (not document_ready(url, browser=browser)):
         debug.trace_fmt(5, "Warning: time out ({s} secs) in accessing URL '{u}')'",
                         s=system.round_num(end_time - start_time, 1), u=url)
     elif (stable_download_check and (size > last_size)):
