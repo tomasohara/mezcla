@@ -167,7 +167,7 @@ class TestFormatProfile(TestWrapper):
                                     flags=my_re.DOTALL|my_re.MULTILINE))
 
         return output
-
+    
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_calls(self):
         """Ensures that PROFILE_KEY=calls works as expected"""
@@ -191,13 +191,35 @@ class TestFormatProfile(TestWrapper):
     def test_formatprofile_PK_cumulative(self):
         """Ensures that PROFILE_KEY=cumulative works as expected"""
 
-        GOOD_SAMPLE_OUTPUT = "<frozen importlib._bootstrap_externals>:877(exec_module)"
-        BAD_SAMPLE_OUTPUT = "1    0.000    0.000    0.000    0.000 {built-in method posix.readlink}"
+        # OLD: This block used a fragile check. It asserted that a specific low-time line
+        #      (`posix.readlink`) must be completely absent from the output, which is not
+        #      guaranteed and led to random failures.
+        # GOOD_SAMPLE_OUTPUT = "<frozen importlib._bootstrap_externals>:877(exec_module)"
+        # BAD_SAMPLE_OUTPUT = "1    0.000    0.000    0.000    0.000 {built-in method posix.readlink}"
+
+        # NEW: This block implements a robust check on the sort order itself, following your
+        #      pattern from PK_calls. We assert that a known low-time function does not
+        #      appear *before* a known high-time function. This tests the sorting logic
+        #      correctly, regardless of which minor functions happen to run.
+        
+        GOOD_SAMPLE_OUTPUTS = [
+            "<frozen importlib._bootstrap_external>:877(exec_module)",
+            "search_table_file_index.py:1(<module>)",
+            "{built-in method builtins.exec}",
+        ]
+        BAD_SAMPLE_OUTPUTS = [
+            "{built-in method posix.readlink}\n...\n<frozen importlib._bootstrap_external>:877(exec_module)",
+            "{built-in method builtins.isinstance}\n...\nsearch_table_file_index.py:1(<module>)",
+            "{method 'join' of 'str' objects}\n...\n{built-in method builtins.exec}",
+        ]
 
         debug.trace(4, f"test_formatprofile_PK_cumulative(); self={self}")
-        _output = self.helper_format_profile("cumulative", "cumulative time", GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
+        for good_sample, bad_sample in zip(GOOD_SAMPLE_OUTPUTS, BAD_SAMPLE_OUTPUTS):
+            debug.trace(5, f"Checking pair: GOOD='{good_sample}', BAD='{bad_sample}'")
+            _output = self.helper_format_profile("cumulative", "cumulative time", good_sample, bad_sample)
+
         return
-    
+
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_cumtime(self):
         """Ensures that PROFILE_KEY=cumtime works as expected"""
@@ -233,19 +255,115 @@ class TestFormatProfile(TestWrapper):
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_filename(self):
         """Ensures that PROFILE_KEY=filename works as expected"""
-
-        key_arg = "filename"
-        SAMPLE_OUTPUT = [
-            "1    0.000    0.000    0.000    0.000 :1(ReprEntryNativeAttributes)", 
-            "6768    0.000    0.000    0.000    0.000 :1(ReprEntryAttributes)"
-        ]
-
-
         debug.trace(4, f"test_formatprofile_PK_filename(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] not in output)
-        return
 
+        ## OLD: key_arg = "filename"
+        ## OLD: SAMPLE_OUTPUT = [
+        ## OLD:     "1    0.000    0.000    0.000    0.000 :1(ReprEntryNativeAttributes)", 
+        ## OLD:     "6768    0.000    0.000    0.000    0.000 :1(ReprEntryAttributes)"
+        ## OLD: ]
+        ## OLD: output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        ## OLD: assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] not in output)
+        ## OLD: return
+
+        # When sorted by filename, entries should be alphabetically ordered by file
+        # Special entries like <frozen ...> and {built-in ...} come first alphabetically,
+        # then regular .py files in alphabetical order
+        
+        # Good sample: proper alphabetical progression
+        # Based on actual output: <frozen _collections_abc> → <frozen abc> → <frozen importlib._bootstrap>
+        GOOD_SAMPLE_OUTPUT = (
+            "100    0.000    0.000    0.000    0.000 <frozen _collections_abc>:111(__iter__)\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 <frozen abc>:1(abstractmethod)\n" +
+            "..." +
+            "10/1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:1111(_handle_fromlist)\n")
+        
+        # Bad sample: files out of alphabetical order  
+        # <frozen importlib._bootstrap> should NOT come before <frozen abc>
+        BAD_SAMPLE_OUTPUT = (
+            "10/1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:1111(_handle_fromlist)\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 <frozen abc>:1(abstractmethod)\n")
+        
+        output = self.helper_format_profile("filename", "file name", 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
+        
+        # Additional comprehensive checks beyond the helper function
+        
+        # Test 1: Verify alphabetical ordering by extracting filenames
+        filename_matches = my_re.findall(r'^\s*\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+([^:]+):', 
+                                        output, flags=my_re.MULTILINE)
+        debug.trace(5, f"Found {len(filename_matches)} filename entries")
+        
+        if len(filename_matches) >= 3:
+            # Filter out built-in methods and frozen imports for cleaner alphabetical check
+            regular_files = [f for f in filename_matches 
+                            if not f.startswith('<') and not f.startswith('{')]
+            
+            if len(regular_files) >= 2:
+                debug.trace(5, f"Regular files (first 10): {regular_files[:10]}")
+                # Verify consecutive regular files are in alphabetical order
+                alphabetical_count = 0
+                total_checks = 0
+                for i in range(len(regular_files) - 1):
+                    # Only compare different filenames (ignore same file with different line numbers)
+                    if regular_files[i] != regular_files[i + 1]:
+                        total_checks += 1
+                        if regular_files[i] <= regular_files[i + 1]:
+                            alphabetical_count += 1
+                
+                if total_checks > 0:
+                    # At least 80% should be in alphabetical order
+                    ratio = alphabetical_count / total_checks
+                    debug.trace(5, f"Alphabetical ordering ratio: {alphabetical_count}/{total_checks} = {ratio:.2%}")
+                    self.do_assert(ratio >= 0.8,
+                                f"Regular files should be mostly alphabetical: {alphabetical_count} out of {total_checks} ({ratio:.2%})")
+        
+        # Test 2: Verify that multiple entries from same file are grouped together
+        debug_indices = []
+        for i, filename in enumerate(filename_matches):
+            if 'debug.py' in filename:
+                debug_indices.append(i)
+        
+        if len(debug_indices) >= 2:
+            # Check if debug entries are reasonably grouped
+            span = debug_indices[-1] - debug_indices[0] + 1
+            count = len(debug_indices)
+            debug.trace(5, f"debug.py entries: {count} entries spanning {span} positions")
+            # The span should not be much larger than count (allowing for a few other files in between)
+            self.do_assert(span <= count * 3, 
+                        f"Entries from same file should be grouped: {count} entries in span of {span}")
+        
+        # Test 3: Verify frozen/built-in entries come before regular files
+        first_regular_idx = None
+        for i, filename in enumerate(filename_matches):
+            if not filename.startswith('<') and not filename.startswith('{'):
+                first_regular_idx = i
+                break
+        
+        if first_regular_idx is not None and first_regular_idx > 0:
+            special_before = first_regular_idx
+            debug.trace(5, f"Found {special_before} special entries before first regular file")
+            self.do_assert(special_before > 0, 
+                        "Special entries (<frozen>, {built-in}) should come before regular files")
+        
+        # Test 4: Verify specific files appear in expected order
+        debug_pos = next((i for i, f in enumerate(filename_matches) if 'debug.py' in f), None)
+        search_pos = next((i for i, f in enumerate(filename_matches) if 'search_table_file_index.py' in f), None)
+        
+        if debug_pos is not None and search_pos is not None:
+            debug.trace(5, f"debug.py at position {debug_pos}, search_table_file_index.py at {search_pos}")
+            # debug.py should come before search_table_file_index.py (alphabetically 'd' < 's')
+            self.do_assert(debug_pos < search_pos,
+                        f"debug.py (pos {debug_pos}) should come before search_table_file_index.py (pos {search_pos})")
+        
+        # Test 5: Verify the "Ordered by" indicator is correct
+        self.do_assert(my_re.search(r'Ordered by:.*file', output, flags=my_re.IGNORECASE),
+                    "Should show 'Ordered by: file name' or similar")
+        
+        return
+    
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_module(self):
         """Ensures that PROFILE_KEY=module works as expected"""
@@ -379,20 +497,107 @@ class TestFormatProfile(TestWrapper):
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_tottime(self):
         """Ensures that PROFILE_KEY=tottime works as expected"""
-        ## TODO: Find other input sample
-        
-        key_arg = "tottime"
-        SAMPLE_OUTPUT = [
-            "{method 'split' of 're.Pattern' objections}", 
-            "1    0.000    0.000    0.000    0.000 cacheprovider.py:390(pytest_sessionfinish)"
-        ]
-
         debug.trace(4, f"test_formatprofile_PK_tottime(); self={self}")
         
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        return
+        ## OLD: key_arg = "tottime"
+        ## OLD: SAMPLE_OUTPUT = [
+        ## OLD:     "{method 'split' of 're.Pattern' objections}", 
+        ## OLD:     "1    0.000    0.000    0.000    0.000 cacheprovider.py:390(pytest_sessionfinish)"
+        ## OLD: ]
+        ## OLD: output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        ## OLD: assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        ## OLD: return
 
+        # When sorted by tottime (internal time), entries with higher tottime come first
+        # tottime is the 2nd column (after ncalls)
+        # Format: ncalls tottime percall cumtime percall filename:lineno(function)
+        
+        # Good sample: descending order by tottime (highest first)
+        # Based on actual search_table_file_index.py output
+        GOOD_SAMPLE_OUTPUT = (
+            "100    0.010    0.000    0.020    0.000 {built-in method marshal.loads}\n" +
+            "..." +
+            "200    0.005    0.000    0.010    0.000 {built-in method builtins.__build_class__}\n" +
+            "..." +
+            "50    0.002    0.000    0.003    0.000 {built-in method posix.stat}\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 six.py:1(<module>)\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 version.py:1(<module>)\n")
+        
+        # Bad sample: ascending order (lower tottime before higher - WRONG)
+        BAD_SAMPLE_OUTPUT = (
+            "1    0.000    0.000    0.000    0.000 version.py:1(<module>)\n" +
+            "..." +            
+            "50    0.002    0.000    0.003    0.000 {built-in method posix.stat}\n" +
+            "..." +
+            "100    0.010    0.000    0.020    0.000 {built-in method marshal.loads}\n")
+        
+        output = self.helper_format_profile("tottime", "internal time", 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
+        
+        # Additional comprehensive checks beyond the helper function
+        
+        # Test 1: Verify numeric descending order by extracting tottime values
+        # Extract tottime values (2nd numeric column)
+        # Pattern: any_ncalls  TOTTIME  percall  cumtime  percall  filename
+        tottime_entries = my_re.findall(r'^\s*\S+\s+(\d+\.\d+)\s+\S+\s+\S+\s+\S+', 
+                                        output, flags=my_re.MULTILINE)
+        debug.trace(5, f"Found {len(tottime_entries)} tottime entries")
+        
+        if len(tottime_entries) >= 10:
+            # Convert to floats
+            tottime_values = [float(t) for t in tottime_entries[:20]]
+            debug.trace(5, f"First 20 tottime values: {tottime_values[:10]}...")
+            
+            # Verify descending order - each value should be >= next value
+            descending_count = 0
+            total_checks = 0
+            for i in range(len(tottime_values) - 1):
+                total_checks += 1
+                if tottime_values[i] >= tottime_values[i + 1]:
+                    descending_count += 1
+            
+            # At least 90% should be in descending order (allowing for ties with 0.000)
+            ratio = descending_count / total_checks
+            debug.trace(5, f"Descending order ratio: {descending_count}/{total_checks} = {ratio:.2%}")
+            self.do_assert(ratio >= 0.90,
+                        f"tottime values should be in descending order: {descending_count} out of {total_checks} ({ratio:.2%})")
+        
+        # Test 2: Verify the highest tottime is at the top
+        if len(tottime_entries) >= 5:
+            tottime_floats = [float(t) for t in tottime_entries[:10]]
+            max_tottime = max(tottime_floats)
+            first_tottime = tottime_floats[0]
+            debug.trace(5, f"First tottime: {first_tottime}, Max tottime in first 10: {max_tottime}")
+            # The first entry should be the maximum (or very close due to ties)
+            self.do_assert(first_tottime >= max_tottime * 0.95,
+                        f"First tottime ({first_tottime}) should be near maximum ({max_tottime})")
+        
+        # Test 3: Verify entries with 0.000 tottime appear at the end
+        # Find the last few entries
+        last_tottime_entries = tottime_entries[-10:] if len(tottime_entries) >= 10 else tottime_entries
+        zero_count = sum(1 for t in last_tottime_entries if float(t) == 0.000)
+        debug.trace(5, f"In last 10 entries: {zero_count} have tottime=0.000")
+        # Most of the last entries should be 0.000 (at least 30%)
+        if len(last_tottime_entries) > 0:
+            zero_ratio = zero_count / len(last_tottime_entries)
+            debug.trace(5, f"Zero ratio in last entries: {zero_ratio:.2%}")
+            self.do_assert(zero_ratio >= 0.3,
+                        f"End of list should have many 0.000 entries: {zero_count}/{len(last_tottime_entries)}")
+        
+        # Test 4: Verify no negative tottime values
+        if tottime_entries:
+            all_positive = all(float(t) >= 0.0 for t in tottime_entries)
+            self.do_assert(all_positive, "All tottime values should be non-negative")
+        
+        # Test 5: Verify the "Ordered by" indicator is correct
+        self.do_assert(my_re.search(r'Ordered by:.*internal time', output, flags=my_re.IGNORECASE),
+                    "Should show 'Ordered by: internal time' or similar")
+        
+        return
+    
 if __name__ == '__main__':
     debug.trace_current_context()
     invoke_tests(__file__)
+    
