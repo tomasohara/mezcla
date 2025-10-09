@@ -119,7 +119,7 @@ class TestHtmlUtils(TestWrapper):
     tomasohara_trade_like_url = TOMASOHARA_TRADE_LIKE_URL
     ready_test_path = resolve_mezcla_path("document_ready_test.html")
     ready_test_alt_path = resolve_mezcla_path("document_ready_test_alt.html")
-    dimensions_html_path = resolve_mezcla_path(DIMENSIONS_HTML_FILENAME)
+    dimensions_url = "file://" + resolve_mezcla_path(DIMENSIONS_HTML_FILENAME)
     pacman_path = resolve_mezcla_path(PACMAN_FILENAME)
     pacman_url = resolve_mezcla_url(PACMAN_FILENAME)
 
@@ -578,7 +578,7 @@ class TestHtmlUtils(TestWrapper):
         # Note: The cache is disabled, so browser object for URL has right options.
         self.monkeypatch.setattr(THE_MODULE, "USE_BROWSER_CACHE", False)
         self.monkeypatch.setattr(THE_MODULE, "BROWSER_DIMENSIONS", f"{width},{height}")
-        browser = THE_MODULE.get_browser("file://" + self.dimensions_html_path)
+        browser = THE_MODULE.get_browser(self.dimensions_url)
         screenshot_path = gh.form_path(self.get_temp_dir(), f"{label}-screenshot.png")
         try:
             browser.get_screenshot_as_file(screenshot_path)
@@ -611,14 +611,33 @@ class TestHtmlUtils(TestWrapper):
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail
     def test_wait_until_ready(self):
-        """Verify that wait_until_ready works as expected"""
+        """Verify that wait_until_ready for simple web page with JavaScript"""
         debug.trace(4, "test_wait_until_ready()")
-        url = "file://" + self.dimensions_html_path
         self.patch_trace_level(5)
-        THE_MODULE.wait_until_ready(url)
+        THE_MODULE.wait_until_ready(self.dimensions_url)
         captured = self.get_stderr()
         # ex: Stable size check: last=-1 size=1140 diff=1140 count=0 done=False
         assert my_re.search(r"diff=[0-9]", captured)
+
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail
+    def test_browser_command(self):
+        """Verify that browser_command works for simple command"""
+        debug.trace(4, "test_browser_command()")
+        title = THE_MODULE.browser_command(url=self.dimensions_url,
+                                           command="return document.title;")
+        # ex: "Simple window dimensions"
+        assert "dimensions" in title.lower()
+
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail
+    def test_selenium_function(self):
+        """Verify that selenium_function works for simple function call"""
+        debug.trace(4, "test_selenium_function()")
+        result = THE_MODULE.selenium_function(url=self.dimensions_url,
+                                              call="set_window_rect(width=123, height=123)")
+        # ex: {'x': 0, 'y': 0, 'width': 450, 'height': 123}
+        assert my_re.search(r"'width': \d+, 'height': \d+", result)
 
     @pytest.mark.xfail
     def test_set_param_dict_alt(self):
