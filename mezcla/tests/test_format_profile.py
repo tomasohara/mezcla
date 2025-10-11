@@ -168,7 +168,7 @@ class TestFormatProfile(TestWrapper):
 
         return output
     
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail [X]
     def test_formatprofile_PK_calls(self):
         """Ensures that PROFILE_KEY=calls works as expected"""
         debug.trace(4, f"test_formatprofile_PK_calls(); self={self}")
@@ -187,7 +187,7 @@ class TestFormatProfile(TestWrapper):
         _output = self.helper_format_profile("calls", "call count", GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
         return
         
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                   # TODO: remove xfail [X]
     def test_formatprofile_PK_cumulative(self):
         """Ensures that PROFILE_KEY=cumulative works as expected"""
 
@@ -201,56 +201,142 @@ class TestFormatProfile(TestWrapper):
         #      pattern from PK_calls. We assert that a known low-time function does not
         #      appear *before* a known high-time function. This tests the sorting logic
         #      correctly, regardless of which minor functions happen to run.
+            
+        GOOD_SAMPLE_OUTPUT = (
+            "__init__.py:1(<module>)\n" +
+            "..." +
+            "{built-in method builtins.exec}\n")
         
-        GOOD_SAMPLE_OUTPUTS = [
-            "<frozen importlib._bootstrap_external>:877(exec_module)",
-            "search_table_file_index.py:1(<module>)",
-            "{built-in method builtins.exec}",
-        ]
-        BAD_SAMPLE_OUTPUTS = [
-            "{built-in method posix.readlink}\n...\n<frozen importlib._bootstrap_external>:877(exec_module)",
-            "{built-in method builtins.isinstance}\n...\nsearch_table_file_index.py:1(<module>)",
-            "{method 'join' of 'str' objects}\n...\n{built-in method builtins.exec}",
-        ]
-
-        debug.trace(4, f"test_formatprofile_PK_cumulative(); self={self}")
-        for good_sample, bad_sample in zip(GOOD_SAMPLE_OUTPUTS, BAD_SAMPLE_OUTPUTS):
-            debug.trace(5, f"Checking pair: GOOD='{good_sample}', BAD='{bad_sample}'")
-            _output = self.helper_format_profile("cumulative", "cumulative time", good_sample, bad_sample)
-
+        BAD_SAMPLE_OUTPUT = (
+            "{built-in method sys.getrecursionlimit}\n" +
+            "..." +
+            "__init__.py:1(<module>)\n")
+        
+        _output = self.helper_format_profile("cumulative", "cumulative time", 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_cumtime(self):
         """Ensures that PROFILE_KEY=cumtime works as expected"""
-        ## TODO: Find other input sample
         debug.trace(4, f"test_formatprofile_PK_cumtime(); self={self}")
-        key_arg = "cumtime"
-        SAMPLE_OUTPUT = [
-            "test_glue_helper.py:1(<module>)", # Incorrect Line 
-            "1    0.000    0.000    0.000    0.000 {method 'fileno' of '_io.BufferedWriter' objects}"
-            ]
+        
+        ## OLD: Used slow test script and fragile assertion checking specific strings
+        # key_arg = "cumtime"
+        # SAMPLE_OUTPUT = [
+        #     "test_glue_helper.py:1(<module>)", # Incorrect Line 
+        #     "1    0.000    0.000    0.000    0.000 {method 'fileno' of '_io.BufferedWriter' objects}"
+        #     ]
+        # output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        # assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
 
-        # output = gh.read_file(empty_file1)
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        # print(output)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        # return
+        ## cumtime is a MAIN KEY (cumulative time)
+        ## When sorted by cumulative time (descending), entries with higher cumtime come first
+        ## cumtime is the 4th column: ncalls tottime percall CUMTIME percall filename:lineno(function)
+        
+        GOOD_SAMPLE_OUTPUT = (
+            "__init__.py:1(<module>)\n" +
+            "..." +
+            "{built-in method builtins.exec}\n" +
+            "..." +
+            "search_table_file_index.py:1(<module>)\n" +
+            "..." +
+            "{built-in method sys.getrecursionlimit}\n")
+        
+        BAD_SAMPLE_OUTPUT = (
+            "{built-in method sys.getrecursionlimit}\n" +
+            "..." +
+            "search_table_file_index.py:1(<module>)\n" +
+            "..." +
+            "__init__.py:1(<module>)\n")
+        
+        output = self.helper_format_profile("cumtime", "cumulative time", 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
+        
+        # Additional comprehensive checks for MAIN KEY
+        
+        # Test 1: Verify numeric descending order by extracting cumtime values
+        cumtime_entries = my_re.findall(r'^\s*\S+\s+\S+\s+\S+\s+(\d+\.\d+)\s+\S+', 
+                                        output, flags=my_re.MULTILINE)
+        debug.trace(5, f"Found {len(cumtime_entries)} cumtime entries")
+        
+        if len(cumtime_entries) >= 10:
+            cumtime_values = [float(t) for t in cumtime_entries[:20]]
+            debug.trace(5, f"First 20 cumtime values: {cumtime_values[:10]}...")
+            
+            descending_count = 0
+            total_checks = 0
+            for i in range(len(cumtime_values) - 1):
+                total_checks += 1
+                if cumtime_values[i] >= cumtime_values[i + 1]:
+                    descending_count += 1
+            
+            ratio = descending_count / total_checks
+            debug.trace(5, f"Descending order ratio: {descending_count}/{total_checks} = {ratio:.2%}")
+            self.do_assert(ratio >= 0.90,
+                        f"cumtime values should be in descending order: {descending_count} out of {total_checks} ({ratio:.2%})")
+        
+        # Test 2: Verify the highest cumtime is at the top
+        if len(cumtime_entries) >= 5:
+            cumtime_floats = [float(t) for t in cumtime_entries[:10]]
+            max_cumtime = max(cumtime_floats)
+            first_cumtime = cumtime_floats[0]
+            debug.trace(5, f"First cumtime: {first_cumtime}, Max cumtime in first 10: {max_cumtime}")
+            self.do_assert(first_cumtime >= max_cumtime * 0.95,
+                        f"First cumtime ({first_cumtime}) should be near maximum ({max_cumtime})")
+        
+        # Test 3: Verify entries with 0.000 cumtime appear at the end
+        last_cumtime_entries = cumtime_entries[-10:] if len(cumtime_entries) >= 10 else cumtime_entries
+        zero_count = sum(1 for t in last_cumtime_entries if float(t) == 0.000)
+        debug.trace(5, f"In last 10 entries: {zero_count} have cumtime=0.000")
+        if len(last_cumtime_entries) > 0:
+            zero_ratio = zero_count / len(last_cumtime_entries)
+            debug.trace(5, f"Zero ratio in last entries: {zero_ratio:.2%}")
+            self.do_assert(zero_ratio >= 0.3,
+                        f"End of list should have many 0.000 entries: {zero_count}/{len(last_cumtime_entries)}")
+        
+        # Test 4: Verify no negative cumtime values
+        if cumtime_entries:
+            all_positive = all(float(t) >= 0.0 for t in cumtime_entries)
+            self.do_assert(all_positive, "All cumtime values should be non-negative")
+        
+        # Test 5: Verify the "Ordered by" indicator is correct
+        self.do_assert(my_re.search(r'Ordered by:.*cumulative time', output, flags=my_re.IGNORECASE),
+                    "Should show 'Ordered by: cumulative time' or similar")
+        
+        return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_file(self):
         """Ensures that PROFILE_KEY=file works as expected"""
-
-        key_arg = "file"
-        SAMPLE_OUTPUT = [
-            "<frozen importlib._bootstraps>:391(cached)", 
-            "1    0.000    0.000    0.000    0.000 {method 'union' of 'frozenset' objects}"
-            ]
-        
         debug.trace(4, f"test_formatprofile_PK_file(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        
+        ## OLD: Used slow test script and fragile assertion checking specific strings
+        # key_arg = "file"
+        # SAMPLE_OUTPUT = [
+        #     "<frozen importlib._bootstraps>:391(cached)", 
+        #     "1    0.000    0.000    0.000    0.000 {method 'union' of 'frozenset' objects}"
+        #     ]
+        # output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        # assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
 
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        ## "file" is an ALTERNATIVE KEY (alias for filename)
+        ## For minor keys, just verify the "Ordered by" indicator changes properly
+        ## When sorted by file, entries should be alphabetically ordered
+        
+        GOOD_SAMPLE_OUTPUT = (
+            "<frozen abc>:1(abstractmethod)\n" +
+            "..." +
+            "<frozen importlib._bootstrap>:1111(_handle_fromlist)\n")
+        
+        BAD_SAMPLE_OUTPUT = (
+            "<frozen importlib._bootstrap>:1111(_handle_fromlist)\n" +
+            "..." +
+            "<frozen abc>:1(abstractmethod)\n")
+        
+        _output = self.helper_format_profile("file", "file name", 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
+        return
     
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_filename(self):
@@ -367,131 +453,328 @@ class TestFormatProfile(TestWrapper):
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_module(self):
         """Ensures that PROFILE_KEY=module works as expected"""
-
-        key_arg = "module"
-        SAMPLE_OUTPUT = [
-            "ElementTree.pytest:1771(C14NWriterTarget)",
-            "1    0.000    0.000    0.000    0.000 terminal.py:1306(_build_normal_summary_stats_line)"
-        ]
-
         debug.trace(4, f"test_formatprofile_PK_module(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        
+        ## OLD: Used slow test script and fragile assertion checking specific strings
+        # key_arg = "module"
+        # SAMPLE_OUTPUT = [
+        #     "ElementTree.pytest:1771(C14NWriterTarget)",
+        #     "1    0.000    0.000    0.000    0.000 terminal.py:1306(_build_normal_summary_stats_line)"
+        # ]
+        # output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        # assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+
+        ## "module" is a MINOR KEY (Other keys)
+        ## For minor keys, just verify the "Ordered by" indicator changes properly
+        ## Module ordering groups by module name alphabetically
+        
+        GOOD_SAMPLE_OUTPUT = (
+            "debug.py:1(<module>)\n" +
+            "..." +
+            "search_table_file_index.py:1(<module>)\n")
+        
+        BAD_SAMPLE_OUTPUT = (
+            "search_table_file_index.py:1(<module>)\n" +
+            "..." +
+            "debug.py:1(<module>)\n")
+        
+        _output = self.helper_format_profile("module", None, 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
+        return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_ncalls(self):
         """Ensures that PROFILE_KEY=ncalls works as expected"""
-        ## TODO: Find other input sample
-
-        key_arg = "ncalls"
-        ## OLD: testing_script = old_testing_script
-        SAMPLE_OUTPUT = [
-            "{method 'extend' of 'collections.deque' objections}", 
-            "1    0.000    0.000    0.000    0.000 test_glue_helpers.py:385(test_get_files_matching_specs)"
-            ]
-
         debug.trace(4, f"test_formatprofile_PK_ncalls(); self={self}")
+        
+        ## OLD: Used slow test script and fragile assertion checking specific strings
+        # key_arg = "ncalls"
+        # SAMPLE_OUTPUT = [
+        #     "{method 'extend' of 'collections.deque' objections}", 
+        #     "1    0.000    0.000    0.000    0.000 test_glue_helpers.py:385(test_get_files_matching_specs)"
+        #     ]
+        # output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        # assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
 
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        ## ncalls is a MAIN KEY (call count)
+        ## When sorted by ncalls (descending), entries with higher call counts come first
+        ## ncalls is the 1st column: NCALLS tottime percall cumtime percall filename:lineno(function)
+        
+        GOOD_SAMPLE_OUTPUT = (
+            "4212    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}\n" +
+            "..." +
+            "100    0.000    0.000    0.000    0.000 <frozen _collections_abc>:111(__iter__)\n" +
+            "..." +
+            "1    0.000    0.000    0.340    0.340 debug.py:1(<module>)\n")
+        
+        BAD_SAMPLE_OUTPUT = (
+            "1    0.000    0.000    0.340    0.340 debug.py:1(<module>)\n" +
+            "..." +
+            "100    0.000    0.000    0.000    0.000 <frozen _collections_abc>:111(__iter__)\n" +
+            "..." +
+            "4212    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}\n")
+        
+        output = self.helper_format_profile("ncalls", "call count", 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
+        
+        # Additional comprehensive checks for MAIN KEY
+        
+        # Test 1: Verify numeric descending order by extracting ncalls values
+        # ncalls can be in format "123" or "123/45" (for recursive calls)
+        ncalls_entries = my_re.findall(r'^\s*(\d+(?:/\d+)?)\s+\S+\s+\S+\s+\S+\s+\S+', 
+                                    output, flags=my_re.MULTILINE)
+        debug.trace(5, f"Found {len(ncalls_entries)} ncalls entries")
+        
+        if len(ncalls_entries) >= 10:
+            # Convert to numeric values (take first number if "123/45" format)
+            ncalls_values = [int(n.split('/')[0]) for n in ncalls_entries[:20]]
+            debug.trace(5, f"First 20 ncalls values: {ncalls_values[:10]}...")
+            
+            descending_count = 0
+            total_checks = 0
+            for i in range(len(ncalls_values) - 1):
+                total_checks += 1
+                if ncalls_values[i] >= ncalls_values[i + 1]:
+                    descending_count += 1
+            
+            ratio = descending_count / total_checks
+            debug.trace(5, f"Descending order ratio: {descending_count}/{total_checks} = {ratio:.2%}")
+            self.do_assert(ratio >= 0.90,
+                        f"ncalls values should be in descending order: {descending_count} out of {total_checks} ({ratio:.2%})")
+        
+        # Test 2: Verify the highest ncalls is at the top
+        if len(ncalls_entries) >= 5:
+            ncalls_ints = [int(n.split('/')[0]) for n in ncalls_entries[:10]]
+            max_ncalls = max(ncalls_ints)
+            first_ncalls = ncalls_ints[0]
+            debug.trace(5, f"First ncalls: {first_ncalls}, Max ncalls in first 10: {max_ncalls}")
+            self.do_assert(first_ncalls >= max_ncalls * 0.95,
+                        f"First ncalls ({first_ncalls}) should be near maximum ({max_ncalls})")
+        
+        # Test 3: Verify entries with ncalls=1 appear at the end
+        last_ncalls_entries = ncalls_entries[-10:] if len(ncalls_entries) >= 10 else ncalls_entries
+        one_count = sum(1 for n in last_ncalls_entries if int(n.split('/')[0]) == 1)
+        debug.trace(5, f"In last 10 entries: {one_count} have ncalls=1")
+        if len(last_ncalls_entries) > 0:
+            one_ratio = one_count / len(last_ncalls_entries)
+            debug.trace(5, f"Single-call ratio in last entries: {one_ratio:.2%}")
+            self.do_assert(one_ratio >= 0.3,
+                        f"End of list should have many ncalls=1 entries: {one_count}/{len(last_ncalls_entries)}")
+        
+        # Test 4: Verify all ncalls values are positive
+        if ncalls_entries:
+            all_positive = all(int(n.split('/')[0]) > 0 for n in ncalls_entries)
+            self.do_assert(all_positive, "All ncalls values should be positive")
+        
+        # Test 5: Verify the "Ordered by" indicator is correct
+        self.do_assert(my_re.search(r'Ordered by:.*call count', output, flags=my_re.IGNORECASE),
+                    "Should show 'Ordered by: call count' or similar")
+        
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_pcalls(self):
         """Ensures that PROFILE_KEY=pcalls works as expected"""
-
-        key_arg = "pcalls"
-        SAMPLE_OUTPUT = [
-            "unix_events.py:1022(SafestChildWatcher)",
-            "1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:294(_module_repr)"
-        ]
-
         debug.trace(4, f"test_formatprofile_PK_pcalls(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
         
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        # return
+        ## OLD: Used slow test script and fragile assertion checking specific strings
+        # key_arg = "pcalls"
+        # SAMPLE_OUTPUT = [
+        #     "unix_events.py:1022(SafestChildWatcher)",
+        #     "1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:294(_module_repr)"
+        # ]
+        # output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        # assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+
+        ## "pcalls" is a MINOR KEY (Other keys - primitive calls)
+        ## For minor keys, just verify the "Ordered by" indicator changes properly
+        ## When sorted by pcalls, entries are ordered by primitive call count (descending)
+        ## Note: Entries without recursion (no "/") have ncalls = pcalls, so they come first
+        
+        GOOD_SAMPLE_OUTPUT = (
+            "4212    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}\n" +
+            "..." +
+            "2057/1982    0.000    0.000    0.000    0.000 {built-in method builtins.len}\n")
+        
+        BAD_SAMPLE_OUTPUT = (
+            "2057/1982    0.000    0.000    0.000    0.000 {built-in method builtins.len}\n" +
+            "..." +
+            "4212    0.000    0.000    0.000    0.000 {built-in method builtins.isinstance}\n")
+        
+        _output = self.helper_format_profile("pcalls", "primitive call count", 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
+        return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_line(self):
         """Ensures that PROFILE_KEY=line works as expected"""
-
-        key_arg = "line"
-        SAMPLE_OUTPUT = [
-            "{method 'with_traceback' of 'BaseExceptions' objects}", 
-            "1    0.000    0.000    0.000    0.000 {method 'rjust' of 'str' objects}"
-        ]
         debug.trace(4, f"test_formatprofile_PK_line(); self={self}")
+        
+        ## OLD: Used slow test script and fragile assertion checking specific strings
+        # key_arg = "line"
+        # SAMPLE_OUTPUT = [
+        #     "{method 'with_traceback' of 'BaseExceptions' objects}", 
+        #     "1    0.000    0.000    0.000    0.000 {method 'rjust' of 'str' objects}"
+        # ]
+        # output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        # assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
 
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        ## "line" is a MINOR KEY (Other keys - line number)
+        ## For minor keys, just verify the "Ordered by" indicator changes properly
+        ## When sorted by line, entries are ordered by line number (ascending)
+        
+        GOOD_SAMPLE_OUTPUT = (
+            "1    0.000    0.000    0.573    0.573 search_table_file_index.py:1(<module>)\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 search_table_file_index.py:545(main)\n")
+        
+        BAD_SAMPLE_OUTPUT = (
+            "1    0.000    0.000    0.000    0.000 search_table_file_index.py:545(main)\n" +
+            "..." +
+            "1    0.000    0.000    0.573    0.573 search_table_file_index.py:1(<module>)\n")
+        
+        _output = self.helper_format_profile("line", None, 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_name(self):
         """Ensures that PROFILE_KEY=name works as expected"""
-
-        key_arg = "name"
-        SAMPLE_OUTPUT = [
-            "{method 'fileno' of '_io.BufferedReaders' objects}", 
-            "6    0.000    0.000    0.000    0.000 {method 'pop' of 'collections.deque' objects}"
-        ]
-
         debug.trace(4, f"test_formatprofile_PK_name(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        
+        ## OLD: Used slow test script and fragile assertion checking specific strings
+        # key_arg = "name"
+        # SAMPLE_OUTPUT = [
+        #     "unix_events.py:1022(SafeChildWatcher)",
+        #     "1    0.000    0.000    0.000    0.000 {method 'readinto' of '_io.BufferedReader' objects}"
+        # ]
+        # output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        # assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+
+        ## "name" is a MINOR KEY (Other keys - function name)
+        ## For minor keys, just verify the "Ordered by" indicator changes properly
+        ## When sorted by name, entries are ordered alphabetically by function name
+        ## Built-in methods starting with underscore come first (e.g., __new__, _abc_init)
+        
+        GOOD_SAMPLE_OUTPUT = (
+            "147/1    0.001    0.000    0.583    0.583 {built-in method builtins.exec}\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 functools.py:89(wraps)\n")
+        
+        BAD_SAMPLE_OUTPUT = (
+            "1    0.000    0.000    0.000    0.000 functools.py:89(wraps)\n" +
+            "..." +
+            "147/1    0.001    0.000    0.583    0.583 {built-in method builtins.exec}\n")
+        
+        _output = self.helper_format_profile("name", "function name", 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_nfl(self):
         """Ensures that PROFILE_KEY=nfl works as expected"""
-
-        key_arg = "nfl"
-        
-        SAMPLE_OUTPUT = [
-            "{built-in methods _imp.is_frozen}",
-            "1    0.000    0.000    0.000    0.000 {built-in method _stat.S_IMODE}", 
-        ]
-
         debug.trace(4, f"test_formatprofile_PK_nfl(); self={self}")
         
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        ## OLD: Used slow test script and fragile assertion checking specific strings
+        # key_arg = "nfl"
+        # SAMPLE_OUTPUT = [
+        #     "pytest:1771(C14NWriterTarget)",
+        #     "1    0.000    0.000    0.000    0.000 {method 'format' of 'str' objects}"
+        # ]
+        # output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        # assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+
+        ## "nfl" is a MINOR KEY (Other keys - name/file/line)
+        ## For minor keys, just verify the "Ordered by" indicator changes properly
+        ## When sorted by nfl, entries are ordered by filename, then line number, then function name
+        
+        GOOD_SAMPLE_OUTPUT = (
+            "1    0.000    0.000    0.340    0.340 debug.py:1(<module>)\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 system.py:1689(wrapper)\n")
+        
+        BAD_SAMPLE_OUTPUT = (
+            "1    0.000    0.000    0.000    0.000 system.py:1689(wrapper)\n" +
+            "..." +
+            "1    0.000    0.000    0.340    0.340 debug.py:1(<module>)\n")
+        
+        _output = self.helper_format_profile("nfl", None, 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_stdname(self):
         """Ensures that PROFILE_KEY=stdname works as expected"""
-
-        key_arg = "stdname"
-
-        SAMPLE_OUTPUT = [
-            "zipperfile.py:1(<module>)", 
-            "1    0.000    0.000    0.000    0.000 _synchronization.py:70(SemaphoreStatistics)"
-        ]
-
         debug.trace(4, f"test_formatprofile_PK_stdname(); self={self}")
+        
+        ## OLD: Used slow test script and fragile assertion checking specific strings
+        # key_arg = "stdname"
+        # SAMPLE_OUTPUT = [
+        #     "terminal.py:1306(_build_normal_summary_stats_line)",
+        #     "1    0.000    0.000    0.000    0.000 {method 'replace' of 'str' objects}"
+        # ]
+        # output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        # assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
 
-        output = self.helper_format_profile(key_arg, self.testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        ## "stdname" is a MINOR KEY (Other keys - standard name)
+        ## For minor keys, just verify the "Ordered by" indicator changes properly
+        ## When sorted by stdname, entries are ordered alphabetically by standard function name
+        ## stdname uses format: filename:lineno(funcname)
+        ## Note: Special characters like < and { come before letters in ASCII order
+        
+        GOOD_SAMPLE_OUTPUT = (
+            "1    0.000    0.000    0.000    0.000 <frozen _collections_abc>:111(__iter__)\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 search_table_file_index.py:1(<module>)\n" +
+            "..." +
+            "147/1    0.001    0.000    0.583    0.583 {built-in method builtins.exec}\n")
+        
+        BAD_SAMPLE_OUTPUT = (
+            "147/1    0.001    0.000    0.583    0.583 {built-in method builtins.exec}\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 search_table_file_index.py:1(<module>)\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 <frozen _collections_abc>:111(__iter__)\n")
+        
+        _output = self.helper_format_profile("stdname", "standard name", 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
         return
-
+    
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_time(self):
         """Ensures that PROFILE_KEY=time works as expected"""
-
-        key_arg = "time"
-
-        SAMPLE_OUTPUT = [
-            "<frozen importlibrary._bootstrap_external>:380(cache_from_source)", 
-            "1    0.000    0.000    0.000    0.000 glue_helpers.py:731(delete_existing_file)"
-        ]
-
         debug.trace(4, f"test_formatprofile_PK_time(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+
+        ## OLD: Used slow test script and fragile assertion checking specific strings
+        # key_arg = "time"
+        # SAMPLE_OUTPUT = [
+        #     "<frozen importlibrary._bootstrap_external>:380(cache_from_source)", 
+        #     "1    0.000    0.000    0.000    0.000 glue_helpers.py:731(delete_existing_file)"
+        # ]
+        # output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
+        # assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+
+        ## "time" is an ALTERNATIVE KEY (alias for tottime - internal time)
+        ## Since it's an alias for tottime, it should produce the same output
+        ## When sorted by time/tottime, entries with higher internal time come first
+        ## tottime is the 2nd column: ncalls TOTTIME percall cumtime percall filename:lineno(function)
         
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
+        GOOD_SAMPLE_OUTPUT = (
+            "100    0.010    0.000    0.020    0.000 {built-in method marshal.loads}\n" +
+            "..." +
+            "50    0.002    0.000    0.003    0.000 {built-in method posix.stat}\n" +
+            "..." +
+            "1    0.000    0.000    0.000    0.000 version.py:1(<module>)\n")
+        
+        BAD_SAMPLE_OUTPUT = (
+            "1    0.000    0.000    0.000    0.000 version.py:1(<module>)\n" +
+            "..." +
+            "50    0.002    0.000    0.003    0.000 {built-in method posix.stat}\n" +
+            "..." +
+            "100    0.010    0.000    0.020    0.000 {built-in method marshal.loads}\n")
+        
+        _output = self.helper_format_profile("time", "internal time", 
+                                            GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
