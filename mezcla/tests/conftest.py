@@ -67,31 +67,70 @@ if ENABLE_PYTEST_REPORTING:
         'xfailed': 0,
         'xpassed': 0
     }
+    
+    # Track which tests we've seen to avoid double-counting
+    seen_tests = set()
 
-    @pytest.hookimpl(tryfirst=True)
-    def pytest_runtest_setup(item):
-        """Called before each test is run. Ensure total count is unique per test."""
-        if item.nodeid not in test_results:
-            test_results['total'] += 1
-            test_results[item.nodeid] = True
-    
-    @pytest.hookimpl(tryfirst=True)
-    def pytest_runtest_makereport(item, call):
-        """Called to create a test report for each test phase."""
-        report = pytest.TestReport.from_item_and_call(item, call)
-    
-        # Count passed, failed, and skipped tests
-        if report.when == "call":
-            if report.outcome == "passed":
-                test_results['passed'] += 1
-            elif report.outcome == "skipped":
-                test_results['skipped'] += 1
-            elif report.outcome == "failed":
-                test_results['failed'] += 1
-    
-        if report.outcome == "skipped" and call.excinfo is None:
-            test_results['skipped'] += 1
-    
+    # OLD: Used pytest_runtest_setup to count tests, but this doesn't properly
+    # handle test collection and was checking nodeids against the wrong dictionary.
+    # Also used pytest_runtest_makereport which only handled basic outcomes and
+    # never incremented xfailed or xpassed counters despite having them defined.
+    # The old approach had broken logic and double-counting issues for skipped tests.
+    #
+    # NEW: Use pytest_runtest_logreport which is called after each test phase
+    # and provides proper access to test outcomes including xfail/xpass.
+    # Process both 'setup' and 'call' phases because skipped tests are marked
+    # during setup phase and never reach the call phase.
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_logreport(report):
+        """Called after each test phase (setup/call/teardown) to log the report."""
+        outcome = yield
+        
+        test_id = report.nodeid
+        
+        # Process each test only once by checking which phase has the outcome
+        if test_id not in seen_tests:
+            # OLD: Didn't properly distinguish between xfailed (expected fail that failed)
+            # and regular skipped tests because both appear as "skipped" in setup phase
+            # NEW: Check the outcome attribute which differentiates xfailed from skipped
+            
+            # Handle skipped tests during 'setup' phase
+            if report.when == 'setup' and report.skipped:
+                seen_tests.add(test_id)
+                test_results['total'] += 1
+                
+                # Check outcome to distinguish xfailed from regular skipped
+                if hasattr(report, 'wasxfail') or (hasattr(report, 'outcome') and report.outcome == 'skipped' and 'xfail' in str(report.longrepr).lower()):
+                    test_results['xfailed'] += 1
+                else:
+                    test_results['skipped'] += 1
+            
+            # Handle passed/failed tests during 'call' phase
+            elif report.when == 'call':
+                seen_tests.add(test_id)
+                test_results['total'] += 1
+                
+                if report.skipped:
+                    # Some xfails are marked during call phase
+                    if hasattr(report, 'wasxfail'):
+                        test_results['xfailed'] += 1
+                    else:
+                        test_results['skipped'] += 1
+                        
+                elif report.passed:
+                    # Check if it's an unexpected pass (xpass)
+                    if hasattr(report, 'wasxfail'):
+                        test_results['xpassed'] += 1
+                    else:
+                        test_results['passed'] += 1
+                        
+                elif report.failed:
+                    # Check if it's an expected failure (xfail)
+                    if hasattr(report, 'wasxfail'):
+                        test_results['xfailed'] += 1
+                    else:
+                        test_results['failed'] += 1
+
     def pytest_addoption(parser):
         """Add custom options to pytest command-line."""
         ## TODO4: Use getenv_float for default to simplify usgae
@@ -104,9 +143,13 @@ if ENABLE_PYTEST_REPORTING:
     
     def helper_calculate_pass_percentage():
         """Calculate the pass percentage for the test session."""
-        actual_total = test_results['total'] - test_results['skipped']
+        # OLD: Used (total - skipped) as denominator
+        # NEW: Also exclude xfailed tests since they're expected failures
+        # and shouldn't count against pass percentage
+        actual_total = test_results['total'] - test_results['skipped'] - test_results['xfailed']
         if actual_total == 0:
             return 0.0
+        # Only count actual passes, not xpasses (those are surprises, not reliable passes)
         return (test_results['passed'] / actual_total) * 100
     
     @pytest.hookimpl(tryfirst=True)
@@ -114,6 +157,10 @@ if ENABLE_PYTEST_REPORTING:
         """Pytest hook: Called after the test session finishes."""
         pass_threshold = int(session.config.getoption("--pass-threshold"))
         pass_percentage = helper_calculate_pass_percentage()
+        
+        # Calculate numerator and denominator for [X/Y] display
+        numerator = test_results['passed']
+        denominator = test_results['total'] - test_results['skipped'] - test_results['xfailed']
     
         # Print test summary
         print("\n\nTest Summary\n" + "=" * 15)
@@ -121,8 +168,13 @@ if ENABLE_PYTEST_REPORTING:
         print(f"Passed: {test_results['passed']}")
         print(f"Failed: {test_results['failed']}")
         print(f"Skipped: {test_results['skipped']}")
-        print(f"Pass Percentage: {pass_percentage:.2f}% (Threshold: {pass_threshold}%)")
-    
+        # NEW: Actually display xfailed and xpassed counts now that they work
+        print(f"Xfailed: {test_results['xfailed']}")
+        print(f"Xpassed: {test_results['xpassed']}")
+        print(f"Pass Percentage: {pass_percentage:.2f}% (Threshold: {pass_threshold}%) [{numerator}/{denominator}]")
+        # NEW: Show denominator calculation breakdown
+        print(f"Denominator: TOTAL({test_results['total']}) - SKIPPED({test_results['skipped']}) - XFAILED({test_results['xfailed']}) = {denominator}")
+
         # Set exit status based on pass percentage
         if pass_percentage < pass_threshold:
             print("[FAILED]")
