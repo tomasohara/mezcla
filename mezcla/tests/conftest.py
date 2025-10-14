@@ -84,7 +84,9 @@ if ENABLE_PYTEST_REPORTING:
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_logreport(report):
         """Called after each test phase (setup/call/teardown) to log the report."""
-        outcome = yield
+        ## OLD: pylint issue W0612
+        # outcome = yield
+        yield
         
         test_id = report.nodeid
         
