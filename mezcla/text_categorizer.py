@@ -522,6 +522,7 @@ class TextCategorizer(object):
         """Return category for TEXT"""
         debug.trace(4, "tc.categorize(_)")
         debug.trace_fmtd(6, "\ttext={t}", t=text)
+        label = None
         try:
             index = self.classifier.predict([text])[0]
             label = self.keys[index]
