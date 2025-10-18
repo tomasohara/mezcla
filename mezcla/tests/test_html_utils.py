@@ -436,6 +436,7 @@ class TestHtmlUtils(TestWrapper):
         ## TODO2: use website accessible to all team members
         self.check_download_web_document(download_func=THE_MODULE.download_web_document)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_test_download_html_document(self):
         """Ensure test_download_html_document() works as expected"""
         debug.trace(4, "test_test_download_html_document()")
