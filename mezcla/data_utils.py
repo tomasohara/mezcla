@@ -65,7 +65,7 @@ def read_csv(filename, **in_kw):
         kw[SEP] = (kw[SEP] or in_kw[DELIMITER])
         in_kw[DELIMITER] = None
     # Use comma (tab) for delimiter if unspecified and file ext is CSV (TSV)
-    if not kw[SEP]:
+    if not kw[SEP] and isinstance(filename, str):
         if filename.lower().endswith(".csv"):
             kw[SEP] = ","
         if filename.lower().endswith(".tsv"):
