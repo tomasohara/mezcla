@@ -41,7 +41,7 @@ jobs:
         # Note: The Dockerfile uses 3.11 so try different versions for the runner VM
         ## TODO: python-version: ["3.9", "3.10", "3.11"]
 
-      # Stops the matrix if any job fails.
+      # Stops the matrix if any job fails (n.b., the default).
       # note: Run jobs sequentially to ensure earlier ones run in entirety.
       fail-fast: true  
       max-parallel: 1
