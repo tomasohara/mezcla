@@ -75,7 +75,7 @@ if not my_re.search(r"\btemplate.py$", __file__):
 #------------------------------------------------------------------------
 
 class TestIt(TestWrapper):
-    """Class for command-line based testcase definition"""
+    """Class for testcase definition"""
     # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     #
