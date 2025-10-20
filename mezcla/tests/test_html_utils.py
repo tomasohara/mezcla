@@ -931,6 +931,12 @@ class TestHtmlUtils(TestWrapper):
         text = THE_MODULE.html_to_text(html)
         assert normalize_text(text) == normalize_text(DIMENSIONS_EXPECTED_TEXT)
 
+    def test_format_html_message(self):
+        """Ensure html_to_text works as expected"""
+        debug.trace(4, "test_html_to_text()")
+        html = THE_MODULE.format_html_message("hola", text="josé")
+        assert html == "<html lang='en'>  <head>    <title>hola</title>  </head>  <body>    <h3>hola<h3>    josé  </body></html>"
+
     ## TODO (test for type hint failures):
     ## @pytest.mark.xfail
     ## @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
