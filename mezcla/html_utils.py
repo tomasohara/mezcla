@@ -66,6 +66,7 @@ import urllib.request
 from urllib.error import HTTPError, URLError
 from http.client import HTTPMessage
 try:
+    # pylint: disable=no-name-in-module
     from typing_extensions import Any, Callable, Dict, List, Optional, Union
 except:
     ## TODO: debug.raise()
@@ -138,12 +139,12 @@ CHROME_WEBDRIVER = system.getenv_bool(
 FIREFOX_WEBDRIVER = system.getenv_bool(
     "FIREFOX_WEBDRIVER", not CHROME_WEBDRIVER,
     description="Use Firefox webdriver for Selenium")
-FIREFOX_PATH = system.getenv_value(     ## TODO3: drop
+FIREFOX_PATH = system.getenv_value(     ## TODO3: rename as FIREFOX_DRIVER_PATH
     "FIREFOX_PATH", None,
-    desc="Path override for Firefox binary (for use with selenium)")
-CHROME_PATH = system.getenv_value(      ## TODO3: drop
+    desc="Path override for Firefox webdriver (e.g., geckodriver)")
+CHROME_PATH = system.getenv_value(      ## TODO3: rename as CHROME_DRIVER_PATH
     "CHROME_PATH", None,
-    desc="Path override for Chrome binary (for use with selenium)")
+    desc="Path override for Chrome webdriver")
 WEBDRIVER_PATH = system.getenv_value(
     "WEBDRIVER_PATH", (FIREFOX_PATH if FIREFOX_WEBDRIVER else CHROME_PATH),
     desc="Path override for webdriver binary for use with selenium")
@@ -1240,6 +1241,26 @@ def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] 
     debug.trace_fmtd(6, "extract_html_images() => {i}", i=images)
     return images
 
+
+def format_html_message(title, text=None):
+    """Format text as HTML doc (e.g., for errors)
+    Note: TITLE is shown in browser title as well as h3 in body.
+    Optional TEXT is shown as regular text.
+    """
+    title_escaped = escape_html_text(title)
+    text_escaped = escape_html_text(text) if text else ""
+    result = ("<html lang='en'>" +
+              "  <head>" +
+              f"    <title>{title_escaped}</title>" +
+              "  </head>" +
+              "  <body>" +
+              f"    <h3>{title_escaped}<h3>" +
+              f"    {text_escaped}" +
+              "  </body>" +
+              "</html>")
+    return result
+#
+# EX: format_html_message("key") => "<html lang='en'>  <head>    <title>hey</title>  </head>  <body>    <h3>hey<h3>      </body></html>"
 
 #-------------------------------------------------------------------------------
 
