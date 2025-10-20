@@ -230,11 +230,13 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
             ##     debug.trace(4, f"Warning: overriding webdriver path: {webdriver_options.binary_location=}")
             if BROWSER_PATH:
                 webdriver_options.binary_location = BROWSER_PATH
+                debug.assertion(system.file_exists(BROWSER_PATH))
                 debug.trace(4, f"Warning: overriding webdriver path: {webdriver_options.binary_location=}")
             if HEADLESS_WEBDRIVER:
                 webdriver_options.add_argument('-headless')
             if KIOSK_MODE:
                 webdriver_options.add_argument('-kiosk')
+            debug.trace_object(5, webdriver_options)
             debug.assertion(not (FIREFOX_WEBDRIVER and CHROME_WEBDRIVER))
             if FIREFOX_WEBDRIVER:
                 service = FirefoxService(executable_path=WEBDRIVER_PATH) if WEBDRIVER_PATH else None
