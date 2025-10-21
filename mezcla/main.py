@@ -147,8 +147,12 @@ QUIET_MODE = system.getenv_bool(
 PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
                                          "Preprocess args to expand Perl-style -var[=[val=1]] to --var=val")
 ## HACK: This is needed if boolean options default to true based on run-time initialization
-NEGATIVE_BOOL_ARGS = system.getenv_bool("NEGATIVE_BOOL_ARGS", False,
-                                        "Add negation option for each boolean option")
+NEGATIVE_BOOL_ARGS = system.getenv_bool(
+    "NEGATIVE_BOOL_ARGS", False,
+    desc="Add negation option for each boolean option")
+SHOW_NEGATIVE_ARGS = system.getenv_bool(
+    "SHOW_NEGATIVE_ARGS", False,
+    desc="Show negative arguments in help--normally too verbose")
 SHORT_OPTIONS = system.getenv_bool("SHORT_OPTIONS", False,
                                    "Automatically derive short options")
 ENV_OPTION_PREFIX = system.getenv_value("ENV_OPTION_PREFIX", None,
@@ -643,11 +647,12 @@ class Main(object):
                 add_argument(opt_label, default=opt_default, action="store_true", help=opt_desc)
                 if NEGATIVE_BOOL_ARGS:
                     under_label = my_re.sub(r"^__", "", opt_label.replace("-", "_"))
-                    label = "--non-" + under_label
+                    ## BAD: label = "--non-" + under_label
+                    label = "--non-" + my_re.sub(r"^--", "", opt_label)
                     # note: the argument is not shown in help to avoid clutter
-                    desc = argparse.SUPPRESS
+                    desc = (argparse.SUPPRESS if not SHOW_NEGATIVE_ARGS else f"Not {opt_desc}")
                     debug.trace(4, f"Adding negative-boolean: label={label} dest={under_label}")
-                    parser.add_argument(label, default=opt_default, dest=under_label, action="store_false", help=desc, add_short=False)
+                    add_argument(label, default=opt_default, dest=under_label, action="store_false", help=desc, add_short=False)
         for options, opt_type in [(self.int_options, int),
                                   (self.float_options, float),
                                   (self.text_options, str)]:
