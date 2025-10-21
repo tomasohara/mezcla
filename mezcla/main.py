@@ -82,7 +82,6 @@ import io
 import os
 import re
 import sys
-## OLD: import tempfile
 from typing import (
     Optional, List, Tuple, Any, Union,
     Generator, Dict, TextIO,
@@ -108,14 +107,6 @@ from mezcla.system import getenv_bool
 ##                     Tuple[str, str, Optional[Any]],
 ##                     Tuple[str, str, Optional[Any], Optional[str]]]
 ##
-## OLD:
-##
-## ArgInfoType = Union[str,
-##                     Tuple[str],
-##                     Tuple[str, Optional[Any]],
-##                     Tuple[str, Optional[Any], Optional[Any]],
-##                     Tuple[str, Optional[Any], Optional[Any], Optional[Any]]]
-##
 UserArgInfoType = Union[
     str,
     Tuple[str, str],
@@ -140,10 +131,6 @@ TRACK_PAGES = getenv_bool("TRACK_PAGES", False,
                           "Track page boundaries by form feed--\\f or ^L")
 RETAIN_FORM_FEED = getenv_bool("RETAIN_FORM_FEED", False,
                                "Include formfeed (\\f) at start of each segment")
-## OLD:
-## DEFAULT_FILE_BASE = my_re.sub(r".py\w*$", "", gh.basename(__file__))
-## FILE_BASE = system.getenv_text("FILE_BASE", DEFAULT_FILE_BASE,
-##                                "Basename for output files including dir")
 SHOW_ENV_OPTIONS = system.getenv_bool("ENV_USAGE", debug.detailed_debugging(),
                                       "Include environment options in usage")
 # TODO: Put following in common module
@@ -169,27 +156,16 @@ ENV_OPTION_PREFIX = system.getenv_value("ENV_OPTION_PREFIX", None,
 ## TEST
 ## TEMP_BASE = system.getenv_value("TEMP_BASE", None,
 ##                                 "Override for temporary file basename")
-## OLD: TEMP_BASE = gh.TEMP_BASE
-## OLD:
-## USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", False,
-##                                        "Whether TEMP_BASE should be a dir instead of prefix")
 USE_TEMP_BASE_DIR = gh.USE_TEMP_BASE_DIR
 ## TEST
 ## TEMP_FILE = system.getenv_value("TEMP_FILE", None,
 ##                                 "Override for temporary filename")
 TEMP_FILE = gh.TEMP_FILE
-## OLD:
-## KEEP_TEMP_FILES = system.getenv_bool("KEEP_TEMP_FILES", debug.detailed_debugging(),
-##                                      "Retain temporary files")
 KEEP_TEMP_FILES = gh.KEEP_TEMP
 INPUT_ERROR_OPTION = "input_error"
 INPUT_ERROR = system.getenv_value(
     INPUT_ERROR_OPTION.upper(), None,
     description="Override for strict input processing error handling")
-## OLD:
-## DISABLE_RECURSIVE_DELETE = system.getenv_value(
-##     "DISABLE_RECURSIVE_DELETE", None,
-##     description="Disable use of potentially dangerous rm -r style recursive deletions")
 DISABLE_RECURSIVE_DELETE = gh.DISABLE_RECURSIVE_DELETE
 VERBOSE_DEFAULT = bool(f"--{VERBOSE_ARG}" in sys.argv)
 VERBOSE_MODE = system.getenv_value(
@@ -286,7 +262,6 @@ class Main(object):
             debug.trace_fmt(7, "inferred manual_input: {mi}", mi=manual_input)
         self.manual_input = manual_input
         if skip_input is None:
-            ## OLD: skip_input = self.manual_input
             skip_input = (self.manual_input or skip_stdin)
             debug.trace_fmt(7, "inferred skip_input: {si}", si=skip_input)
         self.skip_input = skip_input
@@ -295,13 +270,6 @@ class Main(object):
         if brief_usage is None:
             brief_usage = BRIEF_USAGE
         self.brief_usage = brief_usage  # show brief usage instead of full --help
-        ## OLD:
-        ## if auto_help is None:
-        ##     ## TODO: rework to be default if none specified for both skip_input and manual_input
-        ##     ## OLD: auto_help = self.skip_input
-        ##     auto_help = self.skip_input or not self.manual_input
-        ##     debug.trace(7, f"inferred auto_help: {auto_help}")
-        ## self.auto_help = auto_help      # adds --help to command line if no arguments
         if usage_notes is None:
             usage_notes = ""
         self.notes = usage_notes
@@ -332,14 +300,6 @@ class Main(object):
         # Setup temporary file and/or base directory
         # TODO: allow temp_base handling to be overridable by constructor options
         # TODO: reconcile with unittest_wrapper.py.get_temp_dir
-        ## OLD:
-        ## prefix = (FILE_BASE + "-")
-        ## alt_temp_base = (
-        ##     tempfile.NamedTemporaryFile(
-        ##         prefix=prefix,
-        ##         delete=not debug.detailed_debugging(),
-        ##         ## TODO: "suffix": "-"
-        ##     ).name)
         self.temp_base = gh.get_temp_file()
         # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
         # -or-: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
@@ -351,7 +311,6 @@ class Main(object):
             ## TEMP HACK: remove file if not a dir (n.b., quirk with NamedTemporaryFile
             if system.is_regular_file(self.temp_base):
                 gh.delete_file(self.temp_base)
-            ## OLD: gh.run("mkdir -p {dir}", dir=self.temp_base)
             gh.full_mkdir(self.temp_base)
             ## TODO3: main-temp.txt???
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
@@ -446,7 +405,6 @@ class Main(object):
             argument_specs += self.boolean_options + self.text_options + self.int_options + self.float_options
         if not just_optional:
             argument_specs += self.positional_options
-        ## OLD: arguments = [(spec[0] if list(spec[0]) else spec) for spec in argument_specs]
         arguments = [(spec[0] if isinstance(spec, list) else spec) for spec in argument_specs]
         debug.trace(6, f"get_arguments([pos?={just_positional}, opt?={just_optional}] => {arguments}")
         return arguments
@@ -478,7 +436,6 @@ class Main(object):
         opt_prefix = "--" if not positional else ""
         # TODO: use keyword arguments (or namedtuple)
         if isinstance(option_spec, tuple):
-            ## OLD: option_components = list(option_spec)
             option_components = option_spec
             opt_label = opt_prefix + option_components[0]
             if len(option_components) > 1:
@@ -640,7 +597,6 @@ class Main(object):
         if not self.argument_parser:
             self.argument_parser = argparse.ArgumentParser
         usage_notes = self.notes
-        ## OLD: if (not usage_notes and SHOW_ENV_OPTIONS):
         if (not usage_notes):
             env_opt_spec = ""
             if (SHOW_ENV_OPTIONS or VERBOSE_MODE):
@@ -686,27 +642,12 @@ class Main(object):
             else:
                 add_argument(opt_label, default=opt_default, action="store_true", help=opt_desc)
                 if NEGATIVE_BOOL_ARGS:
-                    # BAD: label = f"non-{opt_label}"
                     under_label = my_re.sub(r"^__", "", opt_label.replace("-", "_"))
                     label = "--non-" + under_label
-                    ## SO-SO
-                    ## # note: converts "Description ..." into "Do not description ..."
-                    ## opt_desc_uncapitalized = ((opt_desc[:1].lower() + opt_desc[1:]) if opt_desc else "")
-                    ## desc = f"Non {opt_desc_uncapitalized}"
                     # note: the argument is not shown in help to avoid clutter
                     desc = argparse.SUPPRESS
                     debug.trace(4, f"Adding negative-boolean: label={label} dest={under_label}")
                     parser.add_argument(label, default=opt_default, dest=under_label, action="store_false", help=desc, add_short=False)
-        ## OLD:
-        ## for opt_spec in self.int_options:
-        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-        ##     add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
-        ## for opt_spec in self.float_options:
-        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-        ##     add_argument(opt_label, type=float, default=opt_default, help=opt_desc)
-        ## for opt_spec in self.text_options:
-        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-        ##     add_argument(opt_label, default=opt_default, help=opt_desc)
         for options, opt_type in [(self.int_options, int),
                                   (self.float_options, float),
                                   (self.text_options, str)]:
@@ -1000,8 +941,6 @@ class Main(object):
                         self.end_of_page = True
                         if RETAIN_FORM_FEED:
                             line_segment = FORM_FEED + line_segment
-                    ## OLD: if line_segment and (i > 0):
-                    ## NEW:
                     if (i > 0):
                         self.line_num += 1
                         self.rel_line_num += 1
@@ -1009,8 +948,6 @@ class Main(object):
                             self.page_num += 1
                             self.rel_para_num = 1
                             self.rel_line_num = 1
-                    ## OLD: if line_segment:
-                    ## NEW:
                     if True:            # pylint: disable=using-constant-test
                         debug.trace_fmt(6, "yielding line segment [Pg{pg}/Par{par}/L{ln}]: {ls}",
                                         pg=self.page_num, par=self.rel_para_num, ln=self.rel_line_num, ls=line_segment)
@@ -1111,7 +1048,6 @@ class Main(object):
                                 
             # Remove all temp_base* files (or the temp_base directory)
             if self.use_temp_base_dir:
-                ## OLD: gh.run("rm -rf {dir}", dir=self.temp_base)
                 if DISABLE_RECURSIVE_DELETE:
                     debug.trace(4, f"FYI: Only deleting top-level files in {self.temp_base} to avoid potentially dangerous rm -r")
                     gh.run("rm -f {dir}/* {dir}/.*", dir=self.temp_base)
@@ -1149,7 +1085,6 @@ def main() -> None:
             print("No-op main step")
             
     # note: Following used for argument parsing
-    ## OLD: main = Main(description=__doc__)
     ## NOTE: That hangs with run-python-script main.py
     main_app = VacuousMain(description=__doc__, skip_input=True, manual_input=True)
     ## TODO3: main.run_main_step = lambda self: print("No-op main step")
