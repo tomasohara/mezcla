@@ -32,7 +32,7 @@
 #
 HTMLParser
 absl_py
-asttokens
+asttokens                     # for debug introspection
 beautifulsoup4
 bs4
 cachetools
