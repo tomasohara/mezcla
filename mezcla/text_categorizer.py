@@ -56,6 +56,7 @@ from mezcla.system import (
     getenv_bool, getenv_float, getenv_int, getenv_text,
 )
 from mezcla.tfidf import MIN_NGRAM_SIZE, MAX_NGRAM_SIZE
+from mezcla.html_utils import format_html_message
 
 #................................................................................
 # Constants (e.g., environment-based options)
@@ -624,6 +625,7 @@ def format_index_html(base_url=None):
         </head>
         <body>
             Try <a href="categorize">categorize</a> and <a href="class_probabilities">class_probabilities</a>.<br>
+            <br>
             note: You need to supply the <i><b>text</b></i> parameter.<br>
             <br>
             Examples:
@@ -734,15 +736,15 @@ class web_controller(object):
         Note: The command is ignored if not debugging and on a production server."""
         debug.trace_fmtd(5, "wc.stop(s:{s}, kw:{kw})", s=self, kw=kwargs)
         # TODO: replace stooges with your real server nicknames
-        if ((not debug.detailed_debugging()) and (os.environ.get("HOST_NICKNAME") in ["curly", "larry", "moe"])):
-            return "Call security!"
+        if ((not debug.detailed_debugging()) or
+            ((os.environ.get("HOST_NICKNAME") in ["curly", "larry", "moe"]))):
+            return format_html_message("Call security!")
         # TODO: Straighten out shutdown quirk (seems like two invocations required).
         # NOTE: Putting exit before stop seems to do the trick. However, it might be
         # the case that the server shutdown.
         cherrypy.engine.exit()
         cherrypy.engine.stop()
-        # TODO: Use HTML so shutdown shown in title.
-        return "Adios"
+        return format_html_message("Adios")
 
     # alias for stop
     shutdown = stop
