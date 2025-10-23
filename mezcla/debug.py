@@ -48,6 +48,7 @@
 #-------------------------------------------------------------------------------
 # TODO1:
 # - Add sanity check to trace_fmt for when keyword in kaargs unused.
+# - Weed out lingering issues with max_len for trace-related functions.
 #
 # TODO3:
 # - Fill in more defaults like max_len using @docstring_parameter
@@ -391,6 +392,7 @@ if __debug__:
         # references, this function does the formatting.
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
         # TODO3: return text as with trace and trace_expr
+        result = ""
         if (trace_level >= level):
             ## TODO3 (rework by checking unknown args not in format string):
             ## check_keyword_args(VERBOSE, "max_len skip_sanity_checks",
@@ -406,7 +408,7 @@ if __debug__:
                              trace(level, "[FYI: potential extraneous f-string issue in  in trace_fmt: missing {}'s?] ", no_eol=True)
                     kwargs_unicode = {k: format_value(_to_unicode(_to_string(v)), max_len=max_len)
                                       for (k, v) in list(kwargs.items())}
-                    trace(level, _to_unicode(text).format(**kwargs_unicode))
+                    result = trace(level, _to_unicode(text).format(**kwargs_unicode), max_len=max_len)
                 except(KeyError, ValueError, UnicodeEncodeError):
                     raise_exception(max(VERBOSE, level + 1))
                     sys.stderr.write("Warning: Problem in trace_fmtd: {exc}\n".
@@ -420,7 +422,7 @@ if __debug__:
                 raise_exception(max(VERBOSE, level + 1))
                 sys.stderr.write("Error: Unexpected problem in trace_fmtd: {exc}\n".
                                  format(exc=sys.exc_info()))
-        return
+        return result
 
 
     STANDARD_TYPES = (int, float, dict, list)
@@ -620,7 +622,7 @@ if __debug__:
         - Use USE_REPR=False to use tracing via str instead of repr.
         - Use _KW_ARG for KW_ARG (i.e., '_' prefix in case of conflict), as in following:
           trace_expr(DETAILED, term, _term="; ")
-        - Use MAX_LEN to specify maximum value length ({max_len}).
+        - Use MAX_LEN to specify maximum value length ({max_len}), including the variable name, etc.
         - Use PREFIX to specify initial trace output (e.g., for function call tracing).
         - Use SUFFIX to specify final value to be printed (e.g., for perlish para grep over multi-line trace).
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
@@ -677,7 +679,7 @@ if __debug__:
             ## expression = "@".join(expression)
             ## trace(3, f"{values=} {expression=}")
             ##
-            out_text += trace(level, expression, skip_sanity_checks=True)
+            out_text += trace(level, expression, skip_sanity_checks=True, max_len=max_len)
         else:
             ## TODO2: handle cases split across lines
             try:
@@ -705,7 +707,7 @@ if __debug__:
 
             # Output initial text
             if prefix:
-                out_text += trace(level, prefix, no_eol=no_eol, skip_sanity_checks=True)
+                out_text += trace(level, prefix, no_eol=no_eol, skip_sanity_checks=True, max_len=max_len)
 
             # Output each expression value
             for expression, value in zip_longest(expressions, values):
@@ -718,13 +720,13 @@ if __debug__:
                               f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
                     value_spec = format_value(repr(value) if use_repr else value,
                                               max_len=max_len)
-                    out_text += trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True)
+                    out_text += trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True, max_len=max_len)
                 except:
                     trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
                            exc=sys.exc_info())
             # Output final text
             if suffix:
-                out_text += trace(level, suffix, no_eol=False, skip_sanity_checks=True)
+                out_text += trace(level, suffix, no_eol=False, skip_sanity_checks=True, max_len=max_len)
             elif (no_eol and (delim != "\n")):
                 out_text += trace(level, "", no_eol=False)
             else:
