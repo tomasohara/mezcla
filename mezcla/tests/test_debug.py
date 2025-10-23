@@ -153,9 +153,9 @@ class TestDebug(TestWrapper):
         debug.trace(4, f"test_trace_fmtd(): self={self}")
         self.patch_trace_level(5)
         
-        THE_MODULE.trace_fmtd(4, "trace_{fmtd}", **{"max_len": 5, "fmtd": "formatted"})
+        THE_MODULE.trace_fmtd(4, "trace_{fmtd}", **{"max_len": 8, "fmtd": "formatted"})
         stderr = self.get_stderr()
-        assert "trace_forma..." in stderr
+        assert "trace..." in stderr
         
         self.clear_stderr()
         THE_MODULE.trace_fmtd(4, "trace_{fmtd}", **{"fmtd": "formatted"})
@@ -284,11 +284,21 @@ class TestDebug(TestWrapper):
         """Test trace_expr with max_len"""
         debug.trace(4, f"test_trace_expr(): self={self}")
         var = "-" * 32
-        THE_MODULE.trace_expr(debug.get_level(), var, max_len=8)
+        self.patch_trace_level(1)
+        THE_MODULE.trace_expr(1, var, max_len=16)
         err = self.get_stderr()
-        ## TODO2: assert my_re.search(r"var='--------\.\.\.'", err))
-        ##                                                 ^
-        assert my_re.search(r"var='--------\.\.\.", err)
+        # note: max_len includes variable name, quote and ellipsis
+        assert my_re.search(r"var='-{5,8}\.\.\.", err)
+        ##
+        # note: trace_expr had bug where OK up to hard-coded limit (e.g., 1024)
+        MAX_LEN = 2048
+        var = "-" * (2 * MAX_LEN)
+        self.monkeypatch.setattr(THE_MODULE, "use_old_introspection", True)
+        result = THE_MODULE.trace_expr(1, var, max_len=MAX_LEN)
+        assert (len(result) > MAX_LEN)
+        self.monkeypatch.setattr(THE_MODULE, "use_old_introspection", False)
+        result = THE_MODULE.trace_expr(1, var, max_len=MAX_LEN)
+        assert (len(result) > MAX_LEN)
 
     @pytest.mark.xfail
     def test_trace_current_context(self):
