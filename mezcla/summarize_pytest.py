@@ -171,8 +171,8 @@ class PytestSummarizer:
             return ""
         
         # Build header
-        header = (f"{'Timestamp':12} {'Pass':>7} {'Fail':>7} {'Skip':>7} "
-                 f"{'XFail':>7} {'XPass':>7} {'Total':>7} {'OK-pct':>8} {'Time':>7}")
+        header = (f"{'Timestamp':12} {'Skip':>7} {'Pass':>7} {'Fail':>7} " +
+                  f"{'XFail':>7} {'XPass':>7} {'Total':>7} {'OK-pct':>8} {'Time':>7}")
         
         lines = []
         
@@ -186,9 +186,9 @@ class PytestSummarizer:
             for result in results:
                 lines.append(
                     f"{result.timestamp:12} "
+                    f"{result.skipped:7d} "
                     f"{result.passed:7d} "
                     f"{result.failed:7d} "
-                    f"{result.skipped:7d} "
                     f"{result.xfailed:7d} "
                     f"{result.xpassed:7d} "
                     f"{result.total_tests(self.treat_xresults):7d} "
