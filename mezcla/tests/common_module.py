@@ -42,9 +42,8 @@ HOME = gh.HOME_DIR
 ##     "RUN_SLOW_TESTS", 
 ##     description="Alias for not[-]SKIP_SLOW_TESTS")
 SKIP_SLOW_TESTS = system.getenv_bool(
-    "SKIP_SLOW_TESTS",
-    (not (UNDER_RUNNER or RUN_SLOW_TESTS)),
-    description="Omit tests that can a while to run")
+    "SKIP_SLOW_TESTS", (not (UNDER_RUNNER or RUN_SLOW_TESTS)),
+    description="Omit tests that can take a while to run")
 SKIP_SLOW_REASON="Ignoring slow test"
 ##
 SKIP_UNIMPLEMENTED_TESTS = system.getenv_bool(
