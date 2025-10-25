@@ -618,6 +618,7 @@ class TestWrapper(unittest.TestCase):
             message: Optional[str] = None
         ) -> None:
         """Make sure VALUE1 equals VALUE2, using optional MESSAGE"""
+        ## TODO3: deprecate and then drop (to avoid proliferation of unitest-style assert methods)
         equals = value1 == value2
         if ((not equals) and debug.debugging(debug.TL.DEFAULT)):
             (statement, filename, line_num, expr, qual) = self.resolve_assertion("do_assert_equals", message)
