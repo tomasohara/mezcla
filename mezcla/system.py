@@ -614,7 +614,7 @@ def load_object(file_name: FileDescriptorOrPath, ignore_error: bool = False) -> 
 def quote_url_text(text: str, unquote: bool = False, idempotent: bool = False) -> str:
     """(un)Quote/encode TEXT to make suitable for use in URL via encoded hex values (e.g., using '%3F' for '?').
     This is a wrapper around quote_plus and thus escapes slashes, along with spaces and other special characters (";?:@&=+$,\"'").
-    Note: With optional IDEMPOTENT, this return the input if the text has encoded characters (i.e., %HH) where H is uppercase hex digit.
+    Note: With optional IDEMPOTENT, this returns the input if the text has encoded characters (e.g., %HH or +) where H is uppercase hex digit
     """
     # EX: quote_url_text("<2/") => "%3C2%2F"
     # EX: quote_url_text("Joe's hat") => "Joe%27s+hat"
@@ -637,8 +637,7 @@ def quote_url_text(text: str, unquote: bool = False, idempotent: bool = False) -
             ## TODO: debug.trace_fmt(6, "take 2 urllib.parse", m=urllib.parse, show_all=True)
             if quote:
                 ## NOTE: Unfortunately quote_plus uses '' as a default
-                ## BAD: safe = None if not idempotent else "%"
-                safe = "" if not idempotent else "%"
+                safe = "" if not idempotent else "%+"
                 result = urllib.parse.quote_plus(text, safe=safe)
             else:
                 result = urllib.parse.unquote_plus(text)
@@ -649,14 +648,19 @@ def quote_url_text(text: str, unquote: bool = False, idempotent: bool = False) -
     debug.trace_fmtd(6, "out quote_url_text({t}) => {r}", t=text, r=result)
     return result
 #
+# EX: quote_url_text(quote_url_text("<2/")) => '%253C2%252F'
+# EX: quote_url_text(quote_url_text("<2/"), idempotent=True) => '%3C2%2F'
+
+
 def unquote_url_text(text: str) -> str:
     """Unquotes/decodes URL TEXT:
     Note: Wrapper around quote_url_text w/ UNQUOTE set"""
     # EX: unquote_url_text("%3C2%2F") => "<2/"
     return quote_url_text(text, unquote=True)
 #
-# EX: (text =: "?"; quote_url_text(quote_url_text(text)) != text)
-# EX: (text =: "?"; quote_url_text(quote_url_text(text), idempotent=True) == text)
+# EX: ((text := "?") and (quote_url_text(quote_url_text(text)) != text))
+# EX: ((text := "?") and (quote_url_text(quote_url_text(text), idempotent=True) == text))
+
 
 def escape_html_value(value: str) -> str:
     """Escape VALUE for HTML embedding
