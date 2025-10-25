@@ -135,11 +135,25 @@ class TestIt(TestWrapper):
         line_without_timestamp = "================================= 10 passed in 1.0s ================================="
         summarizer = THE_MODULE.PytestSummarizer(ignore_timestamp=True)
         result = summarizer.parse_pytest_line(line_without_timestamp)
-        
         self.do_assert(result is not None)
         self.do_assert(result.timestamp == 'n/a')
         self.do_assert(result.passed == 10)
+        self.do_assert(result.total_tests() == 10)
         self.do_assert(abs(result.duration - 1.0) < 0.01)
+
+        line_without_timestamp = "=== 1 failed, 5 passed, 2 skipped, 17 xfailed, 39 xpassed, 13 warnings in 139.11s (0:02:19) ==="
+        summarizer = THE_MODULE.PytestSummarizer(ignore_timestamp=True)
+        result = summarizer.parse_pytest_line(line_without_timestamp)
+        self.do_assert(result is not None)
+        self.do_assert(result.timestamp == 'n/a')
+        self.do_assert(result.failed == 1)
+        self.do_assert(result.passed == 5)
+        self.do_assert(result.skipped == 2)
+        self.do_assert(result.xfailed == 17)
+        self.do_assert(result.xpassed == 39)
+        self.do_assert(result.total_tests(treat_xresults=False) == 6)
+        self.do_assert(result.total_tests(treat_xresults=True) == 62)
+        self.do_assert(abs(result.duration - 139) < 0.5)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
