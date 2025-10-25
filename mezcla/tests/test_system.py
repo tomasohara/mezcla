@@ -381,11 +381,16 @@ class TestSystem(TestWrapper):
     def test_idempotent_quote_url_text(self):
         """Verify quote_url_text with idempotent option"""
         debug.trace(4, "test_idempotent_quote_url_text()")
-        
-        actual = THE_MODULE.quote_url_text("?a=a&b=2")
+
+        actual = MOD.quote_url_text("?a=a&b=2")
         assert(actual == "%3Fa%3Da%26b%3D2")
-        assert THE_MODULE.quote_url_text(actual, idempotent=True) == actual
-        assert THE_MODULE.quote_url_text(actual) != actual
+        assert MOD.quote_url_text(actual, idempotent=True) == actual
+        assert MOD.quote_url_text(actual) != actual
+        tomo = "Tom O'Hara"
+        assert (MOD.quote_url_text(tomo)
+                != MOD.quote_url_text(MOD.quote_url_text(tomo)))
+        assert (MOD.quote_url_text(tomo)
+                == MOD.quote_url_text(MOD.quote_url_text(tomo), idempotent=True))
 
     ## OLD:
     ## def test_escape_html_text(self):
