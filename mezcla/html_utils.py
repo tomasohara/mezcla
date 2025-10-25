@@ -352,7 +352,7 @@ def browser_command(url: str, command: str, timeout : Optional[float] = None,
             result = browser.execute_script(command)
     except:
         system.print_exception_info(f"browser_command {command!r}")
-    debug.trace_fmt(6, "browser_command({u}, {c}, [{to}, {b}]) => {r}",
+    debug.trace_fmt(5, "browser_command({u}, {c}, [{to}, {b}]) => {r}",
                     u=url, c=command, r=result, b=browser, to=timeout)
     return result
 
@@ -443,7 +443,7 @@ def selenium_function(url: str, function: Optional[str] = None, args: Optional[s
             result = eval(f"browser.{call}")
     except:
         system.print_exception_info(f"selenium_function {function!r})")
-    debug.trace_fmt(6, "selenium_function({u}, {f}, {a}, [{b}]) => {r}",
+    debug.trace_fmt(5, "selenium_function({u}, {f}, {a}, [{b}]) => {r}",
                     u=url, f=function, a=args, r=result, b=browser)
     return result
 
