@@ -359,6 +359,12 @@ class TestWrapper(unittest.TestCase):
             full_module_name = package_name + "." + module_name
         else:
             full_module_name = module_name
+        ## TEST (won't work in static method):
+        ## NOTE: Use set_module_info instead of get_testing_module_name
+        ## TODO?: make a class method
+        ## # Set tested-script filename if not set
+        ## if self.script_file == TODO_FILE:
+        ##     self.script_file = self.get_module_file_path(test_filename)
         debug.trace_fmtd(4, "get_testing_module_name({f}, [{mo}]) => {m}",
                          f=test_filename, m=full_module_name, mo=module_object)
         return (full_module_name)
@@ -375,7 +381,7 @@ class TestWrapper(unittest.TestCase):
 
     @classmethod
     def set_module_info(cls, test_filename: str, module_object: Optional[object] = None) -> None:
-        """Sets both script_module and script_path
+        """Sets both script_module and script_file
         Note: normally invoked in setUpClass method
         Usage: cls.set_module_info(__file__, THE_MODULE)
         """
