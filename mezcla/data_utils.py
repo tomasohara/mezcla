@@ -78,7 +78,7 @@ def read_csv(filename, **in_kw):
         kw['quoting'] = csv.QUOTE_NONE
     # Add special processing (n.b., a bit idiosyncratic)
     if ((COMMENT not in kw) and (kw.get(DIALECT) != EXCEL)):
-        debug.trace_fmt(4, "FYI: Enabling comments in data_utils.read_csv")
+        debug.trace(4, "FYI: Enabling comments in data_utils.read_csv")
         kw[COMMENT] = "#"
     debug.trace_fmt(4, "in data_utils.read_csv({f}, [in_kw={ikw}])", f=filename, ikw=in_kw)
     debug.trace_fmt(4, "\tFYI: kw={k}", k=kw)
@@ -105,7 +105,7 @@ def to_csv(filename, data_frame, **in_kw):
     try:
         result = data_frame.to_csv(filename, **kw)
     except:
-        debug.trace(4, f"Exception during write_csv: {system.get_exception()}")
+        debug.trace(4, f"Exception during to_csv: {system.get_exception()}")
     debug.trace(5, f"data_utils.to_csv({filename}, {data_frame}) => {result}")
     return result
 #
