@@ -62,7 +62,8 @@ class TestDataUtils(TestWrapper):
     def test_to_csv(self):
         """Ensure to_csv works as expected"""
         debug.trace(4, "test_to_csv()")
-        system.setenv("DELIM", ",")
+        ## OLD: system.setenv("DELIM", ",")
+        self.monkeypatch.setattr(THE_MODULE, "DELIM", ",")
         # Setup
         temp_file = self.get_temp_file()
         df = pd.DataFrame()
@@ -71,13 +72,12 @@ class TestDataUtils(TestWrapper):
         df['petal_length'] = [1.4, 1.4, 1.3, 1.5, 1.4]
         df['petal_width'] = [0.2, 0.2, 0.2, 0.2, 0.2]
         df['class'] = ['Iris-setosa', 'Iris-virginica', 'Iris-versicolor', 'Iris-setosa', 'Iris-setosa']
-        # TODO2: track down exception
-        #  Exception during write_csv: (<class 'TypeError'>, TypeError('"delimiter" must be string, not NoneType'), <traceback object at 0x7f49885f3880>)
         THE_MODULE.to_csv(temp_file, df)
         df.to_csv(temp_file, index=False)
         # Test
         expected = (
-            'sepal_length,sepal_width,petal_length,petal_width,class'
+            'sepal_length,sepal_width,petal_length,petal_width,class\n' +
+            '5.1,3.5,1.4,0.2,Iris-setosa'
         )
         assert expected in system.read_file(temp_file)
 
