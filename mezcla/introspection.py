@@ -78,6 +78,7 @@ import inspect
 import os
 from os.path import basename, realpath
 from types import FrameType
+import traceback
 
 # Installed packages
 # note: asttokens loaded dynamically when executed (so checked here for clients)
@@ -106,7 +107,8 @@ def trace(text, level=BTL, **kwargs):
     """Wrapper around debug.trace w/ sanity checks ignored
     Options trace LEVEL and KWARGS passed along
     """
-    debug.trace(level, text, skip_sanity_checks=True, **kwargs)
+    if debug:
+        debug.trace(level, text, skip_sanity_checks=True, **kwargs)
 
 
 def stderr_print(*args):
@@ -345,6 +347,8 @@ class MezclaDebugger:
             sys.stderr.write("Error: unable to format arg spec:\n")
             sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
             sys.stderr.write(f"\t{sys.exc_info()}\n")
+            if INTROSPECTION_DEBUG:
+                traceback.print_stack(file=sys.stderr)
         if INTROSPECTION_DEBUG:
             trace(f"out format: {out!r}", level=BTL+1)
         return out
