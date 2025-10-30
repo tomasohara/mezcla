@@ -107,6 +107,7 @@ class PytestSummarizer:
             return None
         
         # Extract timestamp with optional revision number
+        # example: 09jan25.12
         timestamp = "n/a"
         if not self.ignore_timestamp:
             timestamp_match = my_re.search(r'(\d+\w+\d+(\.\d+)?)', line)
