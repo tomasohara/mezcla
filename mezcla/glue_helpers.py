@@ -934,6 +934,7 @@ def rename_file(source: StrOrBytesPath, target: str) -> None:
     debug.assertion(non_empty_file(target))
     return
 
+## TODO4: def rename_ddmmmyy_hhmmss
 
 def delete_file(filename: StrOrBytesPath) -> bool:
     """Deletes FILENAME"""
