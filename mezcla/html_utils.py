@@ -10,7 +10,7 @@
 # Example usage:
 #
 # TODO3: see what html_file should be set to
-# $ PATH="$PATH:/usr/local/programs/selenium" DEBUG_LEVEL=6 MOZ_HEADLESS=1 $PYTHON html_utils.py "$html_file" > _html-utils-pubchem-ibuprofen.log 2>&1
+# $ PATH="$PATH:/usr/local/programs/selenium" DEBUG_LEVEL=6 HEADLESS_WEBDRIVER=1 $PYTHON html_utils.py "$html_file" > _html-utils-pubchem-ibuprofen.log 2>&1
 # $ cd $TMPDIR
 # $ wc *ibuprofen*
 #     13   65337  954268 post-https%3A%2F%2Fpubchem.ncbi.nlm.nih.gov%2Fcompound%2FIbuprofen
