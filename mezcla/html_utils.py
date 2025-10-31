@@ -346,7 +346,7 @@ def browser_command(url: str, command: str, timeout : Optional[float] = None,
     """Issue COMMAND to BROWSER via selenium (for URL) with optional TIMEOUT.
     The command is part of the browser API (not the python API): for latter, see selenium_function.
     """
-    # example: return document.readyState
+    # example: return document.contentType
     result: Any = None
     try:
         if browser is None:
