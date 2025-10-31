@@ -343,7 +343,10 @@ def get_inner_text(url : str, browser: Optional[WebDriver] = None) -> str:
 
 def browser_command(url: str, command: str, timeout : Optional[float] = None,
                     browser: Optional[WebDriver] = None) -> Any:
-    """Issue COMMAND to BROWSER via selenium (for URL) with optional TIMEOUT"""
+    """Issue COMMAND to BROWSER via selenium (for URL) with optional TIMEOUT.
+    The command is part of the browser API (not the python API): for latter, see selenium_function.
+    """
+    # example: return document.readyState
     result: Any = None
     try:
         if browser is None:
@@ -425,9 +428,11 @@ def selenium_function(url: str, function: Optional[str] = None, args: Optional[s
                       call: Optional[str] = None, timeout : Optional[float] = None,
                       browser: Optional[WebDriver] = None) -> Any:
     """Evaluate selenium FUNCTION with ARGS using BROWSER (for URL).
+    The function is part of the python API (not the browser API): for latter, see browser_command.
     With optional CALL specified, the function and args are ignored.
     Note: This is just a wrapper around FUNCTION(ARGS) with tracing and exception handling.
     """
+    # example: get_screenshot_as_file("output-files/modern-art-4x3.png")
     if args is None:
         args = ""
     if call is None:
