@@ -85,7 +85,6 @@ from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import misc_utils
 from mezcla import system
-## OLD: from mezcla.system import write_temp_file
 write_temp_file = gh.write_temp_file
 
 # Constants
@@ -121,7 +120,7 @@ HEADLESS_WEBDRIVER = system.getenv_bool(
     "HEADLESS_WEBDRIVER", True,
     description="Whether Selenium webdriver is hidden")
 KIOSK_MODE = system.getenv_bool(
-    "KIOSK_MODE", True,
+    "KIOSK_MODE", False,
     description="Run browser in kiosk mode (e.g., no window controls)")
 OMIT_STABLE_DOWNLOAD_CHECK = system.getenv_bool(
     "OMIT_STABLE_DOWNLOAD_CHECK", False,
@@ -204,16 +203,8 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
     if timeout is None:
         timeout = BROWSER_TIMEOUT
     debug.trace(4, f"in get_browser({url}); {timeout=}")
-    ## OLD:
-    ## # pylint: disable=import-error, import-outside-toplevel
-    ## from selenium import webdriver
-    ## from selenium.webdriver.remote.webdriver import WebDriver
-    #
     browser : Optional[WebDriver] = None
     global browser_cache
-    ## OLD:
-    ## debug.assertion(USE_BROWSER_CACHE, 
-    ##                 "Note: Browser automation without cache not well tested!")
 
     # Check for cached version of browser. If none, create one and access page.
     browser = browser_cache.get(url) if USE_BROWSER_CACHE else None
@@ -221,14 +212,9 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
         try:
             # Make the browser hidden by default (i.e., headless)
             # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
-            ## TODO2: add an option to use Chrome
             options_module = (webdriver.firefox.options if FIREFOX_WEBDRIVER else webdriver.chrome.options)
             webdriver_options = options_module.Options()
-            ## TEMP: Based on https://www.reddit.com/r/learnpython/comments/1fv3kiy/need_help_with_installing_geckodriver (TODO3: generalize)
-            ## OLD:
-            ## if FIREFOX_PATH and FIREFOX_WEBDRIVER:
-            ##     webdriver_options.binary_location = FIREFOX_PATH
-            ##     debug.trace(4, f"Warning: overriding webdriver path: {webdriver_options.binary_location=}")
+
             if BROWSER_PATH:
                 webdriver_options.binary_location = BROWSER_PATH
                 debug.assertion(system.file_exists(BROWSER_PATH))
@@ -249,14 +235,10 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
                 dims = [system.to_float(d) for d in misc_utils.extract_string_list(BROWSER_DIMENSIONS)]
                 debug.assertion(len(dims) == 2)
                 browser.set_window_size(*dims)
-                ## TEST: browser.fullscreen_window()
             if debug.get_level() >= 6:
                 debug.trace_fmt(1, "Window dimensions: {w}x{h}",
                                 w=browser.execute_script("return window.outerWidth"),
                                 h=browser.execute_script("return window.outerHeight"))
-            ## OLD:
-            ## browser_class = (webdriver.Firefox if FIREFOX_WEBDRIVER else webdriver.Chrome)
-            ## browser = browser_class(options=webdriver_options)
             if timeout:
                 ## TODO2: determine way for timeout to honored without timeout exception during get below
                 debug.assertion(False, "Selenium timeout support not functional")
@@ -409,7 +391,6 @@ def wait_until_ready(url : str, stable_download_check : Optional[bool] = None,
                             l=last_size, s=size, c=count, d=done, df=diff)
             last_size = size
         if not done:
-            ## OLD: debug.trace_fmt(6, "Mid-stream download sleep ({s} secs)", s=MID_DOWNLOAD_SLEEP_SECONDS)
             system.sleep(MID_DOWNLOAD_SLEEP_SECONDS, message="Mid-stream download")
 
     # Issue warning if unexpected condition
@@ -546,7 +527,6 @@ def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", par
     if isinstance(param_value, list):
         param_value = param_value[-1]
     param_value = system.to_unicode(param_value)
-    ## OLD: value = "checked" if (param_value in ["1", "on", True]) else ""
     value = "checked" if system.to_bool(param_value) else ""
     debug.trace_fmtd(4, "get_url_param_checkbox_spec({n}, [{d}]) => {v})",
                      n=name, d=default_value, v=value)
@@ -567,7 +547,6 @@ def get_url_parameter_value(param, default_value : Any = None, param_dict : Opti
     in_param = param
     if "_" in param and (param not in param_dict):
         param = param.replace("_", "-")
-    ## OLD: result = param_dict.get(param, default_value)
     result = (param_dict.get(param) or default_value)
     if isinstance(result, list):
         result = result[-1]
@@ -585,9 +564,6 @@ def get_url_parameter_bool(param, default_value : bool = False, param_dict : Opt
     """
     # EX: get_url_parameter_bool("abc", False, { "abc": "on" }) => True
     debug.assertion((default_value is None) or isinstance(default_value, bool))
-    ## OLD:
-    ## result = (get_url_parameter_value(param, default_value, param_dict)
-    ##           in ["1", "on", "True", True])
     value = get_url_parameter_value(param, default_value, param_dict)
     result = system.to_bool(value)
     ## HACK: result = ((system.to_unicode(param_dict.get(param, default_value))) in ["on", True])
@@ -680,9 +656,6 @@ def _write_file(filename : str, data : Union[str, bytes], as_binary : bool) -> N
     ## TODO2: allow for ignoring UTF-8 errors
     debug.trace(8, f"_write_file({filename}, _, {as_binary})")
     ## NOTE: maldito mypy is too picky
-    ## OLD:
-    ## write_fn = system.write_binary_file if as_binary else system.write_file
-    ## return write_fn(filename, data)
     ## TODO3: see if way to specify alternative union type that is accepted by it
     if as_binary and isinstance(data, bytes):
         system.write_binary_file(filename, data)
@@ -737,7 +710,6 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
             with urllib.request.urlopen(req) as fp:
                 status_code = fp.getcode()
                 content = fp.read()
-            ## OLD: local_filename, headers = urllib.request.urlretrieve(url, local_filename)      # pylint: disable=no-member
 
             # Save the content to a local file
             _write_file(local_filename, content, as_binary)
@@ -797,7 +769,6 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
     local_filename = gh.form_path(download_dir, filename)
     if meta_hash is not None:
         meta_hash[FILENAME] = local_filename
-    ## OLD: headers = {}
     doc_data: OptStrBytes = ""
     if use_cached and system.non_empty_file(local_filename):
         debug.trace_fmtd(5, "Using cached file for URL: {f}", f=local_filename)
@@ -806,12 +777,6 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
         doc_data = retrieve_web_document(url, meta_hash=meta_hash, as_binary=as_binary, ignore=ignore)
         if doc_data:
             _write_file(local_filename, doc_data, as_binary)
-        ## OLD:
-        ## if meta_hash:
-        ##     headers = meta_hash.get(HEADERS, {})
-    ## OLD:
-    ## debug.trace_fmtd(5, "=> local file: {f}; headers={{{h}}}",
-    ##                  f=local_filename, h=headers)
     debug.trace_expr(5, local_filename, meta_hash)
 
     ## TODO: show hex dump of initial data
@@ -1370,10 +1335,6 @@ def main(args : List[str]) -> None:
             if use_stdout:
                 print(html_data)
             else:
-                ## OLD:
-                ## doc_filename = filename
-                ## system.write_file(doc_filename + ".html", html_data)
-                ## print(f"See {doc_filename}.html")
                 system.write_file(filename, html_data)
                 print(f"See {filename!r} for regular HTML.")
         else:
