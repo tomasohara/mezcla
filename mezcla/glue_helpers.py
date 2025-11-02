@@ -1113,12 +1113,12 @@ def init() -> None:
     if TEMP_BASE and not PRESERVE_TEMP_FILE:
         temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
         debug.trace(4, f"FYI: Inferred TEMP_FILE default: {temp_file_default!r}")
-    debug.trace_expr(5, system.getenv("TEMP_FILE"))
+    debug.trace_expr(6, system.getenv("TEMP_FILE"))
     global TEMP_FILE
     TEMP_FILE = system.getenv_value(
         "TEMP_FILE", temp_file_default, skip_register=initialized,
         description="Debugging override for temporary filename: avoid if possible")
-    debug.trace_expr(5, system.getenv("TEMP_FILE"))
+    debug.trace_expr(6, system.getenv("TEMP_FILE"))
     #
     global TEMP_LOG_FILE
     TEMP_LOG_FILE = system.getenv_text(
