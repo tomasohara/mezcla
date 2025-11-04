@@ -74,7 +74,8 @@ six
 stop_words
 #opt# tensorrt                # NVidia GPU support
 transformers                  # HF models
-torch
+## NOTE: Disabled torch due to size and since specialized usage (e.g., llm_desktop_search.py).
+## TODO: torch
 unittest_parametrize          # pytest-like for classes
 #opt# torchaudio
 webcolors==1.13
