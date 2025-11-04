@@ -18,7 +18,7 @@ Adhoc usage:
 Tom O'Hara
 Feb 2022
 """
-version = "1.4.0.6"
+version = "1.4.0.7"
 __VERSION__ = version
 __version__ = __VERSION__
 
