@@ -81,7 +81,8 @@ unittest_parametrize          # pytest-like for classes
 webcolors==1.13
 wheel
 ## NOTE: temporarily disabled due to stupid docker disk space constraints
-## TODO: xgboost
+## TODO:
+xgboost
 #
 #...............................................................................
 # Optional requirements
