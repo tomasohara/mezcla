@@ -671,7 +671,7 @@ def format_index_html(base_url=None):
             <!-- Form for entering text for textcat probability distribution -->
             <hr>
             <form action="{base_url}/probs" method="get">
-                <label for="textarea1">Probabilities</label>
+                <label for="textarea2">Probabilities</label>
                 <br>
                 <textarea id="textarea2" rows="10" cols="100" name="text"></textarea>
                 <br>
