@@ -183,7 +183,7 @@ def init():
     debug.trace(5, "out hf_stable_diffusion.init")
 
 
-def show_gpu_usage(level=TL.DETAILED):
+def show_gpu_usage(level=TL.QUITE_DETAILED):
     """Show usage for GPU memory, etc.
     TODO: support other types besides NVidia"""
     if USE_HF_API:
