@@ -855,6 +855,7 @@ if __debug__:
         if (not expression):
             try:
                 # Get source information for failed assertion
+                ## TODO3: use trace_stack (here and elsewhere)
                 trace_fmtd(MOST_VERBOSE, "Call stack: {st}", st=inspect.stack())
                 offset = 2 if indirect else 1
                 caller = inspect.stack()[offset]
