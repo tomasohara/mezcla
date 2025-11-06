@@ -82,7 +82,8 @@ webcolors==1.13
 wheel
 ## NOTE: temporarily disabled due to stupid docker disk space constraints
 ## TODO:
-xgboost
+## BAD: xgboost
+xgboost<=2.1.4
 #
 #...............................................................................
 # Optional requirements
