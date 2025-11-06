@@ -69,6 +69,7 @@ SKIP_TBD_REASON="Ignore test to be designed"
 SKIP_TBD_TESTS = system.getenv_bool(
     "SKIP_TBD_TESTS", not TEST_TBD_TESTS,
     description=SKIP_TBD_REASON)
+debug.assertion(not (TEST_TBD_TESTS and SKIP_TBD_TESTS))
 
 # Globals
 mezcla_root_dir = None
