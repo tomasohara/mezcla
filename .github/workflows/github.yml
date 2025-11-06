@@ -88,7 +88,7 @@ jobs:
     timeout-minutes: 10
     ## TEMP: disable use of Docker
     ## TODO3: derive via environment or via github.event flags (see act.yml)
-    ## if: false
+    if: false
     runs-on: [ubuntu-22.04]
 
     steps:
