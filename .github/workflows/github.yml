@@ -13,6 +13,8 @@
 #   https://docs.docker.com/storage/bind-mounts
 # - Two separate sets of test environments are used. The GitHub Actions workflow runner VM is
 #   used for different python versions with the latest Ubuntu distribution
+# - The jobs take around 6-8 minutes each [circa November 2025], so setting
+#   time out to 10 minutes.
 #
 
 name: Github-Tests
@@ -28,6 +30,7 @@ jobs:
 
   build-and-test-runner:
     name: Build and Run Tests via Runner VM
+    timeout-minutes: 10
     runs-on: ${{ matrix.os }}
     
     strategy:
@@ -82,10 +85,11 @@ jobs:
           
   build-and-test-docker:
     name: Build and Run Tests via Docker
+    timeout-minutes: 10
     ## TEMP: disable use of Docker
     ## TODO3: derive via environment or via github.event flags (see act.yml)
-    if: false
-    runs-on: [ubuntu-20.04]
+    ## if: false
+    runs-on: [ubuntu-22.04]
 
     steps:
       - name: Checkout Repository
