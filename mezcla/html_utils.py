@@ -132,6 +132,12 @@ EXCLUDE_IMPORTS = system.getenv_bool(
 TARGET_BOOTSTRAP =  system.getenv_bool(
     "TARGET_BOOTSTRAP", False,
     description="Format tooltips, etc. for use with bootstrap")
+TOOLTIP_CONTROL_CLASS = system.getenv_text(
+    "TOOLTIP_CONTROL_CLASS", "tooltip-control",
+    description="CSS class for non-bootstrap tooltip control span")
+TOOLTIP_FIELD_CLASS = system.getenv_text(
+    "TOOLTIP_FIELD_CLASS", "tooltip-field",
+    description="CSS class for non-bootstrap tooltip field span")
 CHROME_WEBDRIVER = system.getenv_bool(
     "CHROME_WEBDRIVER", False,
     description="Use Chrome webdriver for Selenium")
@@ -971,7 +977,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
             misc_spec += spec
             label_misc_spec += spec
         else:
-            tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
+            tooltip_start_spec = f'<span class="{TOOLTIP_CONTROL_CLASS}"><span class="{TOOLTIP_FIELD_CLASS}>{tooltip}"</span>'
             tooltip_end_spec = "</span>"
     result += f"<label id='{param_name}-label-id' {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}"
     if not concat_label:
@@ -1062,7 +1068,7 @@ def format_input_field(
             misc_spec += spec
             label_misc_spec += spec
         else:
-            tooltip_start_spec = f'<span class="tooltip-control"><span class="tooltip-field">{tooltip}</span>'
+            tooltip_start_spec = f'<span class="{TOOLTIP_CONTROL_CLASS}"><span class="{TOOLTIP_FIELD_CLASS}">{tooltip}</span>'
             tooltip_end_spec = "</span>"
     result = ""
     if outer_span_class:
