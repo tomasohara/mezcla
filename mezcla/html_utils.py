@@ -977,7 +977,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
             misc_spec += spec
             label_misc_spec += spec
         else:
-            tooltip_start_spec = f'<span class="{TOOLTIP_CONTROL_CLASS}"><span class="{TOOLTIP_FIELD_CLASS}>{tooltip}"</span>'
+            tooltip_start_spec = f'<span class="{TOOLTIP_CONTROL_CLASS}"><span class="{TOOLTIP_FIELD_CLASS}">{tooltip}</span>'
             tooltip_end_spec = "</span>"
     result += f"<label id='{param_name}-label-id' {label_misc_spec}>{tooltip_start_spec}{label}{tooltip_end_spec}"
     if not concat_label:
