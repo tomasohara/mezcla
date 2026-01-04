@@ -40,7 +40,7 @@ debug.assertion(__doc__)
 # Constants
 TL = debug.TL
 #
-## TODO: Constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
+## TODO: Constants for switches, omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
 ## Note: Run following in Emacs to interactively replace TODO_ARG with option label
 ##    M-: (query-replace-regexp "todo\\([-_]\\)arg" "arg\\1name")
 ## where M-: is the emacs keystroke short-cut for eval-expression.
