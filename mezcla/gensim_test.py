@@ -77,9 +77,6 @@ class CorpusData(object):
         if in_memory is None:
             in_memory = IN_MEMORY
         self.in_memory = in_memory      # keep matrix in memory
-        ## OLD:
-        ## if (self.text):              # mapping from words to token IDs
-        ##     self.dictionary = create_dictionary(self.text)
         self.dictionary = None
         if (self.text or self.directory):
             self.create_gensim_dictionary()
@@ -88,7 +85,6 @@ class CorpusData(object):
     def load(self, basename):
         """Load corpus model and dictionary from disk using BASENAME"""
         tpo.debug_print("CorpusData.load(%s)" % basename, 6)
-        ## OLD: assert(self.text is None)
         debug.assertion((self.text is None) and (self.directory is None))
         self.dictionary = corpora.Dictionary.load_from_text(basename + '.wordids.txt.bz2')
         # TODO: make sure the document index gets loaded (for random access)
@@ -170,7 +166,6 @@ class CorpusData(object):
     
     def __iter__(self):
         """Returns iterator over vectors in corpus"""
-        ## OLD: """Returns iterator over vectors in corpus or over lines in input text"""
         tpo.debug_print("CorpusData.__iter__()", 6)
         if (self.mm):
             # pylint: disable=use-yield-from
@@ -184,7 +179,6 @@ class CorpusData(object):
 
     def __len__(self):
         """Returns number of documents in corpus"""
-        ## OLD: num_docs = len(self.mm) if self.mm else self.text_length()
         num_docs = -1
         if (self.mm):
             num_docs = len(self.mm)
@@ -197,9 +191,7 @@ class CorpusData(object):
     def text_length(self):
         """Returns number of documents in corpus (n.b., re-reads the corpus data)
         Note: Result is number of lines in self.text or number of regular files in self.directory."""
-        ## OLD: """Returns number of documents (i.e., lines) in text"""
         length = 0
-        ## OLD: for _line in open(self.text):
         for _line in self.read_corpus_files():
             length += 1
         tpo.debug_print("CorpusData.text_length() => %d" % length, 7)
@@ -226,10 +218,8 @@ class UserIdMapping(object):
 
     def __init__(self, docid_filename):
         """Class constructor"""
-        ## OLD: self.docid_mapping = tpo.create_lookup_table(docid_filename, use_linenum=True)
         self.docid_mapping = create_ordered_lookup_table(docid_filename)
         # TODO: just use array indexing (e.g., doc_positions = docid_mapping.values())
-        ## OLD: self.reverse_docid_mapping = dict((docid, key) for (key, docid) in list(self.docid_mapping.items()))
         self.reverse_docid_mapping = dict((label, docid) for (docid, label) in list(self.docid_mapping.items()))
         return
 
@@ -240,7 +230,6 @@ class UserIdMapping(object):
             docid = str(docid)
         user_id = self.docid_mapping.get(docid, docid)
         gh.assertion(user_id != docid)
-        ## OLD: tpo.debug_format("get_user_id({docid}) => {user_id}", 6)
         debug.trace_fmt(6, "get_user_id({d}) => {u}", d=docid, u=user_id)
         return user_id
 
@@ -250,7 +239,6 @@ class UserIdMapping(object):
             docid = str(docid)
         gensim_id = self.reverse_docid_mapping.get(docid, docid)
         gh.assertion(gensim_id != docid)
-        ## OLD: tpo.debug_format("get_gensim_id({docid}) => {gensim_id}", 6)
         debug.trace_fmt(6, "get_gensim_id({d}) => {g}", d=docid, g=gensim_id)
         return gensim_id
 
@@ -262,7 +250,6 @@ class SimilarDocument(object):
 
     def __init__(self, corpus=None, dictionary=None, verbose_output=False, max_similar=MAX_SIMILAR, docid_filename=DOCID_FILENAME):
         """Class constructor"""
-        ## OLD: tpo.debug_format("SimilarDocument.__init__({corpus}, {dictionary}, {verbose_output}, {max_similar}, {docid_filename})", 6)
         debug.trace_fmt(6, "SimilarDocument.__init__({c}, {d}, {v}, {ms}, {df})", c=corpus, d=dictionary, v=verbose_output, ms=max_similar, df=docid_filename)
         # If specified, override the number of CPUs for parallel processing of shards
         if (PARALLEL_SHARDS > 1):
@@ -271,7 +258,6 @@ class SimilarDocument(object):
         self.dictionary = dictionary
         self.sim_index = None
         if self.corpus:
-            ## OLD: gh.assertion(isinstance(self.corpus, corpora.MmCorpus))
             gh.assertion(isinstance(self.corpus, corpora.MmCorpus) or all_lists_of_num_pairs(self.corpus))
         if self.dictionary:
             gh.assertion(isinstance(self.dictionary, corpora.Dictionary))
@@ -311,7 +297,6 @@ class SimilarDocument(object):
 
     def save(self, filename):
         """Saves similarity model to FILENAME"""
-        ## OLD: tpo.debug_format("Saving similiarity index to {filename}", 4)
         debug.trace_fmt(4, "Saving similiarity index to {f}", f=filename)
         return (self.sim_index.save(filename))
 
@@ -321,7 +306,6 @@ class SimilarDocumentByCosine(SimilarDocument):
 
     def __init__(self, corpus=None, dictionary=None, index_file=None, verbose_output=False, max_similar=MAX_SIMILAR, docid_filename=DOCID_FILENAME):
         """Class constructor"""
-        ## OLD: tpo.debug_format("SimilarDocumentByCosine.__init__({corpus}, {dictionary}, {index_file}, {verbose_output}, {max_similar}, {docid_filename})", 6)
         debug.trace_fmt(6, "SimilarDocumentByCosine.__init__(corp={c}, dict={d}, indf={f}, verb={v}, maxsim={ms}, docfil={df})", c=corpus, d=dictionary, f=index_file, v=verbose_output, ms=max_similar, df=docid_filename)
         # note: index_file serves both as the cache for the similarity object as well as base name for the shards it uses (see gensim's docsim.py)
         # TODO: rework so that corpus and dictionary not needed to retrieve pre-computed similarity results
@@ -341,7 +325,6 @@ class SimilarDocumentByCosine(SimilarDocument):
                 self.sim_index = similarities.Similarity(index_file, self.corpus, len(self.dictionary), max_similar)
             tpo.debug_print("sim_index: type=%s value=%s" % (type(self.sim_index), self.sim_index), 5)
         else:
-            ## OLD: tpo.debug_format("c={self.corpus} d={self.dictionary} sim_index={self.sim_index}", 6)
             debug.trace_fmt(5, "c={c} d={d} sim_index={i}", c=self.corpus, d=self.dictionary, i=self.sim_index)
         tpo.trace_object(self, 5, "SimilarDocumentByCosine.self")
         return
@@ -366,7 +349,6 @@ class SimilarDocumentByCosine(SimilarDocument):
         debug.trace_fmt(5, "SimilarDocumentByCosine.find({d})", d=docid)
         debug.trace_fmt(5, "corpus/dict/index={c}/{d}/{i}", c=self.corpus, d=self.dictionary, i=self.sim_index)
         gh.assertion(self.corpus and self.dictionary and self.sim_index)
-        ## OLD: gensim_docid = self.get_gensim_id(docid)
         gensim_docid = docid
         try:
             similar_gensim_docs = self.sim_index[self.corpus[int(gensim_docid)]]
@@ -378,7 +360,6 @@ class SimilarDocumentByCosine(SimilarDocument):
             tpo.print_stderr("Exception retrieving similar documents: " + str(sys.exc_info()))
             similar_docs = []
         result = similar_docs
-        ## OLD: tpo.debug_format("find({docid}) => {result}", 5)
         debug.trace_fmt(5, "find({d}) => {r}", d=docid, r=result)
         return result
 
@@ -395,9 +376,7 @@ def create_dictionary(filename):
     # Note: Updates the dictionary for each line (to allow for very large corpora files).
     tpo.debug_print("create_dictionary(%s)" % filename, 5)
     dictionary = corpora.Dictionary()
-    ## OLD: for line in open(filename):
     for line in system.open_file(filename):
-        ## OLD: line_tokenized = [w for w in re.split(r"\W+", line)]
         line_tokenized = re.split(r"\W+", line)
         dictionary.doc2bow(line_tokenized, allow_update=True)
     return (dictionary)
@@ -428,7 +407,6 @@ def resolve_terms(vector, dictionary):
     """Return vector with token ID's replaced by the actual tokens"""
     tpo.debug_print("resolve_terms(%s, %s)" % (vector, dictionary), 7)
     term_vector = [(dictionary[token_id], count) for (token_id, count) in vector]
-    ## OLD: return sorted(term_vector, reverse=True, key=lambda _term, freq: freq)
     return sorted(term_vector, reverse=True, key=lambda t_f: t_f[1])
 
 
@@ -452,7 +430,6 @@ def all_lists_of_num_pairs(l):
 def main(runtime_args=None):
     """Entry point for script"""
     # Note: Uses sys.argv if no arguments supplied
-    ## OLD: tpo.debug_print("main(): args=%s" % sys.argv, 4)
     debug.trace_fmt(5, "main(): args=[{ra}]", ra=runtime_args)
     ## TODO
     ## if (runtime_args is None):
@@ -484,7 +461,6 @@ def main(runtime_args=None):
     # note: filename is positional argument
     parser.add_argument("filename", default=None, help="Input data filename (or basename when loading previously saved model); use - for stdin")
     #
-    ## OLD: args = vars(parser.parse_args())
     args = vars(parser.parse_args(runtime_args))
     tpo.debug_print("args = %s" % args, 5)
     filename = args['filename']
@@ -508,8 +484,6 @@ def main(runtime_args=None):
     # TODO: rework in terms of streaming (e.g., for files > 4gb)
     if (filename == "-"):
         tpo.debug_print("Reading input from stdin", 4)
-        ## OLD:
-        ## temp_file = tpo.getenv_text("TEMP_FILE", tempfile.NamedTemporaryFile().name)
         temp_file = TEMP_BASE
         filename = temp_file + ".txt"
         system.write_file(filename, gh.read_file(None))
@@ -542,7 +516,6 @@ def main(runtime_args=None):
         corpus_data = CorpusData()
         corpus_data.load(corpus_basename)
     else:
-        ## OLD: corpus_data = CorpusData(filename)
         is_dir = system.is_directory(filename)
         corpus_data = CorpusData(directory=filename) if is_dir else CorpusData(text=filename)
     tpo.debug_print("corpus_data: type=%s value=%s" % (type(corpus_data), corpus_data), 5)
@@ -615,11 +588,9 @@ def main(runtime_args=None):
                 ## similar_doc_info.append((user_docid, sim.find(docid)))
         if tpo.verbose_debugging():
             similar_doc_info = list(similar_doc_info)
-            ## OLD: tpo.debug_format("similar_doc_info={similar_doc_info}")
             debug.trace_fmt(4, "similar_doc_info={sdi}", sdi=similar_doc_info)
         for (docid, similar_docs) in similar_doc_info:
             similar_docs = [(d, tpo.round_num(score)) for (d, score) in similar_docs]
-            ## OLD: print("Documents similar to %s: %s" % (docid, similar_docs))
             ## TODO: remove source docid's (i.e., no identity matches)
             user_docid = sim.get_user_id(docid)
             other_similar_docs = [(d, s) for (d, s) in similar_docs if (d != user_docid)]
@@ -643,7 +614,6 @@ def main(runtime_args=None):
 
     # Cleanup
     if (temp_file and (not tpo.detailed_debugging())):
-        ## OLD: gh.run("rm -vf {temp_file}")
         gh.run("rm -vf {temp_file}*")
 
     return
@@ -651,7 +621,6 @@ def main(runtime_args=None):
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    ## OLD:
     main()
     ## TODO: main(sys.argv)
 
