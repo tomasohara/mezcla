@@ -43,11 +43,15 @@
 
 r"""Convert RGB tuples into color names
 
-Sample usage:
+Sample usages:
    {script} --hex6 <<<"#36454F"
 
    extcolors tests/resources/orange-gradient.png | {script} -
+
+   DUMP_HEXNAMES=1 {script} > {basename}.colors.list 2>&1
 """
+##
+## TODO4: DUMP_HEXNAMES=1 {script} > {script.replace(".py", "")}.colors.log 2>&1
 
 ## TODO3: modernize extract_document_text.py (e.g., --html --stdout)
 ##
@@ -69,7 +73,8 @@ from mezcla.main import Main, VERBOSE_MODE
 from mezcla import system
 from mezcla.my_regex import my_re
 
-# Constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
+# Constants
+# note: switches omit leading dashes (e.g., DEBUG_MODE = "debug-mode")
 
 ## TODO: REPLACEMENT = "regex-replacement"
 RGB_REGEX = "rgb-regex"
@@ -78,6 +83,9 @@ HEX3 = "hex3"
 HEX6 = "hex6"
 SKIP_DIRECT = "skip-direct"
 SHOW_HEX = "show-hex"
+DUMP_HEXNAMES = system.getenv_bool(
+    "DUMP_HEXNAMES", False,
+    desc="Trace out hexnames hash")
 HEX_CH = "[0-9A-F]"
 
 VERBOSE_SAMPLE_USAGE = r"""
@@ -134,21 +142,26 @@ class Script(Main):
             except:
                 hexnames = {}
         if not hexnames:
-            system.print_error("Error: unable to resolve hexname from webcolors")
-            
+            system.print_error("Error: unable to resolve hexnames from webcolors")
+
         debug.trace_values(6, hexnames)
         debug.trace_expr(5, hexnames, max_len=2**16)
         self.color_names = []
         color_positions = []
         #
         for hex_code, name in hexnames.items():
-            debug.trace(6, f"color: {name}={hex_code}")
+            hex_level = int(DUMP_HEXNAMES) or 6
+            debug.trace(hex_level, f"color: {name}={hex_code}")
             self.color_names.append(name)
             color_positions.append(webcolors.hex_to_rgb(hex_code))
             #
         self.space_color_db = KDTree(color_positions)
         debug.trace_object(5, self, label="Script instance")
 
+    def run_main_step(self):
+        """Dummy main processing method--handled via setup()"""
+        debug.assertion(DUMP_HEXNAMES)
+        
     def process_line(self, line):
         """Processes current line from input"""
         debug.trace_fmtd(6, "Script.process_line({l})", l=line)
@@ -234,8 +247,11 @@ def main():
     usage = __doc__
     if VERBOSE_MODE:
         usage += "\n\n" + VERBOSE_SAMPLE_USAGE
+    script = gh.basename(__file__)
+    basename = script.replace(".py", "")
     app = Script(
-        description=usage.format(script=gh.basename(__file__)),
+        skip_input=DUMP_HEXNAMES,
+        description=usage.format(script=script, basename=basename),
         usage_notes="Note: Input is not an image (e.g., use extcolors)",
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
         # understand; in contrast, manual_input controls iterator-based input (the opposite of both).
@@ -243,7 +259,7 @@ def main():
                          (SHOW_HEX, "Show hex-style specification XXXXXX"),
                          (HEX6, "RGB triples of format #xxxxxx"),
                          (HEX3, "RGB triples of format #abc--shortcut for #aabbcc)"),
-                         (SKIP_DIRECT, "Don't include direct match (for nearest neighbor test")],
+                         (SKIP_DIRECT, "Don't include direct match (for nearest neighbor test)")],
         # Note: FILENAME is default argument unless skip_input
         text_options=[
             ## TODO: (REPLACEMENT, "Regex-like replacement using \\1 for RGB tuple and COLOR for color name"),
