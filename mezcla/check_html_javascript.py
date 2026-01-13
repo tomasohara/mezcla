@@ -145,6 +145,7 @@ ESLINT_OPTIONS = system.getenv_text(
     desc="Options for eslint")
 DEFAULT_CODE_CHECKERS = system.getenv_text(
     "CODE_CHECKERS",
+    # TODO2: add ESLint
     f"{JSLINT}, {JSHINT}",
     desc="JavaScript code checking commands in order of preference (not alphabetical)")
 SKIP_STRICT_MODE = system.getenv_bool(
