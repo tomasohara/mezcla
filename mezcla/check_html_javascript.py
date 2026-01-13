@@ -242,6 +242,12 @@ class Script(Main):
         self.use_eslint = self.get_parsed_option(USE_ESLINT, use_all)
         self.use_jslint = self.get_parsed_option(USE_JSLINT, use_all or (not self.use_eslint))
         self.use_jshint = self.get_parsed_option(USE_JSHINT, use_all or (not self.use_eslint))
+        if self.get_parsed_option(f"no-{USE_JSLINT}"):
+            self.use_jslint = False
+        if self.get_parsed_option(f"no-{USE_JSHINT}"):
+            self.use_jshint = False
+        if self.get_parsed_option(f"no-{USE_ESLINT}"):
+            self.use_eslint = False
         
         # Build code_checkers list based on boolean options (if not explicitly set)
         explicit_checkers = self.get_parsed_option(CODE_CHECKERS, None)
@@ -381,7 +387,9 @@ def main():
         # TODO: skip_input=True,
         # TODO: manual_input=True,
         boolean_options=[STRIP_INDENT, SKIP_SAFE_MODE, SKIP_COMMON_DEFINES,
-                         USE_JSLINT, USE_JSHINT, USE_ESLINT, USE_ALL],
+                         USE_JSLINT, USE_JSHINT, USE_ESLINT, USE_ALL,
+                         # note: added for sake of claude's tests
+                         f"no-{USE_JSLINT}", f"no-{USE_JSHINT}", f"no-{USE_ESLINT}"],
         text_options=[
             (CODE_CHECKERS, "Comma-separated list of code checking invocations (e.g., '{dfc}')".format(dfc=DEFAULT_CODE_CHECKERS)),
             (JAVASCRIPT_HEADER, "JavaScript header with common definitions (e.g., document, window, jQuery)"),
