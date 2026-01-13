@@ -51,10 +51,10 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -69,10 +69,11 @@ jobs:
       ##       ${{ runner.os }}-pip-${{ matrix.python-version }}-
       ##       ${{ runner.os }}-pip-
 
-      - name: Install Dependencies
+      - name: Check Dependencies
+        # Output dependency report, which is useful for diagnosing issue with pip install
         run: |
-          pip install --verbose --requirement requirements.txt
-          ## TEST: pip install --verbose --requirement non-binary-requirements.txt
+          pip install --verbose --requirement --dry-run --report pip-install-report.json requirements.txt
+          head --lines=-0 --verbose pip-install-report.json 
 
       - name: Download data
         run: |
@@ -93,7 +94,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Build docker image
         run: |
