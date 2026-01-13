@@ -321,7 +321,7 @@ if __debug__:
                 # Get time-proper from timestamp (TODO: find standard way to do this)
                 # Note: shows diff/delta from last call if detailed tracing (TODO3: make explicit)
                 timestamp_time = re.sub(r"^\d+-\d+-\d+\s*", "", timestamp())
-                if detailed_debugging():
+                if verbose_debugging():
                     global last_trace_time
                     diff = 1000.0 * (time.time() - last_trace_time)
                     timestamp_time += f" diff={diff:.3f}ms"
