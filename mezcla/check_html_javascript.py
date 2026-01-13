@@ -207,9 +207,10 @@ class Script(Main):
         self.javascript_header = self.get_parsed_option(JAVASCRIPT_HEADER, self.javascript_header)
         self.es_version = self.get_parsed_option(ES_VERSION, self.es_version)
         use_all = self.get_parsed_option(USE_ALL, False)
-        self.use_jslint = self.get_parsed_option(USE_JSLINT, self.use_jslint or use_all)
-        self.use_jshint = self.get_parsed_option(USE_JSHINT, self.use_jshint or use_all)
-        self.use_eslint = self.get_parsed_option(USE_ESLINT, self.use_eslint or use_all)
+        debug.assertion(self.use_jslint and self.use_jshint and (not self.use_eslint))
+        self.use_eslint = self.get_parsed_option(USE_ESLINT, use_all)
+        self.use_jslint = self.get_parsed_option(USE_JSLINT, use_all or (not self.use_eslint))
+        self.use_jshint = self.get_parsed_option(USE_JSHINT, use_all or (not self.use_eslint))
         
         # Build code_checkers list based on boolean options (if not explicitly set)
         explicit_checkers = self.get_parsed_option(CODE_CHECKERS, None)
