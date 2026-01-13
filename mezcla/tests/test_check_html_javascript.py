@@ -58,6 +58,8 @@ SIMPLE_HTML_TEXT = """
         <title>Dummy HTML file</title>
         <script>
            console.log("in script");
+           const unused = 'I am not used';
+           print(2 + 2 == 5.0);
            text = "fubar";
            text -= 666
            console.log("out script");
@@ -84,15 +86,20 @@ class TestIt(TestWrapper):
 
         # Run script over simple HTML data and get outut
         system.write_file(self.temp_file, SIMPLE_HTML_TEXT)
-        output = self.run_script(options="", data_file=self.temp_file)
+        output = self.run_script(options="--use-all", data_file=self.temp_file)
         output = output.strip()
+        assert output
         
         # Warning from jslint
-        # 
         self.do_assert(my_re.search(r"Undeclared.*text", output))
         
         # Warning from jshint
         self.do_assert(my_re.search(r"Missing semicolon", output))
+
+        # Warning from eslint
+        # TODO: revise
+        self.do_assert(my_re.search(r"warning.*Expected.*===", output))
+        
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
