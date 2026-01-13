@@ -75,6 +75,11 @@ jobs:
           pip install --verbose --requirement --dry-run --report pip-install-report.json requirements.txt
           head --lines=-0 --verbose pip-install-report.json 
 
+      - name: Install Dependencies
+        run: |
+          pip install --verbose --requirement requirements.txt
+          ## TEST: pip install --verbose --requirement non-binary-requirements.txt
+
       - name: Download data
         run: |
           ## TODO3: put post-install support in mezcla to minimize redundancy
