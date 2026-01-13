@@ -107,10 +107,41 @@ ESLINT = "eslint"
 ESLINT_PROGRAM = system.getenv_text(
     "ESLINT_PROGRAM", ESLINT,
     desc="Script to invoke eslint")
+#
+ESLINT_CONFIG = """
+    // eslint.config.mjs
+    // via gemini
+    
+    // ~/eslint.config.mjs
+    export default [
+        {
+            // This object replaces the missing "recommended" import
+            rules: {
+                "constructor-super": "error",
+                "no-const-assign": "error",
+                "no-dupe-args": "error",
+                "no-dupe-class-members": "error",
+                "no-dupe-keys": "error",
+                "no-func-assign": "error",
+                "no-import-assign": "error",
+                "no-obj-calls": "error",
+                "no-setter-return": "error",
+                "no-this-before-super": "error",
+                "no-undef": "error",
+                "no-unreachable": "error",
+                "no-unused-vars": "warn",
+                "valid-typeof": "error",
+                "eqeqeq": "warn"
+            }
+        }
+    ];
+"""
+ESLINT_CONFIG_FILE = gh.form_path(gh.get_temp_dir(), "eslint.config.mjs")
+#
 # ESLint options
 #   --no-config-lookup               Disable look up for eslint.config.js
 ESLINT_OPTIONS = system.getenv_text(
-    "ESLINT_OPTIONS", "--no-config-lookup",
+    "ESLINT_OPTIONS", f"--config {ESLINT_CONFIG_FILE}",
     desc="Options for eslint")
 DEFAULT_CODE_CHECKERS = system.getenv_text(
     "CODE_CHECKERS",
@@ -302,6 +333,10 @@ class Script(Main):
         default_program_hash.update({JSLINT: JSLINT_PROGRAM,
                                      JSHINT: JSHINT_PROGRAM,
                                      ESLINT: ESLINT_PROGRAM})
+
+        # Setup ESLint configuration file
+        if self.use_eslint:
+            system.write_file(ESLINT_CONFIG_FILE, ESLINT_CONFIG)
         
         # ANSI escape code pattern to remove color/formatting from output
         ansi_escape_pattern = re.compile(r'\x1b\[[0-9;]*m')
