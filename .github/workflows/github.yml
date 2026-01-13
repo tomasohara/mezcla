@@ -50,6 +50,13 @@ jobs:
       max-parallel: 1
 
     steps:
+      - name: Pre-run diagnostics
+        run: |
+          echo "Pre-run:"
+          df --human-readable
+          echo "usage:"
+          du --block-size=1K / 2>&1 | sort -rn | head -40
+
       - name: Checkout Repository
         uses: actions/checkout@v5
 
@@ -89,6 +96,13 @@ jobs:
         run: |
           PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash
           
+      - name: Post-run diagnostics
+        run: |
+          echo "Post-run:"
+          df --human-readable
+          echo "usage:"
+          du --block-size=1K / 2>&1 | sort -rn | head -40
+
   build-and-test-docker:
     name: Build and Run Tests via Docker
     timeout-minutes: 10
