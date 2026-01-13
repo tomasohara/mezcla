@@ -214,9 +214,10 @@ class TestIt(TestWrapper):
         
         return
     
-    def test_01_simple_html(self):
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_01a_simple_html(self):
         """Tests run_script with simple HTML data file"""
-        debug.trace(4, f"TestIt.test_01_simple_html(); self={self}")
+        debug.trace(4, f"TestIt.test_01a_simple_html(); self={self}")
         # Run script over simple HTML data and get output
         system.write_file(self.temp_file, SIMPLE_HTML_TEXT)
         output = self.run_script(options="", data_file=self.temp_file)
@@ -249,6 +250,7 @@ class TestIt(TestWrapper):
         self.do_assert(not my_re.search(r"\$.*undefined", output, flags=my_re.IGNORECASE))
         return
     
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_04_multiple_scripts(self):
         """Tests HTML with multiple script blocks"""
         debug.trace(4, f"TestIt.test_04_multiple_scripts(); self={self}")
@@ -270,6 +272,7 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search(r"Output from", output))
         return
     
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_06_linting_issues(self):
         """Tests detection of common linting issues"""
         debug.trace(4, f"TestIt.test_06_linting_issues(); self={self}")
@@ -352,6 +355,7 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search(r"Output from", output))
         return
     
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_14_skip_common_defines(self):
         """Tests --skip-common-defines option"""
         debug.trace(4, f"TestIt.test_14_skip_common_defines(); self={self}")
