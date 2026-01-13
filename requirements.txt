@@ -129,13 +129,14 @@ pydantic==2.9.2
 ## OLD: #opt# spacy>=3.0.0
 ## TODO:
 ## note: See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.7.0
-spacy==3.7.0
-en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.0/en_core_web_md-3.7.0.tar.gz
+## NOTE: Disabled due to size of dependencies (Github Actions issue)
+## spacy==3.7.0
+## en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.0/en_core_web_md-3.7.0.tar.gz
 #
 ## See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.2.0
 ## OLD
-## spacy==3.2.6
-## en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.2.0/en_core_web_md-3.2.0.tar.gz
+#opt# spacy==3.2.6
+#opt# en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.2.0/en_core_web_md-3.2.0.tar.gz
 ## typing_extensions==4.7.0
 ## OLD: typing_extensions>=4.7.0
 ## TODO2: un pin after updating code
