@@ -318,16 +318,23 @@ class Script(Main):
             checker_program = system.getenv_text(
                 program_var, default_program_hash[checker],
                 skip_register=True)
+            # note: maltido eslint requires the file to be in same directory
+            if checker_program == ESLINT_PROGRAM:
+                current_dir = system.get_current_directory()
+                ## TODO: system.set_current_directory(gh.get_temp_dir())
+                system.set_current_directory(gh.dirname(javascript_file))
             output = gh.run("{ch} {opt} {scr}",
                             ch=checker_program, opt=checker_options, scr=javascript_file)
-            
+            if checker_program == ESLINT_PROGRAM:
+                system.set_current_directory(current_dir)
+
             # Print output with ANSI escape codes stripped
             output = ansi_escape_pattern.sub('', output)            
             print("Output from {ch}:".format(ch=checker))
             print(output)
             print("")
 
-            
+
 def main():
     """Entry point"""
     app = Script(
