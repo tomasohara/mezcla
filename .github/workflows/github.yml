@@ -72,7 +72,7 @@ jobs:
       - name: Check Dependencies
         # Output dependency report, which is useful for diagnosing issue with pip install
         run: |
-          pip install --verbose --requirement --dry-run --report pip-install-report.json requirements.txt
+          pip install --verbose --dry-run --report pip-install-report.json --requirement requirements.txt
           head --lines=-0 --verbose pip-install-report.json 
 
       - name: Install Dependencies
