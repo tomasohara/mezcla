@@ -86,6 +86,9 @@ DIMENSIONS_EXPECTED_TEXT = """
 THE_MODULE.DOWNLOAD_DIR = gh.form_path(gh.get_temp_dir(use_temp_base=True),
                                        "downloads", create=True)
 
+# Sanity checks (e.g., selenium installed and imported OK)
+debug.assertion(SKIP_SELENIUM or getattr(THE_MODULE, "webdriver"))
+
 #-------------------------------------------------------------------------------
 
 def resolve_mezcla_path(filename):
