@@ -4,7 +4,7 @@
 #
 # Notes:
 # - This can be run as follows (e.g., from root of repo):
-#   $ pytest ./mezcla/tests/test_<module>.py
+#   $ pytest ./mezcla/tests/test_introspection.py
 #
 
 """Tests for introspection module"""
