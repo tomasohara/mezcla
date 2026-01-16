@@ -14,3 +14,17 @@ An optional priority is indicated by [Pn]
 - [P2] Make pass to cut down on xfail usage (e.g., remove if passed for past few months unless special case)!
 - [P3] Make sure the tests differ from any EX-based comments in the source file: they tend to be simple for sake of illustration and get tested via evaluate_example_tests.py.
 - [P2] replace debug.set_level(N), etc. with self.patch_trace_level(N)
+- [P5] replace 'PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_xyz.py' with 'pytest tests/test_xyz.py'
+
+## Detailed TODO notes
+
+### [P3] check for old compiled modules using earlier Numpy
+
+```
+$ pytest misc_utils.py
+...
+A module that was compiled using NumPy 1.x cannot be run in
+NumPy 2.4.0 as it may crash. To support both 1.x and 2.x
+versions of NumPy, modules must be compiled with NumPy 2.0.
+Some module may need to rebuild instead e.g. with 'pybind11>=2.12'.
+```
