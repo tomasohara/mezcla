@@ -19,7 +19,7 @@ import re
 import sys
 import time
 import json
-import yaml
+## OLD: import yaml
 import csv
 from types import ModuleType
 from typing import Any, Optional
@@ -28,6 +28,8 @@ from contextlib import ContextDecorator
 # Installed packages
 ## NOTE: made dynamic due to import issue during shell-script repo tests
 ## TODO3: import more_itertools
+## NOTE: yaml uses dynamic load to keep mezcla requirements down
+## TODO: import yaml
 
 # Local packages
 from mezcla import debug
@@ -503,6 +505,8 @@ def convert_file_to_instances(input_file, module_name, class_name, field_names,
     if fmt == 'json':
         data = json.loads(system.read_file(input_file))
     elif fmt == 'yaml':
+        # pylint: disable=import-outside-toplevel
+        import yaml
         data = yaml.safe_load(system.read_file(input_file))
     elif fmt == 'csv':
         debug.trace(4, "Warning: convert_file_to_instances problematic with CSV files")
