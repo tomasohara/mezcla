@@ -47,7 +47,7 @@ executing                     # code introspection a la icecream
 ## opt: flair                 # Framework for Language-Aware Information Retrieval (AI/NLP toolkit)
 flask
 git+https://github.com/tehabstract/textract.git
-gradio==3.48                  # UI support (e.g., HF-based apps)
+#opt# gradio==3.48            # UI support (e.g., HF-based apps)
 importlib_metadata
 langchain
 langchain_community
