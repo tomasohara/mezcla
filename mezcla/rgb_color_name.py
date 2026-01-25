@@ -98,7 +98,8 @@ VERBOSE_SAMPLE_USAGE = r"""
 
 class Script(Main):
     """Input processing class: convert RGB tuples to <RGB, label> pairs"""
-    rgb_regex = rf"\((0?x?{HEX_CH}+), (0?x?{HEX_CH}+), (0?x?{HEX_CH}+)\)"
+    ## OLD: rgb_regex = rf"\((0?x?{HEX_CH}+), (0?x?{HEX_CH}+), (0?x?{HEX_CH}+)\)"
+    rgb_regex = rf"\((0?x?{HEX_CH}+), *(0?x?{HEX_CH}+), *(0?x?{HEX_CH}+)\)"
     ## TODO: replacement = r"<COLOR, \1>"
     space_color_db = None
     color_names = []
