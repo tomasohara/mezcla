@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 #
 # show-dependency-chain.bash: shows chain of dependencies given output from pip install's
-# --report options. Specifically, it extract package names and requires_dist blocks from
+# --report option. Specifically, it extract package names and requires_dist blocks from
 # a pip report JSON file and emit a valid YAML dependency listing.
 #
 # NOTES:
@@ -19,10 +19,12 @@ and emit VALID YAML.
 Output format:
 
     ---
+
     - name: PACKAGE
       requires_dist:
         - dep1
         - dep2
+
     - name: OTHER
 
 Sample usage:
