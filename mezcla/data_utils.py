@@ -93,12 +93,15 @@ def read_csv(filename, **in_kw):
     return df
 
 
-def to_csv(filename, data_frame, **in_kw):
+def to_csv(filename, data_frame, strict=False, **in_kw):
     """Wrapper around pandas DATA_FRAME.to_csv with FILENAME
     Note: by default, the index is omitted;
-    and, delimiter SEP defaults to DELIM env. var"""
+    and, delimiter SEP defaults to DELIM env. var
+    With STRICT, pandas defaults are used"""
     result = None
-    kw = {SEP: DELIM, 'index': False}
+    kw = {}
+    if not strict:
+        kw = {SEP: DELIM, 'index': False}
     kw.update(**in_kw)
     debug.trace_fmt(4, "in data_utils.to_csv({f}, _df) [in_kw={ikw}])", f=filename, ikw=in_kw)
     debug.trace_fmt(4, "\tFYI: kw={k}", k=kw)
