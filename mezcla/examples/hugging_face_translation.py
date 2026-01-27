@@ -99,7 +99,6 @@ def translated_text(model_obj):
 def main():
     """Entry point"""
     debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
-
     
     # Show simple usage if --help given
     dummy_app = Main(description=__doc__.format(script=gh.basename(__file__)),
@@ -217,7 +216,6 @@ def main():
                 translation_reverse_text = translation_round_text = ""
 
                 # Translation Level I (FROM -> TO)
-                ## OLD: translation = model(segment, max_length=MAX_LENGTH)
                 translation = translate(segment)
                 translation_text = translated_text(translation)
                 debug.trace_expr(3, translation_text)
@@ -228,21 +226,16 @@ def main():
                 ##    src-original -> tgt-translated -> src-round-trip
                 if round_trip:
                     # Translation Level II (TO -> FROM_AUX)
-                    ## OLD: translation_reverse = model_reverse(translation_text, max_length=MAX_LENGTH)
                     translation_reverse = translate(segment, reverse=True)
                     translation_reverse_text = translated_text(translation_reverse)
 
                     # Translation Level III (FROM_AUX -> TO)
-                    ## OLD: translation_round = model(translation_reverse_text, max_length=MAX_LENGTH)
                     translation_round = translate(translation_reverse_text)
                     translation_round_text = translated_text(translation_round)
 
                 debug.assertion(isinstance(translation, list)
                                 and (TRANSLATION_TEXT in translation[0]))
-                ## OLD:
-                ## translation_reverse_text = translation_reverse_text if round_trip else ''
-                ## translation_round_text = translation_round_text if round_trip else ''
-                
+
                 # For round trip translation, print all possible translations along with their language code
                 if round_trip:
                     print(f"\nOriginal      ({FROM}):\n{segment}")
