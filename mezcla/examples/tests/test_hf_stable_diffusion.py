@@ -38,7 +38,7 @@ try:
 except:
     extcolors = None
 import PIL
-import torch
+## OLD: import torch
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper, trap_exception
@@ -57,6 +57,11 @@ system.setenv("STREAMLINED_CLIP", "1")
 #    TestTemplate.script_module:  path to file
 import mezcla.examples.hf_stable_diffusion as THE_MODULE
 hfsd = THE_MODULE
+try:
+    import torch
+except:
+    torch = None
+    system.print_exception_info("importing torch")
 
 # Constants, etc.
 TORCH_SEED = system.getenv_int("TORCH_SEED", RANDOM_SEED,
@@ -98,6 +103,7 @@ sd_or_nvidia_issue = (not (diffusers and nvidia_ok))
 
 #................................................................................
 
+@pytest.mark.skipif(not torch, reason="Unable to load torch")
 class TestIt(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
