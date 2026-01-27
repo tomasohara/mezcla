@@ -10,7 +10,11 @@
 from typing import Optional
 
 # Installed modules
-import torch
+try:
+    import torch
+except:
+    torch = None
+    system.print_exception_info("importing torch")
 
 # Local modules
 from mezcla import debug
@@ -22,8 +26,8 @@ TL = debug.TL
 DEBUG_LEVEL = debug.get_level()
 #
 # Environment-based
-HAS_CUDA = torch.cuda.is_available()
-HAS_MPS = (hasattr(torch.backends, "mps") and torch.backends.mps.is_available())
+HAS_CUDA = (torch.cuda.is_available() if torch else False)
+HAS_MPS = (torch and hasattr(torch.backends, "mps") and torch.backends.mps.is_available())
 USE_CPU = system.getenv_bool(
     "USE_CPU", False,
     description="Uses Torch on CPU if true")
