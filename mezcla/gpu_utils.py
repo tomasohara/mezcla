@@ -10,16 +10,24 @@
 from typing import Optional
 
 # Installed modules
-try:
-    import torch
-except:
-    torch = None
-    system.print_exception_info("importing torch")
+## OLD:
+## try:
+##     import torch
+## except:
+##     torch = None
+##     system.print_exception_info("importing torch")
 
 # Local modules
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import system
+
+# Dynamic imports
+try:
+    import torch
+except:
+    torch = None
+    system.print_exception_info("importing torch")
 
 # Constants
 TL = debug.TL
