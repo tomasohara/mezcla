@@ -278,6 +278,7 @@ class TestWrapper(unittest.TestCase):
         """Per-class initialization: make sure script_module set properly
         Note: Optional FILENAME is path for testing script and MODULE the imported object for tested script
         """
+        temp_file = gh.get_temp_file()
         debug.trace(5, f"TestWrapper.setUpClass({cls}, fn={filename}, mod={module})")
         super().setUpClass()
         cls.class_setup = True
@@ -285,8 +286,17 @@ class TestWrapper(unittest.TestCase):
         debug.assertion(cls.script_module != TODO_MODULE)
         if (cls.script_module is not None):
             # Try to pull up usage via python -m mezcla.xyz --help
-            help_usage = gh.run("python -m '{mod}' --help", mod=cls.script_module)
-            debug.assertion("No module named" not in help_usage,
+            help_log = f"{temp_file}.help.log"
+            help_usage = gh.run("python -m '{mod}' --help 2> {log}",
+                                mod=cls.script_module, log=help_log)
+            help_errors = system.read_file(help_log)
+            debug.trace_expr(5, help_usage, help_log)
+            debug.trace_expr(6, help_errors, max_len=8192)
+            # Check for exception during invocation (n.b., two patterns for robustness)
+            # ex: ModuleNotFoundError: No module named 'textract'
+            debug.assertion("ModuleNotFoundError" not in help_errors,
+                            assert_level=6)
+            debug.assertion("No module named" not in help_errors,
                             f"problem running via 'python -m {cls.script_module}'")
             # Warn about lack of usage statement unless "not intended for command-line" type warning issued
             # TODO: standardize the not-intended wording
@@ -302,7 +312,7 @@ class TestWrapper(unittest.TestCase):
         if not cls.temp_base:
             cls.temp_base = cls.temp_file
         if not cls.temp_base:
-            cls.temp_base = gh.get_temp_file()
+            cls.temp_base = temp_file
         if cls.use_temp_base_dir:
             gh.full_mkdir(cls.temp_base, force=True)
 
