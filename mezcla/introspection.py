@@ -129,9 +129,14 @@ def is_literal(s):
     return True
 
 
-DEFAULT_LINE_WRAP_WIDTH = 256            # Characters.
+# Defaults for printing:
+# Note: Normally pprint used as is except for width override. However, if max_len is
+# specified then uses format_value from below.
+DEFAULT_LINE_WRAP_WIDTH = 256            # Characters (n.b., being phased out)
 DEFAULT_CONTEXT_DELIMITER = "; "
 DEFAULT_ARG_TO_STRING_FUNCTION = pprint.pformat
+DEFAULT_ARG_TO_STRING_WIDTH = 512
+DEFAULT_ARG_TO_STRING_KWARGS = {"width": DEFAULT_ARG_TO_STRING_WIDTH}
 DEFAULT_OUTPUT_FUNCTION = stderr_print
 
 
@@ -222,12 +227,18 @@ def format_pair(prefix: str, arg, value):
     return "\n".join(lines)
 
 
-def argument_to_string(obj) -> str:
+def argument_to_string(obj, **kwargs) -> str:
     """
-    Converts argument to string using `DEFAULT_ARG_TO_STRING_FUNCTION` and preserves newlines
+    Converts argument to string using `DEFAULT_ARG_TO_STRING_FUNCTION` and preserves newlines.
+    Note: Also uses `DEFAULT_ARG_TO_STRING_KWARGS`. Normally pprint is called with defaults,
+    except for width (e.g., 80 => 512); see `DEFAULT_ARG_TO_STRING_WIDTH`.
     """
-    s = DEFAULT_ARG_TO_STRING_FUNCTION(obj)
+    if kwargs is {}:
+        kwargs = DEFAULT_ARG_TO_STRING_KWARGS
+    s = DEFAULT_ARG_TO_STRING_FUNCTION(obj, **kwargs)
     s = s.replace("\\n", "\n")  # Preserve string newlines in output.
+    if INTROSPECTION_DEBUG:
+        trace(f"argument_to_string({str(obj):.132}) => {s:.132}", level=BTL+2)
     return s
 
 
@@ -255,6 +266,7 @@ class MezclaDebugger:
     """
 
     _pairSeparator = "; "
+    # note: The following are relics of icecream and are being phrase out.
     _lineWrapWidth = DEFAULT_LINE_WRAP_WIDTH
     _contextDelimiter = DEFAULT_CONTEXT_DELIMITER
 
@@ -262,7 +274,8 @@ class MezclaDebugger:
         self,
         prefix="",
         output_function=DEFAULT_OUTPUT_FUNCTION,
-        arg_to_string_function=argument_to_string,
+        arg_to_string_function=None,
+        arg_to_string_kwargs=None,
         include_context=False,
         context_abs_path=False,
         icecream_like=None,
@@ -271,7 +284,8 @@ class MezclaDebugger:
         self.prefix = prefix
         self.include_context = include_context
         self.output_function = output_function
-        self.arg_to_string_function = arg_to_string_function
+        self.arg_to_string_function = arg_to_string_function or argument_to_string
+        self.arg_to_string_kwargs = arg_to_string_kwargs or {}
         self.context_abs_path = context_abs_path
         self.icecream_like = icecream_like
 
@@ -435,6 +449,7 @@ class MezclaDebugger:
         """
         Constructs the output string from the given pairs of argument specifications and values.
         For example, for `fu=123; MezclaDebugger().format(fu)` pairs would be ['fu', 123]
+        Note: Uses self.arg_to_string_function unless max_len specified (then format_value).
         """
         if INTROSPECTION_DEBUG:
             trace(f"_construct_argument_output{(prefix, context, pairs)}; kwargs={kwargs}",
@@ -443,19 +458,22 @@ class MezclaDebugger:
             """Return ARG concatenated with DELIM"""
             return f"{arg}{delim}"
         def format_value(val, max_len):
-            """Return up to MAX_LEN of VAL text, adding ... if truncated"""
-            result = val
+            """Return up to MAX_LEN of VAL as text, adding ... if truncated"""
+            result = str(val)
             if isinstance(max_len, int) and len(val) > max_len:
                 result = val[:max_len + 1] + "..."
             return result
 
-        # Derive pairs of arguments (specificiations) from call with resolved value.
+        # Derive pairs of arguments (specifications) from call with resolved value.
         # Checks for debug.assertion's omit_values option.
         omit_values = kwargs.get('omit_values')
-        pairs = [(arg, self.arg_to_string_function(val)) for arg, val in pairs]
+        ## OLD: pairs = [(arg, self.arg_to_string_function(val)) for arg, val in pairs]
         if "max_len" in kwargs:
             pairs = [(arg, format_value(val, kwargs["max_len"]))
                      for (arg, val) in pairs]
+        else:
+            pairs = [(arg, self.arg_to_string_function(val, **self.arg_to_string_kwargs))
+                      for arg, val in pairs]
         if not omit_values:
             pair_strs = [
                 val if (is_literal(arg) or arg is _ABSENT) else (arg_prefix(arg) + val)
