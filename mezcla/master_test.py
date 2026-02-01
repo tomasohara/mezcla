@@ -371,8 +371,8 @@ def main():
         boolean_options=[(RUN_OPT, "Run the tests")],
     )
     debug.assertion(main_app.parsed_args)
-    run_tests = main_app.get_parsed_option(RUN_OPT)
-    if not run_tests:
+    run_opt = main_app.get_parsed_option(RUN_OPT)
+    if not run_opt:
         system.exit(f"Error: need to specify --{RUN_OPT}")
 
     # Load the thresholds from the YAML file, falling back to defaults for all test files
