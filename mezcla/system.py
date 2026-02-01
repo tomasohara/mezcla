@@ -753,7 +753,7 @@ def read_entire_file(filename: FileDescriptorOrPath, **kwargs) -> str:
         if report_errors:
             print_stderr("Error: Unable to read file '{f}': {exc}".format(
                 f=filename, exc=get_exception()))
-    debug.trace_fmtd(8, "read_entire_file({f}) => {r}", f=filename, r=data)
+    debug.trace_fmtd(8, "read_entire_file({f!r}) => {r!r}", f=filename, r=data)
     return data
 #
 read_file = read_entire_file
