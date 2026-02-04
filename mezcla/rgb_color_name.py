@@ -46,6 +46,8 @@ r"""Convert RGB tuples into color names
 Sample usages:
    {script} --hex6 <<<"#36454F"
 
+   {script} --hex3 <<<"#eee"
+
    extcolors tests/resources/orange-gradient.png | {script} -
 
    DUMP_HEXNAMES=1 {script} > {basename}.colors.list 2>&1
