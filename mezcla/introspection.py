@@ -233,7 +233,7 @@ def argument_to_string(obj, **kwargs) -> str:
     Note: Also uses `DEFAULT_ARG_TO_STRING_KWARGS`. Normally pprint is called with defaults,
     except for width (e.g., 80 => 512); see `DEFAULT_ARG_TO_STRING_WIDTH`.
     """
-    if kwargs is {}:
+    if not kwargs:
         kwargs = DEFAULT_ARG_TO_STRING_KWARGS
     s = DEFAULT_ARG_TO_STRING_FUNCTION(obj, **kwargs)
     s = s.replace("\\n", "\n")  # Preserve string newlines in output.
@@ -452,7 +452,7 @@ class MezclaDebugger:
         Note: Uses self.arg_to_string_function unless max_len specified (then format_value).
         """
         if INTROSPECTION_DEBUG:
-            trace(f"_construct_argument_output{(prefix, context, pairs)}; kwargs={kwargs}",
+            trace(f"in _construct_argument_output{(prefix, context, pairs)}; kwargs={kwargs}",
                   level=BTL+1)
         def arg_prefix(arg, delim='=') -> str:
             """Return ARG concatenated with DELIM"""
@@ -460,8 +460,8 @@ class MezclaDebugger:
         def format_value(val, max_len):
             """Return up to MAX_LEN of VAL as text, adding ... if truncated"""
             result = str(val)
-            if isinstance(max_len, int) and len(val) > max_len:
-                result = val[:max_len + 1] + "..."
+            if isinstance(max_len, int) and len(result) > max_len:
+                result = repr(result[:max_len] + "...")
             return result
 
         # Derive pairs of arguments (specifications) from call with resolved value.
@@ -510,7 +510,11 @@ class MezclaDebugger:
 
         no_eol = kwargs.get('no_eol', False)
         end = "" if no_eol else "\n"
-        return "".join(lines) + end
+        result = "".join(lines) + end
+        if INTROSPECTION_DEBUG:
+            trace(f"out _construct_argument_output: {result!r}",
+                  level=BTL+2)
+        return result
 
     def _format_context(self, call_frame: FrameType) -> str:
         """
