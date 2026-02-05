@@ -34,7 +34,6 @@ class TestIt(TestWrapper):
     # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_01_simple_introspection(self):
         """Test for simple introspection"""
         debug.trace(4, f"TestIt.test_01_simple_introspection(); self={self}")
@@ -43,7 +42,6 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search("fubar.*123.321", fubar_expr))
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_02_multiline_introspection(self):
         """Test for multi-line introspection"""
         debug.trace(4, f"TestIt.test_02_multiline_introspection(); self={self}")
@@ -58,7 +56,6 @@ class TestIt(TestWrapper):
                                     flags=my_re.DOTALL|my_re.MULTILINE))
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_prefix(self):
         """Test for prefix added to introspection result"""
         debug.trace(4, f"TestIt.test_03_prefix(); self={self}")
@@ -67,15 +64,13 @@ class TestIt(TestWrapper):
         assert my_re.search("here: var.*456", var_expr)
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_04_max_len(self):
         """Test for introspection truncation"""
         debug.trace(4, f"TestIt.test_04_max_len(); self={self}")
         var = "-" * 123
         var_expr = THE_MODULE.intro.format(var, max_len=4)
-        ## TODO2: assert my_re.search("var='----\.\.\.'", var_expr)
-        ##                                            ^ (i.e., make sure quote closed)
-        assert my_re.search(r"var='----\.\.\.", var_expr)
+
+        assert my_re.search(r"var='----\.\.\.'", var_expr)
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
