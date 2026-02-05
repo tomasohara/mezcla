@@ -2,9 +2,9 @@
 # 
 # Evaluate '# EX:' tests placed in python source. This reformats EX comments
 # into the doctest text format. For example,
-#    # EX: system.is_number("3.14159") => False    # conventional PI
+#    # EX: system.is_number("pi") => False
 # gets converted as follows:
-#    >>> system.is_number("3.14159")
+#    >>> system.is_number("pi")
 #    False
 #
 # Note:
@@ -12,7 +12,7 @@
 #
 
 """
-Convert example comments in Python scource to doctest format and evaluate.
+Convert example comments in Python source to doctest format and evaluate.
 
 Sample usage:
    {script} text_utils.py
@@ -112,12 +112,6 @@ class TestConverter:
             OK = False
 
         # Normalize result (e.g., change double quote to single)
-        ## OLD:
-        ## ## TODO3: my_re.search(r'^".*[^"].*"$', result)
-        ## if result and NORMALIZE_RESULT and my_re.search(r'^\s*(".*")\s*$', result):
-        ##     ## OLD: result = f'{result[1:-1]}'
-        ##     result_proper = my_re.sub(r"[^\\]'", "\\'", result[1:-1])
-        ##     result = f"'{result_proper}'"
         if OK and result and NORMALIZE_RESULT:
             debug.trace_expr(5, expression, result)
             new_result = result
