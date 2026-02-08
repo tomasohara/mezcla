@@ -84,7 +84,8 @@ webcolors==1.13
 ## NOTE: temporarily disabled due to stupid docker disk space constraints
 ## TODO:
 ## BAD: xgboost
-xgboost<=2.1.4
+## OLD: xgboost<=2.1.4
+xgboost-cpu
 #
 #...............................................................................
 # Optional requirements
