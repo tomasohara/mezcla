@@ -63,7 +63,7 @@ class TestConverter:
     def get_tests(self):
         """Returns set of tests as string"""
         result = self.test_text
-        debug.trace(6, f"get_tests() => {result}")
+        debug.trace(6, f"get_tests() => {{\n{gh.indent_lines(result)}\n}}")
         return result
 
     def add_module(self, module_spec, dir_path=None):
@@ -96,8 +96,10 @@ class TestConverter:
             debug.trace(4, f"FYI: Ignoring comment at line {line_num}: {comment}")
         
         # Parse test expression
+        arrow_format = False
         if my_re.search(r"# +EX: (.*)\s*=>\s*(.*)", line):
             expression, result = my_re.groups()
+            arrow_format = True
             OK = True
         elif my_re.search(r"# +EX: (.*)", line):
             expression = my_re.group(1)
@@ -123,6 +125,12 @@ class TestConverter:
             if new_result != result:
                 debug.trace(5, f"FYI: Normalized result to {new_result!r}")
                 result = new_result
+
+        # Warn about '... => None' quirk with doctest
+        # Note: doctest returns empty string instead of None
+        debug.trace_expr(6, arrow_format, result)
+        if arrow_format and (result is None):
+            debug.trace(3, f"Warning: Use 'expr is None' rather than 'expr => None': doctest quirk; {line_num=}")
 
         # Add to tests
         if ((not OK) or ((expression is None) and (result is None))):
