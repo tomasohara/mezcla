@@ -294,7 +294,17 @@ class regex_wrapper():
             result = self.search_text[start: end]
         debug.trace(self.TRACE_LEVEL, f"post_match() => {result!r}")
         return result
-    
+
+    def compile(self, pattern, flags=0):
+        """Compile a regular expression PATTERN using FLAGS, returning a Pattern object."""
+        return re.compile(pattern, flags)
+
+    ## Note: Placeholder for other methods (n.b., to avoid silly errors like forgetting self)
+    ##
+    ## def TODO(self, ...):
+    ##     """TODO: docstring"""
+    ##     return re.TODO(...)
+
 #...............................................................................
 # Initialization
 #
