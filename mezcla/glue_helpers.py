@@ -446,7 +446,10 @@ def real_path(path: FileDescriptorOrPath) -> str:
 
 
 def indent(text: str, indentation: Optional[str] = None, max_width: int = 512) -> str:
-    """Indent TEXT with INDENTATION at beginning of each line, returning string ending in a newline unless empty and with resulting lines longer than max_width characters wrapped. Text is treated as a single paragraph."""
+    """Indent TEXT with INDENTATION at beginning of each line, returning string ending in a newline unless empty and with resulting lines longer than max_width characters wrapped. Text is treated as a single paragraph.
+    Note: Use indent_lines for non-paragraph version (i.e., lines indented independently).
+    """
+    # EX: indent('p1s1\np1s2\n\n\np2s1\np2s2\n') => '    p1s1 p1s2   p2s1 p2s2\n'
     if indentation is None:
         indentation = INDENT
     # Note: an empty text is returned without trailing newline
@@ -458,9 +461,11 @@ def indent(text: str, indentation: Optional[str] = None, max_width: int = 512) -
 
 
 def indent_lines(text: str, indentation: Optional[str] = None, max_width: int = 512) -> str:
-    """Like indent, except that each line is indented separately. That is, the text is not treated as a single paragraph."""
+    """Like indent, except that each line is indented separately. That is, the text is not treated as a single paragraph.
+    """
+    # EX: indent_lines('p1s1\np1s2\n\n\np2s1\np2s2\n') => '    p1s1\n    p1s2\n\n\n    p2s1\n    p2s2\n'
     # Sample usage: print("log contents: {{\n{log}\n}}".format(log=indent_lines(lines)))
-    # TODO: add support to simplify above idiom (e.g., indent_lines_bracketed); rename to avoid possible confusion that input is array (as wih write_lines)
+    # TODO: add support to simplify above idiom (e.g., indent_lines_bracketed); rename to avoid possible confusion that input is array (as with write_lines)
     if indentation is None:
         indentation = INDENT
     result = ""
