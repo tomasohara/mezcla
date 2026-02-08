@@ -252,6 +252,11 @@ class TestMyRegex(TestWrapper):
         actual_has_warning = bool(self.my_re.search("Warning", captured_stderr))
         assert actual_has_warning == expect_has_warning
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_compile(self):
+        """Test compile method"""
+        regex = "^abc...xyz$"
+        assert(self.my_re.compile(regex) == re.compile(regex))
 
 @pytest.mark.xfail                   # TODO: remove xfail
 @pytest.mark.parametrize(
