@@ -504,7 +504,7 @@ class Main(object):
         Note: This is a deprecated method (use get_parsed_option instead);
         The preferred method is get_parsed_option, which allows for dynamic default values.
         """
-        # EX: m.parsed_args = {"me": False}; m.has_parsed_option("not-me") => None
+        # EX: m.parsed_args = {"me": False}; m.has_parsed_option("not-me") is None
         ## TEMP HACK: if called by a subclass, treat as alias to get_parsed_option
         debug.trace(7, f"in has_parsed_option({str}); class_name: {self.__class__.__name__})")
         if (self.__class__.__name__ != "Main"):
