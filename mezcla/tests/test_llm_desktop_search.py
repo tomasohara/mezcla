@@ -141,7 +141,7 @@ class TestIt(TestWrapper):
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
     def test_03_gpu_usage(self):
         """Test for GPU libs being used"""
-        # Note: verifies process using GPU via nvida-smi
+        # Note: verifies [python] process using GPU via nvida-smi
         #  |  GPU   GI   CI        PID   Type   Process name            GPU Memory |
         #  ...
         #  |    0   N/A  N/A   1111609      C   python                      366MiB |
@@ -151,7 +151,9 @@ class TestIt(TestWrapper):
         trace_level = max(1, debug.get_level())
         gpu_utils.trace_gpu_usage(level=trace_level)
         stdout, stderr = self.get_stdout_stderr()
-        self.do_assert("GNU" in stdout) 
+        self.do_assert("GNU" in stdout)           # license
+        # Check that python process in nvida-smi listing.
+        # Assumes that no other python processes using GPU active.
         pid = system.get_process_id()
         self.do_assert(my_re.search(fr"\b{pid}\b.*python", stderr))
         return

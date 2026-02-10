@@ -25,6 +25,7 @@ from mezcla import xml_utils
 from mezcla import tpo_common as tpo
 ## TODO3: from mezcla import misc_utils
 from mezcla import system
+from mezcla.main import Main
 from  mezcla.system import to_int
 
 # Environment options
@@ -362,6 +363,17 @@ def run_tests(thresholds: Dict[str, float]) -> int:
 
 def main():
     """Main function"""
+    # Parse command line options, show usage if --help given
+    RUN_OPT = "run"
+    main_app = Main(
+        ## TODO2: skip_input=True,
+        description=__doc__.format(script=gh.basename(__file__)),
+        boolean_options=[(RUN_OPT, "Run the tests")],
+    )
+    debug.assertion(main_app.parsed_args)
+    run_opt = main_app.get_parsed_option(RUN_OPT)
+    if not run_opt:
+        system.exit(f"Error: need to specify --{RUN_OPT}")
 
     # Load the thresholds from the YAML file, falling back to defaults for all test files
     # in the tests directory (TODO: merge the two sources with file trumping default).

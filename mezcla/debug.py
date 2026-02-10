@@ -48,6 +48,7 @@
 #-------------------------------------------------------------------------------
 # TODO1:
 # - Add sanity check to trace_fmt for when keyword in kaargs unused.
+# - Weed out lingering issues with max_len for trace-related functions.
 #
 # TODO3:
 # - Fill in more defaults like max_len using @docstring_parameter
@@ -62,7 +63,7 @@
 
 """Debugging functions (e.g., tracing)"""
 
-# Standard packages
+# Standard modules
 import atexit
 from _collections_abc import Mapping
 from datetime import datetime
@@ -87,7 +88,7 @@ from mezcla.validate_arguments_types import (
     FileDescriptorOrPath,
 )
 
-# Local packages
+# Local modules
 intro = None
 
 
@@ -320,10 +321,10 @@ if __debug__:
                 # Get time-proper from timestamp (TODO: find standard way to do this)
                 # Note: shows diff/delta from last call if detailed tracing (TODO3: make explicit)
                 timestamp_time = re.sub(r"^\d+-\d+-\d+\s*", "", timestamp())
-                if detailed_debugging():
+                if verbose_debugging():
                     global last_trace_time
-                    diff = round(1000.0 * (time.time() - last_trace_time), 3)
-                    timestamp_time += f" diff={diff}ms"
+                    diff = 1000.0 * (time.time() - last_trace_time)
+                    timestamp_time += f" diff={diff:.3f}ms"
                     last_trace_time = time.time()
                 out_text += do_print(indentation + "[" + timestamp_time + "]", end=": ", max_len=max_len)
                 max_len -= len(out_text)
@@ -391,6 +392,7 @@ if __debug__:
         # references, this function does the formatting.
         # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
         # TODO3: return text as with trace and trace_expr
+        result = ""
         if (trace_level >= level):
             ## TODO3 (rework by checking unknown args not in format string):
             ## check_keyword_args(VERBOSE, "max_len skip_sanity_checks",
@@ -406,7 +408,7 @@ if __debug__:
                              trace(level, "[FYI: potential extraneous f-string issue in  in trace_fmt: missing {}'s?] ", no_eol=True)
                     kwargs_unicode = {k: format_value(_to_unicode(_to_string(v)), max_len=max_len)
                                       for (k, v) in list(kwargs.items())}
-                    trace(level, _to_unicode(text).format(**kwargs_unicode))
+                    result = trace(level, _to_unicode(text).format(**kwargs_unicode), max_len=max_len)
                 except(KeyError, ValueError, UnicodeEncodeError):
                     raise_exception(max(VERBOSE, level + 1))
                     sys.stderr.write("Warning: Problem in trace_fmtd: {exc}\n".
@@ -420,7 +422,7 @@ if __debug__:
                 raise_exception(max(VERBOSE, level + 1))
                 sys.stderr.write("Error: Unexpected problem in trace_fmtd: {exc}\n".
                                  format(exc=sys.exc_info()))
-        return
+        return result
 
 
     STANDARD_TYPES = (int, float, dict, list)
@@ -620,7 +622,7 @@ if __debug__:
         - Use USE_REPR=False to use tracing via str instead of repr.
         - Use _KW_ARG for KW_ARG (i.e., '_' prefix in case of conflict), as in following:
           trace_expr(DETAILED, term, _term="; ")
-        - Use MAX_LEN to specify maximum value length ({max_len}).
+        - Use MAX_LEN to specify maximum value length ({max_len}), including the variable name, etc.
         - Use PREFIX to specify initial trace output (e.g., for function call tracing).
         - Use SUFFIX to specify final value to be printed (e.g., for perlish para grep over multi-line trace).
         - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
@@ -666,8 +668,10 @@ if __debug__:
         if not use_old_introspection:
             ## HACK: uses _prefix to avoid conflict with introspection's prefix
             ## TODO2: drop newlines due to arguments split across lines
-            expression = intro.format(*values, arg_offset=1, indirect=True, max_len=max_len,
-                                      no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
+            expression = "???"
+            if intro:
+                expression = intro.format(*values, arg_offset=1, indirect=True, max_len=max_len,
+                                          no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
             ## TEST:
             ## expression = []
             ## for i, value in enumerate(values):
@@ -675,7 +679,7 @@ if __debug__:
             ## expression = "@".join(expression)
             ## trace(3, f"{values=} {expression=}")
             ##
-            out_text += trace(level, expression, skip_sanity_checks=True)
+            out_text += trace(level, expression, skip_sanity_checks=True, max_len=max_len)
         else:
             ## TODO2: handle cases split across lines
             try:
@@ -703,7 +707,7 @@ if __debug__:
 
             # Output initial text
             if prefix:
-                out_text += trace(level, prefix, no_eol=no_eol, skip_sanity_checks=True)
+                out_text += trace(level, prefix, no_eol=no_eol, skip_sanity_checks=True, max_len=max_len)
 
             # Output each expression value
             for expression, value in zip_longest(expressions, values):
@@ -716,13 +720,13 @@ if __debug__:
                               f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
                     value_spec = format_value(repr(value) if use_repr else value,
                                               max_len=max_len)
-                    out_text += trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True)
+                    out_text += trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True, max_len=max_len)
                 except:
                     trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
                            exc=sys.exc_info())
             # Output final text
             if suffix:
-                out_text += trace(level, suffix, no_eol=False, skip_sanity_checks=True)
+                out_text += trace(level, suffix, no_eol=False, skip_sanity_checks=True, max_len=max_len)
             elif (no_eol and (delim != "\n")):
                 out_text += trace(level, "", no_eol=False)
             else:
@@ -851,6 +855,7 @@ if __debug__:
         if (not expression):
             try:
                 # Get source information for failed assertion
+                ## TODO3: use trace_stack (here and elsewhere)
                 trace_fmtd(MOST_VERBOSE, "Call stack: {st}", st=inspect.stack())
                 offset = 2 if indirect else 1
                 caller = inspect.stack()[offset]
@@ -859,7 +864,9 @@ if __debug__:
 
                 # Resolve expression text
                 if not use_old_introspection:
-                    expression = intro.format(expression, indirect=True, omit_values=True)
+                    expression = "???"
+                    if intro:
+                        expression = intro.format(expression, indirect=True, omit_values=True)
                     ## OLD: expression = re.sub("=False$", "", expression)
                     ## TODO2: drop newlines due to argument split across lines
                     ##   expression = re.sub("\n", " ", expression)???
@@ -945,7 +952,7 @@ else:
 
     trace_level = 0
     
-    def non_debug_stub(*_args, **_kwargs) -> None:
+    def non_debug_stub(*_args, **_kwargs) -> Any:
         """Non-debug stub (i.e., no-op function)"""
         # Note: no return value assumed by debug.expr
         return
@@ -1020,7 +1027,7 @@ cond_val = val
 # TODO: alias trace to trace_fmt as well (add something like trace_out if format not desired)
 trace_fmt = trace_fmtd
 
-def debug_print(text: str, level: IntOrTraceLevel) -> None:
+def debug_print(text: str, level: IntOrTraceLevel) -> str:
     """Wrapper around trace() for backward compatibility
     Note: debug_print will soon be deprecated."""
     return trace(level, text)

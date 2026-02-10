@@ -40,7 +40,7 @@ debug.assertion(__doc__)
 # Constants
 TL = debug.TL
 #
-## TODO: Constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
+## TODO: Constants for switches, omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
 ## Note: Run following in Emacs to interactively replace TODO_ARG with option label
 ##    M-: (query-replace-regexp "todo\\([-_]\\)arg" "arg\\1name")
 ## where M-: is the emacs keystroke short-cut for eval-expression.
@@ -139,7 +139,7 @@ class Script(Main):
 
 def main() -> None:
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
     app = Script(
         description=__doc__.format(script=gh.basename(__file__)),

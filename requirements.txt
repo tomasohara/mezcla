@@ -32,22 +32,22 @@
 #
 HTMLParser
 absl_py
-asttokens
+asttokens                     # for debug introspection
 beautifulsoup4
 bs4
 cachetools
 cherrypy
-clip_interrogator
-datasets                      # Hugging Face (HF) data
+#opt# clip_interrogator
+#opt# datasets                # Hugging Face (HF) data
 #opt# diffusers               # Stale Diffusion; TEMP
 #opt# xformers                # composable Transformer building blocks
 diskcache
 extcolors>=1.0.0
 executing                     # code introspection a la icecream
-flair
+## opt: flair                 # Framework for Language-Aware Information Retrieval (AI/NLP toolkit)
 flask
-git+https://github.com/tehabstract/textract.git
-gradio==3.48                        # UI support (e.g., HF-based apps)
+#opt# git+https://github.com/tehabstract/textract.git
+#opt# gradio==3.48            # UI support (e.g., HF-based apps)
 importlib_metadata
 langchain
 langchain_community
@@ -60,11 +60,11 @@ more_itertools
 nltk
 numpy>=1.18.5
 pandas>=1.3.0
-pyaml
+pyyaml
 pyctcdecode                   # CTC beam search decoder for speech recognition
 ## OLD: pydantic
 pyenchant
-pysbd
+#opt# pysbd                   # Sentence Boundary Disambiguation
 pytest
 requests
 scikit-learn
@@ -73,14 +73,19 @@ scipy
 six
 stop_words
 #opt# tensorrt                # NVidia GPU support
-transformers                  # HF models
-torch
+#opt# transformers            # HF models
+## NOTE: Disabled torch due to size and since specialized usage (e.g., llm_desktop_search.py).
+## TODO: torch
 unittest_parametrize          # pytest-like for classes
 #opt# torchaudio
 webcolors==1.13
-wheel
+## OLD: wheel
+##
 ## NOTE: temporarily disabled due to stupid docker disk space constraints
-## TODO: xgboost
+## TODO:
+## BAD: xgboost
+## OLD: xgboost<=2.1.4
+xgboost-cpu
 #
 #...............................................................................
 # Optional requirements
@@ -126,15 +131,18 @@ pydantic==2.9.2
 ## OLD: #opt# spacy>=3.0.0
 ## TODO:
 ## note: See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.7.0
-spacy==3.7.0
-en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.0/en_core_web_md-3.7.0.tar.gz
+## NOTE: Disabled due to size of dependencies (Github Actions issue)
+## spacy==3.7.0
+## en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.0/en_core_web_md-3.7.0.tar.gz
 #
 ## See https://github.com/explosion/spacy-models/releases/tag/en_core_web_md-3.2.0
 ## OLD
-## spacy==3.2.6
-## en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.2.0/en_core_web_md-3.2.0.tar.gz
+#opt# spacy==3.2.6
+#opt# en_core_web_md@https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.2.0/en_core_web_md-3.2.0.tar.gz
 ## typing_extensions==4.7.0
-typing_extensions>=4.7.0
+## OLD: typing_extensions>=4.7.0
+## TODO2: un pin after updating code
+typing_extensions==4.12.2
 #
 #opt# textract
 #devel# types-six                         # typing stubs for six

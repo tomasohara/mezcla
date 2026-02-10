@@ -25,7 +25,7 @@ from mezcla.my_regex import my_re
 from mezcla import system
 
 # Note: Rreference are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.transpose_data as THE_MODULE
 
 ## TODO4: move to header comments

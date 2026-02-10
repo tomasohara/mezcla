@@ -82,7 +82,6 @@ import io
 import os
 import re
 import sys
-## OLD: import tempfile
 from typing import (
     Optional, List, Tuple, Any, Union,
     Generator, Dict, TextIO,
@@ -108,14 +107,6 @@ from mezcla.system import getenv_bool
 ##                     Tuple[str, str, Optional[Any]],
 ##                     Tuple[str, str, Optional[Any], Optional[str]]]
 ##
-## OLD:
-##
-## ArgInfoType = Union[str,
-##                     Tuple[str],
-##                     Tuple[str, Optional[Any]],
-##                     Tuple[str, Optional[Any], Optional[Any]],
-##                     Tuple[str, Optional[Any], Optional[Any], Optional[Any]]]
-##
 UserArgInfoType = Union[
     str,
     Tuple[str, str],
@@ -127,6 +118,7 @@ SysArgInfoType = Tuple[str, str, Optional[Any], Optional[str]]
 HELP_ARG = "--help"
 USAGE_ARG = "--usage"
 VERBOSE_ARG = "verbose"
+FILENAME = "filename"
 USE_PARAGRAPH_MODE_DEFAULT = getenv_bool("USE_PARAGRAPH_MODE", False)
 USE_PARAGRAPH_MODE = getenv_bool("PARAGRAPH_MODE", USE_PARAGRAPH_MODE_DEFAULT,
                                  "Process input in Perl-style paragraph mode")
@@ -139,10 +131,6 @@ TRACK_PAGES = getenv_bool("TRACK_PAGES", False,
                           "Track page boundaries by form feed--\\f or ^L")
 RETAIN_FORM_FEED = getenv_bool("RETAIN_FORM_FEED", False,
                                "Include formfeed (\\f) at start of each segment")
-## OLD:
-## DEFAULT_FILE_BASE = my_re.sub(r".py\w*$", "", gh.basename(__file__))
-## FILE_BASE = system.getenv_text("FILE_BASE", DEFAULT_FILE_BASE,
-##                                "Basename for output files including dir")
 SHOW_ENV_OPTIONS = system.getenv_bool("ENV_USAGE", debug.detailed_debugging(),
                                       "Include environment options in usage")
 # TODO: Put following in common module
@@ -159,8 +147,12 @@ QUIET_MODE = system.getenv_bool(
 PERL_SWITCH_PARSING = system.getenv_bool("PERL_SWITCH_PARSING", False,
                                          "Preprocess args to expand Perl-style -var[=[val=1]] to --var=val")
 ## HACK: This is needed if boolean options default to true based on run-time initialization
-NEGATIVE_BOOL_ARGS = system.getenv_bool("NEGATIVE_BOOL_ARGS", False,
-                                        "Add negation option for each boolean option")
+NEGATIVE_BOOL_ARGS = system.getenv_bool(
+    "NEGATIVE_BOOL_ARGS", False,
+    desc="Add negation option for each boolean option")
+SHOW_NEGATIVE_ARGS = system.getenv_bool(
+    "SHOW_NEGATIVE_ARGS", False,
+    desc="Show negative arguments in help--normally too verbose")
 SHORT_OPTIONS = system.getenv_bool("SHORT_OPTIONS", False,
                                    "Automatically derive short options")
 ENV_OPTION_PREFIX = system.getenv_value("ENV_OPTION_PREFIX", None,
@@ -168,27 +160,16 @@ ENV_OPTION_PREFIX = system.getenv_value("ENV_OPTION_PREFIX", None,
 ## TEST
 ## TEMP_BASE = system.getenv_value("TEMP_BASE", None,
 ##                                 "Override for temporary file basename")
-## OLD: TEMP_BASE = gh.TEMP_BASE
-## OLD:
-## USE_TEMP_BASE_DIR = system.getenv_bool("USE_TEMP_BASE_DIR", False,
-##                                        "Whether TEMP_BASE should be a dir instead of prefix")
 USE_TEMP_BASE_DIR = gh.USE_TEMP_BASE_DIR
 ## TEST
 ## TEMP_FILE = system.getenv_value("TEMP_FILE", None,
 ##                                 "Override for temporary filename")
 TEMP_FILE = gh.TEMP_FILE
-## OLD:
-## KEEP_TEMP_FILES = system.getenv_bool("KEEP_TEMP_FILES", debug.detailed_debugging(),
-##                                      "Retain temporary files")
 KEEP_TEMP_FILES = gh.KEEP_TEMP
 INPUT_ERROR_OPTION = "input_error"
 INPUT_ERROR = system.getenv_value(
     INPUT_ERROR_OPTION.upper(), None,
     description="Override for strict input processing error handling")
-## OLD:
-## DISABLE_RECURSIVE_DELETE = system.getenv_value(
-##     "DISABLE_RECURSIVE_DELETE", None,
-##     description="Disable use of potentially dangerous rm -r style recursive deletions")
 DISABLE_RECURSIVE_DELETE = gh.DISABLE_RECURSIVE_DELETE
 VERBOSE_DEFAULT = bool(f"--{VERBOSE_ARG}" in sys.argv)
 VERBOSE_MODE = system.getenv_value(
@@ -243,7 +224,7 @@ class Main(object):
         #
         def trace_args(level:int, label:str):
             """Trace out input arguments, each on separate line to simplify diff"""
-            debug.trace_expr(level, runtime_args, description, skip_args, multiple_files, use_temp_base_dir, usage_notes, program, paragraph_mode, track_pages, file_input_mode, newlines, boolean_options, text_options, int_options, float_options, positional_options, positional_arguments, skip_input, manual_input, skip_stdin, auto_help, brief_usage, short_options, kwargs, prefix=f"{label}: {{", delim="\n\t", suffix="}", max_len=256)
+            debug.trace_expr(level, runtime_args, description, skip_args, multiple_files, use_temp_base_dir, usage_notes, program, paragraph_mode, track_pages, file_input_mode, newlines, boolean_options, text_options, int_options, float_options, positional_options, positional_arguments, skip_input, manual_input, skip_stdin, auto_help, brief_usage, short_options, kwargs, prefix=f"{label}: {{", delim="\n\t", suffix="}", max_len=1024)
         #
         debug.trace(4, f"Main.__init__(): self={self}")
         trace_args(5, "input main args")
@@ -285,7 +266,6 @@ class Main(object):
             debug.trace_fmt(7, "inferred manual_input: {mi}", mi=manual_input)
         self.manual_input = manual_input
         if skip_input is None:
-            ## OLD: skip_input = self.manual_input
             skip_input = (self.manual_input or skip_stdin)
             debug.trace_fmt(7, "inferred skip_input: {si}", si=skip_input)
         self.skip_input = skip_input
@@ -294,13 +274,6 @@ class Main(object):
         if brief_usage is None:
             brief_usage = BRIEF_USAGE
         self.brief_usage = brief_usage  # show brief usage instead of full --help
-        ## OLD:
-        ## if auto_help is None:
-        ##     ## TODO: rework to be default if none specified for both skip_input and manual_input
-        ##     ## OLD: auto_help = self.skip_input
-        ##     auto_help = self.skip_input or not self.manual_input
-        ##     debug.trace(7, f"inferred auto_help: {auto_help}")
-        ## self.auto_help = auto_help      # adds --help to command line if no arguments
         if usage_notes is None:
             usage_notes = ""
         self.notes = usage_notes
@@ -331,14 +304,6 @@ class Main(object):
         # Setup temporary file and/or base directory
         # TODO: allow temp_base handling to be overridable by constructor options
         # TODO: reconcile with unittest_wrapper.py.get_temp_dir
-        ## OLD:
-        ## prefix = (FILE_BASE + "-")
-        ## alt_temp_base = (
-        ##     tempfile.NamedTemporaryFile(
-        ##         prefix=prefix,
-        ##         delete=not debug.detailed_debugging(),
-        ##         ## TODO: "suffix": "-"
-        ##     ).name)
         self.temp_base = gh.get_temp_file()
         # TODO: self.use_temp_base_dir = gh.dir_exists(gh.basename(self.temp_base))
         # -or-: temp_base_dir = system.getenv_text("TEMP_BASE_DIR", " "); self.use_temp_base_dir = bool(temp_base_dir.strip()); ...
@@ -350,7 +315,6 @@ class Main(object):
             ## TEMP HACK: remove file if not a dir (n.b., quirk with NamedTemporaryFile
             if system.is_regular_file(self.temp_base):
                 gh.delete_file(self.temp_base)
-            ## OLD: gh.run("mkdir -p {dir}", dir=self.temp_base)
             gh.full_mkdir(self.temp_base)
             ## TODO3: main-temp.txt???
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
@@ -433,6 +397,8 @@ class Main(object):
         debug.trace_fmt(debug.QUITE_DETAILED, "end of Main.__init__(); self={s}",
                         s=self)
         return
+    #
+    # EX: m = Main(runtime_args=[]); m.parsed_args => {}
 
     def get_arguments(
             self,
@@ -445,7 +411,6 @@ class Main(object):
             argument_specs += self.boolean_options + self.text_options + self.int_options + self.float_options
         if not just_optional:
             argument_specs += self.positional_options
-        ## OLD: arguments = [(spec[0] if list(spec[0]) else spec) for spec in argument_specs]
         arguments = [(spec[0] if isinstance(spec, list) else spec) for spec in argument_specs]
         debug.trace(6, f"get_arguments([pos?={just_positional}, opt?={just_optional}] => {arguments}")
         return arguments
@@ -459,12 +424,14 @@ class Main(object):
         """Convert OPTION_SPEC to (label, description, default) tuple. 
         Notes: The description and default of the specification are optional,
         and the parentheses can be omitted if just the label is given. For example,
-             ("--num-eggs", "Number of eggs", 2)
+             "verbose"                         => ("quiet", "", None, None)
+             ("quiet", False)                  => ("quiet", "", False, None)
+             ("num-eggs", "Number of eggs", 2) => ("num-eggs", "Number of eggs", 2, None)
         If POSITIONAL, the option prefix (--) is omitted and OPTION_SPEC
         includes an optional nargs component, such as:
-             ("other-files", "Other file names", ["f1", "f2", "f3"], "+")
+             ("other-files", "Other file names", ["f1", "f2", "f3"], "+")   => no change
         """
-        # EX: label, _desc, _default = Main.convert_option("--mucho-backflips"); label => "--mucho-backflips"
+        # EX: label, _desc, _default, _nargs = m.convert_option("mucho-backflips"); label => "--mucho-backflips"
         ## TODO2: add short option support as in ("--num-eggs/-#", "Number of eggs", 2)
         ## TODO3: make the component representation structured (e.g., namedtuple)
         ## TEST: result = ["", "", ""]
@@ -477,7 +444,6 @@ class Main(object):
         opt_prefix = "--" if not positional else ""
         # TODO: use keyword arguments (or namedtuple)
         if isinstance(option_spec, tuple):
-            ## OLD: option_components = list(option_spec)
             option_components = option_spec
             opt_label = opt_prefix + option_components[0]
             if len(option_components) > 1:
@@ -514,7 +480,7 @@ class Main(object):
         Note: Unless ALLOW_UNDER, issues warning about underscores used in labels: this is 
         to support standard Unix argument conventions (e.g., "--skip-run" not "--skip_run").
         """
-        # EX: dummy_app.get_option_name("mucho-backflips") => "mucho_backflips"
+        # EX: m.get_option_name("mucho-backflips") => "mucho_backflips"
         if not allow_under:
             debug.assertion(("_" not in label), "Use dashes not underscores")
         name = label.replace("-", "_")
@@ -526,7 +492,7 @@ class Main(object):
         """Whether option for LABEL specified (i.e., non-null value)
         Note: OLD version that checks for non-null value)
         """
-        # EX: self.parsed_args = {"it": False}; self.has_parsed_option_old("nonit") => False
+        # EX: m.parsed_args = {"it": False}; m.has_parsed_option_old("nonit") => False
         name = self.get_option_name(label)
         has_option = (name in self.parsed_args and (self.parsed_args[name] is not None))
         debug.trace_fmtd(6, "has_parsed_option_old({l}) => {r}",
@@ -535,11 +501,13 @@ class Main(object):
 
     def has_parsed_option(self, label: str) -> Optional[Any]:
         """Value for LABEL specified or None if not applicable
-        Note: This is a deprecated method (use get_parsed_option instead)
+        Note: This is a deprecated method (use get_parsed_option instead);
+        The preferred method is get_parsed_option, which allows for dynamic default values.
         """
-        # EX: self.parsed_args = {"it": False}; self.has_parsed_option("notit") => None
-        ## TEMP HACK: if called by a subclass, treate as alias to get_parsed_option
-        if (self.__class__ != "__main__.Script"):
+        # EX: m.parsed_args = {"me": False}; m.has_parsed_option("not-me") is None
+        ## TEMP HACK: if called by a subclass, treat as alias to get_parsed_option
+        debug.trace(7, f"in has_parsed_option({str}); class_name: {self.__class__.__name__})")
+        if (self.__class__.__name__ != "Main"):
             debug.trace(3, "Warning: deprecated method: has_parsed_option => get_parsed_option")
             return self.get_parsed_option(label)
         # Return parsed-arg entry for the option
@@ -576,8 +544,11 @@ class Main(object):
         ) -> Optional[Any]:
         """Get value for option LABEL, with dashes converted to underscores. 
         If POSITIONAL specified, DEFAULT value is used if omitted
-        Note: ALLOW_UNDER skips sanity check about underscores
+        Note: ALLOW_UNDER skips sanity check about underscores;
+        In addition, differs from has_parsed_option in allowing for different default value.
         """
+        # EX: m.int_options = [("n", "num", 2)]; m.get_parsed_option("n") => 2
+        # EX: m.get_parsed_option("n", default=3) => 3
         under_label = label.replace("-", "_")
         dash_label = label.replace("_", "-")
         opt_label = (self.get_option_name(label, allow_under=allow_under) if not positional
@@ -615,6 +586,9 @@ class Main(object):
         debug.trace_fmtd(5, "get_parsed_option({l}, [{d}], [{p}]) => {v}",
                          l=label, d=default, p=positional, v=value)
         return value
+    #
+    # EX: m.get_parsed_option("missing") => None
+    # EX: m.get_parsed_option("missing", default=3) => 3
 
     def get_parsed_argument(self, label: str,
                             default: Optional[Any] = None,
@@ -639,7 +613,6 @@ class Main(object):
         if not self.argument_parser:
             self.argument_parser = argparse.ArgumentParser
         usage_notes = self.notes
-        ## OLD: if (not usage_notes and SHOW_ENV_OPTIONS):
         if (not usage_notes):
             env_opt_spec = ""
             if (SHOW_ENV_OPTIONS or VERBOSE_MODE):
@@ -685,27 +658,13 @@ class Main(object):
             else:
                 add_argument(opt_label, default=opt_default, action="store_true", help=opt_desc)
                 if NEGATIVE_BOOL_ARGS:
-                    # BAD: label = f"non-{opt_label}"
                     under_label = my_re.sub(r"^__", "", opt_label.replace("-", "_"))
-                    label = "--non-" + under_label
-                    ## SO-SO
-                    ## # note: converts "Description ..." into "Do not description ..."
-                    ## opt_desc_uncapitalized = ((opt_desc[:1].lower() + opt_desc[1:]) if opt_desc else "")
-                    ## desc = f"Non {opt_desc_uncapitalized}"
+                    ## BAD: label = "--non-" + under_label
+                    label = "--non-" + my_re.sub(r"^--", "", opt_label)
                     # note: the argument is not shown in help to avoid clutter
-                    desc = argparse.SUPPRESS
+                    desc = (argparse.SUPPRESS if not SHOW_NEGATIVE_ARGS else f"Not {opt_desc}")
                     debug.trace(4, f"Adding negative-boolean: label={label} dest={under_label}")
-                    parser.add_argument(label, default=opt_default, dest=under_label, action="store_false", help=desc, add_short=False)
-        ## OLD:
-        ## for opt_spec in self.int_options:
-        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-        ##     add_argument(opt_label, type=int, default=opt_default, help=opt_desc)
-        ## for opt_spec in self.float_options:
-        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-        ##     add_argument(opt_label, type=float, default=opt_default, help=opt_desc)
-        ## for opt_spec in self.text_options:
-        ##     (opt_label, opt_desc, opt_default, _) = self.convert_option(opt_spec, None)    # pylint: disable=unbalanced-tuple-unpacking
-        ##     add_argument(opt_label, default=opt_default, help=opt_desc)
+                    add_argument(label, default=opt_default, dest=under_label, action="store_false", help=desc, add_short=False)
         for options, opt_type in [(self.int_options, int),
                                   (self.float_options, float),
                                   (self.text_options, str)]:
@@ -746,7 +705,7 @@ class Main(object):
         if not self.skip_input:
             filename_nargs = ("?" if (not self.multiple_files) else "+")
             debug.trace_fmtd(6, "filename_nargs={nargs}", nargs=filename_nargs)
-            parser.add_argument("filename", nargs=filename_nargs, default="-",
+            parser.add_argument(FILENAME, nargs=filename_nargs, default="-",
                                 help="Input filename")
         elif self.auto_help:
             dash_nargs = "?"
@@ -786,13 +745,15 @@ class Main(object):
         debug.trace_object(8, parser, max_depth=2)
         self.parser = parser
         # note: not trapped to allow for early exit
+        ## TODO2: track down problem when skip_input with streamlined scripts:
+        ## see examples/template.py (e.g., uncomment "skip_input=True,").
         self.parsed_args = vars(parser.parse_args(runtime_args))
         debug.trace(5, f"parsed_args = {self.parsed_args}")
         self.verbose = bool(self.get_parsed_option("verbose", VERBOSE_MODE))
         # Get filename unless input ignored and fixup if returned as list
         # TODO: add an option to retain self.filename as is
         if not self.skip_input:
-            self.filename = self.parsed_args["filename"]
+            self.filename = self.parsed_args[FILENAME]
             if (isinstance(self.filename, list)):
                 if not self.multiple_files:
                     debug.trace(3, "Warning: Making (list) self.filename a string & setting self.other_filenames to remainder")
@@ -997,8 +958,6 @@ class Main(object):
                         self.end_of_page = True
                         if RETAIN_FORM_FEED:
                             line_segment = FORM_FEED + line_segment
-                    ## OLD: if line_segment and (i > 0):
-                    ## NEW:
                     if (i > 0):
                         self.line_num += 1
                         self.rel_line_num += 1
@@ -1006,8 +965,6 @@ class Main(object):
                             self.page_num += 1
                             self.rel_para_num = 1
                             self.rel_line_num = 1
-                    ## OLD: if line_segment:
-                    ## NEW:
                     if True:            # pylint: disable=using-constant-test
                         debug.trace_fmt(6, "yielding line segment [Pg{pg}/Par{par}/L{ln}]: {ls}",
                                         pg=self.page_num, par=self.rel_para_num, ln=self.rel_line_num, ls=line_segment)
@@ -1108,7 +1065,6 @@ class Main(object):
                                 
             # Remove all temp_base* files (or the temp_base directory)
             if self.use_temp_base_dir:
-                ## OLD: gh.run("rm -rf {dir}", dir=self.temp_base)
                 if DISABLE_RECURSIVE_DELETE:
                     debug.trace(4, f"FYI: Only deleting top-level files in {self.temp_base} to avoid potentially dangerous rm -r")
                     gh.run("rm -f {dir}/* {dir}/.*", dir=self.temp_base)
@@ -1146,7 +1102,6 @@ def main() -> None:
             print("No-op main step")
             
     # note: Following used for argument parsing
-    ## OLD: main = Main(description=__doc__)
     ## NOTE: That hangs with run-python-script main.py
     main_app = VacuousMain(description=__doc__, skip_input=True, manual_input=True)
     ## TODO3: main.run_main_step = lambda self: print("No-op main step")

@@ -26,7 +26,7 @@ from mezcla.my_regex import my_re
 from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	                global module object
+#    THE_MODULE:                        global module object
 #    TestTemplate.script_module:        path to file
 import mezcla.file_utils as THE_MODULE
 

@@ -62,6 +62,10 @@ from mezcla.validate_arguments_types import (
     FileDescriptorOrPath, StrOrBytesPath
 )
 
+# Custom Types
+MatchResult = Union[str, List[str]]
+MatchResultList = List[MatchResult]
+
 # Constants
 TL = debug.TL
 
@@ -140,7 +144,9 @@ initialized = False
 #------------------------------------------------------------------------
 
 def get_temp_file(delete: Optional[bool] = None) -> str:
-    """Return name of unique temporary file, optionally with DELETE"""
+    """Return name of unique temporary file, optionally with DELETE.
+    Note: when debugging this might be based on TEMP_BASE (see init).
+    """
     # Note: delete defaults to False if detailed debugging
     # TODO: allow for overriding other options to NamedTemporaryFile
     if ((delete is None) and not KEEP_TEMP):
@@ -164,14 +170,36 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
     return temp_file_name
 
 
-def get_temp_dir(delete=None) -> str:
+def get_temp_dir(delete=None, use_temp_base=None) -> str:
     """Gets temporary file to use as a directory
-    note: Optionally DELETEs directory afterwards
+    Note: Optionally DELETEs directory afterwards. 
+    With USE_TEMP_BASE, uses gh.TEMP_BASE if defined, which normally is only used when debugging
+    tests (via explicit CLI option).
     """
-    ## TODO3: make option to bypass creation
-    temp_dir_path = get_temp_file(delete=delete)
+
+    # Try to use temporary file override
+    ## TODO3: make option to bypass creation; extend to use TEMP_BASE automatically
+    ## BAD:
+    ## temp_dir_path = None if (not (use_temp_base and TEMP_BASE)) else TEMP_BASE
+    ## if not temp_dir_path:
+    ##    temp_dir_path = get_temp_file(delete=delete)
+    ## NOTE: there is an intermittent issue with the temp file support for unit tests:
+    ## (see unittest_wrapper.py's get_temp_dir/file methods.
+    temp_dir_path = None
+    if use_temp_base and TEMP_BASE:
+        temp_dir_path = TEMP_BASE
+        if (not system.file_exists(temp_dir_path)):
+            full_mkdir(temp_dir_path, force=True)
+        if (not system.is_directory(temp_dir_path)):
+            temp_dir_path = None
+            debug.trace(4, "Warning: existing TEMP_BASE is not a directory: {TEMP_BASE!r}")
+    
+    # Otherwise fallback to entirely new temp file
+    if not temp_dir_path:
+        temp_dir_path = get_temp_file(delete=delete)
     # note: removes non-dir file if exists
     full_mkdir(temp_dir_path, force=True)
+
     debug.trace_fmtd(5, "gh.get_temp_dir() => {r!r}", r=temp_dir_path)
     return temp_dir_path
 
@@ -182,6 +210,23 @@ def create_temp_file(contents: Any, binary: bool = False) -> str:
     system.write_file(temp_filename, contents, binary=binary)
     debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
     return temp_filename
+
+
+def write_temp_file(filename: FileDescriptorOrPath, text: Any,
+                    temp_dir: Optional[str]=None) -> str:
+    """Create FILENAME in temp. directory using TEXT. Returns path to result.
+    Note: Version of system.py write_temp_file allowing for TEMP DIR override.
+    """
+    ## TODO2: Any => Union[bytes, str]
+    if temp_dir is None:
+        temp_dir = get_temp_dir()
+    temp_path = ""
+    try:
+        temp_path = form_path(temp_dir, filename)
+        system.write_file(temp_path, text)
+    except:
+        system.print_exception_info("gh.write_temp_file")
+    return temp_path
 
 
 def basename(filename: str, extension: Optional[str] = None) -> str:
@@ -199,11 +244,14 @@ def basename(filename: str, extension: Optional[str] = None) -> str:
 
 
 def remove_extension(filename: str, extension: str) -> str:
-    """Returns FILENAME without EXTENSION. Note: similar to basename() but retaining directory portion."""
+    """Returns FILENAME without EXTENSION. Note: similar to basename() but retaining directory portion.
+    Note: Use system.remove_extension for a more flexible version.
+    """
     # EX: remove_extension("/tmp/solr-4888.log", ".log") => "/tmp/solr-4888"
     # EX: remove_extension("/tmp/fubar.py", ".py") => "/tmp/fubar"
     # EX: remove_extension("/tmp/fubar.py", "py") => "/tmp/fubar."
     # NOTE: Unlike os.path.splitext, only the specific extension is removed (not whichever extension used).
+    ## TODO3: merge into system.remove_extension
     pos = filename.find(extension)
     base = filename[:pos] if (pos > -1) else filename
     debug.trace(5, f"remove_extension({filename!r}, {extension}) => {base!r}")
@@ -326,10 +374,10 @@ def resolve_path(
 
 def form_path(*filenames: str, create: bool = False) -> str:
     """Wrapper around os.path.join over FILENAMEs (with tracing)
-    Note: includes sanity check about absolute filenames except for first
-    If CREATE, then the directory for the path is created if needed
-    Warning: This might be deprecated: use system.form_path instead.
-    """
+    Note: includes sanity check about absolute filenames except for first.
+    If CREATE, then the directory for the path is created if needed.
+    (See system.py for a version that is strictly a wrapper.)
+    """    
     debug.assertion(not any(f.startswith(system.path_separator()) for f in filenames[1:]))
     if create:
         ## TODO2: add dir option so that all filenames used for path
@@ -398,7 +446,10 @@ def real_path(path: FileDescriptorOrPath) -> str:
 
 
 def indent(text: str, indentation: Optional[str] = None, max_width: int = 512) -> str:
-    """Indent TEXT with INDENTATION at beginning of each line, returning string ending in a newline unless empty and with resulting lines longer than max_width characters wrapped. Text is treated as a single paragraph."""
+    """Indent TEXT with INDENTATION at beginning of each line, returning string ending in a newline unless empty and with resulting lines longer than max_width characters wrapped. Text is treated as a single paragraph.
+    Note: Use indent_lines for non-paragraph version (i.e., lines indented independently).
+    """
+    # EX: indent('p1s1\np1s2\n\n\np2s1\np2s2\n') => '    p1s1 p1s2   p2s1 p2s2\n'
     if indentation is None:
         indentation = INDENT
     # Note: an empty text is returned without trailing newline
@@ -410,9 +461,11 @@ def indent(text: str, indentation: Optional[str] = None, max_width: int = 512) -
 
 
 def indent_lines(text: str, indentation: Optional[str] = None, max_width: int = 512) -> str:
-    """Like indent, except that each line is indented separately. That is, the text is not treated as a single paragraph."""
+    """Like indent, except that each line is indented separately. That is, the text is not treated as a single paragraph.
+    """
+    # EX: indent_lines('p1s1\np1s2\n\n\np2s1\np2s2\n') => '    p1s1\n    p1s2\n\n\n    p2s1\n    p2s2\n'
     # Sample usage: print("log contents: {{\n{log}\n}}".format(log=indent_lines(lines)))
-    # TODO: add support to simplify above idiom (e.g., indent_lines_bracketed); rename to avoid possible confusion that input is array (as wih write_lines)
+    # TODO: add support to simplify above idiom (e.g., indent_lines_bracketed); rename to avoid possible confusion that input is array (as with write_lines)
     if indentation is None:
         indentation = INDENT
     result = ""
@@ -661,7 +714,7 @@ def extract_matches(
         multiple: bool = False,
         re_flags: int = 0,
         para_mode: Optional[bool] = False
-    ) -> List[str]:
+    ) -> MatchResultList:
     """Checks for PATTERN matches in LINES of text returning list of tuples with replacement groups.
     Notes: The number of FIELDS can be greater than 1.
     Optionally allows for MULTIPLE matches within a line.
@@ -723,7 +776,7 @@ def extract_match(
         multiple: bool = False,
         re_flags: int = 0,
         para_mode: Optional[bool] = None
-    ):
+    ) -> Optional[MatchResult]:
     """Extracts first match of PATTERN in LINES for FIELDS"""
     matches = extract_matches(pattern, lines, fields, multiple, re_flags, para_mode)
     result = (matches[0] if matches else None)
@@ -738,7 +791,7 @@ def extract_match_from_text(
         multiple: bool = False,
         re_flags: int = 0,
         para_mode: Optional[bool] = None
-    ) -> Optional[str]:
+    ) -> Optional[MatchResult]:
     """Wrapper around extract_match for text input"""
     ## TODO: rework to allow for multiple-line matching
     return extract_match(pattern, text.split("\n"), fields, multiple, re_flags, para_mode)
@@ -751,7 +804,7 @@ def extract_matches_from_text(
         multiple: Optional[bool] = None,
         re_flags: int = 0,
         para_mode: Optional[bool] = None
-    ) -> List[str]:
+    ) -> MatchResultList:
     """Wrapper around extract_matches for text input
     Note: By default MULTIPLE matches are returned"""
     # EX: extract_matches_from_text(".", "abc") => ["a", "b", "c"]
@@ -762,9 +815,10 @@ def extract_matches_from_text(
     return extract_matches(pattern, text.split("\n"), fields, multiple, re_flags, para_mode)
 
 
-def extract_pattern(pattern: str, text: str, **kwargs) -> Optional[str]:
+def extract_pattern(pattern: str, text: str, **kwargs) -> Optional[MatchResult]:
     """Yet another wrapper around extract_match for text input"""
     return extract_match(pattern, text.split("\n"), **kwargs)
+
 
 def count_it(
         pattern: str,
@@ -779,6 +833,8 @@ def count_it(
     debug.trace(7, f"count_it({pattern}, _, {field}, {multiple}")
     value_counts: Dict[str, int] = defaultdict(int)
     for value in extract_matches_from_text(pattern, text, field, multiple):
+        if isinstance(value, List):
+            value = str(value)
         value_counts[value] += 1
     debug.trace_values(6, value_counts, "count_it()")
     return value_counts
@@ -883,6 +939,7 @@ def rename_file(source: StrOrBytesPath, target: str) -> None:
     debug.assertion(non_empty_file(target))
     return
 
+## TODO4: def rename_ddmmmyy_hhmmss
 
 def delete_file(filename: StrOrBytesPath) -> bool:
     """Deletes FILENAME"""
@@ -1014,17 +1071,21 @@ if __debug__:
         if debug.assertion(condition, indirect=True):
             try:
                 frame = inspect.currentframe()
-                frame = frame.f_back
-                filename = frame.f_globals.get("__file__")
-                line_num = frame.f_lineno
+                filename = "???"
+                line_num = -1
+                if frame:
+                    frame = frame.f_back
+                if frame:
+                    filename = frame.f_globals.get("__file__")
+                    line_num = frame.f_lineno
                 debug.trace(TL.WARNING, f"FYI: Assertion failed at {filename}:{line_num}")
             except:
                 system.print_exception_info("gh.assertion")
         return
 
 else:
-
-    def assertion(_condition: bool) -> None:
+                                                  # note: ignores silly mypy signature diff bug
+    def assertion(_condition: bool) -> None:      # type: ignore[misc]
         """Non-debug stub for assertion"""
         return
 
@@ -1057,12 +1118,12 @@ def init() -> None:
     if TEMP_BASE and not PRESERVE_TEMP_FILE:
         temp_file_default = (form_path(TEMP_BASE, temp_filename) if USE_TEMP_BASE_DIR else f"{TEMP_BASE}-{temp_filename}")
         debug.trace(4, f"FYI: Inferred TEMP_FILE default: {temp_file_default!r}")
-    debug.trace_expr(5, system.getenv("TEMP_FILE"))
+    debug.trace_expr(6, system.getenv("TEMP_FILE"))
     global TEMP_FILE
     TEMP_FILE = system.getenv_value(
         "TEMP_FILE", temp_file_default, skip_register=initialized,
         description="Debugging override for temporary filename: avoid if possible")
-    debug.trace_expr(5, system.getenv("TEMP_FILE"))
+    debug.trace_expr(6, system.getenv("TEMP_FILE"))
     #
     global TEMP_LOG_FILE
     TEMP_LOG_FILE = system.getenv_text(
@@ -1083,7 +1144,7 @@ def main() -> None:
     
     # Note: Uses main-based arg parsing for sake of show environment options
     #   ./glue_helpers.py --help --verbose
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
     # Parse command line options, show usage if --help given
     main_app = Main(description=__doc__.format(script=basename(__file__)))

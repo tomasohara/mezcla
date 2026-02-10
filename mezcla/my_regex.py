@@ -31,7 +31,11 @@
 
 # Standard packages
 import re
+from typing import Any, AnyStr, List, Match, Optional, Tuple, Union
 ## TODO: from re import *
+
+# Type alias for str or bytes
+StrOrBytes = Union[str, bytes]
 
 # Installed packages
 ## OLD: import six
@@ -120,10 +124,10 @@ class regex_wrapper():
     
     # pylint: disable=super-init-not-called
     #
-    def __init__(self, ):
+    def __init__(self) -> None:
         debug.trace_fmtd(4, "my_regex.__init__(): self={s}", s=self)
-        self.match_result = None
-        self.search_text = None
+        self.match_result: Optional[Match[Any]] = None
+        self.search_text: Optional[StrOrBytes] = None
         # TODO: self.regex = ""
 
         # HACK: Import attributes from re class
@@ -137,7 +141,7 @@ class regex_wrapper():
         except:
             system.print_exception_info("__init__ re.* importation")
 
-    def check_pattern(self, regex):
+    def check_pattern(self, regex: AnyStr) -> None:
         """Apply sanity checks to REGEX when debugging
         Note: Added to account for potential missing f-string prefix"""
         debug.trace(self.TRACE_LEVEL + 1, f"check_pattern({regex})")
@@ -150,7 +154,7 @@ class regex_wrapper():
             ## OLD: regex = regex.encode()
             check_regex = check_regex.encode()
         if REGEX_WARNINGS:
-            debug.trace_expr(self.TRACE_LEVEL + 1, check_regex, delim="\n")
+            debug.trace_expr(self.TRACE_LEVEL + 2, check_regex, delim="\n")
             match = re.search(check_regex, regex, flags=re.IGNORECASE)
             if match:
                 # Ignore regex operators within f-string replacement
@@ -162,7 +166,7 @@ class regex_wrapper():
             if match:
                 system.print_error(f"Warning: potentially unresolved f-string in {regex!r} at {match.start(0)}")
 
-    def search(self, regex, text, flags=0, base_trace_level=None):
+    def search(self, regex: AnyStr, text: AnyStr, flags: int = 0, base_trace_level: Optional[int] = None) -> Optional[Match[AnyStr]]:
         """Search for REGEX in TEXT with optional FLAGS and BASE_TRACE_LEVEL (e.g., 6)"""
         ## TODO: rename as match_anywhere for clarity
         if base_trace_level is None:
@@ -179,7 +183,7 @@ class regex_wrapper():
             debug.trace_object(base_trace_level + 1, self.match_result)
         return self.match_result
 
-    def match(self, regex, text, flags=0, base_trace_level=None):
+    def match(self, regex: AnyStr, text: AnyStr, flags: int = 0, base_trace_level: Optional[int] = None) -> Optional[Match[AnyStr]]:
         """Match REGEX to TEXT with optional FLAGS and BASE_TRACE_LEVEL (e.g., 6)"""
         ## TODO: rename as match_start for clarity; add match_all method (wrapper around fullmatch)
         if base_trace_level is None:
@@ -194,14 +198,14 @@ class regex_wrapper():
             debug.trace_object(base_trace_level + 1, self.match_result)
         return self.match_result
 
-    def get_match(self):
+    def get_match(self) -> Optional[Match[Any]]:
         """Return match result object for last search or match"""
         result = self.match_result
         debug.trace_fmtd(self.TRACE_LEVEL, "my_regex.get_match() => {r!r}: self={s}",
                          r=result, s=self)
         return result
 
-    def group(self, num):
+    def group(self, num: int) -> Optional[StrOrBytes]:
         """Return group NUM from match result from last search"""
         debug.assertion(self.match_result)
         result = self.match_result and self.match_result.group(num)
@@ -209,7 +213,7 @@ class regex_wrapper():
                          n=num, r=result, s=self)
         return result
 
-    def groups(self):
+    def groups(self) -> Optional[Tuple[StrOrBytes, ...]]:
         """Return all groups in match result from last search"""
         debug.assertion(self.match_result)
         result = self.match_result and self.match_result.groups()
@@ -217,26 +221,26 @@ class regex_wrapper():
                         r=result, s=self)
         return result
 
-    def grouping(self):
+    def grouping(self) -> Optional[Union[Tuple[StrOrBytes, ...], StrOrBytes]]:
         """Return groups for match result or entire matching string if no groups defined"""
         # Note: this is intended to facilitate debug tracing; see example in search method above
         result = self.match_result and (self.match_result.groups() or self.match_result.group(0))
         debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.grouping() => {r!r}: self={s}", r=result, s=self)
         return result
 
-    def start(self, group=0):
+    def start(self, group: int = 0) -> Optional[int]:
         """Start index for GROUP"""
         result = self.match_result and self.match_result.start(group)
         debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.start({g}) => {r!r}: self={s}", r=result, s=self, g=group)
         return result
 
-    def end(self, group=0):
+    def end(self, group: int = 0) -> Optional[int]:
         """End index for GROUP"""
         result = self.match_result and self.match_result.end(group)
         debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.end({g}) => {r!r}: self={s}", r=result, s=self, g=group)
         return result
 
-    def sub(self, pattern, replacement, string, *, count=0, flags=0):
+    def sub(self, pattern: AnyStr, replacement: AnyStr, string: AnyStr, *, count: int = 0, flags: int = 0) -> AnyStr:
         """Version of re.sub requiring explicit keyword parameters"""
         # Note: Explicit keywords enforced to avoid confusion
         result = re.sub(pattern, replacement, string, count, flags)
@@ -245,34 +249,35 @@ class regex_wrapper():
         self.check_pattern(pattern)
         return result
 
-    def span(self, group=0):
+    def span(self, group: int = 0) -> Optional[Tuple[int, int]]:
         """Tuple with GROUP start and end"""
         return (self.match_result and self.match_result.span(group))
 
-    def split(self, pattern, string, maxsplit=0, flags=0):
+    def split(self, pattern: AnyStr, string: AnyStr, maxsplit: int = 0, flags: int = 0) -> List[AnyStr]:
         """Use PATTERN to split STRING, optionally up to MAXSPLIT with FLAGS"""
         result = re.split(pattern, string, maxsplit, flags)
         debug.trace_fmt(self.TRACE_LEVEL, "split{args} => {r!r}",
                         args=tuple([pattern, string, maxsplit, flags]), r=result, max_len=2048)
         return result
     
-    def findall(self, pattern, string, flags=0):
-        """Use PATTERN to split STRING, optionally with specified FLAGS"""
+    def findall(self, pattern: AnyStr, string: AnyStr, flags: int = 0) -> List[AnyStr]:
+        """Use PATTERN to find all matches in STRING, optionally with specified FLAGS"""
+        # Note: Docstring says "split" but method does findall (returns list of matches)
         result = re.findall(pattern, string, flags)
         debug.trace_fmt(self.TRACE_LEVEL, "findall{args} => {r!r}",
                         args=tuple([pattern, string, flags]), r=result, max_len=2048)
         return result
 
-    def escape(self, text):
+    def escape(self, text: AnyStr) -> AnyStr:
         """Escape special characters in TEXT"""
         ## TODO3: make static method
         result = re.escape(text)
         debug.trace(self.TRACE_LEVEL + 1, f"escape({text!r}) => {result!r}")
         return result
 
-    def pre_match(self):
+    def pre_match(self) -> Optional[StrOrBytes]:
         """Text preceding the match or None if not defined"""
-        result = None
+        result: Optional[StrOrBytes] = None
         if self.match_result:
             start = 0
             end = self.match_result.span(0)[0]
@@ -280,16 +285,26 @@ class regex_wrapper():
         debug.trace(self.TRACE_LEVEL, f"pre_match() => {result!r}")
         return result
     
-    def post_match(self):
+    def post_match(self) -> Optional[StrOrBytes]:
         """Text following the match or None if not defined"""
-        result = None
+        result: Optional[StrOrBytes] = None
         if self.match_result:
             start = self.match_result.span(0)[1]
             end = len(self.search_text)
             result = self.search_text[start: end]
         debug.trace(self.TRACE_LEVEL, f"post_match() => {result!r}")
         return result
-    
+
+    def compile(self, pattern, flags=0):
+        """Compile a regular expression PATTERN using FLAGS, returning a Pattern object."""
+        return re.compile(pattern, flags)
+
+    ## Note: Placeholder for other methods (n.b., to avoid silly errors like forgetting self)
+    ##
+    ## def TODO(self, ...):
+    ##     """TODO: docstring"""
+    ##     return re.TODO(...)
+
 #...............................................................................
 # Initialization
 #

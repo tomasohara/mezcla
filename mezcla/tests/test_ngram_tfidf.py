@@ -36,7 +36,7 @@ system.setenv("TFIDF_NGRAM_LEN_WEIGHT", "1.1")
 system.setenv("TFIDF_BOOST_CAPITALIZED", "1")
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 ## TODO: fix type object 'Preprocessor' has no attribute 'USE_SKLEARN_COUNTER'
 import mezcla.ngram_tfidf as THE_MODULE
 

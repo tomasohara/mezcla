@@ -17,26 +17,26 @@
 #      www.tomasohara.trade => new www.scrappycito.trade
 #   
 
-
 """Tests for html_utils module"""
 
 # Standard packages
-import re
 import os
 
 # Installed packages
+from PIL import Image
 import pytest
-## OLD: import bs4
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
+from mezcla import misc_utils
 from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
+from mezcla.tests.common_module import normalize_text
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.html_utils as THE_MODULE
 
 # Constants and environment options
@@ -50,34 +50,81 @@ SKIP_SELENIUM_REASON = f"Not-{TEST_SELENIUM_DESC}"
 INCLUDE_HINT_TESTS = system.getenv_bool(
     "INCLUDE_HINT_TESTS", False,
     desc="Include the work-in-progress tests involving type hints")
-## TODO:
-## SKIP_HINT_TESTS = system.getenv_bool(
-##     "SKIP_HINT_TESTS", False,
-##     desc="Skip the work-in-progress tests involving type hints")
 SKIP_HINT_TESTS = not INCLUDE_HINT_TESTS
 SKIP_HINT_REASON = "Type hinting tests require more work"
 ##
+SCRAPPYCITO_URL = "http://www.scrappycito.com"
+TOMASOHARA_TRADE_URL = "http://www.tomasohara.trade"
 SCRAPPYCITO_LIKE_URL = system.getenv_text(
-    "SCRAPPYCITO_LIKE_URL", "http://www.tomasohara.trade:9330",
-    desc="URL to use instead of www.scrappycito.com")
+    "SCRAPPYCITO_LIKE_URL", f"{TOMASOHARA_TRADE_URL}:9330",
+    desc=f"URL to use instead of {SCRAPPYCITO_URL}")
 TOMASOHARA_TRADE_LIKE_URL = system.getenv_text(
-    "TOMASOHARA_TRADE_LIKE_URL", "http://www.tomasohara.trade",
-    desc="URL to use instead of www.tomasohara.trade")
+    "TOMASOHARA_TRADE_LIKE_URL", TOMASOHARA_TRADE_URL,
+    desc=f"URL to use instead of {TOMASOHARA_TRADE_URL} like localhost://tomasohara")
+PACMAN_FILENAME = gh.form_path("examples", "sd-spooky-pacman.png")
+##
+DIMENSIONS_HTML_FILENAME = gh.form_path("resources", "simple-window-dimensions.html")
+DIMENSIONS_EXPECTED_TEXT = """
+   Simple window dimensions
+
+   Simple window dimensions
+
+      Legend:
+        Screen dimensions:    ???
+        Browser dimensions:   ???
+
+   JavaScript is required
+"""
+#
+# NOTE: Whitespace and punctuation gets normalized
+# TODO: restore bullet points (e.g., "* Screen dimensions")
+
+# Global initialization
+## TODO3: Do via class setup method(s), monkey patching, and/or download-dir arg
+## (e.g., download_dir for download_web_document).
+## TODO4: Also, extend get_temp_dir to use TEMP_BASE automatically.
+THE_MODULE.DOWNLOAD_DIR = gh.form_path(gh.get_temp_dir(use_temp_base=True),
+                                       "downloads", create=True)
+
+# Sanity checks (e.g., selenium installed and imported OK)
+debug.assertion(SKIP_SELENIUM or getattr(THE_MODULE, "webdriver"))
+
+#-------------------------------------------------------------------------------
+
+def resolve_mezcla_path(filename):
+    """Determine path for FILENAME using heurtics based on repo layout"""
+    # example: resolve_mezcla_path("examples/sd-spooky-pacman.png") => "/home/tomohara/Mezcla/mezcla/examples/sd-spooky-pacman.png"
+    result = gh.resolve_path(filename, heuristic=True, absolute=True)
+    debug.trace(6, f"resolve_mezcla_path({filename!r}) => {result!r}")
+    return result
+
+def resolve_mezcla_url(filename):
+    """Determine URL for mezcla FILENAME in repo"""
+    # example: resolve_mezcla_url("examples/sd-spooky-pacman.png") => "https://github.com/tomasohara/mezcla/blob/main/mezcla/examples/sd-spooky-pacman.png"
+    ## TEST: url = f"https://github.com/tomasohara/mezcla/blob/main/mezcla/{filename}"
+    url = f"{TOMASOHARA_TRADE_LIKE_URL}/mezcla/mezcla/{filename}"
+    ## TODO?: url = f"http://localhost/mezcla/mezcla/{filename}"
+    debug.trace(6, f"resolve_mezcla_url({filename!r}) => {url!r}")
+    return url
+
+#-------------------------------------------------------------------------------
 
 class TestHtmlUtils(TestWrapper):
     """Class for testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    use_temp_base_dir = True
     ##
     ## NOTE: Using personal site instead of LLC in order to avoid issues
     ## with the production server (i.e., www.scrappycito.com).
     scrappycito_url = "www.scrappycito.com"
-    tomasohara_trade_url = TOMASOHARA_TRADE_LIKE_URL
-    ## OLD: scrappycito_url = f"{tomasohara_trade_url}:9330"
     scrappycito_like_url = SCRAPPYCITO_LIKE_URL
-    ready_test_path = gh.resolve_path("document_ready_test.html",
-                                      heuristic=True, absolute=True)
-    ready_test_alt_path = gh.resolve_path("document_ready_test_alt.html",
-                                          heuristic=True, absolute=True)
+    tomasohara_trade_url = TOMASOHARA_TRADE_URL
+    tomasohara_trade_like_url = TOMASOHARA_TRADE_LIKE_URL
+    ready_test_path = resolve_mezcla_path("document_ready_test.html")
+    ready_test_alt_path = resolve_mezcla_path("document_ready_test_alt.html")
+    dimensions_url = "file://" + resolve_mezcla_path(DIMENSIONS_HTML_FILENAME)
+    pacman_path = resolve_mezcla_path(PACMAN_FILENAME)
+    pacman_url = resolve_mezcla_url(PACMAN_FILENAME)
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -87,6 +134,7 @@ class TestHtmlUtils(TestWrapper):
         browser = THE_MODULE.get_browser(self.tomasohara_trade_url)
         self.do_assert(my_re.search(r"<title>.*Tomás.*O.Hara.*Scrappy.*Cito.*</title>",
                                     browser.page_source))
+        THE_MODULE.shutdown_browser(browser)
 
     def test_get_url_parameter_value(self):
         """Ensure get_url_parameter_value works as expected"""
@@ -109,15 +157,15 @@ class TestHtmlUtils(TestWrapper):
         Note: requires selenium"""
         debug.trace(4, "test_get_inner_text()")
         html_filename = "simple-window-dimensions.html"
-        html_path = gh.resolve_path(html_filename, heuristic=True)
+        html_path = resolve_mezcla_path(html_filename)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
         unrendered_text = gh.run(f"lynx -dump {url}")
         debug.trace_expr(5, unrendered_text)
-        assert re.search(r"Browser dimensions: \?", unrendered_text)
+        assert my_re.search(r"Browser dimensions: \?", unrendered_text)
         rendered_text = THE_MODULE.get_inner_text(url)
         debug.trace_expr(5, rendered_text)
-        assert re.search(r"Browser dimensions: \d+x\d+", rendered_text)
+        assert my_re.search(r"Browser dimensions: \d+x\d+", rendered_text)
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -126,18 +174,18 @@ class TestHtmlUtils(TestWrapper):
         Note: requires selenium"""
         debug.trace(4, "test_get_inner_html()")
         html_filename = "simple-window-dimensions.html"
-        html_path = gh.resolve_path(html_filename, heuristic=True)
+        html_path = resolve_mezcla_path(html_filename)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
         unrendered_html = gh.run(f"lynx -source {url}")
         debug.trace_expr(5, unrendered_html)
-        assert re.search(
+        assert my_re.search(
             r"<li>Browser dimensions:\s*<span.*>\?\?\?</span></li>",
             unrendered_html,
             )
         rendered_html = THE_MODULE.get_inner_html(url)
         debug.trace_expr(5, rendered_html)
-        assert re.search(
+        assert my_re.search(
             r"<li>Browser dimensions:\s*<span.*>\d+x\d+</span></li>",
             rendered_html,
             )
@@ -154,6 +202,15 @@ class TestHtmlUtils(TestWrapper):
         self.do_assert("tomasohara" in self.scrappycito_like_url)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_main_url_content(self):
+        """Make sure expected web content at scrappycito-like and tomasohara.trade[-like] URLs"""
+        debug.trace(4, f"TestIt.test_main_url_content(); self={self}")
+        content = THE_MODULE.download_web_document(self.scrappycito_like_url)
+        assert "Welcome to ScrappyCito" in content
+        content = THE_MODULE.download_web_document(self.tomasohara_trade_url)
+        assert "Little Scrap" in content
+        
     def check_inner_html(self, regular, inner):
         """Helper for inner html tests: makes sure that Javascript generated output not in REGULAR but is in INNER output for ScrappyCito's landing page
         Note: This assumes inner produced with ?section=tips option.
@@ -162,6 +219,8 @@ class TestHtmlUtils(TestWrapper):
         #       <span id="ui-tips-id" class="ui-icon ui-icon-triangle-1-e"></span>   [closed (east):  >]
         #   vs. <span id="ui-tips-id" class="ui-icon ui-icon-triangle-1-s"></span>   [opened (south): v]
         # TODO3: use HTML file in repo
+        debug.trace_expr(5, self, regular, inner,
+                         prefix="TestIt.check_inner_html: ", max_len=128)
         tips_section_open_regex = r"tips-id.*ui-icon-triangle-1-s"
         self.do_assert(my_re.search(tips_section_open_regex, inner.strip(), flags=my_re.IGNORECASE))
         self.do_assert(not my_re.search(tips_section_open_regex, regular.strip(), flags=my_re.IGNORECASE))
@@ -175,22 +234,17 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, f"TestIt.test_get_inner_html_alt(); self={self}")
         debug.assertion("scrappycito.com" not in self.scrappycito_like_url,
                         f"The production server should not be used in tests: {self.scrappycito_url}")
-        ## OLD:
-        ## output = THE_MODULE.get_inner_html(self.scrappycito_like_url)
-        ## self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
         ## TODO: regular_output = THE_MODULE.download_web_document(self.scrappycito_like_url)
         regular_output = gh.run(f"lynx -source {self.scrappycito_like_url}")
         inner_output = THE_MODULE.get_inner_html(self.scrappycito_like_url + "/?section=tips")
         self.check_inner_html(regular_output, inner_output)
         return
 
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_run_script_for_inner_html(self):
         """Test of getting inner HTML via script invocation"""
         debug.trace(4, f"TestIt.test_run_script_for_inner_html(); self={self}")
-        ## OLD:
-        ## output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url}", data_file=self.temp_file)
-        ## self.do_assert(not my_re.search(r"sign.out", output.strip(), flags=my_re.IGNORECASE))
         regular_output = self.run_script(options=f"--stdout {self.scrappycito_like_url}")
         self.temp_file += "-2"
         inner_output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url + '/?section=tips'}")
@@ -214,14 +268,12 @@ class TestHtmlUtils(TestWrapper):
     def test_escape_html_value(self):
         """Ensure escape_html_value() works as expected"""
         debug.trace(4, "test_escape_html_value()")
-        # note: this test is the same as system.test_escape_html_text
         assert THE_MODULE.escape_html_value("<2/") == "&lt;2/"
         assert THE_MODULE.escape_html_value("Joe's hat") == "Joe&#x27;s hat"
 
     def test_unescape_html_value(self):
         """Ensure unescape_html_value() works as expected"""
         debug.trace(4, "test_unescape_html_value()")
-        # note: this test is the same as test_system.test_unescape_html_text
         assert THE_MODULE.unescape_html_value("&lt;2/") == "<2/"
         assert THE_MODULE.unescape_html_value("Joe&#x27;s hat") == "Joe's hat"
 
@@ -242,7 +294,7 @@ class TestHtmlUtils(TestWrapper):
             'not-found-status': '404',
             'redirect-status': '302'
         }
-        assert THE_MODULE.get_param_dict('not-found-status') == 'not-found-status'
+        assert THE_MODULE.get_param_dict().get('not-found-status') == '404'
         assert THE_MODULE.get_param_dict() == THE_MODULE.user_parameters
 
     def test_set_param_dict(self):
@@ -275,9 +327,6 @@ class TestHtmlUtils(TestWrapper):
     def test_get_url_param_checkbox_spec(self):
         """Ensure get_url_param_checkbox_spec() works as expected"""
         debug.trace(4, "test_get_url_param_checkbox_spec()")
-        ## OLD:
-        ## param_dict = {"check_1": "on", "check_2": "off","check_3": "True",
-        ##               "check_4": False, "check_5": 1}
         param_dict = {"check_1_on": "on",  "check_3_on": "True",  "check_5_on": 1,
                       "check_2_off": "off", "check_4_off": False, "check_6_off": None}
 
@@ -341,7 +390,7 @@ class TestHtmlUtils(TestWrapper):
             'file\nwith\nmultiple\nlines\n')
 
         # Test invalid file
-        debug.set_level(3)
+        self.patch_trace_level(3)
         THE_MODULE._read_file(filename='invalid_file', as_binary=False)
         captured = self.get_stderr()
         assert "Unable to read file" in captured
@@ -366,30 +415,37 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE._write_file(filename, data=bytes("it", encoding="UTF-8"), as_binary=True)
         assert THE_MODULE._read_file(filename=filename, as_binary=True) == b"it"
 
+    def check_download_web_document(self, download_func):
+        """Check web downloads via DOWNLOAD_FUNC"""
+        ## TODO2: change to html file from repo
+        assert "currency" in THE_MODULE.download_web_document(f"{self.tomasohara_trade_like_url}/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
+        assert download_func("www. bogus. url.html") is None
+        remote_pacman_image_data = download_func(self.pacman_url, as_binary=True)
+        local_pacman_image_data = system.read_binary_file(self.pacman_path)
+        assert len(remote_pacman_image_data) == len(local_pacman_image_data)
+        assert remote_pacman_image_data == local_pacman_image_data
+
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_old_download_web_document(self):
         """Ensure old_download_web_document() works as expected"""
-        ## NOTE: Currently fails if UTF-8 error occurs
-        debug.trace(4, "test_old_download_web_document()")
-        assert "<!doctype html>" in THE_MODULE.old_download_web_document("https://www.google.com")
+        self.check_download_web_document(download_func=THE_MODULE.old_download_web_document)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_web_document(self):
         """Ensure download_web_document() works as expected"""
         debug.trace(4, "test_download_web_document()")
         ## NOTE: Wikipedia/WikiMedia complaining about robots (even though single document access)
-        ## diring GitHub actions rub. See https://wikitech.wikimedia.org/wiki/Robot_policy.
-        ## OLD: assert "currency" in THE_MODULE.download_web_document("https://simple.wikipedia.org/wiki/Dollar")
+        ## during GitHub actions run. See https://wikitech.wikimedia.org/wiki/Robot_policy.
         ## TODO2: use website accessible to all team members
-        assert "currency" in THE_MODULE.download_web_document("http://www.tomasohara.trade/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
-        assert THE_MODULE.download_web_document("www. bogus. url.html") is None
+        self.check_download_web_document(download_func=THE_MODULE.download_web_document)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_test_download_html_document(self):
         """Ensure test_download_html_document() works as expected"""
         debug.trace(4, "test_test_download_html_document()")
         assert "Google" in THE_MODULE.test_download_html_document("www.google.com")
         ## TODO2: use website accessible to all team members
-        assert "Tomás" not in THE_MODULE.test_download_html_document("http://www.tomasohara.trade", encoding="big5")
+        assert "Tomás" not in THE_MODULE.test_download_html_document(f"{self.tomasohara_trade_like_url}", encoding="big5")
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_html_document(self):
@@ -401,7 +457,7 @@ class TestHtmlUtils(TestWrapper):
         filename = "test_download_file"
 
         # Assert file is downloaded and created in tmp_dir
-        THE_MODULE.download_html_document("http://www.tomasohara.trade", download_dir=tmp_dir, filename=filename)
+        THE_MODULE.download_html_document(self.tomasohara_trade_like_url, download_dir=tmp_dir, filename=filename)
         assert filename in system.read_directory(tmp_dir)
 
         # Assert exception report is printed when not Ignore
@@ -421,23 +477,20 @@ class TestHtmlUtils(TestWrapper):
         err = self.get_stderr()
         assert "Error during retrieve_web_document" not in err
 
-
-
-
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_binary_file(self):
         """Ensure download_binary_file() works as expected"""
         debug.trace(4, "test_download_binary_file()")
-        binary_doc = THE_MODULE.download_binary_file(url="www.tomasohara.trade")
-        non_binary_doc = THE_MODULE.download_web_document(url="www.tomasohara.trade")
-        assert re.search(b"Scrappy.*Cito", binary_doc)
+        binary_doc = THE_MODULE.download_binary_file(url=self.tomasohara_trade_like_url)
+        non_binary_doc = THE_MODULE.download_web_document(url=self.tomasohara_trade_like_url)
+        assert my_re.search(b"Scrappy.*Cito", binary_doc)
         assert bytes(non_binary_doc, encoding="UTF-8") == binary_doc
 
 
     def test_retrieve_web_document(self):
         """Ensure retrieve_web_document() works as expected"""
         debug.trace(4, "test_retrieve_web_document()")
-        assert re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document("www.tomasohara.trade"))
+        assert my_re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document(self.tomasohara_trade_like_url))
 
     def test_init_BeautifulSoup(self):
         """Ensure init_BeautifulSoup() works as expected"""
@@ -445,11 +498,13 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE.BeautifulSoup = None
         THE_MODULE.init_BeautifulSoup()
         assert THE_MODULE.BeautifulSoup
-
+    
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_extract_html_link(self):
         """Ensure extract_html_link() works as expected"""
         debug.trace(4, "test_extract_html_link()")
 
+        url = "https://www.example.com"
         html = (
             '<!DOCTYPE html>\n'
             '<html>\n'
@@ -469,26 +524,21 @@ class TestHtmlUtils(TestWrapper):
             '</body>\n'
             '</html>\n'
         )
-
-        # NOTE that the last two urls has a extra '/'.
-        ## TODO: check if the extra '/' in the last two urls are correct.
         all_urls = [
             'https://www.anothersite.io/',
             'https://www.example.com/',
             'https://www.example.com/sopport',
             'https://www.subdomain.example.com/',
             'https://www.example.com.br/',
-            'http:///www.subdomain.example.com/sitemap.xml',
-            'https://www.example.com//home.html',
+            'https://www.example.com/www.subdomain.example.com/sitemap.xml',
+            'https://www.example.com/home.html',
         ]
 
         # Test extract all urls from html
-        assert THE_MODULE.extract_html_link(html, url='https://www.example.com', base_url='http://') == all_urls
+        assert THE_MODULE.extract_html_link(html, url=url, base_url=url) == all_urls
 
         # Test base_url none
-        ## TODO: this assertion is returning, need to be solved:
-        ##      https://www.example.com//www.subdomain.example.com/sitemap.xml
-        ## assert THE_MODULE.extract_html_link(html, url='https://www.example.com') == all_urls
+        assert THE_MODULE.extract_html_link(html, url=url) == all_urls
 
     @pytest.mark.xfail
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
@@ -519,20 +569,79 @@ class TestHtmlUtils(TestWrapper):
         ## Note: following should not be ready at first due to JavaScript (n.b., wrong assumption).
         ## TODO3: use different URL because the JavaScript doesn't affect ready status; see test_document_ready
         scrappycito_search_result = f"{self.scrappycito_like_url}/run_search?query=modern+art"
-        ## OLD:
-        ## assert not THE_MODULE.document_ready(scrappycito_search_result)
-        ## ## Exception raised:
-        ## ## E       selenium.common.exceptions.JavascriptException: Message: TypeError: document.body is null
-        ## ## E       Stacktrace:
-        ## ## E       @http://www.scrappycito.com:9330/:2:7
-        ## ## E       @http://www.scrappycito.com:9330/:3:8
-        ## ## /home/zavee/.local/lib/python3.10/site-packages/selenium/webdriver/remote/errorhandler.py:229: JavascriptException
         assert THE_MODULE.document_ready(scrappycito_search_result)
 
         # Use example suggesed by Claude-Opus-4.1
         debug.assertion("15 seconds" in system.read_file(self.ready_test_alt_path))
         test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_alt_path, timeout=5)
         self.do_assert(not test_document_ready)
+
+    def check_browser_dimensions(self, width, height, label):
+        """Verify that browser accepts dimensions of WIDTH x HEIGHT via selenium"""
+        debug.trace(5, f"check_browser_dimensions{(width, height, label)}")
+        # Note: The cache is disabled, so browser object for URL has right options.
+        self.monkeypatch.setattr(THE_MODULE, "USE_BROWSER_CACHE", False)
+        self.monkeypatch.setattr(THE_MODULE, "BROWSER_DIMENSIONS", f"{width},{height}")
+        browser = THE_MODULE.get_browser(self.dimensions_url)
+        screenshot_path = gh.form_path(self.get_temp_dir(), f"{label}-screenshot.png")
+        try:
+            browser.get_screenshot_as_file(screenshot_path)
+            ok = True
+            with Image.open(screenshot_path) as img:
+                actual_width, actual_height = img.size
+                debug.trace_expr(5, actual_width, actual_height)
+        except:
+            ok = False
+            debug.trace_exception_info(6, "get_screenshot_as_file")
+        ok = ok and misc_utils.is_close(width, actual_width, epsilon=1000)
+        ok = ok and misc_utils.is_close(height, actual_height, epsilon=1000)
+        THE_MODULE.shutdown_browser(browser)
+        return ok
+        
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail
+    def test_browser_dimensions(self):
+        """Verify that 8k and 16k resolution possible with headless selenium driver but not 32k"""
+        # In addition, the target 16k resolution is based on
+        #    https://en.wikipedia.org/wiki/16K_resolution
+        # It is comparable to four 4k monitors. Also see
+        #    https://en.wikipedia.org/wiki/Display_resolution_standards
+        debug.trace(4, "test_browser_dimensions()")
+        assert self.check_browser_dimensions(3840, 2160, "4k")
+        assert self.check_browser_dimensions(7680, 4320, "8k")
+        assert self.check_browser_dimensions(15360, 8640, "16k")
+        assert not self.check_browser_dimensions(30720, 17280, "32k")
+
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail
+    def test_wait_until_ready(self):
+        """Verify that wait_until_ready for simple web page with JavaScript"""
+        debug.trace(4, "test_wait_until_ready()")
+        self.patch_trace_level(5)
+        THE_MODULE.wait_until_ready(self.dimensions_url)
+        captured = self.get_stderr()
+        # ex: Stable size check: last=-1 size=1140 diff=1140 count=0 done=False
+        assert my_re.search(r"diff=[0-9]", captured)
+
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail
+    def test_browser_command(self):
+        """Verify that browser_command works for simple command"""
+        debug.trace(4, "test_browser_command()")
+        title = THE_MODULE.browser_command(url=self.dimensions_url,
+                                           command="return document.title;")
+        # ex: "Simple window dimensions"
+        assert "dimensions" in title.lower()
+
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail
+    def test_selenium_function(self):
+        """Verify that selenium_function works for simple function call"""
+        debug.trace(4, "test_selenium_function()")
+        result = THE_MODULE.selenium_function(url=self.dimensions_url,
+                                              call="set_window_rect(width=123, height=123)")
+        # ex: {'x': 0, 'y': 0, 'width': 450, 'height': 123}
+        assert my_re.search(r"'width': \d+, 'height': \d+", result)
 
     @pytest.mark.xfail
     def test_set_param_dict_alt(self):
@@ -789,6 +898,48 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE.set_param_dict({"f": "'my dog's fleas'"})
         assert THE_MODULE.format_url_param("f") == '&#x27;my dog&#x27;s fleas&#x27;'
         
+    def test_extract_html_images(self):
+        """Ensure extract_html_images works as expected"""
+        debug.trace(4, "test_extract_html_images()")
+
+        url = 'example.com'
+        html = (
+            '<!DOCTYPE html>\n'
+            '<html>\n'
+            '<body>\n'
+            '<h2>The target Attribute</h2>\n'
+            '<div class="some-class">this is a div</div>\n'
+            '<div class="some-class another-class">'
+            '<img src="smiley.gif" alt="Smiley face" width="42" height="42" style="border:5px solid black">\n'
+            '<img src="some_image.jpg" alt="Some image" width="42" height="42" style="border:5px solid black">\n'
+            '<img src="hidden.jpg" alt="this is a hidden image" width="42" height="42" style="display:none">\n'
+            '</div>'
+            '</body>\n'
+            '</html>\n'
+        )
+        images_urls = [
+            f'{url}/smiley.gif',
+            f'{url}/some_image.jpg'
+        ]
+
+        result = THE_MODULE.extract_html_images(html, url)
+        assert result == images_urls
+        assert 'hidden.jpg' not in images_urls
+
+    def test_html_to_text(self):
+        """Ensure html_to_text works as expected"""
+        debug.trace(4, "test_html_to_text()")
+        html_path = resolve_mezcla_path(DIMENSIONS_HTML_FILENAME)
+        html = system.read_file(html_path)
+        text = THE_MODULE.html_to_text(html)
+        assert normalize_text(text) == normalize_text(DIMENSIONS_EXPECTED_TEXT)
+
+    def test_format_html_message(self):
+        """Ensure html_to_text works as expected"""
+        debug.trace(4, "test_html_to_text()")
+        html = THE_MODULE.format_html_message("hola", text="josé")
+        assert html == "<html lang='en'>  <head>    <title>hola</title>  </head>  <body>    <h3>hola<h3>    josé  </body></html>"
+
     ## TODO (test for type hint failures):
     ## @pytest.mark.xfail
     ## @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)

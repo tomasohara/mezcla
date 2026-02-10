@@ -23,11 +23,17 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
-
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
-import mezcla.extract_document_text as THE_MODULE
+## OLD: import mezcla.extract_document_text as THE_MODULE
+THE_MODULE = None
+try:
+    import mezcla.extract_document_text as THE_MODULE
+except:
+    system.print_exception_info("extract_document_text import") 
+
+#-------------------------------------------------------------------------------
 
 class TestExtractDocumentText(TestWrapper):
     """Class for testcase definition"""

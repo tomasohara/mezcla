@@ -28,7 +28,7 @@ from mezcla import debug
 from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.rgb_color_name as THE_MODULE
 
 class TestRgbColorName(TestWrapper):

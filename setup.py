@@ -20,10 +20,10 @@
 from distutils.core import setup
 
 setup(name='Mezcla',
-      packages=['mezcla', 'mezcla.tfidf'],
+      packages=['mezcla', 'mezcla.examples', 'mezcla.tfidf'],
       module="mezcla",
       ## TODO2: import mezcla; version=mezcla.VERSION
-      version="1.4.0.5",
+      version="1.4.0.8",
       ## BAD: description-file="README.txt",
       description_file="README.txt",
       ## BAD: dist-name="Mezcla",

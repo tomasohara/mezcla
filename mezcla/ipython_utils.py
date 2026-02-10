@@ -16,15 +16,17 @@ Simple usage:
     from mezcla.ipython_utils import *
 
 Advanced usage:
-    # Make sure import-globals util active
+    # Make sure import-globals utility active
     import mezcla.ipython_utils
     reload(mezcla.ipython_utils)
     import_module_globals = mezcla.ipython_utils.import_module_globals
+
     # Run over misc_utils.py
     import_module_globals("mezcla.misc_utils", globals_dict=builtins.globals())
-    (TYPICAL_EPSILON, VALUE_EPSILON)
-    >>>
-    (1e-06, 0.001)
+    #
+    # note: ipython chokes over the following when preceding comment included:
+    # >>> (TYPICAL_EPSILON, VALUE_EPSILON)
+    # (1e-06, 0.001)
 
 Misc. usage:
     set_xterm_title("ipython: " + os.getcwd())
@@ -62,9 +64,7 @@ from mezcla import html_utils
 from mezcla.main import Main
 from mezcla import system
 from mezcla.my_regex import my_re
-## OLD: from mezcla import data_utils as du
 from mezcla import glue_helpers as gh
-## OLD: from mezcla import html_utils as html
 from mezcla import tpo_common as tpo
 try:
     from mezcla import data_utils as du
@@ -104,7 +104,7 @@ except:
 def grep_obj_methods(obj, pattern, flags=None):
     """Return methods for OBJ matching PATTERN (with optional re.search FLAGS)
     Note: in practice, all object members are grepped"""
-    ## TODO3: rename as grep_obj_methods
+    ## TODO3: rename as grep_obj_attributes
     # EX: grep_obj_methods(str, "strip") => ["lstrip", "strip", "rstrip"]
     if flags is None:
         flags = re.IGNORECASE
@@ -124,32 +124,59 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
     if ignore_errors is None:
         ignore_errors = False
     
+    # Ensure module_name is a string
+    if not isinstance(module_name, str):
+        if not ignore_errors:
+            system.print_error(f"Error: module_name must be a string, got {type(module_name)}")
+        debug.trace(5, f"module_name is not a string: {type(module_name)}")
+        return
+    
     # Get list of modules attributes (e.g., variables)
     module = None
     module_attrs = []
     try:
+        debug.trace(7, "in try")
         loaded = False
-        try:
-            import_command = f"reload({module_name})"
-            exec(import_command)
-            loaded = True
-        except:
-            debug.trace(4, f"Warning: {module_name} should have been imported previously")
+        
+        # Check if module already exists in sys.modules
+        module_exists = module_name in sys.modules
+        
+        if module_exists:
+            try:
+                debug.trace(6, "Module exists - trying reload")
+                # First import it into the namespace if not already there
+                import_command = f"import {module_name}"
+                exec(import_command, globals_dict)
+                module = eval(module_name, globals_dict)
+                module = reload(module)
+                loaded = True
+            except:
+                debug.trace_exception_info(7, "existing reload")
+        
         if not loaded:
-            # note: might fail (e.g., 'from package import module' required(
-            import_command = f"import {module_name}"
-            exec(import_command)
-        module = eval(module_name)
-        module_attrs = dir(module)
+            try:
+                debug.trace(5, "Trying import")
+                import_command = f"import {module_name}"
+                exec(import_command, globals_dict)
+                module = eval(module_name, globals_dict)
+                loaded = True
+            except:
+                debug.trace_exception_info(4, f"{module_name} import")
+        
+        if loaded:
+            module_attrs = dir(module)
+        elif not ignore_errors:
+            system.print_error(f"Error: unable to import or reload {module_name}")
     except:
         if not ignore_errors:
-            system.print_exception_info(import_command)
+            system.print_exception_info("import_module_globals")
         else:
-            debug.trace_exception(6, import_command)
+            debug.trace_exception_info(6, "import_module_globals")
     debug.trace_expr(5, module)
 
     # Import each individually
     num_ok = 0
+    num_ignored = 0
     for var in module_attrs:
         debug.trace_expr(6, var)
 
@@ -165,14 +192,16 @@ def import_module_globals(module_name, include_private=False, include_dunder=Fal
 
         # Import the value
         if include:
-            import_desc = (f"importing {var} from {module_name}")
-            debug.trace(5, import_desc)
+            import_desc = (f"import[ing] {var} from {module_name}")
             try:
-                globals_dict[var] = eval(f"{module_name}.{var}")
+                debug.trace(5, import_desc)
+                globals_dict[var] = getattr(module, var)
                 num_ok += 1
             except:
-                debug.trace_exception(4, import_desc)
-    debug.trace(5, f"{num_ok} of {len(module_attrs)} attributes loaded OK")
+                debug.trace_exception_info(4, import_desc)
+        else:
+            num_ignored += 1
+    debug.trace(5, f"{num_ok} of {len(module_attrs)} attributes loaded OK; {num_ignored=}")
     return
 
 
@@ -223,7 +252,7 @@ dummy_main = Main([])
     
 def main() -> None:
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone\n")
     _main_app = Main(description=__doc__.format(script=gh.basename(__file__)))
 

@@ -56,6 +56,7 @@ from mezcla.system import (
     getenv_bool, getenv_float, getenv_int, getenv_text,
 )
 from mezcla.tfidf import MIN_NGRAM_SIZE, MAX_NGRAM_SIZE
+from mezcla.html_utils import format_html_message
 
 #................................................................................
 # Constants (e.g., environment-based options)
@@ -522,6 +523,7 @@ class TextCategorizer(object):
         """Return category for TEXT"""
         debug.trace(4, "tc.categorize(_)")
         debug.trace_fmtd(6, "\ttext={t}", t=text)
+        label = None
         try:
             index = self.classifier.predict([text])[0]
             label = self.keys[index]
@@ -591,8 +593,14 @@ class TextCategorizer(object):
 #
 
 # Constants
-TRUMP_TEXT = "Donald Trump was President."
-DOG_TEXT = "My dog has fleas."
+# via https://simple.wikipedia.org/wiki/Black_hole
+## TODO: BLACK_HOLE_TEXT = "A black hole is a place in space where gravity is so strong that nothing can escape from it, not even light. Black holes are made when a lot of matter is squeezed into a very small space. This idea comes from Albert Einstein's general theory of relativity."
+BLACK_HOLE_TEXT = "A black hole is a place in space where gravity is so strong that nothing can escape from it, not even light."
+API_TEXT = "An application programming interface (api) is a set of functions, procedures, methods, ..."
+
+## OLD
+## TRUMP_TEXT = "Donald Trump was President."
+## DOG_TEXT = "My dog has fleas."
 
 #--------------------------------------------------------------------------------
 # Utility function(s)
@@ -609,7 +617,7 @@ def format_index_html(base_url=None):
 
     # Create index page template with optional examples for debugging
     html_template = """
-    <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+    <!DOCTYPE HTML>
     <html lang="en">
         <head>
             <meta content="text/html; charset=UTF-8" http-equiv="content-type">
@@ -617,16 +625,17 @@ def format_index_html(base_url=None):
         </head>
         <body>
             Try <a href="categorize">categorize</a> and <a href="class_probabilities">class_probabilities</a>.<br>
+            <br>
             note: You need to supply the <i><b>text</b></i> parameter.<br>
             <br>
             Examples:
             <ul>
-                <li>Category for <a href="categorize?text={quoted_trump_text}">"{trump_text}"</a>:<br>
-                    {indent}<code>{base_url}/categorize?text={quoted_trump_text}</code>
+                <li>Category for <a href="categorize?text={quoted_black_hole_text}">"{black_hole_text}"</a>:<br>
+                    {indent}<code>{base_url}/categorize?text={quoted_black_hole_text}</code>
                 </li>
     
-                <li>Probability distribution for <a href="class_probabilities?text={quoted_dog_text}">"{dog_text}"</a>:<br>
-                    {indent}<code>{base_url}/class_probabilities?text={quoted_dog_text}</code>
+                <li>Probability distribution for <a href="class_probabilities?text={quoted_api_text}">"{api_text}"</a>:<br>
+                    {indent}<code>{base_url}/class_probabilities?text={quoted_api_text}</code>
                 </li>
             </ul>
     """
@@ -662,7 +671,7 @@ def format_index_html(base_url=None):
             <!-- Form for entering text for textcat probability distribution -->
             <hr>
             <form action="{base_url}/probs" method="get">
-                <label for="textarea1">Probabilities</label>
+                <label for="textarea2">Probabilities</label>
                 <br>
                 <textarea id="textarea2" rows="10" cols="100" name="text"></textarea>
                 <br>
@@ -676,10 +685,10 @@ def format_index_html(base_url=None):
     # Resolve template into final HTML
     index_html = html_template.format(base_url=base_url,
                                       indent="&nbsp;&nbsp;&nbsp;&nbsp;",
-                                      trump_text=TRUMP_TEXT,
-                                      quoted_trump_text=system.quote_url_text(TRUMP_TEXT),
-                                      dog_text=DOG_TEXT,
-                                      quoted_dog_text=system.quote_url_text(DOG_TEXT))
+                                      black_hole_text=BLACK_HOLE_TEXT,
+                                      quoted_black_hole_text=system.quote_url_text(BLACK_HOLE_TEXT),
+                                      api_text=API_TEXT,
+                                      quoted_api_text=system.quote_url_text(API_TEXT))
     return index_html
 
 #................................................................................
@@ -727,15 +736,15 @@ class web_controller(object):
         Note: The command is ignored if not debugging and on a production server."""
         debug.trace_fmtd(5, "wc.stop(s:{s}, kw:{kw})", s=self, kw=kwargs)
         # TODO: replace stooges with your real server nicknames
-        if ((not debug.detailed_debugging()) and (os.environ.get("HOST_NICKNAME") in ["curly", "larry", "moe"])):
-            return "Call security!"
+        if ((not debug.detailed_debugging()) or
+            ((os.environ.get("HOST_NICKNAME") in ["curly", "larry", "moe"]))):
+            return format_html_message("Call security!")
         # TODO: Straighten out shutdown quirk (seems like two invocations required).
         # NOTE: Putting exit before stop seems to do the trick. However, it might be
         # the case that the server shutdown.
         cherrypy.engine.exit()
         cherrypy.engine.stop()
-        # TODO: Use HTML so shutdown shown in title.
-        return "Adios"
+        return format_html_message("Adios")
 
     # alias for stop
     shutdown = stop

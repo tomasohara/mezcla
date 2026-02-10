@@ -5,8 +5,8 @@
 # Notes:
 # - Sample output tested
 #   $ SKIP_CUDA=1 ../matrix_multiply_benchmarking.py --numba --numpy
-#   numpy	0.304ms
-#   numba	11817.419ms
+#   numpy       0.304ms
+#   numba       11817.419ms
 # - This can be run as follows (e.g., from root of repo):
 #   $ pytest ./mezcla/examples/tests/test_test_matrix_multiply_benchmarking.py
 #
@@ -66,7 +66,7 @@ class TestIt(TestWrapper):
         debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
         output = self.run_script(options="", env_options="", skip_stdin=True)
         # note: make sure some time mentioned for numpy
-        # ex: numpy	0.304ms
+        # ex: numpy     0.304ms
         self.do_assert(my_re.search(r"numpy.*\d+.\d+\s*ms", output.strip()))
         return
 

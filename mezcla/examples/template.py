@@ -83,17 +83,21 @@ class Helper:
 
 def main() -> None:
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
     # Parse command line options, show usage if --help given
     # TODO: manual_input=True; short_options=True
     # Note: Uses Main without subclassing, so some methods are stubs (e.g., run_main_step).
     main_app = Main(
+        ## TODO2 (fix support): skip_input=True,
+        ## TODO3 (add tip): manual_input=True,
         description=__doc__.format(script=gh.basename(__file__)),
         ## TODO: boolean_options=[(TODO_BOOL_OPT, "TODO desc1")],
         ## TODO: text_options=[(TODO_TEXT_OPT, "TODO desc2")],
         ## TODO: positional_arguments=[FILENAME, ALT_FILENAME], 
+        ## NOTE: ALT_FILENAME usually requires skip_input and manual_input (e..g, to avoid - placeholder)
     )
+    debug.reference_var(FILENAME)
     debug.assertion(main_app.parsed_args)
     ## TODO_opt1 = main_app.get_parsed_option(TODO_BOOL_OPT)
 

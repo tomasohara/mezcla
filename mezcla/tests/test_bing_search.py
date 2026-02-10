@@ -23,7 +23,7 @@ from mezcla import debug
 from mezcla.my_regex import my_re
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.bing_search as THE_MODULE
 
 MISSING_API_KEY = (not THE_MODULE.BING_KEY.strip())

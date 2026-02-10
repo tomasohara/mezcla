@@ -38,7 +38,7 @@ from mezcla import system
 from mezcla.tests.common_module import mezcla_root_dir
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.glue_helpers as THE_MODULE # pylint: disable=reimported
 
 class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
@@ -170,6 +170,35 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert system.is_directory(temp_dir3)
 
     @pytest.mark.xfail
+    def test_create_temp_file(self):
+        """Ensure create_temp_file works as expected"""
+        debug.trace(4, "test_create_temp_file()")
+        # NOTE: might fail when TEMP_BASE set (e.g., stale temp dir)
+        temp_path = self.create_temp_file('some content')
+        assert system.read_file(temp_path) == 'some content\n'
+        assert temp_path.startswith(self.get_temp_dir(static=True))
+        
+    @pytest.mark.xfail
+    def test_write_temp_file(self):
+        """Ensure write_temp_file works as expected"""
+        debug.trace(4, "test_write_temp_file()")
+
+        # Test with explicit dir
+        temp_sub_dir1 = gh.form_path(THE_MODULE.get_temp_dir(), "test_write_temp_file-dir1")
+        THE_MODULE.full_mkdir(temp_sub_dir1)
+        temp_path = THE_MODULE.write_temp_file('test_write_temp_file1.list', 'some content',
+                                               temp_dir=temp_sub_dir1)
+        assert system.read_file(temp_path) == 'some content\n'
+        assert temp_path.startswith(temp_sub_dir1)
+        temp_sub_dir2 = gh.form_path(THE_MODULE.get_temp_dir(), "test_write_temp_file-dir2")
+
+        # Test with implicit dir
+        self.monkeypatch.setattr(gh, "TEMP_FILE", temp_sub_dir2)
+        temp_path = THE_MODULE.write_temp_file('test_write_temp_file2.list', 'some content')
+        assert system.read_file(temp_path) == 'some content\n'
+        assert temp_path.startswith(temp_sub_dir2)
+        
+    @pytest.mark.xfail
     def test_real_path(self):
         """Ensure real_path works as expected"""
         ## TODO3: skip if not posix
@@ -262,7 +291,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         # Simple command test
         temp_file = self.get_temp_file()
         THE_MODULE.issue(f'echo "this is a simple test" > {temp_file}')
-        assert 'this is a simple test' in gh.read_file(temp_file)
+        assert 'this is a simple test' in system.read_file(temp_file)
 
         # Setup log file
         log_file = self.get_temp_file()
@@ -391,11 +420,11 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         # Test normal usage
         filename = self.get_temp_file()
         THE_MODULE.write_lines(filename, content_in_lines)
-        assert THE_MODULE.read_file(filename) == content
+        assert system.read_file(filename) == content
 
         # Test append
         THE_MODULE.write_lines(filename, ['for testing'], append=True)
-        assert THE_MODULE.read_file(filename) == content + 'for testing\n'
+        assert system.read_file(filename) == content + 'for testing\n'
 
     def test_read_file(self):
         """Ensure read_file works as expected"""
@@ -411,11 +440,11 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         # Test normal usage
         filename = self.get_temp_file()
         THE_MODULE.write_file(filename, "some test")
-        assert THE_MODULE.read_file(filename) == "some test\n"
+        assert system.read_file(filename) == "some test\n"
 
         # Test append argument
         THE_MODULE.write_file(filename, "with appended text", append=True)
-        assert THE_MODULE.read_file(filename) == "some test\nwith appended text\n"
+        assert system.read_file(filename) == "some test\nwith appended text\n"
 
     def test_copy_file(self):
         """Ensure copy_file works as expected"""

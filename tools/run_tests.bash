@@ -30,7 +30,7 @@
 
 # Set bash regular and/or verbose tracing
 DEBUG_LEVEL=${DEBUG_LEVEL:-0}
-if [ "$DEBUG_LEVEL" -ge 3 ]; then
+if [ "$DEBUG_LEVEL" -ge 4 ]; then
     echo "in $0 $* [$(date)]"
 fi
 if [ "${TRACE:-0}" = "1" ]; then
@@ -38,6 +38,20 @@ if [ "${TRACE:-0}" = "1" ]; then
 fi
 if [ "${VERBOSE:-0}" = "1" ]; then
     set -o verbose
+fi
+
+# Show usage
+if [[ "$1" == "--help" ]]; then
+    script=$(basename "$0")
+    echo "Usage: $script [--help | --coverage]"
+    echo ""
+    echo "Environment options:"
+    echo "    DEBUG_LEVEL, TRACE, VERBOSE, TEST_REGEX, FILTER_REGEX, INVOKE_PYTEST_DIRECTLY, RUN_PYTHON_TESTS, DRY_RUN"
+    echo ""
+    echo "Example:"
+    echo "    TEST_REGEX='*text*' $0"
+    echo ""
+    exit
 fi
 
 # Get directory locations
@@ -122,6 +136,7 @@ fi
 ## OLD: dir=$(dirname "${BASH_SOURCE[0]}")
 test_result=0
 if [ "$1" == "--coverage" ]; then
+    echo "FYI: Just running coverage"
     $pre_cmd export COVERAGE_RCFILE="$base/.coveragerc"
     $pre_cmd export CHECK_COVERAGE='true'
     $pre_cmd coverage erase
@@ -132,23 +147,25 @@ if [ "$1" == "--coverage" ]; then
 elif [ "${INVOKE_PYTEST_DIRECTLY:-0}" == "1" ]; then
     # note: Runs pytest directly, which is useful for pin-pointing errors
     # in GitHub actions web interface.
+    echo "Warning: running pytests directly"
     pytest_options="${PYTEST_OPTIONS:-}"
     $pre_cmd pytest $pytest_options $tests $example_tests
     test_result="$?"    
 elif [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
+    echo "FYI: Running master test script (i.e., normal usage)"
     # note: use master test script allowing for thresholds and mypy usage
     export PYTHONUNBUFFERED=1
     echo -n "Running tests under "
     python3 --version
-    python3 "$mezcla"/master_test.py
+    python3 "$mezcla"/master_test.py --run
     test_result="$?"
 else
     echo "Warning: not running tests"
 fi
 
 # End of processing
-if [ "$DEBUG_LEVEL" -ge 3 ]; then
-    echo "out $0 [$(date)]"
+if [ "$DEBUG_LEVEL" -ge 4 ]; then
+    echo "out $0; status=$test_result [$(date)]"
 fi
 
 # Return status code used by Github actions

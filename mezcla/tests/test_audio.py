@@ -37,7 +37,7 @@ from mezcla import debug
 from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	       module object (e.g., <module 'mezcla.main' ...>)
+#    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)
 #    TestIt.script_module:     dotted module path (e.g., "mezcla.main")
 if librosa:
     import mezcla.audio as THE_MODULE

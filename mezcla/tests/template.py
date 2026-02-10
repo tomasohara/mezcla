@@ -23,6 +23,11 @@
 # - See discussion of SUB_DEBUG_LEVEL in unittest_wrapper.py for more info.
 # - TODO: Feel free to delete this warning as well as the related one below.
 #
+# Tip:
+# - Make sure the tests differ from any EX-based comments in the source file:
+#   they tend to be simple for sake of illustration. Moreover, they get tested
+#   via evaluate_example_tests.py, leading to redundancy.
+#
 
 ## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
 ## example, only delete todo comments not regular code, unless suggested in tip).
@@ -70,7 +75,7 @@ if not my_re.search(r"\btemplate.py$", __file__):
 #------------------------------------------------------------------------
 
 class TestIt(TestWrapper):
-    """Class for command-line based testcase definition"""
+    """Class for testcase definition"""
     # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     #

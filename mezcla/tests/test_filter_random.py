@@ -26,7 +26,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.filter_random as THE_MODULE
 
 class TestFilterRandom(TestWrapper):

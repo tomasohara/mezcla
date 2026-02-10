@@ -22,22 +22,22 @@
 #   
 #   \1-grams:
 #   ...
-#   -2.597798	gnu	-0.76723224
+#   -2.597798   gnu     -0.76723224
 #   ...
 #
 #   \2-grams:
 #   ...
-#   -0.05367994	general public
+#   -0.05367994 general public
 #   ...
-#   -0.15376821	combined work
+#   -0.15376821 combined work
 #   ...
 #
 # Note:
 #   $ count_it.perl -i '\w+ \w+' ~/Mezcla/LICENSE.txt | head
-#   combined work	13
+#   combined work       13
 #   ...
-#   general public	6
-#   public license	5
+#   general public      6
+#   public license      5
 #   ...
 #
 #................................................................................
@@ -70,7 +70,7 @@ from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Rreference are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.train_language_model as THE_MODULE
 
 class TestTrainLanguageModel(TestWrapper):

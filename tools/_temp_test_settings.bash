@@ -9,25 +9,34 @@
 #   actions on your branch. However, make sure no temporary changes are pushed
 #   to main (e.g., SCP_OUTPUT=1 or any use of TEST_REGEX).
 #
+# Note:
+# - MIN_DEBUG_LEVEL is particular to this script.
+#
 # Example settings:
-#    export DEBUG_LEVEL=5               # run with verbose tracing
+#    # note: (default is 2 for local runs or 4 under runner)
+#    export MIN_DEBUG_LEVEL=5           # run with verbose tracing
 #
 #    export TEST_REGEX="tips|README"    # run tests with tips or README in file
 #
-## export DEBUG_LEVEL=4               # use verbose tracing
+##
+export MIN_DEBUG_LEVEL=4                # use detailed tracing
+##
 ## TEMP:
-export DEBUG_LEVEL=6                  # use "quite detailed" tracing
-export SUB_DEBUG_LEVEL=6              # for sub-process scripts invoked via gh.run
-
+## export DEBUG_LEVEL=6                 # use "quite detailed" tracing
+## export SUB_DEBUG_LEVEL=6             # for sub-process scripts invoked via gh.run
 
 # Override settings if under testing VM
-# Note: 1. Most settings off so user can override when running locally,
-# but, it is awkward to do so for docker or Github runner jobs.
-# 2. For other Github Actions env. vars, see https://www.theserverside.com/blog/Coffee-Talk-Java-News-Stories-and-Opinions/environment-variables-full-list-github-actions
-MIN_DEBUG_LEVEL=2
-if [ "$DEPLOYMENT_BASEPATH" == "/opt/runner" ]; then
-    MIN_DEBUG_LEVEL=4
+# Note:
+# - Most settings are off, so user can override when running locally;
+#   but, it is awkward to do so for docker or Github runner jobs.
+# - For other Github Actions env. vars, see https://www.theserverside.com/blog/Coffee-Talk-Java-News-Stories-and-Opinions/environment-variables-full-list-github-actions
+# - MIN_DEBUG_LEVEL_DEFAULT shouldn't be changed: use MIN_DEBUG_LEVEL above,
+#   in order to keep this section clearer with respect to Github actions.
+MIN_DEBUG_LEVEL_DEFAULT=2
+if [[ ("$DEPLOYMENT_BASEPATH" == "/opt/runner") ]]; then
+    MIN_DEBUG_LEVEL_DEFAULT=4
 fi
+MIN_DEBUG_LEVEL="${MIN_DEBUG_LEVEL:-$MIN_DEBUG_LEVEL_DEFAULT}"
 DEBUG_LEVEL="${DEBUG_LEVEL:-0}"
 if [ "$DEBUG_LEVEL" -lt "$MIN_DEBUG_LEVEL" ]; then
     export DEBUG_LEVEL=$MIN_DEBUG_LEVEL
@@ -36,10 +45,8 @@ if [ "$DEBUG_LEVEL" -ge 4 ]; then
     export PYTEST_OPTIONS="-v -s"
 fi
 
-
 # Optionally, disable use of master_test.py and call pytest directly.
-## TEMP:
-export INVOKE_PYTEST_DIRECTLY=1
+## TEMP: export INVOKE_PYTEST_DIRECTLY=1
 
 ## NOTE: Until we integrate a testing framework with thresholds, we
 ## will need to select tests via TEST_REGEX and FILTER_REGEX

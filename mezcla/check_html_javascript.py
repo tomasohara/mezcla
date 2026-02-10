@@ -5,6 +5,29 @@
 # (e.g., window) and JQuery ($ selector function). It also optionally runs
 # in strict mode to help check other potential errors (e.g., undefined vars).
 #
+# Installation Tips:
+#
+# JSHint (recommended - actively maintained):
+#   npm install -g jshint
+#   Or via package manager: apt install jshint / brew install jshint
+#   Documentation: https://jshint.com/docs/
+#
+# JSLint (classic - Douglas Crockford's original):
+#   npm install -g jslint
+#   Note: JSLint is more opinionated and stricter than JSHint
+#   Documentation: https://www.jslint.com/help.html
+#
+# ESLint (modern alternative - not included but recommended):
+#   npm install -g eslint
+#   More configurable and widely used in modern development
+#   Documentation: https://eslint.org/
+#
+# Notes:
+# - ESLint requires the following configuration file:
+#     $ cat ~/eslint.config.js
+#     module.exports = [{}];
+# - For ESLint support, set CODE_CHECKERS environment variable to include 'eslint'
+# - ESLint support and upgrade for others added by claude.ai.
 #
 
 """Run JavaScript embedded in <script> tags through lint-style code checkers
@@ -31,6 +54,11 @@ STRIP_INDENT = "strip-indent"
 SKIP_SAFE_MODE = "skip-safe-mode"
 SKIP_COMMON_DEFINES = "skip-common-defines"
 JAVASCRIPT_HEADER = "javascript-header"
+ES_VERSION = "es-version"
+USE_JSLINT = "use-jslint"
+USE_JSHINT = "use-jshint"
+USE_ESLINT = "use-eslint"
+USE_ALL = "use-all"
 #
 ## OLD:
 ## # TODO: put script-based temporary filename basename support into main
@@ -45,63 +73,125 @@ JAVASCRIPT_HEADER = "javascript-header"
 ##                                "Basename with directory for temporary files")
 #
 MAX_ERRORS = system.getenv_int("MAX_ERRORS", 10000,
-                               "Maxmium number of erros to report")
+                               "Maximum number of errors to report")
+#
+# ECMAScript version to target (ES6/ES2015 or later recommended)
+DEFAULT_ES_VERSION = system.getenv_int("ES_VERSION", 11,
+                                       "ECMAScript version (6=ES2015, 11=ES2020, etc.)")
 #
 # note: see DEFAULT_JAVASCRIPT_HEADER below for other options
 JSLINT = "jslint"
 JSLINT_PROGRAM = system.getenv_text(
     "JSLINT_PROGRAM", JSLINT,
     desc="Script to invoke jslint")
+# Modern JSLint options (post-2021 version uses different option format)
+# --browser: assume browser environment (window, document, etc.)
+# --devel: allow console.log() and other development functions
+# --long: allow long lines (relaxes line length restrictions)
 JSLINT_OPTIONS = system.getenv_text(
-    "JSLINT_OPTIONS", f"--maxerr {MAX_ERRORS} --white",
-    desc="Options for jslint")
+    "JSLINT_OPTIONS", "--browser --devel --long",
+    desc="Options for jslint (modern version)")
 JSHINT = "jshint"
 JSHINT_PROGRAM = system.getenv_text(
     "JSHINT_PROGRAM", JSHINT,
     desc="Script to invoke jshint")
+# Modern JSHint options
+# --verbose: show more detailed error information
+# --extract=auto: automatically extract JavaScript from HTML <script> tags (if needed)
+# Note: removed --config /dev/null as it causes JSON parse errors
 JSHINT_OPTIONS = system.getenv_text(
-    "JSHINT_OPTIONS", "--show-non-errors",
+    "JSHINT_OPTIONS", "--verbose --extract=auto",
     desc="Options for jshint")
+# ESLint support (optional)
+ESLINT = "eslint"
+ESLINT_PROGRAM = system.getenv_text(
+    "ESLINT_PROGRAM", ESLINT,
+    desc="Script to invoke eslint")
+#
+ESLINT_CONFIG = """
+    // eslint.config.mjs
+    // via gemini
+    
+    // ~/eslint.config.mjs
+    export default [
+        {
+            // This object replaces the missing "recommended" import
+            rules: {
+                "constructor-super": "error",
+                "no-const-assign": "error",
+                "no-dupe-args": "error",
+                "no-dupe-class-members": "error",
+                "no-dupe-keys": "error",
+                "no-func-assign": "error",
+                "no-import-assign": "error",
+                "no-obj-calls": "error",
+                "no-setter-return": "error",
+                "no-this-before-super": "error",
+                "no-undef": "error",
+                "no-unreachable": "error",
+                "no-unused-vars": "warn",
+                "valid-typeof": "error",
+                "eqeqeq": "warn"
+            }
+        }
+    ];
+"""
+ESLINT_CONFIG_FILE = gh.form_path(gh.get_temp_dir(), "eslint.config.mjs")
+#
+# ESLint options
+#   --no-config-lookup               Disable look up for eslint.config.js
+ESLINT_OPTIONS = system.getenv_text(
+    "ESLINT_OPTIONS", f"--config {ESLINT_CONFIG_FILE}",
+    desc="Options for eslint")
 DEFAULT_CODE_CHECKERS = system.getenv_text(
     "CODE_CHECKERS",
-    f"{JSLINT},  {JSHINT}",
-    desc="JavaScript code checking commands")
+    # TODO2: add ESLint
+    f"{JSLINT}, {JSHINT}",
+    desc="JavaScript code checking commands in order of preference (not alphabetical)")
 SKIP_STRICT_MODE = system.getenv_bool(
     "SKIP_STRICT_MODE", False,
-    desc="Whether to skip strict more: trumps command line args")
+    desc="Whether to skip strict mode: trumps command line args")
 USE_STRICT_MODE = not SKIP_STRICT_MODE
-SAFEMODE_HEADER = """
+SAFEMODE_HEADER = ("""
     // Added for sanity checking (e.g., undefined variables)
-    "use strict";               // jshint ignore:line
-""" if USE_STRICT_MODE else ""
-
+        "use strict";
+    """ if USE_STRICT_MODE else "")
 # TODO: use separate headers for jslint and jshint
 DEFAULT_JAVASCRIPT_HEADER = (f"""
-    // note: silly need to work around inflexible parsers of both programs
+    // note: Configuration for modern JSLint and JSHint
 
-    // Stuff for jslint:
-          /*global $, jQuery, alert*/   // jshint ignore:line
-    // Assume browser environment
-          /*jslint browser*/            // jshint ignore:line
-    // Allow console.log() and friends.
-          /*jslint devel*/              // jshint ignore:line
-    // Allow long lines.
-          /*jslint long*/               // jshint ignore:line
-    // Allow messy whitespace.
-          /*jslint white*/              // jshint ignore:line
+    // Global declarations must come first for JSLint
+          /*global $, jQuery, alert, bootstrap*/
+
+    // Stuff for jslint (modern version uses simpler directives):
+    // Legacy jslint directives (may not work in newest versions)
+          /*jslint browser*/
+          /*jslint devel*/
+          /*jslint long*/
 
     // Stuff for jshint:
           /* jshint maxerr: {MAX_ERRORS} */
-          /* jshint esversion: 6 */
+          /* jshint esversion: {DEFAULT_ES_VERSION} */
+          /* jshint browser: true */
+          /* jshint devel: true */
+          /* jshint jquery: true */
+          /* jshint node: false */
 """
 + ("""
-    // note: same as "use strict"
+    // Strict mode settings
           /* jshint globalstrict: false */
           /* jshint strict: true */
-""" if USE_STRICT_MODE else "")
+""" if USE_STRICT_MODE else """
+          /* jshint strict: false */
+""")
 + """
+    // Additional modern jshint options
+          /* jshint undef: true */
+          /* jshint unused: true */
+          /* jshint eqeqeq: true */
+          /* jshint curly: true */
+
     // Start of added header (JavaScript and jQuery definitions)
-    // TEMP: includes workaround for silly jslint filters
     // TODO: make jQuery and bootstrap individually conditional
     var document;
     var window;
@@ -112,6 +202,8 @@ DEFAULT_JAVASCRIPT_HEADER = (f"""
     function trace () { return; }
     console.log = trace;
     console.debug = trace;
+    console.warn = trace;
+    console.error = trace;
 
     // End of added header
 """)
@@ -125,6 +217,10 @@ class Script(Main):
     skip_safe_mode = False
     skip_common_defines = False
     javascript_header = DEFAULT_JAVASCRIPT_HEADER
+    es_version = DEFAULT_ES_VERSION
+    use_jslint = True
+    use_jshint = True
+    use_eslint = False
 
     def __init__(self, *args, **kwargs):
         debug.trace_fmtd(5, "Script.__init__({a}): keywords={kw}; self={s}",
@@ -137,11 +233,36 @@ class Script(Main):
     def setup(self):
         """Check results of command line processing"""
         debug.trace_fmtd(5, "Script.setup(): self={s}", s=self)
-        self.code_checkers = self.get_parsed_option(CODE_CHECKERS, self.code_checkers)
         self.strip_indent = self.get_parsed_option(STRIP_INDENT, self.strip_indent)
         self.skip_safe_mode = self.get_parsed_option(SKIP_SAFE_MODE, self.skip_safe_mode)
         self.skip_common_defines = self.get_parsed_option(SKIP_COMMON_DEFINES, self.skip_common_defines)
         self.javascript_header = self.get_parsed_option(JAVASCRIPT_HEADER, self.javascript_header)
+        self.es_version = self.get_parsed_option(ES_VERSION, self.es_version)
+        use_all = self.get_parsed_option(USE_ALL, False)
+        debug.assertion(self.use_jslint and self.use_jshint and (not self.use_eslint))
+        self.use_eslint = self.get_parsed_option(USE_ESLINT, use_all)
+        self.use_jslint = self.get_parsed_option(USE_JSLINT, use_all or (not self.use_eslint))
+        self.use_jshint = self.get_parsed_option(USE_JSHINT, use_all or (not self.use_eslint))
+        if self.get_parsed_option(f"no-{USE_JSLINT}"):
+            self.use_jslint = False
+        if self.get_parsed_option(f"no-{USE_JSHINT}"):
+            self.use_jshint = False
+        if self.get_parsed_option(f"no-{USE_ESLINT}"):
+            self.use_eslint = False
+        
+        # Build code_checkers list based on boolean options (if not explicitly set)
+        explicit_checkers = self.get_parsed_option(CODE_CHECKERS, None)
+        if explicit_checkers:
+            self.code_checkers = explicit_checkers
+        else:
+            checkers = []
+            if self.use_jslint:
+                checkers.append(JSLINT)
+            if self.use_jshint:
+                checkers.append(JSHINT)
+            if self.use_eslint:
+                checkers.append(ESLINT)
+            self.code_checkers = ", ".join(checkers) if checkers else DEFAULT_CODE_CHECKERS
         debug.trace_object(5, self, label="Script instance")
 
     def process_line(self, line):
@@ -213,10 +334,20 @@ class Script(Main):
         output = None
         default_options_hash = defaultdict(str)
         default_options_hash.update({JSLINT: JSLINT_OPTIONS,
-                                     JSHINT: JSHINT_OPTIONS})
+                                     JSHINT: JSHINT_OPTIONS,
+                                     ESLINT: ESLINT_OPTIONS})
         default_program_hash = defaultdict(str)
         default_program_hash.update({JSLINT: JSLINT_PROGRAM,
-                                     JSHINT: JSHINT_PROGRAM})
+                                     JSHINT: JSHINT_PROGRAM,
+                                     ESLINT: ESLINT_PROGRAM})
+
+        # Setup ESLint configuration file
+        if self.use_eslint:
+            system.write_file(ESLINT_CONFIG_FILE, ESLINT_CONFIG)
+        
+        # ANSI escape code pattern to remove color/formatting from output
+        ansi_escape_pattern = re.compile(r'\x1b\[[0-9;]*m')
+        
         for checker in re.split(", *", self.code_checkers):
             if output is not None:
                 print("-" * 80)
@@ -229,13 +360,23 @@ class Script(Main):
             checker_program = system.getenv_text(
                 program_var, default_program_hash[checker],
                 skip_register=True)
+            # note: maltido eslint requires the file to be in same directory
+            if checker_program == ESLINT_PROGRAM:
+                current_dir = system.get_current_directory()
+                ## TODO: system.set_current_directory(gh.get_temp_dir())
+                system.set_current_directory(gh.dirname(javascript_file))
             output = gh.run("{ch} {opt} {scr}",
                             ch=checker_program, opt=checker_options, scr=javascript_file)
+            if checker_program == ESLINT_PROGRAM:
+                system.set_current_directory(current_dir)
+
+            # Print output with ANSI escape codes stripped
+            output = ansi_escape_pattern.sub('', output)            
             print("Output from {ch}:".format(ch=checker))
             print(output)
             print("")
 
-            
+
 def main():
     """Entry point"""
     app = Script(
@@ -246,10 +387,14 @@ def main():
         manual_input=False,
         # TODO: skip_input=True,
         # TODO: manual_input=True,
-        boolean_options=[STRIP_INDENT, SKIP_SAFE_MODE, SKIP_COMMON_DEFINES],
+        boolean_options=[STRIP_INDENT, SKIP_SAFE_MODE, SKIP_COMMON_DEFINES,
+                         USE_JSLINT, USE_JSHINT, USE_ESLINT, USE_ALL,
+                         # note: added for sake of claude's tests
+                         f"no-{USE_JSLINT}", f"no-{USE_JSHINT}", f"no-{USE_ESLINT}"],
         text_options=[
             (CODE_CHECKERS, "Comma-separated list of code checking invocations (e.g., '{dfc}')".format(dfc=DEFAULT_CODE_CHECKERS)),
-            (JAVASCRIPT_HEADER, "JavaScript header with common definitions (e.g., document, window, jQuery)")])
+            (JAVASCRIPT_HEADER, "JavaScript header with common definitions (e.g., document, window, jQuery)"),
+            (ES_VERSION, "ECMAScript version to target (6=ES2015, 11=ES2020, etc.)")])
     app.run()
        
 #-------------------------------------------------------------------------------

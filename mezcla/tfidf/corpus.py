@@ -44,6 +44,7 @@ from collections import namedtuple
 ## TODO
 ## import os
 import sys
+import threading
 
 # Installed modules
 ## TEST: from cachetools import LRUCache, cached
@@ -81,6 +82,9 @@ MIN_NGRAM_SIZE = system.getenv_int(
 MAX_NGRAM_SIZE = system.getenv_int(
     "MAX_NGRAM_SIZE", 4,
     description="Maxium size of grams")
+USE_TFIDF_LOCK = system.getenv_bool(
+    "USE_TFIDF_LOCK", False,
+    description="Apply thread locking to TF/IDF objects")
 
 class Corpus(object):
     """A corpus is made up of Documents, and performs TF-IDF calculations on them.
@@ -142,6 +146,7 @@ class Corpus(object):
         self.__max_raw_frequency = None
         self.__max_rel_doc_frequency = None
         self.__max_doc_frequency = None
+        self.lock = threading.Lock()
         if preprocessor:
             self.preprocessor = preprocessor
         else:
@@ -150,22 +155,42 @@ class Corpus(object):
                 ## TODO: remove deprecated
                 gramsize=gramsize, all_ngrams=all_ngrams)
 
+    @property
+    def documents(self):
+        """Hash from ID to document content.
+        Note: applies optional lock"""
+        result = self.__documents
+        if USE_TFIDF_LOCK:
+            with self.lock:
+                result = self.__documents
+        return result
+
+    @property
+    def document_occurrences(self):
+        """Hash from ngram to corpus-wide occurrence count (i.e., document frequency)
+        Note: applies optional lock"""
+        result = self.__document_occurrences
+        if USE_TFIDF_LOCK:
+            with self.lock:
+                result = self.__document_occurrences
+        return result
+
     def __contains__(self, document_id):
         """A Corpus contains Document ids."""
-        return document_id in self.__documents
+        return document_id in self.documents
 
     def __len__(self):
         """Length of a Corpus is the number of Documents it holds."""
-        return len(self.__documents)
+        return len(self.documents)
 
     def __getitem__(self, document_id):
         """Fetch a Document from the Corpus by its id."""
-        return self.__documents[document_id]
+        return self.documents[document_id]
 
     def __setitem__(self, document_id, text):
         """Add a Document to the Corpus using a unique id key."""
         text = clean_text(text)
-        self.__documents[document_id] = Document(text, self.preprocessor)
+        self.documents[document_id] = Document(text, self.preprocessor)
 
     @property
     def gramsize(self):
@@ -174,24 +199,26 @@ class Corpus(object):
 
     def keys(self):
         """The document ids in the corpus."""
-        return self.__documents.keys()
+        return self.documents.keys()
 
     @property
     def max_raw_frequency(self):
         """Highest frequency across all Documents in the Corpus."""
         ## TPO: caches value
         if self.__max_raw_frequency is None:
-            self.__max_raw_frequency = max(_.max_raw_frequency for _ in self.__documents.values())
+            self.__max_raw_frequency = max(_.max_raw_frequency for _ in self.documents.values())
         return self.__max_raw_frequency
 
     @lru_cache()
     def count_doc_occurrences(self, ngram):
         """Count the number of documents the corpus has with the matching ngram."""
         # Note: caches the values as called multiple times for TFIDF calculation
-        if ngram in self.__document_occurrences:
-            count = self.__document_occurrences[ngram]
+        ## TODO2: make copy of document values to avoid dict-changed runtime error
+        ## See https://stackoverflow.com/questions/11941817/how-to-avoid-runtimeerror-dictionary-changed-size-during-iteration-error.
+        if ngram in self.document_occurrences:
+            count = self.document_occurrences[ngram]
         else:
-            count = sum((1 + NGRAM_EPSILON) if ngram in doc else 0 for doc in self.__documents.values())
+            count = sum((1 + NGRAM_EPSILON) if ngram in doc else 0 for doc in self.documents.values())
         if ((count == 1) and PENALIZE_SINGLETONS):
             count = 0
         if (count == 0):
@@ -203,7 +230,7 @@ class Corpus(object):
     def max_rel_doc_frequency(self):
         """"Highest relative document frequency for all ngrams in the corpus"""
         if self.__max_rel_doc_frequency is None:
-            max_doc_frequency = max(self.count_doc_occurrences(ngram) for doc in self.__documents.values() for ngram in doc.keywordset)
+            max_doc_frequency = max(self.count_doc_occurrences(ngram) for doc in self.documents.values() for ngram in doc.keywordset)
             self.__max_rel_doc_frequency = max_doc_frequency / float(len(self))
         return self.__max_rel_doc_frequency
     
@@ -212,7 +239,7 @@ class Corpus(object):
     def max_doc_frequency(self):
         """"Highest relative document frequency for all ngrams in the corpus"""
         if self.__max_doc_frequency is None:
-            max_doc_frequency = max(self.count_doc_occurrences(ngram) for doc in self.__documents.values() for ngram in doc.keywordset)
+            max_doc_frequency = max(self.count_doc_occurrences(ngram) for doc in self.documents.values() for ngram in doc.keywordset)
             self.__max_doc_frequency = max_doc_frequency
         return self.__max_doc_frequency
     
@@ -243,7 +270,7 @@ class Corpus(object):
         ## TPO: TEST
         ## # HACK: give singletons a max DF to lower IDF score
         ## if (num_occurrences == 1) and PENALIZE_SINGLETONS:
-        ##     num_occurrences = len(self.__documents)
+        ##     num_occurrences = len(self.documents)
         idf = math.log(float(len(self)) / num_occurrences)
         debug.trace_fmt(BDL + 2, "idf_basic({ng} len(self)={l} max_doc_occ={mdo} num_occ={no}) => {idf}",
                         ng=ngram, l=len(self), mdo=self.max_doc_frequency, no=num_occurrences, idf=idf)
@@ -348,6 +375,11 @@ class Corpus(object):
         assert document_id or text
         document = None
         if document_id:
+            if document_id not in self.documents:
+                system.print_error(f"Error: document {document_id!r} not in corpus")
+                result = []
+                debug.trace(BDL + 3, f"get_keywords() => {result}")
+                return result
             document = self[document_id]
         if text:
             debug.assertion(document is None)

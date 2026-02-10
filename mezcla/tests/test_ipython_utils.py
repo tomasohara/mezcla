@@ -12,7 +12,8 @@
 """Tests for ipython_utils module"""
 
 # Standard packages
-## TODO: from collections import defaultdict
+import sys
+## TODO: from typing import Optional
 
 # Installed packages
 import pytest
@@ -20,6 +21,8 @@ import pytest
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla import system
 import mezcla.ipython_utils as THE_MODULE
 
 #------------------------------------------------------------------------
@@ -54,6 +57,32 @@ class TestIt(TestWrapper):
         assert (not globals_dict)
         return
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_import_reload(self):
+        """Test reload via import_module_globals"""
+        debug.trace(4, f"TestIt.test_import_module_globals(); self={self}")
+        # Make sure temp dir is current for sake of module loading
+        globals_dict = {}
+        temp_dir = self.get_temp_dir()
+        module_name = "_test_import_reload"
+        temp_file = gh.form_path(temp_dir, "_{module_name}.py")
+        ## BAD: system.set_current_directory(temp_dir)
+        ## debug.assertion(temp_dir in sys.path)
+        self.monkeypatch.setattr(sys, "path", [temp_dir] + sys.path)
+        debug.assertion(temp_dir in sys.path)
+        
+        # Test version 1 of module _test_import_reload
+        system.write_file(temp_file, "a=1")
+        THE_MODULE.import_module_globals(module_name, globals_dict=globals_dict)
+        assert ("a" in globals_dict)
+        assert ("b" not in globals_dict)
+
+        # Test version 2 of module _test_import_reload
+        gh.rename_file(temp_file, temp_file + ".old")
+        system.write_file(temp_file, "a=1\nb=1")
+        THE_MODULE.import_module_globals(module_name, globals_dict=globals_dict)
+        assert ("b" in globals_dict)
+        
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_pr_dir(self):
         """Makes sure object directory printed"""

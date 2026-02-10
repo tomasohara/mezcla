@@ -26,7 +26,7 @@ from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	         global module object
+#    THE_MODULE:                 global module object
 #    TestWrapper.script_module:  path to file
 THE_MODULE = os_utils
 
@@ -35,11 +35,11 @@ class TestOsUtils(TestWrapper):
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
     @classmethod
-    def setupClass(cls):
-        """Per-class initialization"""  # why not docstring inherited (or pylint bug?)
-        debug.trace(5, f"TestOsUtils.setupClass({cls})")
+    def setupClass(cls, filename=None, module=None):
+        """Per-class initialization"""
+        debug.trace(5, f"TestOsUtils.setupClass({cls, filename, module})")
         debug.trace_expr(5, __file__, THE_MODULE)
-        super().setUpClass(filename=__file__, module=THE_MODULE)
+        super().setUpClass(filename, module)
     
     def test_split_extension(self):
         """Ensure test_split_extension works as expected"""

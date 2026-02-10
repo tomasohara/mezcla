@@ -93,7 +93,7 @@ def init_torch_etc():
 
 def main():
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
     # Show simple usage if --help given
     ## TODO2: rework script_dir fixup to os.path.delim or better yet split_path

@@ -22,7 +22,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.my_regex as THE_MODULE
 
 # Constants
@@ -252,6 +252,11 @@ class TestMyRegex(TestWrapper):
         actual_has_warning = bool(self.my_re.search("Warning", captured_stderr))
         assert actual_has_warning == expect_has_warning
 
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_compile(self):
+        """Test compile method"""
+        regex = "^abc...xyz$"
+        assert(self.my_re.compile(regex) == re.compile(regex))
 
 @pytest.mark.xfail                   # TODO: remove xfail
 @pytest.mark.parametrize(

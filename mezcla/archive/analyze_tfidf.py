@@ -4,11 +4,16 @@
 # respect to term differentiation, including support for filtering based on inclusion
 # and exclusion lists.
 #
+# Warning:
+# - This is basically the same version from the misc-scripts repo,
+#   so the style is archaic compared to other mezcla scripts.
+# - It was inadvertently added when misc-scripts was converted to mezcla.
+#
 # TODO:
-# - drop from mezcla (likewise check for other older scripts)
-# - add save option
-# - show sample I/O
-# - have option to add relative frequency to output (for aid in tuning MIN_FREQ/MAX_FREQ)
+# - Drop from mezcla (likewise check for other older scripts).
+# - Add save option.
+# - Show sample I/O.
+# - Have option to add relative frequency to output (for aid in tuning MIN_FREQ/MAX_FREQ).
 #
 
 """TF/IDF analysis built upon search_table_file_index.py"""

@@ -29,7 +29,7 @@ from mezcla.unittest_wrapper import TestWrapper, UNDER_COVERAGE, RUN_SLOW_TESTS
 from mezcla.unittest_wrapper import trap_exception, invoke_tests
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 try:
     import mezcla.text_processing as THE_MODULE
 except:

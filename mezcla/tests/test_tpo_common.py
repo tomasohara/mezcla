@@ -48,11 +48,11 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.unittest_wrapper import trap_exception
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	                global module object
+#    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
 import mezcla.tpo_common as THE_MODULE
 
-FUBAR = 101	# sample global for test_format
+FUBAR = 101     # sample global for test_format
 FOOBAR = 12     # likewise
 JOSE = "José"   # UTF-8 encoded string
 UTF8_BOM = "\xEF\xBB\xBF"

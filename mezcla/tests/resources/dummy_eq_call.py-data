@@ -6,7 +6,7 @@
 
 [
     EqCall(
-	targets="dummy_module_a.func1",
+        targets="dummy_module_a.func1",
         dests="dummy_module_b.func1"),
 ]
 

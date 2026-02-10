@@ -104,7 +104,7 @@ from mezcla.my_regex import my_re
 import mezcla.glue_helpers as gh
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.compute_tfidf as THE_MODULE
 
 class TestComputeTfidf(TestWrapper):

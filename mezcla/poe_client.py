@@ -74,7 +74,7 @@ class POEClient:
             timeout = POE_TIMEOUT
         self.timeout = timeout
         if model is None:
-            debug.assertion(POE_MODEL)
+            ## OLD: debug.assertion(POE_MODEL)
             model = POE_MODEL
         self.model = model
         self.headers = {

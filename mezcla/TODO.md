@@ -13,3 +13,4 @@ An optional priority is indicated by [Pn]
 - [P4] Avoid using tempfile directly: use glue_helper.get_temp_file instead.
 - [P5] Drop old 'use_stdin=True' TODO comments in tests.
 - [P5] Change obsolete TestIt2.test_xyz method traces to TestIt.test_xyz.
+- [P3] Clarify common command line interface (CLI) usages, such as using TEMP_BASE to a fixed directory when debugging tests.

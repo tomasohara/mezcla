@@ -92,27 +92,34 @@ class ConvertEmoticons:
         self.strip = strip
         self.replacement = replacement
         self.augment = augment
+        debug.assertion(not (self.replace and self.strip))
+        debug.assertion(not (self.augment and self.strip))
         debug.trace_object(self.BTL + 2, self, label=f"{self.__class__.__name__} instance")
     #
-    # EX: ce = ConvertEmoticons(); (ce.strip != cs.replace) => True
-    # EX: ce.convert()("❌ Failure") => "[cross mark] Failure"  # U+274c
+    # EX: ce = ConvertEmoticons(); (ce.strip != ce.replace) => True
+    # EX: ce.convert("❌ Failure") => "[cross mark] Failure"  # U+274c
 
     def convert(self, text=None, replace=None, strip=None, replacement=None, augment=None):
         """Either REPLACE emotions in TEXT with Unicode name, STRIP them entirely, or AUGMENT
         Note:
+        - STRIP takes precedence over AUGMENT
         - REPLACEMENT can be used for subsituted text (e.g., instead of "").
         - with AUGMENT the emoticon is still included (a la REPLACE plus STRIP).
         """
-        # EX: ce.convert("✅ Success") => "[checkmark] Success"  # U+2705
-        # EX: ce.convert("✅ Success", augment=True) => "✅ [checkmark] Success"
+        # EX: ce.convert("✓ Success") => "[check mark] Success"  # U+2713
+        # EX: ce.convert("✓ Success", augment=True) => "✓ [check mark] Success"
         # EX: ce.convert("año") => "año"       # ignore diacritic; Spanish for year
         debug.trace_expr(self.BTL + 1, replace, strip, replacement, augment,
                          prefix="in ce.convert: text=_; ")
         debug.assertion(text is not None)
         debug.assertion(not (replace and strip))
         debug.assertion(not (augment and strip))
+        ## TODO2: rework the confusing initialization dependencies
         if strip is None:
             strip = self.strip
+        if strip is not None:
+            replace = (not strip) if not replace else replace
+            replacement = "" if not replacement else replacement
         if replace is None:
             replace = self.replace
         if replacement is None:

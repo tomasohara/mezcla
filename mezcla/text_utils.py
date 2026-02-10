@@ -25,7 +25,6 @@
 # TODO:
 # - Write up test suite, el tonto!.
 # - Add pointer to specific packages better for production use.
-# - Move HTML-specific functions into html_utils.py.
 #
 
 """Miscellaneous text utility functions"""
@@ -43,27 +42,28 @@ import sys
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla import html_utils
+## OLD: from mezcla import html_utils
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.system import to_int
 
 # TEMP: Placeholders for dynamically loaded modules
-BeautifulSoup = None
+## OLD: BeautifulSoup = None
 textract = None
 
-def init_BeautifulSoup():
-    """Make sure bs4.BeautifulSoup is loaded"""
-    import bs4                           # pylint: disable=import-outside-toplevel, import-error
-    global BeautifulSoup
-    BeautifulSoup = bs4.BeautifulSoup
-
+## OLD:
+## def init_BeautifulSoup():
+##     """Make sure bs4.BeautifulSoup is loaded"""
+##     import bs4                           # pylint: disable=import-outside-toplevel, import-error
+##     global BeautifulSoup
+##     BeautifulSoup = bs4.BeautifulSoup
 
 def extract_soup_text_with_breaks(soup):
     """Extract text from SOUP parse, accounting for implicit newlines"""
-    # TODO: def extract_soup_text(soup: bs4.Tag) -> str:
+    # TODO: def extract_soup_text_with_breaks(soup: bs4.Tag) -> str:
     # Based on https://stackoverflow.com/questions/30337528/make-beautifulsoup-handle-line-breaks-as-a-browser-would
-    debug.trace_fmtd(6, f"extract_soup_text({soup})")
+    ## TODO4: move to html_utils
+    debug.trace_fmtd(6, f"extract_soup_text_with_breaks({soup})")
     _inline_elements = {"a", "span", "em", "strong", "u", "i", "font", "mark", "label", "s",
                         "sub", "sup", "tt", "bdo", "button", "cite", "del", "b"}
     import bs4                           # pylint: disable=import-outside-toplevel, import-error
@@ -90,15 +90,15 @@ def extract_soup_text_with_breaks(soup):
 
     # Extract all the text
     result = "".join(_get_text(soup))    
-    debug.trace_fmtd(6, f"extract_soup_text() => {result}")
+    debug.trace_fmtd(6, f"extract_soup_text_with_breaks() => {result}")
     return result
 
 
 def html_to_text(document_data):
     """Returns text version of html DATA
-    Warning: deprecated function; import from html_utils instead
+    Warning: no-op function; import from html_utils instead
     """
-    return html_utils.html_to_text(document_data)
+    raise RuntimeError("Use version in html_utils.py")
 
 
 def init_textract():
@@ -127,9 +127,9 @@ def document_to_text(doc_filename):
 
 def extract_html_images(document_data=None, url=None, filename=None):
     """Returns list of all images in HTML DOC from URL (n.b., URL used to determine base URL)
-    Warning: deprecated function; import from html_utils instead
+    Warning: no-op function; import from html_utils instead
     """
-    return html_utils.extract_html_images(document_data, url, filename)
+    raise RuntimeError("Use version in html_utils.py")
 
 
 def version_to_number(version, max_padding=3):

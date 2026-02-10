@@ -40,7 +40,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
-
+from mezcla.tests.common_module import SKIP_TBD_TESTS, SKIP_TBD_REASON
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
@@ -59,8 +59,9 @@ class TestIt(TestWrapper):
     def test_01_data_file(self):
         """Tests run_script w/ data file"""
         debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
-        output = self.run_script(options="", log_file=self.temp_file)
-        log_contents = system.read_file(self.temp_file)
+        temp_file = self.get_temp_file()
+        output = self.run_script(options="", log_file=temp_file)
+        log_contents = system.read_file(temp_file)
         self.do_assert(not output.strip())
         self.do_assert(my_re.search(r"not.*direct.*invocation", log_contents.strip().lower()))
         return
@@ -76,6 +77,7 @@ class TestIt(TestWrapper):
                                     captured))
         return
 
+    @pytest.mark.skipif(SKIP_TBD_TESTS, reason=SKIP_TBD_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_type_hints(self):
         """Test out validation via pydantic"""

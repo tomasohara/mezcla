@@ -36,7 +36,7 @@ import sys
 import time
 from typing import (
     Any, IO, Optional, Union, overload, List,
-    Tuple, Callable,
+    Tuple, Callable, Dict
 )
 from io import TextIOWrapper
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
@@ -78,8 +78,8 @@ def maxint() -> int:
 # Support for environment variable access
 # TODO: Put in separate module
 
-env_options = {}
-env_defaults = {}
+env_options: Dict[str, str] = {}
+env_defaults: Dict[str, Any] = {}
 env_diagnostic_level = 6
 #
 def set_env_diagnostic_level(level):
@@ -287,7 +287,7 @@ def getenv_value(
     """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE. (See getenv_text for option details.)
     Note: If NORMALIZE, then lookup falls back to variable uppercased and with underscores for dashes.
     """
-    # EX: getenv_value("bad env var") => None
+    # EX: getenv_value("bad env var") is None
     # TODO2: reconcile with getenv_value (e.g., via common helper); add way to set normalization as default
     if not skip_register:
         register_env_option(var, description or desc, default)
@@ -332,7 +332,7 @@ def getenv_bool(
     - TODO2: Return is a bool unless ALLOW_NONE; defaults to False.
     """
     # EX: getenv_bool("bad env var", None) => False
-    # EX: getenv_bool("bad env var", None, allow_none=True) => True
+    # EX: getenv_bool("bad env var", None, allow_none=True) is None
     # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int("USE_FUBAR", False) => ... getenv_bool)!
     bool_value = default
     value_text = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register, **kwargs)
@@ -374,8 +374,10 @@ def getenv_number(
     if (isinstance(value, str) and value.strip()):
         debug.assertion(is_number(value))
         num_value = to_float(value)
+    ## TODO3: see whether the following is redundant
     if (not ((num_value is None) and allow_none)):
-        num_value = to_float(num_value)
+        if not isinstance(num_value, float):
+            num_value = to_float(num_value)
     trace_level = 6 if helper else 5
     debug.trace_fmtd(trace_level, "getenv_number({v}, {d}) => {r}",
                      v=var, d=default, r=num_value)
@@ -483,7 +485,7 @@ def exit(                               # pylint: disable=redefined-builtin
         **namespace) -> None:
     """Display error MESSAGE to stderr and then exit, using optional
     NAMESPACE for format. The STATUS_CODE can be overrided (n.b., 0 if None)."""
-    # EX: exit("Error: {reason}!", status_code=123, reason="Whatever")
+    # example: exit("Error: {reason}!", status_code=123, reason="Whatever")
     debug.trace(6, f"system.exit{(message, status_code, namespace)}")
     if namespace:
         message = message.format(**namespace)
@@ -508,13 +510,13 @@ def print_full_stack(stream: IO = sys.stderr) -> None:
         # Show call stack excluding caller
         for item in reversed(inspect.stack()[2:]):
             stream.write('  File "{1}", line {2}, in {3}\n'.format(*item))
-        for line in item[4]:
+        for line in item[4] or []:
             stream.write('  ' + line.lstrip())
         # Show context of the exception from caller to offending line
         stream.write("  ----------\n")
         for item in inspect.trace():
             stream.write('  File "{1}", line {2}, in {3}\n'.format(*item))
-        for line in item[4]:
+        for line in item[4] or []:
             stream.write('  ' + line.lstrip())
     except:
         debug.trace_fmtd(3, "Unable to produce stack trace: {exc}", exc=get_exception())
@@ -609,12 +611,15 @@ def load_object(file_name: FileDescriptorOrPath, ignore_error: bool = False) -> 
     return obj
 
 
-def quote_url_text(text: str, unquote: bool = False) -> str:
-    """(un)Quote/encode TEXT to make suitable for use in URL. Note: This return the input if the text has encoded characters (i.e., %HH) where H is uppercase hex digit."""
-    # Note: This is a wrapper around quote_plus and thus escapes slashes, along with spaces and other special characters (";?:@&=+$,\"'").
-    # EX: quote_url_text("<2/") => "%3C2%2f"
+def quote_url_text(text: str, unquote: bool = False, idempotent: bool = False) -> str:
+    """(un)Quote/encode TEXT to make suitable for use in URL via encoded hex values (e.g., using '%3F' for '?').
+    This is a wrapper around quote_plus and thus escapes slashes, along with spaces and other special characters (";?:@&=+$,\"'").
+    Note: With optional IDEMPOTENT, this returns the input if the text has encoded characters (e.g., %HH or +) where H is uppercase hex digit
+    """
+    # EX: quote_url_text("<2/") => "%3C2%2F"
     # EX: quote_url_text("Joe's hat") => "Joe%27s+hat"
     # EX: quote_url_text("Joe%27s+hat") => "Joe%2527s%2Bhat"
+    ## TODO3: move in to html_utils.py
     debug.trace_fmtd(7, "in quote_url_text({t})", t=text)
     ## TEMP: treat None as empty string
     debug.assertion(text is not None)
@@ -631,7 +636,9 @@ def quote_url_text(text: str, unquote: bool = False) -> str:
             import urllib.parse   # pylint: disable=redefined-outer-name, import-outside-toplevel
             ## TODO: debug.trace_fmt(6, "take 2 urllib.parse", m=urllib.parse, show_all=True)
             if quote:
-                result = urllib.parse.quote_plus(text)
+                ## NOTE: Unfortunately quote_plus uses '' as a default
+                safe = "" if not idempotent else "%+"
+                result = urllib.parse.quote_plus(text, safe=safe)
             else:
                 result = urllib.parse.unquote_plus(text)
     except (TypeError, ValueError):
@@ -641,26 +648,40 @@ def quote_url_text(text: str, unquote: bool = False) -> str:
     debug.trace_fmtd(6, "out quote_url_text({t}) => {r}", t=text, r=result)
     return result
 #
+# EX: quote_url_text(quote_url_text("<2/")) => '%253C2%252F'
+# EX: quote_url_text(quote_url_text("<2/"), idempotent=True) => '%3C2%2F'
+
+
 def unquote_url_text(text: str) -> str:
     """Unquotes/decodes URL TEXT:
     Note: Wrapper around quote_url_text w/ UNQUOTE set"""
+    # EX: unquote_url_text("%3C2%2F") => "<2/"
     return quote_url_text(text, unquote=True)
+#
+# EX: ((text := "?") and (quote_url_text(quote_url_text(text)) != text))
+# EX: ((text := "?") and (quote_url_text(quote_url_text(text), idempotent=True) == text))
+
 
 def escape_html_value(value: str) -> str:
     """Escape VALUE for HTML embedding
-    Warning: deprecated function; import from html_utils instead
+    Warning: no-op function; import from html_utils instead
     """
-    from mezcla import html_utils       # pylint: disable=import-outside-toplevel
-    return html_utils.escape_html_text(value)
+    raise RuntimeError("Use version in glue_helpers.py")
+    ## OLD:
+    ## from mezcla import html_utils       # pylint: disable=import-outside-toplevel
+    ## return html_utils.escape_html_text(value)
 #
 escape_html_text = escape_html_value
 
 def unescape_html_value(value: str) -> str:
     """Undo escaped VALUE for HTML embedding
-    Warning: deprecated function; import from html_utils instead
+    Warning: no-op function; import from html_utils instead
     """
-    from mezcla import html_utils       # pylint: disable=import-outside-toplevel
-    return html_utils.unescape_html_text(value)
+    raise RuntimeError("Use version in glue_helpers.py")
+    ## OLD:
+    ## debug.trace(3, "Warning: deprecated function")
+    ## from mezcla import html_utils       # pylint: disable=import-outside-toplevel
+    ## return html_utils.unescape_html_text(value)
 #
 unescape_html_text = unescape_html_value
 
@@ -732,7 +753,7 @@ def read_entire_file(filename: FileDescriptorOrPath, **kwargs) -> str:
         if report_errors:
             print_stderr("Error: Unable to read file '{f}': {exc}".format(
                 f=filename, exc=get_exception()))
-    debug.trace_fmtd(8, "read_entire_file({f}) => {r}", f=filename, r=data)
+    debug.trace_fmtd(8, "read_entire_file({f!r}) => {r!r}", f=filename, r=data)
     return data
 #
 read_file = read_entire_file
@@ -743,7 +764,9 @@ def read_lines(filename: FileDescriptorOrPath, ignore_comments: Optional[bool] =
     Note: If IGNORE_COMMENTS, then comments of the form '[#;] text' are stripped
     """
     # TODO: add support for open() keyword args (e.g., via read_entire_file)
-    # EX: read_lines("/tmp/fu123.list") => ["1", "2", "3"]
+    # EX: read_lines("/dev/null") => []
+    # EX: (len(read_lines("/etc/passwd")) > 5)
+    # old-EX: read_lines("/tmp/fu123.list") => ["1", "2", "3"]
     # note: The final newline is ignored, s[TODO ...]
     contents = read_entire_file(filename)
     if ignore_comments:
@@ -757,7 +780,8 @@ def read_lines(filename: FileDescriptorOrPath, ignore_comments: Optional[bool] =
     debug.trace(7, f"read_lines({filename!r}) => {lines}")
     return lines
 #
-# EX: l = ["1", "2"]; f="/tmp/12.list"; write_lines(f, l); read_lines(f) => l
+# EX: (len(read_file("/etc/passwd")) > len(read_lines("/etc/passwd")))
+# EX: l = ["1", "2"]; f="/tmp/12.list"; write_lines(f, l); (read_lines(f) == l)
 
 
 def read_binary_file(filename: FileDescriptorOrPath) -> bytes:
@@ -788,8 +812,8 @@ def read_directory(directory: int) -> List[str]:
 def read_directory(directory: Union[Optional[str], bytes, int]) -> Union[List[str], List[bytes]]:
     """Returns list of files in DIRECTORY"""
     # Note simple wrapper around os.listdir with tracing
-    # EX: (intersection(["init.d", "passwd"], read_directory("/etc")))
-    files = []
+    # EX: (bool(intersection(["init.d", "passwd"], read_directory("/etc"))))
+    files: Union[List[str], List[bytes]] = []
     try:
         files = os.listdir(directory)
     except:
@@ -801,7 +825,7 @@ def read_directory(directory: Union[Optional[str], bytes, int]) -> Union[List[st
 def get_directory_filenames(directory: str, just_regular_files: bool = False) -> List[str]:
     """Returns full pathname for files in DIRECTORY, optionally restrictded to JUST_REGULAR_FILES
     Note: The files are returned in lexicographical order"""
-    # EX: ("/etc/passwd" in get_directory_filenames("/etc")
+    # EX: ("/etc/passwd" in get_directory_filenames("/etc"))
     # EX: ("/boot" not in get_directory_filenames("/", just_regular_files=True))
     return_all_files = (not just_regular_files)
     files = []
@@ -985,16 +1009,18 @@ def write_lines(
     return
 
 
-def write_temp_file(filename: FileDescriptorOrPath, text: Any) -> None:
-    """Create FILENAME in temp. directory using TEXT"""
+def write_temp_file(filename: FileDescriptorOrPath, text: Any) -> str:
+    """Create FILENAME in temp. directory using TEXT. Returns path to result."""
     ## TODO2: Any => Union[bytes, str]
+    ## TODO3: replace with version from glue_helpers.py
+    temp_path = ""
     try:
         assert isinstance(TEMP_DIR, str) and TEMP_DIR != "", "TEMP_DIR not defined"
         temp_path = form_path(TEMP_DIR, filename)
         write_file(temp_path, text)
     except:
         print_exception_info("write_temp_file")
-    return 
+    return temp_path
 
 
 def get_file_modification_time(
@@ -1018,7 +1044,7 @@ def split_path(path: str) -> Tuple[str, str]:
     """Split file PATH into directory and filename
     Note: wrapper around os.path.split with tracing and sanity checks
     """
-    # EX: split_path("/etc/passwd") => ["etc", "passwd"]
+    # EX: split_path("/etc/passwd") => ("/etc", "passwd")
     dir_name, filename = os.path.split(path)
     debug.assertion((not dir_name.endswith(os.path.sep)) or (dir_name == os.path.sep))
     result = dir_name, filename
@@ -1033,9 +1059,9 @@ def filename_proper(path: str) -> str:
     """Return PATH sans directories
     Note: unlike os.path.split, this always returns filename component
     """
-    # EX: filename_proper("/tmp/document.pdf") => "document.pdf")
-    # EX: filename_proper("/tmp") => "tmp")
-    # EX: filename_proper("/") => "/")
+    # EX: filename_proper("/tmp/document.pdf") => "document.pdf"
+    # EX: filename_proper("/tmp") => "tmp"
+    # EX: filename_proper("/") => "/"
     (directory, filename) = split_path(path)
     if not filename:
         filename = directory
@@ -1046,9 +1072,11 @@ def filename_proper(path: str) -> str:
 def remove_extension(filename: str, extension: Optional[str] = None) -> str:
     """Return FILENAME without final EXTENSION
     Note: Unless extension specified, only last dot is included"""
-    # EX: remove_extension("/tmp/document.pdf") => "/tmp/document")
-    # EX: remove_extension("it.abc.def") => "it.abc")
-    # EX: remove_extension("it.abc.def", "abc.def") => "it")
+    # EX: remove_extension("/tmp/document.pdf") => "/tmp/document"
+    # EX: remove_extension("it.abc.def") => "it.abc"
+    # EX: remove_extension("it.abc.def", "abc.def") => "it"
+    ## TODO3: make sure supercedes version in glue_helpers.remove_extension and make that an alias to this
+    ## TODO4: likewise make sure supercedes os.path.splitext (see os_util.split_extension)
     in_extension = extension
     new_filename = filename
     if extension is None:
@@ -1104,17 +1132,20 @@ def path_separator(sysname: Optional[str] = None):
     result = os.path.sep
     if (sysname != os.name):
         default_sep = "/"
-        result = "\\" if sysname == "nt" else default_sep
+        ## OLD: result = "\\" if sysname == "nt" else default_sep
+        result = "\\" if (str(sysname).lower() in ["nt", "windows"]) else default_sep
     debug.trace(7, f"path_separator() => {result}")
     return result
 #    
 # EX: path_separator(sysname="Windows") => "\\"
-# EX-SETUP: def when(cond, value): return value if cond else None
-# EX: path_separator() => (when((os.uname().sysname == "Linux"), "/"))
-
+## TODO4-EX-SETUP: def when(cond, value): return value if cond else None
+## TODO4-EX: path_separator() => (when((os.uname().sysname == "Linux"), "/"))
+# EX: (path_separator() == ("/" if (os.uname().sysname == "Linux") else os.path.sep))
 
 def form_path(*filenames: str) -> str:
-    """Wrapper around os.path.join over FILENAMEs (with tracing)"""
+    """Wrapper around os.path.join over FILENAMEs (with tracing).
+    Note: See glue_helpers.py for a version that creates directories and applies sanity checks.
+    """
     ## OLD: debug.assertion(not any(f.startswith(path_separator()) for f in filenames[1:]))
     path = os.path.join(*filenames)
     debug.trace_fmt(6, "form_path({f}) => {p}", f=tuple(filenames), p=path)
@@ -1157,15 +1188,16 @@ def get_current_directory() -> str:
     return current_dir
 
 
-def set_current_directory(PATH: FileDescriptorOrPath) -> None:
+def set_current_directory(path: FileDescriptorOrPath) -> None:
     """Tracing wrapper around os.chdir(PATH)"""
-    os.chdir(PATH)
-    debug.trace_fmt(6, "set_current_directory({p}) => None")
-
+    os.chdir(path)
+    debug.trace(6, f"set_current_directory({path}) => None")
+#
+# TODO3?: change_directory = set_current_directory
 
 def to_utf8(text: str) -> str:
     """obsolete no-op: Convert TEXT to UTF-8 (e.g., for I/O)"""
-    # EX: to_utf8(u"\ufeff") => "\xEF\xBB\xBF"
+    # old-EX: to_utf8(u"\ufeff") => "\xEF\xBB\xBF"
     result = text
     ## OLD: ... result = result.encode(UTF8, 'ignore')
     debug.trace_fmtd(8, "to_utf8({t}) => {r}", t=text, r=result)
@@ -1176,7 +1208,7 @@ def to_str(value: Any) -> str:
     """Convert VALUE to text (i.e., of type str)
     Note: use to_utf8 for output or to_string to use default string type"""
     # Note: included for sake of completeness with other basic types
-    # EX: to_str(math.pi) = "3.141592653589793"
+    # EX: import math; to_str(math.pi) => "3.141592653589793"
     result = "%s" % value
     debug.trace_fmtd(8, "to_str({v}) => {r}", v=value, r=result)
     debug.assertion(isinstance(result, str))
@@ -1184,16 +1216,20 @@ def to_str(value: Any) -> str:
 
 
 def from_utf8(text: str) -> str:
-    """Convert TEXT to Unicode from UTF-8"""
-    # EX: to_utf8("\xEF\xBB\xBF") => u"\ufeff"
+    """Convert TEXT to Unicode from UTF-8
+    Note: now a no-op
+    """
+    # old-EX: to_utf8("\xEF\xBB\xBF") => u"\ufeff"
     result = text
     debug.trace_fmtd(8, "from_utf8({t}) => {r}", t=text, r=result)
     return result
 
 
 def to_unicode(text: str, encoding: Optional[str] = None):
-    """Ensure TEXT in ENCODING is Unicode, such as from the default UTF8"""
-    # EX: to_unicode("\xEF\xBB\xBF") => u"\ufeff"
+    """Ensure TEXT in ENCODING is Unicode, such as from the default UTF8
+    Note: now a no-op
+    """
+    # old-EX: to_unicode("\xEF\xBB\xBF") => u"\ufeff"
     # TODO: rework from_utf8 in terms of this
     result = text
     ## OLD: ... result = result.decode(encoding, 'ignore')
@@ -1244,7 +1280,7 @@ def chomp(text: str, line_separator: str = os.linesep) -> str:
 
 def normalize_dir(path: str) -> str:
     """Normalize the directory PATH (e.g., removing ending path delim)"""
-    # EX: normalize_dir("/etc/") => "/etc")
+    # EX: normalize_dir("/etc/") => "/etc"
     result = chomp(path, path_separator())
     debug.trace(6, f"normalize_dir({path}) => {result}")
     return result
@@ -1296,13 +1332,23 @@ def intersection(list1: list, list2: list, as_set: bool = False) -> Union[list, 
     """
     # note: wrapper around set.intersection used for tracing
     # EX: sorted(intersection([1, 2, 3, 4, 5], [2, 4])) => [2, 4]
-    # EX: intersection([1, 2, 3, 4, 5], [2, 4], as_set=True)) => {2, 4}
+    # EX: intersection([1, 2, 3, 4, 5], [2, 4], as_set=True) => {2, 4}
     # TODO: have option for returning list
     result: Union[list, set] = set(list1).intersection(set(list2))
     if not as_set:
         result = list(result)
     debug.trace_fmtd(7, "intersection({l1}, {l2}) => {r}",
                      l1=list1, l2=list2, r=result)
+    return result
+
+
+def relative_intersection(list1: list, list2: list, as_set: bool = False):
+    """Compute relative size of intersection for LIST1 and LIST2"""
+    # EX: relative_intersection([1, 2], [2]) => 0.5
+    min_size = max(len(list1), len(list2))
+    result = (len(intersection(list1, list2, as_set=as_set)) / min_size
+              if min_size else 0)
+    debug.trace(6, f"relative_intersection({list1}, {list2}, {as_set=}) => {result}")
     return result
 
 
@@ -1367,11 +1413,14 @@ def just_one_non_null(in_list: list, strict: bool = False) -> bool:
 
 
 def unique_items(values: list,
-                 prune_empty: bool = False,
-                 ignore_case: bool = None) -> list:
+                 prune_empty: Optional[bool] = False,
+                 ignore_case: Optional[bool] = None,
+                 key: Optional[Callable] = None) -> list:
     """Returns unique items from VALUES, preserving order
-    Note: optionally PRUN[ing]_EMPTY items and IGNOR[ing]_CASE,
-    in which case earlier items take precedence."""
+    Note: Optionally PRUN[ing]_EMPTY items and IGNOR[ing]_CASE,
+    in which case earlier items take precedence.
+    Also allows for optional KEY, assuming VALUES is a list of dict's.
+    """
     # EX: unique_items([1, 2, 3, 2, 1]) => [1, 2, 3]
     # EX: unique_items(["dog", "DOG", "cat"], ignore_case=True) => ["dog", "cat"]
     ordered_hash = OrderedDict()
@@ -1382,13 +1431,17 @@ def unique_items(values: list,
         if debug.debugging(8):
             in_values.append(item)
         if item or (not prune_empty):
-            item_key = item if not ignore_case else str(item).lower()
+            if key is None:
+                item_key = item if not ignore_case else str(item).lower()
+            else:
+                item_key = key(item)
             if item_key not in ordered_hash:
                 ordered_hash[item_key] = item
     result = list(ordered_hash.values())
     debug.trace_fmt(8, "unique_items({l}) => {r}", l=in_values, r=result)
     return result
-
+#
+# unique_items([{"name": "john"}, {"name": "jane"}, {"name": "john"}], key=lambda x: x.get("name")) => [{"name", "john"}, {"name", "jane"}]
 
 def is_number(text: str) -> bool:
     """Indicates whether TEXT represents a number (integer or float)"""
@@ -1405,13 +1458,14 @@ def is_number(text: str) -> bool:
     return ok
 
 
-def to_float(text: str, default_value: float = 0.0,
+def to_float(text: Optional[str], default_value: float = 0.0,
              ignore: Optional[bool] = None) -> float:
     """Interpret TEXT as float, using DEFAULT_VALUE
     Optional INGORE omits exception trace"""
     result = default_value
     try:
-        result = float(text)
+        if text:
+            result = float(text)
     except (TypeError, ValueError):
         if not ignore:
             debug.trace_fmtd(7, "Exception in to_float({v!r}): {exc}",
@@ -1516,7 +1570,7 @@ def time_in_secs() -> float:
 
 def python_maj_min_version() -> float:
     """Return Python version as a float of form Major.Minor"""
-    # EX: debug.assertion(python_maj_min_version() >= 3.6, "F-Strings are used")
+    # EX: bool(debug.assertion(10 * python_maj_min_version() >= 36, "F-Strings are used"))
     version = sys.version_info
     epsilon = 1e-6
     py_maj_min = (to_float("{M}.{m}".format(M=version.major, m=version.minor))

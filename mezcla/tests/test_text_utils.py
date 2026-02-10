@@ -12,7 +12,7 @@
 """Tests for text_utils module"""
 
 # Standard packages
-import re
+## OLD: import re
 import os
 
 # Installed packages
@@ -21,43 +21,17 @@ import os
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla import system
+## OLD: from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla.tests.common_module import normalize_text
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.text_utils as THE_MODULE
-
-HTML_FILENAME = "./resources/simple-window-dimensions.html"
-
-EXPECTED_TEXT = """
-   Simple window dimensions
-
-   Simple window dimensions
-
-      Legend:
-        Screen dimensions:    ???
-        Browser dimensions:   ???
-
-   JavaScript is required
-"""
-#
-# NOTE: Whitespace and punctuation gets normalized
-# TODO: restore bullet points (e.g., "* Screen dimensions")
 
 MS_WORD_FILENAME = "./resources/spanish-accents.docx"
 
 MS_WORD_TEXT = "Tío Tomás\t\t\t\tUncle Tom\n\n¡Buenos días!\t\t\t\tGood morning\n\nçãêâôöèäàÃëÇÂîòïÔìðÊÅåùÀŠý\t\tcaeaooeaaAeCAioiOioEAauASy"
-
-
-def normalize_text(text):
-    """Trim excess whitespace and convert punctuation to <PUNCT>"""
-    # EX: normalize_test_text("   h  e y?! ") => "h e y<PUNCT>"
-    result = text.strip()
-    result = re.sub(r"\s+", " ", result)
-    result = re.sub(r"[^\w\s]+", "<PUNCT>", result)
-    debug.trace(4, f"normalize_test_text({text}) => {result}")
-    return result
 
 
 class TestTextUtils(TestWrapper):
@@ -65,21 +39,13 @@ class TestTextUtils(TestWrapper):
     # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    def test_init_BeautifulSoup(self):
-        """Ensure init_BeautifulSoup works as expected"""
-        debug.trace(4, "test_init_BeautifulSoup()")
-        THE_MODULE.BeautifulSoup = None
-        THE_MODULE.init_BeautifulSoup()
-        assert THE_MODULE.BeautifulSoup is not None
-
-    def test_html_to_text(self):
-        """Ensure html_to_text works as expected"""
-        # TODO: move into test_html_utils.py
-        debug.trace(4, "test_html_to_text()")
-        html_path = gh.resolve_path(HTML_FILENAME)
-        html = system.read_file(html_path)
-        text = THE_MODULE.html_to_text(html)
-        assert normalize_text(text) == normalize_text(EXPECTED_TEXT)
+    ## OLD:
+    ## def test_init_BeautifulSoup(self):
+    ##     """Ensure init_BeautifulSoup works as expected"""
+    ##     debug.trace(4, "test_init_BeautifulSoup()")
+    ##     THE_MODULE.BeautifulSoup = None
+    ##     THE_MODULE.init_BeautifulSoup()
+    ##     assert THE_MODULE.BeautifulSoup is not None
 
     def test_init_textract(self):
         """Ensure init_textract works as expected"""
@@ -95,33 +61,34 @@ class TestTextUtils(TestWrapper):
         text = THE_MODULE.document_to_text(doc_path)
         assert normalize_text(text) == normalize_text(MS_WORD_TEXT)
 
-    def test_extract_html_images(self):
-        """Ensure extract_html_images works as expected"""
-        debug.trace(4, "test_extract_html_images()")
-
-        url = 'example.com'
-        html = (
-            '<!DOCTYPE html>\n'
-            '<html>\n'
-            '<body>\n'
-            '<h2>The target Attribute</h2>\n'
-            '<div class="some-class">this is a div</div>\n'
-            '<div class="some-class another-class">'
-            '<img src="smiley.gif" alt="Smiley face" width="42" height="42" style="border:5px solid black">\n'
-            '<img src="some_image.jpg" alt="Some image" width="42" height="42" style="border:5px solid black">\n'
-            '<img src="hidden.jpg" alt="this is a hidden image" width="42" height="42" style="display:none">\n'
-            '</div>'
-            '</body>\n'
-            '</html>\n'
-        )
-        images_urls = [
-            f'{url}/smiley.gif',
-            f'{url}/some_image.jpg'
-        ]
-
-        result = THE_MODULE.extract_html_images(html, url)
-        assert result == images_urls
-        assert 'hidden.jpg' not in images_urls
+    ## OLD:
+    ## def test_extract_html_images(self):
+    ##     """Ensure extract_html_images works as expected"""
+    ##     debug.trace(4, "test_extract_html_images()")
+    ##
+    ##     url = 'example.com'
+    ##     html = (
+    ##         '<!DOCTYPE html>\n'
+    ##         '<html>\n'
+    ##         '<body>\n'
+    ##         '<h2>The target Attribute</h2>\n'
+    ##         '<div class="some-class">this is a div</div>\n'
+    ##         '<div class="some-class another-class">'
+    ##         '<img src="smiley.gif" alt="Smiley face" width="42" height="42" style="border:5px solid black">\n'
+    ##         '<img src="some_image.jpg" alt="Some image" width="42" height="42" style="border:5px solid black">\n'
+    ##         '<img src="hidden.jpg" alt="this is a hidden image" width="42" height="42" style="display:none">\n'
+    ##         '</div>'
+    ##         '</body>\n'
+    ##         '</html>\n'
+    ##     )
+    ##     images_urls = [
+    ##         f'{url}/smiley.gif',
+    ##         f'{url}/some_image.jpg'
+    ##     ]
+    ##
+    ##     result = THE_MODULE.extract_html_images(html, url)
+    ##     assert result == images_urls
+    ##     assert 'hidden.jpg' not in images_urls
 
     def test_version_to_number(self):
         """Ensure version_to_number works as expected"""

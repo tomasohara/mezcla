@@ -39,7 +39,7 @@ from mezcla import glue_helpers as gh
 from mezcla import system
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 import mezcla.xml_utils as THE_MODULE
 
 # Constants

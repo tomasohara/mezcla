@@ -53,15 +53,23 @@ def read_csv(filename, **in_kw):
     """Wrapper around pandas read_csv
     Note: delimiter SEP defaults to DELIM env. var (n.b., uses sniffing if unset), dtype to str, and both error_bad_lines & keep_default_na to False. (Override these via keyword parameters.)
     """
-    # EX: tf = read_csv("examples/iris.csv"); tf.shape => (150, 5)
+    ## TODO2: make the defaults more unintuitive and add option to disable
+    # EX: df = read_csv("examples/iris.csv"); df.shape => (150, 5)
     ## TODO: clarify dtype usage
     kw = {SEP: DELIM, 'dtype': str,
           'on_bad_lines': 'skip', 'keep_default_na': False}
-    # Hack: make sure only one of "sep" and "delimiter" specified
+    # Hack: make sure only one of "sep" and "delimiter" specified.
+    # Note: delimiter is now an alias for sep.
     if DELIMITER in in_kw:
         debug.assertion(not (kw[SEP] and in_kw[DELIMITER]))
         kw[SEP] = (kw[SEP] or in_kw[DELIMITER])
         in_kw[DELIMITER] = None
+    # Use comma (tab) for delimiter if unspecified and file ext is CSV (TSV)
+    if not kw[SEP] and isinstance(filename, str):
+        if filename.lower().endswith(".csv"):
+            kw[SEP] = ","
+        if filename.lower().endswith(".tsv"):
+            kw[SEP] = "\t"
     # Overide settings based on explicit keyword arguments
     kw.update(**in_kw)
     kw['engine'] = 'python'
@@ -70,7 +78,7 @@ def read_csv(filename, **in_kw):
         kw['quoting'] = csv.QUOTE_NONE
     # Add special processing (n.b., a bit idiosyncratic)
     if ((COMMENT not in kw) and (kw.get(DIALECT) != EXCEL)):
-        debug.trace_fmt(4, "FYI: Enabling comments in data_utils.read_csv")
+        debug.trace(4, "FYI: Enabling comments in data_utils.read_csv")
         kw[COMMENT] = "#"
     debug.trace_fmt(4, "in data_utils.read_csv({f}, [in_kw={ikw}])", f=filename, ikw=in_kw)
     debug.trace_fmt(4, "\tFYI: kw={k}", k=kw)
@@ -85,19 +93,22 @@ def read_csv(filename, **in_kw):
     return df
 
 
-def to_csv(filename, data_frame, **in_kw):
+def to_csv(filename, data_frame, strict=False, **in_kw):
     """Wrapper around pandas DATA_FRAME.to_csv with FILENAME
     Note: by default, the index is omitted;
-    and, delimiter SEP defaults to DELIM env. var"""
+    and, delimiter SEP defaults to DELIM env. var
+    With STRICT, pandas defaults are used"""
     result = None
-    kw = {SEP: DELIM, 'index': False}
+    kw = {}
+    if not strict:
+        kw = {SEP: DELIM, 'index': False}
     kw.update(**in_kw)
     debug.trace_fmt(4, "in data_utils.to_csv({f}, _df) [in_kw={ikw}])", f=filename, ikw=in_kw)
     debug.trace_fmt(4, "\tFYI: kw={k}", k=kw)
     try:
         result = data_frame.to_csv(filename, **kw)
     except:
-        debug.trace(4, f"Exception during write_csv: {system.get_exception()}")
+        debug.trace(4, f"Exception during to_csv: {system.get_exception()}")
     debug.trace(5, f"data_utils.to_csv({filename}, {data_frame}) => {result}")
     return result
 #
@@ -106,7 +117,7 @@ write_csv = to_csv
 
 def lookup_df_value(data_frame, return_field, lookup_field, lookup_value):
     """Return value for DATA_FRAME's RETURN_FIELD given LOOKUP_FIELD value LOOKUP_VALUE"""
-    # EX: lookup_df_value(tf, "sepal_length", "petal_length", "3.8") => "5.5"
+    # EX: lookup_df_value(df, "sepal_length", "petal_length", "3.8") => "5.5"
     ## TODO: rework in terms of Pandas primitives
     value = None
     try:

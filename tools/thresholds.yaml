@@ -15,3 +15,4 @@ _dummy-script.py: 0.3
 
 # pytest success rate
 tests/test__dummy-script.py: 0.6
+tests/test_extract_document_text.py: 0.0

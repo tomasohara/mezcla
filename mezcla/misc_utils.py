@@ -19,7 +19,7 @@ import re
 import sys
 import time
 import json
-import yaml
+## OLD: import yaml
 import csv
 from types import ModuleType
 from typing import Any, Optional
@@ -28,6 +28,8 @@ from contextlib import ContextDecorator
 # Installed packages
 ## NOTE: made dynamic due to import issue during shell-script repo tests
 ## TODO3: import more_itertools
+## NOTE: yaml uses dynamic load to keep mezcla requirements down
+## TODO: import yaml
 
 # Local packages
 from mezcla import debug
@@ -96,7 +98,6 @@ def extract_string_list(text, strip_empty=False, allow_numeric_ranges=False):
     # EX: extract_string_list("1  2,3") => ["1", "2", "3"]
     # TODO: Add support for quoted values to allow for embedded spaces
     trimmed_text = my_re.sub(r"\s+", " ", text.strip())
-    ## OLD: values = trimmed_text.replace(" ", ",").split(",")
     trimmed_text = my_re.sub(r"([^,]) ", r"\1,", trimmed_text)
     values = my_re.split(", ?", trimmed_text) if trimmed_text else []
     #
@@ -116,7 +117,7 @@ def extract_string_list(text, strip_empty=False, allow_numeric_ranges=False):
     return values
 #
 # EX: extract_string_list("1,", strip_empty=True) => ["1"]
-# EX: extract_string_list("1-3") => ["1", "2", "3"]
+# EX: extract_string_list("1-3", allow_numeric_ranges=True) => ["1", "2", "3"]
 
 
 def is_prime(num):
@@ -161,8 +162,8 @@ def is_prime(num):
 
 def prime_factorization(num):
     """Return list of primne factors for NUM"""
-    ## EX: prime_factors(123) => [3, 41]
-    ## EX: prime_factors(127) => [127]
+    ## EX: prime_factorization(123) => [3, 41]
+    ## EX: prime_factorization(127) => [127]
     i = 2
     factors = []
     while i * i <= num:
@@ -248,7 +249,7 @@ def eval_expression(expr_text, frame=None):
 def trace_named_object(level, object_name, caller_frame=None):
     """Trace OBJECT_given_by_NAME
     Note: ***use debug.trace_expr instead ***"""
-    # EX: trace_named_object(4, "sys.argv")
+    # EX: trace_named_object(4, "sys.argv") is None
     if caller_frame is None:
         caller_frame = get_current_frame().f_back
     debug.trace_object(level, eval_expression(object_name,
@@ -260,7 +261,7 @@ def trace_named_object(level, object_name, caller_frame=None):
 def trace_named_objects(level, list_text):
     """Trace objects in LIST_text
     Note: *** use debug.trace_expr instead ***"""
-    # EX: trace_named_object(4, "[len(sys.argv), sys.argv]")
+    # EX: trace_named_objects(4, "[len(sys.argv), sys.argv]") is None
     debug.assertion(re.search(r"^\[.*\]$", list_text))
     frame = get_current_frame().f_back
     for name in text_utils.extract_string_list(list_text[1:-1]):
@@ -337,7 +338,6 @@ def get_formatted_date(date=None, fmt=None, sep=None, timestamp=None):
     Use TIMESTAMP to specify date as integer
     """
     ## EX: get_formatted_date(datetime.datetime.fromtimestamp(0)) => "31 dec 69"
-    ## BAD: ## EX: get_formatted_date(datetime.date(0)) => "01 jan 70"
     ## TODO3: rename as get_formatted_date
     in_date = date
     if timestamp is not None:
@@ -360,7 +360,6 @@ def get_formatted_date(date=None, fmt=None, sep=None, timestamp=None):
 def get_date_ddmmmyy(date=None):
     """Return (today's) date in DDMMMYY format (e.g., 10oct22)"""
     ## EX: get_date_ddmmmyy(datetime.datetime.fromtimestamp(0)) => "31dec69"
-    ## BAD: ## EX: get_date_ddmmmyy(datetime.date(0)) => "01jan70"
     result = get_formatted_date(date).replace(" ", "")
     debug.trace(6, f"get_date_ddmmmyy({date}) => {result}")
     return result
@@ -369,7 +368,7 @@ def parse_timestamp(ts: str, truncate=None, utc=None) -> datetime.datetime:
     """Parse timestamp in ISO 8601 format (e.g., 2023-10-06T04:03:27.1271706Z)
     Note: The timestamp is truncated to micrososeconds unless TRUNCATE is false; and, it is optionally converted to UTC
     """
-    # EX: parse_timestamp("2023-10-06T04:03:27.1271706Z") => datetime.datetime(2023, 10, 6, 4, 3, 27, 127170, tzinfo=datetime.timezone.utc)
+    # EX: parse_timestamp("2023-10-06T04:03:27.1271706Z") => datetime.datetime(2023, 10, 6, 4, 3, 27, 127170)
     # Note: See https://stackoverflow.com/questions/6207365/working-with-high-precision-timestamps-in-python
     # Code based on ChatGPT suggestion
 
@@ -463,8 +462,8 @@ def get_class_from_name(class_name, module_name=None):
     """Return class with CLASS_NAME
     Optionally specifies MODULE_NAME containing the class, if not __name__
     """
-    # EX: "noun_phrases" in dir(get_class_from_name("TextProc", module_name="mezcla.text_processing"))
-    # EX: not  get_class_from_name("TextProc")
+    # EX: import mezcla.text_processing; "noun_phrases" in dir(get_class_from_name("TextProc", module_name="mezcla.text_processing"))
+    # EX: not get_class_from_name("TextProc")
     # See https://stackoverflow.com/questions/1176136/convert-string-to-python-class-object
     if module_name is None:
         module_name = __name__
@@ -506,11 +505,12 @@ def convert_file_to_instances(input_file, module_name, class_name, field_names,
     if fmt == 'json':
         data = json.loads(system.read_file(input_file))
     elif fmt == 'yaml':
+        # pylint: disable=import-outside-toplevel
+        import yaml
         data = yaml.safe_load(system.read_file(input_file))
     elif fmt == 'csv':
         debug.trace(4, "Warning: convert_file_to_instances problematic with CSV files")
         # Use CSV DictReader to get list of dicts
-        ## OLD: with system.open_file(input_file, newline='') as f:
         with system.open_file(input_file) as f:
             reader = csv.DictReader(f)
             data = list(reader)    

@@ -21,7 +21,10 @@ TL = debug.TL
 
 
 def split_extension(path):
-    """Returns basename and extension for PATH"""
+    """Returns basename and extension for PATH
+    Note: This is a direct wrapper around os.path.splitext with sanity checks and tracing.
+    Use system.remove_extension for a more flexible extension-stripping utility.
+    """
     result = os.path.splitext(path)
     try:
         filename_proper, ext = result

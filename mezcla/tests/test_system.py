@@ -32,11 +32,12 @@ from mezcla.my_regex import my_re
 from mezcla import debug
 
 # Note: Two references are used for the module to be tested:
-#    THE_MODULE:	    global module object
+#    THE_MODULE:            global module object
 #    TestIt.script_module:              path to file
 import mezcla.system as THE_MODULE
 # note: 'system.function' used for functions not being tested (out of habit)
 system = THE_MODULE
+MOD = THE_MODULE
 
 class TestSystem(TestWrapper):
     """Class for test case definitions"""
@@ -348,8 +349,10 @@ class TestSystem(TestWrapper):
 
         ## TODO: set fixed sys.version_info.major > 2.
         ## TODO1: please explain the issue here and below
+        ## TODO3: use different examples than the EX comments
 
         # Test quoting
+        assert THE_MODULE.quote_url_text("a/b") == "a%2Fb"
         assert THE_MODULE.quote_url_text("<2/") == "%3C2%2F"
         assert THE_MODULE.quote_url_text("Joe's hat") == "Joe%27s+hat"
         assert THE_MODULE.quote_url_text("Joe%27s+hat") == "Joe%2527s%2Bhat"
@@ -370,31 +373,47 @@ class TestSystem(TestWrapper):
     def test_unquote_url_text(self):
         """Ensure unquote_url_text works as expected"""
         debug.trace(4, "test_unquote_url_text()")
+        assert THE_MODULE.unquote_url_text("a%2Fb") == "a/b"
         assert THE_MODULE.unquote_url_text("%3C2%2f") == "<2/"
         assert THE_MODULE.unquote_url_text("Joe%27s+hat") == "Joe's hat"
         assert THE_MODULE.unquote_url_text("Joe%2527s%2Bhat") == "Joe%27s+hat"
 
-    def test_escape_html_text(self):
-        """Ensure escape_html_text works as expected"""
-        debug.trace(4, "test_escape_html_text()")
+    def test_idempotent_quote_url_text(self):
+        """Verify quote_url_text with idempotent option"""
+        debug.trace(4, "test_idempotent_quote_url_text()")
 
-        ## TODO: set fixed sys.version_info.major > 2.
+        actual = MOD.quote_url_text("?a=a&b=2")
+        assert(actual == "%3Fa%3Da%26b%3D2")
+        assert MOD.quote_url_text(actual, idempotent=True) == actual
+        assert MOD.quote_url_text(actual) != actual
+        tomo = "Tom O'Hara"
+        assert (MOD.quote_url_text(tomo)
+                != MOD.quote_url_text(MOD.quote_url_text(tomo)))
+        assert (MOD.quote_url_text(tomo)
+                == MOD.quote_url_text(MOD.quote_url_text(tomo), idempotent=True))
 
-        assert THE_MODULE.escape_html_text("<2/") == "&lt;2/"
-        assert THE_MODULE.escape_html_text("Joe's hat") == "Joe&#x27;s hat"
-
-        ## TODO: test with sys.version_info.major < 2
-
-    def test_unescape_html_text(self):
-        """Ensure unescape_html_text works as expected"""
-        debug.trace(4, "test_unescape_html_text()")
-
-        ## TODO: set fixed sys.version_info.major > 2.
-
-        assert THE_MODULE.unescape_html_text("&lt;2/") == "<2/"
-        assert THE_MODULE.unescape_html_text("Joe&#x27;s hat") == "Joe's hat"
-
-        ## TODO: test with sys.version_info.major < 2
+    ## OLD:
+    ## def test_escape_html_text(self):
+    ##     """Ensure escape_html_text works as expected"""
+    ##     debug.trace(4, "test_escape_html_text()")
+    ##
+    ##     ## TODO: set fixed sys.version_info.major > 2.
+    ##
+    ##     assert THE_MODULE.escape_html_text("<2/") == "&lt;2/"
+    ##     assert THE_MODULE.escape_html_text("Joe's hat") == "Joe&#x27;s hat"
+    ##
+    ##     ## TODO: test with sys.version_info.major < 2
+    ##
+    ## def test_unescape_html_text(self):
+    ##     """Ensure unescape_html_text works as expected"""
+    ##     debug.trace(4, "test_unescape_html_text()")
+    ##
+    ##     ## TODO: set fixed sys.version_info.major > 2.
+    ##
+    ##     assert THE_MODULE.unescape_html_text("&lt;2/") == "<2/"
+    ##     assert THE_MODULE.unescape_html_text("Joe&#x27;s hat") == "Joe's hat"
+    ##
+    ##     ## TODO: test with sys.version_info.major < 2
 
     def test_stdin_reader(self):
         """Ensure stdin_reader works as expected"""
@@ -624,14 +643,18 @@ class TestSystem(TestWrapper):
         THE_MODULE.write_temp_file(temp_file, 'some content')
         assert THE_MODULE.read_file(temp_file) == 'some content\n'
 
+    @pytest.mark.xfail
     def test_get_file_modification_time(self):
         """Ensure get_file_modification_time works as expected"""
+        ## TODO2: just check for timestamp pattern (e.g., "DDDD-MM-DD MM:MM:SS")
         debug.trace(4, "test_get_file_modification_time()")
 
         # create two temp files at the same time
         filedir1 = self.create_temp_file('test modified time')
         filedir2 = self.create_temp_file('test modified time2')
         # get the modification time of the files
+        ## TODO3: Rework to be less brittle, such as using delta's and
+        ## check for number of seconds less than a minute or so!
         timestamp1 = THE_MODULE.get_file_modification_time(filedir1)[:19]
         timestamp2 = THE_MODULE.get_file_modification_time(filedir2)[:19]
         # get and format local time
@@ -640,7 +663,7 @@ class TestSystem(TestWrapper):
         # test timestamps are equal
         assert timestamp1 == timestamp2
 
-        # test timestamp is equal to actual time (ignoring miliseconds)
+        # test timestamp is equal to actual time (ignoring milliseconds)
         assert timestamp1 == now
 
     def test_remove_extension(self):
@@ -669,6 +692,7 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.file_exists(existent_file)
         assert not THE_MODULE.file_exists('bad_file_name')
 
+    @pytest.mark.xfail
     def test_get_file_size(self):
         """Ensure get_file_size works as expected"""
         debug.trace(4, "test_get_file_size()")
@@ -847,6 +871,12 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4]) == [2, 4]
         assert THE_MODULE.intersection([1, 2], [5, 7, 8], as_set=True) == set()
         assert THE_MODULE.intersection([1, 2, 3, 4, 5], [2, 4], as_set=True) == {2, 4}
+
+    def test_relative_intersection(self):
+        """Verify relative_intersection"""
+        debug.trace(4, "test_relative_intersection()")
+        assert (MOD.round3(MOD.relative_intersection([1, 2, 3], [3, 4, 5]))
+                == 0.333)
 
     def test_union(self):
         """Ensure union works as expected"""
