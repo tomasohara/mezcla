@@ -12,6 +12,8 @@ Download YouTube transcript
 Sample usages:
    {script} 'https://www.youtube.com/watch?v=1KcdgFxmnb4' > Caravaggio-examples.txt
 
+   VIDEO_LANGS="en es" {script} 'https://www.youtube.com/watch?v=G6FuWd4wNd8' > bad-bunny-halftime.list
+
    id=3UWxmt7VAlU; {script} "$id" > edward-loper-doc.txt
 """
 
@@ -32,6 +34,10 @@ from mezcla import system
 
 # Constants
 TL = debug.TL
+DEFAULT_VIDEO_LANGS = "en"
+VIDEO_LANGS = system.getenv_text(
+    "VIDEO_LANGS", DEFAULT_VIDEO_LANGS,
+    desc="Codes for languages to check")
 
 #-------------------------------------------------------------------------------
 # Note: custom class due lack of help by youtube_transcript_api developers
@@ -70,7 +76,7 @@ class YouTubeLikeFormatter(formatters._TextBasedFormatter):      # pylint: disab
 
 def main():
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
     # Parse command line options, show usage if --help given
     main_app = Main(description=__doc__.format(script=gh.basename(__file__)),
@@ -94,7 +100,11 @@ def main():
     print(url)
     print("")
     try:
-        transcript = ytt_api.YouTubeTranscriptApi().fetch(video_id)
+        # Get the transcript using the specified languages
+        ## TODO4: add enhancement request for accepting None
+        ## OLD: transcript = ytt_api.YouTubeTranscriptApi().fetch()
+        transcript = ytt_api.YouTubeTranscriptApi().fetch(
+            video_id, languages=VIDEO_LANGS.split())
         debug.trace_expr(5, transcript, max_len=256)
         debug.trace_values(6, transcript, "transcript")
         print(YouTubeLikeFormatter().format_transcript(transcript))
