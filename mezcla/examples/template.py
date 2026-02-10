@@ -83,7 +83,7 @@ class Helper:
 
 def main() -> None:
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
     # Parse command line options, show usage if --help given
     # TODO: manual_input=True; short_options=True

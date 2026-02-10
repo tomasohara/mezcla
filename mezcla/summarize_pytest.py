@@ -203,7 +203,7 @@ class PytestSummarizer:
 
 def main() -> None:
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
     # Parse command line options, show usage if --help given
     main_app = Main(

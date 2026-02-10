@@ -252,7 +252,7 @@ dummy_main = Main([])
     
 def main() -> None:
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
     system.print_stderr(f"Warning: {__file__} is not intended to be run standalone\n")
     _main_app = Main(description=__doc__.format(script=gh.basename(__file__)))
 

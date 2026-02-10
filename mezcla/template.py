@@ -139,7 +139,7 @@ class Script(Main):
 
 def main() -> None:
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
     app = Script(
         description=__doc__.format(script=gh.basename(__file__)),
