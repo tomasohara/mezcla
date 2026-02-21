@@ -8,7 +8,7 @@
 # - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
 #   option shows tracing output normally suppressed by unittest_wrapper.py.
 # - This can be run as follows (e.g., from root of repo):
-#   $ pytest ./mezclatests/test_template.py
+#   $ pytest ./mezcla/tests/test_template.py
 # - TODO: Remove TODO notes when stable.
 #
 # Warning:
