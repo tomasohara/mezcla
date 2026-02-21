@@ -117,10 +117,10 @@ class TestIt(TestWrapper):
         # Warning: see notes above about potential issues with run_script-based tests.
         debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
         data = ["TODO1", "TODO2"]
-        self.create_temp_file(data)
+        temp_file = self.create_data_file(data)
         ## TODO: add uses_stdin=True to following if no file argument
-        output = self.run_script(options="--TODO-arg", env_options="-TODO-ENV=VAL",
-                                 data_file=self.temp_file)
+        output = self.run_script(options="--TODO-arg", env_options="TODO_ENV=VAL",
+                                 data_file=temp_file)
         self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
         return
 
