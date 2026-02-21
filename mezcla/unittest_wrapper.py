@@ -60,7 +60,7 @@ import sys
 import tempfile
 import unittest
 from typing import (
-    Optional, Callable, Any, Tuple,
+    Optional, Callable, Any, List, Tuple,
 )
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
@@ -755,6 +755,13 @@ class TestWrapper(unittest.TestCase):
         system.write_file(temp_filename, contents, binary=binary)
         debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
         return temp_filename
+
+    def create_data_file(self, data: List,  **kwargs) -> str:
+        """Create temporary file with list DATA and return full path
+        Note: version of create_temp_file with list input
+        """
+        contents = [str(v) for v in data]
+        return self.create_temp_file(contents + "\n", **kwargs)
 
     def patch_trace_level(self, level):
         """Monkey patch the trace LEVEL (e.g., DEBUG_LEVEL)"""
