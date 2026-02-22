@@ -298,6 +298,9 @@ class TestWrapper(unittest.TestCase):
                             assert_level=6)
             debug.assertion("No module named" not in help_errors,
                             f"problem running via 'python -m {cls.script_module}'")
+            # ex: ValueError: unsupported format character 't' ... (e.g., unescaped % in argparse help)
+            debug.assertion("Traceback (most recent call last)" not in help_errors,
+                            f"exception during --help via 'python -m {cls.script_module}'")
             # Warn about lack of usage statement unless "not intended for command-line" type warning issued
             # TODO: standardize the not-intended wording
             if (not ((my_re.search(r"(error|warning|FYI):.*not intended", help_usage,
