@@ -85,10 +85,12 @@ class LogRefiner:
         """Applies filters to the log lines."""
         processed = raw_lines
 
-        # 1. Collapse progress bars (tqdm style \r)
+        # 1. Collapse progress bars (tqdm style \r) and strip ANSI escape codes
         if self.collapse:
-            debug.trace(TL.VERBOSE, "Filtering: Collapsing carriage returns")
+            debug.trace(TL.VERBOSE, "Filtering: Collapsing carriage returns and ANSI codes")
             processed = [my_re.sub(r'.*\r', '', line) for line in processed if line.strip()]
+            ## Note: ANSI codes common in android_deploy/buildozer logs (e.g., colored [DEBUG]/[INFO])
+            processed = [my_re.sub(r'\x1b\[[0-9;]*m', '', line) for line in processed]
 
         # 2. Adaptive Path Substitution - Identify paths BEFORE sampling
         if self.adaptive:
@@ -107,7 +109,9 @@ class LogRefiner:
                 head = processed[:head_size]
                 tail = processed[-tail_size:]
                 middle = processed[head_size:-tail_size]
-                interest = [l for l in middle if my_re.search(r'error|fail|warning|critical|exception|debug', l, my_re.I)]
+                ## OLD: interest = [l for l in middle if my_re.search(r'error|fail|warning|critical|exception|debug', l, my_re.I)]
+                ## Note: 'debug' removed to avoid retaining every [DEBUG] line in buildozer logs
+                interest = [l for l in middle if my_re.search(r'error|fail|warning|critical|exception', l, my_re.I)]
                 
                 msg = f"\n... [SNIP: {len(middle) - len(interest)} lines removed] ...\n"
                 processed = head + [msg] + interest + [msg] + tail

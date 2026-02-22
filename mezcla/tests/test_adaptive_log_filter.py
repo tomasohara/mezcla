@@ -49,30 +49,30 @@ if not my_re.search(r"\btemplate.py$", __file__):
 ##     description="Fouled Up Beyond All Recognition processing")
 
 # Constants
+# Note: modeled after pyside-tools/android_deploy.py buildozer log output
+BUILDOZER_BASE = "/home/user/project/.buildozer/android/platform/build-arm64-v8a/build/other_builds/python3/"
 DUMMY_UNFILTERED_CONTENTS = """
-    Start
-    Data files:
-        /a/b/c/d/e/f.data
-        /a/b/c/d/e/g.data
-        /a/b/c/d/e/h.data
-        /a/b/c/d.data
-        /a/b/c.data
+    \x1b[1m[INFO]\x1b[0m:    python3 has no prebuild_arm64_v8a, skipping
+    \x1b[1m\x1b[90m[DEBUG]\x1b[39m\x1b[0m:   \tchecking for sys/time.h... yes
+    \x1b[1m\x1b[90m[DEBUG]\x1b[39m\x1b[0m:   \tgcc -c -I{path}Include -o foo.o {path}foo.c
+    \x1b[1m\x1b[90m[DEBUG]\x1b[39m\x1b[0m:   \tgcc -c -I{path}Include -o bar.o {path}bar.c
+    \x1b[1m[INFO]\x1b[0m:    - copy ./PySide6/Qt/lib/libQt6Sql_arm64-v8a.so
+    Compiling '{path}Lib/asyncio/log.py'...
     Progress 0.00%\rProgress 25.00%\rProgress 50.00%\rProgress 75.00%\rProgress 100.00%
-    End
-"""
+    \x1b[1m[INFO]\x1b[0m:    - copy ./PySide6/Qt/translations/qt_zh_TW.qm
+""".replace("{path}", BUILDOZER_BASE)
 DUMMY_FILTERED_CONTENTS = """
     Path substitution legend:
-        {path1}: /a/b/c/d/e/
-    Start
-    Data files:
-        {path1}f.data
-        {path1}g.data
-        {path1}h.data
-        /a/b/c/d.data
-        /a/b/c.data
+        {{path1}}: {path}
+    [INFO]:    python3 has no prebuild_arm64_v8a, skipping
+    [DEBUG]:   \tchecking for sys/time.h... yes
+    [DEBUG]:   \tgcc -c -I{{path1}}Include -o foo.o {{path1}}foo.c
+    [DEBUG]:   \tgcc -c -I{{path1}}Include -o bar.o {{path1}}bar.c
+    [INFO]:    - copy ./PySide6/Qt/lib/libQt6Sql_arm64-v8a.so
+    Compiling '{{path1}}Lib/asyncio/log.py'...
     Progress 100.00%
-    End
-"""
+    [INFO]:    - copy ./PySide6/Qt/translations/qt_zh_TW.qm
+""".replace("{path}", BUILDOZER_BASE).replace("{{path1}}", "{path1}")
 
 #------------------------------------------------------------------------
 
@@ -100,11 +100,11 @@ class TestIt(TestWrapper):
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_02_collapse_logic(self):
-        """Verify that tqdm-style \r lines are collapsed correctly."""
+        """Verify that tqdm-style \\r lines are collapsed and ANSI codes stripped."""
         refiner = THE_MODULE.LogRefiner(collapse=True)
         input_data = [
             "Step 1: [==  ]\rStep 1: [====]\rStep 1: Done",
-            "Compiling...",
+            "\x1b[1m\x1b[90m[DEBUG]\x1b[39m\x1b[0m:   \tCompiling...",
             "Download: 50%\rDownload: 100%"
         ]
         result = refiner.process(input_data)
@@ -112,39 +112,40 @@ class TestIt(TestWrapper):
         # Using pytest style assertions
         assert len(result) == 3
         assert result[0] == "Step 1: Done"
-        assert result[1] == "Compiling..."
+        assert result[1] == "[DEBUG]:   \tCompiling..."
         assert result[2] == "Download: 100%"
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_adaptive_paths(self):
-        """Verify long nested paths are tokenized."""
+        """Verify long nested buildozer paths are tokenized."""
         # Note: Path must be > 40 chars and have > 4 levels to match current regex
-        p4a_path = "/home/user/project/.buildozer/android/platform/build-arm64-v8a/build/"
+        # Note: regex finds all sub-paths; sorted longest first for substitution
+        p4a_base = "/home/user/project/.buildozer/android/platform/build-arm64-v8a/build/other_builds/python3/"
         refiner = THE_MODULE.LogRefiner(adaptive=True)
         
         input_data = [
-            f"Entering {p4a_path}subdir1",
-            f"Leaving {p4a_path}subdir1",
-            "A short path /tmp/log"
+            f"[DEBUG]:   \tgcc -I{p4a_base}Include -o foo.o {p4a_base}foo.c",
+            f"[DEBUG]:   \tgcc -I{p4a_base}Include -o bar.o {p4a_base}bar.c",
+            "[INFO]:    - copy ./PySide6/Qt/lib/libQt6Sql.so"
         ]
         
         result = refiner.process(input_data)
         
         # Verify the adaptive identification worked
-        assert p4a_path in refiner.path_map
-        assert refiner.path_map[p4a_path] == "{path1}"
-        assert "{path1}subdir1" in result[0]
-        # Verify short path was NOT tokenized
-        assert "/tmp/log" in result[2]
+        assert p4a_base in refiner.path_map
+        token = refiner.path_map[p4a_base]
+        assert token in result[0]
+        # Verify short relative path was NOT tokenized
+        assert "./PySide6/Qt/lib/libQt6Sql.so" in result[2]
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_04_sampling_fidelity(self):
-        """Verify head/tail sampling preserves error messages."""
+        """Verify head/tail sampling preserves error messages but not [DEBUG] lines."""
         refiner = THE_MODULE.LogRefiner(sample=True)
         
-        # Create 5000 lines, place an error in the "middle" (which usually gets snipped)
-        input_data = [f"Line {i}" for i in range(5000)]
-        critical_error = "CRITICAL FAILURE: Build interrupted by signal 9"
+        # Create 5000 lines of [DEBUG] output (like real buildozer log), place error in middle
+        input_data = [f"[DEBUG]:   \tLine {i}" for i in range(5000)]
+        critical_error = "SyntaxError: unknown encoding: uft-8"
         input_data[2500] = critical_error
         
         result = refiner.process(input_data)
@@ -153,8 +154,8 @@ class TestIt(TestWrapper):
         assert len(result) < 5000
         assert any(critical_error in line for line in result)
         assert any("SNIP" in line for line in result)
-        assert result[0] == "Line 0"
-        assert result[-1] == "Line 4999"
+        assert result[0] == "[DEBUG]:   \tLine 0"
+        assert result[-1] == "[DEBUG]:   \tLine 4999"
     
 #------------------------------------------------------------------------
 
