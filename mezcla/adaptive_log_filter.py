@@ -141,7 +141,9 @@ def main() -> None:
         boolean_options=[
             (COLLAPSE_OPT, "Collapse tqdm-style progress updates"),
             (ADAPTIVE_OPT, "Replace long path components with path vars"),
-            (SAMPLE_OPT, "Keep head/tail/errors only (10% target)")
+            ## BAD: (SAMPLE_OPT, "Keep head/tail/errors only (10% target)")
+            ## TODO2: check for other issues with argparse option text
+            (SAMPLE_OPT, "Keep head/tail/errors only (10%% target)")
         ],
     ) 
     debug.reference_var(FILENAME) 
