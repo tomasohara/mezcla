@@ -24,21 +24,15 @@ from typing import Optional, List, Dict
 import collections
 import os
 
-# Installed modules
-## TODO: import numpy as np
-
 # Local modules
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main, FILENAME
 from mezcla.my_regex import my_re
 from mezcla import system
-## TODO:
-## from mezcla import data_utils as du
 
 # Constants
 TL = debug.TL
-## TODO: Constants for switches omitting leading dashes (e.g., DEBUG_MODE = "debug-mode")
 COLLAPSE_OPT = "collapse"
 ADAPTIVE_OPT = "adaptive"
 SAMPLE_OPT = "sample"
@@ -75,7 +69,6 @@ class LogRefiner:
         self.substr = substr
         self.path_map: Dict[str, str] = {}
         self.substr_map: Dict[str, str] = {}
-        self.TODO: Optional[bool] = None # TODO: revise
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance") 
 
     def _get_common_paths(self, lines: List[str], min_len: int = MIN_PATH_LEN, limit: int = MAX_PATHS) -> List[str]:
@@ -168,6 +161,7 @@ class LogRefiner:
         # 1. Collapse progress bars (tqdm style \r) and strip ANSI escape codes
         if self.collapse:
             debug.trace(TL.VERBOSE, "Filtering: Collapsing carriage returns and ANSI codes")
+            ## TODO3: make sure the stripped segments overlap
             processed = [my_re.sub(r'.*\r', '', line) for line in processed if line.strip()]
             ## Note: ANSI codes common in android_deploy/buildozer logs (e.g., colored [DEBUG]/[INFO])
             processed = [my_re.sub(r'\x1b\[[0-9;]*m', '', line) for line in processed]
@@ -228,7 +222,6 @@ def main() -> None:
     debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}") 
 
     # Parse command line options
-    # TODO: manual_input=True; short_options=True 
     main_app = Main(
         description=__doc__.format(script=gh.basename(__file__)),
         boolean_options=[
@@ -268,9 +261,6 @@ def main() -> None:
     for line in result:
         print(line)
 
-    # TODO: delete check when stable 
-    debug.assertion(not any(my_re.search(r"^TODO_", m, my_re.IGNORECASE)
-                            for m in dir(main_app))) 
     return
 
 #-------------------------------------------------------------------------------
