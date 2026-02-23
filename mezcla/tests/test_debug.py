@@ -242,7 +242,7 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_simple_trace_expr(self):
         """Make sure trace_expr shows 'expr1=value1; expr2=value2'"""
-        debug.trace(4, f"test_trace_expr(): self={self}")
+        debug.trace(4, f"test_simple_trace_expr(): self={self}")
         var1 = 3
         var2 = 6
         THE_MODULE.trace_expr(debug.get_level(), var1, var2)
@@ -252,7 +252,7 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_trace_expr_prefix(self):
         """Make sure trace_expr outputs prefix'"""
-        debug.trace(4, f"test_trace_expr(): self={self}")
+        debug.trace(4, f"test_trace_expr_prefix(): self={self}")
         var = 4
         THE_MODULE.trace_expr(debug.get_level(), var, prefix="here: ")
         err = self.get_stderr()
@@ -261,6 +261,7 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_multiline_trace_expr(self):
         """Make sure trace_expr expression resolved when split across lines"""
+        debug.trace(4, f"test_multiline_trace_expr(): self={self}")
         var1 = 3
         var2 = 6
         THE_MODULE.trace_expr(debug.get_level(),
@@ -272,7 +273,7 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_newline_trace_expr(self):
         """Test trace_expr with newline delim"""
-        debug.trace(4, f"test_trace_expr(): self={self}")
+        debug.trace(4, f"test_newline_trace_expr(): self={self}")
         var1 = 3
         var2 = 6
         THE_MODULE.trace_expr(debug.get_level(), var1, var2, delim="\n")
@@ -282,13 +283,15 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_trace_expr_max_len(self):
         """Test trace_expr with max_len"""
-        debug.trace(4, f"test_trace_expr(): self={self}")
+        debug.trace(4, f"test_trace_expr_max_len(): self={self}")
         var = "-" * 32
         self.patch_trace_level(1)
         THE_MODULE.trace_expr(1, var, max_len=16)
         err = self.get_stderr()
-        # note: max_len includes variable name, quote and ellipsis
-        assert my_re.search(r"var='-{5,8}\.\.\.", err)
+        # note: max_len includes variable name, quote and ellipsis.
+        # See test_introspection.test_04_max_len for similar check.
+        ## TODO1: clarify max_len with respect to variable names
+        assert my_re.search(r"var='-{5,8}\.\.\.'", err)
         ##
         # note: trace_expr had bug where OK up to hard-coded limit (e.g., 1024)
         MAX_LEN = 2048
@@ -300,6 +303,21 @@ class TestDebug(TestWrapper):
         result = THE_MODULE.trace_expr(1, var, max_len=MAX_LEN)
         assert (len(result) > MAX_LEN)
 
+    @pytest.mark.xfail
+    def test_trace_expr_string(self):
+        """Test trace_expr with string values (e.g., with and without max_len)"""
+        # Note: this test was added to ensure that the introspection process produces similar
+        # results regardless of whether max_len specified.
+        debug.trace(4, f"test_trace_expr_string(): self={self}")
+        var = "-" * 16
+        assert(len(var) < THE_MODULE.max_trace_value_len)
+        self.patch_trace_level(1)
+        # Check for var='----------------' (n.b., a known failure)
+        result = THE_MODULE.trace_expr(1, var)
+        assert my_re.search(r"var='----------------'", result)
+        result = THE_MODULE.trace_expr(1, var, max_len=256)
+        assert my_re.search(r"var='----------------'", result)
+        
     @pytest.mark.xfail
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
