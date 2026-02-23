@@ -100,8 +100,6 @@ class TestDebug(TestWrapper):
     def test_set_level(self):
         """Ensure set_level works as expected"""
         debug.trace(4, f"test_set_level(): self={self}")
-        ## TODO3: set_level directly; for example, rename as test_99_set_level
-        ## so tested last (thus no side effect concerns)
         self.patch_trace_level(5)
         assert (THE_MODULE.trace_level == 5) or (not __debug__)
         self.patch_trace_level(6)
@@ -292,7 +290,11 @@ class TestDebug(TestWrapper):
         # See test_introspection.test_04_max_len for similar check.
         ## TODO1: clarify max_len with respect to variable names
         assert my_re.search(r"var='-{5,8}\.\.\.'", err)
-        ##
+        
+    @pytest.mark.xfail
+    def test_trace_expr_old_introspection(self):
+        """Test trace_expr with max_len via old introspection"""
+        debug.trace(4, f"test_trace_expr_old_introspection(): self={self}")
         # note: trace_expr had bug where OK up to hard-coded limit (e.g., 1024)
         MAX_LEN = 2048
         var = "-" * (2 * MAX_LEN)
@@ -534,7 +536,7 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert "xor3" in err
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_init_logging(self):
         """Ensure init_logging works as expected"""
         debug.trace(4, f"test_init_logging(): self={self}")
@@ -564,7 +566,7 @@ class TestDebug(TestWrapper):
         new_level = THE_MODULE.logging.root.getEffectiveLevel()
         assert new_level == 20
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_profile_function(self):
         """Ensure profile_function works as expected"""
         debug.trace(4, f"test_profile_function(): self={self}")
@@ -582,7 +584,7 @@ class TestDebug(TestWrapper):
         stderr = self.get_stderr()
         assert "out: mezcla.tests.test_debug:test_profile_function => result" in stderr
         
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_reference_var(self):
         """Ensure reference_var works as expected"""
         debug.trace(4, f"test_reference_var(): self={self}")
@@ -598,7 +600,7 @@ class TestDebug(TestWrapper):
         assert THE_MODULE.clip_value('helloworld', 5) == 'hello...'
         assert THE_MODULE.clip_value('12345678910111213141516', 7) == '1234567...'
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_read_line(self):
         """Ensure read_line works as expected"""
         debug.trace(4, f"test_read_line(): self={self}")
@@ -616,7 +618,7 @@ class TestDebug(TestWrapper):
         line_3 = THE_MODULE.read_line(temp_file, 3)
         assert my_re.search(fr"{line_1}.*{line_2}.*{line_3}", content)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_debug_init(self):
         """Ensure debug_init works as expected"""
         debug.trace(4, f"test_debug_init(): self={self}")
@@ -641,7 +643,7 @@ class TestDebug(TestWrapper):
         assert f"DEBUG_FILE: {temp_debug_filename}" in err
         assert "ENABLE_LOGGING: True" in err
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_display_ending_time_etc(self):
         """Ensure display_ending_time_etc works as expected"""
         debug.trace(4, f"test_display_ending_time_etc(): self={self}")
