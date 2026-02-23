@@ -45,21 +45,28 @@ SKIP_SLOW_TESTS = system.getenv_bool(
     "SKIP_SLOW_TESTS", (not (UNDER_RUNNER or RUN_SLOW_TESTS)),
     description="Omit tests that can take a while to run")
 SKIP_SLOW_REASON="Ignoring slow test"
-##
+#
+TEST_UNIMPLEMENTED_TESTS = system.getenv_bool(
+    "TEST_UNIMPLEMENTED_TESTS", False,
+    description="Skip tests not yet implemented")
 SKIP_UNIMPLEMENTED_TESTS = system.getenv_bool(
     # Note: used to avoid clutter due to (so many) unimplemented tests, such as
     # when using --runxfail for better test failure diagnostics.
     "SKIP_UNIMPLEMENTED_TESTS", 
-    False,
+    (not (UNDER_RUNNER or TEST_UNIMPLEMENTED_TESTS)),
     description="Skip tests not yet implemented")
 SKIP_UNIMPLEMENTED_REASON = "Ignoring unimplemented test"
+#
+TEST_EXPECTED_ERRORS = system.getenv_bool(
+    "TEST_EXPECTED_ERRORS", False,
+    description="Alias for not[-]SKIP_EXPECTED_ERRORS")
 SKIP_EXPECTED_REASON = "Skipping cases that should never pass (e.g., intentional error)"
 SKIP_EXPECTED_ERRORS = system.getenv_bool(
     # Note: this helps filter known errors before running error checking script,
     # (e.g., check_errors.py in companion repo tomasohara/shell-scripts).
     # It is different from xfail in that the tests are not likely to ever pass.
     "SKIP_EXPECTED_ERRORS",
-    False,
+    (not (UNDER_RUNNER or TEST_EXPECTED_ERRORS)),
     description="Skip cases intentionally causing conversion errors, etc.")
 #
 TEST_TBD_TESTS = system.getenv_bool(
@@ -67,7 +74,7 @@ TEST_TBD_TESTS = system.getenv_bool(
     description="Run tests to be designed")
 SKIP_TBD_REASON="Ignore test to be designed"
 SKIP_TBD_TESTS = system.getenv_bool(
-    "SKIP_TBD_TESTS", not TEST_TBD_TESTS,
+    "SKIP_TBD_TESTS", (not (UNDER_RUNNER or TEST_TBD_TESTS)),
     description=SKIP_TBD_REASON)
 debug.assertion(not (TEST_TBD_TESTS and SKIP_TBD_TESTS))
 
