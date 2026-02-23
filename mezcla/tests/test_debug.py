@@ -278,19 +278,20 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert(my_re.search(r"var1=3\nvar2=6;?", err))
 
-    @pytest.mark.xfail
     def test_trace_expr_max_len(self):
         """Test trace_expr with max_len"""
-        debug.trace(4, f"test_trace_expr_max_len(): self={self}")
-        var = "-" * 32
-        self.patch_trace_level(1)
-        THE_MODULE.trace_expr(1, var, max_len=16)
-        err = self.get_stderr()
-        # note: max_len includes variable name, quote and ellipsis.
         # See test_introspection.test_04_max_len for similar check.
-        ## TODO1: clarify max_len with respect to variable names
-        assert my_re.search(r"var='-{5,8}\.\.\.'", err)
-        
+        debug.trace(4, f"test_trace_expr_max_len(): self={self}")
+        VAR_LEN = 32
+        MAX_LEN = 16
+        var = "-" * VAR_LEN
+        self.patch_trace_level(1)
+        THE_MODULE.trace_expr(1, var, max_len=MAX_LEN)
+        err = self.get_stderr()
+        # note: max_len now applies to value text only (as in test_introspection.test_04_max_len).
+        # Previously, trace_expr was incorrectly applying additional clipping.
+        assert my_re.search(rf"var='-{{{MAX_LEN}}}\.\.\.'", err)
+
     @pytest.mark.xfail
     def test_trace_expr_old_introspection(self):
         """Test trace_expr with max_len via old introspection"""
