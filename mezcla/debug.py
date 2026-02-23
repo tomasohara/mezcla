@@ -679,7 +679,9 @@ if __debug__:
             ## expression = "@".join(expression)
             ## trace(3, f"{values=} {expression=}")
             ##
-            out_text += trace(level, expression, skip_sanity_checks=True, max_len=max_len)
+            ## OLD: out_text += trace(level, expression, skip_sanity_checks=True, max_len=max_len)
+            # Note: max_len already applied by intro.format, so don't truncate again in trace
+            out_text += trace(level, expression, skip_sanity_checks=True)
         else:
             ## TODO2: handle cases split across lines
             try:
