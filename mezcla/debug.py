@@ -672,6 +672,9 @@ if __debug__:
             if intro:
                 expression = intro.format(*values, arg_offset=1, indirect=True, max_len=max_len,
                                           no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
+                if max_len and len(expression) > max_len:
+                    trace(7, ("Warning: error in introspection max_len; " +
+                              f"{len(expression)} vs. {max_len}; {expression=}"))
             ## TEST:
             ## expression = []
             ## for i, value in enumerate(values):
