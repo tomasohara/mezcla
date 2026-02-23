@@ -111,6 +111,12 @@ def trace(text, level=BTL, **kwargs):
         debug.trace(level, text, skip_sanity_checks=True, **kwargs)
 
 
+def trace_object(obj, level=BTL, **kwargs):
+    """Wrapper around debug.trace_object"""
+    if debug:
+        debug.trace_object(level, obj, **kwargs)
+
+
 def stderr_print(*args):
     """
     prints args to sys.stderr
@@ -162,7 +168,8 @@ class Source(executing.Source):
         super().__init__(*args, **kwargs)
         if INTROSPECTION_DEBUG:
             trace(f"Source.__init__{(*args, kwargs)}", max_len=1024)
-            debug.trace_object(BTL+2, self, label="Source instance")
+            ## OLD: debug.trace_object(BTL+2, self, label="Source instance")
+            trace_object(BTL+2, self, label="Source instance")
 
     def get_text_with_indentation(self, node):
         """
@@ -440,7 +447,8 @@ class MezclaDebugger:
 
         pairs = list(zip(sanitized_arg_strs, args))
         if INTROSPECTION_DEBUG:
-            debug.trace_object(BTL, pairs, "pairs", show_all=False)
+            ## OLD: debug.trace_object(BTL, pairs, "pairs", show_all=False)
+            trace_object(BTL, pairs, "pairs", show_all=False)
 
         out = self._construct_argument_output(prefix, context, pairs, **kwargs)
         return out
@@ -468,6 +476,7 @@ class MezclaDebugger:
         # Checks for debug.assertion's omit_values option.
         omit_values = kwargs.get('omit_values')
         ## OLD: pairs = [(arg, self.arg_to_string_function(val)) for arg, val in pairs]
+        ## TODO2: use format_value consistently
         if "max_len" in kwargs:
             pairs = [(arg, format_value(val, kwargs["max_len"]))
                      for (arg, val) in pairs]
