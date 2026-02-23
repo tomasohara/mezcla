@@ -34,7 +34,7 @@ from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 import mezcla.glue_helpers as gh
-from mezcla.tests.common_module import fix_indent
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
@@ -301,11 +301,14 @@ class TestDebug(TestWrapper):
         var = "-" * (2 * MAX_LEN)
         self.monkeypatch.setattr(THE_MODULE, "use_old_introspection", True)
         result = THE_MODULE.trace_expr(1, var, max_len=MAX_LEN)
+        debug.trace(5, f"old: {len(result)=}")
         assert (len(result) > MAX_LEN)
         self.monkeypatch.setattr(THE_MODULE, "use_old_introspection", False)
         result = THE_MODULE.trace_expr(1, var, max_len=MAX_LEN)
+        debug.trace(5, f"new: {len(result)=}")
         assert (len(result) > MAX_LEN)
 
+    @pytest.mark.skipif(cm.SKIP_TBD_TESTS, reason=cm.SKIP_TBD_REASON)
     @pytest.mark.xfail
     def test_trace_expr_string(self):
         """Test trace_expr with string values (e.g., with and without max_len)"""
@@ -369,6 +372,10 @@ class TestDebug(TestWrapper):
     def test_assertion(self):
         """Ensure assertion works as expected"""
         debug.trace(4, f"test_assertion(): self={self}")
+
+        # Set trace level to avoid details (e.g., false positive with check_errors.py)
+        ## TODO3: add level to get_stderr, etc.
+        self.patch_trace_level(3)
         
         # Doesn't print in stderr
         THE_MODULE.assertion((2 + 2 + 1) == 5)
@@ -605,7 +612,7 @@ class TestDebug(TestWrapper):
     def test_read_line(self):
         """Ensure read_line works as expected"""
         debug.trace(4, f"test_read_line(): self={self}")
-        content = fix_indent(
+        content = cm.fix_indent(
             """
             line1
             line2
