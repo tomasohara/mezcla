@@ -66,6 +66,7 @@ class TestIt(TestWrapper):
 
     def test_04_max_len(self):
         """Test for introspection truncation"""
+        # See test_debug.test_trace_expr_max_len for similar check.
         debug.trace(4, f"TestIt.test_04_max_len(); self={self}")
         var = "-" * 123
         var_expr = THE_MODULE.intro.format(var, max_len=4)
@@ -73,7 +74,7 @@ class TestIt(TestWrapper):
         assert my_re.search(r"var='----\.\.\.'", var_expr)
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail                  ## note: likely to be long-term xfail
     def test_05_quirks(self):
         """Test for known introspection quirks"""
         debug.trace(4, f"TestIt.test_05_quirks(); self={self}")
