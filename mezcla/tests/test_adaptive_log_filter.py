@@ -62,7 +62,7 @@ DUMMY_UNFILTERED_CONTENTS = """
     \x1b[1m[INFO]\x1b[0m:    - copy ./PySide6/Qt/translations/qt_zh_TW.qm
 """.replace("{path}", BUILDOZER_BASE)
 DUMMY_FILTERED_CONTENTS = """
-    Path substitution legend:
+    Substitution legend:
         {{path1}}: {path}
     [INFO]:    python3 has no prebuild_arm64_v8a, skipping
     [DEBUG]:   \tchecking for sys/time.h... yes
