@@ -92,6 +92,7 @@ _ABSENT = object()
 BTL = 0                                 # base trace level
 INTROSPECTION_DEBUG_LABEL = "INTROSPECTION_DEBUG"
 INTROSPECTION_DEBUG = os.getenv(INTROSPECTION_DEBUG_LABEL)
+MAX_TRACE_LEN = 1024                    # length of trace output
 
 # Conditional imports
 debug = system = None
@@ -111,10 +112,10 @@ def trace(text, level=BTL, **kwargs):
         debug.trace(level, text, skip_sanity_checks=True, **kwargs)
 
 
-def trace_object(obj, level=BTL, **kwargs):
+def trace_object(obj, level=BTL, label=None, **kwargs):
     """Wrapper around debug.trace_object"""
     if debug:
-        debug.trace_object(level, obj, **kwargs)
+        debug.trace_object(level, obj, label=label, **kwargs)
 
 
 def stderr_print(*args):
@@ -167,9 +168,10 @@ class Source(executing.Source):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if INTROSPECTION_DEBUG:
-            trace(f"Source.__init__{(*args, kwargs)}", max_len=1024)
+            trace(f"Source.__init__{(*args, kwargs)}", max_len=MAX_TRACE_LEN)
             ## OLD: debug.trace_object(BTL+2, self, label="Source instance")
-            trace_object(BTL+2, self, label="Source instance")
+            ## BAD: trace_object(BTL+2, self, label="Source instance")
+            trace_object(self, level=BTL+2, label="Source instance")
 
     def get_text_with_indentation(self, node):
         """
@@ -369,7 +371,8 @@ class MezclaDebugger:
             sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
             sys.stderr.write(f"\t{sys.exc_info()}\n")
             if INTROSPECTION_DEBUG:
-                traceback.print_stack(file=sys.stderr)
+                ## OLD: traceback.print_stack(file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
         if INTROSPECTION_DEBUG:
             trace(f"out format: {out!r}", level=BTL+1)
         return out
@@ -425,7 +428,8 @@ class MezclaDebugger:
         call_node = Source.executing(call_frame).node
         if call_node and INTROSPECTION_DEBUG:
             try:
-                debug.trace_fmt(BTL+1, "call_node: {d}", d=ast.dump(call_node), max_len=1024)
+                debug.trace_fmt(BTL+1, "call_node: {d}", d=ast.dump(call_node),
+                                max_len=MAX_TRACE_LEN)
             except:
                 debug.trace_exception_info(BTL, f"trace for {call_node=}")
         if call_node is not None:
@@ -448,7 +452,8 @@ class MezclaDebugger:
         pairs = list(zip(sanitized_arg_strs, args))
         if INTROSPECTION_DEBUG:
             ## OLD: debug.trace_object(BTL, pairs, "pairs", show_all=False)
-            trace_object(BTL, pairs, "pairs", show_all=False)
+            ## BAD: trace_object(BTL, pairs, "pairs", show_all=False)
+            trace_object(pairs, level=BTL, label="pairs", show_all=False)
 
         out = self._construct_argument_output(prefix, context, pairs, **kwargs)
         return out
