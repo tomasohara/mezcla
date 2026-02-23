@@ -4,6 +4,7 @@
 # This applies the following transformations:
 # - Collapses progress bars (\r)
 # - Substitutes frequent long paths with tokens
+# - Substitutes frequent general substrings with tokens (e.g., compiler flags)
 # - Samples head, tail, and error lines to fit token budgets
 #
 # Note:
@@ -15,12 +16,13 @@
 Refines Android deployment logs for AI analysis.
 
 Sample usage:
-   {script} --collapse --adaptive --sample _android_deploy.log
+   {script} --collapse --adaptive --substr --sample _android_deploy.log
 """
 
 # Standard modules
 from typing import Optional, List, Dict
 import collections
+import os
 
 # Installed modules
 ## TODO: import numpy as np
@@ -40,6 +42,7 @@ TL = debug.TL
 COLLAPSE_OPT = "collapse"
 ADAPTIVE_OPT = "adaptive"
 SAMPLE_OPT = "sample"
+SUBSTR_OPT = "substr"
 
 # Environment options
 MIN_PATH_LEN = system.getenv_bool(
@@ -48,19 +51,30 @@ MIN_PATH_LEN = system.getenv_bool(
 MAX_PATHS = system.getenv_bool(
      "MAX_PATH", 10,
      description="Maxmium number of paths length to filter")
+MIN_SUBSTR_LEN = system.getenv_int(
+     "MIN_SUBSTR_LEN", 30,
+     description="Minimum substring length for general text substitution")
+MIN_SUBSTR_FREQ = system.getenv_int(
+     "MIN_SUBSTR_FREQ", 5,
+     description="Minimum frequency for general text substitution")
+MAX_SUBSTRS = system.getenv_int(
+     "MAX_SUBSTRS", 10,
+     description="Maximum number of general text substitutions")
 
 #-------------------------------------------------------------------------------
 
 class LogRefiner:
     """Class for filtering and compressing large build logs."""
 
-    def __init__(self, collapse: bool = False, adaptive: bool = False, sample: bool = False) -> None:
+    def __init__(self, collapse: bool = False, adaptive: bool = False, sample: bool = False, substr: bool = False) -> None:
         """Initializer: Set filtering modes"""
-        debug.trace_expr(TL.VERBOSE, collapse, adaptive, sample, prefix="in LogRefiner.__init__: ")
+        debug.trace_expr(TL.VERBOSE, collapse, adaptive, sample, substr, prefix="in LogRefiner.__init__: ")
         self.collapse = collapse
         self.adaptive = adaptive
         self.sample = sample
+        self.substr = substr
         self.path_map: Dict[str, str] = {}
+        self.substr_map: Dict[str, str] = {}
         self.TODO: Optional[bool] = None # TODO: revise
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance") 
 
@@ -81,6 +95,72 @@ class LogRefiner:
         candidates.sort(key=len, reverse=True)
         return candidates[:limit]
 
+    def _get_common_substrings(self, lines: List[str], min_len: int = MIN_SUBSTR_LEN, min_freq: int = MIN_SUBSTR_FREQ, limit: int = MAX_SUBSTRS) -> List[str]:
+        """Identifies frequently occurring text substrings for token substitution.
+        Uses whitespace-delimited token counting with common-prefix grouping
+        to find impactful candidates (e.g., '-I/home/user/path/to/sdk/')."""
+        debug.trace(TL.VERBOSE, f"_get_common_substrings(_, #lines={len(lines)}, ml={min_len}, mf={min_freq}, lim={limit})")
+        # Count whitespace-delimited tokens
+        token_counts: Dict[str, int] = collections.Counter()
+        for line in lines:
+            for token in line.split():
+                if len(token) >= min_len:
+                    token_counts[token] += 1
+
+        # Sort ALL long tokens lexicographically for prefix grouping
+        all_long_tokens = sorted(token_counts.keys())
+        debug.trace_expr(TL.VERBOSE, len(all_long_tokens), prefix="_get_common_substrings: ")
+
+        # Group adjacent sorted tokens by common prefix
+        candidates = []
+        i = 0
+        while i < len(all_long_tokens):
+            group = [all_long_tokens[i]]
+            j = i + 1
+            while j < len(all_long_tokens):
+                prefix = os.path.commonprefix([group[0], all_long_tokens[j]])
+                if len(prefix) >= min_len:
+                    group.append(all_long_tokens[j])
+                    j += 1
+                else:
+                    break
+
+            if len(group) > 1:
+                # Use longest common prefix; total freq is sum across group
+                prefix = os.path.commonprefix(group)
+                if len(prefix) >= min_len:
+                    total = sum(token_counts[t] for t in group)
+                    if total >= min_freq:
+                        candidates.append((prefix, total))
+
+            # Also add individual frequent tokens (may differ from prefix)
+            for t in group:
+                if token_counts[t] >= min_freq:
+                    candidates.append((t, token_counts[t]))
+
+            i = j
+
+        # Sort by impact score (length * frequency)
+        candidates.sort(key=lambda x: len(x[0]) * x[1], reverse=True)
+
+        # Deduplicate: skip substrings already covered by a longer selection
+        # Also skip candidates covered by existing path_map entries
+        existing_paths = set(self.path_map.keys())
+        result = []
+        for substr, _score in candidates:
+            if any(substr in existing for existing in result):
+                continue
+            if any(substr in path or path in substr for path in existing_paths):
+                continue
+            result.append(substr)
+            if len(result) >= limit:
+                break
+
+        # Sort longest first so longer substitutions are applied before shorter ones
+        result.sort(key=len, reverse=True)
+        debug.trace_expr(TL.VERBOSE, result, prefix="_get_common_substrings => ")
+        return result
+
     def process(self, raw_lines: List[str]) -> List[str]:
         """Applies filters to the log lines."""
         processed = raw_lines
@@ -100,6 +180,14 @@ class LogRefiner:
                 token = f"{{path{i}}}"
                 self.path_map[path] = token
 
+        # 2b. General Substring Substitution - Identify frequent substrings
+        if self.substr:
+            debug.trace(TL.VERBOSE, "Filtering: Identifying common substrings")
+            common_substrs = self._get_common_substrings(processed)
+            for i, substr in enumerate(common_substrs, 1):
+                token = f"{{sub{i}}}"
+                self.substr_map[substr] = token
+
         # 3. Head/Tail/Grep Sampling
         if self.sample:
             debug.trace(TL.VERBOSE, "Filtering: Sampling log structure")
@@ -117,12 +205,17 @@ class LogRefiner:
                 processed = head + [msg] + interest + [msg] + tail
 
         # 4. Final Substitution Pass
+        all_subs = {}
         if self.adaptive and self.path_map:
+            all_subs.update(self.path_map)
+        if self.substr and self.substr_map:
+            all_subs.update(self.substr_map)
+        if all_subs:
             final_output = []
             for line in processed:
                 new_line = line
-                for path, token in self.path_map.items():
-                    new_line = new_line.replace(path, token)
+                for text, token in all_subs.items():
+                    new_line = new_line.replace(text, token)
                 final_output.append(new_line)
             processed = final_output
 
@@ -143,7 +236,8 @@ def main() -> None:
             (ADAPTIVE_OPT, "Replace long path components with path vars"),
             ## BAD: (SAMPLE_OPT, "Keep head/tail/errors only (10% target)")
             ## TODO2: check for other issues with argparse option text
-            (SAMPLE_OPT, "Keep head/tail/errors only (10%% target)")
+            (SAMPLE_OPT, "Keep head/tail/errors only (10%% target)"),
+            (SUBSTR_OPT, "Replace frequent substrings with tokens (generalizes --adaptive)")
         ],
     ) 
     debug.reference_var(FILENAME) 
@@ -156,16 +250,19 @@ def main() -> None:
     refiner = LogRefiner(
         collapse=main_app.get_parsed_option(COLLAPSE_OPT),
         adaptive=main_app.get_parsed_option(ADAPTIVE_OPT),
-        sample=main_app.get_parsed_option(SAMPLE_OPT)
+        sample=main_app.get_parsed_option(SAMPLE_OPT),
+        substr=main_app.get_parsed_option(SUBSTR_OPT)
     )
     result = refiner.process(input_data)
 
     # Output Legend at the top (e.g., for AI context)
-    if refiner.path_map:
-        print("Path substitution legend:")
+    if refiner.path_map or refiner.substr_map:
+        print("Substitution legend:")
         ## TODO2: drop braces from token
         for path, token in refiner.path_map.items():
             print(f"    {token}: {path}")
+        for substr, token in refiner.substr_map.items():
+            print(f"    {token}: {substr}")
 
     # Output transformed lines
     for line in result:

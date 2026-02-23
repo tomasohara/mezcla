@@ -156,6 +156,32 @@ class TestIt(TestWrapper):
         assert any("SNIP" in line for line in result)
         assert result[0] == "[DEBUG]:   \tLine 0"
         assert result[-1] == "[DEBUG]:   \tLine 4999"
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_05_substr_detection(self):
+        """Verify that frequent substrings are detected and substituted."""
+        refiner = THE_MODULE.LogRefiner(substr=True)
+
+        # Simulate compiler flags with long repeated substrings
+        flag_prefix = "-I/home/user/project/build/arm64-v8a"
+        input_data = [
+            f"gcc -c {flag_prefix}/include1 -o foo.o {flag_prefix}/src1/foo.c",
+            f"gcc -c {flag_prefix}/include2 -o bar.o {flag_prefix}/src2/bar.c",
+            f"gcc -c {flag_prefix}/include3 -o baz.o {flag_prefix}/src3/baz.c",
+            f"gcc -c {flag_prefix}/include1 -o qux.o {flag_prefix}/src1/qux.c",
+            f"gcc -c {flag_prefix}/include2 -o abc.o {flag_prefix}/src2/abc.c",
+            "[INFO]:    - copy ./PySide6/Qt/lib/libQt6Sql.so"
+        ]
+
+        result = refiner.process(input_data)
+
+        # Verify a substitution was made for the common prefix
+        assert len(refiner.substr_map) > 0
+        # At least one token should appear in the output
+        tokens = list(refiner.substr_map.values())
+        assert any(tok in line for line in result for tok in tokens)
+        # Short unrelated line should NOT be affected
+        assert "./PySide6/Qt/lib/libQt6Sql.so" in result[-1]
     
 #------------------------------------------------------------------------
 
