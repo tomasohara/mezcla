@@ -9,6 +9,9 @@
 # - For tests that capture standard error, see
 #       https://docs.pytest.org/en/6.2.x/capture.html
 # - This uses capsys fixture mentioned in above link.
+# - Some tests take extra care to ensure that the output doesn't lead to false positives
+#   by error-checking scripts like check_errors.py. For example, test_multiline_assertion
+#   uses Spanish for error messages that would otherwise get flagged.
 #................................................................................
 # TODO:
 # - make sure trace_fmt traps all exceptions
@@ -41,14 +44,8 @@ import mezcla.tests.common_module as cm
 #    TestIt.script_module:              path to file
 import mezcla.debug as THE_MODULE # pylint: disable=reimported
 
-# Environment options
-# Note: These are just intended for internal options, not for end users.
-# It also allows for enabling options in one place.
-#
-## OLD:
-## TEST_TBD = system.getenv_bool("TEST_TBD", False,
-##                               description="Test features to be designed: TBD")
-
+# Constants
+ERROR_FUBAR = "falta fubar"            # spanish for error
 
 #................................................................................
 # Classes for testing
@@ -116,13 +113,16 @@ class TestDebug(TestWrapper):
     def test_get_output_timestamps(self):
         """Ensure get_output_timestamps works as expected"""
         debug.trace(4, f"test_get_output_timestamps(): self={self}")
-        THE_MODULE.output_timestamps = 'some-test-value'
+        ## BAD: THE_MODULE.output_timestamps = 'some-test-value'
+        ## TODO1: Weed out other potential problems due to lack of mocking.
+        self.monkeypatch.setattr(THE_MODULE, "output_timestamps", 'some-test-value')
         assert THE_MODULE.get_output_timestamps() == 'some-test-value'
 
     def test_set_output_timestamps(self):
         """Ensure set_output_timestamps works as expected"""
         debug.trace(4, f"test_set_output_timestamps(): self={self}")
-        THE_MODULE.output_timestamps = False
+        ## OLD: THE_MODULE.output_timestamps = False
+        self.monkeypatch.setattr(THE_MODULE, "output_timestamps", False)
         THE_MODULE.set_output_timestamps('some-test-value')
         assert THE_MODULE.output_timestamps == 'some-test-value'
 
@@ -131,15 +131,15 @@ class TestDebug(TestWrapper):
         debug.trace(4, f"test_trace(): self={self}")
         THE_MODULE.output_timestamps = True
 
-        THE_MODULE.trace(-1, 'error foobar', indentation=' -> ')
-        out,err  = self.get_stdout_stderr()
-        assert " -> error foobar" in err
+        THE_MODULE.trace(-1, ERROR_FUBAR, indentation=' -> ')
+        out, err  = self.get_stdout_stderr()
+        assert f" -> {ERROR_FUBAR}" in err
         assert not out
 
         # Test debug_file
         THE_MODULE.debug_file = sys.stdout
         THE_MODULE.trace(-1, 'some text to test debug file')
-        out,err  = self.get_stdout_stderr()
+        out, err  = self.get_stdout_stderr()
         assert 'some text to test debug file' in out
         THE_MODULE.debug_file = None
 
@@ -353,7 +353,10 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_trace_exception(self):
         """Ensure trace_exception works as expected"""
+        # Note: This raised an exception and then verifies traced properly,
+        # with "Exception during" reflecting custom error in trace_exception.
         debug.trace(4, f"test_trace_exception(): self={self}")
+        self.patch_trace_level(4)
         with pytest.raises(RuntimeError):
             raise RuntimeError("debug.trace failed")
         THE_MODULE.trace_exception(4, "debug.trace")
@@ -362,11 +365,12 @@ class TestDebug(TestWrapper):
         
     @pytest.mark.xfail
     def test_raise_exception(self):
-        """Ensure raise_exception works as expected"""
+        """Check that raise_exception does so unless debug level too high"""
         debug.trace(4, f"test_raise_exception(): self={self}")
+        self.patch_trace_level(3)
         with pytest.raises(Exception):
-            THE_MODULE.raise_exception()
-        THE_MODULE.raise_exception(10)
+            THE_MODULE.raise_exception(3)
+        THE_MODULE.raise_exception(4)
 
     @pytest.mark.xfail
     def test_assertion(self):
@@ -399,10 +403,12 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_multiline_assertion(self):
         """Make sure assertion expression split across lines resolved"""
+        # Note: issue uses the Spanish equivalent of "Assertion failed" in order to
+        # avoid false positives with check_errors.py.
         debug.trace(4, f"test_multiline_assertion(): self={self}")
         THE_MODULE.assertion(2 +
                              2 ==
-                             5)
+                             5, issue="Afirmación fallida")
         err = self.get_stderr()
         self.do_assert(my_re.search(r"2.*\+.*2.*==.*5", err,
                                     flags=my_re.DOTALL|my_re.MULTILINE))
@@ -437,15 +443,15 @@ class TestDebug(TestWrapper):
         debug.trace(4, f"test_debug_print(): self={self}")
         self.monkeypatch.setattr("mezcla.debug.output_timestamps", True)
 
-        THE_MODULE.debug_print('error foobar', -1)
-        out,err  = self.get_stdout_stderr()
-        assert "error foobar" in err
+        THE_MODULE.debug_print(ERROR_FUBAR, -1)
+        out, err  = self.get_stdout_stderr()
+        assert ERROR_FUBAR in err
         assert not out
 
         # Test debug_file
         self.monkeypatch.setattr("mezcla.debug.debug_file", sys.stdout)
         THE_MODULE.debug_print('some text to test debug file', -1)
-        out,err  = self.get_stdout_stderr()
+        out, err  = self.get_stdout_stderr()
         assert 'some text to test debug file' in out
 
     @pytest.mark.xfail
@@ -683,7 +689,7 @@ class TestDebug(TestWrapper):
         out, err = self.get_stdout_stderr()
         assert(self.expected_stdout_trace in out)
         assert(self.expected_stderr_trace in err)
-        THE_MODULE.trace_expr(6, (pre_out, pre_err), (out,err))
+        THE_MODULE.trace_expr(6, (pre_out, pre_err), (out, err))
 
     def test_hidden_simple_trace(self):
         """Make sure level-N+1 trace doesn't output to stderr"""
@@ -700,7 +706,7 @@ class TestDebug(TestWrapper):
         out, err = self.get_stdout_stderr()
         assert self.expected_stdout_trace in out
         assert self.expected_stderr_trace in err
-        THE_MODULE.trace_expr(6, (pre_out, pre_err), (out,err))
+        THE_MODULE.trace_expr(6, (pre_out, pre_err), (out, err))
 
     @pytest.mark.xfail
     def test_do_print(self):
