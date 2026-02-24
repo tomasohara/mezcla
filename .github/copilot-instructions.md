@@ -94,8 +94,8 @@ as follows:
 		print(f"Error: unexpected condition with {num=} {sum=}")
 	```
 
-For single-line changes, just use "## OLD: ..."
-
 Of course, this can be awkward for in-depth changes so ask for clarification.
+
+Some variations follow. For single-line changes, just use "## OLD: ...". When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
 0. When making most changes, create a new git branch based on development, using a name such as 'code-conversion'.
