@@ -74,7 +74,10 @@ TEST_TBD_TESTS = system.getenv_bool(
     description="Run tests to be designed")
 SKIP_TBD_REASON="Ignore test to be designed"
 SKIP_TBD_TESTS = system.getenv_bool(
-    "SKIP_TBD_TESTS", (not (UNDER_RUNNER or TEST_TBD_TESTS)),
+    ## OLD: "SKIP_TBD_TESTS", (not (UNDER_RUNNER or TEST_TBD_TESTS)),
+    # Note: Enabled under runner by default (unlike SKIP_EXPECTED_ERRORS, etc. above).
+    # This works around time out issue with test_text_categorizer.py.
+    "SKIP_TBD_TESTS", not TEST_TBD_TESTS,
     description=SKIP_TBD_REASON)
 debug.assertion(not (TEST_TBD_TESTS and SKIP_TBD_TESTS))
 
