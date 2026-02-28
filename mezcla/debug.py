@@ -163,7 +163,7 @@ if __debug__:
     # TODO: mark as "private" (e.g., trace_level => _trace_level)
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
     trace_level: IntOrTraceLevel = TL.DEFAULT  # typically 3 (1 + WARNING); TODO: global_trace_level
-    output_timestamps = False           # prefix output with timestamp
+    output_timestamps: bool = False     # prefix output with timestamp
     ## TODO1: output_caller_info = False          # add caller filename and line number to trace
     last_trace_time = time.time()       # timestamp from last trace
     use_logging = False                 # traces via logging (and stderr)
@@ -211,8 +211,8 @@ if __debug__:
         return output_timestamps
 
 
-    def set_output_timestamps(do_output_timestamps):
-        """Enable for disable the outputting of timestamps"""
+    def set_output_timestamps(do_output_timestamps: bool):
+        """Enable (or disable) the outputting of timestamps"""
         global output_timestamps
         output_timestamps = do_output_timestamps
 
@@ -317,6 +317,8 @@ if __debug__:
             if indentation is None:
                 indentation = INDENT0
             # Prefix trace with timestamp w/o date
+            if not isinstance(output_timestamps, bool):
+                sys.stderr.write(f"Warning: output_timestamps has unexpected type {type(output_timestamps).__name__}: {output_timestamps!r}\n")
             if output_timestamps:
                 # Get time-proper from timestamp (TODO: find standard way to do this)
                 # Note: shows diff/delta from last call if detailed tracing (TODO3: make explicit)
@@ -672,6 +674,11 @@ if __debug__:
             if intro:
                 expression = intro.format(*values, arg_offset=1, indirect=True, max_len=max_len,
                                           no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
+                ## OLD:
+                ## if max_len and len(expression) > max_len:
+                ##     trace(7, ("Warning: error in introspection max_len; " +
+                ##               f"{len(expression)} vs. {max_len}; {expression=}"))
+                
             ## TEST:
             ## expression = []
             ## for i, value in enumerate(values):
@@ -679,7 +686,17 @@ if __debug__:
             ## expression = "@".join(expression)
             ## trace(3, f"{values=} {expression=}")
             ##
-            out_text += trace(level, expression, skip_sanity_checks=True, max_len=max_len)
+            ## OLD: out_text += trace(level, expression, skip_sanity_checks=True, max_len=max_len)
+            # Note: when max_len specified, intro.format already applied it to values;
+            # use expression length to avoid trace re-truncating (expression includes
+            # arg names, delimiters, etc. beyond max_len).
+            trace_max_len = max_len
+            if max_len is not None:
+                expr_len = len(expression) if expression else 0
+                if expr_len > max_len:
+                    trace_max_len = expr_len
+            out_text += trace(level, expression, skip_sanity_checks=True,
+                              max_len=trace_max_len)
         else:
             ## TODO2: handle cases split across lines
             try:
@@ -832,6 +849,7 @@ if __debug__:
 
     def assertion(
             expression: Union[bool, Any],
+            issue: Optional[str] = None,
             message: Optional[str] = None,
             assert_level: Optional[IntOrTraceLevel] = None,
             indirect: Optional[bool] = False
@@ -841,6 +859,7 @@ if __debug__:
         - Warning: introspection fails to resolve expression if split across lines.
         - This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so).
         - The optional ASSERT_LEVEL overrides use of ALWAYS.
+        - The optional ISSUE overrides "Assertion failed" (e.g., for tests).
         - Returns expression text or None if not triggered.
         """
         # EX: assertion((2 + 2) != 5)
@@ -888,7 +907,9 @@ if __debug__:
 
                 # Output information
                 # TODO: omit subsequent warnings
-                trace_fmtd(ALWAYS, "Assertion failed: {expr} (at {file}:{line}){qual}",
+                ## OLD: trace_fmtd(ALWAYS, "Assertion failed: {expr} (at {file}:{line}){qual}",
+                trace_fmtd(ALWAYS, "{issue_spec}: {expr} (at {file}:{line}){qual}",
+                           issue_spec=(issue or "Assertion failed"),
                            expr=expression_text, file=filename, line=line_number, qual=qualification_spec)
             except:
                 trace_exception(ALWAYS, "assertion formatting")

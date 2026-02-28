@@ -60,7 +60,7 @@ import sys
 import tempfile
 import unittest
 from typing import (
-    Optional, Callable, Any, Tuple,
+    Optional, Callable, Any, List, Tuple,
 )
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
@@ -298,6 +298,9 @@ class TestWrapper(unittest.TestCase):
                             assert_level=6)
             debug.assertion("No module named" not in help_errors,
                             f"problem running via 'python -m {cls.script_module}'")
+            # ex: ValueError: unsupported format character 't' ... (e.g., unescaped % in argparse help)
+            debug.assertion("Traceback (most recent call last)" not in help_errors,
+                            f"exception during --help via 'python -m {cls.script_module}'")
             # Warn about lack of usage statement unless "not intended for command-line" type warning issued
             # TODO: standardize the not-intended wording
             if (not ((my_re.search(r"(error|warning|FYI):.*not intended", help_usage,
@@ -669,6 +672,7 @@ class TestWrapper(unittest.TestCase):
         tests/template.py. Alternatively, use multiple test functions:
             https://stackoverflow.com/questions/56187165/how-to-clear-captured-stdout-stderr-in-between-of-multiple-assert-statements
         """
+        ## TODO3: add level option for tracing (e.g. 5=>level and 7=>level+2)
         stdout, stderr = ("", "")
         try:
             if self.capsys:
@@ -755,6 +759,13 @@ class TestWrapper(unittest.TestCase):
         system.write_file(temp_filename, contents, binary=binary)
         debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
         return temp_filename
+
+    def create_data_file(self, data: List,  **kwargs) -> str:
+        """Create temporary file with list DATA and return full path
+        Note: version of create_temp_file with list input
+        """
+        contents = [str(v) for v in data]
+        return self.create_temp_file(contents + "\n", **kwargs)
 
     def patch_trace_level(self, level):
         """Monkey patch the trace LEVEL (e.g., DEBUG_LEVEL)"""

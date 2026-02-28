@@ -113,13 +113,16 @@ class regex_wrapper():
     TRACE_LEVEL = REGEX_TRACE_LEVEL
     ##
     ## Malditos python & pylint!
-    ASCII = re.ASCII
-    IGNORECASE = re.IGNORECASE
-    LOCALE = re.LOCALE
-    MULTILINE = re.MULTILINE
-    DOTALL = re.DOTALL
-    VERBOSE = re.VERBOSE
-    UNICODE = re.UNICODE
+    ASCII = A = re.ASCII
+    IGNORECASE = I = re.IGNORECASE
+    LOCALE = L = re.LOCALE
+    MULTILINE = M = re.MULTILINE
+    DOTALL = S = re.DOTALL
+    VERBOSE = X = re.VERBOSE
+    UNICODE = U = re.UNICODE
+    ## NOTE: Following are experimental (see re.__init__.py)
+    TEMPLATE = R = re.TEMPLATE
+    DEBUG = re.DEBUG
     # TODO: add miscellaneous re functions (e.g., subn)
     
     # pylint: disable=super-init-not-called

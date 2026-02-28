@@ -17,6 +17,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
@@ -66,6 +67,7 @@ class TestIt(TestWrapper):
 
     def test_04_max_len(self):
         """Test for introspection truncation"""
+        # See test_debug.test_trace_expr_max_len for similar check.
         debug.trace(4, f"TestIt.test_04_max_len(); self={self}")
         var = "-" * 123
         var_expr = THE_MODULE.intro.format(var, max_len=4)
@@ -73,7 +75,8 @@ class TestIt(TestWrapper):
         assert my_re.search(r"var='----\.\.\.'", var_expr)
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(cm.SKIP_TBD_TESTS, reason=cm.SKIP_TBD_REASON)
+    @pytest.mark.xfail                  ## note: likely to be long-term xfail
     def test_05_quirks(self):
         """Test for known introspection quirks"""
         debug.trace(4, f"TestIt.test_05_quirks(); self={self}")
