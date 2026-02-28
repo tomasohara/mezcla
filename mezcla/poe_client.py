@@ -34,9 +34,10 @@ from mezcla import system
 POE_API = system.getenv_value(
     "POE_API", None,
     desc="API key for POE")
+# TODO: find out why POE_MODEL default was disabled (see git log)
 POE_MODEL = system.getenv_value(
-    ## OLD: "POE_MODEL", "GPT-4.1-nano",
-    "POE_MODEL", None,
+    ## OLD: "POE_MODEL", ("GPT-4.1-nano" if POE_API else None),
+    "POE_MODEL", ("GPT-4.1-mini" if POE_API else None),
     desc="Default model for POE")
 POE_URL = system.getenv_text(
     "POE_URL", "https://api.poe.com/v1",

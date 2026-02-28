@@ -11,28 +11,11 @@ The primary test runner is a Bash script that wraps `pytest` and a custom test r
     ```bash
     ./run_tests.bash
     ```
-    Or explicitly:
-    ```bash
-    ./tools/run_tests.bash
-    ```
-
 *   **Run specific tests**:
     Use the `TEST_REGEX` environment variable to filter tests by name.
     ```bash
     TEST_REGEX='audio' ./run_tests.bash
     ```
-
-*   **Exclude specific tests**:
-    Use `FILTER_REGEX` to skip tests.
-    ```bash
-    FILTER_REGEX='(test_audio|test_spell)' ./run_tests.bash
-    ```
-
-*   **Run with Coverage**:
-    ```bash
-    ./run_tests.bash --coverage
-    ```
-    This generates an HTML report in `htmlcov/`.
 
 *   **Environment Variables**:
     *   `DEBUG_LEVEL`: Integer (0-6) for verbosity.
@@ -70,7 +53,7 @@ Documentation is built with Sphinx.
 
 ## General code agent guidelines
 
-0. Review the main modules first and follow the conventions
+0. Review the main modules first and follow the conventions there:
    debug, html_utils, main, my_regex, system, glue_helpers, unittest_wrapper
 
 0. Retain the existing code as much as possible. In particular, don't remove TODO comments that address the change you are making. 
@@ -94,8 +77,8 @@ as follows:
 		print(f"Error: unexpected condition with {num=} {sum=}")
 	```
 
-For single-line changes, just use "## OLD: ..."
-
 Of course, this can be awkward for in-depth changes so ask for clarification.
+
+Some variations follow. For single-line changes, just use "## OLD: ...". When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
 0. When making most changes, create a new git branch based on development, using a name such as 'code-conversion'.

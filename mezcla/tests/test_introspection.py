@@ -17,6 +17,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
@@ -74,6 +75,7 @@ class TestIt(TestWrapper):
         assert my_re.search(r"var='----\.\.\.'", var_expr)
         return
 
+    @pytest.mark.skipif(cm.SKIP_TBD_TESTS, reason=cm.SKIP_TBD_REASON)
     @pytest.mark.xfail                  ## note: likely to be long-term xfail
     def test_05_quirks(self):
         """Test for known introspection quirks"""

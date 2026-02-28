@@ -672,6 +672,7 @@ class TestWrapper(unittest.TestCase):
         tests/template.py. Alternatively, use multiple test functions:
             https://stackoverflow.com/questions/56187165/how-to-clear-captured-stdout-stderr-in-between-of-multiple-assert-statements
         """
+        ## TODO3: add level option for tracing (e.g. 5=>level and 7=>level+2)
         stdout, stderr = ("", "")
         try:
             if self.capsys:

@@ -185,6 +185,73 @@ class TestIt(TestWrapper):
     
 #------------------------------------------------------------------------
 
+def test_06_env_options_are_ints_not_bools():
+    """Verify environment tuning constants are numeric, not boolean flags."""
+    assert type(THE_MODULE.MIN_PATH_LEN) is int
+    assert type(THE_MODULE.MAX_PATHS) is int
+    assert type(THE_MODULE.SAMPLE_HEAD_SIZE) is int
+    assert type(THE_MODULE.SAMPLE_TAIL_SIZE) is int
+    assert type(THE_MODULE.SAMPLE_MAX_INTEREST) is int
+    assert THE_MODULE.MIN_PATH_LEN > 0
+    assert THE_MODULE.MAX_PATHS > 0
+    assert THE_MODULE.SAMPLE_HEAD_SIZE > 0
+    assert THE_MODULE.SAMPLE_TAIL_SIZE > 0
+    assert THE_MODULE.SAMPLE_MAX_INTEREST > 0
+
+
+def test_07_adaptive_prefix_aggregation_for_unique_paths():
+    """Verify adaptive mode can generalize across unique deep paths."""
+    base = "/home/user/project/.buildozer/android/platform/build-arm64-v8a/build/other_builds/python3/"
+    input_data = [
+        f"Compiling '{base}one/src/file1.c'",
+        f"Compiling '{base}two/src/file2.c'",
+        f"Compiling '{base}three/src/file3.c'",
+    ]
+    refiner = THE_MODULE.LogRefiner(adaptive=True)
+    result = refiner.process(input_data)
+
+    assert base in refiner.path_map
+    shared_token = refiner.path_map[base]
+    assert all(shared_token in line for line in result)
+
+
+def test_08_final_substitution_uses_longest_match_first():
+    """Verify overlapping substitutions prefer longer text before shorter text."""
+    refiner = THE_MODULE.LogRefiner(adaptive=True, substr=True)
+    refiner._get_common_paths = (
+        lambda _lines, min_len=THE_MODULE.MIN_PATH_LEN, limit=THE_MODULE.MAX_PATHS: ["/alpha/"])
+    refiner._get_common_substrings = (
+        lambda _lines,
+        min_len=THE_MODULE.MIN_SUBSTR_LEN,
+        min_freq=THE_MODULE.MIN_SUBSTR_FREQ,
+        limit=THE_MODULE.MAX_SUBSTRS: ["/alpha/beta/"])
+
+    result = refiner.process(["run /alpha/beta/file.c"])
+    assert result[0] == "run {sub1}file.c"
+    assert "{path1}beta/" not in result[0]
+
+
+def test_09_sampling_limits_interest_lines(monkeypatch):
+    """Verify sampling caps middle interest lines via SAMPLE_MAX_INTEREST."""
+    monkeypatch.setattr(THE_MODULE, "SAMPLE_HEAD_SIZE", 2)
+    monkeypatch.setattr(THE_MODULE, "SAMPLE_TAIL_SIZE", 2)
+    monkeypatch.setattr(THE_MODULE, "SAMPLE_MAX_INTEREST", 1)
+    refiner = THE_MODULE.LogRefiner(sample=True)
+    input_data = [
+        "head-1", "head-2",
+        "warning: one",
+        "error: two",
+        "mid-plain",
+        "tail-1", "tail-2"
+    ]
+
+    result = refiner.process(input_data)
+    interest = [line for line in result if my_re.search(r'warning|error', line, my_re.I)]
+    assert len(interest) == 1
+    assert "warning: one" in interest[0]
+
+#------------------------------------------------------------------------
+
 if __name__ == '__main__':
     debug.trace_current_context()
     invoke_tests(__file__)
