@@ -909,7 +909,7 @@ if __debug__:
                     if not use_old_introspection:
                         expression = "???"
                         if intro:
-                            expression = intro.format(expression, indirect=True, omit_values=True)
+                            expression = intro.format(expression, indirect=True, omit_values=True, levels_back=_caller_depth)
                         ## OLD: expression = re.sub("=False$", "", expression)
                         ## TODO2: drop newlines due to argument split across lines
                         ##   expression = re.sub("\n", " ", expression)???

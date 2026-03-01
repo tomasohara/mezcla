@@ -866,7 +866,7 @@ class TestDebugWrapper(TestWrapper):
         self.clear_stderr()
         THE_MODULE._debug.trace_fmtd(4, "oo-{txt}", txt="formatted", max_len=8)
         err = self.get_stderr()
-        self.do_assert("oo-..." in err)
+        self.do_assert("oo-fo..." in err)
 
     @pytest.mark.xfail
     def test_dw_trace_expr(self):
