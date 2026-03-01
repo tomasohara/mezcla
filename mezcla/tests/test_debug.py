@@ -17,6 +17,9 @@
 # - make sure trace_fmt traps all exceptions
 #   debug.trace_fmt(1, "fu={fu}", fuu=1)
 #                           ^^    ^^^
+#................................................................................
+# Global pylint filter:
+#   pylint: disable=protected-access
 #
 
 """Tests for debug module"""
@@ -42,7 +45,7 @@ import mezcla.tests.common_module as cm
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
-import mezcla.debug as THE_MODULE # pylint: disable=reimported
+import mezcla.debug as THE_MODULE       # pylint: disable=reimported
 
 # Constants
 ERROR_FUBAR = "falta fubar"            # spanish for error
@@ -762,7 +765,7 @@ class TestDebug2(TestWrapper):
 
 #------------------------------------------------------------------------
 
-class TestDebugWrapper(TestWrapper):                # pylint: disable=protected-access
+class TestDebugWrapper(TestWrapper):
     """Tests for DebugWrapper class methods accessed via THE_MODULE._debug.
     Verifies that the OO API works correctly and shares state with the
     module-level functional API."""
@@ -940,10 +943,12 @@ class TestDebugWrapper(TestWrapper):                # pylint: disable=protected-
         debug.trace(4, f"test_dw_assertion(): self={self}")
         if not __debug__:
             return
-        THE_MODULE._debug.assertion(1 == 1)
+        oo_true_cond = (2 + 3 == 5)
+        THE_MODULE._debug.assertion(oo_true_cond)
         err = self.get_stderr()
         self.do_assert("failed" not in err)
-        THE_MODULE._debug.assertion(1 == 2)
+        oo_false_cond = (2 + 3 == 6)
+        THE_MODULE._debug.assertion(oo_false_cond)
         err = self.get_stderr()
         self.do_assert("Assertion failed" in err)
 
