@@ -10,6 +10,10 @@
 # Note:
 # - Initial version produced with Gemini-3-Pro.
 # - It was in the context of filtering Android deployment logs
+# TODO (lossy):
+# - Collapse repeated command templates and emit occurrence counts.
+# - Throttle dense DEBUG runs (keep first K and every Nth line per phase).
+# - Truncate/hash long argument vectors after preserving one full exemplar.
 #
 
 """
@@ -39,12 +43,17 @@ SAMPLE_OPT = "sample"
 SUBSTR_OPT = "substr"
 
 # Environment options
-MIN_PATH_LEN = system.getenv_bool(
+## OLD: MIN_PATH_LEN = system.getenv_bool(
+MIN_PATH_LEN = system.getenv_int(
      "MIN_PATH_LEN", 40,
-     description="Mininum path length for filtering")
-MAX_PATHS = system.getenv_bool(
-     "MAX_PATH", 10,
-     description="Maxmium number of paths length to filter")
+     description="Minimum path length for filtering")
+## OLD: MAX_PATHS = system.getenv_bool(
+MAX_PATHS = system.getenv_int(
+     "MAX_PATHS",
+     system.getenv_int(
+         "MAX_PATH", 10,
+         description="Legacy maximum number of paths length to filter"),
+     description="Maximum number of paths length to filter")
 MIN_SUBSTR_LEN = system.getenv_int(
      "MIN_SUBSTR_LEN", 30,
      description="Minimum substring length for general text substitution")
@@ -54,6 +63,15 @@ MIN_SUBSTR_FREQ = system.getenv_int(
 MAX_SUBSTRS = system.getenv_int(
      "MAX_SUBSTRS", 10,
      description="Maximum number of general text substitutions")
+SAMPLE_HEAD_SIZE = system.getenv_int(
+     "SAMPLE_HEAD_SIZE", 500,
+     description="Number of initial lines retained during sampling")
+SAMPLE_TAIL_SIZE = system.getenv_int(
+     "SAMPLE_TAIL_SIZE", 1000,
+     description="Number of trailing lines retained during sampling")
+SAMPLE_MAX_INTEREST = system.getenv_int(
+     "SAMPLE_MAX_INTEREST", 800,
+     description="Maximum number of middle error/warning lines retained during sampling")
 
 #-------------------------------------------------------------------------------
 
@@ -82,11 +100,29 @@ class LogRefiner:
             all_matches.extend(my_re.findall(path_pattern, line))
         
         counts = collections.Counter(all_matches)
-        # We want the longest paths that appear frequently
-        candidates = [p for p, c in counts.items() if len(p) >= min_len and c > 1]
-        # Sort by length descending is crucial so sub-paths don't break parent paths
-        candidates.sort(key=len, reverse=True)
-        return candidates[:limit]
+        # Also count shared path prefixes to avoid overfitting to one-off deep paths.
+        # This helps large Android logs where full paths vary at the deepest levels.
+        prefix_counts = collections.Counter()
+        for path, freq in counts.items():
+            parts = [part for part in path.split("/") if part]
+            for end in range(5, len(parts) + 1):
+                prefix = f"/{'/'.join(parts[:end])}/"
+                if len(prefix) >= min_len:
+                    prefix_counts[prefix] += freq
+
+        # ## OLD: candidates = [p for p, c in counts.items() if len(p) >= min_len and c > 1]
+        candidates = [(p, len(p) * c) for p, c in prefix_counts.items() if c > 1]
+        candidates.sort(key=lambda item: (item[1], len(item[0])), reverse=True)
+        result = []
+        for path, _score in candidates:
+            if any(path in existing for existing in result):
+                continue
+            result.append(path)
+            if len(result) >= limit:
+                break
+        # Keep longest-first substitution order for stable replacement behavior.
+        result.sort(key=len, reverse=True)
+        return result
 
     def _get_common_substrings(self, lines: List[str], min_len: int = MIN_SUBSTR_LEN, min_freq: int = MIN_SUBSTR_FREQ, limit: int = MAX_SUBSTRS) -> List[str]:
         """Identifies frequently occurring text substrings for token substitution.
@@ -185,8 +221,11 @@ class LogRefiner:
         # 3. Head/Tail/Grep Sampling
         if self.sample:
             debug.trace(TL.VERBOSE, "Filtering: Sampling log structure")
-            head_size = 1000
-            tail_size = 2000
+            ## OLD: head_size = 1000
+            head_size = SAMPLE_HEAD_SIZE
+            ## OLD: tail_size = 2000
+            tail_size = SAMPLE_TAIL_SIZE
+            max_interest = SAMPLE_MAX_INTEREST
             if len(processed) > (head_size + tail_size):
                 head = processed[:head_size]
                 tail = processed[-tail_size:]
@@ -194,6 +233,8 @@ class LogRefiner:
                 ## OLD: interest = [l for l in middle if my_re.search(r'error|fail|warning|critical|exception|debug', l, my_re.I)]
                 ## Note: 'debug' removed to avoid retaining every [DEBUG] line in buildozer logs
                 interest = [l for l in middle if my_re.search(r'error|fail|warning|critical|exception', l, my_re.I)]
+                if len(interest) > max_interest:
+                    interest = interest[:max_interest]
                 
                 msg = f"\n... [SNIP: {len(middle) - len(interest)} lines removed] ...\n"
                 processed = head + [msg] + interest + [msg] + tail
@@ -206,9 +247,11 @@ class LogRefiner:
             all_subs.update(self.substr_map)
         if all_subs:
             final_output = []
+            ordered_subs = sorted(all_subs.items(), key=lambda pair: len(pair[0]), reverse=True)
             for line in processed:
                 new_line = line
-                for text, token in all_subs.items():
+                ## OLD: for text, token in all_subs.items():
+                for text, token in ordered_subs:
                     new_line = new_line.replace(text, token)
                 final_output.append(new_line)
             processed = final_output
