@@ -54,7 +54,10 @@ Documentation is built with Sphinx.
 ## General code agent guidelines
 
 0. Review the main modules first and follow the conventions there:
-   debug, html_utils, main, my_regex, system, glue_helpers, unittest_wrapper
+   debug, html_utils, main, my_regex, system, glue_helpers, template
+
+1. Similarly for when adding tests, review the following:
+   unittest_wrapper, tests/template.py, tests/test_debug, tests/test_system, etc.
 
 0. Retain the existing code as much as possible. In particular, don't remove TODO comments that address the change you are making. 
 

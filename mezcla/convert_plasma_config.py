@@ -162,6 +162,12 @@ class PlasmaConfigConverter:
 
             # Handle non-Containments sections
             if components[0] != "Containments":
+                # Sanity check: warn about malformed containment-like sections
+                if re.search(r'(?i)containment|applet', components[0]):
+                    system.print_stderr(
+                        f"WARNING: Skipping malformed section (looks like "
+                        f"corrupted Containments entry): {section_header}")
+                    continue
                 self.other_sections[section_header] = props
                 continue
 
