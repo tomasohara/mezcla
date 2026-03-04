@@ -127,9 +127,13 @@ class PlasmaConfigConverter:
         self.systray_map = {}
         # Non-containment sections (ActionPlugins, ScreenMapping, etc.)
         self.other_sections = OrderedDict()
-        # Track all original keys for fidelity validation
-        self.original_key_count = 0
-        self.output_key_count = 0
+        # Track all original properties for fidelity validation
+        # Each entry: (section_header, key, value)
+        self.original_properties = []
+        # Set of indices into original_properties that have been accounted for
+        self.accounted_indices = set()
+        # Properties from malformed/skipped sections
+        self.skipped_properties = []
 
     def parse(self, text):
         """Parse INI-style plasma config text into sections"""
@@ -146,7 +150,7 @@ class PlasmaConfigConverter:
             elif '=' in line and current_section:
                 key, _, value = line.partition('=')
                 self.sections[current_section][key] = value
-                self.original_key_count += 1
+                self.original_properties.append((current_section, key, value))
             else:
                 debug.trace(4, f"Skipping unparseable line: {line!r}")
 
@@ -167,8 +171,12 @@ class PlasmaConfigConverter:
                     system.print_stderr(
                         f"WARNING: Skipping malformed section (looks like "
                         f"corrupted Containments entry): {section_header}")
+                    for key in props:
+                        self.skipped_properties.append((section_header, key))
+                    self._account_for_section(section_header)
                     continue
                 self.other_sections[section_header] = props
+                self._account_for_section(section_header)
                 continue
 
             if len(components) < 2:
@@ -259,6 +267,9 @@ class PlasmaConfigConverter:
                 for k, v in props.items():
                     cont["props"][f"{sub_path}.{k}"] = v
 
+            # Mark all properties in this section as accounted for
+            self._account_for_section(section_header)
+
         # Build systray mapping
         for applet_key, applet in self.applets.items():
             systray_id = applet["config"].get("SystrayContainmentId")
@@ -306,6 +317,20 @@ class PlasmaConfigConverter:
         parent_screen = cont.get("props", {}).get("lastScreen", "?")
         return f"{simple_name} (panel-screen:{parent_screen})"
 
+    def _account_for(self, section_header, key):
+        """Mark an original property as accounted for in the output"""
+        for idx, (sec, k, _v) in enumerate(self.original_properties):
+            if idx not in self.accounted_indices and sec == section_header and k == key:
+                self.accounted_indices.add(idx)
+                return
+        debug.trace(6, f"_account_for: no match for {section_header}:{key}")
+
+    def _account_for_section(self, section_header):
+        """Mark all properties in a section as accounted for"""
+        for idx, (sec, _k, _v) in enumerate(self.original_properties):
+            if idx not in self.accounted_indices and sec == section_header:
+                self.accounted_indices.add(idx)
+
     def _emit_props(self, props, prefix=""):
         """Format properties as key=value lines, filtering as configured"""
         lines = []
@@ -313,9 +338,6 @@ class PlasmaConfigConverter:
             full_key = f"{prefix}{key}" if prefix else key
             if not is_skippable_key(key, value):
                 lines.append(f"{full_key}={value}")
-                self.output_key_count += 1
-            else:
-                self.output_key_count += 1  # count as processed even if filtered
         return lines
 
     def convert(self):
@@ -328,7 +350,6 @@ class PlasmaConfigConverter:
             output_lines.append(section_header)
             for key, value in props.items():
                 output_lines.append(f"{key}={value}")
-                self.output_key_count += 1
             output_lines.append("")
 
         # Determine containment ordering: panels first, then desktops, then systrays
@@ -389,18 +410,15 @@ class PlasmaConfigConverter:
             for key, value in cont["config"].items():
                 if not is_skippable_key(key, value):
                     output_lines.append(f"{key}={value}")
-                self.output_key_count += 1
             for key, value in cont["general"].items():
                 if key == "AppletOrder":
                     # Show original AppletOrder for reference
                     output_lines.append(f"AppletOrder={value}")
                 elif not is_skippable_key(key, value):
                     output_lines.append(f"{key}={value}")
-                self.output_key_count += 1
             for key, value in cont["config_dialog"].items():
                 if not is_skippable_key(key, value):
                     output_lines.append(f"[ConfigDialog].{key}={value}")
-                self.output_key_count += 1
 
             output_lines.append("")
 
@@ -415,7 +433,6 @@ class PlasmaConfigConverter:
 
                 plugin = applet["props"].get("plugin", "")
                 output_lines.append(f"plugin={plugin}")
-                self.output_key_count += 1
 
                 # Emit remaining applet props (skip plugin, already shown)
                 for key, value in applet["props"].items():
@@ -423,7 +440,6 @@ class PlasmaConfigConverter:
                         continue
                     if not is_skippable_key(key, value):
                         output_lines.append(f"{key}={value}")
-                    self.output_key_count += 1
 
                 # Emit config (skip SystrayContainmentId as it's shown as cross-ref)
                 for key, value in applet["config"].items():
@@ -431,11 +447,9 @@ class PlasmaConfigConverter:
                         systray_cont = self.containments.get(value, {})
                         systray_plugin = systray_cont.get("props", {}).get("plugin", "unknown")
                         output_lines.append(f"systray-ref: {simplify_plugin_name(systray_plugin)}")
-                        self.output_key_count += 1
                         continue
                     if not is_skippable_key(key, value):
                         output_lines.append(f"{key}={value}")
-                    self.output_key_count += 1
 
                 # Emit general settings (the most important human-readable config)
                 output_lines.extend(self._emit_props(applet["general"]))
@@ -444,13 +458,11 @@ class PlasmaConfigConverter:
                 for key, value in applet["shortcuts"].items():
                     if value:  # skip empty shortcuts
                         output_lines.append(f"[Shortcuts].{key}={value}")
-                    self.output_key_count += 1
 
                 # Emit config dialog
                 for key, value in applet["config_dialog"].items():
                     if not is_skippable_key(key, value):
                         output_lines.append(f"[ConfigDialog].{key}={value}")
-                    self.output_key_count += 1
 
                 # Emit extra sections
                 output_lines.extend(self._emit_props(applet["extra_sections"]))
@@ -460,15 +472,22 @@ class PlasmaConfigConverter:
         return "\n".join(output_lines)
 
     def validate_fidelity(self):
-        """Warn on stderr if any properties were lost"""
-        debug.trace(TL.DETAILED, f"validate_fidelity: original={self.original_key_count}, output={self.output_key_count}")
-        if self.output_key_count < self.original_key_count:
-            lost = self.original_key_count - self.output_key_count
-            print(f"WARNING: {lost} key(s) may not be in output "
-                  f"(original={self.original_key_count}, processed={self.output_key_count})",
-                  file=sys.stderr)
+        """Warn on stderr if any input properties are not accounted for in output"""
+        debug.trace(TL.DETAILED, f"validate_fidelity: total={len(self.original_properties)}, "
+                    f"accounted={len(self.accounted_indices)}")
+        unaccounted = []
+        for idx, (sec, key, value) in enumerate(self.original_properties):
+            if idx not in self.accounted_indices:
+                unaccounted.append((sec, key, value))
+
+        if unaccounted:
+            system.print_stderr(
+                f"WARNING: {len(unaccounted)} input property(s) not accounted for in output:")
+            for sec, key, value in unaccounted:
+                system.print_stderr(f"  {sec}: {key}={value}")
         else:
-            debug.trace(TL.VERBOSE, f"Fidelity OK: all {self.original_key_count} keys accounted for")
+            debug.trace(TL.VERBOSE,
+                        f"Fidelity OK: all {len(self.original_properties)} properties accounted for")
 
 
 class Script(Main):
