@@ -994,13 +994,17 @@ def file_size(filename: FileDescriptorOrPath) -> int:
     return size
 
 
-def get_matching_files(pattern: str, warn: bool = False) -> List[str]:
+def get_matching_files(pattern: str, warn: bool = False, recursive: bool = False) -> List[str]:
     """Get sorted list of files matching PATTERN via shell globbing
-    Note: Optionally issues WARNing"""
+    Note: 
+    - Optionally issues WARNing
+    - With RECURSIVE, the ** pattern matches any files and zero or more directories,
+      subdirectories and symbolic links to directories.
+    """
     # NOTE: Multiple glob specs not allowed in PATTERN
-    files = sorted(glob.glob(pattern))
-    debug.trace_fmtd(5, "get_matching_files({p}) => {l}",
-                     p=pattern, l=files)
+    files = sorted(glob.glob(pattern, recursive=recursive))
+    debug.trace_fmtd(5, "get_matching_files({p}, recursive={r}) => {l}",
+                     p=pattern, r=recursive, l=files)
     if ((not files) and warn):
         system.print_stderr(f"Warning: no matching files for {pattern}")
     return files

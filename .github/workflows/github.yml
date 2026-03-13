@@ -94,7 +94,7 @@ jobs:
 
       - name: Run Python Tests under Runner
         run: |
-          PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash
+          PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash --all
           
       - name: Post-run diagnostics
         run: |
