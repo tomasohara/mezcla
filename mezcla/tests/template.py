@@ -30,7 +30,7 @@
 #
 
 ## TODO1: [Warning] Make sure this template adhered to as much as possible. For,
-## example, only delete todo comments not regular code, unless suggested in tip).
+## example, only delete todo comments not regular code, unless suggested in tip.
 ## In particular, it is critical that script_module gets initialized properly.
 
 """TODO: Tests for <module> module"""
