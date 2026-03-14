@@ -6,15 +6,19 @@ This repository contains miscellaneous Python scripts and utilities for R&D.
 
 ### Testing
 The primary test runner is a Bash script that wraps `pytest` and a custom test runner.
+Normally, you only need to run tests for modules that you change; however, if the
+changes are to core modules like main.py or system.py, it is best to rerun 
+all tests.
 
-*   **Run all tests**:
-    ```bash
-    ./run_tests.bash
-    ```
 *   **Run specific tests**:
     Use the `TEST_REGEX` environment variable to filter tests by name.
     ```bash
     TEST_REGEX='audio' ./run_tests.bash
+    ```
+
+*   **Run all tests**:
+    ```bash
+    ./run_tests.bash
     ```
 
 *   **Environment Variables**:
@@ -49,6 +53,7 @@ Documentation is built with Sphinx.
     *   Pylint is used with specific exclusions handled via command-line arguments or aliases (not a config file).
     *   Code style is "R&D focused" rather than strict "Pythonic production" code.
 	    Nonetheless, use good software engineering practices, such as using single return calls and adding sanity checks via assert (preferably debug.assertion).
+	*   Readability is important. For example, make sure dynamic imports are not buried without an indication that used at top (e.g., via comment in modules section).
 *   **License**: Code is licensed under **LGPLv3**.
 *   **Imports**: The package is designed to be installed or used with `PYTHONPATH` set to include the root directory (handled automatically by `run_tests.bash`).
 
