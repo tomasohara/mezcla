@@ -3,9 +3,10 @@
 # Miscellaneous tests not tied to particular module.
 #
 # Note:
-# - This is uses to check for enforce some development
+# - This is used to check for reoccuring development issues:
 #   -- A test exists for each module (e.g., tests/test_fubar.py for ./fubar.py).
 #   -- Python files have execute permissions (e.g., chmod ugo+x).
+# - It also tests for repo wide issues (e.g., type hinting).
 #
 # TODO2: Run once a week or so (e.g., to help catch poor test stubs like
 # test_train_language_model.py)!
