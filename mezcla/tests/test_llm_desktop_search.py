@@ -26,6 +26,10 @@
 
 # Standard modules
 import atexit
+import json
+import re
+from pathlib import Path
+from types import SimpleNamespace
 
 # Installed modules
 import pytest
@@ -51,7 +55,6 @@ except:
     debug.trace_exception(3, "llm_desktop_search import")
 
 #------------------------------------------------------------------------
-
 
 @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 class TestIt(TestWrapper):
@@ -81,6 +84,20 @@ class TestIt(TestWrapper):
             THE_MODULE.INDEX_ONLY_RECENT = False
         debug.trace_object(5, cls, label=f"{cls.__class__.__name__} instance")
         return
+
+    @classmethod
+    def ensure_shared_index(cls):
+        """Build the shared FAISS index lazily so tests can run in isolation."""
+        debug.assertion(cls.index_temp_dir)
+        index_file = gh.form_path(cls.index_temp_dir, "index.faiss")
+        if system.file_exists(index_file):
+            return
+        file_dir = gh.real_path(gh.dirname(__file__))
+        repo_base_dir = gh.form_path(file_dir, "..", "..")
+        debug.assertion(system.file_exists(gh.form_path(repo_base_dir, "LICENSE.txt")))
+        desktop = THE_MODULE.DesktopSearch(index_store_dir=cls.index_temp_dir)
+        desktop.index_dir(repo_base_dir)
+        debug.assertion(system.file_exists(index_file))
 
     @pytest.mark.xfail                   # TODO: remove xfail
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
@@ -115,7 +132,7 @@ class TestIt(TestWrapper):
         resource_dir = gh.form_path(file_dir, "resources")
         revised_output = self.run_script(options=f"--index {resource_dir}",
                                          env_options=f"INDEX_STORE_DIR={self.index_temp_dir}")
-        self.do_assert(my_re.search(r"(\d\d+) chunks indexed", init_output))
+        self.do_assert(my_re.search(r"(\d\d+) chunks indexed", revised_output))
         num_final_chunks = int(my_re.group(1))
         self.do_assert(num_final_chunks > num_initial_chunks)
        
@@ -125,10 +142,10 @@ class TestIt(TestWrapper):
         
 
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_02_search_docs(self):
         """Test for something_else: TODO..."""
         debug.trace(4, f"TestIt.test_02_search_docs(); self={self}")
+        self.ensure_shared_index()
         desktop = THE_MODULE.DesktopSearch(self.index_temp_dir)
         desktop.search_to_answer('What license is used?')
         output = self.get_stdout()
@@ -146,6 +163,7 @@ class TestIt(TestWrapper):
         #  ...
         #  |    0   N/A  N/A   1111609      C   python                      366MiB |
         debug.trace(4, f"TestIt.test_03_gpu_usage(); self={self}")
+        self.ensure_shared_index()
         ds = THE_MODULE.DesktopSearch(self.index_temp_dir)
         ds.show_similar("license")
         trace_level = max(1, debug.get_level())
@@ -164,6 +182,7 @@ class TestIt(TestWrapper):
     def test_04_show_similar(self):
         """Test run_script to show similar document to QUERY"""
         debug.trace(4, f"test_04_show_similar(): self={self}")
+        self.ensure_shared_index()
         desktop = THE_MODULE.DesktopSearch(index_store_dir=self.index_temp_dir)
         
         desktop.show_similar(query="LICENSE", num=1)
@@ -204,6 +223,276 @@ class TestIt(TestWrapper):
         pct_75 = (3 * num_total // 4)
         debug.trace_expr(5, num_found, num_total, pct_75)
         assert(num_found >= pct_75)
+
+#...............................................................................
+
+if THE_MODULE:
+    class _FakeLoader:
+        """Simple text loader for deterministic llm_desktop_search tests"""
+        def __init__(self, dir_path, glob=None, loader_cls=None, loader_kwargs=None):
+            """Store the target directory and validate the fake loader contract."""
+            self.dir_path = Path(dir_path)
+            debug.assertion(self.dir_path)
+            debug.assertion(glob in [None, "*.txt"])
+            debug.assertion(loader_cls in [None, THE_MODULE.TextLoader])
+            debug.assertion((loader_kwargs is None) or isinstance(loader_kwargs, dict))
+
+        def load(self):
+            """Return deterministic `Document` instances for all text files."""
+            debug.assertion(self.dir_path.exists())
+            debug.assertion(self.dir_path.is_dir())
+            documents = []
+            for path in sorted(self.dir_path.glob("*.txt")):
+                debug.assertion(path.is_file())
+                documents.append(THE_MODULE.Document(
+                    page_content=path.read_text(encoding="utf-8"),
+                    metadata={"source": str(path)}))
+            debug.assertion(documents)
+            return documents
+
+    class _FakeSplitter:
+        """Splitter stub that preserves document ordering"""
+        def __init__(self, chunk_size=None, chunk_overlap=None):
+            """Capture the requested chunk configuration for sanity checking."""
+            self.chunk_size = chunk_size
+            self.chunk_overlap = chunk_overlap
+
+        def split_documents(self, documents):
+            """Return the input documents unchanged for deterministic tests."""
+            debug.assertion(isinstance(documents, list))
+            return list(documents)
+
+    class _FakeEmbeddings:
+        """Embedding stub for DesktopSearch unit tests"""
+        def __init__(self, model_name=None, model_kwargs=None):
+            """Record embedding configuration without loading external models."""
+            debug.assertion(model_name)
+            debug.assertion(isinstance((model_kwargs or {}), dict))
+            self.model_name = model_name
+            self.model_kwargs = model_kwargs or {}
+
+    class _FakeDocStore:
+        """Docstore stub compatible with FAISS tests"""
+        def __init__(self, mapping):
+            """Keep a searchable mapping from fake FAISS doc ids to documents."""
+            debug.assertion(isinstance(mapping, dict))
+            self.mapping = mapping
+
+        def search(self, key):
+            """Return the document stored under KEY."""
+            debug.assertion(key in self.mapping)
+            return self.mapping[key]
+
+    class _FakeRetriever:
+        """Retriever stub backed by the fake FAISS implementation"""
+        def __init__(self, db, limit):
+            """Bind a fake FAISS store and retrieval limit."""
+            debug.assertion(db is not None)
+            debug.assertion(limit >= 1)
+            self.db = db
+            self.limit = limit
+
+        def get_relevant_documents(self, query):
+            """Return the ranked documents only, mirroring retriever behavior."""
+            debug.assertion(isinstance(query, str))
+            debug.assertion(query)
+            return [doc for (doc, _score) in self.db.similarity_search_with_score(query, self.limit)]
+
+    class _FakeFAISS:
+        """Persisted vector store stub for deterministic tests"""
+        STORE_FILE = "fake-faiss-store.json"
+
+        def __init__(self, documents, embeddings):
+            """Capture stored documents and rebuild docstore metadata."""
+            debug.assertion(isinstance(documents, list))
+            debug.assertion(embeddings is not None)
+            self.documents = list(documents)
+            self.embeddings = embeddings
+            self._refresh()
+
+        def _refresh(self):
+            """Refresh fake FAISS ids and docstore after document mutations."""
+            debug.assertion(isinstance(self.documents, list))
+            self.index_to_docstore_id = {
+                num: f"doc-{num}" for num in range(len(self.documents))
+            }
+            mapping = {
+                doc_id: self.documents[num]
+                for (num, doc_id) in self.index_to_docstore_id.items()
+            }
+            debug.assertion(len(mapping) == len(self.documents))
+            self.docstore = _FakeDocStore(mapping)
+
+        @classmethod
+        def from_documents(cls, documents, embeddings):
+            """Build a fake FAISS store from a document list."""
+            debug.assertion(documents)
+            return cls(documents, embeddings)
+
+        def add_documents(self, documents):
+            """Append documents and refresh fake FAISS bookkeeping."""
+            debug.assertion(isinstance(documents, list))
+            debug.assertion(documents != [])
+            self.documents.extend(documents)
+            self._refresh()
+
+        def save_local(self, index_store_dir):
+            """Persist the fake store as sorted JSON for reproducible tests."""
+            store_path = Path(index_store_dir)
+            debug.assertion(store_path)
+            store_path.mkdir(parents=True, exist_ok=True)
+            payload = [{
+                "page_content": doc.page_content,
+                "metadata": doc.metadata,
+            } for doc in self.documents]
+            store_file = store_path / self.STORE_FILE
+            store_file.write_text(
+                json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2),
+                encoding="utf-8")
+            debug.assertion(store_file.exists())
+
+        @classmethod
+        def load_local(cls, index_store_dir, embeddings, **_kwargs):
+            """Load the persisted fake store from disk."""
+            store_file = Path(index_store_dir) / cls.STORE_FILE
+            if not store_file.exists():
+                raise RuntimeError(f"missing fake store: {store_file}")
+            payload = json.loads(store_file.read_text(encoding="utf-8"))
+            debug.assertion(isinstance(payload, list))
+            documents = [
+                THE_MODULE.Document(
+                    page_content=item["page_content"],
+                    metadata=item["metadata"])
+                for item in payload
+            ]
+            debug.assertion(documents != [])
+            return cls(documents, embeddings)
+
+        def similarity_search_with_score(self, query, k):
+            """Return deterministically ranked documents and simple scores."""
+            debug.assertion(isinstance(query, str))
+            debug.assertion(k >= 1)
+            query_tokens = set(re.findall(r"[A-Za-z]+", query.casefold()))
+            matches = []
+            for doc in self.documents:
+                searchable_text = f"{doc.metadata.get('source', '')}\n{doc.page_content}".casefold()
+                score = 0
+                if query_tokens:
+                    score = -sum(token in searchable_text for token in query_tokens)
+                matches.append((doc, score))
+            matches.sort(key=lambda item: (
+                item[1],
+                item[0].metadata.get("source", ""),
+                item[0].page_content))
+            debug.assertion(matches)
+            return matches[:k]
+
+        def as_retriever(self, search_kwargs=None):
+            """Create a fake retriever using the requested top-k limit."""
+            limit = (search_kwargs or {}).get("k", THE_MODULE.NUM_SIMILAR)
+            debug.assertion(limit >= 1)
+            return _FakeRetriever(self, limit)
+
+    class _FakeCTransformers:
+        """LLM stub exposing the model path expected by search_to_answer"""
+        def __init__(self, model, model_type=None, config=None, gpu_layers=None):
+            """Store constructor arguments without loading a real model."""
+            debug.assertion(model)
+            self.model = model
+            self.model_type = model_type
+            self.config = config or {}
+            self.gpu_layers = gpu_layers
+
+    class _FakeRetrievalQA:
+        """RetrievalQA stub that requires an initialized llm"""
+        def __init__(self, llm, retriever):
+            """Wrap fake LLM metadata in the shape search_to_answer expects."""
+            debug.assertion(llm is not None)
+            debug.assertion(retriever is not None)
+            self.retriever = retriever
+            self.combine_documents_chain = SimpleNamespace(
+                llm_chain=SimpleNamespace(llm=llm))
+
+        @classmethod
+        def from_chain_type(cls, llm, chain_type=None, retriever=None, **kwargs):
+            """Build a fake RetrievalQA chain from the provided retriever."""
+            debug.assertion(chain_type == 'stuff')
+            debug.assertion(kwargs.get("return_source_documents") is True)
+            debug.assertion(isinstance(kwargs.get("chain_type_kwargs"), dict))
+            assert llm is not None
+            return cls(llm, retriever)
+
+        def __call__(self, payload):
+            """Return a deterministic answer payload from retrieved documents."""
+            debug.assertion(isinstance(payload, dict))
+            debug.assertion("query" in payload)
+            docs = self.retriever.get_relevant_documents(payload["query"])
+            answer_doc = next(
+                (doc for doc in docs if "gnu" in doc.page_content.casefold()),
+                (docs[0] if docs else None))
+            answer = (answer_doc.page_content if answer_doc else "I do not know")
+            return {"result": answer, "source_documents": docs}
+
+@pytest.fixture(name="fake_desktop_search_env")
+def desktop_search_env_fixture(tmp_path, monkeypatch):
+    """Prepare a deterministic DesktopSearch environment with fake FAISS persistence"""
+    if not THE_MODULE:
+        pytest.skip("Unable to load llm_desktop_search module")
+    doc_dir = tmp_path / "docs"
+    index_dir = tmp_path / "index"
+    doc_dir.mkdir()
+    (doc_dir / "z-license.txt").write_text(
+        "GNU Lesser General Public License\n",
+        encoding="utf-8")
+    (doc_dir / "a-notes.txt").write_text(
+        "Argentina library validation Iris\n",
+        encoding="utf-8")
+    debug.assertion((doc_dir / "z-license.txt").exists())
+    debug.assertion((doc_dir / "a-notes.txt").exists())
+    monkeypatch.setattr(THE_MODULE, "DirectoryLoader", _FakeLoader)
+    monkeypatch.setattr(THE_MODULE, "RecursiveCharacterTextSplitter", _FakeSplitter)
+    monkeypatch.setattr(THE_MODULE, "HuggingFaceEmbeddings", _FakeEmbeddings)
+    monkeypatch.setattr(THE_MODULE, "FAISS", _FakeFAISS)
+    monkeypatch.setattr(THE_MODULE, "CTransformers", _FakeCTransformers)
+    monkeypatch.setattr(THE_MODULE, "RetrievalQA", _FakeRetrievalQA)
+    monkeypatch.setattr(THE_MODULE, "INDEX_ONLY_RECENT", False)
+    return (doc_dir, index_dir)
+
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
+@pytest.mark.parametrize("query_order", [("similar", "search"), ("search", "similar")])
+def test_query_order_reuses_same_persistent_index(fake_desktop_search_env, capsys, query_order):
+    """DesktopSearch should support similar/search in either order on one persisted index"""
+    doc_dir, index_dir = fake_desktop_search_env
+    ds = THE_MODULE.DesktopSearch(index_store_dir=str(index_dir))
+    ds.index_dir(str(doc_dir))
+    capsys.readouterr()
+    initial_store = (index_dir / _FakeFAISS.STORE_FILE).read_text(encoding="utf-8")
+    debug.assertion(initial_store)
+    reloaded = THE_MODULE.DesktopSearch(index_store_dir=str(index_dir))
+
+    for operation in query_order:
+        debug.assertion(operation in ["similar", "search"])
+        if operation == "similar":
+            reloaded.show_similar("license", num=1)
+        else:
+            reloaded.search_to_answer("What license is used?")
+        output = capsys.readouterr().out
+        assert "GNU Lesser General Public License" in output
+
+    assert reloaded.llm is not None
+    assert (index_dir / _FakeFAISS.STORE_FILE).read_text(encoding="utf-8") == initial_store
+
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
+def test_index_dir_persists_documents_in_sorted_order(fake_desktop_search_env):
+    """Index persistence should be deterministic for stable tests"""
+    doc_dir, index_dir = fake_desktop_search_env
+    ds = THE_MODULE.DesktopSearch(index_store_dir=str(index_dir))
+    ds.index_dir(str(doc_dir))
+    payload = json.loads((index_dir / _FakeFAISS.STORE_FILE).read_text(encoding="utf-8"))
+    debug.assertion(isinstance(payload, list))
+    debug.assertion(payload)
+    persisted_sources = [item["metadata"]["source"] for item in payload]
+    assert persisted_sources == sorted(persisted_sources)
 
 #------------------------------------------------------------------------
 
