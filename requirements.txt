@@ -50,7 +50,11 @@ flask
 #opt# gradio==3.48            # UI support (e.g., HF-based apps)
 importlib_metadata
 langchain
+#opt# langchain-classic         # compatibility imports used by llm_desktop_search.py with LangChain >= 1.x
 langchain_community
+#opt# langchain-huggingface     # modern HuggingFace embeddings package for llm_desktop_search.py
+#opt# langchain-text-splitters  # split text splitter package used by newer LangChain installs
+#opt# faiss-cpu                 # FAISS vector store backend used by llm_desktop_search.py
 #opt# kenlm                   # language model support (NOTE: problem with wheel; see https://kheafield.com/code/kenlm)
 ## OLD: librosa>=0.10.0
 lxml
