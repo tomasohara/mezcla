@@ -237,7 +237,9 @@ class DesktopSearch:
         debug.trace(4, "load_llm()")
         if not self.llm:
             model_path = pathlib.Path(QA_LLM_MODEL).expanduser()
-            module_model_path = pathlib.Path(__file__).with_name(QA_LLM_MODEL)
+            # note: with_name only accepts a bare filename, not a path with separators
+            model_basename = pathlib.Path(QA_LLM_MODEL).name
+            module_model_path = pathlib.Path(__file__).with_name(model_basename)
             if model_path.exists():
                 model_name = str(model_path.resolve())
             elif module_model_path.exists():
