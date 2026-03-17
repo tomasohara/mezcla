@@ -27,8 +27,11 @@
 # Standard modules
 import atexit
 import json
+import os
 import re
+import subprocess
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 
 # Installed modules
@@ -493,6 +496,36 @@ def test_index_dir_persists_documents_in_sorted_order(fake_desktop_search_env):
     debug.assertion(payload)
     persisted_sources = [item["metadata"]["source"] for item in payload]
     assert persisted_sources == sorted(persisted_sources)
+
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
+def test_import_disables_tensorflow_backend_by_default():
+    """Module import should avoid TensorFlow backend warnings unless requested."""
+    repo_root = Path(__file__).resolve().parents[2]
+    command = [
+        sys.executable,
+        "-c",
+        (
+            "import os; "
+            "import mezcla.llm_desktop_search; "
+            "print(os.getenv('USE_TF')); "
+            "print(os.getenv('TRANSFORMERS_NO_TF'))"
+        ),
+    ]
+    env = os.environ.copy()
+    env.pop("USE_TF", None)
+    env.pop("TRANSFORMERS_NO_TF", None)
+    env["PYTHONPATH"] = str(repo_root)
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        check=False,
+        cwd=repo_root,
+        env=env,
+        text=True)
+    assert completed.returncode == 0, completed.stderr
+    assert "MessageFactory" not in completed.stderr
+    assert "GetPrototype" not in completed.stderr
+    assert completed.stdout.splitlines()[-2:] == ["0", "1"]
 
 #------------------------------------------------------------------------
 
