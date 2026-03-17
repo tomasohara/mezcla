@@ -28,6 +28,7 @@ Sample usage:
 # Standard modules
 import atexit
 import importlib
+import os
 import pathlib
 import time
 from collections.abc import Iterable
@@ -42,6 +43,14 @@ from mezcla import html_utils
 from mezcla.my_regex import my_re
 ## NOTE: extract_document_text is now dynamic (in case textract not available)
 ## OLD: from mezcla import extract_document_text
+
+# NOTE:
+# - llm_desktop_search uses Hugging Face sentence-transformer embeddings backed by torch.
+# - Prevent transformers from eagerly importing tensorflow unless the caller explicitly
+#   opts in; newer protobuf releases can otherwise emit MessageFactory/GetPrototype warnings.
+# - See https://leeroopedia.com/index.php/Heuristic:Huggingface_Datatrove_VLLM_Startup_Optimization.
+os.environ.setdefault("USE_TF", "0")
+os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
 
 # Installed modules
 Document = importlib.import_module(
