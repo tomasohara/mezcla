@@ -142,7 +142,7 @@ TEMPERATURE = system.getenv_int(
     "TEMPERATURE", 0.01,
     description="Degree of randomness or creativity of generated text")
 CONTEXT_LENGTH = system.getenv_int(
-    "CONTEXT_LENGTH", 512,
+    "CONTEXT_LENGTH", 2048,
     description="Context window size in tokens")
 GPU_LAYERS = system.getenv_int(
     "GPU_LAYERS", (0 if (TORCH_DEVICE == "cpu") else -1),
