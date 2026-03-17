@@ -1300,6 +1300,8 @@ else:
 
     trace_level = 0
 
+    max_trace_value_len = 0
+    
     class DebugWrapper:  # type: ignore[no-redef]
         """Non-debug stub for DebugWrapper class"""
         pass
