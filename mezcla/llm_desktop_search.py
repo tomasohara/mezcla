@@ -411,9 +411,20 @@ class DesktopSearch:
         if not self.db:
             self.load_index()
         docs = self.db.similarity_search_with_score(query=query, k=num)
-        print("Similar documents:")
-        for doc in docs:
-            print(doc)
+        print(f"Similar documents ({len(docs)}):")
+        for i, (doc, score) in enumerate(docs):
+            meta = doc.metadata
+            source = meta.get('source', '?')
+            start_index = meta.get('start_index', '?')
+            extra = {k: v for k, v in meta.items() if k not in ('source', 'start_index')}
+            print(f"- result: {i + 1}")
+            print(f"  score: {score:.4f}")
+            print(f"  source: {source}")
+            print(f"  start_index: {start_index}")
+            for key, val in extra.items():
+                print(f"  {key}: {val}")
+            print(f"  content:")
+            print(gh.indent(doc.page_content, indentation="    "))
         gpu_utils.trace_gpu_usage()
 
 class Script(Main):
