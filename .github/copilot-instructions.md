@@ -91,3 +91,22 @@ Of course, this can be awkward for in-depth changes so ask for clarification.
 Some variations follow. For single-line changes, just use "## OLD: ...". When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
 0. When making most changes, create a new git branch based on development, using a name such as 'code-conversion'.
+
+## Debug level conventions
+
+```
+Try to use trace level values according to following tips (via debug.py):
+    ALWAYS = 0              # no filtering; added mainly for completeness
+    ERROR = 1               # definite errors; typically shown
+    WARNING = 2             # possible errors; typically shown
+    DEFAULT = WARNING       # by default just warnings and errors
+    USUAL = 3               # usual in sense of debugging purposes
+    DETAILED = 4            # info useful for flow of control, etc.
+    VERBOSE = 5             # useful stuff for debugging
+    QUITE_DETAILED = 6      # detailed I/O
+    QUITE_VERBOSE = 7       # usually for I/O, etc. by helper functions
+    MOST_DETAILED = 8       # for high-frequency helpers like to_float
+    MOST_VERBOSE = 9        # for internal debugging
+```
+
+Basically, levels up to 4 are for usual execution, whereas 5+ are for debugging proper.
