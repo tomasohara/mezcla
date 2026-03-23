@@ -115,6 +115,8 @@ def main() -> None:
 
     main_app = Main(
         description=__doc__.format(script=gh.basename(__file__)),
+        skip_input=True,
+        manual_input=True,
         text_options=[
             (FORMAT_OPT, "Output format (pdf or docx). Default: pdf", "pdf"),
             (ENGINE_OPT, "Conversion engine (libreoffice or pandoc). Default: libreoffice", "libreoffice"),
