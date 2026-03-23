@@ -117,6 +117,12 @@ def main() -> None:
         description=__doc__.format(script=gh.basename(__file__)),
         skip_input=True,
         manual_input=True,
+        boolean_options=[
+            ("pdf", "Output format is PDF (default)"),
+            ("docx", "Output format is DOCX"),
+            ("libreoffice", "Conversion engine is LibreOffice (default)"),
+            ("pandoc", "Conversion engine is Pandoc"),
+        ],
         text_options=[
             (FORMAT_OPT, "Output format (pdf or docx). Default: pdf", "pdf"),
             (ENGINE_OPT, "Conversion engine (libreoffice or pandoc). Default: libreoffice", "libreoffice"),
@@ -126,9 +132,18 @@ def main() -> None:
     debug.assertion(main_app.parsed_args)
     
     fmt_opt = main_app.get_parsed_option(FORMAT_OPT)
+    if main_app.get_parsed_option("docx"):
+        fmt_opt = "docx"
+    elif main_app.get_parsed_option("pdf"):
+        fmt_opt = "pdf"
+
     eng_opt = main_app.get_parsed_option(ENGINE_OPT)
+    if main_app.get_parsed_option("pandoc"):
+        eng_opt = "pandoc"
+    elif main_app.get_parsed_option("libreoffice"):
+        eng_opt = "libreoffice"
     in_file = main_app.get_parsed_argument(FILENAME)
-    out_file = getattr(main_app.parsed_args, "output_file", None)
+    out_file = main_app.get_parsed_argument("output_file")
 
     converter = HtmlConverter(engine=eng_opt, out_format=fmt_opt)
     
