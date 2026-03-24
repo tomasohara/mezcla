@@ -8,7 +8,7 @@
 #
 
 """
-Converts HTML files to PDF or DOCX using LibreOffice (high fidelity) or Pandoc (quick & dirty).
+Converts HTML files to PDF or DOCX using LibreOffice (high fidelity), Pandoc (quick & dirty), or Selenium (browser rendering).
 
 Sample usage:
    html_converter.py --format pdf --engine libreoffice input.html output.pdf
@@ -19,6 +19,8 @@ import os
 import shutil
 import tempfile
 import subprocess
+import base64
+import time
 from typing import Optional
 
 # Local modules
@@ -45,8 +47,11 @@ class HtmlConverter:
         debug.trace_expr(TL.VERBOSE, engine, out_format, kwargs, prefix="in HtmlConverter.__init__: ")
         self.engine = engine.lower()
         self.out_format = out_format.lower()
-        debug.assertion(self.engine in ["libreoffice", "pandoc"], "Invalid engine")
+        debug.assertion(self.engine in ["libreoffice", "pandoc", "selenium"], "Invalid engine")
         debug.assertion(self.out_format in ["pdf", "docx"], "Invalid format")
+        if self.engine == "selenium" and self.out_format != "pdf":
+            system.print_error("Warning: Selenium engine only supports PDF output. Format will be forced to PDF.")
+            self.out_format = "pdf"
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
     def _apply_print_fix(self, html_path: str) -> str:
@@ -68,8 +73,8 @@ class HtmlConverter:
         debug.trace(TL.DETAILED, f"Converting {input_file} to {output_file} using {self.engine}")
         
         temp_html = None
-        if self.engine == "libreoffice":
-            # Apply CSS fix for LibreOffice print truncation
+        if self.engine in ["libreoffice", "selenium"]:
+            # Apply CSS fix for print truncation
             temp_html = self._apply_print_fix(input_file)
             work_html = temp_html
         else:
@@ -99,9 +104,49 @@ class HtmlConverter:
                 subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 if os.path.exists("./pandoc_media_tmp"):
                     shutil.rmtree("./pandoc_media_tmp", ignore_errors=True)
+
+            elif self.engine == "selenium":
+                try:
+                    from selenium import webdriver
+                    from selenium.webdriver.chrome.options import Options
+                except ImportError:
+                    system.print_error("Error: Selenium engine requires selenium to be installed (pip install selenium).")
+                    return False
+                
+                options = Options()
+                options.add_argument('--headless')
+                options.add_argument('--disable-gpu')
+                options.add_argument('--no-sandbox')
+                options.add_argument('--disable-dev-shm-usage')
+                
+                debug.trace(TL.DETAILED, "Starting Selenium Chrome WebDriver")
+                driver = webdriver.Chrome(options=options)
+                try:
+                    file_url = f"file://{os.path.abspath(work_html)}"
+                    debug.trace(TL.DETAILED, f"Loading {file_url}")
+                    driver.get(file_url)
+                    time.sleep(1) # wait for rendering
+                    
+                    print_options = {
+                        'landscape': False,
+                        'displayHeaderFooter': False,
+                        'printBackground': True,
+                        'preferCSSPageSize': True,
+                    }
+                    debug.trace(TL.DETAILED, "Executing Page.printToPDF")
+                    result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
+                    
+                    with open(output_file, 'wb') as f:
+                        f.write(base64.b64decode(result['data']))
+                finally:
+                    driver.quit()
+
             return True
         except subprocess.CalledProcessError as e:
             system.print_error(f"Conversion failed: {e.stderr.decode('utf-8')}")
+            return False
+        except Exception as e:
+            system.print_error(f"Conversion failed: {e}")
             return False
         finally:
             if temp_html and os.path.exists(temp_html):
@@ -122,10 +167,11 @@ def main() -> None:
             ("docx", "Output format is DOCX"),
             ("libreoffice", "Conversion engine is LibreOffice (default)"),
             ("pandoc", "Conversion engine is Pandoc"),
+            ("selenium", "Conversion engine is Selenium (PDF only)"),
         ],
         text_options=[
             (FORMAT_OPT, "Output format (pdf or docx). Default: pdf", "pdf"),
-            (ENGINE_OPT, "Conversion engine (libreoffice or pandoc). Default: libreoffice", "libreoffice"),
+            (ENGINE_OPT, "Conversion engine (libreoffice, pandoc, or selenium). Default: libreoffice", "libreoffice"),
         ],
         positional_arguments=[FILENAME, "output_file"], 
     )
@@ -138,7 +184,9 @@ def main() -> None:
         fmt_opt = "pdf"
 
     eng_opt = main_app.get_parsed_option(ENGINE_OPT)
-    if main_app.get_parsed_option("pandoc"):
+    if main_app.get_parsed_option("selenium"):
+        eng_opt = "selenium"
+    elif main_app.get_parsed_option("pandoc"):
         eng_opt = "pandoc"
     elif main_app.get_parsed_option("libreoffice"):
         eng_opt = "libreoffice"
