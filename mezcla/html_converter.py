@@ -60,7 +60,7 @@ class HtmlConverter:
         with os.fdopen(temp_fd, "w", encoding="utf-8") as out_f, open(html_path, "r", encoding="utf-8") as in_f:
             for line in in_f:
                 if "</head>" in line.lower() or "</HEAD>" in line:
-                    out_f.write("<style>@media print { body, html { height: auto !important; overflow: visible !important; position: static !important; } #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] { display: none !important; } }</style>\n")
+                    out_f.write("<style>@media print { body, html { height: auto !important; overflow: visible !important; position: static !important; } #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] { display: none !important; } }</style>\n")
                 out_f.write(line)
         return temp_path
 
@@ -129,6 +129,8 @@ class HtmlConverter:
                     
                     # Remove "Save Page WE" info bar
                     driver.execute_script('''
+                        var container = document.getElementById("savepage-pageinfo-bar-container");
+                        if (container) container.remove();
                         var bar = document.getElementById("savepage-pageinfo-bar");
                         if (bar) bar.remove();
                         var dt = document.getElementById("savepage-pageinfo-bar-datetime");
