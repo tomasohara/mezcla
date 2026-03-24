@@ -255,10 +255,11 @@ if THE_MODULE:
 
     class _FakeSplitter:
         """Splitter stub that preserves document ordering"""
-        def __init__(self, chunk_size=None, chunk_overlap=None):
+        def __init__(self, chunk_size=None, chunk_overlap=None, add_start_index=None):
             """Capture the requested chunk configuration for sanity checking."""
             self.chunk_size = chunk_size
             self.chunk_overlap = chunk_overlap
+            self.add_start_index = add_start_index
 
         def split_documents(self, documents):
             """Return the input documents unchanged for deterministic tests."""
