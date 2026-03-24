@@ -60,7 +60,7 @@ class HtmlConverter:
         with os.fdopen(temp_fd, "w", encoding="utf-8") as out_f, open(html_path, "r", encoding="utf-8") as in_f:
             for line in in_f:
                 if "</head>" in line.lower() or "</HEAD>" in line:
-                    out_f.write("<style>@media print { body, html { height: auto !important; overflow: visible !important; position: static !important; } #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] { display: none !important; } }</style>\n")
+                    out_f.write("<style>@media print { body, html { height: auto !important; overflow: visible !important; position: static !important; display: block !important; } * { overflow: visible !important; height: auto !important; } #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] { display: none !important; } }</style>\n")
                 out_f.write(line)
         return temp_path
 
