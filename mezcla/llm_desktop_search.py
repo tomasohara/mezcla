@@ -118,13 +118,15 @@ EMBEDDING_MODEL = system.getenv_text(
     "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2",
     description="Model for sentence transformer embeddings")
 # note: changed default to currrent dir rather than home
-QA_LLM_DEFAULT = "llama-2-7b-chat.ggmlv3.q8_0.bin"
+## OLD: QA_LLM_DEFAULT = "llama-2-7b-chat.ggmlv3.q8_0.bin"
+QA_LLM_DEFAULT = "mistral-7b-instruct-v0.3-q4_k_m.gguf"
 QA_LLM_MODEL = system.getenv_text(
     "QA_LLM_MODEL", QA_LLM_DEFAULT,
-    description="Path to LLM model file for Q&A, such as a llama-2-7b .bin file")
+    description="Path to LLM model file for Q&A, such as a llama-2-7b .bin file or mistral-7b-instruct .gguf file")
 QA_LLM_TYPE = system.getenv_text(
-    "QA_LLM_TYPE", "llama",
-    description="Type of transformer model for Q&A, such as llama or gpt2")
+    ## OLD: "QA_LLM_TYPE", "llama",
+    "QA_LLM_TYPE", "mistral",
+    description="Type of transformer model for Q&A, such as llama or mistral")
 ALLOW_UNSAFE_MODELS_DEFAULT = True
 ALLOW_UNSAFE_MODELS = system.getenv_value(
     "ALLOW_UNSAFE_MODELS", ALLOW_UNSAFE_MODELS_DEFAULT,
