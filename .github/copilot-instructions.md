@@ -92,6 +92,8 @@ Some variations follow. For single-line changes, just use "## OLD: ...". When fi
 
 0. When making most changes, create a new git branch based on development, using a name such as 'code-conversion'.
 
+1. Don't check-in code without permission. I wish to review code before updating git.
+
 ## Debug level conventions
 
 ```
