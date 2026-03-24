@@ -55,12 +55,12 @@ class HtmlConverter:
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
     def _apply_print_fix(self, html_path: str) -> str:
-        """Applies CSS override for single-page printing issue."""
+        """Applies CSS override for single-page printing issue and hides Save Page WE info bar."""
         temp_fd, temp_path = tempfile.mkstemp(suffix=".html", text=True)
         with os.fdopen(temp_fd, "w", encoding="utf-8") as out_f, open(html_path, "r", encoding="utf-8") as in_f:
             for line in in_f:
                 if "</head>" in line.lower() or "</HEAD>" in line:
-                    out_f.write("<style>@media print { body, html { height: auto !important; overflow: visible !important; position: static !important; } }</style>\n")
+                    out_f.write("<style>@media print { body, html { height: auto !important; overflow: visible !important; position: static !important; } #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] { display: none !important; } }</style>\n")
                 out_f.write(line)
         return temp_path
 
@@ -127,6 +127,14 @@ class HtmlConverter:
                     driver.get(file_url)
                     time.sleep(1) # wait for rendering
                     
+                    # Remove "Save Page WE" info bar
+                    driver.execute_script('''
+                        var bar = document.getElementById("savepage-pageinfo-bar");
+                        if (bar) bar.remove();
+                        var dt = document.getElementById("savepage-pageinfo-bar-datetime");
+                        if (dt) dt.remove();
+                    ''')
+
                     print_options = {
                         'landscape': False,
                         'displayHeaderFooter': False,
