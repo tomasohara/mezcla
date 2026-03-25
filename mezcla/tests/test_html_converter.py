@@ -34,7 +34,7 @@ class TestIt(TestWrapper):
         
         # Create a simple test HTML
         html_content = ["<html><head><title>Test</title></head><body><h1>Hello LibreOffice PDF</h1></body></html>"]
-        in_file = "test_libreoffice.html"
+        in_file = self.get_temp_file() + ".html"
         with open(in_file, "w", encoding="utf-8") as f:
             f.write("\n".join(html_content))
         out_file = in_file.replace(".html", ".pdf")
@@ -54,7 +54,7 @@ class TestIt(TestWrapper):
         
         # Create a simple test HTML
         html_content = ["<html><head><title>Test</title></head><body><h1>Hello Pandoc DOCX</h1></body></html>"]
-        in_file = "test_pandoc.html"
+        in_file = self.get_temp_file() + ".html"
         with open(in_file, "w", encoding="utf-8") as f:
             f.write("\n".join(html_content))
         out_file = in_file.replace(".html", ".docx")
@@ -74,7 +74,7 @@ class TestIt(TestWrapper):
         
         # Create a simple test HTML
         html_content = ["<html><head><title>Test</title></head><body><h1>Hello Selenium PDF</h1></body></html>"]
-        in_file = "test_selenium.html"
+        in_file = self.get_temp_file() + ".html"
         with open(in_file, "w", encoding="utf-8") as f:
             f.write("\n".join(html_content))
         out_file = in_file.replace(".html", ".pdf")
