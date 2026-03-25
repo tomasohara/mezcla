@@ -425,7 +425,7 @@ class DesktopSearch:
             print(f"  start_index: {start_index}")
             for key, val in extra.items():
                 print(f"  {key}: {val}")
-            print(f"  content:")
+            print("  content:")
             print(gh.indent(doc.page_content, indentation="    "))
         gpu_utils.trace_gpu_usage()
 
