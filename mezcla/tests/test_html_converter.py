@@ -41,6 +41,14 @@ class TestIt(TestWrapper):
         self.do_assert(os.path.exists(out_file), "Output file not created")
         if os.path.exists(out_file):
             self.do_assert(os.path.getsize(out_file) > 0, "Output file is empty")
+            try:
+                import textract
+                text = textract.process(out_file).decode("utf-8", errors="ignore")
+                self.do_assert(f"Hello {title}" in text, "Title text not found in extracted text")
+            except ImportError:
+                debug.trace(3, "textract not installed, skipping text verification")
+            except Exception as e:
+                debug.trace(3, f"text verification failed: {e}")
 
     def test_01_libreoffice_pdf(self):
         """Tests converting a simple HTML to PDF using libreoffice"""
