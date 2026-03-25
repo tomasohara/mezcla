@@ -640,6 +640,7 @@ def create_text_proc(name, *args, **kwargs):
 
 def download_nltk_resources():
     """Download NLTK resources from their website"""
+    debug.trace(3, "in download_nltk_resources")
     nltk.download(['punkt', 'punkt_tab', 
                    'averaged_perceptron_tagger',
                    'averaged_perceptron_tagger_eng',
@@ -650,7 +651,8 @@ def download_nltk_resources():
 def usage():
     """Displays command-line usage"""
     usage_note = """
-Usage: _SCRIPT_ [--help] [--just-tokenize] [--just-chunk] [--lowercase] file
+Usage: _SCRIPT_ [--help] [--just-tokenize] [--just-chunk] [--lowercase] file ...
+    
 Example:
 
 echo "My dawg has fleas." | _SCRIPT_ -
@@ -660,6 +662,7 @@ Notes:
 - In standalone mode it runs the text processing pipeline over the file:
      sentence splitting, word tokenization, and part-of-speech tagging
 - Set SKIP_NLTK environment variable to 1 to disable NLTK usage.
+- Set DOWNLOAD_DATA environment variable to 1 to download NLTK data.
 """
     # TODO: __file__ => sys.argv[1]???
     system.print_stderr(usage_note.replace("_SCRIPT_", __file__))
@@ -678,7 +681,8 @@ def main():
     just_tokenize = False
     make_lowercase = False
     just_chunk = False
-    show_usage = ((len(sys.argv) == 1) or (sys.argv[1] == "--help"))
+    show_usage = (((len(sys.argv) == 1) and (not DOWNLOAD_DATA))
+                  or (sys.argv[:1] == ["--help"]))
     arg_num = 1
     while ((not show_usage) and arg_num < len(sys.argv) and (sys.argv[arg_num][0] == "-")):
         if (sys.argv[arg_num] == "--just-tokenize"):
