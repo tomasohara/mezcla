@@ -48,13 +48,6 @@ class TestTextProcessing(TestWrapper):
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    def setUp(self) -> None:
-        super().setUp()
-        self.text_example = self.create_temp_file(gh.read_file(TEXT_EXAMPLE))
-        self.text_example_tags = self.create_temp_file(gh.read_file(TEXT_EXAMPLE_TAGS))
-        self.word_freq_file = self.create_temp_file(gh.read_file(WORD_FREQ_FILE))
-        self.word_pos_freq_file = self.create_temp_file(gh.read_file(WORD_POS_FREQ_FILE))
-
     def test_split_sentences(self):
         """Ensure split_sentences works as expected"""
         debug.trace(4, "test_split_sentences()")
@@ -133,7 +126,7 @@ class TestTextProcessing(TestWrapper):
         # the corresponding hash needs to be reset when changed.
         ## OLD: previous_value = THE_MODULE.SKIP_ENCHANT
         self.monkeypatch.setattr(THE_MODULE, 'SKIP_ENCHANT', True)
-        self.monkeypatch.setattr(THE_MODULE, 'WORD_FREQ_FILE', self.word_freq_file)
+        self.monkeypatch.setattr(THE_MODULE, 'WORD_FREQ_FILE', WORD_FREQ_FILE)
         self.monkeypatch.setattr(THE_MODULE, 'word_freq_hash', None)
         assert not THE_MODULE.has_spelling_mistake('the')
         assert THE_MODULE.has_spelling_mistake('ai')
@@ -150,8 +143,8 @@ class TestTextProcessing(TestWrapper):
     def test_read_freq_data(self):
         """Ensure read_freq_data works as expected"""
         debug.trace(4, "test_read_freq_data()")
-        lines = gh.read_lines(self.word_freq_file)
-        freq = THE_MODULE.read_freq_data(self.word_freq_file)
+        lines = gh.read_lines(WORD_FREQ_FILE)
+        freq = THE_MODULE.read_freq_data(WORD_FREQ_FILE)
         for line in lines:
             if line.startswith("#"):
                 continue
@@ -162,8 +155,8 @@ class TestTextProcessing(TestWrapper):
     def test_read_word_POS_data(self): # pylint: disable=invalid-name
         """Ensure read_word_POS_data works as expected"""
         debug.trace(4, "test_read_word_POS_data()")
-        lines = gh.read_lines(self.word_pos_freq_file)
-        freq_pos = THE_MODULE.read_word_POS_data(self.word_pos_freq_file)
+        lines = gh.read_lines(WORD_POS_FREQ_FILE)
+        freq_pos = THE_MODULE.read_word_POS_data(WORD_POS_FREQ_FILE)
         for line in lines:
             if line.startswith("#"):
                 continue
@@ -243,16 +236,16 @@ class TestTextProcessing(TestWrapper):
     def test_all(self):
         """Ensure text_processing without argument works as expected"""
         debug.trace(4, "test_all()")
-        output = [tag.strip() for tag in self.run_script(data_file=self.text_example).split(',')]
-        expected_tags = [tag.strip() for tag in gh.read_file(self.text_example_tags)[:-1].split(',')]
+        output = [tag.strip() for tag in self.run_script(data_file=TEXT_EXAMPLE).split(',')]
+        expected_tags = [tag.strip() for tag in gh.read_file(TEXT_EXAMPLE_TAGS)[:-1].split(',')]
         for output_tag, expected_tag in zip(output, expected_tags):
             assert output_tag == expected_tag
 
     def test_just_tokenize(self):
         """Ensure just_tokenize argument works as expected"""
         debug.trace(4, "test_just_tokenize()")
-        tokenized_text = self.run_script(data_file=self.text_example,options="--just-tokenize")
-        non_tokenized_text = gh.read_file(self.text_example)
+        tokenized_text = self.run_script(data_file=TEXT_EXAMPLE,options="--just-tokenize")
+        non_tokenized_text = gh.read_file(TEXT_EXAMPLE)
         # match every token except whitespaces, 
         # that way tokenized and non-tokenized texts are equals 
         matches_tokenized = my_re.match(r'\S', tokenized_text).groups()
@@ -264,8 +257,8 @@ class TestTextProcessing(TestWrapper):
     def test_make_lowercase(self):
         """Ensure make_lowercase argument works as expected"""
         debug.trace(4, "test_make_lowercase()")
-        output_normal = self.run_script(data_file=self.text_example,options="--just-tokenize")
-        output_lower = self.run_script(data_file=self.text_example,options="--just-tokenize --lowercase")
+        output_normal = self.run_script(data_file=TEXT_EXAMPLE,options="--just-tokenize")
+        output_lower = self.run_script(data_file=TEXT_EXAMPLE,options="--just-tokenize --lowercase")
         self.do_assert(output_lower == output_normal.lower(), "TODO: code test")
 
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
