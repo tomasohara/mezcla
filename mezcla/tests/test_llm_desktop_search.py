@@ -252,11 +252,18 @@ if THE_MODULE:
 
     class _FakeSplitter:
         """Splitter stub that preserves document ordering"""
+<<<<<<< development
         def __init__(self, chunk_size=None, chunk_overlap=None, add_start_index=None):
             """Capture the requested chunk configuration for sanity checking."""
             self.chunk_size = chunk_size
             self.chunk_overlap = chunk_overlap
             self.add_start_index = add_start_index
+=======
+        def __init__(self, chunk_size=None, chunk_overlap=None):
+            """Capture the requested chunk configuration for sanity checking."""
+            self.chunk_size = chunk_size
+            self.chunk_overlap = chunk_overlap
+>>>>>>> main
 
         def split_documents(self, documents):
             """Return the input documents unchanged for deterministic tests."""
@@ -525,6 +532,7 @@ def test_import_disables_tensorflow_backend_by_default():
     assert "GetPrototype" not in completed.stderr
     assert completed.stdout.splitlines()[-2:] == ["0", "1"]
 
+<<<<<<< development
 ## TODO: Use self.script_output method if possible instead of gh.run()
 # Environment Variables for newer tests
 ## TODO2: use getenv_value when default is empty: use DEBUG_LEVEL=4 to find out why!
@@ -749,6 +757,8 @@ class TestLLMDesktopSearch(TestWrapper):
         for t in terms:
             self.assertIn(t, command_output)
 
+=======
+>>>>>>> main
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
