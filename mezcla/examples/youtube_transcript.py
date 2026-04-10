@@ -57,10 +57,10 @@ class YouTubeLikeFormatter(formatters._TextBasedFormatter):      # pylint: disab
     def _format_transcript_header(self, lines):
         return "Transcript\n\n" + "\n".join(lines) + "\n"
 
-    def _format_transcript_helper(self, i, time_text, line):
+    def _format_transcript_helper(self, i, time_text, snippet):
         # drops second timestamp (e.g., "00:00:28.500 --> 00:00:30.060" => "00:00:28.500")
         time_text = my_re.sub(r" --> \S+", "", time_text)
-        return "{} {}".format(time_text, line.text)
+        return "{} {}".format(time_text, snippet.text)
 
     def format_transcript(self, transcript, **kwargs):
         """Format transcript with YouTube-like timestamps."""
@@ -92,6 +92,8 @@ def main():
         url = YOUTUBE_PREFIX + url
     ## TODO: video_id = my_re.sub(r"(https://)?www.youtube.com/watch\?v=", "", main_app.filename)
     debug.trace_expr(5, url, video_id)
+    ## TODO: strip url parameters
+    debug.assertion("t=" not in url)
 
     # Download the transcript and print using YouTubeLike-format
     # note: youtube_transcript_api
@@ -99,18 +101,25 @@ def main():
     print("")
     print(url)
     print("")
+    video_languages = VIDEO_LANGS.split()
     try:
         # Get the transcript using the specified languages
         ## TODO4: add enhancement request for accepting None
         ## OLD: transcript = ytt_api.YouTubeTranscriptApi().fetch()
         transcript = ytt_api.YouTubeTranscriptApi().fetch(
-            video_id, languages=VIDEO_LANGS.split())
+            video_id, languages=video_languages)
         debug.trace_expr(5, transcript, max_len=256)
         debug.trace_values(6, transcript, "transcript")
         print(YouTubeLikeFormatter().format_transcript(transcript))
     except:
-        system.print_exception_info("transcript access")
+        system.print_exception_info(f"transcript access ({video_languages=}")
         print("n/a")
+        snippet = (
+            f"""
+            import youtube_transcript_api as ytt_api
+            ytt_api.YouTubeTranscriptApi().fetch({video_id!r}, languages={video_languages!r})
+            """)
+        debug.trace(4, f"Try via ipython:\n{snippet}")
 
     return
 

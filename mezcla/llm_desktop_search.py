@@ -33,6 +33,23 @@ import pathlib
 import time
 from collections.abc import Iterable
 
+<<<<<<< development
+# Installed modules
+## OLD:
+## from langchain.text_splitter import RecursiveCharacterTextSplitter
+## from langchain.prompts import PromptTemplate
+## from langchain.chains import RetrievalQA
+## from langchain_core.documents import Document
+## from langchain_community.document_loaders import DirectoryLoader, TextLoader
+## OLD: LangChainDeprecationWarning 
+## from langchain_community.embeddings import HuggingFaceEmbeddings
+## OLD: from langchain_huggingface import HuggingFaceEmbeddings
+## OLD: from langchain_community.llms import CTransformers
+## OLD: from langchain_community.vectorstores import FAISS
+## OLD: from langchain_huggingface import HuggingFaceEmbeddings
+
+=======
+>>>>>>> main
 # Local modules
 from mezcla import debug
 from mezcla import glue_helpers as gh
@@ -118,13 +135,15 @@ EMBEDDING_MODEL = system.getenv_text(
     "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2",
     description="Model for sentence transformer embeddings")
 # note: changed default to currrent dir rather than home
-QA_LLM_DEFAULT = "llama-2-7b-chat.ggmlv3.q8_0.bin"
+## OLD: QA_LLM_DEFAULT = "llama-2-7b-chat.ggmlv3.q8_0.bin"
+QA_LLM_DEFAULT = "mistral-7b-instruct-v0.3-q4_k_m.gguf"
 QA_LLM_MODEL = system.getenv_text(
     "QA_LLM_MODEL", QA_LLM_DEFAULT,
-    description="Path to LLM model file for Q&A, such as a llama-2-7b .bin file")
+    description="Path to LLM model file for Q&A, such as a llama-2-7b .bin file or mistral-7b-instruct .gguf file")
 QA_LLM_TYPE = system.getenv_text(
-    "QA_LLM_TYPE", "llama",
-    description="Type of transformer model for Q&A, such as llama or gpt2")
+    ## OLD: "QA_LLM_TYPE", "llama",
+    "QA_LLM_TYPE", "mistral",
+    description="Type of transformer model for Q&A, such as llama or mistral")
 ALLOW_UNSAFE_MODELS_DEFAULT = True
 ALLOW_UNSAFE_MODELS = system.getenv_value(
     "ALLOW_UNSAFE_MODELS", ALLOW_UNSAFE_MODELS_DEFAULT,
@@ -142,7 +161,7 @@ TEMPERATURE = system.getenv_int(
     "TEMPERATURE", 0.01,
     description="Degree of randomness or creativity of generated text")
 CONTEXT_LENGTH = system.getenv_int(
-    "CONTEXT_LENGTH", 512,
+    "CONTEXT_LENGTH", 2048,
     description="Context window size in tokens")
 GPU_LAYERS = system.getenv_int(
     "GPU_LAYERS", (0 if (TORCH_DEVICE == "cpu") else -1),
@@ -156,14 +175,14 @@ INDEX_ONLY_RECENT = system.getenv_bool(
     description="whether or not to filter files by modification time newer than index")
 
 
-def get_file_mod_fime(path: str) -> float:
+def get_file_mod_time(path: str) -> float:
     """Returns file modification time in fractional seconds
     Note: -1 is returned if the file doesn't exist
     """
-    # EX: (get_file_mod_fime("/etc/passwd") > get_file_mod_fime("/boot/vmlinuz"))
-    # EX: get_file_mod_fime(" /etc /password") => -1
+    # EX: (get_file_mod_time("/etc/passwd") > get_file_mod_time("/boot/vmlinuz"))
+    # EX: get_file_mod_time(" /etc /password") => -1
     result = (system.get_file_modification_time(path, as_float=True) or -1)
-    debug.trace(7, f"get_file_mod_fime({path}) => {result}")
+    debug.trace(7, f"get_file_mod_time({path}) => {result}")
     return result
 
 
@@ -172,27 +191,28 @@ def get_last_modified_date(iterable: Iterable) -> float:
        or -1 if iterable is empty or files don't exist"""
     result = -1
     if iterable:
-        result = max(map(get_file_mod_fime, iterable))
+        result = max(map(get_file_mod_time, iterable))
+    debug.trace(7, f"get_last_modified_date() => {result}")
     return result
 
 def correct_metadata(doc: Document, base_dir: str) -> Document:
     """removes BASE_DIR from the source metadata path
        so it represents the actual source of the file"""
     # TODO3: fix docstrings with respect to hardcoded assumptions
-    debug.trace_expr(4, base_dir)
+    debug.trace_expr(6, base_dir)
     doc_metadata = doc.metadata
     old_source = doc_metadata['source']
-    debug.trace_expr(4, old_source)
     new_source = old_source.replace(base_dir, "")
     debug.assertion(new_source != old_source)
-    debug.trace_expr(4, new_source)
+    debug.trace_expr(6, old_source, new_source)
     doc_metadata['source'] = new_source
     doc.metadata = doc_metadata
-    debug.trace(5, f"correct_metadata({doc!r}, {base_dir!r}) => {doc!r}")
+    debug.trace(6, f"correct_metadata({doc!r}, {base_dir!r}) => {doc!r}")
     return doc
 
 def convert_to_txt(in_file: str) -> str:
     """reads non-txt files and returns the text inside them"""
+    debug.trace(5, f"convert_to_txt({in_file})")
     text = ""
     try:
         if in_file.endswith('.html'):
@@ -223,6 +243,10 @@ class DesktopSearch:
 
     def load_embeddings(self):
         """Load embeddings model if needed"""
+<<<<<<< development
+        debug.trace(4, "load_embeddings()")
+=======
+>>>>>>> main
         if not self.embeddings:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name=EMBEDDING_MODEL,
@@ -232,9 +256,18 @@ class DesktopSearch:
 
     def load_llm(self):
         """Load Q&A model if needed"""
+<<<<<<< development
+        debug.trace(4, "load_llm()")
+        if not self.llm:
+            model_path = pathlib.Path(QA_LLM_MODEL).expanduser()
+            # note: with_name only accepts a bare filename, not a path with separators
+            model_basename = pathlib.Path(QA_LLM_MODEL).name
+            module_model_path = pathlib.Path(__file__).with_name(model_basename)
+=======
         if not self.llm:
             model_path = pathlib.Path(QA_LLM_MODEL).expanduser()
             module_model_path = pathlib.Path(__file__).with_name(QA_LLM_MODEL)
+>>>>>>> main
             if model_path.exists():
                 model_name = str(model_path.resolve())
             elif module_model_path.exists():
@@ -245,17 +278,29 @@ class DesktopSearch:
                       'context_length': CONTEXT_LENGTH}
             self.llm = CTransformers(model=model_name, model_type=QA_LLM_TYPE,
                                      config=config, gpu_layers=GPU_LAYERS)
+<<<<<<< development
+            debug.trace_expr(5, self.llm)
+=======
             debug.trace_expr(4, self.llm)
+>>>>>>> main
             debug.trace_object(5, self.llm)
         return self.llm
 
     def ensure_index_store_dir(self):
         """Ensure the persistent index directory exists."""
+<<<<<<< development
+        debug.trace(5, f"ensure_index_store_dir(): dir={self.index_store_dir!r}")
+=======
+>>>>>>> main
         if not system.is_directory(self.index_store_dir):
             gh.full_mkdir(self.index_store_dir)
 
     def create_temp_index_dir(self, dir_path):
         """Create and return the temp directory used while indexing."""
+<<<<<<< development
+        debug.trace(4, f"create_temp_index_dir({dir_path!r})")
+=======
+>>>>>>> main
         timestamp = debug.timestamp().split(' ', maxsplit=1)[0]
         real_path = system.real_path(dir_path)
         temp_base = system.form_path(system.TEMP_DIR, f"llm_desktop_search.{timestamp}")
@@ -267,10 +312,26 @@ class DesktopSearch:
 
     def get_files_to_convert(self, real_path):
         """Return eligible files, optionally filtered by modification time."""
+<<<<<<< development
+        debug.trace(4, f"get_files_to_convert({real_path!r})")
+=======
+>>>>>>> main
         list_files = sorted(system.get_directory_filenames(real_path))
         filtered_files = list_files
         modif_time = get_last_modified_date(system.get_directory_filenames(self.index_store_dir))
         if INDEX_ONLY_RECENT:
+<<<<<<< development
+            filtered_files = [f for f in list_files if (get_file_mod_time(f) > modif_time)]
+        result = sorted(
+            found for found in filtered_files
+            if my_re.match(r'.*\.(pdf|docx|html|txt)', found))
+        debug.trace(4, f"get_files_to_convert() => {len(result)} file(s): {result}")
+        return result
+
+    def populate_temp_index_dir(self, temp_path, files_to_convert):
+        """Copy or convert source files into the temp indexing directory."""
+        debug.trace(4, f"populate_temp_index_dir({temp_path!r}): {len(files_to_convert)} file(s)")
+=======
             filtered_files = [f for f in list_files if (get_file_mod_fime(f) > modif_time)]
         return sorted(
             found for found in filtered_files
@@ -278,35 +339,69 @@ class DesktopSearch:
 
     def populate_temp_index_dir(self, temp_path, files_to_convert):
         """Copy or convert source files into the temp indexing directory."""
+>>>>>>> main
         if not KEEP_TEMP_FILES:
             atexit.register(gh.delete_directory, temp_path)
         for num, file in enumerate(files_to_convert):
             filename = system.filename_proper(file)
             file_tmp_path = system.form_path(temp_path, filename)
             if file.endswith('.txt'):
+<<<<<<< development
+                debug.trace(5, f"  [{num}] copying txt: {file!r}")
+                text = system.read_entire_file(file, encoding="unicode_escape")
+                system.write_file(file_tmp_path, text)
+            else:
+                temp_file = f"{file_tmp_path}_temp.txt"
+                debug.trace(5, f"  [{num}] converting to txt: {file!r} => {temp_file!r}")
+=======
                 text = system.read_entire_file(file, encoding="unicode_escape")
                 system.write_file(file_tmp_path, text)
             else:
                 temp_file = f"{file_tmp_path}_temp_{num}.txt"
+>>>>>>> main
                 system.write_file(temp_file, convert_to_txt(file))
 
     def load_chunked_documents(self, temp_path, temp_base):
         """Load, normalize, and split temp documents into sorted chunks."""
+<<<<<<< development
+        debug.trace(4, f"load_chunked_documents({temp_path!r})")
+=======
+>>>>>>> main
         loader = DirectoryLoader(temp_path, glob="*.txt", loader_cls=TextLoader)
         documents = sorted(
             loader.load(),
             key=lambda doc: (doc.metadata.get('source', ''), doc.page_content))
+<<<<<<< development
+        debug.trace(4, f"  loaded {len(documents)} document(s)")
+        debug.trace_expr(5, documents, max_len=1024)
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP, add_start_index=True)
+=======
         debug.trace_expr(5, len(documents), documents, max_len=1024)
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+>>>>>>> main
         texts = splitter.split_documents(documents)
+        debug.trace(4, f"  split into {len(texts)} chunk(s)")
         corrected_texts = [correct_metadata(text, temp_base) for text in texts]
+<<<<<<< development
+        result = sorted(
+            corrected_texts,
+            key=lambda doc: (doc.metadata.get('source', ''), doc.page_content))
+        debug.trace(5, f"load_chunked_documents() => {len(result)} chunk(s)")
+        return result
+
+    def save_index_documents(self, corrected_texts):
+        """Merge chunked documents into the persistent vector store."""
+        debug.trace(4, f"save_index_documents(): {len(corrected_texts)} chunk(s)")
+=======
         return sorted(
             corrected_texts,
             key=lambda doc: (doc.metadata.get('source', ''), doc.page_content))
 
     def save_index_documents(self, corrected_texts):
         """Merge chunked documents into the persistent vector store."""
+>>>>>>> main
         self.load_embeddings()
         try:
             self.load_index()
@@ -318,6 +413,20 @@ class DesktopSearch:
             self.db = FAISS.from_documents(corrected_texts, self.embeddings)
         self.db.save_local(self.index_store_dir)
         self.qa_llm = None
+<<<<<<< development
+=======
+
+    def index_dir(self, dir_path):
+        """Index files at DIR_PATH"""
+        ## TODO4: look into indexing files from buffers rather than external files
+        debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
+        self.ensure_index_store_dir()
+        (_real_path, temp_base, temp_path) = self.create_temp_index_dir(dir_path)
+        files_to_convert = self.get_files_to_convert(system.real_path(dir_path))
+        self.populate_temp_index_dir(temp_path, files_to_convert)
+        corrected_texts = self.load_chunked_documents(temp_path, temp_base)
+        self.save_index_documents(corrected_texts)
+>>>>>>> main
 
     def index_dir(self, dir_path):
         """Index files at DIR_PATH"""
@@ -330,7 +439,7 @@ class DesktopSearch:
         corrected_texts = self.load_chunked_documents(temp_path, temp_base)
         self.save_index_documents(corrected_texts)
 
-        debug.trace_expr(4, self.db)
+        debug.trace_expr(5, self.db)
         gpu_utils.trace_gpu_usage()
 
         # show index info
@@ -392,9 +501,20 @@ class DesktopSearch:
         if not self.db:
             self.load_index()
         docs = self.db.similarity_search_with_score(query=query, k=num)
-        print("Similar documents:")
-        for doc in docs:
-            print(doc)
+        print(f"Similar documents ({len(docs)}):")
+        for i, (doc, score) in enumerate(docs):
+            meta = doc.metadata
+            source = meta.get('source', '?')
+            start_index = meta.get('start_index', '?')
+            extra = {k: v for k, v in meta.items() if k not in ('source', 'start_index')}
+            print(f"- result: {i + 1}")
+            print(f"  score: {score:.4f}")
+            print(f"  source: {source}")
+            print(f"  start_index: {start_index}")
+            for key, val in extra.items():
+                print(f"  {key}: {val}")
+            print("  content:")
+            print(gh.indent(doc.page_content, indentation="    "))
         gpu_utils.trace_gpu_usage()
 
 class Script(Main):

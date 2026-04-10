@@ -6,15 +6,19 @@ This repository contains miscellaneous Python scripts and utilities for R&D.
 
 ### Testing
 The primary test runner is a Bash script that wraps `pytest` and a custom test runner.
+Normally, you only need to run tests for modules that you change; however, if the
+changes are to core modules like main.py or system.py, it is best to rerun 
+all tests.
 
-*   **Run all tests**:
-    ```bash
-    ./run_tests.bash
-    ```
 *   **Run specific tests**:
     Use the `TEST_REGEX` environment variable to filter tests by name.
     ```bash
     TEST_REGEX='audio' ./run_tests.bash
+    ```
+
+*   **Run all tests**:
+    ```bash
+    ./run_tests.bash
     ```
 
 *   **Environment Variables**:
@@ -49,6 +53,7 @@ Documentation is built with Sphinx.
     *   Pylint is used with specific exclusions handled via command-line arguments or aliases (not a config file).
     *   Code style is "R&D focused" rather than strict "Pythonic production" code.
 	    Nonetheless, use good software engineering practices, such as using single return calls and adding sanity checks via assert (preferably debug.assertion).
+	*   Readability is important. For example, make sure dynamic imports are not buried without an indication that used at top (e.g., via comment in modules section).
 *   **License**: Code is licensed under **LGPLv3**.
 *   **Imports**: The package is designed to be installed or used with `PYTHONPATH` set to include the root directory (handled automatically by `run_tests.bash`).
 
@@ -86,3 +91,26 @@ Of course, this can be awkward for in-depth changes so ask for clarification.
 Some variations follow. For single-line changes, just use "## OLD: ...". When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
 0. When making most changes, create a new git branch based on development, using a name such as 'code-conversion'.
+
+0. Don't make edits outside of code directory without confirmation.
+
+1. Don't check-in code without permission. I wish to review code before updating git.
+
+## Debug level conventions
+
+```
+Try to use trace level values according to following tips (via debug.py):
+    ALWAYS = 0              # no filtering; added mainly for completeness
+    ERROR = 1               # definite errors; typically shown
+    WARNING = 2             # possible errors; typically shown
+    DEFAULT = WARNING       # by default just warnings and errors
+    USUAL = 3               # usual in sense of debugging purposes
+    DETAILED = 4            # info useful for flow of control, etc.
+    VERBOSE = 5             # useful stuff for debugging
+    QUITE_DETAILED = 6      # detailed I/O
+    QUITE_VERBOSE = 7       # usually for I/O, etc. by helper functions
+    MOST_DETAILED = 8       # for high-frequency helpers like to_float
+    MOST_VERBOSE = 9        # for internal debugging
+```
+
+Basically, levels up to 4 are for usual execution, whereas 5+ are for debugging proper.
