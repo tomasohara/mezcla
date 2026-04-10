@@ -64,6 +64,8 @@ LLM_PATH = system.getenv_value(
     "LLM_PATH", None,
     description="Path for LLM model"
 )
+## TEMP:
+if LLM_PATH is None: LLM_PATH = ""
 
 #------------------------------------------------------------------------
 
