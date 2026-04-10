@@ -57,6 +57,14 @@ except:
     get_last_modified_date = None
     debug.trace_exception(3, "llm_desktop_search import")
 
+# Environment Variables for newer tests
+## TODO1: rework to use THE_MODULE.QA_LLM_MODEL
+LLM_PATH = system.getenv_value(
+    ## TODO23: use default from tested script
+    "LLM_PATH", None,
+    description="Path for LLM model"
+)
+
 #------------------------------------------------------------------------
 
 @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
@@ -252,18 +260,11 @@ if THE_MODULE:
 
     class _FakeSplitter:
         """Splitter stub that preserves document ordering"""
-<<<<<<< development
         def __init__(self, chunk_size=None, chunk_overlap=None, add_start_index=None):
             """Capture the requested chunk configuration for sanity checking."""
             self.chunk_size = chunk_size
             self.chunk_overlap = chunk_overlap
             self.add_start_index = add_start_index
-=======
-        def __init__(self, chunk_size=None, chunk_overlap=None):
-            """Capture the requested chunk configuration for sanity checking."""
-            self.chunk_size = chunk_size
-            self.chunk_overlap = chunk_overlap
->>>>>>> main
 
         def split_documents(self, documents):
             """Return the input documents unchanged for deterministic tests."""
@@ -532,16 +533,10 @@ def test_import_disables_tensorflow_backend_by_default():
     assert "GetPrototype" not in completed.stderr
     assert completed.stdout.splitlines()[-2:] == ["0", "1"]
 
-<<<<<<< development
-## TODO: Use self.script_output method if possible instead of gh.run()
-# Environment Variables for newer tests
-## TODO2: use getenv_value when default is empty: use DEBUG_LEVEL=4 to find out why!
-LLM_PATH = system.getenv_text(
-    ## TODO23: use default from tested script
-    "LLM_PATH", "",
-    description="Path for LLM model"
-)
+#................................................................................
+# Warning: TestLLMDesktopSearch is work-in-progess
 
+@pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 class TestLLMDesktopSearch(TestWrapper):
     """Class for command-line based testcase definition"""
     script_module = TestWrapper.get_testing_module_name(__file__)
@@ -550,6 +545,7 @@ class TestLLMDesktopSearch(TestWrapper):
     use_temp_base_dir = True
     mezcla_base = gh.form_path(gh.dirname(__file__), "..", "..")   
     e2e_index_store = gh.get_temp_dir()
+    ## TODO: Use (new) script_output method if possible instead of gh.run()
 
     def helper_run_script(self, allow_unsafe_models=True, qa_llm_model=LLM_PATH, index_store_dir=e2e_index_store, options="-h", env_variables=""):
         """Helper script for self.run_script()"""
@@ -603,6 +599,7 @@ class TestLLMDesktopSearch(TestWrapper):
         """Test if test based model is loaded"""
 
         # Check if QA_LLM_MODEL uses llama by default
+        # TODO1: rework to use mistral default as in llm_desktop_search.py
         self.assertIn("llama-2-7b-chat", THE_MODULE.QA_LLM_MODEL)
 
         string_allow_unsafe_models = "ALLOW_UNSAFE_MODELS=True"
@@ -757,8 +754,6 @@ class TestLLMDesktopSearch(TestWrapper):
         for t in terms:
             self.assertIn(t, command_output)
 
-=======
->>>>>>> main
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
