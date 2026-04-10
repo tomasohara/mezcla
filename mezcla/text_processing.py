@@ -590,7 +590,7 @@ class FlairTextProc(TextProc):
             model = FLAIR_MODEL
         global flair
         if flair is None:
-            # pylint: disable=import-outside-toplevel, disable=redefined-outer-name
+            # pylint: disable=import-outside-toplevel, redefined-outer-name, import-error
             import flair
         self.tagger = flair.models.SequenceTagger.load(model)
         debug.trace_object(5, self, label="FlairTextProc instance")

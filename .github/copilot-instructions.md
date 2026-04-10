@@ -48,13 +48,17 @@ Documentation is built with Sphinx.
     *   **Do NOT use Black**. It is explicitly blacklisted.
     *   Pylint is used with specific exclusions handled via command-line arguments or aliases (not a config file).
     *   Code style is "R&D focused" rather than strict "Pythonic production" code.
+	    Nonetheless, use good software engineering practices, such as using single return calls and adding sanity checks via assert (preferably debug.assertion).
 *   **License**: Code is licensed under **LGPLv3**.
 *   **Imports**: The package is designed to be installed or used with `PYTHONPATH` set to include the root directory (handled automatically by `run_tests.bash`).
 
 ## General code agent guidelines
 
 0. Review the main modules first and follow the conventions there:
-   debug, html_utils, main, my_regex, system, glue_helpers, unittest_wrapper
+   debug, html_utils, main, my_regex, system, glue_helpers, template
+
+1. Similarly for when adding tests, review the following:
+   unittest_wrapper, tests/template.py, tests/test_debug, tests/test_system, etc.
 
 0. Retain the existing code as much as possible. In particular, don't remove TODO comments that address the change you are making. 
 

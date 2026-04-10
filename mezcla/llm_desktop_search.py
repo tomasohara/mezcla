@@ -26,21 +26,12 @@ Sample usage:
 """
 
 # Standard modules
-import time
-import pathlib
 import atexit
+import importlib
+import os
+import pathlib
+import time
 from collections.abc import Iterable
-
-# Installed modules
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.prompts import PromptTemplate
-from langchain.chains import RetrievalQA
-from langchain_core.documents import Document
-from langchain_community.document_loaders import DirectoryLoader, TextLoader
-## OLD: from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.llms import CTransformers
-from langchain_community.vectorstores import FAISS
 
 # Local modules
 from mezcla import debug
@@ -49,8 +40,57 @@ from mezcla import gpu_utils
 from mezcla.main import Main, KEEP_TEMP_FILES
 from mezcla import system
 from mezcla import html_utils
-from mezcla import extract_document_text
 from mezcla.my_regex import my_re
+## NOTE: extract_document_text is now dynamic (in case textract not available)
+## OLD: from mezcla import extract_document_text
+
+# NOTE:
+# - llm_desktop_search uses Hugging Face sentence-transformer embeddings backed by torch.
+# - Prevent transformers from eagerly importing tensorflow unless the caller explicitly
+#   opts in; newer protobuf releases can otherwise emit MessageFactory/GetPrototype warnings.
+# - See https://leeroopedia.com/index.php/Heuristic:Huggingface_Datatrove_VLLM_Startup_Optimization.
+os.environ.setdefault("USE_TF", "0")
+os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
+
+# Installed modules
+Document = importlib.import_module(
+    "langchain_core.documents").Document
+DirectoryLoader = importlib.import_module(
+    "langchain_community.document_loaders").DirectoryLoader
+TextLoader = importlib.import_module(
+    "langchain_community.document_loaders").TextLoader
+FAISS = importlib.import_module(
+    "langchain_community.vectorstores").FAISS
+CTransformers = importlib.import_module(
+    "langchain_community.llms.ctransformers").CTransformers
+
+
+def resolve_attr(module_names, attr_name):
+    """Resolve ATTR_NAME from the first importable module in MODULE_NAMES."""
+    debug.trace_expr(6, module_names, attr_name)
+    for module_name in module_names:
+        try:
+            module = importlib.import_module(module_name)
+            value = getattr(module, attr_name)
+            debug.trace_expr(6, module_name, attr_name, value)
+            return value
+        except (ImportError, AttributeError):
+            debug.trace_exception(7, f"resolve_attr({module_name}, {attr_name})")
+    raise ImportError(f"Unable to resolve {attr_name} from {module_names}")
+
+
+RecursiveCharacterTextSplitter = resolve_attr(
+    ["langchain.text_splitter", "langchain_classic.text_splitter", "langchain_text_splitters"],
+    "RecursiveCharacterTextSplitter")
+PromptTemplate = resolve_attr(
+    ["langchain.prompts", "langchain_classic.prompts", "langchain_core.prompts"],
+    "PromptTemplate")
+RetrievalQA = resolve_attr(
+    ["langchain.chains", "langchain_classic.chains"],
+    "RetrievalQA")
+HuggingFaceEmbeddings = resolve_attr(
+    ["langchain_huggingface", "langchain_community.embeddings"],
+    "HuggingFaceEmbeddings")
 
 # Constants
 TL = debug.TL
@@ -158,6 +198,7 @@ def convert_to_txt(in_file: str) -> str:
         if in_file.endswith('.html'):
             text = html_utils.html_to_text(system.read_file(in_file))
         else:
+            extract_document_text = importlib.import_module("mezcla.extract_document_text")
             text = extract_document_text.document_to_text(in_file)
     except:
         debug.trace_exception(6, "convert_to_txt")
@@ -180,64 +221,93 @@ class DesktopSearch:
         self.qa_llm = None
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
-    def index_dir(self, dir_path):
-        """Index files at DIR_PATH"""
-        ## TODO4: look into indexing files from buffers rather than external files
-        debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
-
-        # Make sure target index directory exists
-        if not system.is_directory(self.index_store_dir):
-            gh.full_mkdir(self.index_store_dir)
-        
-        # define what documents to load
-        text_loader_kwargs={'autodetect_encoding': True}
-        loader = DirectoryLoader(dir_path, glob="./*.txt", loader_cls=TextLoader, loader_kwargs=text_loader_kwargs)
-        debug.trace_expr(5, loader)
-        
-        # copy files over to temp dir
-        # note: timestamp strips the time of day (e.g., 2024-05-11)
-        timestamp = debug.timestamp().split(' ', maxsplit=1)[0]
-        real_path = system.real_path(dir_path)
-        # note: using [1:] to remove the initial path separator 
-        temp_base = system.form_path(system.TEMP_DIR, f"llm_desktop_search.{timestamp}")
-        temp_path = system.form_path(temp_base,real_path[1:])
-        gh.full_mkdir(temp_path)
-        
-        list_files = system.get_directory_filenames(real_path)
-        filtered_files = list_files
-        # filter files by modification time if needed
-        # note: The modification time is -1 
-        modif_time = get_last_modified_date(system.get_directory_filenames(self.index_store_dir))
-        if INDEX_ONLY_RECENT:
-            filtered_files = [f for f in list_files if (get_file_mod_fime(f) > modif_time)]
-        
-        files_to_convert = [found for found in filtered_files if my_re.match(r'.*\.(pdf|docx|html|txt)', found)]
-        # register cleanup function before creating temp files
-        if not KEEP_TEMP_FILES:
-            atexit.register(gh.delete_directory, temp_path)
-        for num, file in enumerate(files_to_convert):
-            filename = system.filename_proper(file)
-            file_tmp_path = system.form_path(temp_path, filename) 
-            if file.endswith('.txt'):
-                system.write_file(file_tmp_path, system.read_entire_file(file, encoding="unicode_escape"))
-            else:
-                system.write_file(f"{file_tmp_path}_temp_{num}.txt", convert_to_txt(file))
-        
-        # interpret information in the documents
-        loader = DirectoryLoader(temp_path, glob="*.txt", loader_cls=TextLoader)
-        documents = loader.load()
-        debug.trace_expr(5, len(documents), documents, max_len=1024)
-        splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE,
-                                                  chunk_overlap=CHUNK_OVERLAP)
-        # documents are splitted to a maximum of 500 characters per chunk (by default)
-        texts = splitter.split_documents(documents)
-        corrected_texts = [correct_metadata(text, temp_base) for text in texts]
+    def load_embeddings(self):
+        """Load embeddings model if needed"""
         if not self.embeddings:
             self.embeddings = HuggingFaceEmbeddings(
                 model_name=EMBEDDING_MODEL,
                 model_kwargs={'device': TORCH_DEVICE})
+        debug.trace_expr(5, self.embeddings)
+        return self.embeddings
 
-        # add (or create from docs) to the db and save it
+    def load_llm(self):
+        """Load Q&A model if needed"""
+        if not self.llm:
+            model_path = pathlib.Path(QA_LLM_MODEL).expanduser()
+            module_model_path = pathlib.Path(__file__).with_name(QA_LLM_MODEL)
+            if model_path.exists():
+                model_name = str(model_path.resolve())
+            elif module_model_path.exists():
+                model_name = str(module_model_path.resolve())
+            else:
+                model_name = QA_LLM_MODEL
+            config = {'max_new_tokens': MAX_NEW_TOKENS, 'temperature': TEMPERATURE,
+                      'context_length': CONTEXT_LENGTH}
+            self.llm = CTransformers(model=model_name, model_type=QA_LLM_TYPE,
+                                     config=config, gpu_layers=GPU_LAYERS)
+            debug.trace_expr(4, self.llm)
+            debug.trace_object(5, self.llm)
+        return self.llm
+
+    def ensure_index_store_dir(self):
+        """Ensure the persistent index directory exists."""
+        if not system.is_directory(self.index_store_dir):
+            gh.full_mkdir(self.index_store_dir)
+
+    def create_temp_index_dir(self, dir_path):
+        """Create and return the temp directory used while indexing."""
+        timestamp = debug.timestamp().split(' ', maxsplit=1)[0]
+        real_path = system.real_path(dir_path)
+        temp_base = system.form_path(system.TEMP_DIR, f"llm_desktop_search.{timestamp}")
+        # note: using [1:] to remove the initial path separator
+        temp_path = system.form_path(temp_base, real_path[1:])
+        gh.full_mkdir(temp_path)
+        debug.trace_expr(5, real_path, temp_base, temp_path)
+        return (real_path, temp_base, temp_path)
+
+    def get_files_to_convert(self, real_path):
+        """Return eligible files, optionally filtered by modification time."""
+        list_files = sorted(system.get_directory_filenames(real_path))
+        filtered_files = list_files
+        modif_time = get_last_modified_date(system.get_directory_filenames(self.index_store_dir))
+        if INDEX_ONLY_RECENT:
+            filtered_files = [f for f in list_files if (get_file_mod_fime(f) > modif_time)]
+        return sorted(
+            found for found in filtered_files
+            if my_re.match(r'.*\.(pdf|docx|html|txt)', found))
+
+    def populate_temp_index_dir(self, temp_path, files_to_convert):
+        """Copy or convert source files into the temp indexing directory."""
+        if not KEEP_TEMP_FILES:
+            atexit.register(gh.delete_directory, temp_path)
+        for num, file in enumerate(files_to_convert):
+            filename = system.filename_proper(file)
+            file_tmp_path = system.form_path(temp_path, filename)
+            if file.endswith('.txt'):
+                text = system.read_entire_file(file, encoding="unicode_escape")
+                system.write_file(file_tmp_path, text)
+            else:
+                temp_file = f"{file_tmp_path}_temp_{num}.txt"
+                system.write_file(temp_file, convert_to_txt(file))
+
+    def load_chunked_documents(self, temp_path, temp_base):
+        """Load, normalize, and split temp documents into sorted chunks."""
+        loader = DirectoryLoader(temp_path, glob="*.txt", loader_cls=TextLoader)
+        documents = sorted(
+            loader.load(),
+            key=lambda doc: (doc.metadata.get('source', ''), doc.page_content))
+        debug.trace_expr(5, len(documents), documents, max_len=1024)
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+        texts = splitter.split_documents(documents)
+        corrected_texts = [correct_metadata(text, temp_base) for text in texts]
+        return sorted(
+            corrected_texts,
+            key=lambda doc: (doc.metadata.get('source', ''), doc.page_content))
+
+    def save_index_documents(self, corrected_texts):
+        """Merge chunked documents into the persistent vector store."""
+        self.load_embeddings()
         try:
             self.load_index()
         except RuntimeError:
@@ -247,6 +317,18 @@ class DesktopSearch:
         else:
             self.db = FAISS.from_documents(corrected_texts, self.embeddings)
         self.db.save_local(self.index_store_dir)
+        self.qa_llm = None
+
+    def index_dir(self, dir_path):
+        """Index files at DIR_PATH"""
+        ## TODO4: look into indexing files from buffers rather than external files
+        debug.trace(4, f"DesktopSearch.index_dir({dir_path})")
+        self.ensure_index_store_dir()
+        (_real_path, temp_base, temp_path) = self.create_temp_index_dir(dir_path)
+        files_to_convert = self.get_files_to_convert(system.real_path(dir_path))
+        self.populate_temp_index_dir(temp_path, files_to_convert)
+        corrected_texts = self.load_chunked_documents(temp_path, temp_base)
+        self.save_index_documents(corrected_texts)
 
         debug.trace_expr(4, self.db)
         gpu_utils.trace_gpu_usage()
@@ -258,21 +340,11 @@ class DesktopSearch:
     def load_index(self, for_qa=False):
         """Load index of documents"""
         debug.trace(4, "DesktopSearch.load_index()")
-        # load the language model
-        config = {'max_new_tokens': MAX_NEW_TOKENS, 'temperature': TEMPERATURE,
-                  'context_length': CONTEXT_LENGTH}
         if for_qa:
-            llm = CTransformers(model=QA_LLM_MODEL, model_type=QA_LLM_TYPE,
-                                config=config, gpu_layers=GPU_LAYERS)
-            debug.trace_expr(4, llm)
-            debug.trace_object(5, llm)
-            self.llm = llm
+            self.load_llm()
 
         # load the interpreted information from the local database
-        if not self.embeddings:
-            self.embeddings = HuggingFaceEmbeddings(
-                model_name=EMBEDDING_MODEL,
-                model_kwargs={'device': TORCH_DEVICE})
+        self.load_embeddings()
         options = {}
         if ALLOW_UNSAFE_MODELS:
             options["allow_dangerous_deserialization"] = ALLOW_UNSAFE_MODELS
@@ -284,7 +356,8 @@ class DesktopSearch:
         """Prepare a version of the llm pre-loaded with the local content"""
         debug.trace(4, "prepare_qa_llm()")
         if not self.db:
-            self.load_index(for_qa=True)        
+            self.load_index()
+        self.load_llm()
         retriever = self.db.as_retriever(search_kwargs={'k': NUM_SIMILAR})
         prompt = PromptTemplate(
             template=QA_TEMPLATE,

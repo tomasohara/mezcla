@@ -298,7 +298,7 @@ class MezclaDebugger:
         self.context_abs_path = context_abs_path
         self.icecream_like = icecream_like
 
-    def __call__(self, *args, arg_offset=0, indirect=False, **kwargs):
+    def __call__(self, *args, arg_offset=0, indirect=False, levels_back=0, **kwargs):
         """
         Formats the given arguments and prints the formatted string
         
@@ -307,7 +307,7 @@ class MezclaDebugger:
         # NOTE: this is not separated into a function
         # as to not generate another call frame
         if INTROSPECTION_DEBUG:
-            trace(f"in __call__:\n\t{args=}\n\t{arg_offset=}\n\t{indirect=}\n\t{kwargs=}",
+            trace(f"in __call__:\n\t{args=}\n\t{arg_offset=}\n\t{indirect=}\n\t{levels_back=}\n\t{kwargs=}",
                   level=BTL+1)
         call_frame = inspect.currentframe()
         if INTROSPECTION_DEBUG:
@@ -322,6 +322,12 @@ class MezclaDebugger:
                 call_frame = call_frame.f_back
                 if INTROSPECTION_DEBUG:
                     trace_frame(call_frame, "call_frame2")
+            # Skip additional frames (e.g., for OO wrapper layers)
+            for _i in range(levels_back):
+                if call_frame is not None:
+                    call_frame = call_frame.f_back
+                    if INTROSPECTION_DEBUG:
+                        trace_frame(call_frame, f"call_frame{3 + _i}")
         if call_frame is None:
             raise ValueError("Cannot access the call frame")
         self.output_function(self._format(call_frame, arg_offset, *args, **kwargs))
@@ -334,7 +340,7 @@ class MezclaDebugger:
             passthrough = args
         return passthrough
 
-    def format(self, *args, arg_offset=0, indirect=False, **kwargs):
+    def format(self, *args, arg_offset=0, indirect=False, levels_back=0, **kwargs):
         """
         Formats the given arguments and returns the formatted string,
         ignoring the first `arg_offset` arguments
@@ -342,9 +348,9 @@ class MezclaDebugger:
         :raises ValueError: If the call frame cannot be accessed
         """
         if INTROSPECTION_DEBUG:
-            trace(f"in format:\n\t{args=}\n\t{arg_offset=}\n\t{indirect=}\n\t{kwargs=}",
+            trace(f"in format:\n\t{args=}\n\t{arg_offset=}\n\t{indirect=}\n\t{levels_back=}\n\t{kwargs=}",
                   level=BTL+1)
-        ## TODO2: add levels_back param (e.g., 2 for gh.assertion)
+        ## TODO2: add levels_back param (e.g., 2 for gh.assertion) [done via levels_back]
         # NOTE: this is not separated into a function
         # as to not generate another call frame
         call_frame = None
@@ -362,6 +368,12 @@ class MezclaDebugger:
                     call_frame = call_frame.f_back
                     if INTROSPECTION_DEBUG:
                         trace_frame(call_frame, "call_frame2")
+                # Skip additional frames (e.g., for OO wrapper layers)
+                for _i in range(levels_back):
+                    if call_frame is not None:
+                        call_frame = call_frame.f_back
+                        if INTROSPECTION_DEBUG:
+                            trace_frame(call_frame, f"call_frame{3 + _i}")
             if call_frame is None:
                 raise ValueError("Cannot access the call frame")
             out = self._format(call_frame, arg_offset, *args, **kwargs)

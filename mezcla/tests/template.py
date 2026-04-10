@@ -36,7 +36,7 @@
 """TODO: Tests for <module> module"""
 
 # Standard modules
-from typing import Optional
+## TODO: from typing import Optional
 
 # Installed modules
 import pytest
@@ -128,8 +128,7 @@ class TestIt(TestWrapper):
     def test_02_something_else(self):
         """Test for something_else: TODO..."""
         debug.trace(4, f"TestIt.test_02_something_else(); self={self}")
-        self.do_assert(False, "TODO: implement")
-        self.do_assert(THE_MODULE.Helper().process("TODO")) == "TODO")
+        assert THE_MODULE.Helper().process("TODO") == "TODO"
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail

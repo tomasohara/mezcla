@@ -17,6 +17,9 @@
 # - make sure trace_fmt traps all exceptions
 #   debug.trace_fmt(1, "fu={fu}", fuu=1)
 #                           ^^    ^^^
+#................................................................................
+# Global pylint filter:
+#   pylint: disable=protected-access
 #
 
 """Tests for debug module"""
@@ -42,7 +45,7 @@ import mezcla.tests.common_module as cm
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
-import mezcla.debug as THE_MODULE # pylint: disable=reimported
+import mezcla.debug as THE_MODULE       # pylint: disable=reimported
 
 # Constants
 ERROR_FUBAR = "falta fubar"            # spanish for error
@@ -751,6 +754,249 @@ class TestDebug2(TestWrapper):
             no_exception = False
             debug.trace_exception(5, "test_trace_exceptions")
         self.do_assert(no_exception)
+
+    def test_debug_wrapper_class(self):
+        """Verify DebugWrapper class exists and is the backing instance for module-level API"""
+        debug.trace(4, f"test_debug_wrapper_class(): self={self}")
+        self.do_assert(__debug__ == hasattr(THE_MODULE, 'DebugWrapper'))
+        self.do_assert(__debug__ == hasattr(THE_MODULE, '_debug'))
+        if __debug__:
+            self.do_assert(isinstance(THE_MODULE._debug, THE_MODULE.DebugWrapper))
+
+#------------------------------------------------------------------------
+
+class TestDebugWrapper(TestWrapper):
+    """Tests for DebugWrapper class methods accessed via THE_MODULE._debug.
+    Verifies that the OO API works correctly and shares state with the
+    module-level functional API."""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+
+    def test_dw_instance(self):
+        """DebugWrapper class and _debug global instance exist with correct type"""
+        debug.trace(4, f"test_dw_instance(): self={self}")
+        self.do_assert(__debug__ == hasattr(THE_MODULE, 'DebugWrapper'))
+        self.do_assert(__debug__ == hasattr(THE_MODULE, '_debug'))
+        if __debug__:
+            self.do_assert(isinstance(THE_MODULE._debug, THE_MODULE.DebugWrapper))
+            self.do_assert(inspect.isclass(THE_MODULE.DebugWrapper))
+
+    def test_dw_new_instance(self):
+        """Ensure a separate DebugWrapper instance can be created independently"""
+        debug.trace(4, f"test_dw_new_instance(): self={self}")
+        if not __debug__:
+            return
+        new_debug = THE_MODULE.DebugWrapper()
+        assert hasattr(new_debug, 'trace')
+        assert hasattr(new_debug, 'assertion')
+        assert hasattr(new_debug, 'trace_expr')
+        assert callable(new_debug.trace)
+
+    def test_dw_module_funcs_delegate(self):
+        """Ensure module-level functions delegate to _debug instance methods"""
+        debug.trace(4, f"test_dw_module_funcs_delegate(): self={self}")
+        if not __debug__:
+            return
+        # Module-level wrappers should produce identical results to _debug methods
+        self.patch_trace_level(5)
+        assert THE_MODULE.get_level() == THE_MODULE._debug.get_level()
+        assert THE_MODULE.val(5, 42) == THE_MODULE._debug.val(5, 42)
+        assert THE_MODULE.val(6, 42) == THE_MODULE._debug.val(6, 42)
+
+    def test_dw_set_get_level(self):
+        """_debug.set_level/_debug.get_level share state with module-level wrappers"""
+        debug.trace(4, f"test_dw_set_get_level(): self={self}")
+        if not __debug__:
+            return
+        old_level = THE_MODULE._debug.get_level()
+        # OO setter reflected by module-level getter
+        THE_MODULE._debug.set_level(old_level + 1)
+        self.do_assert(THE_MODULE.get_level() == old_level + 1)
+        # Module-level setter reflected by OO getter
+        THE_MODULE.set_level(old_level + 2)
+        self.do_assert(THE_MODULE._debug.get_level() == old_level + 2)
+        THE_MODULE._debug.set_level(old_level)
+
+    def test_dw_output_timestamps(self):
+        """_debug get/set_output_timestamps share state with module global"""
+        debug.trace(4, f"test_dw_output_timestamps(): self={self}")
+        if not __debug__:
+            return
+        orig = THE_MODULE.output_timestamps
+        THE_MODULE._debug.set_output_timestamps(True)
+        self.do_assert(THE_MODULE.output_timestamps is True)
+        self.do_assert(THE_MODULE._debug.get_output_timestamps() is True)
+        THE_MODULE._debug.set_output_timestamps(orig)
+
+    def test_dw_do_print(self):
+        """_debug.do_print outputs to stderr and respects max_len"""
+        debug.trace(4, f"test_dw_do_print(): self={self}")
+        if not __debug__:
+            return
+        THE_MODULE._debug.do_print("oo-hello")
+        err = self.get_stderr()
+        self.do_assert("oo-hello" in err)
+        # max_len truncation: "1234567890" with max_len=4 => "1..."
+        out = THE_MODULE._debug.do_print("1234567890", max_len=4)
+        self.do_assert("1..." in out)
+
+    def test_dw_trace(self):
+        """_debug.trace outputs at the right level and is silent below it"""
+        debug.trace(4, f"test_dw_trace(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(3)
+        THE_MODULE._debug.trace(3, "oo-visible-trace")
+        err = self.get_stderr()
+        self.do_assert("oo-visible-trace" in err)
+        self.clear_stderr()
+        THE_MODULE._debug.trace(4, "oo-hidden-trace")
+        err = self.get_stderr()
+        self.do_assert("oo-hidden-trace" not in err)
+
+    @pytest.mark.xfail
+    def test_dw_trace_fmtd(self):
+        """_debug.trace_fmtd formats text with kwargs and respects max_len"""
+        debug.trace(4, f"test_dw_trace_fmtd(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(5)
+        THE_MODULE._debug.trace_fmtd(4, "oo-val={v}", v="fmtd-test")
+        err = self.get_stderr()
+        self.do_assert("oo-val=fmtd-test" in err)
+        self.clear_stderr()
+        THE_MODULE._debug.trace_fmtd(4, "oo-{txt}", txt="formatted", max_len=8)
+        err = self.get_stderr()
+        self.do_assert("oo-fo..." in err)
+
+    @pytest.mark.xfail
+    def test_dw_trace_expr(self):
+        """_debug.trace_expr resolves expression names via introspection"""
+        debug.trace(4, f"test_dw_trace_expr(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(3)
+        oo_var = 77
+        THE_MODULE._debug.trace_expr(3, oo_var)
+        err = self.get_stderr()
+        self.do_assert(my_re.search(r"oo_var=77;?", err))
+
+    def test_dw_trace_values(self):
+        """_debug.trace_values outputs each element of a collection"""
+        debug.trace(4, f"test_dw_trace_values(): self={self}")
+        if not __debug__:
+            return
+        THE_MODULE._debug.trace_values(-1, ["oo-alpha", "oo-beta"])
+        err = self.get_stderr()
+        self.do_assert(": oo-alpha" in err)
+        self.do_assert(": oo-beta" in err)
+
+    def test_dw_trace_frame(self):
+        """_debug.trace_frame outputs function name and file for a given frame"""
+        debug.trace(4, f"test_dw_trace_frame(): self={self}")
+        if not __debug__:
+            return
+        frame = inspect.currentframe()
+        self.patch_trace_level(5)
+        THE_MODULE._debug.trace_frame(4, frame, label="oo-frame")
+        err = self.get_stderr()
+        self.do_assert("oo-frame" in err)
+        self.do_assert("test_dw_trace_frame" in err)
+
+    def test_dw_trace_stack(self):
+        """_debug.trace_stack outputs a stack trace including the caller"""
+        debug.trace(4, f"test_dw_trace_stack(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(5)
+        THE_MODULE._debug.trace_stack(5)
+        err = self.get_stderr()
+        self.do_assert("test_dw_trace_stack" in err)
+
+    def test_dw_trace_exception(self):
+        """_debug.trace_exception outputs exception info"""
+        debug.trace(4, f"test_dw_trace_exception(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(5)
+        try:
+            raise ValueError("oo-exc-test")
+        except:                             # pylint: disable=bare-except
+            THE_MODULE._debug.trace_exception(4, "oo-task")
+        err = self.get_stderr()
+        self.do_assert("Exception during oo-task" in err)
+
+    @pytest.mark.xfail
+    def test_dw_raise_exception(self):
+        """_debug.raise_exception re-raises at level; no-op when level not met"""
+        debug.trace(4, f"test_dw_raise_exception(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(1)
+        with pytest.raises(Exception):
+            THE_MODULE._debug.raise_exception(1)
+        # level above trace_level: should be a no-op
+        THE_MODULE._debug.raise_exception(10)
+
+    @pytest.mark.xfail
+    def test_dw_assertion(self):
+        """_debug.assertion warns on failure but not on success"""
+        debug.trace(4, f"test_dw_assertion(): self={self}")
+        if not __debug__:
+            return
+        oo_true_cond = (2 + 3 == 5)
+        THE_MODULE._debug.assertion(oo_true_cond)
+        err = self.get_stderr()
+        self.do_assert("failed" not in err)
+        oo_false_cond = (2 + 3 == 6)
+        THE_MODULE._debug.assertion(oo_false_cond)
+        err = self.get_stderr()
+        self.do_assert("Assertion failed" in err)
+
+    def test_dw_val(self):
+        """_debug.val returns value at level, None when level not met"""
+        debug.trace(4, f"test_dw_val(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(5)
+        self.do_assert(THE_MODULE._debug.val(5, 55) == 55)
+        self.patch_trace_level(0)
+        self.do_assert(THE_MODULE._debug.val(1, 55) is None)
+
+    def test_dw_code(self):
+        """_debug.code executes function at level, skips it below level"""
+        debug.trace(4, f"test_dw_code(): self={self}")
+        if not __debug__:
+            return
+        count = [0]
+        def increment():
+            """Increment counter"""
+            count[0] += 1
+        self.patch_trace_level(4)
+        THE_MODULE._debug.code(4, increment)
+        self.do_assert(count[0] == 1)
+        THE_MODULE._debug.code(5, increment)   # level 5 > trace_level 4: skipped
+        self.do_assert(count[0] == 1)
+
+    def test_dw_call(self):
+        """_debug.call invokes function with args at level, returns None otherwise"""
+        debug.trace(4, f"test_dw_call(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(4)
+        result = THE_MODULE._debug.call(4, lambda x: x * 3, 7)
+        self.do_assert(result == 21)
+        self.patch_trace_level(0)
+        result = THE_MODULE._debug.call(1, lambda x: x * 3, 7)
+        self.do_assert(result is None)
+
+    def test_dw_get_elapsed_time(self):
+        """_debug.get_elapsed_time returns a non-negative float"""
+        debug.trace(4, f"test_dw_get_elapsed_time(): self={self}")
+        if not __debug__:
+            return
+        elapsed = THE_MODULE._debug.get_elapsed_time()
+        self.do_assert(isinstance(elapsed, float))
+        self.do_assert(elapsed >= 0)
 
 #------------------------------------------------------------------------
 

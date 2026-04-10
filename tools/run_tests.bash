@@ -26,6 +26,7 @@
 # Usage:
 # $ ./tools/run_tests.bash
 # $ ./tools/run_tests.bash --coverage
+# $ ./tools/run_tests.bash --all
 #
 
 # Set bash regular and/or verbose tracing
@@ -40,13 +41,36 @@ if [ "${VERBOSE:-0}" = "1" ]; then
     set -o verbose
 fi
 
+# Parse options
+RUN_ALL_TESTS=0
+SHOW_HELP=0
+COVERAGE_OPT=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --all)
+            RUN_ALL_TESTS=1
+            ;;
+        --coverage)
+            COVERAGE_OPT=1
+            ;;
+        --help)
+            SHOW_HELP=1
+            ;;
+    esac
+done
+
 # Show usage
-if [[ "$1" == "--help" ]]; then
+if [[ "$SHOW_HELP" == "1" ]]; then
     script=$(basename "$0")
-    echo "Usage: $script [--help | --coverage]"
+    echo "Usage: $script [--help | --coverage | --all]"
     echo ""
     echo "Environment options:"
     echo "    DEBUG_LEVEL, TRACE, VERBOSE, TEST_REGEX, FILTER_REGEX, INVOKE_PYTEST_DIRECTLY, RUN_PYTHON_TESTS, DRY_RUN"
+    echo ""
+    echo "Options:"
+    echo "    --all         Run all tests in the repository (e.g., tfidf and examples)"
+    echo "    --coverage    Generate coverage report"
     echo ""
     echo "Example:"
     echo "    TEST_REGEX='*text*' $0"
@@ -84,15 +108,21 @@ TEST_REGEX="${TEST_REGEX:-$DEFAULT_TEST_REGEX}"
 ## TEMP: DEFAULT_FILTER_REGEX="(test_audio|test_extract_document_text|test_format_profile|test_hugging_face_speechrec|test_hugging_face_translation|test_keras_param_search|test_kenlm_example|test_spell|test_text_processing)"
 DEFAULT_FILTER_REGEX="(not-a-real-test.py)"
 FILTER_REGEX="${FILTER_REGEX:-"$DEFAULT_FILTER_REGEX"}"
+
+if [ "$RUN_ALL_TESTS" == "1" ]; then
+    echo "FYI: Finding all tests in $mezcla"
+    # shellcheck disable=SC2010
+    tests=$(find "$mezcla" -name "test_*.py" -not -path "*/_git-trash/*" | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
+    example_tests=""
 # shellcheck disable=SC2010
-if [[ ("$TEST_REGEX" != "$DEFAULT_TEST_REGEX") || ("$FILTER_REGEX" != "$DEFAULT_FILTER_REGEX") ]]; then
+elif [[ ("$TEST_REGEX" != "$DEFAULT_TEST_REGEX") || ("$FILTER_REGEX" != "$DEFAULT_FILTER_REGEX") ]]; then
     tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
     example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
 fi
 #
 echo -n "Running tests on $tests"
 if [ "$example_tests" == "" ]; then
-    echo "; running no example tests"
+    echo "; running no separate example tests"
 else
     echo "; also running $example_tests"
 fi
@@ -114,7 +144,7 @@ fi
 
 # Make sure mezcla in python path, along with main tests directory.
 # Note: Latter required for test_mezcla_to_standard.py
-export PYTHONPATH="$mezcla/:$mezcla/tests:$PYTHONPATH"
+export PYTHONPATH="$base/:$mezcla/tests:$PYTHONPATH"
 
 # Get environment overrides
 # TODO2: cleanup stuff inherited from shell-script repo
@@ -135,7 +165,7 @@ fi
 # note: the python stdout and stderr streams are unbuffered so interleaved
 ## OLD: dir=$(dirname "${BASH_SOURCE[0]}")
 test_result=0
-if [ "$1" == "--coverage" ]; then
+if [ "$COVERAGE_OPT" == "1" ]; then
     echo "FYI: Just running coverage"
     $pre_cmd export COVERAGE_RCFILE="$base/.coveragerc"
     $pre_cmd export CHECK_COVERAGE='true'
@@ -157,7 +187,11 @@ elif [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
     export PYTHONUNBUFFERED=1
     echo -n "Running tests under "
     python3 --version
-    python3 "$mezcla"/master_test.py --run
+    master_test_opts="--run"
+    if [ "$RUN_ALL_TESTS" == "1" ]; then
+        master_test_opts="$master_test_opts --all"
+    fi
+    python3 "$mezcla"/master_test.py $master_test_opts
     test_result="$?"
 else
     echo "Warning: not running tests"

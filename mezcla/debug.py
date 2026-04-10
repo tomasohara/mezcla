@@ -157,6 +157,7 @@ def docstring_parameter(**kwargs):
 #...............................................................................
 
 
+
 if __debug__:    
 
     # Initialize debug tracing level
@@ -186,35 +187,6 @@ if __debug__:
         ##                  format(v=DEBUG_LEVEL_LABEL, exc=sys.exc_info()))
         pass
 
-
-    def set_level(level: IntOrTraceLevel) -> None:
-        """Set new trace level"""
-        global trace_level
-        trace_level = level
-        return
-
-
-    def get_level() -> IntOrTraceLevel:
-        """Get current tracing level"""
-        # Note: ensures result is integer (not enum)
-        # EX: (get_level() >= 0)
-        # EX: type(get_level() == int)
-        level = 0
-        try:
-            level = int(trace_level)
-        except:
-            _print_exception_info("get_level")
-        return level
-
-    def get_output_timestamps() -> bool:
-        """Return whether outputting timestamps"""
-        return output_timestamps
-
-
-    def set_output_timestamps(do_output_timestamps: bool):
-        """Enable (or disable) the outputting of timestamps"""
-        global output_timestamps
-        output_timestamps = do_output_timestamps
 
 
     def _to_utf8(text: str) -> str:
@@ -261,35 +233,939 @@ if __debug__:
                 result = "%s" % result
         return result
 
-    def do_print(value, max_len = None, end: Optional[str] = None) -> str:
-        """Print VALUE to stderr and optionally to DEBUG_FILE.
-        Outputs up to MAX_LEN characters including added ellipses.
-        Includes END text or newline (n.b., omitted from MAX_LEN check).
-        Also, returns the text printed including newline unless omitted.
+
+    STANDARD_TYPES = (int, float, dict, list)
+    SIMPLE_TYPES = (bool, int, float, type(None), str)
+
+    #....................................................................
+    # Object-oriented debug API
+    # Note: See my_regex.py for a similar pattern (regex_wrapper / my_re).
+
+    class DebugWrapper:
+        """Object-oriented API wrapping all debug tracing functions.
+        Note: Module-level state (trace_level, etc.) lives in module globals.
+        Use the module-level functions for the functional interface, or use
+        the global instance _debug for the OO interface directly.
         """
-        if max_len is None:
-            max_len = max_trace_value_len
-        out_text = ""
-        try:
-            ## TODO?
-            ## TEMP: Optional sanity check to help track down sloppy callers
-            ## if __debug__:
-            ##     assertion(7, isinstance(text, str))
-            ##
-            text = str(value)
-            if len(text) > max_len:
-                effective_max_len = max(0, max_len - len(ELLIPSIS))
-                text = text[:effective_max_len] + ELLIPSIS
-            print(text, file=sys.stderr, end=end,flush=True)
+
+        def set_level(self, level: IntOrTraceLevel) -> None:
+            """Set new trace level"""
+            global trace_level
+            trace_level = level
+            return
+
+        def get_level(self) -> IntOrTraceLevel:
+            """Get current tracing level"""
+            # Note: ensures result is integer (not enum)
+            # EX: (get_level() >= 0)
+            # EX: type(get_level() == int)
+            level = 0
+            try:
+                level = int(trace_level)
+            except:
+                _print_exception_info("get_level")
+            return level
+
+        def get_output_timestamps(self) -> bool:
+            """Return whether outputting timestamps"""
+            return output_timestamps
+
+        def set_output_timestamps(self, do_output_timestamps: bool):
+            """Enable (or disable) the outputting of timestamps"""
+            global output_timestamps
+            output_timestamps = do_output_timestamps
+
+        def do_print(self, value, max_len = None, end: Optional[str] = None) -> str:
+            """Print VALUE to stderr and optionally to DEBUG_FILE.
+            Outputs up to MAX_LEN characters including added ellipses.
+            Includes END text or newline (n.b., omitted from MAX_LEN check).
+            Also, returns the text printed including newline unless omitted.
+            """
+            if max_len is None:
+                max_len = max_trace_value_len
+            out_text = ""
+            try:
+                ## TODO?
+                ## TEMP: Optional sanity check to help track down sloppy callers
+                ## if __debug__:
+                ##     assertion(7, isinstance(text, str))
+                ##
+                text = str(value)
+                if len(text) > max_len:
+                    effective_max_len = max(0, max_len - len(ELLIPSIS))
+                    text = text[:effective_max_len] + ELLIPSIS
+                print(text, file=sys.stderr, end=end,flush=True)
+                if debug_file:
+                    print(text, file=debug_file, end=end)
+                ## TODO3: out_text = text + (end if end else "")
+                out_text += str(text)
+                if end:
+                    out_text += end
+            except:
+                self.trace_exception_info(7, "do_print")
+            return out_text
+
+        def trace(
+                self,
+                level: IntOrTraceLevel,
+                text: str,
+                empty_arg: Optional[bool] = None,
+                no_eol: Optional[bool] = None,
+                indentation: Optional[str] = None,
+                max_len = None,
+                skip_sanity_checks: Optional[bool] = None
+            ) -> str:
+            """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE.
+            Also, returns the formatted text.
+            Note: Optionally, uses \n unless NO_EOL, precedes trace with INDENTATION, and
+            SKIPs_SANITY_CHECKS (e.g., variables in braces in f-string omission). Outputs up to MAX_LEN characters including added ellipses.
+            """
+            # TODO1: add exception handling
+            # TODO2: add options to use format_value and max_len 
+            # Note: trace should not be used with text that gets formatted to avoid
+            # subtle errors
+            ## DEBUG: sys.stderr.write("trace({l}, {t})\n".format(l=level, t=text))
+            if max_len is None:
+                max_len = max_trace_value_len
+            out_text = ""
+            if (trace_level >= level):
+                if indentation is None:
+                    indentation = INDENT0
+                # Prefix trace with timestamp w/o date
+                if not isinstance(output_timestamps, bool):
+                    sys.stderr.write(f"Warning: output_timestamps has unexpected type {type(output_timestamps).__name__}: {output_timestamps!r}\n")
+                if output_timestamps:
+                    # Get time-proper from timestamp (TODO: find standard way to do this)
+                    # Note: shows diff/delta from last call if detailed tracing (TODO3: make explicit)
+                    timestamp_time = re.sub(r"^\d+-\d+-\d+\s*", "", timestamp())
+                    if verbose_debugging():
+                        global last_trace_time
+                        diff = 1000.0 * (time.time() - last_trace_time)
+                        timestamp_time += f" diff={diff:.3f}ms"
+                        last_trace_time = time.time()
+                    out_text += self.do_print(indentation + "[" + timestamp_time + "]", end=": ", max_len=max_len)
+                    max_len -= len(out_text)
+                ## TODO1: 
+                ## # Optionally show filename and line number for caller
+                ## # Note: This is mainly intended for help in tweaking trace levels, such as to help
+                ## # identify tracing being done too frequently. This was inspired by loguru.
+                ## if output_caller_info:
+                ##     pass
+                # Print trace, converted to UTF8 if necessary (Python2 only)
+                # TODO: add version of assertion that doesn't use trace or trace_fmtd
+                ## TODO: assertion(not ???)
+                out_text += self.do_print(indentation, end="", max_len=max_len)
+                max_len -= len(out_text)
+                if not isinstance(text, str):
+                    if trace_level >= USUAL:
+                        out_text += self.do_print("[Warning: converted non-text to str] ", end="", max_len=max_len)
+                        max_len -= len(out_text)
+                    text = str(text)
+                if ((not skip_sanity_checks)
+                    and (match := re.search(r"{[^0-9]\S+}", text))
+                    and not re.search(r"{{[^0-9]\S+}}", text)):
+                    # TODO3: show caller info; also rework indent (pep8 quirk)
+                    if include_trace_diagnostics:
+                        out_text += self.do_print(f"[FYI: potential f-string issue in trace: unresolved {match.group()}] ",
+                                             end="", max_len=max_len)
+                        max_len -= len(out_text)
+                end = "\n" if (not no_eol) else ""
+                out_text += self.do_print(_to_utf8(text), end=end, max_len=max_len)
+                max_len -= len(out_text)
+                if use_logging:
+                    # TODO: see if way to specify logging terminator
+                    logging.debug(indentation + _to_utf8(text))
+                if debug_file_hack:
+                    self.reopen_debug_file()
+            if empty_arg is not None:
+                sys.stderr.write("Error: trace only accepts two positional arguments (was trace_expr intended?)\n")
+            return out_text
+
+        def check_keyword_args(self, level, expected, kwargs,
+                               function, format_text=None, add_underscore=False):
+            """Make sure KWARGS in EXPECTED list for FUNCTION at trace LEVEL
+            Note: Checks for leading underscore if ADD_UNDERSCORE. Excludes keywords
+            mentioned in FORMAT_TEXT.
+            """
+            if debugging(level):
+                expected = expected.split()
+                if add_underscore:
+                    expected += [f"_{k}" for k in expected]
+                all_diff = set(kwargs.keys()).difference(expected)
+                diff = [kw for kw in all_diff
+                        ## TODO3: rf"{{{kw\W*}}" -or- rf"{{ {kw}[^a-z0-9_]* }}" -or- rf"{{ {kw}[^}}]* }}",
+                        if not re.search(rf"{{ {kw}.* }}",
+                                         (format_text or ""), flags=re.IGNORECASE|re.VERBOSE)]
+                if diff:
+                    self.trace(1, f"Warning: Unexpected keyword arg(s) to {function}: {diff}")
+
+
+        @docstring_parameter(max_len=max_trace_value_len)
+        def trace_fmtd(self, level: IntOrTraceLevel, text: str, **kwargs) -> None:
+            """Print TEXT with formatting using optional format KWARGS if at trace LEVEL or higher, including newline
+            Note: Use MAX_LEN keyword argument to override the maximum length ({max_len}) of traced text (see format_value).
+            Also, use SKIP_SANITY_CHECKS to avoid checks for missing braces (e.g., trace could be used).
+            """
+            # Note: To avoid interpolated text as being interpreted as variable
+            # references, this function does the formatting.
+            # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
+            # TODO3: return text as with trace and trace_expr
+            result = ""
+            if (trace_level >= level):
+                ## TODO3 (rework by checking unknown args not in format string):
+                ## check_keyword_args(VERBOSE, "max_len skip_sanity_checks",
+                ##                    kwargs, "trace_fmt", format_text=text, add_underscore=True)
+                # Note: checks alternative keyword first, so False ones not misintepretted
+                max_len = kwargs.get('_max_len') or kwargs.get('max_len')
+                skip_sanity_checks = kwargs.get('_skip_sanity_checks') or kwargs.get('skip_sanity_checks')
+                try:
+                    try:
+                        # TODO: add version of assertion that doesn't use trace or trace_fmtd
+                        if (not skip_sanity_checks) and not (re.search(r"{\S*}", text)):
+                            if include_trace_diagnostics:
+                                 self.trace(level, "[FYI: potential extraneous f-string issue in  in trace_fmt: missing {}'s?] ", no_eol=True)
+                        kwargs_unicode = {k: format_value(_to_unicode(_to_string(v)), max_len=max_len)
+                                          for (k, v) in list(kwargs.items())}
+                        result = self.trace(level, _to_unicode(text).format(**kwargs_unicode), max_len=max_len)
+                    except(KeyError, ValueError, UnicodeEncodeError):
+                        self.raise_exception(max(VERBOSE, level + 1))
+                        sys.stderr.write("Warning: Problem in trace_fmtd: {exc}\n".
+                                         format(exc=sys.exc_info()))
+                        # Show arguments so trace contents recoverable
+                        sys.stderr.write("   text=%r\n" % _to_utf8(clip_value(text)))
+                        kwargs_spec = ", ".join(("%s:%r" % (k, clip_value(v))) for (k, v) in list(kwargs.items()))
+                        sys.stderr.write("   kwargs=%s\n" % _to_utf8(kwargs_spec))
+                except(AttributeError):
+                    # Note: This can occur when profile_function set
+                    self.raise_exception(max(VERBOSE, level + 1))
+                    sys.stderr.write("Error: Unexpected problem in trace_fmtd: {exc}\n".
+                                     format(exc=sys.exc_info()))
+            return result
+
+        # Alias for trace_fmtd
+        trace_fmt = trace_fmtd
+
+        def trace_object(
+                self,
+                level: IntOrTraceLevel,
+                obj: object,
+                label: Optional[str] = None,
+                show_all: Optional[bool] = None,
+                show_private: Optional[bool] = None,
+                show_methods_etc: Optional[bool] = None,
+                indentation: Optional[str] = None,
+                pretty_print: Optional[bool] = None,
+                max_value_len: int = max_trace_value_len,
+                max_depth: int = 0,
+                regular_standard: bool = False
+            ) -> None:
+            """Trace out OBJ's members to stderr if at trace LEVEL or higher.
+            Note: Optionally uses output LABEL, with INDENTATION, SHOWing_ALL members, and PRETTY_PRINTing.
+            TODO: Use SHOW_PRIVATE to display private members and SHOW_METHODS_ETC for methods.
+            Unless REGULAR_STANDARD, object like lists and dicts treated specially.
+            If MAX_DEPTH > 0, this uses recursion to show values for instance members."""
+            # HACK: Members for STANDARD_TYPES omitted unless show_all.
+            # TODO: Make REGULAR_STANDARD True by default
+            # Notes:
+            # - This is intended for arbitrary objects, use trace_values for objects known to be lists or hashes.
+            # - Support for show_private and show_methods_etc is not yet implemented (added for sake of tpo_common.py).
+            # - See https://stackoverflow.com/questions/383944/what-is-a-python-equivalent-of-phps-var-dump.
+            # TODO: support recursive trace; specialize show_all into show_private and show_methods
+            # TODO: handle tuples
+            # TODO3: return text as with trace and trace_expr
+            ##                                       r=(trace_level < level)))
+            self.trace_fmt(MOST_VERBOSE, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
+                      dl=level, obj=object, lbl=label, sa=show_all, ind=indentation, pp=pretty_print, md=max_depth)
+            if (trace_level < level):
+                return
+            if (pretty_print is None):
+                pretty_print = (trace_level > level)
+            type_id_label = str(type(obj)) + " " + hex(id(obj))
+            if label is None:
+                label = type_id_label
+            elif verbose_debugging():
+                label += " [" + type_id_label + "]"
+            else:
+                self.assertion(isinstance(label, str))
+                pass
+            outer_indentation = ""
+            if indentation is None:
+                indentation = INDENT1
+            else:
+                # TODO: rework via indent_level arg
+                outer_indentation = indentation[:len(indentation)-len(INDENT)]
+            if show_all is None:
+                show_all = (show_private or show_methods_etc)
+            if para_mode_tracing:
+                self.trace(ALWAYS, "")
+            self.trace(ALWAYS, outer_indentation + label + ": {")
+            member_info = []
+            try:
+                member_info = inspect.getmembers(obj)
+            except:
+                self.trace_fmtd(QUITE_VERBOSE, "Warning: Problem getting member list in trace_object: {exc}",
+                           exc=sys.exc_info())
+            ## HACK: show standard type value as special member
+            if (isinstance(obj, STANDARD_TYPES) and (not regular_standard)):
+                member_info = [("(value)", obj)] + [(("__(" + m + ")__"), v) for (m, v) in member_info]
+                self.trace_fmtd(QUITE_VERBOSE, "{ind}Special casing standard type as member {m}",
+                           ind=indentation, m=member_info[0][0])
+            for (member, value) in member_info:
+                # If high trace level, output the value as is
+                # TODO: value = clip_text(value)
+                self.trace_fmtd(MOST_DETAILED, "{i}{m}={v}; type={t}", i=indentation, m=member, v=value, t=type(value))
+                value_spec = format_value(value, max_len=max_value_len)
+                if (trace_level >= MOST_VERBOSE):
+                    self.do_print(indentation + member + ": ", end="")
+                    if pretty_print:
+                        pprint(value_spec, stream=sys.stderr)
+                        if debug_file:
+                            pprint(value_spec, stream=debug_file)
+                    else:
+                        self.do_print(value_spec)
+                    if use_logging:
+                        logging.debug(_to_utf8((indentation + member + ": " + value_spec)))
+                    continue
+                # Include unless special member (or if no filtering)
+                ## DEBUG: trace_expr(QUITE_VERBOSE, member.startswith("__"), re.search(r"^<.*(method|module|function).*>$", value_spec))
+                include_member = (show_all or (not (member.startswith("__") or 
+                                                    re.search(r"^<.*(method|module|function).*>$", value_spec))))
+                # Optionally, process recursively (TODO: make INDENT an env. option)
+                is_simple_type = isinstance(value, SIMPLE_TYPES)
+                if ((max_depth > 0) and include_member and (not is_simple_type)):
+                    # TODO: add helper for formatting type & address (for use here and above)
+                    member_type_id_label = (member + " [" + str(type(value)) + " " + hex(id(value)) + "]")
+                    self.trace_object(level, value, label=member_type_id_label, show_all=show_all,
+                                 indentation=(indentation + INDENT), pretty_print=None,
+                                 max_depth=(max_depth - 1), max_value_len=max_value_len,
+                                 regular_standard=regular_standard)
+                    continue
+                # Otherwise, derive value spec. (trapping for various exceptions)
+                ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
+                try:
+                    try:
+                        if is_simple_type and not isinstance(value, str):
+                            ## TODO?: value_spec = str(value)
+                            value_spec = value
+                        else:
+                            value_spec = format_value("%r" % ((value),), max_len=max_value_len)
+                    except(TypeError, ValueError):
+                        self.trace_fmtd(QUITE_VERBOSE, "Warning: Problem in tracing member {m}: {exc}",
+                                   m=member, exc=sys.exc_info())
+                        value_spec = "__n/a__"
+                except(AttributeError):
+                    # Note: This can occur when profile_function set
+                    self.trace_fmtd(QUITE_VERBOSE, "Error: unexpected problem in trace_object: {exc}",
+                               exc=sys.exc_info())
+                    value_spec = "__n/a__"
+                if include_member:
+                    self.do_print(indentation + member + ": ", end="")
+                    if pretty_print:
+                        # TODO: remove quotes from numbers and booleans
+                        pprint(value_spec, stream=sys.stderr, indent=len(indentation))
+                    else:
+                        self.do_print(_to_utf8(value_spec))
+                    if use_logging:
+                        logging.debug(_to_utf8((indentation + member + ":" + value_spec)))
+            self.trace(ALWAYS, indentation + "}")
+            if para_mode_tracing:
+                self.trace(ALWAYS, "")
+            return
+
+
+        def trace_values(
+                self,
+                level: IntOrTraceLevel,
+                collection: Union[list, dict, Any],
+                label: Optional[str] = None,
+                indentation: Optional[str] = None,
+                use_repr: Optional[bool] = None,
+                max_len: Optional[int] = None
+            ) -> None:
+            """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
+            # TODO3: return text as with trace and trace_expr
+            self.trace_fmt(MOST_VERBOSE, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
+                      dl=level, lbl=label, coll=collection, ind=indentation)
+            if (trace_level < level):
+                return
+            if para_mode_tracing:
+                self.trace(ALWAYS, "")
+            if isinstance(collection, Mapping):
+                try:
+                    collection = dict(collection)
+                except:
+                    self.trace_exception(6, "mapping to dict in trace_values")
+            # note: sets will be coerced to lists
+            if not isinstance(collection, (list, dict)):
+                if hasattr(collection, '__iter__'):
+                    self.trace(level + 1, "Warning: [trace_values] consuming iterator")
+                    collection = list(collection)
+                else:
+                    self.trace(level + 1, "Warning: [trace_values] coercing input into list")
+                    collection = [collection]
+            if indentation is None:
+                indentation = INDENT1
+            if label is None:
+                label = str(type(collection)) + " " + hex(id(collection))
+            if use_repr is None:
+                use_repr = False
+            self.trace(ALWAYS, label + ": {")
+            keys_iter = list(collection.keys()) if isinstance(collection, dict) else range(len(collection))
+            for k in keys_iter:
+                try:
+                    value = format_value(_to_utf8(collection[k]))
+                    if use_repr:
+                        value = repr(value)
+                    self.trace_fmtd(ALWAYS, "{ind}{k}: {v}", ind=indentation, k=k,
+                               v=format_value(value, max_len=max_len, skip_sanity_checks=True))
+                except:
+                    self.trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}: {exc}",
+                               k=str(k), exc=sys.exc_info())
+            self.trace(ALWAYS, indentation + "}")
+            if para_mode_tracing:
+                self.trace(ALWAYS, "")
+            return
+
+        @docstring_parameter(max_len=max_trace_value_len)
+        def trace_expr(self, level: IntOrTraceLevel, *values, _caller_depth=0, **kwargs) -> str:
+            """Trace each of the argument VALUES (if at trace LEVEL or higher), with KWARGS for options.
+            Introspection is used to derive label for each expression. By default, the following format is used:
+               expr1=value1; ... exprN=valueN
+            Also, returns the formatted text.
+            Notes:
+            - Warning: the old-style introspection fails to resolve expressions if 
+              statement split across lines. (It is used for pre-3.9 Python.)
+            - For simplicity, the values are assumed to separated by ', ' (or expression _SEP)--barebones parsing applied.
+            - Use DELIM to specify delimiter; otherwise '; ' used;
+              if so, NO_EOL applies to intermediate values (EOL always used at end).
+            - Use USE_REPR=False to use tracing via str instead of repr.
+            - Use _KW_ARG for KW_ARG (i.e., '_' prefix in case of conflict), as in following:
+              trace_expr(DETAILED, term, _term="; ")
+            - Use MAX_LEN to specify maximum value length ({max_len}), including the variable name, etc.
+            - Use PREFIX to specify initial trace output (e.g., for function call tracing).
+            - Use SUFFIX to specify final value to be printed (e.g., for perlish para grep over multi-line trace).
+            - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain
+            - Use _CALLER_DEPTH to skip extra wrapper frames (e.g., 1 when called via module-level wrapper).
+            """
+            self.trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw}); debug_level={dl}",
+                      l=level, args=values, kw=kwargs, dl=trace_level)
+            self.check_keyword_args(VERBOSE, "sep delim no_eol max_len prefix suffix use_repr",
+                               kwargs, "trace_expr", add_underscore=True)
+
+            ## TODO1: check for unknown keywords, which could be cut-n-paste error
+            ## TODO2: try to handle numpy arrays better; ex: 'arr=array([[11, 12],\n       [21, 22]])'
+            ##        => 'arr=array([[11, 12], [21, 22]])'
+            ## EX (from convert_emoticons.py): debug.trace_expr(7, replace=None, strip=None, replacement=None, text=None, prefix="in ConvertEmoticons.__init__: ")
+            ## DEBUG:
+            ## trace_fmt(1, "(global_trace_level:{g} < level:{l})={v}",
+            ##           g=trace_level, l=level, v=(trace_level < level))
+            if (trace_level < level):
+                # note: Short-circuits processing to avoid errors about known problems (e.g., under ipython)
+                return ""
+            # Note: checks alternative keyword first, so False ones not misintepretted
+            ## TODO3: make sep deprecated
+            sep = kwargs.get('_sep') or kwargs.get('sep')
+            delim = kwargs.get('_delim') or kwargs.get('delim') or sep
+            suffix = kwargs.get('_suffix') or kwargs.get('suffix')
+            no_eol = kwargs.get('_no_eol') or kwargs.get('no_eol')
+            in_no_eol = no_eol
+            use_repr = kwargs.get('_use_repr') or kwargs.get('use_repr')
+            max_len = kwargs.get('_max_len') or kwargs.get('max_len')
+            prefix = kwargs.get('_prefix') or kwargs.get('prefix')
+            if no_eol is None:
+                no_eol = (delim and ("\n" in delim))
+            if delim is None:
+                delim = "; "
+                if in_no_eol is None:
+                    no_eol = True
+            if use_repr is None:
+                use_repr = True
+            if prefix is None:
+                prefix = ""
+            self.trace(9, f"sep={sep!r}, del={delim!r}, noeol={no_eol}, rep={use_repr}, mlen={max_len}, pre={prefix!r} suf={suffix!r}", skip_sanity_checks=True)
+
+            # Get symbolic expressions for the values
+            out_text = ""
+            if not use_old_introspection:
+                ## HACK: uses _prefix to avoid conflict with introspection's prefix
+                ## TODO2: drop newlines due to arguments split across lines
+                expression = "???"
+                if intro:
+                    expression = intro.format(*values, arg_offset=1, indirect=True, levels_back=_caller_depth, max_len=max_len,
+                                              no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
+                    ## OLD:
+                    ## if max_len and len(expression) > max_len:
+                    ##     trace(7, ("Warning: error in introspection max_len; " +
+                    ##               f"{len(expression)} vs. {max_len}; {expression=}"))
+
+                ## TEST:
+                ## expression = []
+                ## for i, value in enumerate(values):
+                ##     expression.append(intro.format(value, arg_offset=(i + 1)))
+                ## expression = "@".join(expression)
+                ## trace(3, f"{values=} {expression=}")
+                ##
+                ## OLD: out_text += trace(level, expression, skip_sanity_checks=True, max_len=max_len)
+                # Note: when max_len specified, intro.format already applied it to values;
+                # use expression length to avoid trace re-truncating (expression includes
+                # arg names, delimiters, etc. beyond max_len).
+                trace_max_len = max_len
+                if max_len is not None:
+                    expr_len = len(expression) if expression else 0
+                    if expr_len > max_len:
+                        trace_max_len = expr_len
+                out_text += self.trace(level, expression, skip_sanity_checks=True,
+                                  max_len=trace_max_len)
+            else:
+                ## TODO2: handle cases split across lines
+                try:
+                    # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
+                    caller = inspect.stack()[1 + _caller_depth]
+                    (_frame, filename, line_number, _function, context, _index) = caller
+                    out_text += self.trace(9, f"filename={filename!r}, context={context!r}", skip_sanity_checks=True)
+                    statement = read_line(filename, line_number).strip()
+                    if statement == MISSING_LINE:
+                        statement = str(context).replace("\\n']", "")
+                    # Extract list of argument expressions (removing optional comment)
+                    statement = re.sub(r"#.*$", "", statement)
+                    statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
+                    # Remove trailing paren with optional semicolon
+                    statement = re.sub(r"\)\s*;?\s*$", "", statement)
+                    # Remove trailing comma (e.g., if split across lines)
+                    statement = re.sub(r",?\s*$", "", statement)
+                    # Skip first argument (level)
+                    expressions = re.split(", +", statement)[1:]
+                    out_text += self.trace(9, f"expressions={expressions!r}\nvalues={values!r}", skip_sanity_checks=True)
+                except:
+                    self.trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
+                               exc=sys.exc_info())
+                    expressions = []
+
+                # Output initial text
+                if prefix:
+                    out_text += self.trace(level, prefix, no_eol=no_eol, skip_sanity_checks=True, max_len=max_len)
+
+                # Output each expression value
+                for expression, value in zip_longest(expressions, values):
+                    try:
+                        ## Exclude kwarg params
+                        match = re.search(r"^(\w+)=", str(expression))
+                        if (match and match.group(1) in kwargs):
+                            continue
+                        self.assertion((not ((value is not None) and (expression is None))),
+                                  f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
+                        value_spec = format_value(repr(value) if use_repr else value,
+                                                  max_len=max_len)
+                        out_text += self.trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True, max_len=max_len)
+                    except:
+                        self.trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
+                               exc=sys.exc_info())
+                # Output final text
+                if suffix:
+                    out_text += self.trace(level, suffix, no_eol=False, skip_sanity_checks=True, max_len=max_len)
+                elif (no_eol and (delim != "\n")):
+                    out_text += self.trace(level, "", no_eol=False)
+                else:
+                    out_text += self.trace(9, "No final text to output")
+
+            return out_text
+
+
+        def trace_frame(self, level: IntOrTraceLevel, frame, label="frame"):
+            """Trace info about FRAME to stderr if LEVEL or higher, using LABEL prefix"""
+            # example: trace_frame debug.py:680
+            frame_spec = (f"{frame.f_code.co_name} {inspect.getfile(frame)}:{frame.f_lineno}"
+                          if frame else "n/a")
+            self.trace(level, f"{label}: {frame_spec}")
+
+        def trace_current_context(self, level: IntOrTraceLevel = QUITE_DETAILED,
+                                   label: Optional[str] = None,
+                                   show_methods_etc: bool = False,
+                                   indirect: Optional[bool] = False,
+                                   max_value_len: Optional[int] = None,
+                                   _caller_depth: int = 0) -> None:
+            """Traces out current context (local and global variables), with output
+            prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
+            Notes: By default the debugging level must be quite-detailed (6).
+            If the debugging level is higher, the entire stack frame is traced.
+            Also, methods are omitted by default. Other optional arguments allow
+            for INDIRECT calling contexts and MAX_VALUE_LEN of traced output.
+            Warning: Some values are only output at higher trace levels
+            """
+            self.trace(8, f"trace_current_context{(level, label, show_methods_etc, indirect, max_value_len)}")
+            ## TODO2: clarify confusing debug level usage
+            frame = None
+            if label is None:
+                label = "current"
+            if max_value_len is None:
+                max_value_len = 2048
+            try:
+                current_frame = inspect.currentframe()
+                self.trace_frame(7, frame, "current frame")
+                frame = current_frame.f_back if current_frame else None
+                self.trace_frame(7, frame, "calling frame")
+                # Skip additional wrapper frames
+                for _ in range(_caller_depth):
+                    if frame is not None:
+                        frame = frame.f_back
+                        self.trace_frame(7, frame, "extra frame (caller_depth)")
+                if frame and indirect:
+                    frame = frame.f_back
+                    self.trace_frame(7, frame, "indirect frame")
+            except (AttributeError, KeyError, ValueError):
+                self.trace_fmt(VERBOSE, "Exception during trace_current_context: {exc}",
+                          exc=sys.exc_info())
+            if para_mode_tracing:
+                self.trace(level, "")
+            self.trace_fmt(level, "{label} context: {{", label=label)
+            prefix = INDENT
+            if (self.get_level() - level) > 1:
+                self.trace_object((level + 2), frame, "frame", indentation=prefix,
+                             show_all=show_methods_etc, max_value_len=max_value_len)
+            else:
+                self.trace_fmt(level, "frame = {f}", f=frame)
+                if frame:
+                    self.trace_object(level, frame.f_globals, "globals", indentation=prefix,
+                                 show_all=show_methods_etc, max_value_len=max_value_len)
+                    self.trace_object(level, frame.f_locals, "locals", indentation=prefix,
+                                 show_all=show_methods_etc, max_value_len=max_value_len)
+            self.trace(level, "}")
+            if para_mode_tracing:
+                self.trace(level, "")
+            return
+
+        def trace_stack(self, level=VERBOSE):
+            """Output stack trace to stderr (if at trace LEVEL or higher)"""
+            if (level <= trace_level):
+                traceback.print_stack(file=sys.stderr)
+                if debug_file:
+                    traceback.print_stack(file=debug_file)
+            return
+
+        def trace_exception(self, level: IntOrTraceLevel, task: Any,
+                            show_stack: Optional[bool] = None) -> None:
+            """Trace exception information regarding TASK (e.g., function) at LEVEL.
+            Note: If SHOW_STACK, includes stack trace (default when verbose debugging)
+            """
+            # Note: Conditional output version of system's print_exception_info.
+            # ex: trace_exception(DETAILED, "tally_counts")
+            if show_stack is None:
+                show_stack = debugging(level + 1)
+            self.trace(level, "Exception during {t}: {exc}".
+                  format(t=task, exc=sys.exc_info()))
+            if show_stack:
+                self.trace_stack(level)
+            return
+        #
+        # Note: alias to match print_exception_info in system
+        trace_exception_info = trace_exception
+
+        def raise_exception(self, level: IntOrTraceLevel = 1):
+            """Raise an exception if debugging (at specified trace LEVEL)
+            Note: useful to re-raise exceptions normally ignored when not debugging
+            """
+            if (level <= trace_level):
+                raise                       # pylint: disable=misplaced-bare-raise
+            return
+
+
+        def assertion(
+                self,
+                expression: Union[bool, Any],
+                issue: Optional[str] = None,
+                message: Optional[str] = None,
+                assert_level: Optional[IntOrTraceLevel] = None,
+                indirect: Optional[bool] = False,
+                _caller_depth: int = 0
+            ) -> Optional[str]:
+            """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
+            Note:
+            - Warning: introspection fails to resolve expression if split across lines.
+            - This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so).
+            - The optional ASSERT_LEVEL overrides use of ALWAYS.
+            - The optional ISSUE overrides "Assertion failed" (e.g., for tests).
+            - Returns expression text or None if not triggered.
+            """
+            # EX: assertion((2 + 2) != 5)
+            # TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
+            # TODO: trace out local and globals to aid in diagnosing assertion failures; ex: add automatic tarcing of variables used in the assertion expression)
+            expression_text = None
+            if (assert_level is None):
+                assert_level = ALWAYS
+            if (trace_level < assert_level):
+                # note: Short-circuits processing to avoid extraneous warnings (e.g., trace_expr under ipython)
+                return expression_text
+            if (not expression):
+                try:
+                    # Get source information for failed assertion
+                    ## TODO3: use trace_stack (here and elsewhere)
+                    self.trace_fmtd(MOST_VERBOSE, "Call stack: {st}", st=inspect.stack())
+                    offset = (2 if indirect else 1) + _caller_depth
+                    caller = inspect.stack()[offset]
+                    (_frame, filename, line_number, _function, context, _index) = caller
+                    self.trace(8, f"filename={filename!r}, context={context!r}")
+
+                    # Resolve expression text
+                    if not use_old_introspection:
+                        expression = "???"
+                        if intro:
+                            expression = intro.format(expression, indirect=True, omit_values=True, levels_back=_caller_depth)
+                        ## OLD: expression = re.sub("=False$", "", expression)
+                        ## TODO2: drop newlines due to argument split across lines
+                        ##   expression = re.sub("\n", " ", expression)???
+                        expression_text = expression
+                    else:
+                        # Read statement in file and extract assertion expression
+                        # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
+                        statement = read_line(filename, line_number).strip()
+                        if statement == MISSING_LINE:
+                            statement = str(context).replace("\\n']", "")
+                            # Format expression and message
+                            # note: removes comments, along with the assertion call prefix and suffix
+                            statement = re.sub("#.*$", "", statement)
+                            statement = re.sub(r"^(\S*)assertion\(", "", statement)
+                            expression = re.sub(r"\);?\s*$", "", statement)
+                            expression = re.sub(r",\s*$", "", statement)
+                            expression_text = expression                    
+                    qualification_spec = (": " + message) if message else ""
+
+                    # Output information
+                    # TODO: omit subsequent warnings
+                    ## OLD: trace_fmtd(ALWAYS, "Assertion failed: {expr} (at {file}:{line}){qual}",
+                    self.trace_fmtd(ALWAYS, "{issue_spec}: {expr} (at {file}:{line}){qual}",
+                               issue_spec=(issue or "Assertion failed"),
+                               expr=expression_text, file=filename, line=line_number, qual=qualification_spec)
+                except:
+                    self.trace_exception(ALWAYS, "assertion formatting")
+            return expression_text
+
+        def val(self, level: IntOrTraceLevel, value: Any) -> Any:
+            """Returns VALUE if at trace LEVEL or higher otherwise None
+            Note: inspired by Lisp's convenient IF form without an explicit else: (if test value-if-true)"""
+            # EX: (101 if ((get_level() == 1) and val(1, 101)) else None) => 101
+            # EX: ((not __debug__) and val(trace_level, 101))) => None
+            # TODO: rename as cond_value???
+            return (value if (trace_level >= level) else None)
+
+
+        def code(self, level: IntOrTraceLevel, no_arg_function: Callable) -> Any:
+            """Execute NO_ARG_FUNCTION if at trace LEVEL or higher.
+            Returns result of invocation or None.
+            Notes:
+            - Use call() for more flexible invocation (e.g., can avoid lambda function)
+            - Given the quirks of Python syntax, a two-step process is required:
+               debug.code(4, { line1; line2; ...; lineN })
+                   =>
+               def my_stupid_block_workaround(): 
+                   if __debug__:
+                       line1; line2; ...; lineN
+               debug.code(4, my_stupid_block_workaround)
+            - Lambda functions can be used for simple expression-based functions"""
+            self.trace(VERBOSE, f"self.code({level}, {no_arg_function})")
+            result = None
+            if (trace_level >= level):
+                self.trace(QUITE_DETAILED, f"Executing {no_arg_function}")
+                result = no_arg_function()
+            return result
+
+        def call(self, level: IntOrTraceLevel, function: Callable, *args, **kwargs) -> Any:
+            """Invoke FUNCTION with ARGS and KWARGS if at trace LEVEL or higher
+            Note: Use self.code() for simpler invocation (e.g., via lambda function)
+            """
+            self.trace(VERBOSE, f"call({level}, {function}, a={args}, kw={kwargs})")
+            result = None
+            if (trace_level >= level):
+                self.trace(QUITE_DETAILED, f"Executing {function}")
+                result = function(*args, **kwargs)
+            return result
+
+
+        def get_elapsed_time(self):
+            """Get elapsed (debugging) time in seconds from import time
+            Note: convenience function for use in notebooks for quick-and-dirty timing.
+            Also used to avoid blank cell when executing last cell.
+            Typical usage:
+               debug.trace(3, f"done: elapsed={debug.get_elapsed_time()}s")
+            """
+            time_end = time.time()
+            elapsed = round(time_end - time_start, 3)
+            self.trace(QUITE_VERBOSE, f"self.get_elapsed_time() = {elapsed}; {time_start=} {time_end=}")
+            return elapsed
+
+        def open_debug_file(self, debug_filename: Optional[str] = None) -> None:
+            """Open external file for copy of trace output"""
+            self.trace(5, "open_debug_file()")
+            global debug_file
+            self.assertion(debug_file is None)
+
+            # Open the file
+            if debug_filename is None:
+                debug_filename = os.getenv("DEBUG_FILE")
+            if debug_filename is not None:
+                ## TEST: open unbuffered which requires binary output mode
+                ## note: uses line buffering
+                for_append = _getenv_bool("DEBUG_FILE_APPEND", True)
+                mode = ("a" if for_append else "w")
+                self.trace_expr(5, mode)
+                debug_file = open(debug_filename, mode=mode, buffering=1, encoding="UTF-8")
+            self.trace_fmtd(VERBOSE, "debug_filename={fn} debug_file={f}",
+                       fn=debug_filename, f=debug_file)
+            return
+
+        def reopen_debug_file(self, debug_filename: Optional[str] = None) -> None:
+            """Re-open debug file to work around concurrent access issues
+            Note: The debug file is mainly used with pytest to work around stderr tracing issues"""
+            self.trace(5, "reopen_debug_file()")
+            global debug_file
+            if not debug_filename:
+                self.assertion(debug_file is not None)
+
+            # Close file if opened
             if debug_file:
-                print(text, file=debug_file, end=end)
-            ## TODO3: out_text = text + (end if end else "")
-            out_text += str(text)
-            if end:
-                out_text += end
-        except:
-            trace_exception_info(7, "do_print")
-        return out_text
+                debug_file.close()
+                debug_file = None
+
+            # Open fresh
+            self.open_debug_file(debug_filename)
+            return
+
+        def display_ending_time_etc(self) -> None:
+            """Display ending time information"""
+            # TODO: rename to reflect generic-exit nature
+            # note: does nothing if stderr closed (e.g., other monitor)
+            # TODO: resolve pylint issue with sys.stderr.closed
+            self.trace_object(QUITE_VERBOSE, sys.stderr)
+            if sys.stderr.closed:       # pylint: disable=using-constant-test
+                return
+            elapsed = self.get_elapsed_time()
+            self.trace_fmtd(DETAILED, "[{f}] unloaded at {t}; elapsed={e}s",
+                       f=module_file, t=timestamp(), e=elapsed)
+            if monitor_functions:
+                sys.setprofile(None)
+            global debug_file
+            if debug_file:
+                debug_file.close()
+                debug_file = None
+
+        def debug_init(self, force: Optional[bool] = False) -> None:
+            """Debug-only initialization"""
+            global time_start
+            if (time_start > 0 and not force):
+                ## TODO3: track down source of re-init
+                self.trace(DETAILED, f"debug_init early exit: {time_start=} {force=}")
+                return
+            time_start = time.time()
+            self.trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
+            ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
+            # note: shows command invocation unless invoked via "python -c ..."
+            command_line = " ".join(sys.argv)
+            if (command_line and (command_line != "-c") and (command_line != "-m")):
+                # TODO2: simplify misc. trace suppression options (n.b., check shellscript repo)
+                if _getenv_bool("TRACE_INVOCATION", False):
+                    if not (_getenv_bool("QUIET_MODE", False) or _getenv_bool("DURING_ALIAS", False)):
+                        self.trace(USUAL, command_line)
+            self.trace_expr(DETAILED, sys.argv)
+            self.open_debug_file()
+
+            # Determine whether tracing include time and date
+            # note: Useful for adhoc profiling
+            global output_timestamps
+            output_timestamps = _getenv_bool("OUTPUT_DEBUG_TIMESTAMPS", False)
+
+            # Show startup time and tracing info
+            self.trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
+            self.trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
+            self.trace_expr(QUITE_DETAILED, __file__)
+            # note: also show python path if under Unix (TODO3: generalize)
+            if (os.name == "posix"):
+                self.code(VERBOSE, lambda: os.system("(echo -n 'Python: '; which python) 1>&2"))
+
+            # Determine other debug-only environment options
+            global para_mode_tracing
+            para_mode_tracing = _getenv_bool("PARA_MODE_TRACING", para_mode_tracing)
+            global max_trace_value_len
+            max_trace_value_len = _getenv_int("MAX_TRACE_VALUE_LEN", max_trace_value_len)
+            global use_logging
+            use_logging = _getenv_bool("USE_LOGGING", use_logging)
+            enable_logging = _getenv_bool("ENABLE_LOGGING", use_logging)
+            if enable_logging:
+                init_logging()
+            global include_trace_diagnostics
+            include_trace_diagnostics = _getenv_bool("TRACE_DIAGNOSTICS", trace_level >= QUITE_DETAILED)
+            global monitor_functions
+            monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
+            if monitor_functions:
+                sys.setprofile(profile_function)
+            ## TODO1: (all output_caller_info env. init; also add to trace_expr below)
+            ## global output_caller_info
+            ## output_caller_info = _getenv_bool("OUTPUT_CALLER_INFO", output_caller_info)
+            self.trace_expr(VERBOSE, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
+            global use_old_introspection
+            use_old_introspection = _getenv_bool("USE_OLD_INTROSPECTION", False)
+            if not use_old_introspection:
+                ## TODO2: put before trace_expr or assertion called
+                try:
+                    # pylint: disable=import-outside-toplevel
+                    from mezcla import introspection
+                    ## TODO3: from mezcla.introspection import intro
+                    global intro
+                    intro = introspection.intro
+                except:
+                    use_old_introspection = True
+                    self.trace(3, "FYI: Unable to load introspection")
+                    self.trace_exception(6, "loading introspection")
+
+            # Show additional information when detailed debugging
+            # TODO: sort keys to facilate comparisons of log files
+            pre = post = ""
+            if para_mode_tracing:
+                pre = post = "\n"
+            self.trace_fmt(VERBOSE, "{pre}environment: {{\n\t{env}\n}}{post}",
+                      env="\n\t".join([(k + ': ' + format_value(os.environ[k]))
+                                       for k in sorted(dict(os.environ))]),
+                      pre=pre, post=post, max_len=4096)
+            self.trace_values(QUITE_DETAILED, os.environ, "os.environ")
+
+            # Likewise show additional information during verbose debug tracing
+            # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
+            self.trace_expr(MOST_DETAILED, globals(), max_len=65536)
+
+            # Register to show shuttdown time and elapsed seconds
+            # note: atexit support is enabled by default unless DEBUG_FILE used (n.b., cleanup issues)
+            skip_atexit = _getenv_bool("SKIP_ATEXIT", (debug_file is not None))
+            self.trace_expr(4, skip_atexit)
+            if not skip_atexit:
+                atexit.register(self.display_ending_time_etc)
+
+            return
+
+
+    # Global instance for OO interface (see my_regex.py for similar pattern)
+    _debug = DebugWrapper()
+
+    #....................................................................
+    # Module-level functional API: thin wrappers around _debug methods.
+    # This preserves backward compatibility with all existing callers.
+
+    def set_level(level: IntOrTraceLevel) -> None:
+        """Set new trace level"""
+        return _debug.set_level(level)
+
+    def get_level() -> IntOrTraceLevel:
+        """Get current tracing level"""
+        return _debug.get_level()
+
+    def get_output_timestamps() -> bool:
+        """Return whether outputting timestamps"""
+        return _debug.get_output_timestamps()
+
+    def set_output_timestamps(do_output_timestamps: bool):
+        """Enable (or disable) the outputting of timestamps"""
+        return _debug.set_output_timestamps(do_output_timestamps)
+
+    def do_print(value, max_len = None, end: Optional[str] = None) -> str:
+        """Print VALUE to stderr and optionally to DEBUG_FILE"""
+        return _debug.do_print(value, max_len, end)
 
     def trace(
             level: IntOrTraceLevel,
@@ -300,136 +1176,18 @@ if __debug__:
             max_len = None,
             skip_sanity_checks: Optional[bool] = None
         ) -> str:
-        """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE.
-        Also, returns the formatted text.
-        Note: Optionally, uses \n unless NO_EOL, precedes trace with INDENTATION, and
-        SKIPs_SANITY_CHECKS (e.g., variables in braces in f-string omission). Outputs up to MAX_LEN characters including added ellipses.
-        """
-        # TODO1: add exception handling
-        # TODO2: add options to use format_value and max_len 
-        # Note: trace should not be used with text that gets formatted to avoid
-        # subtle errors
-        ## DEBUG: sys.stderr.write("trace({l}, {t})\n".format(l=level, t=text))
-        if max_len is None:
-            max_len = max_trace_value_len
-        out_text = ""
-        if (trace_level >= level):
-            if indentation is None:
-                indentation = INDENT0
-            # Prefix trace with timestamp w/o date
-            if not isinstance(output_timestamps, bool):
-                sys.stderr.write(f"Warning: output_timestamps has unexpected type {type(output_timestamps).__name__}: {output_timestamps!r}\n")
-            if output_timestamps:
-                # Get time-proper from timestamp (TODO: find standard way to do this)
-                # Note: shows diff/delta from last call if detailed tracing (TODO3: make explicit)
-                timestamp_time = re.sub(r"^\d+-\d+-\d+\s*", "", timestamp())
-                if verbose_debugging():
-                    global last_trace_time
-                    diff = 1000.0 * (time.time() - last_trace_time)
-                    timestamp_time += f" diff={diff:.3f}ms"
-                    last_trace_time = time.time()
-                out_text += do_print(indentation + "[" + timestamp_time + "]", end=": ", max_len=max_len)
-                max_len -= len(out_text)
-            ## TODO1: 
-            ## # Optionally show filename and line number for caller
-            ## # Note: This is mainly intended for help in tweaking trace levels, such as to help
-            ## # identify tracing being done too frequently. This was inspired by loguru.
-            ## if output_caller_info:
-            ##     pass
-            # Print trace, converted to UTF8 if necessary (Python2 only)
-            # TODO: add version of assertion that doesn't use trace or trace_fmtd
-            ## TODO: assertion(not ???)
-            out_text += do_print(indentation, end="", max_len=max_len)
-            max_len -= len(out_text)
-            if not isinstance(text, str):
-                if trace_level >= USUAL:
-                    out_text += do_print("[Warning: converted non-text to str] ", end="", max_len=max_len)
-                    max_len -= len(out_text)
-                text = str(text)
-            if ((not skip_sanity_checks)
-                and (match := re.search(r"{[^0-9]\S+}", text))
-                and not re.search(r"{{[^0-9]\S+}}", text)):
-                # TODO3: show caller info; also rework indent (pep8 quirk)
-                if include_trace_diagnostics:
-                    out_text += do_print(f"[FYI: potential f-string issue in trace: unresolved {match.group()}] ",
-                                         end="", max_len=max_len)
-                    max_len -= len(out_text)
-            end = "\n" if (not no_eol) else ""
-            out_text += do_print(_to_utf8(text), end=end, max_len=max_len)
-            max_len -= len(out_text)
-            if use_logging:
-                # TODO: see if way to specify logging terminator
-                logging.debug(indentation + _to_utf8(text))
-            if debug_file_hack:
-                reopen_debug_file()
-        if empty_arg is not None:
-            sys.stderr.write("Error: trace only accepts two positional arguments (was trace_expr intended?)\n")
-        return out_text
+        """Print TEXT if at trace LEVEL or higher"""
+        return _debug.trace(level, text, empty_arg, no_eol, indentation, max_len, skip_sanity_checks)
 
-    def check_keyword_args(level, expected, kwargs,
-                           function, format_text=None, add_underscore=False):
-        """Make sure KWARGS in EXPECTED list for FUNCTION at trace LEVEL
-        Note: Checks for leading underscore if ADD_UNDERSCORE. Excludes keywords
-        mentioned in FORMAT_TEXT.
-        """
-        if debugging(level):
-            expected = expected.split()
-            if add_underscore:
-                expected += [f"_{k}" for k in expected]
-            all_diff = set(kwargs.keys()).difference(expected)
-            diff = [kw for kw in all_diff
-                    ## TODO3: rf"{{{kw\W*}}" -or- rf"{{ {kw}[^a-z0-9_]* }}" -or- rf"{{ {kw}[^}}]* }}",
-                    if not re.search(rf"{{ {kw}.* }}",
-                                     (format_text or ""), flags=re.IGNORECASE|re.VERBOSE)]
-            if diff:
-                trace(1, f"Warning: Unexpected keyword arg(s) to {function}: {diff}")
+    def check_keyword_args(level, expected, kwargs, function, format_text=None, add_underscore=False):
+        """Make sure KWARGS in EXPECTED list for FUNCTION at trace LEVEL"""
+        return _debug.check_keyword_args(level, expected, kwargs, function, format_text, add_underscore)
 
     @docstring_parameter(max_len=max_trace_value_len)
     def trace_fmtd(level: IntOrTraceLevel, text: str, **kwargs) -> None:
-        """Print TEXT with formatting using optional format KWARGS if at trace LEVEL or higher, including newline
-        Note: Use MAX_LEN keyword argument to override the maximum length ({max_len}) of traced text (see format_value).
-        Also, use SKIP_SANITY_CHECKS to avoid checks for missing braces (e.g., trace could be used).
-        """
-        # Note: To avoid interpolated text as being interpreted as variable
-        # references, this function does the formatting.
-        # TODO: weed out calls that use (level, text.format(...)) rather than (level, text, ...)
-        # TODO3: return text as with trace and trace_expr
-        result = ""
-        if (trace_level >= level):
-            ## TODO3 (rework by checking unknown args not in format string):
-            ## check_keyword_args(VERBOSE, "max_len skip_sanity_checks",
-            ##                    kwargs, "trace_fmt", format_text=text, add_underscore=True)
-            # Note: checks alternative keyword first, so False ones not misintepretted
-            max_len = kwargs.get('_max_len') or kwargs.get('max_len')
-            skip_sanity_checks = kwargs.get('_skip_sanity_checks') or kwargs.get('skip_sanity_checks')
-            try:
-                try:
-                    # TODO: add version of assertion that doesn't use trace or trace_fmtd
-                    if (not skip_sanity_checks) and not (re.search(r"{\S*}", text)):
-                        if include_trace_diagnostics:
-                             trace(level, "[FYI: potential extraneous f-string issue in  in trace_fmt: missing {}'s?] ", no_eol=True)
-                    kwargs_unicode = {k: format_value(_to_unicode(_to_string(v)), max_len=max_len)
-                                      for (k, v) in list(kwargs.items())}
-                    result = trace(level, _to_unicode(text).format(**kwargs_unicode), max_len=max_len)
-                except(KeyError, ValueError, UnicodeEncodeError):
-                    raise_exception(max(VERBOSE, level + 1))
-                    sys.stderr.write("Warning: Problem in trace_fmtd: {exc}\n".
-                                     format(exc=sys.exc_info()))
-                    # Show arguments so trace contents recoverable
-                    sys.stderr.write("   text=%r\n" % _to_utf8(clip_value(text)))
-                    kwargs_spec = ", ".join(("%s:%r" % (k, clip_value(v))) for (k, v) in list(kwargs.items()))
-                    sys.stderr.write("   kwargs=%s\n" % _to_utf8(kwargs_spec))
-            except(AttributeError):
-                # Note: This can occur when profile_function set
-                raise_exception(max(VERBOSE, level + 1))
-                sys.stderr.write("Error: Unexpected problem in trace_fmtd: {exc}\n".
-                                 format(exc=sys.exc_info()))
-        return result
+        """Print TEXT with formatting using optional format KWARGS if at trace LEVEL or higher"""
+        return _debug.trace_fmtd(level, text, **kwargs)
 
-
-    STANDARD_TYPES = (int, float, dict, list)
-    SIMPLE_TYPES = (bool, int, float, type(None), str)
-    #
     def trace_object(
             level: IntOrTraceLevel,
             obj: object,
@@ -443,119 +1201,9 @@ if __debug__:
             max_depth: int = 0,
             regular_standard: bool = False
         ) -> None:
-        """Trace out OBJ's members to stderr if at trace LEVEL or higher.
-        Note: Optionally uses output LABEL, with INDENTATION, SHOWing_ALL members, and PRETTY_PRINTing.
-        TODO: Use SHOW_PRIVATE to display private members and SHOW_METHODS_ETC for methods.
-        Unless REGULAR_STANDARD, object like lists and dicts treated specially.
-        If MAX_DEPTH > 0, this uses recursion to show values for instance members."""
-        # HACK: Members for STANDARD_TYPES omitted unless show_all.
-        # TODO: Make REGULAR_STANDARD True by default
-        # Notes:
-        # - This is intended for arbitrary objects, use trace_values for objects known to be lists or hashes.
-        # - Support for show_private and show_methods_etc is not yet implemented (added for sake of tpo_common.py).
-        # - See https://stackoverflow.com/questions/383944/what-is-a-python-equivalent-of-phps-var-dump.
-        # TODO: support recursive trace; specialize show_all into show_private and show_methods
-        # TODO: handle tuples
-        # TODO3: return text as with trace and trace_expr
-        ##                                       r=(trace_level < level)))
-        trace_fmt(MOST_VERBOSE, "trace_object({dl}, {obj}, label={lbl}, show_all={sa}, indent={ind}, pretty={pp}, max_d={md})",
-                  dl=level, obj=object, lbl=label, sa=show_all, ind=indentation, pp=pretty_print, md=max_depth)
-        if (trace_level < level):
-            return
-        if (pretty_print is None):
-            pretty_print = (trace_level > level)
-        type_id_label = str(type(obj)) + " " + hex(id(obj))
-        if label is None:
-            label = type_id_label
-        elif verbose_debugging():
-            label += " [" + type_id_label + "]"
-        else:
-            assertion(isinstance(label, str))
-            pass
-        outer_indentation = ""
-        if indentation is None:
-            indentation = INDENT1
-        else:
-            # TODO: rework via indent_level arg
-            outer_indentation = indentation[:len(indentation)-len(INDENT)]
-        if show_all is None:
-            show_all = (show_private or show_methods_etc)
-        if para_mode_tracing:
-            trace(ALWAYS, "")
-        trace(ALWAYS, outer_indentation + label + ": {")
-        member_info = []
-        try:
-            member_info = inspect.getmembers(obj)
-        except:
-            trace_fmtd(QUITE_VERBOSE, "Warning: Problem getting member list in trace_object: {exc}",
-                       exc=sys.exc_info())
-        ## HACK: show standard type value as special member
-        if (isinstance(obj, STANDARD_TYPES) and (not regular_standard)):
-            member_info = [("(value)", obj)] + [(("__(" + m + ")__"), v) for (m, v) in member_info]
-            trace_fmtd(QUITE_VERBOSE, "{ind}Special casing standard type as member {m}",
-                       ind=indentation, m=member_info[0][0])
-        for (member, value) in member_info:
-            # If high trace level, output the value as is
-            # TODO: value = clip_text(value)
-            trace_fmtd(MOST_DETAILED, "{i}{m}={v}; type={t}", i=indentation, m=member, v=value, t=type(value))
-            value_spec = format_value(value, max_len=max_value_len)
-            if (trace_level >= MOST_VERBOSE):
-                do_print(indentation + member + ": ", end="")
-                if pretty_print:
-                    pprint(value_spec, stream=sys.stderr)
-                    if debug_file:
-                        pprint(value_spec, stream=debug_file)
-                else:
-                    do_print(value_spec)
-                if use_logging:
-                    logging.debug(_to_utf8((indentation + member + ": " + value_spec)))
-                continue
-            # Include unless special member (or if no filtering)
-            ## DEBUG: trace_expr(QUITE_VERBOSE, member.startswith("__"), re.search(r"^<.*(method|module|function).*>$", value_spec))
-            include_member = (show_all or (not (member.startswith("__") or 
-                                                re.search(r"^<.*(method|module|function).*>$", value_spec))))
-            # Optionally, process recursively (TODO: make INDENT an env. option)
-            is_simple_type = isinstance(value, SIMPLE_TYPES)
-            if ((max_depth > 0) and include_member and (not is_simple_type)):
-                # TODO: add helper for formatting type & address (for use here and above)
-                member_type_id_label = (member + " [" + str(type(value)) + " " + hex(id(value)) + "]")
-                trace_object(level, value, label=member_type_id_label, show_all=show_all,
-                             indentation=(indentation + INDENT), pretty_print=None,
-                             max_depth=(max_depth - 1), max_value_len=max_value_len,
-                             regular_standard=regular_standard)
-                continue
-            # Otherwise, derive value spec. (trapping for various exceptions)
-            ## TODO: pprint.pprint(member, stream=sys.stderr, indent=4, width=512)
-            try:
-                try:
-                    if is_simple_type and not isinstance(value, str):
-                        ## TODO?: value_spec = str(value)
-                        value_spec = value
-                    else:
-                        value_spec = format_value("%r" % ((value),), max_len=max_value_len)
-                except(TypeError, ValueError):
-                    trace_fmtd(QUITE_VERBOSE, "Warning: Problem in tracing member {m}: {exc}",
-                               m=member, exc=sys.exc_info())
-                    value_spec = "__n/a__"
-            except(AttributeError):
-                # Note: This can occur when profile_function set
-                trace_fmtd(QUITE_VERBOSE, "Error: unexpected problem in trace_object: {exc}",
-                           exc=sys.exc_info())
-                value_spec = "__n/a__"
-            if include_member:
-                do_print(indentation + member + ": ", end="")
-                if pretty_print:
-                    # TODO: remove quotes from numbers and booleans
-                    pprint(value_spec, stream=sys.stderr, indent=len(indentation))
-                else:
-                    do_print(_to_utf8(value_spec))
-                if use_logging:
-                    logging.debug(_to_utf8((indentation + member + ":" + value_spec)))
-        trace(ALWAYS, indentation + "}")
-        if para_mode_tracing:
-            trace(ALWAYS, "")
-        return
-
+        """Trace out OBJ's members to stderr if at trace LEVEL or higher"""
+        return _debug.trace_object(level, obj, label, show_all, show_private, show_methods_etc,
+                                   indentation, pretty_print, max_value_len, max_depth, regular_standard)
 
     def trace_values(
             level: IntOrTraceLevel,
@@ -566,286 +1214,43 @@ if __debug__:
             max_len: Optional[int] = None
         ) -> None:
         """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
-        # TODO3: return text as with trace and trace_expr
-        trace_fmt(MOST_VERBOSE, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
-                  dl=level, lbl=label, coll=collection, ind=indentation)
-        if (trace_level < level):
-            return
-        if para_mode_tracing:
-            trace(ALWAYS, "")
-        if isinstance(collection, Mapping):
-            try:
-                collection = dict(collection)
-            except:
-                trace_exception(6, "mapping to dict in trace_values")
-        # note: sets will be coerced to lists
-        if not isinstance(collection, (list, dict)):
-            if hasattr(collection, '__iter__'):
-                trace(level + 1, "Warning: [trace_values] consuming iterator")
-                collection = list(collection)
-            else:
-                trace(level + 1, "Warning: [trace_values] coercing input into list")
-                collection = [collection]
-        if indentation is None:
-            indentation = INDENT1
-        if label is None:
-            label = str(type(collection)) + " " + hex(id(collection))
-        if use_repr is None:
-            use_repr = False
-        trace(ALWAYS, label + ": {")
-        keys_iter = list(collection.keys()) if isinstance(collection, dict) else range(len(collection))
-        for k in keys_iter:
-            try:
-                value = format_value(_to_utf8(collection[k]))
-                if use_repr:
-                    value = repr(value)
-                trace_fmtd(ALWAYS, "{ind}{k}: {v}", ind=indentation, k=k,
-                           v=format_value(value, max_len=max_len, skip_sanity_checks=True))
-            except:
-                trace_fmtd(QUITE_VERBOSE, "Warning: Problem tracing item {k}: {exc}",
-                           k=str(k), exc=sys.exc_info())
-        trace(ALWAYS, indentation + "}")
-        if para_mode_tracing:
-            trace(ALWAYS, "")
-        return
+        return _debug.trace_values(level, collection, label, indentation, use_repr, max_len)
 
     @docstring_parameter(max_len=max_trace_value_len)
     def trace_expr(level: IntOrTraceLevel, *values, **kwargs) -> str:
-        """Trace each of the argument VALUES (if at trace LEVEL or higher), with KWARGS for options.
-        Introspection is used to derive label for each expression. By default, the following format is used:
-           expr1=value1; ... exprN=valueN
-        Also, returns the formatted text.
-        Notes:
-        - Warning: the old-style introspection fails to resolve expressions if 
-          statement split across lines. (It is used for pre-3.9 Python.)
-        - For simplicity, the values are assumed to separated by ', ' (or expression _SEP)--barebones parsing applied.
-        - Use DELIM to specify delimiter; otherwise '; ' used;
-          if so, NO_EOL applies to intermediate values (EOL always used at end).
-        - Use USE_REPR=False to use tracing via str instead of repr.
-        - Use _KW_ARG for KW_ARG (i.e., '_' prefix in case of conflict), as in following:
-          trace_expr(DETAILED, term, _term="; ")
-        - Use MAX_LEN to specify maximum value length ({max_len}), including the variable name, etc.
-        - Use PREFIX to specify initial trace output (e.g., for function call tracing).
-        - Use SUFFIX to specify final value to be printed (e.g., for perlish para grep over multi-line trace).
-        - See misc_utils.trace_named_objects for similar function taking string input, which is more general but harder to use and maintain"""
-        trace_fmt(MOST_VERBOSE, "trace_expr({l}, a={args}, kw={kw}); debug_level={dl}",
-                  l=level, args=values, kw=kwargs, dl=trace_level)
-        check_keyword_args(VERBOSE, "sep delim no_eol max_len prefix suffix use_repr",
-                           kwargs, "trace_expr", add_underscore=True)
-                             
-        ## TODO1: check for unknown keywords, which could be cut-n-paste error
-        ## TODO2: try to handle numpy arrays better; ex: 'arr=array([[11, 12],\n       [21, 22]])'
-        ##        => 'arr=array([[11, 12], [21, 22]])'
-        ## EX (from convert_emoticons.py): debug.trace_expr(7, replace=None, strip=None, replacement=None, text=None, prefix="in ConvertEmoticons.__init__: ")
-        ## DEBUG:
-        ## trace_fmt(1, "(global_trace_level:{g} < level:{l})={v}",
-        ##           g=trace_level, l=level, v=(trace_level < level))
-        if (trace_level < level):
-            # note: Short-circuits processing to avoid errors about known problems (e.g., under ipython)
-            return ""
-        # Note: checks alternative keyword first, so False ones not misintepretted
-        ## TODO3: make sep deprecated
-        sep = kwargs.get('_sep') or kwargs.get('sep')
-        delim = kwargs.get('_delim') or kwargs.get('delim') or sep
-        suffix = kwargs.get('_suffix') or kwargs.get('suffix')
-        no_eol = kwargs.get('_no_eol') or kwargs.get('no_eol')
-        in_no_eol = no_eol
-        use_repr = kwargs.get('_use_repr') or kwargs.get('use_repr')
-        max_len = kwargs.get('_max_len') or kwargs.get('max_len')
-        prefix = kwargs.get('_prefix') or kwargs.get('prefix')
-        if no_eol is None:
-            no_eol = (delim and ("\n" in delim))
-        if delim is None:
-            delim = "; "
-            if in_no_eol is None:
-                no_eol = True
-        if use_repr is None:
-            use_repr = True
-        if prefix is None:
-            prefix = ""
-        trace(9, f"sep={sep!r}, del={delim!r}, noeol={no_eol}, rep={use_repr}, mlen={max_len}, pre={prefix!r} suf={suffix!r}", skip_sanity_checks=True)
-
-        # Get symbolic expressions for the values
-        out_text = ""
-        if not use_old_introspection:
-            ## HACK: uses _prefix to avoid conflict with introspection's prefix
-            ## TODO2: drop newlines due to arguments split across lines
-            expression = "???"
-            if intro:
-                expression = intro.format(*values, arg_offset=1, indirect=True, max_len=max_len,
-                                          no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
-                ## OLD:
-                ## if max_len and len(expression) > max_len:
-                ##     trace(7, ("Warning: error in introspection max_len; " +
-                ##               f"{len(expression)} vs. {max_len}; {expression=}"))
-                
-            ## TEST:
-            ## expression = []
-            ## for i, value in enumerate(values):
-            ##     expression.append(intro.format(value, arg_offset=(i + 1)))
-            ## expression = "@".join(expression)
-            ## trace(3, f"{values=} {expression=}")
-            ##
-            ## OLD: out_text += trace(level, expression, skip_sanity_checks=True, max_len=max_len)
-            # Note: when max_len specified, intro.format already applied it to values;
-            # use expression length to avoid trace re-truncating (expression includes
-            # arg names, delimiters, etc. beyond max_len).
-            trace_max_len = max_len
-            if max_len is not None:
-                expr_len = len(expression) if expression else 0
-                if expr_len > max_len:
-                    trace_max_len = expr_len
-            out_text += trace(level, expression, skip_sanity_checks=True,
-                              max_len=trace_max_len)
-        else:
-            ## TODO2: handle cases split across lines
-            try:
-                # TODO3: rework introspection following icecream (e.g., using abstract syntax tree)
-                caller = inspect.stack()[1]
-                (_frame, filename, line_number, _function, context, _index) = caller
-                out_text += trace(9, f"filename={filename!r}, context={context!r}", skip_sanity_checks=True)
-                statement = read_line(filename, line_number).strip()
-                if statement == MISSING_LINE:
-                    statement = str(context).replace("\\n']", "")
-                # Extract list of argument expressions (removing optional comment)
-                statement = re.sub(r"#.*$", "", statement)
-                statement = re.sub(r"^\s*\S*trace_expr\s*\(", "", statement)
-                # Remove trailing paren with optional semicolon
-                statement = re.sub(r"\)\s*;?\s*$", "", statement)
-                # Remove trailing comma (e.g., if split across lines)
-                statement = re.sub(r",?\s*$", "", statement)
-                # Skip first argument (level)
-                expressions = re.split(", +", statement)[1:]
-                out_text += trace(9, f"expressions={expressions!r}\nvalues={values!r}", skip_sanity_checks=True)
-            except:
-                trace_fmtd(ALWAYS, "Exception isolating expression in trace_expr: {exc}",
-                           exc=sys.exc_info())
-                expressions = []
-
-            # Output initial text
-            if prefix:
-                out_text += trace(level, prefix, no_eol=no_eol, skip_sanity_checks=True, max_len=max_len)
-
-            # Output each expression value
-            for expression, value in zip_longest(expressions, values):
-                try:
-                    ## Exclude kwarg params
-                    match = re.search(r"^(\w+)=", str(expression))
-                    if (match and match.group(1) in kwargs):
-                        continue
-                    assertion((not ((value is not None) and (expression is None))),
-                              f"Warning: Likely problem resolving expression text (try reworking trace_expr call at {filename}:{line_number})")
-                    value_spec = format_value(repr(value) if use_repr else value,
-                                              max_len=max_len)
-                    out_text += trace(level, f"{expression}={value_spec}{delim}", no_eol=no_eol, skip_sanity_checks=True, max_len=max_len)
-                except:
-                    trace_fmtd(ALWAYS, "Exception tracing values in trace_expr: {exc}",
-                           exc=sys.exc_info())
-            # Output final text
-            if suffix:
-                out_text += trace(level, suffix, no_eol=False, skip_sanity_checks=True, max_len=max_len)
-            elif (no_eol and (delim != "\n")):
-                out_text += trace(level, "", no_eol=False)
-            else:
-                out_text += trace(9, "No final text to output")
-
-        return out_text
-
+        """Trace each of the argument VALUES (if at trace LEVEL or higher).
+        Note: _caller_depth=1 is passed to account for this wrapper frame."""
+        return _debug.trace_expr(level, *values, _caller_depth=1, **kwargs)
 
     def trace_frame(level: IntOrTraceLevel, frame, label="frame"):
         """Trace info about FRAME to stderr if LEVEL or higher, using LABEL prefix"""
-        # example: trace_frame debug.py:680
-        frame_spec = (f"{frame.f_code.co_name} {inspect.getfile(frame)}:{frame.f_lineno}"
-                      if frame else "n/a")
-        trace(level, f"{label}: {frame_spec}")
-
+        return _debug.trace_frame(level, frame, label)
 
     def trace_current_context(level: IntOrTraceLevel = QUITE_DETAILED,
-                              label: Optional[str] = None,
-                              show_methods_etc: bool = False,
-                              indirect: Optional[bool] = False,
-                              max_value_len: Optional[int] = None) -> None:
-        """Traces out current context (local and global variables), with output
-        prefixed by "LABEL context" (e.g., "current context: {\nglobals: ...}").
-        Notes: By default the debugging level must be quite-detailed (6).
-        If the debugging level is higher, the entire stack frame is traced.
-        Also, methods are omitted by default. Other optional arguments allow
-        for INDIRECT calling contexts and MAX_VALUE_LEN of traced output.
-        Warning: Some values are only output at higher trace levels
-        """
-        trace(8, f"trace_current_context{(level, label, show_methods_etc, indirect, max_value_len)}")
-        ## TODO2: clarify confusing debug level usage
-        frame = None
-        if label is None:
-            label = "current"
-        if max_value_len is None:
-            max_value_len = 2048
-        try:
-            current_frame = inspect.currentframe()
-            trace_frame(7, frame, "current frame")
-            frame = current_frame.f_back if current_frame else None
-            trace_frame(7, frame, "calling frame")
-            if frame and indirect:
-                frame = frame.f_back
-                trace_frame(7, frame, "indirect frame")
-        except (AttributeError, KeyError, ValueError):
-            trace_fmt(VERBOSE, "Exception during trace_current_context: {exc}",
-                      exc=sys.exc_info())
-        if para_mode_tracing:
-            trace(level, "")
-        trace_fmt(level, "{label} context: {{", label=label)
-        prefix = INDENT
-        if (get_level() - level) > 1:
-            trace_object((level + 2), frame, "frame", indentation=prefix,
-                         show_all=show_methods_etc, max_value_len=max_value_len)
-        else:
-            trace_fmt(level, "frame = {f}", f=frame)
-            if frame:
-                trace_object(level, frame.f_globals, "globals", indentation=prefix,
-                             show_all=show_methods_etc, max_value_len=max_value_len)
-                trace_object(level, frame.f_locals, "locals", indentation=prefix,
-                             show_all=show_methods_etc, max_value_len=max_value_len)
-        trace(level, "}")
-        if para_mode_tracing:
-            trace(level, "")
-        return
-
+                               label: Optional[str] = None,
+                               show_methods_etc: bool = False,
+                               indirect: Optional[bool] = False,
+                               max_value_len: Optional[int] = None) -> None:
+        """Traces out current context (local and global variables).
+        Note: _caller_depth=1 is passed to account for this wrapper frame."""
+        return _debug.trace_current_context(level, label, show_methods_etc, indirect,
+                                             max_value_len, _caller_depth=1)
 
     def trace_stack(level=VERBOSE):
         """Output stack trace to stderr (if at trace LEVEL or higher)"""
-        if (level <= trace_level):
-            traceback.print_stack(file=sys.stderr)
-            if debug_file:
-                traceback.print_stack(file=debug_file)
-        return
-
+        return _debug.trace_stack(level)
 
     def trace_exception(level: IntOrTraceLevel, task: Any,
                         show_stack: Optional[bool] = None) -> None:
-        """Trace exception information regarding TASK (e.g., function) at LEVEL.
-        Note: If SHOW_STACK, includes stack trace (default when verbose debugging)
-        """
-        # Note: Conditional output version of system's print_exception_info.
-        # ex: trace_exception(DETAILED, "tally_counts")
-        if show_stack is None:
-            show_stack = debugging(level + 1)
-        trace(level, "Exception during {t}: {exc}".
-              format(t=task, exc=sys.exc_info()))
-        if show_stack:
-            trace_stack(level)
-        return
+        """Trace exception information regarding TASK (e.g., function) at LEVEL"""
+        return _debug.trace_exception(level, task, show_stack)
     #
     # Note: alias to match print_exception_info in system
     trace_exception_info = trace_exception
     
     def raise_exception(level: IntOrTraceLevel = 1):
-        """Raise an exception if debugging (at specified trace LEVEL)
-        Note: useful to re-raise exceptions normally ignored when not debugging
-        """
-        if (level <= trace_level):
-            raise                       # pylint: disable=misplaced-bare-raise
-        return
-
+        """Raise an exception if debugging (at specified trace LEVEL)"""
+        return _debug.raise_exception(level)
 
     def assertion(
             expression: Union[bool, Any],
@@ -854,125 +1259,53 @@ if __debug__:
             assert_level: Optional[IntOrTraceLevel] = None,
             indirect: Optional[bool] = False
         ) -> Optional[str]:
-        """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE
-        Note:
-        - Warning: introspection fails to resolve expression if split across lines.
-        - This is a "soft assertion" that doesn't raise an exception (n.b., provided the test doesn't do so).
-        - The optional ASSERT_LEVEL overrides use of ALWAYS.
-        - The optional ISSUE overrides "Assertion failed" (e.g., for tests).
-        - Returns expression text or None if not triggered.
-        """
-        # EX: assertion((2 + 2) != 5)
-        # TODO: have streamlined version using sys.write that can be used for trace and trace_fmtd sanity checks about {}'s
-        # TODO: trace out local and globals to aid in diagnosing assertion failures; ex: add automatic tarcing of variables used in the assertion expression)
-        expression_text = None
-        if (assert_level is None):
-            assert_level = ALWAYS
-        if (trace_level < assert_level):
-            # note: Short-circuits processing to avoid extraneous warnings (e.g., trace_expr under ipython)
-            return expression_text
-        if (not expression):
-            try:
-                # Get source information for failed assertion
-                ## TODO3: use trace_stack (here and elsewhere)
-                trace_fmtd(MOST_VERBOSE, "Call stack: {st}", st=inspect.stack())
-                offset = 2 if indirect else 1
-                caller = inspect.stack()[offset]
-                (_frame, filename, line_number, _function, context, _index) = caller
-                trace(8, f"filename={filename!r}, context={context!r}")
-
-                # Resolve expression text
-                if not use_old_introspection:
-                    expression = "???"
-                    if intro:
-                        expression = intro.format(expression, indirect=True, omit_values=True)
-                    ## OLD: expression = re.sub("=False$", "", expression)
-                    ## TODO2: drop newlines due to argument split across lines
-                    ##   expression = re.sub("\n", " ", expression)???
-                    expression_text = expression
-                else:
-                    # Read statement in file and extract assertion expression
-                    # TODO: handle #'s in statement proper (e.g., assertion("#" in text))
-                    statement = read_line(filename, line_number).strip()
-                    if statement == MISSING_LINE:
-                        statement = str(context).replace("\\n']", "")
-                        # Format expression and message
-                        # note: removes comments, along with the assertion call prefix and suffix
-                        statement = re.sub("#.*$", "", statement)
-                        statement = re.sub(r"^(\S*)assertion\(", "", statement)
-                        expression = re.sub(r"\);?\s*$", "", statement)
-                        expression = re.sub(r",\s*$", "", statement)
-                        expression_text = expression                    
-                qualification_spec = (": " + message) if message else ""
-
-                # Output information
-                # TODO: omit subsequent warnings
-                ## OLD: trace_fmtd(ALWAYS, "Assertion failed: {expr} (at {file}:{line}){qual}",
-                trace_fmtd(ALWAYS, "{issue_spec}: {expr} (at {file}:{line}){qual}",
-                           issue_spec=(issue or "Assertion failed"),
-                           expr=expression_text, file=filename, line=line_number, qual=qualification_spec)
-            except:
-                trace_exception(ALWAYS, "assertion formatting")
-        return expression_text
+        """Issue warning if EXPRESSION doesn't hold, along with optional MESSAGE.
+        Note: _caller_depth=1 is passed to account for this wrapper frame."""
+        return _debug.assertion(expression, issue, message, assert_level, indirect, _caller_depth=1)
 
     def val(level: IntOrTraceLevel, value: Any) -> Any:
-        """Returns VALUE if at trace LEVEL or higher otherwise None
-        Note: inspired by Lisp's convenient IF form without an explicit else: (if test value-if-true)"""
-        # EX: (101 if ((get_level() == 1) and val(1, 101)) else None) => 101
-        # EX: ((not __debug__) and val(trace_level, 101))) => None
-        # TODO: rename as cond_value???
-        return (value if (trace_level >= level) else None)
-
+        """Returns VALUE if at trace LEVEL or higher otherwise None"""
+        return _debug.val(level, value)
 
     def code(level: IntOrTraceLevel, no_arg_function: Callable) -> Any:
-        """Execute NO_ARG_FUNCTION if at trace LEVEL or higher.
-        Returns result of invocation or None.
-        Notes:
-        - Use call() for more flexible invocation (e.g., can avoid lambda function)
-        - Given the quirks of Python syntax, a two-step process is required:
-           debug.code(4, { line1; line2; ...; lineN })
-               =>
-           def my_stupid_block_workaround(): 
-               if __debug__:
-                   line1; line2; ...; lineN
-           debug.code(4, my_stupid_block_workaround)
-        - Lambda functions can be used for simple expression-based functions"""
-        trace(VERBOSE, f"code({level}, {no_arg_function})")
-        result = None
-        if (trace_level >= level):
-            trace(QUITE_DETAILED, f"Executing {no_arg_function}")
-            result = no_arg_function()
-        return result
+        """Execute NO_ARG_FUNCTION if at trace LEVEL or higher"""
+        return _debug.code(level, no_arg_function)
 
-    
     def call(level: IntOrTraceLevel, function: Callable, *args, **kwargs) -> Any:
-        """Invoke FUNCTION with ARGS and KWARGS if at trace LEVEL or higher
-        Note: Use code() for simpler invocation (e.g., via lambda function)
-        """
-        trace(VERBOSE, f"call({level}, {function}, a={args}, kw={kwargs})")
-        result = None
-        if (trace_level >= level):
-            trace(QUITE_DETAILED, f"Executing {function}")
-            result = function(*args, **kwargs)
-        return result
-
+        """Invoke FUNCTION with ARGS and KWARGS if at trace LEVEL or higher"""
+        return _debug.call(level, function, *args, **kwargs)
 
     def get_elapsed_time():
-        """Get elapsed (debugging) time in seconds from import time
-        Note: convenience function for use in notebooks for quick-and-dirty timing.
-        Also used to avoid blank cell when executing last cell.
-        Typical usage:
-           debug.trace(3, f"done: elapsed={debug.get_elapsed_time()}s")
-        """
-        time_end = time.time()
-        elapsed = round(time_end - time_start, 3)
-        trace(QUITE_VERBOSE, f"get_elapsed_time() = {elapsed}; {time_start=} {time_end=}")
-        return elapsed
+        """Get elapsed (debugging) time in seconds from import time"""
+        return _debug.get_elapsed_time()
+
+    def open_debug_file(debug_filename: Optional[str] = None) -> None:
+        """Open external file for copy of trace output"""
+        return _debug.open_debug_file(debug_filename)
+
+    def reopen_debug_file(debug_filename: Optional[str] = None) -> None:
+        """Re-open debug file to work around concurrent access issues"""
+        return _debug.reopen_debug_file(debug_filename)
+
+    def display_ending_time_etc() -> None:
+        """Display ending time information"""
+        return _debug.display_ending_time_etc()
+
+    def debug_init(force: Optional[bool] = False) -> None:
+        """Debug-only initialization"""
+        return _debug.debug_init(force)
+
 
 else:
 
     trace_level = 0
-    
+
+    class DebugWrapper:  # type: ignore[no-redef]
+        """Non-debug stub for DebugWrapper class"""
+        pass
+
+    _debug = DebugWrapper()
+
     def non_debug_stub(*_args, **_kwargs) -> Any:
         """Non-debug stub (i.e., no-op function)"""
         # Note: no return value assumed by debug.expr
@@ -989,6 +1322,8 @@ else:
     set_level = non_debug_stub
 
     set_output_timestamps = non_debug_stub
+
+    do_print = non_debug_stub
 
     trace = non_debug_stub
 
@@ -1013,7 +1348,23 @@ else:
     call = non_debug_stub
 
     get_elapsed_time = non_debug_stub
-    
+
+    check_keyword_args = non_debug_stub
+
+    trace_frame = non_debug_stub
+
+    trace_stack = non_debug_stub
+
+    trace_exception_info = non_debug_stub
+
+    open_debug_file = non_debug_stub
+
+    reopen_debug_file = non_debug_stub
+
+    display_ending_time_etc = non_debug_stub
+
+    debug_init = non_debug_stub
+
     ## TODO?:
     ## val = non_debug_stub
     ##
@@ -1330,165 +1681,17 @@ def main(args: List[str]) -> None:
 # Do debug-only processing (n.b., for when PYTHONOPTIMIZE not set)
 # Note: wrapped in function to keep things clean
 
+
+# Do debug-only processing (n.b., for when PYTHONOPTIMIZE not set)
+# Note: wrapped in function to keep things clean
+
 if __debug__:
 
-    def open_debug_file(debug_filename: Optional[str] = None) -> None:
-        """Open external file for copy of trace output"""
-        trace(5, "open_debug_file()")
-        global debug_file
-        assertion(debug_file is None)
-
-        # Open the file
-        if debug_filename is None:
-            debug_filename = os.getenv("DEBUG_FILE")
-        if debug_filename is not None:
-            ## TEST: open unbuffered which requires binary output mode
-            ## note: uses line buffering
-            for_append = _getenv_bool("DEBUG_FILE_APPEND", True)
-            mode = ("a" if for_append else "w")
-            trace_expr(5, mode)
-            debug_file = open(debug_filename, mode=mode, buffering=1, encoding="UTF-8")
-        trace_fmtd(VERBOSE, "debug_filename={fn} debug_file={f}",
-                   fn=debug_filename, f=debug_file)
-        return
-
-    def reopen_debug_file(debug_filename: Optional[str] = None) -> None:
-        """Re-open debug file to work around concurrent access issues
-        Note: The debug file is mainly used with pytest to work around stderr tracing issues"""
-        trace(5, "reopen_debug_file()")
-        global debug_file
-        if not debug_filename:
-            assertion(debug_file is not None)
-
-        # Close file if opened
-        if debug_file:
-            debug_file.close()
-            debug_file = None
-
-        # Open fresh
-        open_debug_file(debug_filename)
-        return
-
-    def display_ending_time_etc() -> None:
-        """Display ending time information"""
-        # TODO: rename to reflect generic-exit nature
-        # note: does nothing if stderr closed (e.g., other monitor)
-        # TODO: resolve pylint issue with sys.stderr.closed
-        trace_object(QUITE_VERBOSE, sys.stderr)
-        if sys.stderr.closed:       # pylint: disable=using-constant-test
-            return
-        elapsed = get_elapsed_time()
-        trace_fmtd(DETAILED, "[{f}] unloaded at {t}; elapsed={e}s",
-                   f=module_file, t=timestamp(), e=elapsed)
-        if monitor_functions:
-            sys.setprofile(None)
-        global debug_file
-        if debug_file:
-            debug_file.close()
-            debug_file = None
-    
-    def debug_init(force: Optional[bool] = False) -> None:
-        """Debug-only initialization"""
-        global time_start
-        if (time_start > 0 and not force):
-            ## TODO3: track down source of re-init
-            trace(DETAILED, f"debug_init early exit: {time_start=} {force=}")
-            return
-        time_start = time.time()
-        trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
-        ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
-        # note: shows command invocation unless invoked via "python -c ..."
-        command_line = " ".join(sys.argv)
-        if (command_line and (command_line != "-c") and (command_line != "-m")):
-            # TODO2: simplify misc. trace suppression options (n.b., check shellscript repo)
-            if _getenv_bool("TRACE_INVOCATION", False):
-                if not (_getenv_bool("QUIET_MODE", False) or _getenv_bool("DURING_ALIAS", False)):
-                    trace(USUAL, command_line)
-        trace_expr(DETAILED, sys.argv)
-        open_debug_file()
-
-        # Determine whether tracing include time and date
-        # note: Useful for adhoc profiling
-        global output_timestamps
-        output_timestamps = _getenv_bool("OUTPUT_DEBUG_TIMESTAMPS", False)
-    
-        # Show startup time and tracing info
-        trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
-        trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
-        trace_expr(QUITE_DETAILED, __file__)
-        # note: also show python path if under Unix (TODO3: generalize)
-        if (os.name == "posix"):
-            code(VERBOSE, lambda: os.system("(echo -n 'Python: '; which python) 1>&2"))
-
-        # Determine other debug-only environment options
-        global para_mode_tracing
-        para_mode_tracing = _getenv_bool("PARA_MODE_TRACING", para_mode_tracing)
-        global max_trace_value_len
-        max_trace_value_len = _getenv_int("MAX_TRACE_VALUE_LEN", max_trace_value_len)
-        global use_logging
-        use_logging = _getenv_bool("USE_LOGGING", use_logging)
-        enable_logging = _getenv_bool("ENABLE_LOGGING", use_logging)
-        if enable_logging:
-            init_logging()
-        global include_trace_diagnostics
-        include_trace_diagnostics = _getenv_bool("TRACE_DIAGNOSTICS", trace_level >= QUITE_DETAILED)
-        global monitor_functions
-        monitor_functions = _getenv_bool("MONITOR_FUNCTIONS", False)
-        if monitor_functions:
-            sys.setprofile(profile_function)
-        ## TODO1: (all output_caller_info env. init; also add to trace_expr below)
-        ## global output_caller_info
-        ## output_caller_info = _getenv_bool("OUTPUT_CALLER_INFO", output_caller_info)
-        trace_expr(VERBOSE, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
-        global use_old_introspection
-        use_old_introspection = _getenv_bool("USE_OLD_INTROSPECTION", False)
-        if not use_old_introspection:
-            ## TODO2: put before trace_expr or assertion called
-            try:
-                # pylint: disable=import-outside-toplevel
-                from mezcla import introspection
-                ## TODO3: from mezcla.introspection import intro
-                global intro
-                intro = introspection.intro
-            except:
-                use_old_introspection = True
-                trace(3, "FYI: Unable to load introspection")
-                trace_exception(6, "loading introspection")
-
-        # Show additional information when detailed debugging
-        # TODO: sort keys to facilate comparisons of log files
-        pre = post = ""
-        if para_mode_tracing:
-            pre = post = "\n"
-        trace_fmt(VERBOSE, "{pre}environment: {{\n\t{env}\n}}{post}",
-                  env="\n\t".join([(k + ': ' + format_value(os.environ[k]))
-                                   for k in sorted(dict(os.environ))]),
-                  pre=pre, post=post, max_len=4096)
-        trace_values(QUITE_DETAILED, os.environ, "os.environ")
-
-        # Likewise show additional information during verbose debug tracing
-        # Note: use debug.trace_current_context() in client module to show module-specific globals like __name__
-        trace_expr(MOST_DETAILED, globals(), max_len=65536)
-
-        # Register to show shuttdown time and elapsed seconds
-        # note: atexit support is enabled by default unless DEBUG_FILE used (n.b., cleanup issues)
-        skip_atexit = _getenv_bool("SKIP_ATEXIT", (debug_file is not None))
-        trace_expr(4, skip_atexit)
-        if not skip_atexit:
-            atexit.register(display_ending_time_etc)
-        
-        return
-
-    
     # Do the initialization
-    debug_init()
+    _debug.debug_init()
 
 #-------------------------------------------------------------------------------
 
-# Call main if invoked from commmand-line: illustrates tracing
-# Note: The tracing below was for tracking down issue due to python path.
-## DEBUG: trace_expr(MOST_VERBOSE, 888)
-#
 if __name__ == '__main__':
     main(sys.argv)
 else:
