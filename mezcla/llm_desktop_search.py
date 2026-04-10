@@ -33,6 +33,20 @@ import pathlib
 import time
 from collections.abc import Iterable
 
+# Installed modules
+## OLD:
+## from langchain.text_splitter import RecursiveCharacterTextSplitter
+## from langchain.prompts import PromptTemplate
+## from langchain.chains import RetrievalQA
+## from langchain_core.documents import Document
+## from langchain_community.document_loaders import DirectoryLoader, TextLoader
+## OLD: LangChainDeprecationWarning 
+## from langchain_community.embeddings import HuggingFaceEmbeddings
+## OLD: from langchain_huggingface import HuggingFaceEmbeddings
+## OLD: from langchain_community.llms import CTransformers
+## OLD: from langchain_community.vectorstores import FAISS
+## OLD: from langchain_huggingface import HuggingFaceEmbeddings
+
 # Local modules
 from mezcla import debug
 from mezcla import glue_helpers as gh
