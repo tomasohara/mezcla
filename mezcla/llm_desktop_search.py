@@ -348,6 +348,10 @@ class DesktopSearch:
             self.load_index()
         except RuntimeError:
             debug.trace_exception(6, "load_index")
+            
+        if not corrected_texts:
+            return
+
         if self.db is not None:
             self.db.add_documents(corrected_texts)
         else:
@@ -370,7 +374,10 @@ class DesktopSearch:
         gpu_utils.trace_gpu_usage()
 
         # show index info
-        num_chunks = len(self.db.index_to_docstore_id)
+        if self.db is not None:
+            num_chunks = len(self.db.index_to_docstore_id)
+        else:
+            num_chunks = 0
         print(f"{num_chunks} chunks indexed")
 
     def load_index(self, for_qa=False):
