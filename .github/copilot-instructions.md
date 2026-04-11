@@ -51,6 +51,7 @@ Documentation is built with Sphinx.
 *   **Style**:
     *   **Do NOT use Black**. It is explicitly blacklisted.
     *   Pylint is used with specific exclusions handled via command-line arguments or aliases (not a config file).
+	    Make sure python-lint alias lists no issues: use pylint if alias not defined.
     *   Code style is "R&D focused" rather than strict "Pythonic production" code.
 	    Nonetheless, use good software engineering practices, such as using single return calls and adding sanity checks via assert (preferably debug.assertion).
 	*   Readability is important. For example, make sure dynamic imports are not buried without an indication that used at top (e.g., via comment in modules section).
