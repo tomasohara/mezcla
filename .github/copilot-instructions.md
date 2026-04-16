@@ -93,9 +93,13 @@ Some variations follow. For single-line changes, just use "## OLD: ...". When fi
 
 0. When making most changes, create a new git branch based on development, using a name such as 'code-conversion'.
 
+0. After making a group of commits, push the changes and make sure the remove upstream branch gets set.
+
 0. Don't make edits outside of code directory without confirmation.
 
 1. Don't check-in code without permission. I wish to review code before updating git.
+
+2. Don't do any code refactoring without confirmation.
 
 ## Debug level conventions
 
