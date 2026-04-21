@@ -6,6 +6,11 @@
 # TODO what the script does (detailed)
 #
 ## TODO: see example/template.py for simpler version suitable for cut-n-paste from online examples
+##
+## NOTE: The TODO tips include optional priority (see Script init at end). In general,
+##    TODOn ...: with lower values having higher priority
+## Comments using '##' are meant to guide initial customization
+##    NOTE: Uses scare caps in throwaway comments. 
 #
 
 """
@@ -155,10 +160,16 @@ def main() -> None:
         ## TODO: specify options and (required) arguments
         boolean_options=[(TODO_ARG, "TODO-desc--currently greps for TODO")],
         ## TODO (refine based on following tips):
-        ## Note: FILENAME is default argument unless skip_input
+        ## NOTE: FILENAME is default argument unless skip_input
         ## positional_arguments=[FILENAME, ALT_FILENAME], 
         ## text_options=[(TEXT_ARG, "TODO-desc")],
-        ## Note: Following added for indentation float options not common (TODO: remove?)
+        ##
+        ## TODO4 (use one or more of the arcane options)
+        ## short_options=True,
+        ## paragraph_mode=True,
+        ## NOTE: See Main.__init__ in main.py for others.
+        ## 
+        ## NOTE: Following added for indentation--float options not common (TODO: remove?)
         float_options=None)
     app.run()
 
