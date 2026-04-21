@@ -154,7 +154,7 @@ def main() -> None:
         ## auto_help=False,
         ## TODO: specify options and (required) arguments
         boolean_options=[(TODO_ARG, "TODO-desc--currently greps for TODO")],
-        ## TODO
+        ## TODO (refine based on following tips):
         ## Note: FILENAME is default argument unless skip_input
         ## positional_arguments=[FILENAME, ALT_FILENAME], 
         ## text_options=[(TEXT_ARG, "TODO-desc")],
