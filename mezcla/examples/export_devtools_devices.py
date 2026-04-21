@@ -16,7 +16,8 @@ Extracted fields:
     title,width,height,device-pixel-ratio,user-agent
 
 Example:
-        python export_devtools-devices.py EmulatedDevices.ts > devices.csv
+    curl --remote-name --silent 'https://raw.githubusercontent.com/ChromeDevTools/devtools-frontend/refs/heads/main/front_end/models/emulation/EmulatedDevices.ts'
+    python {script} EmulatedDevices.ts > devices.csv
 """
 
 # Standard modules
