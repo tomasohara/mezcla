@@ -97,9 +97,17 @@ Some variations follow. For single-line changes, just use "## OLD: ...". When fi
 
 0. Don't make edits outside of code directory without confirmation.
 
-1. Don't check-in code without permission. I wish to review code before updating git.
+0. Don't check-in code without permission. I wish to review code before updating git.
 
-2. Don't do any code refactoring without confirmation.
+0. Don't do any code refactoring without confirmation.
+
+0. Similarly, don't address TODO notes without confirmation.
+
+0. In general, wait for me to assign a task. I will explicitly ask for suggested code changes.
+
+0. When making changes, try to keep the code differences from the previous version as minimal as
+possible. This will facilitate reviewed the code. When the requested change requires a substantial
+revision, request clarification about how to proceed.
 
 ## Debug level conventions
 
