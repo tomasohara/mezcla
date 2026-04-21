@@ -8,6 +8,11 @@
 # Based on following:
 #   TODO: url
 #
+## NOTE: The TODO tips include optional priority (see Script init at end). In general,
+##    TODOn ...: with lower values having higher priority
+## Comments using '##' are meant to guide initial customization
+##    NOTE: Uses scare caps in throwaway comments. 
+#
 
 """
 TODO: what module does (brief)
@@ -86,30 +91,30 @@ def main() -> None:
     debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
     # Parse command line options, show usage if --help given
-    # TODO: manual_input=True; short_options=True
     # Note: Uses Main without subclassing, so some methods are stubs (e.g., run_main_step).
     main_app = Main(
-        ## TODO2 (fix support): skip_input=True,
-        ## TODO3 (add tip): manual_input=True,
+        # Input done via read_entire_input (as per manual_input)
+        skip_input=False,
+        manual_input=True,
         description=__doc__.format(script=gh.basename(__file__)),
-        ## TODO: boolean_options=[(TODO_BOOL_OPT, "TODO desc1")],
-        ## TODO: text_options=[(TODO_TEXT_OPT, "TODO desc2")],
-        ## TODO: positional_arguments=[FILENAME, ALT_FILENAME], 
+        ## TODO1 (refine based on following tips):
+        ## TODO2: boolean_options=[(TODO_BOOL_OPT, "TODO desc1")],
+        ## TODO2: text_options=[(TODO_TEXT_OPT, "TODO desc2")],
+        ## NOTE: FILENAME is default argument unless skip_input
+        ## TODO3: positional_arguments=[FILENAME, ALT_FILENAME], 
         ## NOTE: ALT_FILENAME usually requires skip_input and manual_input (e..g, to avoid - placeholder)
+        ## TODO4: use arcane options (see ../template.py)
     )
     debug.reference_var(FILENAME)
     debug.assertion(main_app.parsed_args)
     ## TODO_opt1 = main_app.get_parsed_option(TODO_BOOL_OPT)
 
     helper = Helper()
-    helper.process("TODO: some argument")
+    helper.process("TODO: " + main_app.read_entire_input())
     
-    ## TODO:
-    ## ALT TODO:
+    ## ALT TODO (process line by line):
     ## for line in main_app.read_entire_input().splitlines():
-    ##     helper.process(TODO_fn(line))
-    ## -or-
-    ## helper.process( main_app.read_entire_input())
+    ##     helper.process("TODO: " + line)
 
     ## Make sure no TODO_vars above (i.e., in namespace); TODO: delete check when stable
     debug.assertion(not any(my_re.search(r"^TODO_", m, my_re.IGNORECASE)
