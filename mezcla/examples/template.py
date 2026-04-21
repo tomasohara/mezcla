@@ -109,10 +109,12 @@ def main() -> None:
     debug.assertion(main_app.parsed_args)
     ## TODO_opt1 = main_app.get_parsed_option(TODO_BOOL_OPT)
 
+    # Process the input
     helper = Helper()
     helper.process("TODO: " + main_app.read_entire_input())
-    
-    ## ALT TODO (process line by line):
+    ## -or-
+    ## ALT TODO:
+    ## # Process input line by line
     ## for line in main_app.read_entire_input().splitlines():
     ##     helper.process("TODO: " + line)
 
