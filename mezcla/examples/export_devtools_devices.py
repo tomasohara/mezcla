@@ -8,17 +8,16 @@
 # Based on following:
 #   TODO: url
 #
-## NOTE: The TODO tips include optional priority (see Script init at end). In general,
-##    TODOn ...: with lower values having higher priority
-## Comments using '##' are meant to guide initial customization
-##    NOTE: Uses scare caps in throwaway comments. 
-#
 
 """
-TODO: what module does (brief)
+Export Chrome DevTools emulated devices (vertical dimensions) as CSV.
 
-Sample usage:
-   echo $'TODO:task1\\nDONE:task2' | {script} --TODO-arg --
+Extracted fields:
+    title,width,height,device-pixel-ratio,user-agent
+
+Example:
+    curl --remote-name --silent 'https://raw.githubusercontent.com/ChromeDevTools/devtools-frontend/refs/heads/main/front_end/models/emulation/EmulatedDevices.ts'
+    python {script} EmulatedDevices.ts > devices.csv
 """
 
 # Standard modules
@@ -69,7 +68,7 @@ TL = debug.TL
 #-------------------------------------------------------------------------------
 
 class Helper:
-    """TODO: class for doing ..."""
+    """TODO: class for doing DevTools device export"""
 
     def __init__(self, _arg=None, **kwargs) -> None:
         """Initializer: TODO_arg desc"""
@@ -78,11 +77,65 @@ class Helper:
         self.TODO: Optional[bool] = None
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
+    # -------------------------------------------------------------------------
+
+    def _extract_device_block(self, text: str) -> str:
+        debug.trace(TL.DETAILED, "_extract_device_block()")
+        match = my_re.search(
+            r"// DEVICE-LIST-BEGIN(.*?)// DEVICE-LIST-END",
+            text,
+            my_re.DOTALL,
+        )
+        return match.group(1) if match else ""
+
+    # -------------------------------------------------------------------------
+
+    def _extract_field(self, pattern: str, text: str, default: str = "") -> str:
+        match = my_re.search(pattern, text, my_re.DOTALL)
+        return match.group(1).strip() if match else default
+
+    # -------------------------------------------------------------------------
+
     def process(self, _arg) -> bool:
-        """TODO: Process _ARG to do ..."""
-        ## NOTE: print used for sake of unit test (see examples/tests/test_template.py)
-        print("Error: TODO Implement me!")
-        return False
+        """TODO: Process _ARG to generate CSV"""
+        debug.trace_expr(TL.DETAILED, _arg)
+
+        text = _arg
+        block = self._extract_device_block(text)
+
+        if not block:
+            print("Error: DEVICE-LIST block not found")
+            return False
+
+        print("title,width,height,device-pixel-ratio,user-agent")
+
+        devices = my_re.split(r"\n\s*\{\s*\n", block)
+
+        for dev in devices:
+            if "'title':" not in dev:
+                continue
+
+            title = self._extract_field(r"'title':\s*(?:i18nLazyString\([^)]*\)|'([^']*)')", dev)
+            if not title:
+                title = self._extract_field(r"'title':\s*i18nLazyString\([^)]*'([^']*)'\)", dev)
+
+            width = self._extract_field(
+                r"'vertical':\s*\{[^}]*'width':\s*([0-9.]+)", dev
+            )
+            height = self._extract_field(
+                r"'vertical':\s*\{[^}]*'height':\s*([0-9.]+)", dev
+            )
+            dpr = self._extract_field(
+                r"'device-pixel-ratio':\s*([0-9.]+)", dev
+            )
+            ua = self._extract_field(
+                r"'user-agent':\s*'([^']*)'", dev
+            )
+
+            print(f"{title},{width},{height},{dpr},\"{ua}\"")
+
+        return True
+
 
 #-------------------------------------------------------------------------------
 
@@ -90,35 +143,21 @@ def main() -> None:
     """Entry point"""
     debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
-    # Parse command line options, show usage if --help given
-    # Note: Uses Main without subclassing, so some methods are stubs (e.g., run_main_step).
     main_app = Main(
-        # Input done via read_entire_input (as per manual_input)
         skip_input=False,
         manual_input=True,
         description=__doc__.format(script=gh.basename(__file__)),
-        ## TODO1 (refine based on following tips):
-        ## TODO2: boolean_options=[(TODO_BOOL_OPT, "TODO desc1")],
-        ## TODO2: text_options=[(TODO_TEXT_OPT, "TODO desc2")],
-        ## NOTE: FILENAME is default argument unless skip_input
-        ## TODO3: positional_arguments=[FILENAME, ALT_FILENAME], 
-        ## NOTE: ALT_FILENAME usually requires skip_input and manual_input (e..g, to avoid - placeholder)
-        ## TODO4: use arcane options (see ../template.py)
+        # FILENAME is default positional argument
     )
+
     debug.reference_var(FILENAME)
     debug.assertion(main_app.parsed_args)
-    ## TODO_opt1 = main_app.get_parsed_option(TODO_BOOL_OPT)
 
-    # Process the input
     helper = Helper()
-    helper.process("TODO: " + main_app.read_entire_input())
-    ## -or-
-    ## ALT TODO:
-    ## # Process input line by line
-    ## for line in main_app.read_entire_input().splitlines():
-    ##     helper.process("TODO: " + line)
 
-    ## Make sure no TODO_vars above (i.e., in namespace); TODO: delete check when stable
+    input_text = main_app.read_entire_input()
+    helper.process(input_text)
+
     debug.assertion(not any(my_re.search(r"^TODO_", m, my_re.IGNORECASE)
                             for m in dir(main_app)))
     return
