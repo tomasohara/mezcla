@@ -256,6 +256,7 @@ class DesktopSearch:
             # note: with_name only accepts a bare filename, not a path with separators
             model_basename = pathlib.Path(QA_LLM_MODEL).name
             module_model_path = pathlib.Path(__file__).with_name(model_basename)
+
             if model_path.exists():
                 model_name = str(model_path.resolve())
             elif module_model_path.exists():
@@ -266,7 +267,7 @@ class DesktopSearch:
                       'context_length': CONTEXT_LENGTH}
             self.llm = CTransformers(model=model_name, model_type=QA_LLM_TYPE,
                                      config=config, gpu_layers=GPU_LAYERS)
-            debug.trace_expr(5, self.llm)
+            debug.trace_expr(4, self.llm)
             debug.trace_object(5, self.llm)
         return self.llm
 
@@ -347,6 +348,10 @@ class DesktopSearch:
             self.load_index()
         except RuntimeError:
             debug.trace_exception(6, "load_index")
+            
+        if not corrected_texts:
+            return
+
         if self.db is not None:
             self.db.add_documents(corrected_texts)
         else:
@@ -369,7 +374,10 @@ class DesktopSearch:
         gpu_utils.trace_gpu_usage()
 
         # show index info
-        num_chunks = len(self.db.index_to_docstore_id)
+        if self.db is not None:
+            num_chunks = len(self.db.index_to_docstore_id)
+        else:
+            num_chunks = 0
         print(f"{num_chunks} chunks indexed")
 
     def load_index(self, for_qa=False):

@@ -1076,6 +1076,7 @@ if __debug__:
             self.trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
             self.trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
             self.trace_expr(QUITE_DETAILED, __file__)
+            self.trace_values(VERBOSE, sys.path, "sys.path")
             # note: also show python path if under Unix (TODO3: generalize)
             if (os.name == "posix"):
                 self.code(VERBOSE, lambda: os.system("(echo -n 'Python: '; which python) 1>&2"))
