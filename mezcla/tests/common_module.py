@@ -100,7 +100,7 @@ def fix_indent(code):
     if isinstance(result, str) and my_re.search(r"^\n( +)", result):
         indentation = my_re.group(1)
         result = my_re.sub(fr"^{indentation}", "", result, flags=my_re.MULTILINE)
-    debug.trace(8, f"fix_indent{code!r} => {result!r}")
+    debug.trace(8, f"fix_indent({code!r}) => {result!r}")
     return result
 
 
