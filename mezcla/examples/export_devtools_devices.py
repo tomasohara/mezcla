@@ -1,12 +1,9 @@
 #! /usr/bin/env python3
-# TODO: # -*- coding: utf-8 -*-
-## TODO: handle case when env installed elsewhere (e.g., maldito mac)
-## #! env python
+# 
+# Extracts CSV file from DevTools EmulatedDevices.ts.
 #
-# TODO what the script does (detailed)
-# -or-
-# Based on following:
-#   TODO: url
+# note:
+# - By Gemini 3.
 #
 
 """
@@ -68,10 +65,10 @@ TL = debug.TL
 #-------------------------------------------------------------------------------
 
 class Helper:
-    """TODO: class for doing DevTools device export"""
+    """Class for exporting DevTools devices to CSV format."""
 
     def __init__(self, _arg=None, **kwargs) -> None:
-        """Initializer: TODO_arg desc"""
+        """Initialize the Helper class."""
         debug.trace_expr(TL.VERBOSE, _arg, kwargs, prefix="in Helper.__init__: ")
         self._arg = _arg                # TODO: revise
         self.TODO: Optional[bool] = None
@@ -80,24 +77,30 @@ class Helper:
     # -------------------------------------------------------------------------
 
     def _extract_device_block(self, text: str) -> str:
+        """Extract the DEVICE-LIST block from the TypeScript file."""
         debug.trace(TL.DETAILED, "_extract_device_block()")
-        match = my_re.search(
+        if my_re.search(
             r"// DEVICE-LIST-BEGIN(.*?)// DEVICE-LIST-END",
             text,
             my_re.DOTALL,
-        )
-        return match.group(1) if match else ""
+        ):
+            return my_re.group(1)
+        return ""
 
     # -------------------------------------------------------------------------
 
     def _extract_field(self, pattern: str, text: str, default: str = "") -> str:
-        match = my_re.search(pattern, text, my_re.DOTALL)
-        return match.group(1).strip() if match else default
+        """Extract matched group 1 from text based on regex pattern, returning default if missing."""
+        if my_re.search(pattern, text, my_re.DOTALL):
+            val = my_re.group(1)
+            if val is not None:
+                return val.strip()
+        return default
 
     # -------------------------------------------------------------------------
 
     def process(self, _arg) -> bool:
-        """TODO: Process _ARG to generate CSV"""
+        """Process the input text to extract device definitions and print as CSV."""
         debug.trace_expr(TL.DETAILED, _arg)
 
         text = _arg
