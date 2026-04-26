@@ -456,7 +456,7 @@ class MezclaDebugger:
             if INTROSPECTION_DEBUG:
                 trace(f"{sanitized_arg_strs=}")
         else:
-            sys.stderr.write("Warning: unable to extract args:\n")
+            sys.stderr.write("Warning: unable to extract args for introspection:\n")
             sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
             sys.stderr.write(f"\t{sys.exc_info()}\n")
             sanitized_arg_strs = [_ABSENT] * len(args)
