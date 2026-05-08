@@ -635,6 +635,7 @@ class TestDebug(TestWrapper):
         line_3 = THE_MODULE.read_line(temp_file, 3)
         assert my_re.search(fr"{line_1}.*{line_2}.*{line_3}", content)
 
+    @pytest.mark.skipif(cm.SKIP_VERBOSE_TESTS, reason=cm.SKIP_VERBOSE_REASON)
     @pytest.mark.xfail
     def test_debug_init(self):
         """Ensure debug_init works as expected"""
