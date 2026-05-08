@@ -131,3 +131,14 @@ Try to use trace level values according to following tips (via debug.py):
 ```
 
 Basically, levels up to 4 are for usual execution, whereas 5+ are for debugging proper.
+
+## Attribution
+
+When making git commits, add a mention that the change was facilitated by yourself. Ideally, this would include the model and any settings is applicable. For example,
+
+```
+	Added new widget to the main page.
+	Change faciliated by Acme AI Assistant using model X123.
+```
+
+Similary, add something like this regarding non-trivial code revisions in the module header block.
