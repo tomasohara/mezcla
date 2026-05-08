@@ -72,7 +72,7 @@ SKIP_EXPECTED_ERRORS = system.getenv_bool(
 TEST_TBD_TESTS = system.getenv_bool(
     "TEST_TBD_TESTS", False,
     description="Run tests to be designed")
-SKIP_TBD_REASON="Ignore test to be designed"
+SKIP_TBD_REASON="Ignoring test to be designed"
 SKIP_TBD_TESTS = system.getenv_bool(
     ## OLD: "SKIP_TBD_TESTS", (not (UNDER_RUNNER or TEST_TBD_TESTS)),
     # Note: Enabled under runner by default (unlike SKIP_EXPECTED_ERRORS, etc. above).
@@ -80,6 +80,12 @@ SKIP_TBD_TESTS = system.getenv_bool(
     "SKIP_TBD_TESTS", not TEST_TBD_TESTS,
     description=SKIP_TBD_REASON)
 debug.assertion(not (TEST_TBD_TESTS and SKIP_TBD_TESTS))
+#
+SKIP_VERBOSE_TESTS = system.getenv_bool(
+    "SKIP_VERBOSE_TESTS", False,
+    # Note: added for adhoc testing with reduced trace level to avoid those that increase it intentionally
+    description="Skip tests that generate a lot of output (e.g., due to patched trace level)")
+SKIP_VERBOSE_REASON="Ignoring tests generating verbose output to stdout or stderr"
 
 # Globals
 mezcla_root_dir = None
