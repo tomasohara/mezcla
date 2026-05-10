@@ -53,6 +53,7 @@
 #
 # TODO2:
 # - Document selenium/webdriver installation (e.g., gecko drivers).
+# - Add more selenium diagnostics (e.g., using temporary profile via FIREFOX_PROFILE).
 # 
 
 """HTML utility functions"""
