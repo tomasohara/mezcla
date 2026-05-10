@@ -58,7 +58,8 @@ SKIP_UNIMPLEMENTED_TESTS = system.getenv_bool(
 SKIP_UNIMPLEMENTED_REASON = "Ignoring unimplemented test"
 #
 TEST_EXPECTED_ERRORS = system.getenv_bool(
-    "TEST_EXPECTED_ERRORS", False,
+    ## UPDATE: 05/10/26 requires explicit setting to skip expected errors
+    "TEST_EXPECTED_ERRORS", True,
     description="Alias for not[-]SKIP_EXPECTED_ERRORS")
 SKIP_EXPECTED_REASON = "Skipping cases that should never pass (e.g., intentional error)"
 SKIP_EXPECTED_ERRORS = system.getenv_bool(
