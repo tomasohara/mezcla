@@ -33,6 +33,7 @@ from mezcla import misc_utils
 from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
+import mezcla.tests.common_module as cm
 from mezcla.tests.common_module import normalize_text
 
 # Note: Two references are used for the module to be tested:
@@ -417,27 +418,47 @@ class TestHtmlUtils(TestWrapper):
 
     def check_download_web_document(self, download_func):
         """Check web downloads via DOWNLOAD_FUNC"""
+        ## UPDATE: 05/10/26: added expected failure skip
+        # note: expected failures moved to check_bad_download_web_document to facilitate diagnosis
         ## TODO2: change to html file from repo
         assert "currency" in THE_MODULE.download_web_document(f"{self.tomasohara_trade_like_url}/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
-        assert download_func("www. bogus. url.html") is None
+        ## OLD: assert download_func("www. bogus. url.html") is None
         remote_pacman_image_data = download_func(self.pacman_url, as_binary=True)
         local_pacman_image_data = system.read_binary_file(self.pacman_path)
         assert len(remote_pacman_image_data) == len(local_pacman_image_data)
         assert remote_pacman_image_data == local_pacman_image_data
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def check_bad_download_web_document(self, download_func):
+        """Check web downloads via DOWNLOAD_FUNC"""
+        assert download_func("www. bogus. url.html") is None
+        
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_old_download_web_document(self):
-        """Ensure old_download_web_document() works as expected"""
+        """Test old_download_web_document() over good downloads"""
         self.check_download_web_document(download_func=THE_MODULE.old_download_web_document)
+
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_bad_old_download_web_document(self):
+        """Test old_download_web_document() over bad downloads"""
+        self.check_bad_download_web_document(download_func=THE_MODULE.old_download_web_document)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_web_document(self):
-        """Ensure download_web_document() works as expected"""
+        """Test download_web_document() over good downloads"""
         debug.trace(4, "test_download_web_document()")
         ## NOTE: Wikipedia/WikiMedia complaining about robots (even though single document access)
         ## during GitHub actions run. See https://wikitech.wikimedia.org/wiki/Robot_policy.
         ## TODO2: use website accessible to all team members
         self.check_download_web_document(download_func=THE_MODULE.download_web_document)
+
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_bad_download_web_document(self):
+        """Test download_web_document() over bad downloads"""
+        debug.trace(4, "test_download_web_document()")
+        self.check_bad_download_web_document(download_func=THE_MODULE.download_web_document)
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_test_download_html_document(self):
@@ -641,7 +662,10 @@ class TestHtmlUtils(TestWrapper):
         result = THE_MODULE.selenium_function(url=self.dimensions_url,
                                               call="set_window_rect(width=123, height=123)")
         # ex: {'x': 0, 'y': 0, 'width': 450, 'height': 123}
-        assert my_re.search(r"'width': \d+, 'height': \d+", result)
+        ## BAD: assert my_re.search(r"'width': \d+, 'height': \d+", str(result))
+        # note: order is not guaranteed, so testing individually
+        assert my_re.search(r"'width': \d+", str(result))
+        assert my_re.search(r"'height': \d+", str(result))
 
     @pytest.mark.xfail
     def test_set_param_dict_alt(self):
