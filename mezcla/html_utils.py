@@ -150,6 +150,12 @@ FIREFOX_PATH = system.getenv_value(     ## TODO3: rename as FIREFOX_DRIVER_PATH
 CHROME_PATH = system.getenv_value(      ## TODO3: rename as CHROME_DRIVER_PATH
     "CHROME_PATH", None,
     desc="Path override for Chrome webdriver")
+FIREFOX_PROFILE = system.getenv_value(
+    "FIREFOX_PROFILE", None,
+    desc="Profile override for Firefox")
+CHROME_PROFILE = system.getenv_value(
+    "CHROME_PROFILE", None,
+    desc="Profile override for Chrome")
 WEBDRIVER_PATH = system.getenv_value(
     "WEBDRIVER_PATH", (FIREFOX_PATH if FIREFOX_WEBDRIVER else CHROME_PATH),
     desc="Path override for webdriver binary for use with selenium")
@@ -215,6 +221,9 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
     # Check for cached version of browser. If none, create one and access page.
     browser = browser_cache.get(url) if USE_BROWSER_CACHE else None
     if not browser:
+        if webdriver is None:
+            print("Error: Selenium library is not installed. Please install it using 'pip install selenium'.")
+            return None
         try:
             # Make the browser hidden by default (i.e., headless)
             # See https://stackoverflow.com/questions/46753393/how-to-make-firefox-headless-programmatically-in-selenium-with-python.
@@ -229,6 +238,11 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
                 webdriver_options.add_argument('-headless')
             if KIOSK_MODE:
                 webdriver_options.add_argument('-kiosk')
+            if FIREFOX_PROFILE:
+                webdriver_options.add_argument('-profile')
+                webdriver_options.add_argument(FIREFOX_PROFILE)
+            if CHROME_PROFILE:
+                webdriver_options.add_argument(f'--user-data-dir={CHROME_PROFILE}')
             debug.trace_object(5, webdriver_options)
             debug.assertion(not (FIREFOX_WEBDRIVER and CHROME_WEBDRIVER))
             if FIREFOX_WEBDRIVER:
@@ -265,6 +279,15 @@ def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriv
             browser = None
             debug.raise_exception(6)
             system.print_exception_info("get_browser")
+            ## UPDATE: 5/10/2026: Diagnostics based on Gemini 3.1 tips
+            exc_info = str(system.get_exception())
+            debug.trace(4, f"Error initializing Selenium WebDriver: {exc_info}")
+            if my_re.search(r"geckodriver|firefox", exc_info.lower()):
+                debug.trace(4, "Hint: You may need to install geckodriver or set WEBDRIVER_PATH.")
+            elif my_re.search(r"chrome(driver)?", exc_info.lower()):
+                debug.trace(4, "Hint: You may need to install chromedriver or set WEBDRIVER_PATH.")
+            else:
+                debug.trace(4, "FYI: You might need more selenium diagnostics")
 
     # Make sure the bare minimum is included (i.e., "<body></body>" of length 13)
     if browser:
