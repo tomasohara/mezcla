@@ -72,6 +72,12 @@ Some variations follow. For single-line changes, just use "## OLD: ...". When fi
 possible. This will facilitate reviewed the code. When the requested change requires a substantial
 revision, request clarification about how to proceed.
 
+0. Follow the repo code conventions:
+   * Avoid putting function definitions inside of other code (e.g., use bottom for Perl and top for Python). Exceptions would be for small functions incorporating context (e.g., sorting helper function).
+   * Use full extension names (e.g., ".perl" instead of ".pl").
+
+0. Name temporary files with leading _ (e.g., "_test_regex.perl").
+
 ## Debug level conventions
 
 ```
