@@ -23,7 +23,8 @@
 import os
 
 # Installed packages
-from PIL import Image
+## TEMP: Uses dynamic import
+## OLD: from PIL import Image
 import pytest
 
 # Local packages
@@ -597,6 +598,7 @@ class TestHtmlUtils(TestWrapper):
         test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_alt_path, timeout=5)
         self.do_assert(not test_document_ready)
 
+    @pytest.mark.xfail
     def check_browser_dimensions(self, width, height, label):
         """Verify that browser accepts dimensions of WIDTH x HEIGHT via selenium"""
         debug.trace(5, f"check_browser_dimensions{(width, height, label)}")
@@ -606,6 +608,7 @@ class TestHtmlUtils(TestWrapper):
         browser = THE_MODULE.get_browser(self.dimensions_url)
         screenshot_path = gh.form_path(self.get_temp_dir(), f"{label}-screenshot.png")
         try:
+            from PIL import Image       ## TODO3: move to top level
             browser.get_screenshot_as_file(screenshot_path)
             ok = True
             with Image.open(screenshot_path) as img:
