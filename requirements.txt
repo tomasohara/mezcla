@@ -121,6 +121,7 @@ xgboost-cpu
 #opt# librosa
 #opt# pocketsphinx
 #devel# mypy
+PIL
 ## TODO?: #opt#
 pydantic==2.9.2
 #devel# pylint
