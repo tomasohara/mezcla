@@ -104,32 +104,33 @@ xgboost-cpu
 # - tensorflow and related not installed by default due to size of repo and C compilation overhead.
 # - ipython, pylint, etc. used for setting up development environment
 #
-#opt# SpeechRecognition
-#opt# accelerate
+## UPDATE:05/23/26: changes '#opt#' to '#full#' for advanced analytics stuff
+#full# SpeechRecognition
+#full# accelerate
 #opt# astor                             # AST utils
 #devel# bash_kernel
-#opt# ctransformers
+#full# ctransformers
 #devel# colout
 #devel# coverage
 #devel# flit
-#opt# gensim
-#opt# ibm-watson
-#opt# ibm_cloud_sdk_core
+#full# gensim
+#full# ibm-watson
+#full# ibm_cloud_sdk_core
 #devel# ipython
 #devel# jupyter
 #opt# libcst
-#opt# librosa
-#opt# pocketsphinx
+#full# librosa
+#full# pocketsphinx
 #devel# mypy
 pillow
 ## TODO?: #opt#
 pydantic==2.9.2
 #devel# pylint
 #devel# pyyaml
-#opt# scispacy
+#full# scispacy
 #opt# selenium
-#opt# sentence-transformers
-#opt# Sphinx
+#full# sentence-transformers
+#full# Sphinx
 ## TODO?: make unittest_parametrize regular dependency
 #devel# unittest_parametrize
 #
@@ -152,7 +153,7 @@ typing_extensions==4.12.2
 #opt# textract
 #devel# types-six                         # typing stubs for six
 #opt# youtube_transcript_api
-#opt# vaderSentiment
+#full# vaderSentiment
 #...............................................................................
 # "Fully optional" requirements
 # Note: these generally involve large or long installations.
