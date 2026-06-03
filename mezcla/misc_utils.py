@@ -19,7 +19,6 @@ import re
 import sys
 import time
 import json
-## OLD: import yaml
 import csv
 from types import ModuleType
 from typing import Any, Optional
@@ -161,7 +160,7 @@ def is_prime(num):
 
 
 def prime_factorization(num):
-    """Return list of primne factors for NUM"""
+    """Return list of prime factors for NUM"""
     ## EX: prime_factorization(123) => [3, 41]
     ## EX: prime_factorization(127) => [127]
     i = 2
