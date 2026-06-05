@@ -583,6 +583,7 @@ if __debug__:
                 max_len: Optional[int] = None
             ) -> None:
             """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
+            ## TODO2: mention other types coerced into collections (e.g., mapping to dict)
             # TODO3: return text as with trace and trace_expr
             self.trace_fmt(MOST_VERBOSE, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
                       dl=level, lbl=label, coll=collection, ind=indentation)
@@ -598,10 +599,13 @@ if __debug__:
             # note: sets will be coerced to lists
             if not isinstance(collection, (list, dict)):
                 if hasattr(collection, '__iter__'):
-                    self.trace(level + 1, "Warning: [trace_values] consuming iterator")
+                    if not isinstance(collection, tuple):
+                        self.trace(level + 1, "Warning: [trace_values] consuming iterator")
                     collection = list(collection)
                 else:
-                    self.trace(level + 1, "Warning: [trace_values] coercing input into list")
+                    ## TODO3: drop support for scalars
+                    ## OLD: self.trace(level + 1, "Warning: [trace_values] coercing input into list")
+                    self.trace(level + 1, "Deprecation warning: [trace_values] coercing single value into list")
                     collection = [collection]
             if indentation is None:
                 indentation = INDENT1
