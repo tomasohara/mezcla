@@ -1468,9 +1468,9 @@ def _getenv_int(name: str, default_value: int) -> int:
     return result
 
 @docstring_parameter(max_len=max_trace_value_len)
-def format_value(value: str, max_len: Optional[int] = None,
+def format_value(value: Any, max_len: Optional[int] = None,
                  strict: Optional[bool] = None, skip_sanity_checks=None) -> str:
-    """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines
+    """Format arbitrary VALUE for output with trace_values, etc.: truncates if too long and encodes newlines
     Note: With STRICT, MAX_LEN is maximum length ({max_len}) for returned string (i.e., including "...")
     """
     # EX: format_value("    \n\n\n\n", max_len=11) => "    \\n\\n..."
