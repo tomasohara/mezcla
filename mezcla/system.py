@@ -1048,7 +1048,8 @@ def split_path(path: str) -> Tuple[str, str]:
     dir_name, filename = os.path.split(path)
     debug.assertion((not dir_name.endswith(os.path.sep)) or (dir_name == os.path.sep))
     result = dir_name, filename
-    debug.assertion(dir_name or filename)
+    ## OLD: debug.assertion(dir_name or filename)
+    debug.assertion(dir_name or filename or not path)
     if dir_name and debug.active() and file_exists(path):
         debug.assertion(file_exists(dir_name))
     debug.trace(6, f"split_path({path}) => {result}")
