@@ -17,6 +17,7 @@
 # - make sure trace_fmt traps all exceptions
 #   debug.trace_fmt(1, "fu={fu}", fuu=1)
 #                           ^^    ^^^
+# - replace -1 trace level usages w/ self.patch_trace_level(1) ... 1
 #................................................................................
 # Global pylint filter:
 #   pylint: disable=protected-access
@@ -231,9 +232,11 @@ class TestDebug(TestWrapper):
             assert f": {char}" in err
 
         # Test non list collection (tuple)
-        THE_MODULE.trace_values(-1, 123)
+        ## OLD: THE_MODULE.trace_values(-1, 123)
+        THE_MODULE.trace_values(-1, (123, 321))
         err = self.get_stderr()
         assert ": 123" in err
+        assert ": 321" in err
 
         # Test use_repr parameter
         THE_MODULE.trace_values(-1, [Person("Kiran")], use_repr=True)
