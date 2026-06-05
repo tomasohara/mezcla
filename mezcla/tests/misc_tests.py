@@ -128,11 +128,17 @@ class TestMisc(TestWrapper):
     
     def run_test(self, label, temp_dir, test_name):
         """Run a test script in a temporary directory.
-           Note: Example invocation: run_test("orig", "/tmp/mezcla-original", "html_utils.py")"""
+           Note: Example invocation: run_test("orig", "/tmp/mezcla-original/mezcla", "html_utils.py")"""
         debug.trace_expr(6, label, temp_dir, test_name,
                     prefix="in run_test: ")
-        test_script = gh.form_path(temp_dir, "tests", f"test_{test_name}")
-        result = gh.run(f"PYTHONPATH='{temp_dir}/..' pytest {test_script}")
+        debug.assertion("mezcla" in temp_dir)
+        temp_repo_dir = gh.form_path(temp_dir, "..")
+        ## OLD:
+        ## test_script = gh.form_path(temp_dir, "tests", f"test_{test_name}")
+        ## result = gh.run(f"PYTHONPATH='{temp_dir}/..' pytest {test_script}")
+        # note: cd's into test directory to avoid pytest collection issues
+        test_script = gh.form_path("mezcla", "tests", f"test_{test_name}")
+        result = gh.run(f"cd {temp_repo_dir} && env -u PYTHONPATH PYTHONPATH='{temp_repo_dir}' pytest {test_script}")
         if debug.verbose_debugging():
             ## OLD:
             ## number = random.randint(10000, 99999)
