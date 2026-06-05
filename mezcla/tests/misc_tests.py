@@ -148,10 +148,15 @@ class TestMisc(TestWrapper):
 
     def count_serious_errors(self, results):
         """Return number of errors in RESULTS
-        Note: This mostly covers exceptions butalso includes some errors"""
+        Note: This mostly covers exceptions but also includes some errors"""
         # This doesn't user check_errors.perl as above because not part of repo
+        ## OLD:
+        ## num_errors = len(my_re.findall(r"Exception|ModuleNotFoundError|RuntimeError|SyntaxError|TypeError", results))
+        ## debug.trace(6, f"count_serious_errors({gh.elide(results)!r}) => {num_errors}")
+        debug.trace(6, f"in count_serious_errors({gh.elide(results)!r})")
+        errors = my_re.findall(r"Exception|ModuleNotFoundError|RuntimeError|SyntaxError|TypeError", results)
         num_errors = len(my_re.findall(r"Exception|ModuleNotFoundError|RuntimeError|SyntaxError|TypeError", results))
-        debug.trace(6, f"count_serious_errors({gh.elide(results)!r}) => {num_errors}")
+        debug.trace(6, f"count_serious_errors() => {num_errors}; errors={gh.elide(errors)!r}")
         return num_errors
     
     def count_failures(self, results):
@@ -283,8 +288,11 @@ class TestMisc(TestWrapper):
         num_bad = 0
         test_scripts = (main_scripts if not TEST_REGEX
                         else self.get_python_module_files(include_tests=False))
-        num_cases = len(main_scripts)
-        for script in main_scripts:
+        ## BAD:
+        ## num_cases = len(main_scripts)
+        ## for script in main_scripts:
+        num_cases = len(test_scripts)
+        for script in test_scripts:
             # Add dynamic type checking to scripts (e.g., via pydantic)
             self.save_transformed_for_validation(orig_mezcla_dir, temp_mezcla_dir, script)
 
@@ -296,17 +304,20 @@ class TestMisc(TestWrapper):
             # exs: 1) more exceptions in transformed run vs original; 2) differences in number of failures
             bad_results = False
             ## OLD: if (temp_results.count("Exception") > orig_results.count("Exception")):
-            if (self.count_serious_errors(temp_results) > self.count_serious_errors(orig_results)):
+            num_temp_serious = self.count_serious_errors(temp_results)
+            num_orig_serious = self.count_serious_errors(orig_results)
+            if (num_temp_serious > num_orig_serious):
                 debug.trace(4, f"Warning: more exceptions or errors running test of transformed script {script}")
                 bad_results = True
             num_temp_failed = self.count_failures(temp_results)
             num_orig_failed = self.count_failures(orig_results)
             debug.assertion(num_temp_failed >= num_orig_failed)
-            debug.trace_expr(5, num_temp_failed, num_orig_failed, script)
+            ## OLD: debug.trace_expr(5, num_temp_failed, num_orig_failed, script)
             if (num_temp_failed > num_orig_failed):
                 bad_results = True
             if bad_results:
                 num_bad += 1
+            debug.trace_expr(5, num_temp_serious, num_orig_serious, num_temp_failed, num_orig_failed, bad_results, script)
 
         # Only allow for a relatively small number of failures
         bad_pct = round(num_bad / num_cases * 100, 2)
