@@ -125,6 +125,12 @@ def is_prime(num):
     - Based on https://en.wikipedia.org/wiki/Primality_test.
     - The intuition is that primes > 3 are of form (6k +/- 1).
     """
+    # Explanation via Claude:
+    # Every integer can be written as 6𝑘 + 𝑟 where 𝑟 ∈ {0, 1, 2, 3, 4, 5}.
+    # 6k, 6𝑘+2, 6𝑘+4 are divisible by 2; and, 6k+3 is divisible by 3.
+    # That leaves only 6𝑘+1 and 6𝑘+5 (equivalently 6𝑘−1), as as forms that can be prime
+    # when greater than 3.
+    #
     ## EX: FIRST_100_PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 521, 523, 541]; (len(FIRST_100_PRIMES) == 100)
     ## EX: all([is_prime(n) for n in FIRST_100_PRIMES])
     ## EX: all([(not is_prime(n)) for n in range(FIRST_100_PRIMES[-1])  if n not in FIRST_100_PRIMES])
@@ -136,21 +142,21 @@ def is_prime(num):
     if (num <= 3):
         is_prime_num = (num > 1)
         if not is_prime_num:
-            debug.trace_fmt(4, "{n} not prime as less than 3 and not 2.", n=num)
+            debug.trace(4, f"{num} not prime as less than 3 and not 2.")
         return is_prime_num
 
     # Next, make sure not divisible by 2 or 3
     if ((num % 2 == 0) or (num % 3 == 0)):
-        debug.trace_fmt(4, "{n} not prime as divisible by 2 or 3.", n=num)
+        debug.trace(4, f"{num} not prime as divisible by 2 or 3.")
         return False
 
-    # Otherwise, check (6k +/- 1) values to see if divisible by 2 or 3,
+    # Otherwise, check if divisible by a number of the form (6k +/- 1),
     # stopping when value exceeds sqrt(n).
     last_possible = math.ceil(math.sqrt(num))
     i = 5
     while (i <= last_possible):
         if (((num % i) == 0) or ((num % (i + 2)) == 0)):
-            debug.trace_fmt(4, "{n} not prime as (6k +/- 1) divisible by 2 or 3 for some k.", n=num)
+            debug.trace(4, f"{num} not prime as divisible by (6k +/- 1) for some k.")
             is_prime_num = False
             break
         i += 6
