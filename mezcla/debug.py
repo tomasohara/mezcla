@@ -72,6 +72,7 @@ import inspect
 from itertools import zip_longest
 import logging
 import os
+from pathlib import Path
 from pprint import pprint
 import re
 from typing import (
@@ -154,9 +155,58 @@ def docstring_parameter(**kwargs):
         return obj
     return decorator
 
+def detect_shadowed_package():
+    """Heuristic indicating whether another version of this package is ahead of this one in sys.path?
+    Returns tuple with shadow status flag and details hash.
+    """
+
+    # Make sure filename resolvable
+    mod = sys.modules[__name__]
+    if not getattr(mod, "__file__", None):
+        return False, {"shadowed": False, "reason": "no __file__"}
+       
+    # Infer top-level package name from this module
+    pkg_name = ((__package__ or __name__).split(".")[0])
+    if pkg_name in ("", "__main__"):
+        return False, {"shadowed": False, "reason": "not in a package"}
+       
+    # Infer this package dir (top-level package directory for current module)
+    module_file = Path(mod.__file__).resolve()
+    pkg_dir = module_file.parent
+    depth = max(len((__package__ or "").split(".")) - 1, 0)
+    for _ in range(depth):
+        pkg_dir = pkg_dir.parent
+    pkg_dir = pkg_dir.resolve()
+    trace_expr(5, pkg_dir)
+
+    # Check for another version of package
+    first_other = None
+    current_index = None
+    #
+    for i, entry in enumerate(sys.path):
+        base = Path(entry or os.getcwd()).resolve()
+        candidate = (base / pkg_name).resolve()
+        trace_expr(5, i, entry, candidate)
+        if not candidate.is_dir():
+            continue
+        if first_other is None:
+            first_other = (i, candidate)
+        if candidate == pkg_dir:
+            current_index = i
+            break
+
+    # Check whether other ahead of current package
+    shadowed = bool(first_other and (current_index is None or first_other[0] < current_index))
+    return shadowed, {
+        "shadowed": shadowed,
+        "package": pkg_name,
+        "current_pkg_dir": str(pkg_dir),
+        "current_index": current_index,
+        "ahead_index": (first_other[0] if first_other else None),
+        "ahead_pkg_dir": (str(first_other[1]) if first_other else None),
+    }
+
 #...............................................................................
-
-
 
 if __debug__:    
 
@@ -1084,6 +1134,10 @@ if __debug__:
             # note: also show python path if under Unix (TODO3: generalize)
             if (os.name == "posix"):
                 self.code(VERBOSE, lambda: os.system("(echo -n 'Python: '; which python) 1>&2"))
+            is_shadowed, shadow_details = detect_shadowed_package()
+            self.trace_expr(DETAILED, shadow_details)
+            if is_shadowed:
+                self.trace(USUAL, f"Warning: package likely shadowed: {shadow_details}")
 
             # Determine other debug-only environment options
             global para_mode_tracing
