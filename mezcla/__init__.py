@@ -27,6 +27,7 @@ import sys
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Note: requires python 3 or higher
+# TODO2: upgrade checks to cover 3.6 (mandatory) and 3.8+ (practical)
 PYTHON3_PLUS = (sys.version_info[0] >= 3)
 assert PYTHON3_PLUS, "Python 3 or higher: ¡por favor!"
 
@@ -59,9 +60,6 @@ TL = debug.TL
 # Expose commonly used modules
 __all__ = ["debug", "gh", "my_re", "system", "TL", "__VERSION__"]
 
-## OLD:
-## if __name__ == '__main__':
-##     debug.trace(TL.USUAL, f"Version: {__VERSION__}")
-##     system.print_error(f"Warning: {__file__} is not intended to be run standalone\n")
-## NOTE: See https://stackoverflow.com/questions/43393764/python-3-6-project-structure-leads-to-runtimewarning
-debug.trace(TL.DETAILED, f"mezcla version: {__VERSION__}")
+## PREVIOUS:
+## NOTE: See __main__.py
+## debug.trace(TL.DETAILED, f"mezcla version: {__VERSION__}")
