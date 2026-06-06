@@ -29,6 +29,7 @@
 import sys
 from datetime import datetime
 import inspect
+from pathlib import Path
 
 # Installed packages
 import pytest
@@ -113,6 +114,27 @@ class TestDebug(TestWrapper):
         assert THE_MODULE.get_level() == 5
         self.patch_trace_level(6)
         assert THE_MODULE.get_level() == 6
+
+    def test_detect_shadowed_package(self):
+        """Ensure detect_shadowed_package catches higher-priority package paths"""
+        debug.trace(4, f"test_detect_shadowed_package(): self={self}")
+
+        # Create minimal package tree that shadows mezcla via sys.path precedence.
+        shadow_root = self.get_temp_dir()
+        shadow_pkg_dir = gh.form_path(shadow_root, "mezcla")
+        gh.full_mkdir(shadow_pkg_dir)
+        system.write_file(gh.form_path(shadow_pkg_dir, "__init__.py"), "# temp package for shadow detection test\n")
+
+        # Put the temporary package root at the front of sys.path.
+        self.monkeypatch.setattr(sys, "path", [shadow_root] + list(sys.path))
+
+        # Run detection and confirm the leading path is the temporary package.
+        is_shadowed, shadow_details = THE_MODULE.detect_shadowed_package()
+        assert is_shadowed
+        assert shadow_details.get("shadowed")
+        assert shadow_details.get("ahead_index") == 0
+        assert THE_MODULE._same_path(Path(shadow_details.get("ahead_pkg_dir", "")), Path(shadow_pkg_dir))
+        assert shadow_details.get("package") == "mezcla"
 
     def test_get_output_timestamps(self):
         """Ensure get_output_timestamps works as expected"""
