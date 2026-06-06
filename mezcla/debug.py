@@ -155,55 +155,79 @@ def docstring_parameter(**kwargs):
         return obj
     return decorator
 
+def _same_path(path1: Path, path2: Path) -> bool:
+    """Heuristic path equality, including symlink-aware checks."""
+    try:
+        return os.path.samefile(path1, path2)
+    except:
+        return (path1.resolve() == path2.resolve())
+
 def detect_shadowed_package():
     """Heuristic indicating whether another version of this package is ahead of this one in sys.path?
     Returns tuple with shadow status flag and details hash.
     """
-
-    # Make sure filename resolvable
+    # Resolve current module and script metadata.
     mod = sys.modules[__name__]
     if not getattr(mod, "__file__", None):
         return False, {"shadowed": False, "reason": "no __file__"}
-       
-    # Infer top-level package name from this module
-    pkg_name = ((__package__ or __name__).split(".")[0])
-    if pkg_name in ("", "__main__"):
-        return False, {"shadowed": False, "reason": "not in a package"}
-       
-    # Infer this package dir (top-level package directory for current module)
-    module_file = Path(mod.__file__).resolve()
-    pkg_dir = module_file.parent
-    depth = max(len((__package__ or "").split(".")) - 1, 0)
-    for _ in range(depth):
-        pkg_dir = pkg_dir.parent
-    pkg_dir = pkg_dir.resolve()
-    trace_expr(5, pkg_dir)
+    current_module_file = Path(mod.__file__).resolve()
+    script_path = (Path(sys.argv[0]).resolve() if (sys.argv and sys.argv[0]) else None)
+    package_name = (__package__ or getattr(mod, "__package__", "") or "")
+    pkg_dir = None
+    pkg_name = None
 
-    # Check for another version of package
-    first_other = None
+    # Infer package directory from module metadata when available.
+    if package_name:
+        pkg_name = package_name.split(".")[0]
+        pkg_dir = current_module_file.parent
+        depth = max(len(package_name.split(".")) - 1, 0)
+        for _ in range(depth):
+            pkg_dir = pkg_dir.parent
+    # Otherwise, use script-mode heuristics (e.g., running ./debug.py).
+    elif (current_module_file.parent / "__init__.py").is_file():
+        pkg_dir = current_module_file.parent
+        pkg_name = pkg_dir.name
+    elif script_path and (script_path.parent / "__init__.py").is_file():
+        pkg_dir = script_path.parent
+        pkg_name = pkg_dir.name
+    else:
+        return False, {"shadowed": False, "reason": "not in a package"}
+
+    assert pkg_dir is not None
+    assert pkg_name is not None
+    pkg_dir = pkg_dir.resolve()
+    trace_expr(5, pkg_dir, pkg_name, script_path)
+
+    # Scan python path entries in import precedence order.
+    first_hit = None
     current_index = None
-    #
     for i, entry in enumerate(sys.path):
         base = Path(entry or os.getcwd()).resolve()
-        candidate = (base / pkg_name).resolve()
+        candidate = (base / pkg_name)
         trace_expr(5, i, entry, candidate)
         if not candidate.is_dir():
             continue
-        if first_other is None:
-            first_other = (i, candidate)
-        if candidate == pkg_dir:
+        candidate = candidate.resolve()
+        if first_hit is None:
+            first_hit = (i, candidate)
+        if _same_path(candidate, pkg_dir):
             current_index = i
             break
 
-    # Check whether other ahead of current package
-    shadowed = bool(first_other and (current_index is None or first_other[0] < current_index))
+    # Determine whether another package dir comes before this package dir.
+    shadowed = False
+    if first_hit:
+        same_first_dir = _same_path(first_hit[1], pkg_dir)
+        first_hit_ahead = ((current_index is None) or (first_hit[0] < current_index))
+        shadowed = ((not same_first_dir) and first_hit_ahead)
     return shadowed, {
         "shadowed": shadowed,
         "package": pkg_name,
         "current_pkg_dir": str(pkg_dir),
         "current_index": current_index,
-        "ahead_index": (first_other[0] if first_other else None),
-        "ahead_pkg_dir": (str(first_other[1]) if first_other else None),
+        "ahead_index": (first_hit[0] if first_hit else None),
+        "ahead_pkg_dir": (str(first_hit[1]) if first_hit else None),
+        "script_path": (str(script_path) if script_path else None),
     }
 
 #...............................................................................
@@ -211,7 +235,7 @@ def detect_shadowed_package():
 if __debug__:    
 
     # Initialize debug tracing level
-    # TODO: mark as "private" (e.g., trace_level => _trace_level)
+    # TODO1: mark as "private" (e.g., trace_level => _trace_level)
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
     trace_level: IntOrTraceLevel = TL.DEFAULT  # typically 3 (1 + WARNING); TODO: global_trace_level
     output_timestamps: bool = False     # prefix output with timestamp
@@ -1107,10 +1131,17 @@ if __debug__:
             if (time_start > 0 and not force):
                 ## TODO3: track down source of re-init
                 self.trace(DETAILED, f"debug_init early exit: {time_start=} {force=}")
+                self.trace_stack(VERBOSE)
                 return
+            ## OLD:
+            ## time_start = time.time()
+            ## self.trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
+            self.trace(DETAILED, f"in debug_init(force={force}); DEBUG_LEVEL={trace_level}; {timestamp()}")
+            self.trace(VERBOSE, f"{time_start=}")
             time_start = time.time()
-            self.trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
             ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
+            ## DEBUG:
+            self.trace_stack(VERBOSE)
             # note: shows command invocation unless invoked via "python -c ..."
             command_line = " ".join(sys.argv)
             if (command_line and (command_line != "-c") and (command_line != "-m")):
@@ -1195,6 +1226,7 @@ if __debug__:
             self.trace_expr(4, skip_atexit)
             if not skip_atexit:
                 atexit.register(self.display_ending_time_etc)
+            self.trace(VERBOSE, f"out debug_init(); {timestamp()}")
 
             return
 
