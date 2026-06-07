@@ -85,11 +85,14 @@ import sys
 import time
 import traceback
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
-from mezcla.validate_arguments_types import (
-    FileDescriptorOrPath,
-)
+## OLD:
+## from mezcla.validate_arguments_types import (
+##     FileDescriptorOrPath,
+## )
 
 # Local modules
+# Warning: avoid other mezcla modules to work around dependency circles.
+from mezcla.validate_arguments_types import FileDescriptorOrPath
 intro = None
 
 
@@ -1139,9 +1142,10 @@ if __debug__:
             self.trace(DETAILED, f"in debug_init(force={force}); DEBUG_LEVEL={trace_level}; {timestamp()}")
             self.trace(VERBOSE, f"{time_start=}")
             time_start = time.time()
-            ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
-            ## DEBUG:
-            self.trace_stack(VERBOSE)
+            ## OLD: ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
+            ## NOTE: Useful for tracking down multiple invocations (e.g., due to imports or __init__.py),
+            ## which is complicated by python path conflicts (see shadow detection below).
+            ## DEBUG: self.trace_stack(VERBOSE)
             # note: shows command invocation unless invoked via "python -c ..."
             command_line = " ".join(sys.argv)
             if (command_line and (command_line != "-c") and (command_line != "-m")):
