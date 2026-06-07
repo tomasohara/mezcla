@@ -15,6 +15,7 @@
 #   is raised by default. To disable this, set the SUB_DEBUG_LEVEL as follows:
 #      l=5; DEBUG_LEVEL=$l SUB_DEBUG_LEVEL=$l pytest -s tests/test_spell.py
 #   See glue_helper.py for implementation along with related ALLOW_SUBCOMMAND_TRACING.
+# - Use CAPSYS_DEBUG_LEVEL to override VERBOSE (5) mirror of stdout/stderr.
 # TODO:
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 #   via glue_helpers.py: default base prefix vs fixed override
@@ -261,6 +262,9 @@ class TestWrapper(unittest.TestCase):
     profiler = None
     monkeypatch = None
     capsys = None
+    capsys_debug_level = system.getenv_int(
+        "CAPSYS_DEBUG_LEVEL", 5,
+        desc="Base debug level for capsys stdout/stderr tracing")
 
     ## TEST:
     ## NOTE: leads to pytest warning. See
@@ -666,6 +670,7 @@ class TestWrapper(unittest.TestCase):
         """Get currently captured standard output and error
         Note: Clears both stdout and stderr captured afterwards. This might
         be needed beforehand to clear capsys buffer.
+        In addition, you might need to use DEBUG_FILE to see all tracing (see debug.py)
 
         Warning: The capsys clearing workaround is not foolproof, so you
         might need to disable capsys beforehand (e.g., in setUp): see
@@ -679,10 +684,12 @@ class TestWrapper(unittest.TestCase):
                 with self.capsys.disabled():
                     stdout, stderr = self.capsys.readouterr()
                     ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
-                    debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
+                    ## OLD: debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
+                    debug.trace_expr(self.capsys_debug_level, stdout, stderr,
+                                     prefix="get_stdout_stderr:\n", delim="\n", max_len=32768)
         except:
             # note: trace level high so as not to affect normal testing
-            debug.trace_exception(7, "get_stdout_stderr")
+            debug.trace_exception(capsys_debug_level + 2, "get_stdout_stderr")
         return stdout, stderr
         
     def get_stdout(self) -> str:
@@ -768,7 +775,9 @@ class TestWrapper(unittest.TestCase):
         return self.create_temp_file(contents + "\n", **kwargs)
 
     def patch_trace_level(self, level):
-        """Monkey patch the trace LEVEL (e.g., DEBUG_LEVEL)"""
+        """Monkey patch the trace LEVEL (e.g., DEBUG_LEVEL)
+        Note: You might need to adjust capsys_debug_level.
+        """
         self.monkeypatch.setattr("mezcla.debug.trace_level", level)
 
     def tearDown(self) -> None:
