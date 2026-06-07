@@ -689,7 +689,7 @@ class TestWrapper(unittest.TestCase):
                                      prefix="get_stdout_stderr:\n", delim="\n", max_len=32768)
         except:
             # note: trace level high so as not to affect normal testing
-            debug.trace_exception(capsys_debug_level + 2, "get_stdout_stderr")
+            debug.trace_exception(self.capsys_debug_level + 2, "get_stdout_stderr")
         return stdout, stderr
         
     def get_stdout(self) -> str:
