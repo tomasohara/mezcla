@@ -12,6 +12,13 @@
 # - Some tests take extra care to ensure that the output doesn't lead to false positives
 #   by error-checking scripts like check_errors.py. For example, test_multiline_assertion
 #   uses Spanish for error messages that would otherwise get flagged.
+#
+# Warning:
+# - Unfortunately, capsys captures stderr and get_stdout_stderr doesn't mirror
+#   unless VERBOSE (5) debugging enabled: use DEBUG_FILE to output copy of stderr.
+# - In addition, there is subtle interaction with this and self.patch_trace_level:
+#   ex: self.patch_trace_level(3) disables stderr trace in test_assertion.
+#   Alternatively, use CAPSYS_DEBUG_LEVEL (see unittest_wrapper.py).
 #................................................................................
 # TODO:
 # - make sure trace_fmt traps all exceptions
@@ -938,6 +945,7 @@ class TestDebugWrapper(TestWrapper):
         err = self.get_stderr()
         self.do_assert("test_dw_trace_stack" in err)
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
     def test_dw_trace_exception(self):
         """_debug.trace_exception outputs exception info"""
         debug.trace(4, f"test_dw_trace_exception(): self={self}")
