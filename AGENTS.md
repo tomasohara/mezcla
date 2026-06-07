@@ -76,7 +76,16 @@ revision, request clarification about how to proceed.
    * Avoid putting function definitions inside of other code (e.g., use bottom for Perl and top for Python). Exceptions would be for small functions incorporating context (e.g., sorting helper function).
    * Use full extension names (e.g., ".perl" instead of ".pl").
 
-0. Name temporary files with leading _ (e.g., "_test_regex.perl").
+0. Name temporary files with leading `_` (e.g., `_test_regex.perl`).
+
+0. Make sure your in-line code comments abstract from the implementation to cover intention. If needed,
+   added separate comments with special implementation notes.
+ 
+   # Merge and sort the input data
+   # note: currently uses simple merge sort
+   my_merge(list1, list2)
+
+0. Avoid embedded functions except in cases requiring local context: this facilitates testing.
 
 ## Debug level conventions
 
