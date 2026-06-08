@@ -94,15 +94,10 @@ class TestKenlmExample(TestWrapper):
         """Ensures that kenlm_example_default works properly"""
         debug.trace(4, f"test_kenlm_example_default(); self={self}")
         sentence = 'language modeling is fun'
-        ## OLD: 
-        # command_export_LM = 'export LM=../lm/test.arpa'
-        # test1 = round(THE_MODULE.normaized_score, 2) == -12.9
-        # test3 = round(round(THE_MODULE.model.score(sentence), 2) == -64.59
-        # gh.run(command_export_LM)
-        test1 = 12 < abs(round(THE_MODULE.normaized_score, 2)) < 13
-        test2 = THE_MODULE.model.order == 5
-        test3 = 64 < abs(round(THE_MODULE.model.score(sentence), 2)) < 65
-        assert(test1 and test2 and test3)
+        assert THE_MODULE.normalized_score
+        assert 12 < abs(round(THE_MODULE.normalized_score, 2)) < 13
+        assert THE_MODULE.model.order == 5
+        assert 64 < abs(round(THE_MODULE.model.score(sentence), 2)) < 65
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
