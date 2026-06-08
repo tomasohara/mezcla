@@ -20,6 +20,7 @@ import datetime
 
 # Local packages
 from mezcla import debug
+from mezcla.my_regex import my_re
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import system
 
