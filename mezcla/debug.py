@@ -85,10 +85,6 @@ import sys
 import time
 import traceback
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
-## OLD:
-## from mezcla.validate_arguments_types import (
-##     FileDescriptorOrPath,
-## )
 
 # Local modules
 # Warning: avoid other mezcla modules to work around dependency circles.
@@ -774,10 +770,6 @@ if __debug__:
                 if intro:
                     expression = intro.format(*values, arg_offset=1, indirect=True, levels_back=_caller_depth, max_len=max_len,
                                               no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
-                    ## OLD:
-                    ## if max_len and len(expression) > max_len:
-                    ##     trace(7, ("Warning: error in introspection max_len; " +
-                    ##               f"{len(expression)} vs. {max_len}; {expression=}"))
 
                 ## TEST:
                 ## expression = []
@@ -786,7 +778,6 @@ if __debug__:
                 ## expression = "@".join(expression)
                 ## trace(3, f"{values=} {expression=}")
                 ##
-                ## OLD: out_text += trace(level, expression, skip_sanity_checks=True, max_len=max_len)
                 # Note: when max_len specified, intro.format already applied it to values;
                 # use expression length to avoid trace re-truncating (expression includes
                 # arg names, delimiters, etc. beyond max_len).
@@ -991,7 +982,6 @@ if __debug__:
                         expression = "???"
                         if intro:
                             expression = intro.format(expression, indirect=True, omit_values=True, levels_back=_caller_depth)
-                        ## OLD: expression = re.sub("=False$", "", expression)
                         ## TODO2: drop newlines due to argument split across lines
                         ##   expression = re.sub("\n", " ", expression)???
                         expression_text = expression
@@ -1012,7 +1002,6 @@ if __debug__:
 
                     # Output information
                     # TODO: omit subsequent warnings
-                    ## OLD: trace_fmtd(ALWAYS, "Assertion failed: {expr} (at {file}:{line}){qual}",
                     self.trace_fmtd(ALWAYS, "{issue_spec}: {expr} (at {file}:{line}){qual}",
                                issue_spec=(issue or "Assertion failed"),
                                expr=expression_text, file=filename, line=line_number, qual=qualification_spec)
@@ -1136,13 +1125,9 @@ if __debug__:
                 self.trace(DETAILED, f"debug_init early exit: {time_start=} {force=}")
                 self.trace_stack(VERBOSE)
                 return
-            ## OLD:
-            ## time_start = time.time()
-            ## self.trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
             self.trace(DETAILED, f"in debug_init(force={force}); DEBUG_LEVEL={trace_level}; {timestamp()}")
             self.trace(VERBOSE, f"{time_start=}")
             time_start = time.time()
-            ## OLD: ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
             ## NOTE: Useful for tracking down multiple invocations (e.g., due to imports or __init__.py),
             ## which is complicated by python path conflicts (see shadow detection below).
             ## DEBUG: self.trace_stack(VERBOSE)
