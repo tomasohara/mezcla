@@ -42,7 +42,6 @@
 import ast
 
 # Installed packages
-## OLD: import re
 import pytest
 
 # Local packages
@@ -105,20 +104,8 @@ class TestKenlmExample(TestWrapper):
         """Ensures that kenlm_example_round works properly"""
         debug.trace(4, f"test_kenlm_example_round(); self={self}")
         
-        ## OLD: Bad piece of code
-        # command_export_LM = 'export LM=../lm/test.arpa'
-        # command_kenlm = f'ROUNDING_PRECISION=4 ../kenlm_example.py {sentence} > {self.temp_file}'
-        
-        ## OLD: Didn't work, returned tmp path as sentence
-        # output = self.run_script(self.temp_file)
-        # output = gh.read_file(self.temp_file)
-
         sentence = "A quick brown fox jumps over a lazy dog."
         round_val = 4
-        ## BAD:
-        ## command = f"ROUNDING_PRECISION={round_val} LM={lm_path} python3 {kenlm_example_path} {sentence} 2> /dev/null"
-        ## command = f"ROUNDING_PRECISION={round_val} LM={lm_path} python3 {kenlm_example_path} {sentence} 2> /dev/null"
-        ## output = gh.run(command).split("\n")
         output = self.run_script(env_options=f"ROUNDING_PRECISION={round_val} LM={lm_path}", options=sentence,
                                  uses_stdin=False)
         output = output.split("\n")
@@ -127,14 +114,6 @@ class TestKenlmExample(TestWrapper):
         test_model_score = -149.4206
         test_normalized_score = -16.6023
 
-        ## OLD:
-        ## test0 = str(test_model_order) in output[0] # n-gram model
-        ## test1 = sentence in output[1]
-        ## test2 = (str(test_model_score) in output[2]) and (-150 <= test_model_score <= -149)
-        ## test3 = (str(test_normalized_score) in output[3]) and (-17 <= test_normalized_score <= -16)
-        ##
-        ## assert all([test0, test1, test2, test3])
-        
         self.do_assert(str(test_model_order) in output[0])  # n-gram model
         self.do_assert(sentence in output[1])
         self.do_assert((str(test_model_score) in output[2]) and (-150 <= test_model_score <= -149))
@@ -147,20 +126,10 @@ class TestKenlmExample(TestWrapper):
         """Ensures that kenlm_example_verbose works properly"""
         debug.trace(4, f"test_kenlm_example_VERBOSE(); self={self}")
 
-        ## OLD: Improved command used
-        # command_export_LM = 'export LM=../lm/test.arpa'
-        # command_kenlm = f'VERBOSE=True ../kenlm_example.py {sentence} > {self.temp_file}'
-        # gh.run(command_export_LM)
-        # gh.run(command_kenlm)
         sentence = "One kiss is all it takes."
         command = f"VERBOSE=1 LM={lm_path} python3 {kenlm_example_path} {sentence} 2> /dev/null"
         output = gh.run(command)
         prob_values = [-2.411, -15.000, -23.688, -2.297, -15.000, -17.000, -23.029]
-
-        ## [OLD]: Didn't work, returned tmp path as sentence
-        # output = self.run_script(self.temp_file)
-        ## OLD: Using gh.run instead of temp_file 
-        # output = gh.read_file(self.temp_file)
 
         # TEST 1 - For checking the values in verbose list
         def is_prob_values_true():
@@ -179,44 +148,26 @@ class TestKenlmExample(TestWrapper):
         """Ensures that kenlm_example_outofvocab works properly"""
         debug.trace(4, f"test_kenlm_example_outofvocab(); self={self}")
 
-        ## OLD: Improved command used
-        # command_export_LM = 'export LM=../lm/test.arpa'
-        # command_kenlm = f'VERBOSE=True ../kenlm_example.py {sentence} | tail -n 1 | cut -c 26- > {self.temp_file}'
-        # gh.run(command_export_LM)
-        # gh.run(command_kenlm)
-
-        ## [OLD]: Didn't work, returned tmp path as sentence
-        # output = self.run_script(self.temp_file)
-        # output = gh.read_file(self.temp_file)
-
-        ## OLD: Replaced by another method
-        # ## [TODO]: WORK IN PROGRESS
-        # ## TEST 2 - Checking for seen words in out-of-vocabs dict (VERBOSE)
-        # def return_words(gow):
-        #     x = []
-        #     for word in gow.split():
-        #         x += [word]
-        #     return str(x)
-        
-        # def uncommon_words(a, b):
-        #     # count will contain all the word counts
-        #     count = {}
-        
-        #     for word in a.split():
-        #         count[word] = count.get(word, 0) + 1
-
-        #     for word in b.split():
-        #         count[word] = count.get(word, 0) + 1
-
-        #     return [word for word in count if count[word] == 1]
-
-        # uncommon_str = str(uncommon_words(return_words(sentence), out_of_vocab_arr))
-        # ## [WARNING]: Use of regex shows warning in pytest       
-        # # uncommon_filter = re.sub('[\W_]+', '', uncommon_str)
-        # uncommon_filter = "".join(list([val for val in uncommon_str if val.isalnum()]))
-        
-        # assert ("is" == uncommon_filter)
-        # return
+        ## OLD:
+        ## def uncommon_words(a, b):
+        ##     ## count will contain all the word counts
+        ##     count = {}
+        ##
+        ##     for word in a.split():
+        ##         count[word] = count.get(word, 0) + 1
+        ##
+        ##     for word in b.split():
+        ##         count[word] = count.get(word, 0) + 1
+        ##
+        ##     return [word for word in count if count[word] == 1]
+        ##
+        ## uncommon_str = str(uncommon_words(return_words(sentence), out_of_vocab_arr))
+        ## ## [WARNING]: Use of regex shows warning in pytest       
+        ## # uncommon_filter = re.sub('[\W_]+', '', uncommon_str)
+        ## uncommon_filter = "".join(list([val for val in uncommon_str if val.isalnum()]))
+        #
+        ## assert ("is" == uncommon_filter)
+        ## return
 
         # NOTE: Requires approval 
         sentence = "I just died in your arms tonight."
@@ -237,17 +188,6 @@ class TestKenlmExample(TestWrapper):
         output = gh.run(command).split("\n")
         normalized_score = (output[-1].split(": "))[-1]
 
-        ## OLD: BAD PIECE OF CODE
-        # command_export_LM = 'export LM=../lm/test.arpa'
-        # command_kenlm = f'ROUNDING_PRECISION={PRECISION_VALUE} ../kenlm_example.py {sentence} | tail -n 1 | cut -c 19- > {self.temp_file}'
-        # output = gh.read_file(self.temp_file)
-        # gh.run(command_export_LM)
-        # gh.run(command_kenlm)
-
-        ## assert (normalized_score is None)
-        ## [OLD]: Didn't work, returned tmp path as sentence
-        # output = self.run_script(self.temp_file)
-        
         def count_precision(num_string):
             before_decimal, after_decimal = num_string.split(".")
             debug.trace_expr(5, num_string, before_decimal, after_decimal)
