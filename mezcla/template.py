@@ -21,7 +21,7 @@ Sample usage:
 """
 
 # Standard modules
-from typing import Optional
+from typing import Any, Optional
 
 # Installed modules
 ## TODO: import numpy as np
@@ -71,14 +71,14 @@ TODO_ARG = "TODO-arg"
 class Helper:
     """TODO: class for doing ..."""
 
-    def __init__(self, _arg=None, **kwargs) -> None:
+    def __init__(self, _arg: Any = None, **kwargs) -> None:
         """Initializer: TODO_arg desc"""
         debug.trace_expr(TL.VERBOSE, _arg, kwargs, prefix="in Helper.__init__: ")
         self._arg = _arg                # TODO: revise
         self.TODO: Optional[bool] = None
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
-    def process(self, _arg) -> bool:
+    def process(self, _arg: Any) -> bool:
         """TODO: Process _ARG to do ..."""
         ## NOTE: print used for sake of unit test (see tests/test_template.py)
         try:
@@ -109,6 +109,12 @@ class Script(Main):
         """Check results of command line processing"""
         debug.trace(TL.VERBOSE, f"Script.setup(): self={self}")
         ## TODO: extract argument values
+        ## TODO3: mypy now flags this assignment since Main.get_parsed_option returns
+        ## main.OptArgValue (Optional[Union[str, int, float, bool, List[str]]]), which
+        ## is broader than this class's todo_arg: Optional[bool]. This was previously
+        ## masked by Optional[Any]. Boolean options always yield bool from argparse,
+        ## so this is safe at runtime; restructuring (e.g., a bool-specific accessor)
+        ## would be needed to satisfy mypy without a cast.
         self.todo_arg = self.get_parsed_option(TODO_ARG, self.todo_arg)
         self.helper = Helper()
         ## TODO:
@@ -118,7 +124,7 @@ class Script(Main):
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
         ## TEST: debug.trace_object(5, self, label=f"{self.__init__.__qualname__.split('.')[0]} instance")
 
-    def process_line(self, line) -> None:
+    def process_line(self, line: str) -> None:
         """Processes current line from input"""
         debug.trace_fmtd(TL.QUITE_DETAILED, "Script.process_line({l})", l=line)
         self.helper.process(line)

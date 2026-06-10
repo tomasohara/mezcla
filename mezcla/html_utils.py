@@ -86,6 +86,7 @@ from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import misc_utils
 from mezcla import system
+from mezcla.validate_arguments_types import OptStr, OptStrOrBytes, OptBoolOrStr
 write_temp_file = gh.write_temp_file
 
 # Constants
@@ -175,8 +176,13 @@ FILENAME = "filename"
 USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36'
 
 # Custom Types
-OptStrBytes = Union[str, bytes, None]
-OptBoolStr = Union[bool, str, None]
+## OLD: OptStrBytes = Union[str, bytes, None]
+## OLD: OptBoolStr = Union[bool, str, None]
+## NOTE: repointed to shared aliases in validate_arguments_types (see "TODO: reduce redundancy" there)
+OptStrBytes = OptStrOrBytes
+OptBoolStr = OptBoolOrStr
+# Value type for URL parameters that may have multiple values (see get_url_param)
+StrOrStrList = Union[str, List[str]]
 
 # Globals
 # note: for convenience in Mako template code
@@ -184,7 +190,7 @@ user_parameters : Dict[str, str] = {}
 issued_param_dict_warning : bool = False
 
 # Placeholders for dynamically loaded modules
-BeautifulSoup : Optional[Callable] = None
+BeautifulSoup : Optional[Callable[..., Any]] = None
 
 # Conditional imports
 try:
@@ -202,7 +208,7 @@ except:
 #-------------------------------------------------------------------------------
 # HTML utility functions
 
-browser_cache : Dict = {}
+browser_cache : Dict[str, WebDriver] = {}
 ##
 def get_browser(url : str, timeout : Optional[float] = None) -> Optional[WebDriver]:
     """Get existing browser for URL or create new one
@@ -475,7 +481,7 @@ def get_browser_log(url, browser: Optional[WebDriver] = None) -> bool:
 
 #...............................................................................
 
-def escape_hash_value(hash_table : Dict, key: str):
+def escape_hash_value(hash_table : Dict[str, Any], key: str) -> str:
     """Wrapper around escape_html_value for HASH_TABLE[KEY] (or "" if missing).
     Note: newlines are converted into <br>'s."""
     escaped_item_value = escape_html_value(hash_table.get(key, ""))
@@ -484,7 +490,7 @@ def escape_hash_value(hash_table : Dict, key: str):
     return escaped_value
 
 
-def get_param_dict(param_dict : Optional[Dict] = None) -> Dict:
+def get_param_dict(param_dict : Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Returns parameter dict using PARAM_DICT if non-Null else global USER_PARAMETERS
        Note: The PARAM_DICT argument can be used by functions like get_url_parameter_value 
        to allow thread-safe access for different users (see set_param_dict)."""
@@ -493,7 +499,7 @@ def get_param_dict(param_dict : Optional[Dict] = None) -> Dict:
     return result
 
 
-def set_param_dict(param_dict : Dict) -> None:
+def set_param_dict(param_dict : Dict[str, Any]) -> None:
     """Sets global user_parameters to value of PARAM_DICT.
     Warning: not thread-safe (see get_param_dict).
     """
@@ -509,7 +515,7 @@ def set_param_dict(param_dict : Dict) -> None:
     user_parameters = param_dict
 
 
-def get_url_param(name : str, default_value : Optional[str] = None, param_dict : Optional[Dict] = None, escaped : bool = False):
+def get_url_param(name : str, default_value : OptStr = None, param_dict : Optional[Dict[str, Any]] = None, escaped : bool = False) -> StrOrStrList:
     """Get value for NAME from PARAM_DICT (e.g., USER_PARAMETERS), using DEFAULT_VALUE (normally "").
     Note: It can be ESCAPED for use in HTML. Underscores in NAME are converted to dashes if not in dict.
     Warning: Can return a list (unlike get_url_parameter_value).
@@ -533,11 +539,17 @@ def get_url_param(name : str, default_value : Optional[str] = None, param_dict :
 get_url_parameter = get_url_param
 
 
-def get_url_text(name : str, default_value : Any = None, param_dict : Optional[Dict] = None):
+def get_url_text(name : str, default_value : Any = None, param_dict : Optional[Dict[str, Any]] = None) -> str:
     """Get TEXT value for URL encoded parameter, using current PARAM_DICT"""
     # EX: get_url_text("param1") => "a b c"
+    ## TODO3: get_url_parameter (i.e., get_url_param) returns StrOrStrList (a URL
+    ## param can have multiple values--see get_url_param docstring), but this
+    ## function assumes a single str (as does system.unquote_url_text). Works in
+    ## practice for single-valued params; restructuring (e.g., via
+    ## get_url_parameter_value, which already takes the last value) would be
+    ## needed for mypy/pydantic validate_call to accept multi-valued params here.
     encoded_vaue = get_url_parameter(name, default_value, param_dict)
-    value = unescape_html_value(system.unquote_url_text(encoded_vaue))
+    value = unescape_html_value(system.unquote_url_text(encoded_vaue))  # type: ignore[arg-type]
     debug.trace_fmt(6, "get_url_text({n}, [d={d}]) => {v})",
                     n=name, d=param_dict, v=value)
     return value
@@ -545,7 +557,7 @@ def get_url_text(name : str, default_value : Any = None, param_dict : Optional[D
 # EX: get_url_text("param2") => "a+b+c"           # where '+' is 0x2B
    
 
-def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", param_dict : Optional[Dict] = None):
+def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", param_dict : Optional[Dict[str, Any]] = None) -> str:
     """Get value of boolean parameters formatted for checkbox (i.e., 'checked' iff True or on) from PARAM_DICT
     Note: the value is only specified/submitted if checked"""
     # EX: get_url_param_checkbox_spec("param", param_dict={"param": "on"}) => "checked"
@@ -565,7 +577,7 @@ def get_url_param_checkbox_spec(name : str, default_value : OptBoolStr = "", par
 get_url_parameter_checkbox_spec = get_url_param_checkbox_spec
 
 
-def get_url_parameter_value(param, default_value : Any = None, param_dict : Optional[Dict] = None):
+def get_url_parameter_value(param: str, default_value : Any = None, param_dict : Optional[Dict[str, Any]] = None) -> Any:
     """Get (last) value for PARAM in PARAM_DICT (or DEFAULT_VALUE)
     Note: Underscores in PARAM are converted to dashes if not in dict.
     Also, different from get_url_parameter in just returning single value.    
@@ -586,7 +598,7 @@ def get_url_parameter_value(param, default_value : Any = None, param_dict : Opti
 #
 # EX: get_url_parameter_value("fu", param_dict={"fu": "321"}) => "321"
 
-def get_url_parameter_bool(param, default_value : bool = False, param_dict : Optional[Dict] = None):
+def get_url_parameter_bool(param: str, default_value : bool = False, param_dict : Optional[Dict[str, Any]] = None) -> bool:
     """Get boolean value for PARAM from PARAM_DICT, with "on" treated as True. @note the hash defaults to user_parameters, and the default value is False
     Note: Only treates {"1", "on", "True", True} as True.
     Warning: defaults with non-None values might return unintuitive results unless
@@ -606,7 +618,7 @@ get_url_param_bool = get_url_parameter_bool
 # EX: get_url_param_bool("abc", False, param_dict={"abc": "True"}) => True
 
 
-def get_url_parameter_int(param, default_value : int = 0, param_dict : Optional[Dict] = None) -> int:
+def get_url_parameter_int(param: str, default_value : int = 0, param_dict : Optional[Dict[str, Any]] = None) -> int:
     """Get integer value for PARAM from PARAM_DICT.
     Note: the hash defaults to user_parameters, and the default value is 0"""
     result = system.to_int(get_url_parameter_value(param, default_value, param_dict))
@@ -620,7 +632,7 @@ get_url_param_int = get_url_parameter_int
 # EX: get_url_parameter_int("_", param_dict={"_": "_"}) => 0
 
 
-def get_url_parameter_float(param, default_value : float = 0.0, param_dict : Optional[Dict] = None) -> float:
+def get_url_parameter_float(param: str, default_value : float = 0.0, param_dict : Optional[Dict[str, Any]] = None) -> float:
     """Get floating-point value for PARAM from PARAM_DICT.
     Note: the hash defaults to user_parameters, and the default value is 0.0"""
     result = system.to_float(get_url_parameter_value(param, default_value, param_dict))
@@ -631,7 +643,7 @@ def get_url_parameter_float(param, default_value : float = 0.0, param_dict : Opt
 get_url_param_float = get_url_parameter_float
 
 
-def fix_url_parameters(url_parameters : Dict):
+def fix_url_parameters(url_parameters : Dict[str, Any]) -> Dict[str, Any]:
     """Uses the last values for any user parameter with multiple values
     and ensures dashes are used instead of embedded underscores in the keys"""
     # EX: fix_url_parameters({'w_v':[7, 8], 'h_v':10}) => {'w-v':8, 'h-v':10}
@@ -644,7 +656,7 @@ def fix_url_parameters(url_parameters : Dict):
     return new_url_parameters
 
 
-def expand_misc_param(misc_dict : Dict, param_name : str, param_dict : Optional[Dict] = None):
+def expand_misc_param(misc_dict : Dict[str, Any], param_name : str, param_dict : Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Expands MISC_DICT to include separate keys for those in PARAM_DICT under PARAM_NAME
     Notes:
     - The parameter specification is comma separated. 
@@ -658,14 +670,16 @@ def expand_misc_param(misc_dict : Dict, param_name : str, param_dict : Optional[
     if param_dict is None:
         param_dict = (user_parameters or misc_dict)
     new_misc_dict = misc_dict
+    ## TODO3: get_url_param returns StrOrStrList (see get_url_text note above);
+    ## this function assumes a single str for misc_params (as used via PARAM_NAME).
     misc_params = get_url_param(param_name, "", param_dict=param_dict)
     if (misc_params and ("=" in misc_params)):
         new_misc_dict = new_misc_dict.copy()
-        for param_spec in my_re.split(", *", misc_params):
-            if not param_spec.strip():
+        for param_spec in my_re.split(", *", misc_params):  # type: ignore[type-var]
+            if not param_spec.strip():  # type: ignore[union-attr]
                 continue
             try:
-                param_key, param_value = param_spec.split("=")
+                param_key, param_value = param_spec.split("=")  # type: ignore[union-attr]
                 new_misc_dict[param_key] = param_value
             except:
                 system.print_exception_info("expand_misc_param")
@@ -770,7 +784,7 @@ def old_download_web_document(url : str, filename: Optional[str] = None, downloa
     return data
 
 
-def download_web_document(url : str, filename: Optional[str] = None, download_dir: Optional[str] = None, meta_hash=None, use_cached : bool = False, as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
+def download_web_document(url : str, filename: Optional[str] = None, download_dir: Optional[str] = None, meta_hash: Optional[Dict[str, Any]] = None, use_cached : bool = False, as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
     """Download document contents at URL, returning as unicode text (unless AS_BINARY).
     Notes: An optional FILENAME can be given for the download, an optional DOWNLOAD_DIR[ectory] can be specified (defaults to 'downloads'), and an optional META_HASH can be specified for recording filename and headers. Existing files will be considered if USE_CACHED. If IGNORE, no exceptions reports are printed."""
     # EX: "currency" in download_web_document("https://simple.wikipedia.org/wiki/Dollar")
@@ -857,7 +871,7 @@ def download_binary_file(url : str, **kwargs) -> OptStrBytes:
     return (result)
     
 
-def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
+def retrieve_web_document(url : str, meta_hash: Optional[Dict[str, Any]] = None, as_binary : bool = False, ignore : bool = False) -> OptStrBytes:
     """Get document contents at URL, using unicode text (unless AS_BINARY)
     Note:
     - Simpler version of old_download_web_document, using an optional META_HASH for recording headers
@@ -895,7 +909,7 @@ def retrieve_web_document(url : str, meta_hash=None, as_binary : bool = False, i
     return result
 
 
-def init_BeautifulSoup():
+def init_BeautifulSoup() -> None:
     """Make sure bs4.BeautifulSoup is loaded"""
     import bs4                           # pylint: disable=import-error, import-outside-toplevel
     global BeautifulSoup
@@ -903,7 +917,7 @@ def init_BeautifulSoup():
     return
 
 
-def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Optional[str] = None):
+def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Optional[str] = None) -> List[str]:
     """Returns list of all aref links in HTML. The optional URL and BASE_URL parameters can be specified to ensure the link is fully resolved."""
     debug.trace_fmtd(7, "extract_html_links(_):\n\thtml={h}", h=html_text)
 
@@ -956,7 +970,7 @@ def extract_html_link(html_text : str, url : Optional[str] = None, base_url : Op
     return links
 
 
-def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None, concat_label: Optional[bool] = None, skip_hidden: Optional[str] = None, on_change: Optional[str] = None, param_dict : Optional[Dict] = None) -> str:
+def format_checkbox(param_name : str, label : Optional[str] = None, skip_capitalize: Optional[bool] = None, default_value : OptBoolStr = False, disabled : bool = False, style : Optional[str] = None, misc_attr : Optional[str] = None, tooltip : Optional[str] = None, outer_span_class: Optional[str] = None, concat_label: Optional[bool] = None, skip_hidden: Optional[str] = None, on_change: Optional[str] = None, param_dict : Optional[Dict[str, Any]] = None) -> str:
     """Returns HTML specification for input checkbox with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, OUTER_SPAN_CLASS, CONCAT_LABEL, SKIP_HIDDEN, ON_CHANGE, and PARAM_DICT.
     Note:
     - param_name + "-id" is used for the field ID.
@@ -1015,14 +1029,16 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
 # EX: format_checkbox("disable-touch", skip_hidden=True, disabled=True) => "<label id='disable-touch-label-id' >Disable touch?&nbsp;<input type='checkbox' id='disable-touch-id' name='disable-touch'  disabled ></label>"
 
 
-def format_url_param(name : str, default : Optional[str] = None):
+def format_url_param(name : str, default : OptStr = None) -> str:
     """Return URL parameter NAME formatted for an HTML form (e.g., escaped)"""
     # EX: set_param_dict({"q": '"hot dog"'}); format_url_param("q") => '&quot;hot dog&quot;'
     if default is None:
         default = ""
+    ## TODO3: get_url_param returns StrOrStrList (see get_url_text note above);
+    ## this function assumes a single str (as is the case for typical NAME usages).
     value_spec = (get_url_param(name) or default)
     if value_spec:
-        value_spec = escape_html_text(value_spec)
+        value_spec = escape_html_text(value_spec)  # type: ignore[arg-type]
     debug.trace(5, f"format_url_param({name}) => {value_spec!r}")
     return value_spec
 #
@@ -1030,15 +1046,16 @@ def format_url_param(name : str, default : Optional[str] = None):
 # EX: format_url_param("r", default="R") => "R"
 
 
+## BAD: disabled : Optional[int] = None (cf. format_checkbox's disabled: bool = False)
 def format_input_field(
-        param_name : str, label: Optional[str] = None, skip_capitalize=None,
+        param_name : str, label: Optional[str] = None, skip_capitalize: Optional[bool] = None,
         default_value: Optional[str] = None, max_len : Optional[int] = None,
-        size : Optional[int] = None, max_value : Optional[int] = None, disabled : Optional[int] = None,
+        size : Optional[int] = None, max_value : Optional[int] = None, disabled : Optional[bool] = None,
         style: Optional[str] = None, misc_attr: Optional[str] = None,
         tooltip: Optional[str] = None, text_area: Optional[bool] = None,
         num_rows : Optional[int] = None, on_change: Optional[str] = None, on_input: Optional[str] = None,
         field_type: Optional[str] = None, concat_label: Optional[bool] = None,
-        outer_span_class: Optional[str] = None, param_dict : Optional[Dict] = None):
+        outer_span_class: Optional[str] = None, param_dict : Optional[Dict[str, Any]] = None) -> str:
     """Returns HTML specification for input field with URL PARAM_NAME, optionally with LABEL, SKIP_CAPITALIZE, DEFAULT_VALUE, MAX_LEN, SIZE, MAX_VALUE, DISABLED, (CSS) STYLE, MISC_ATTR (catch all), TOOLTIP, NUM_ROWS, ON_CHANGE, FIELD_TYPE, CONCAT_LABEL, OUTER_SPAN_CLASS, and PARAM_DICT.
     Note:
     - param_name + "-id" is used for the field ID.
@@ -1129,7 +1146,7 @@ def format_input_field(
 # TEMP: Code previously in other modules
 # TODO3: move above according to some logical grouping
 
-def escape_html_text(text : str):
+def escape_html_text(text : str) -> str:
     """Add entity encoding to TEXT to make suitable for HTML"""
     # Note: This is wrapper around html.escape and just handles '&', '<', '>', "'", and '"'.
     # EX: escape_html_text("<2/") => "&lt;2/"
@@ -1141,7 +1158,7 @@ def escape_html_text(text : str):
 #
 escape_html_value = escape_html_text
 
-def unescape_html_text(text : str):
+def unescape_html_text(text : str) -> str:
     """Remove entity encoding, etc. from TEXT (i.e., undo)"""
     # Note: This is wrapper around html.unescape
     # See https://stackoverflow.com/questions/21342549/unescaping-html-with-special-characters-in-python-2-7-3-raspberry-pi.
@@ -1156,7 +1173,7 @@ def unescape_html_text(text : str):
 unescape_html_value = unescape_html_text
 
 
-def html_to_text(document_data : str):
+def html_to_text(document_data : str) -> str:
     """Returns text version of html DATA"""
     # EX: html_to_text("<html><body><!-- a cautionary tale -->\nMy <b>fat</b> dog has fleas</body></html>") => '\nMy  fat  dog has fleas'
     # Note: stripping javascript and style sections based on following:
@@ -1177,7 +1194,7 @@ def html_to_text(document_data : str):
     return text
 
 
-def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] = None, filename : Optional[str] = None):
+def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] = None, filename : Optional[str] = None) -> List[str]:
     """Returns list of all images in HTML DOC from URL (n.b., URL used to determine base URL)"""
     debug.trace(6, f"extract_html_images(_, {url}, fn={filename})")
     debug.trace_fmtd(8, "\tdata={d}", d=document_data)
@@ -1242,7 +1259,7 @@ def extract_html_images(document_data : OptStrBytes = None, url : Optional[str] 
     return images
 
 
-def format_html_message(title, text=None):
+def format_html_message(title: str, text: OptStr = None) -> str:
     """Format text as HTML doc (e.g., for errors)
     Note: TITLE is shown in browser title as well as h3 in body.
     Optional TEXT is shown as regular text.

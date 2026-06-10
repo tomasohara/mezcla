@@ -107,12 +107,17 @@ from mezcla.system import getenv_bool
 ##                     Tuple[str, str, Optional[Any]],
 ##                     Tuple[str, str, Optional[Any], Optional[str]]]
 ##
+# Type for an option/argument default or parsed value (e.g., from argparse or the environment)
+ArgValue = Union[str, int, float, bool, List[str]]
+OptArgValue = Optional[ArgValue]
+#
+## OLD: Tuple[..., Optional[Any], ...] (redundant: Any already subsumes None; see ArgValue/OptArgValue above)
 UserArgInfoType = Union[
     str,
     Tuple[str, str],
-    Tuple[str, str, Optional[Any]],
-    Tuple[str, str, Optional[Any], Optional[str]]]
-SysArgInfoType = Tuple[str, str, Optional[Any], Optional[str]]
+    Tuple[str, str, OptArgValue],
+    Tuple[str, str, OptArgValue, Optional[str]]]
+SysArgInfoType = Tuple[str, str, OptArgValue, Optional[str]]
 
 # Constants
 HELP_ARG = "--help"
@@ -222,7 +227,7 @@ class Main(object):
         Note: SKIP_STDIN makes explicit SKIP_INPUT which gets inferred from MANUAL_INPUT when no specified. This avoids the - argument support that blocks help usage.
         """
         #
-        def trace_args(level:int, label:str):
+        def trace_args(level:int, label:str) -> None:
             """Trace out input arguments, each on separate line to simplify diff"""
             debug.trace_expr(level, runtime_args, description, skip_args, multiple_files, use_temp_base_dir, usage_notes, program, paragraph_mode, track_pages, file_input_mode, newlines, boolean_options, text_options, int_options, float_options, positional_options, positional_arguments, skip_input, manual_input, skip_stdin, auto_help, brief_usage, short_options, kwargs, prefix=f"{label}: {{", delim="\n\t", suffix="}", max_len=1024)
         #
@@ -384,7 +389,7 @@ class Main(object):
         self.multiple_files = multiple_files      # sets other_filenames if multiple w/ nargs=+ 
         # Set defaults
         self.parsed_args: Dict[str, Any] = {}
-        self.filename = None
+        self.filename: Optional[str] = None
         self.other_filenames: List[str] = []
         # Do command-line parsing
         # TODO: consolidate with runtime_args check above
@@ -415,10 +420,11 @@ class Main(object):
         debug.trace(6, f"get_arguments([pos?={just_positional}, opt?={just_optional}] => {arguments}")
         return arguments
     
+    ## OLD: default_value: Optional[Any] = None
     def convert_option(
             self,
             option_spec: UserArgInfoType,
-            default_value: Optional[Any] = None,
+            default_value: OptArgValue = None,
             positional: bool = False
         ) -> SysArgInfoType:
         """Convert OPTION_SPEC to (label, description, default) tuple. 
@@ -439,7 +445,7 @@ class Main(object):
                          o=option_spec, d=default_value, p=positional)
         opt_label: str = ""
         opt_desc: str = ""
-        opt_default: Any = default_value
+        opt_default: OptArgValue = default_value
         opt_nargs: Optional[str] = None
         opt_prefix = "--" if not positional else ""
         # TODO: use keyword arguments (or namedtuple)
@@ -458,17 +464,22 @@ class Main(object):
         else:
             opt_label = opt_prefix + str(option_spec)
         debug.assertion(not " " in opt_label)
-        result_list = [opt_label, opt_desc, opt_default, opt_nargs]
-        result = tuple(result_list)
+        ## OLD:
+        ## result_list = [opt_label, opt_desc, opt_default, opt_nargs]
+        ## result = tuple(result_list)
+        ## NOTE: tuple(list) loses the fixed 4-element SysArgInfoType shape (mypy
+        ## infers a variable-length homogeneous tuple instead).
+        result: SysArgInfoType = (opt_label, opt_desc, opt_default, opt_nargs)
         debug.trace_fmtd(5, "convert_option({o}, {d}, {p}): self={s} => {r}",
                          o=option_spec, d=default_value, p=positional,
                          s=self, r=result)
         return result
 
+    ## OLD: default_value: Optional[Any] = None
     def convert_argument(
             self,
             argument_spec: UserArgInfoType,
-            default_value: Optional[Any] = None
+            default_value: OptArgValue = None
         ) -> SysArgInfoType:
         """Convert ARGUMENT_SPEC to (label, description, default) tuple. 
         Note: This is a wrapper around convert_option for positional arguments."""
@@ -499,7 +510,8 @@ class Main(object):
                          l=label, r=has_option)
         return has_option
 
-    def has_parsed_option(self, label: str) -> Optional[Any]:
+    ## OLD: -> Optional[Any]
+    def has_parsed_option(self, label: str) -> OptArgValue:
         """Value for LABEL specified or None if not applicable
         Note: This is a deprecated method (use get_parsed_option instead);
         The preferred method is get_parsed_option, which allows for dynamic default values.
@@ -518,7 +530,8 @@ class Main(object):
                          l=label, r=option_value)
         return option_value
 
-    def convert_option_value(self, label: str, value: Any) -> Any:
+    ## OLD: value: Any) -> Any
+    def convert_option_value(self, label: str, value: ArgValue) -> ArgValue:
         """Convert the option LABEL's text VALUE into its type
         Note: boolean options account for symbolic ones like False and off."""
         ## NOTE: added to support type-specific values from environment
@@ -530,18 +543,21 @@ class Main(object):
             for option_tuple in option_info:
                 option_name = (option_tuple[0] if (not isinstance(option_tuple, str)) else option_tuple)
                 if label == option_name:
-                    typed_value = (system.to_bool(value) if option_type is bool else int(value) if option_type is int else float(value))
+                    ## TODO3: int()/float() don't accept ArgValue's List[str] member, but
+                    ## int_options/float_options values are never lists in practice.
+                    typed_value = (system.to_bool(value) if option_type is bool else int(value) if option_type is int else float(value))  # type: ignore[arg-type]
                     break
         debug.trace(5, f"convert_option_value({label}, {value!r}) => {typed_value!r}")
         return typed_value
     
+    ## OLD: default: Optional[Any] = None, ... -> Optional[Any]
     def get_parsed_option(
             self,
             label: str,
-            default: Optional[Any] = None,
+            default: OptArgValue = None,
             positional: bool = False,
             allow_under: Optional[bool] = None
-        ) -> Optional[Any]:
+        ) -> OptArgValue:
         """Get value for option LABEL, with dashes converted to underscores. 
         If POSITIONAL specified, DEFAULT value is used if omitted
         Note: ALLOW_UNDER skips sanity check about underscores;
@@ -590,9 +606,10 @@ class Main(object):
     # EX: m.get_parsed_option("missing") => None
     # EX: m.get_parsed_option("missing", default=3) => 3
 
+    ## OLD: default: Optional[Any] = None, ... -> Optional[Any]
     def get_parsed_argument(self, label: str,
-                            default: Optional[Any] = None,
-                            allow_under: Optional[bool] = None) -> Optional[Any]:
+                            default: OptArgValue = None,
+                            allow_under: Optional[bool] = None) -> OptArgValue:
         """Get value for positional argument LABEL using DEFAULT value"""
         debug.trace_fmtd(6, "get_parsed_agument({l}, [{d}])",
                          l=label, d=default)
@@ -811,7 +828,13 @@ class Main(object):
                 if not (self.manual_input and self.skip_input):
                     debug.assertion(os.path.exists(self.filename))
                     mode = ("r" if (not self.binary_input) else "rb")
-                    self.input_stream = system.open_file(self.filename, mode=mode,
+                    ## TODO3: system.open_file returns Optional[IO], but self.input_stream
+                    ## is Optional[TextIO] (TextIO has extra attrs used below: encoding,
+                    ## newlines, line_buffering, write_through). Now that self.filename is
+                    ## Optional[str] (rather than implicitly Any), mypy flags this IO/TextIO
+                    ## mismatch; restructuring (e.g., a TextIO-returning open_file variant)
+                    ## would resolve it.
+                    self.input_stream = system.open_file(self.filename, mode=mode,  # type: ignore[assignment]
                                                          errors=self.input_error_mode)
                     debug.assertion(self.input_stream)
         # Optionally reopen stream to change built-in settings
@@ -995,7 +1018,7 @@ class Main(object):
         if self.paragraph_mode:
             self.para_num = 0
         paragraph = ""
-        last_line = None
+        last_line: Optional[str] = None
         line_mode = self.is_line_mode()
         debug.assertion(debug.xor3(line_mode, self.paragraph_mode, self.file_input_mode))
 

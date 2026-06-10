@@ -34,15 +34,15 @@ import re
 from typing import Any, AnyStr, List, Match, Optional, Tuple, Union
 ## TODO: from re import *
 
-# Type alias for str or bytes
-StrOrBytes = Union[str, bytes]
-
 # Installed packages
 ## OLD: import six
 
 # Local packages
 from mezcla import debug
 from mezcla import system
+## OLD: StrOrBytes = Union[str, bytes]
+## NOTE: moved to validate_arguments_types to avoid redundant definitions (see TODO there)
+from mezcla.validate_arguments_types import StrOrBytes
 ## DEBUG: debug.trace(4, "my_regex: {__file__}")
 
 # Expose public symbols from re package, plus the wrapper class and global instance
@@ -298,7 +298,7 @@ class regex_wrapper():
         debug.trace(self.TRACE_LEVEL, f"post_match() => {result!r}")
         return result
 
-    def compile(self, pattern, flags=0):
+    def compile(self, pattern: AnyStr, flags: int = 0) -> re.Pattern[AnyStr]:
         """Compile a regular expression PATTERN using FLAGS, returning a Pattern object."""
         return re.compile(pattern, flags)
 

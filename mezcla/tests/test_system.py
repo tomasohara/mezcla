@@ -740,7 +740,18 @@ class TestSystem(TestWrapper):
         """Ensure get_current_directory works as expected"""
         debug.trace(4, "test_get_current_directory()")
         ## BAD: assert '/home/' in THE_MODULE.get_current_directory()
-        assert 'mezcla' in THE_MODULE.get_current_directory()
+        ## OLD: assert 'mezcla' in THE_MODULE.get_current_directory()
+        ## NOTE: generalized to not assume the local clone is named "mezcla"
+        ## (e.g., it could be checked out as "model_a"): instead derives the
+        ## repo root via git and checks the current dir is under it, falling
+        ## back to the original literal check if not run from a git checkout.
+        current_dir = THE_MODULE.real_path(THE_MODULE.get_current_directory())
+        repo_url = gh.run("git config --get remote.origin.url")
+        if 'mezcla' in repo_url:
+            repo_dir = THE_MODULE.real_path(gh.run("git rev-parse --show-toplevel"))
+            assert current_dir.startswith(repo_dir)
+        else:
+            assert 'mezcla' in current_dir
 
     @pytest.mark.xfail
     def test_set_current_directory(self):

@@ -43,7 +43,7 @@ from subprocess import getoutput
 import sys
 import tempfile
 from typing import (
-    Optional, Any, List, Dict, Union,
+    Optional, Any, List, Dict, Union, overload,
     ## OLD: TextIO,
 )
 from types import FrameType
@@ -170,7 +170,7 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
     return temp_file_name
 
 
-def get_temp_dir(delete=None, use_temp_base=None) -> str:
+def get_temp_dir(delete: Optional[bool] = None, use_temp_base: Optional[bool] = None) -> str:
     """Gets temporary file to use as a directory
     Note: Optionally DELETEs directory afterwards. 
     With USE_TEMP_BASE, uses gh.TEMP_BASE if defined, which normally is only used when debugging
@@ -479,7 +479,8 @@ def indent_lines(text: str, indentation: Optional[str] = None, max_width: int = 
 
 MAX_ELIDED_TEXT_LEN = system.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 #
-def elide(value: Optional[Any], max_len: Optional[int] = None) -> str:
+## OLD: value: Optional[Any] (redundant: Any already subsumes None)
+def elide(value: Any, max_len: Optional[int] = None) -> str:
     """Returns VALUE converted to text and elided to at most MAX_LEN characters (with '...' used to indicate remainder). 
     Note: intended for tracing long strings."""
     # EX: elide("=" * 80, max_len=8) => "========..."
@@ -820,11 +821,12 @@ def extract_pattern(pattern: str, text: str, **kwargs) -> Optional[MatchResult]:
     return extract_match(pattern, text.split("\n"), **kwargs)
 
 
+## BAD: multiple: Optional[None] = None (Optional[None] is just None; cf. extract_matches_from_text)
 def count_it(
         pattern: str,
         text: str,
         field: int = 1,
-        multiple: Optional[None] = None
+        multiple: Optional[bool] = None
     ) -> Dict[str, int]:
     """Counts how often PATTERN's FIELD occurs in TEXT, returning hash.
     Note: By default MULTIPLE matches are tabulated"""
@@ -906,7 +908,7 @@ def copy_file(source: str, target: str) -> None:
     return
 
 
-def non_empty_directory(path):
+def non_empty_directory(path: str) -> bool:
     """Whether PATH exists and is not empty"""
     size = len(get_directory_listing(path)) if is_directory(path) else -1
     non_empty = size > 0
@@ -914,7 +916,7 @@ def non_empty_directory(path):
     return non_empty
 
 
-def copy_directory(source, dest):
+def copy_directory(source: str, dest: str) -> None:
     """copy SOURCE dir to DEST dir
     Note: The DEST directory must not exist beforehand
     """
@@ -964,12 +966,12 @@ def delete_existing_file(filename: StrOrBytesPath) -> bool:
     debug.trace_fmtd(5, "delete_existing_file({f}) => {r}", f=filename, r=ok)
     return ok
 
-def delete_directory(path):
+def delete_directory(path: str) -> Optional[bool]:
     """Deletes directory at PATH
     Warning: Unless DISABLE_RECURSIVE_DELETE, this removes entire directory tree
     """
     debug.trace_fmt(5, f"delete_directory({path})")
-    ok = False
+    ok: Optional[bool] = False
     try:
         if DISABLE_RECURSIVE_DELETE:
             files = get_directory_listing(path)
@@ -1020,16 +1022,23 @@ def get_files_matching_specs(patterns: List[str]) -> List[str]:
     return files
 
 
+## OLD: -> Union[List[str], List[str], List[bytes]] (redundant duplicate List[str])
+## NOTE: overloads mirror system.read_directory (str/int => List[str]; bytes => List[bytes])
+@overload
+def get_directory_listing(dir_name: Union[int, str], make_unicode: bool = False) -> List[str]: ...
+@overload
+def get_directory_listing(dir_name: bytes, make_unicode: bool = False) -> List[bytes]: ...
+
 def get_directory_listing(
         dir_name: Union[int, str, bytes],
         make_unicode: bool = False
-    ) -> Union[List[str], List[str], List[bytes]]:
+    ) -> Union[List[str], List[bytes]]:
     """Returns files in DIR_NAME
     Note: make_unicode is deprecated
     """
     # TODO: Union[List[str], List[bytes]] = []
     ## TODO3: drop make_unicode; implement via system.get_directory_filenames
-    all_file_names: Union[List[str], List[str], List[bytes]] = []
+    all_file_names: Union[List[str], List[bytes]] = []
     try:
         all_file_names = os.listdir(dir_name)
     except OSError:

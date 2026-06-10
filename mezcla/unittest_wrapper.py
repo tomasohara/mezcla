@@ -84,6 +84,7 @@ from mezcla.my_regex import my_re
 from mezcla import system
 ## DEBUG: debug.trace_expr(6, __file__)
 from mezcla.debug import IntOrTraceLevel
+from mezcla.validate_arguments_types import OptStr
 
 # Constants (e.g., environment options)
 
@@ -138,7 +139,7 @@ if PROFILE_CODE:
 
 #-------------------------------------------------------------------------------
 
-def get_temp_dir(keep: Optional[bool] = None, unique=None) -> str:
+def get_temp_dir(keep: Optional[bool] = None, unique: Optional[bool] = None) -> str:
     """Get temporary directory, omitting later deletion if KEEP
     Note: Optionally returns UNIQUE dir
     """
@@ -162,7 +163,8 @@ def get_temp_dir(keep: Optional[bool] = None, unique=None) -> str:
     return dir_path
 
 
-def trap_exception(function: Callable) -> Any:
+## OLD: function: Callable) -> Any
+def trap_exception(function: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to trap exception during function execution
     Note:
     - Only intended for use in tests (e.g., fix for maldito pytest).
@@ -171,7 +173,7 @@ def trap_exception(function: Callable) -> Any:
     """
     debug.trace(8, f"trap_exception({gh.elide(function)}")
     #
-    def wrapper(*args):
+    def wrapper(*args) -> Any:
         """Wrapper around variable arity function f"""   ## TODO: {function.__name__}
         debug.trace(7, f"in wrapper: args={args}")
         result = None
@@ -188,7 +190,8 @@ def trap_exception(function: Callable) -> Any:
     return wrapper
 
 
-def pytest_fixture_wrapper(function: Callable) -> Callable:
+## OLD: function: Callable) -> Callable
+def pytest_fixture_wrapper(function: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator for use with pytest fixtures like capsys
     Usage:
         @pytest_fixture_wrapper
@@ -200,7 +203,7 @@ def pytest_fixture_wrapper(function: Callable) -> Callable:
     # Note: This is currently usused. It was previously used with trap_exception.
     debug.trace(8, f"pytest_fixture_wrapper({gh.elide(function)}")
     #
-    def wrapper(x):
+    def wrapper(x: Any) -> Any:
         """Wrapper around unary function f(x)"""   ## TODO: {function.__name__}
         debug.trace(7, f"in wrapper: x={x}")
         return function(x)
@@ -209,7 +212,7 @@ def pytest_fixture_wrapper(function: Callable) -> Callable:
     return wrapper
 
 
-def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
+def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST) -> None:
     """Invoke TESTS defined in FILENAME, optionally VIA_UNITTEST"""
     debug.trace(5, f"invoke_tests({filename}, [{via_unittest}])")
     try:
@@ -222,7 +225,7 @@ def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
         system.print_exception_info("invoke_tests")
 
 
-def init_temp_settings():
+def init_temp_settings() -> bool:
     """Initialize settings related to temp-file names"""
     ok = True
     # Re-initalize glue helper temp file settings
@@ -253,15 +256,15 @@ class TestWrapper(unittest.TestCase):
         desc="Check coverage during unit testing")
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
-    temp_file = None
+    temp_file: OptStr = None
     use_temp_base_dir = (system.is_directory(temp_base) if temp_base else False)
     ## OLD: test_num = 1
     test_num = 0
     temp_file_count = 0
     class_setup = False
-    profiler = None
-    monkeypatch = None
-    capsys = None
+    profiler: Any = None        # cProfile.Profile when PROFILE_CODE (conditionally imported below)
+    monkeypatch: Optional[pytest.MonkeyPatch] = None
+    capsys: Optional[pytest.CaptureFixture] = None
     capsys_debug_level = system.getenv_int(
         "CAPSYS_DEBUG_LEVEL", 5,
         desc="Base debug level for capsys stdout/stderr tracing")
@@ -278,7 +281,7 @@ class TestWrapper(unittest.TestCase):
     ## __test__ = False                 # make sure not assumed test
         
     @classmethod
-    def setUpClass(cls, filename=None, module=None):
+    def setUpClass(cls, filename: OptStr = None, module: Optional[object] = None) -> None:
         """Per-class initialization: make sure script_module set properly
         Note: Optional FILENAME is path for testing script and MODULE the imported object for tested script
         """
@@ -407,7 +410,7 @@ class TestWrapper(unittest.TestCase):
         cls.script_file = cls.get_module_file_path(test_filename)
         return 
     
-    def ensure_file_dir_exists(self, filename):
+    def ensure_file_dir_exists(self, filename: str) -> None:
         """Make sure that directory for FILENAME exists"""
         debug.trace(5, f"TestWrapper.ensure_file_dir_exists({filename})")
         dir_path = gh.dirname(filename)
@@ -424,7 +427,11 @@ class TestWrapper(unittest.TestCase):
         debug.trace(5, "TestWrapper.setUp()")
         if not self.class_setup:
             debug.trace(3, "Warning: invoking setUpClass in setUp; make sure seUpClass calls parent")
-            TestWrapper.setUpClass(self.__class__)
+            ## BAD: TestWrapper.setUpClass(self.__class__)
+            ## NOTE: the above passed self.__class__ as the filename: OptStr argument
+            ## (a type[TestWrapper], not a filename); now flagged by mypy. The intent
+            ## is to invoke setUpClass bound to the actual subclass.
+            self.__class__.setUpClass()
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
         # The temp file is an extension of temp-base file by default.
@@ -655,13 +662,13 @@ class TestWrapper(unittest.TestCase):
         assert equals, message
     
     @pytest.fixture(autouse=True, name='monkeypatch')
-    def monkeypatch_fixture(self, monkeypatch) -> None:
+    def monkeypatch_fixture(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Support for using pytest monkeypatch to modify objects (e.g., dictionaries or environment variables)"""
         # See https://docs.pytest.org/en/latest/how-to/monkeypatch.html
         self.monkeypatch = monkeypatch
 
     @pytest.fixture(autouse=True, name='capsys')
-    def capsys_fixture(self, capsys) -> None:
+    def capsys_fixture(self, capsys: pytest.CaptureFixture) -> None:
         """Support for capturing stdout and stderr"""
         # See https://docs.pytest.org/en/latest/how-to/capture-stdout-stderr.html
         self.capsys = capsys
@@ -767,17 +774,19 @@ class TestWrapper(unittest.TestCase):
         debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
         return temp_filename
 
-    def create_data_file(self, data: List,  **kwargs) -> str:
+    def create_data_file(self, data: List[Any],  **kwargs) -> str:
         """Create temporary file with list DATA and return full path
         Note: version of create_temp_file with list input
         """
         contents = [str(v) for v in data]
         return self.create_temp_file(contents + "\n", **kwargs)
 
-    def patch_trace_level(self, level):
+    def patch_trace_level(self, level: IntOrTraceLevel) -> None:
         """Monkey patch the trace LEVEL (e.g., DEBUG_LEVEL)
         Note: You might need to adjust capsys_debug_level.
         """
+        ## NOTE: monkeypatch is set via the autouse monkeypatch_fixture (see __init__)
+        assert self.monkeypatch is not None
         self.monkeypatch.setattr("mezcla.debug.trace_level", level)
 
     def tearDown(self) -> None:
