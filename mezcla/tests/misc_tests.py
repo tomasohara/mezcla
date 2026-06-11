@@ -36,6 +36,13 @@ LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
 ## TODO1: don't hardcode /tmp (see below)
 ## OLD: OUTPUT_PATH_PYDANTIC = "/tmp/temp_"
 DECORATOR_VALIDATION_CALL = "@validate_call\ndef"
+## NOTE: Marker comment placed on the line immediately before a top-level "def" to
+## have transform_for_validation skip adding @validate_call to it (e.g., for
+## functions with arguments like FrameType/WebDriver/IO that pydantic can't build
+## a schema for without arbitrary_types_allowed). See debug.profile_function and
+## the TODO3 notes in test_06_type_hinting.
+SKIP_VALIDATE_CALL_MARKER = "## SKIP_VALIDATE_CALL"
+SKIP_VALIDATE_CALL_PLACEHOLDER = "__SKIP_VALIDATE_CALL_DEF__"
 MEZCLA_DIR = gh.form_path(gh.dir_path(__file__), "..")
 ##
 TEST_REGEX = system.getenv_value(
@@ -96,7 +103,13 @@ class TestMisc(TestWrapper):
         """Creates a temporary copy of the script for validation of argument calls (using pydantic)"""
         debug.trace(6, f"transform_for_validation({file_path})")
         content = system.read_file(file_path)
+        # Protect functions marked via SKIP_VALIDATE_CALL_MARKER from getting
+        # @validate_call added (e.g., debug.profile_function: see TODO3 below).
+        content = my_re.sub(rf"^({SKIP_VALIDATE_CALL_MARKER}.*\n(?:## .*\n)*)def ",
+                            rf"\1{SKIP_VALIDATE_CALL_PLACEHOLDER}",
+                            content, flags=my_re.MULTILINE)
         content = my_re.sub(r"^def ", r"@validate_call\n\g<0>", content, flags=my_re.MULTILINE)
+        content = content.replace(SKIP_VALIDATE_CALL_PLACEHOLDER, "def ")
         ## Uncomment the line below (and comment the line above) if the decorators are previously used
         ## May not be compatible with scripts in mezcla/tests
         ##
@@ -273,6 +286,37 @@ class TestMisc(TestWrapper):
         Note: This creates copy of mezcla scripts and checks pytest result over original vs modified.
         Warning: TEST_REGEX must be set to *.py to run all scripts; otherwise main scripts tested(e.g., system.py, glue_helpers.py, etc.).
         """
+        ## NOTE: Mechanically decorating every top-level def with @validate_call (see
+        ## transform_for_validation) used to make mezcla/debug.py fail to *import* in
+        ## temp_mezcla_dir, because profile_function(frame: FrameType, ...) got
+        ## decorated and types.FrameType has no pydantic schema without
+        ## config=ConfigDict(arbitrary_types_allowed=True) -- raising
+        ## PydanticSchemaGenerationError at import time. Since debug.py is FIRST in
+        ## main_scripts and every other script here does "from mezcla import debug",
+        ## the broken transformed mezcla/debug.py cascaded into a 0-tests-collected
+        ## "temp" run for *every* main_script (not just debug.py).
+        ## FIXED: profile_function in debug.py is now preceded by a
+        ## SKIP_VALIDATE_CALL_MARKER comment, which transform_for_validation honors
+        ## by leaving that one function undecorated--i.e., it was disabled from this
+        ## test's @validate_call transform specifically due to the cascading-errors
+        ## issue described above.
+        ##
+        ## TODO3: html_utils.py's WebDriver-typed functions (e.g. get_browser,
+        ## shutdown_browser) and system.py's IO-typed functions (e.g. open_file,
+        ## print_full_stack, trace_stack) are NOT marked with
+        ## SKIP_VALIDATE_CALL_MARKER, so they would independently make those two
+        ## scripts' own "temp" runs fail to collect any tests (0 vs. dozens) the same
+        ## way debug.py did. They no longer cascade to other scripts though, since
+        ## debug.py's transformed copy now imports fine.
+        ##
+        ## TODO3: count_serious_errors/count_failures are regex counts over the pytest
+        ## *text output*; when a transformed module fails to import, pytest emits no
+        ## "N passed/failed" summary at all, so both counts read 0 and bad_results
+        ## stays False--i.e., this metric doesn't detect a 0-vs-dozens collection
+        ## collapse, such as the html_utils.py/system.py cases noted above.
+        ## Restructuring (e.g., also comparing collected-test counts, or marking more
+        ## functions with SKIP_VALIDATE_CALL_MARKER) would be needed for this test to
+        ## catch those.
         debug.trace(4, "test_06_type_hinting()")
         ## TODO: create a module with very broken python code to test the test (for false positives)
         main_scripts = [

@@ -32,14 +32,14 @@ OptExcInfo = Union[ExcInfo, Tuple[None, None, None]]
 # General-purpose optional/disjunctive aliases
 ## NOTE: Added so that modules can avoid repeating Union[..., None] and
 # similar disjunctions inline (see "TODO: reduce redundancy" above).
-OptStr = Optional[str]                         # stable
-OptInt = Optional[int]                         # stable
-OptFloat = Optional[float]                     # stable
-OptBool = Optional[bool]                       # stable
-StrOrBytes = Union[str, bytes]                 # stable
-OptStrOrBytes = Optional[StrOrBytes]           # stable
-OptBoolOrStr = Optional[Union[bool, str]]      # stable
-OptCallable = Optional[Callable]               # stable
-OptDict = Optional[Dict]                       # stable
-StrList = List[str]                            # stable
-OptStrList = Optional[StrList]                 # stable
+OptStr = Optional[str]
+OptInt = Optional[int]
+OptFloat = Optional[float]
+OptBool = Optional[bool]
+StrOrBytes = Union[str, bytes]
+OptStrOrBytes = Optional[StrOrBytes]
+OptBoolOrStr = Optional[Union[bool, str]]
+OptCallable = Optional[Callable]
+OptDict = Optional[Dict]
+StrList = List[str]
+OptStrList = Optional[StrList]

@@ -1644,6 +1644,11 @@ def _print_exception_info(task: str) -> None:
     return
 
 
+## SKIP_VALIDATE_CALL: frame: FrameType has no pydantic-core schema (would need
+## config=ConfigDict(arbitrary_types_allowed=True)); decorating this with a bare
+## @validate_call breaks "import mezcla.debug" for the transformed copy used by
+## tests/misc_tests.py's test_06_type_hinting (see TODO3 there), which cascades
+## to every other main_script since they all "from mezcla import debug".
 def profile_function(frame: FrameType, event: str, arg: Any) -> None:
     """Function for monitoring function entry and exit (FEE), etc., currently just tracing at level 4. See sys.setprofile.
     # Note: Use a package like viztracer for non-trivial monitoring"""
