@@ -41,6 +41,14 @@ class TestMergeNotes(TestWrapper):
         assert THE_MODULE.resolve_date("0 Jan 00", datetime.datetime(2000, 1, 1, 0, 0)) == datetime.datetime(2000, 1, 1, 0, 0)
         assert THE_MODULE.resolve_date("Sun 18 Jul 2021") == datetime.datetime(2021, 7, 18, 0, 0)
 
+    @pytest.mark.xfail
+    def test_resolve_date_warnings(self):
+        """Make sure resolve_date warns about invalid day of week and date combinations"""
+        debug.trace(4, "test_resolve_date_warning()")
+        assert THE_MODULE.resolve_date("Sun 13 Jun 2026") == datetime.datetime(2026, 6, 13, 0, 0)
+        captured = self.get_stderr()
+        assert "mismatch" in captured.lower()
+
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_01_data_file(self):
         """Tests run_script w/ data file"""
@@ -51,7 +59,9 @@ class TestMergeNotes(TestWrapper):
         system.write_lines(self.temp_file, data)
         ## TODO: add use_stdin=True to following if no file argument
         output = self.run_script(options="", data_file=self.temp_file)
-        self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
+        ## OLD: self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
+        self.do_assert(my_re.search(r"TODO-pattern", output.strip()),
+                       "TODO: Implement")
         return
 
 #------------------------------------------------------------------------
