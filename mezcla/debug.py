@@ -1756,6 +1756,9 @@ def main(args: List[str]) -> None:
     ## TODO: for i in range(3, 0, -1):
     trace_expr(ERROR, n-i, n, n+i)
     ALL = True
+    dashes = "-" * 16
+    trace_expr(USUAL, dashes) 
+    trace_expr(USUAL, dashes, max_len=8) 
     trace_expr(ALWAYS, ALL, prefix="Tha-tha-that's ", suffix=" folks!")
     return
 
