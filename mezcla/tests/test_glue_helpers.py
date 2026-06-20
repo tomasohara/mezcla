@@ -555,7 +555,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         test_filename = self.get_temp_file()
         with open(test_filename, 'wb') as _:
             pass # system.write_file cant be used because appends a newline
-        debug.set_level(7)
+        ## BAD: debug.set_level(7)  # left global debug level at 7 for all subsequent tests
+        self.patch_trace_level(7)
         self.monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
         # This avoids flaky tpo.stderr due to other tests
         ## TODO: fix tpo.restore_stderr() to work with pytest
@@ -675,6 +676,15 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         self.monkeypatch.setattr('mezcla.glue_helpers.PID', PID)
         PID_basename = f"temp-{PID}"
         self.monkeypatch.setattr('mezcla.glue_helpers.PID_BASENAME', PID_basename)
+
+        # Protect globals that init() will modify so state is restored after test
+        # note: THE_MODULE.init() changes TEMP_FILE, TEMP_LOG_FILE, TEMP_SCRIPT_FILE, and
+        # PRESERVE_TEMP_FILE based on env settings; without protection they'd persist and
+        # corrupt subsequent tests in the same pytest session
+        self.monkeypatch.setattr('mezcla.glue_helpers.TEMP_FILE', gh.TEMP_FILE)
+        self.monkeypatch.setattr('mezcla.glue_helpers.TEMP_LOG_FILE', gh.TEMP_LOG_FILE)
+        self.monkeypatch.setattr('mezcla.glue_helpers.TEMP_SCRIPT_FILE', gh.TEMP_SCRIPT_FILE)
+        self.monkeypatch.setattr('mezcla.glue_helpers.PRESERVE_TEMP_FILE', gh.PRESERVE_TEMP_FILE)
 
         # Case of USE_TEMP_BASE_DIR False but TEMP_BASE
         self.monkeypatch.setattr('mezcla.glue_helpers.USE_TEMP_BASE_DIR', False)
