@@ -227,7 +227,9 @@ class TestIt(TestWrapper):
         global last_self                # TODO4 (use class member)
         # NOTE: The following will fail: apparently each test is run using
         # a separate class instance.
-        debug.assertion(last_self == self)
+        ## OLD: debug.assertion(last_self == self)
+        ## NOTE: Kept in because the test should be reworked
+        debug.assertion(last_self == self, assert_level=6)
 
     @pytest.mark.xfail
     def test_07_preserve_temp_file(self):

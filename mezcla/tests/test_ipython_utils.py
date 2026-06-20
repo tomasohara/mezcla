@@ -65,7 +65,7 @@ class TestIt(TestWrapper):
         globals_dict = {}
         temp_dir = self.get_temp_dir()
         module_name = "_test_import_reload"
-        temp_file = gh.form_path(temp_dir, "_{module_name}.py")
+        temp_file = gh.form_path(temp_dir, f"_{module_name}.py")
         ## BAD: system.set_current_directory(temp_dir)
         ## debug.assertion(temp_dir in sys.path)
         self.monkeypatch.setattr(sys, "path", [temp_dir] + sys.path)

@@ -319,6 +319,7 @@ class TestMisc(TestWrapper):
         ## catch those.
         debug.trace(4, "test_06_type_hinting()")
         ## TODO: create a module with very broken python code to test the test (for false positives)
+        ## TODO4: put this above for use in other scripts
         main_scripts = [
             "debug.py", "glue_helpers.py", "html_utils.py",
             "my_regex.py", "system.py", "unittest_wrapper.py",

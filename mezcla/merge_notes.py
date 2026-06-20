@@ -79,6 +79,7 @@ def resolve_date(textual_date, default_date=None):
     # Note: following uses default date:
     # EX: resolve_date("0 Jan 00", datetime.datetime(2000, 1, 1, 0, 0)) => datetime.datetime(2000, 1, 1, 0, 0)
     # EX: resolve_date("Sun 18 Jul 2021") => datetime.datetime(2021, 7, 18, 0, 0)
+    ## TODO3: add sanity checks for day of week versus date (e.g., Sun 13 Jun 26 should be 14 Jun)
     # Note: date component specifiers: %a: abbreviated weekday; %d day of month (2 digits); %b abbreviated month; %y year without century; %Y: year with century
     if default_date:
         debug.assertion(isinstance(default_date, datetime.datetime))

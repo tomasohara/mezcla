@@ -697,6 +697,7 @@ TAB = "\t"
 class stdin_reader(object):
     """Iterator for reading from stdin that replaces runs of whitespace by tabs"""
     # TODO: generalize to file-based iterator
+    ## TODO2: deprecate since unused???!
     
     def __init__(self, *args, **kwargs) -> None:
         """Class constructor"""
