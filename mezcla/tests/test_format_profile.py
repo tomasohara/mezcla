@@ -209,9 +209,9 @@ class TestFormatProfile(TestWrapper):
             "1    0.000    0.000    0.000    0.000 {method 'fileno' of '_io.BufferedWriter' objects}"
             ]
 
-        # output = gh.read_file(empty_file1)
+        ## OLD: # output = gh.read_file(empty_file1)
         output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        # print(output)
+        ## DEBUG: print(output)
         assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
         # return
 

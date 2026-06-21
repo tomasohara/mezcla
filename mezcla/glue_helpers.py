@@ -923,7 +923,7 @@ def copy_directory(source: str, dest: str) -> None:
     ## TODO4: add option to overwrite files (e.g., via copytree's dirs_exist_ok)
     # Note: meta data is not copied (e.g., access control lists)); see
     #    https://docs.python.org/3/library/shutil.html
-    debug.trace_fmt(5, f"copy_directory({source}, {dest})")
+    debug.trace(5, f"copy_directory({source}, {dest})")
 
     ## OLD: debug.assertion(non_empty_directory(source))
     dest_path = shutil.copytree(src=source, dst=dest)

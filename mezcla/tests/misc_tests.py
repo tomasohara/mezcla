@@ -200,7 +200,8 @@ class TestMisc(TestWrapper):
         ## result = gh.run(f"PYTHONPATH='{temp_dir}/..' pytest {test_script}")
         # note: cd's into test directory to avoid pytest collection issues
         test_script = gh.form_path("mezcla", "tests", f"test_{test_name}")
-        result = gh.run(f"cd {temp_repo_dir} && env -u PYTHONPATH PYTHONPATH='{temp_repo_dir}' pytest {test_script}")
+        ## OLD: result = gh.run(f"cd {temp_repo_dir} && env -u PYTHONPATH PYTHONPATH='{temp_repo_dir}' pytest {test_script}")
+        result = gh.run(f"cd {temp_repo_dir} && env -u PYTHONPATH PYTHONPATH='{temp_repo_dir}' pytest -vv --capture=no {test_script}")
         if debug.verbose_debugging():
             ## OLD:
             ## number = random.randint(10000, 99999)
@@ -209,7 +210,7 @@ class TestMisc(TestWrapper):
             system.write_file(result_file, result)
             check_errors_script = gh.run("which check_errors.perl")
             if system.file_exists(check_errors_script):
-                gh.run("perl -sw {check_errors_script} {result_file}")
+                print(gh.run(f"perl -sw {check_errors_script} {result_file}"))
             else:
                 debug.trace(5, "FYI: Install shell-script repo for useful utilities like check_errors.perl")
         return result    
@@ -356,6 +357,7 @@ class TestMisc(TestWrapper):
         temp_mezcla_test_dir = gh.form_path(temp_mezcla_dir, "tests")
         ## TODO2: copy_dir
         gh.full_mkdir(temp_mezcla_test_dir)
+        ## TODO3: copy root dir files (e.g., LICENSE.txt) and others used in tests
         gh.run(f"cp -vf {orig_mezcla_dir}/*.py {temp_mezcla_dir}")
         gh.run(f"cp -vf {orig_mezcla_dir}/tests/*.py {temp_mezcla_test_dir}")
 
@@ -375,7 +377,7 @@ class TestMisc(TestWrapper):
             temp_results = self.run_test("temp", temp_mezcla_dir, script)
             orig_results = self.run_test("orig", orig_mezcla_dir, script)
 
-            # Optionally, restore (n.b., avoids propogating type-hint problems to client scripts)
+            # Optionally, restore (n.b., avoids propagating type-hint problems to client scripts)
             if not RETAIN_VALIDATION:
                 gh.copy_file(gh.form_path(orig_mezcla_dir, script), temp_mezcla_dir)
             
@@ -396,8 +398,10 @@ class TestMisc(TestWrapper):
                 bad_results = True
             if bad_results:
                 num_bad += 1
-            summary = self.extract_test_summary(temp_results)
-            debug.trace_expr(4, num_temp_serious, num_orig_serious, num_temp_failed, num_orig_failed, bad_results, summary, script)
+            temp_summary = self.extract_test_summary(temp_results)
+            orig_summary = self.extract_test_summary(orig_results)
+            debug.trace_expr(4, num_temp_serious, num_orig_serious, num_temp_failed, num_orig_failed,
+                             temp_summary, orig_summary, bad_results, script)
 
         # Only allow for a relatively small number of failures
         bad_pct = round(num_bad / num_cases * 100, 2)
