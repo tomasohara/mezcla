@@ -59,6 +59,7 @@
 **/output-files
 **/downloads
 **/cache
+**/cachedir
 *.pyc
 *.pyo
 
