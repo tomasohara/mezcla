@@ -227,7 +227,7 @@ class Main(object):
         Note: SKIP_STDIN makes explicit SKIP_INPUT which gets inferred from MANUAL_INPUT when no specified. This avoids the - argument support that blocks help usage.
         """
         #
-        def trace_args(level:int, label:str) -> None:
+        def trace_args(level: int, label: str) -> None:
             """Trace out input arguments, each on separate line to simplify diff"""
             debug.trace_expr(level, runtime_args, description, skip_args, multiple_files, use_temp_base_dir, usage_notes, program, paragraph_mode, track_pages, file_input_mode, newlines, boolean_options, text_options, int_options, float_options, positional_options, positional_arguments, skip_input, manual_input, skip_stdin, auto_help, brief_usage, short_options, kwargs, prefix=f"{label}: {{", delim="\n\t", suffix="}", max_len=1024)
         #

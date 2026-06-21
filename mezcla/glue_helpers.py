@@ -59,7 +59,7 @@ from mezcla import system
 from mezcla.tpo_common import format as tpo_format
 ## TODO3: debug.trace_expr(6, __file__)
 from mezcla.validate_arguments_types import (
-    FileDescriptorOrPath, StrOrBytesPath
+    FileDescriptorOrPath, StrOrBytesPath, DirListing,
 )
 
 # Custom Types
@@ -1032,13 +1032,13 @@ def get_directory_listing(dir_name: bytes, make_unicode: bool = False) -> List[b
 def get_directory_listing(
         dir_name: Union[int, str, bytes],
         make_unicode: bool = False
-    ) -> Union[List[str], List[bytes]]:
+    ) -> DirListing:
     """Returns files in DIR_NAME
     Note: make_unicode is deprecated
     """
     # TODO: Union[List[str], List[bytes]] = []
     ## TODO3: drop make_unicode; implement via system.get_directory_filenames
-    all_file_names: Union[List[str], List[bytes]] = []
+    all_file_names: DirListing = []
     try:
         all_file_names = os.listdir(dir_name)
     except OSError:

@@ -74,8 +74,10 @@ REGEX_WARNINGS = system.getenv_bool(
     "REGEX_WARNINGS", debug.debugging(debug.USUAL),
     desc="Include warnings about regex's such as f-string")
 
-## TODO # HACK: make sure regex can be used as plug-in replacement 
-## from from re import *
+# Type aliases
+#
+# Alias for the return type of grouping(): tuple of matches OR a single match
+GroupsOrGroup = Union[Tuple[StrOrBytes, ...], StrOrBytes]
 
 ## TEST: Attempts to work around Python enum extension limitation
 ##
@@ -224,7 +226,7 @@ class regex_wrapper():
                         r=result, s=self)
         return result
 
-    def grouping(self) -> Optional[Union[Tuple[StrOrBytes, ...], StrOrBytes]]:
+    def grouping(self) -> Optional[GroupsOrGroup]:
         """Return groups for match result or entire matching string if no groups defined"""
         # Note: this is intended to facilitate debug tracing; see example in search method above
         result = self.match_result and (self.match_result.groups() or self.match_result.group(0))

@@ -43,3 +43,7 @@ OptCallable = Optional[Callable]
 OptDict = Optional[Dict]
 StrList = List[str]
 OptStrList = Optional[StrList]
+
+# Specialized type alias
+# Directory listing: list of filenames as str or bytes
+DirListing = Union[List[str], List[bytes]]
