@@ -16,6 +16,7 @@ An optional priority is indicated by [Pn]
 - [P2] replace debug.set_level(N), etc. with self.patch_trace_level(N)
 - [P5] replace 'PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_xyz.py' with 'pytest tests/test_xyz.py'
 - [P3] replace assertTrue with assert, etc. (i.e., avoid unittest methods).
+- [P3] use `SKIP_XYZ` instead of `not RUN_XYZ` in pytest.mark.skipif (e.g., `not RUN_SLOW_TESTS` to `SKIP_SLOW_TESTS`).
 
 ## Detailed TODO notes
 
