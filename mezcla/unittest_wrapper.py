@@ -119,7 +119,7 @@ UNDER_RUNNER = system.getenv_bool(
     description="Whether running under Github actions")
 RUN_SLOW_TESTS = system.getenv_bool(
     "RUN_SLOW_TESTS", UNDER_RUNNER,
-    description="Run tests that can a while to run")
+    description="Run tests that can take a while to run--warning: deprecated alias for not[-]SKIP_SLOW_TESTS")
 debug.reference_var(RUN_SLOW_TESTS)
 
 UNDER_COVERAGE = system.getenv_bool(
