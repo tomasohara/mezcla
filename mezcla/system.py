@@ -26,6 +26,8 @@
 
 # Standard packages
 from collections import defaultdict, OrderedDict
+## UPDATE: 06/20/2026: Integrates alternative model's type hints.
+from collections.abc import Iterator
 import datetime
 ## OLD: import importlib_metadata
 import inspect
@@ -694,40 +696,40 @@ unescape_html_text = unescape_html_value
 NEWLINE = "\n"
 TAB = "\t"
 #
-class stdin_reader(object):
+class stdin_reader:
     """Iterator for reading from stdin that replaces runs of whitespace by tabs"""
-    # TODO: generalize to file-based iterator
+    # TODO: generalize to file-based iterator; rename as StdinReader
     ## TODO2: deprecate since unused???!
+    ## UPDATE: 06/20/2026: Revised via Claude Sonnet 4.8
     
     def __init__(self, *args, **kwargs) -> None:
         """Class constructor"""
-        debug.trace_fmtd(5, "Script.__init__({a}): keywords={kw}; self={s}",
+        debug.trace_fmtd(5, "stdin_reader.__init__({a}): keywords={kw}; self={s}",
                          a=",".join(args), kw=kwargs, s=self)
-        self.delimiter = kwargs.get('delimiter', "\t")
-        super().__init__(*args, **kwargs)
+        self.delimiter = kwargs.get('delimiter', TAB)
 
-    def __iter__(self) -> str:
-        """Returns first line in stdin iteration (empty string upon EOF)"""
-        return self.__next__()
+    def __iter__(self) -> Iterator[str]:
+        """Return the iterator (self)"""
+        return self
 
     def __next__(self) -> str:
-        """Returns next line in stdin iteration (empty string upon EOF)"""
+        """Returns next line in stdin iteration, raising StopIteration upon EOF"""
         try:
             line = self.normalize_line(input())
-        except EOFError:
-            line = ""
+        except EOFError as exc:
+            raise StopIteration from exc
         return line
 
     def normalize_line(self, original_line: str) -> str:
         """Normalize line (e.g., replacing spaces with single tab)"""
         debug.trace_fmtd(6, "in normalize_line({ol})", ol=original_line)
         line = original_line
-        # Remove trailing newline
+        # Remove trailing newline (n.b., perhaps obsolete)
         if line.endswith(NEWLINE):
             line = line[:-1]
-        # Replace runs of spaces with a single tab
+        # Replace runs of whitespaces with a single tab
         if (self.delimiter == TAB):
-            line = re.sub(r"  *", TAB, line)
+            line = re.sub(r" +", TAB, line)
         # Trace the revised line and return it
         debug.trace_fmtd(6, "normalize_line() => {l}", l=line)
         return line
@@ -1334,7 +1336,7 @@ def get_module_version(module_name: str) -> str:
     return version
 
 
-def intersection(list1: List[Any], list2: List[Any], as_set: bool = False) -> ListOrSet:
+def intersection(list1: list, list2: list, as_set: bool = False) -> ListOrSet:
     """Return intersection of LIST1 and LIST2
     Note: result is a list unless AS_SET specified
     """
@@ -1350,7 +1352,7 @@ def intersection(list1: List[Any], list2: List[Any], as_set: bool = False) -> Li
     return result
 
 
-def relative_intersection(list1: List[Any], list2: List[Any], as_set: bool = False) -> float:
+def relative_intersection(list1: list, list2: list, as_set: bool = False) -> float:
     """Compute relative size of intersection for LIST1 and LIST2"""
     # EX: relative_intersection([1, 2], [2]) => 0.5
     min_size = max(len(list1), len(list2))
@@ -1360,7 +1362,7 @@ def relative_intersection(list1: List[Any], list2: List[Any], as_set: bool = Fal
     return result
 
 
-def union(list1: List[Any], list2: List[Any], as_set: bool = False) -> ListOrSet:
+def union(list1: list, list2: list, as_set: bool = False) -> ListOrSet:
     """Return union of LIST1 and LIST2
     Note: result is a list unless AS_SET specified
     """
@@ -1374,7 +1376,7 @@ def union(list1: List[Any], list2: List[Any], as_set: bool = False) -> ListOrSet
     return result
 
 
-def difference(list1: List[Any], list2: List[Any], as_set: bool = False) -> ListOrSet:
+def difference(list1: list, list2: list, as_set: bool = False) -> ListOrSet:
     """Return set difference from LIST1 vs LIST2, preserving order
     Note: result is a list unless AS_SET specified
     """
