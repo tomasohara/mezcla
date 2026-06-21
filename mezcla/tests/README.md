@@ -1,5 +1,24 @@
 ## Test overview
 
+The tests in this directory evolved from unittest to being mostly pytest
+based. However, the unittest class structure is still used, in particular
+using TestWrapper from unittest_wrapper.py. However, it is preferred
+to use the assert command rather than assertTrue, etc.
+
+   class TestIt(TestWrapper):
+      """Class for testcase definition"""
+      script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+	  
+	  def test_fu(self):
+	       """Verify fu works"""
+		   assert (THE_MODULE.fu() == "fu=bar"), "fu not bar"
+
+This takes advantage of the better pytest diagnostics, such as following:
+      - fu=bar
+      ?    ^^^
+      + fu=BAR
+      ?    ^^^
+
 In addition to pytest-based unit tests, there are command-line tests using
 BatsPP (see https://github.com/LimaBD/batspp).
 
