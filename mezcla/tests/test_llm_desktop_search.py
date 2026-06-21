@@ -26,6 +26,7 @@
 
 # Standard modules
 import atexit
+import importlib
 import json
 import os
 import re
@@ -45,6 +46,7 @@ from mezcla import gpu_utils
 from mezcla.main import KEEP_TEMP_FILES
 from mezcla.my_regex import my_re
 from mezcla import system
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        module instance (e.g,, <module 'mezcla.main' from '/home/testuser/Mezcla/mezcla/main.py'>
@@ -63,6 +65,10 @@ LLM_PATH = system.getenv_text(
     description="Path for LLM model"
 )
 
+# Constants
+LLM_PATH_MISSING = not system.file_exists(LLM_PATH)
+LLM_PATH_REASON = "LLM_PATH does not exist"
+    
 #------------------------------------------------------------------------
 
 @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
@@ -108,7 +114,16 @@ class TestIt(TestWrapper):
         desktop.index_dir(repo_base_dir)
         debug.assertion(system.file_exists(index_file))
 
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_00_load_llm(self):
+        """Verify that LLM can be loaded OK"""
+        CTransformers = importlib.import_module(
+            "langchain_community.llms.ctransformers").CTransformers
+        ds = THE_MODULE.DesktopSearch()
+        ds.load_llm()
+        assert isinstance(ds.llm, CTransformers)
+
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_01_index_dir(self):
         """Tests run_script to index directory"""
         # Warning: see notes above about potential issues with run_script-based tests.
@@ -151,7 +166,7 @@ class TestIt(TestWrapper):
         self.do_assert(new_date >= prev_date)
         
 
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_02_search_docs(self):
         """Test for something_else: TODO..."""
         debug.trace(4, f"TestIt.test_02_search_docs(); self={self}")
@@ -164,7 +179,7 @@ class TestIt(TestWrapper):
         
 
     @pytest.mark.skipif(gpu_utils.TORCH_DEVICE != "cuda", reason="Ignoring non-CUDA device")
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_03_gpu_usage(self):
         """Test for GPU libs being used"""
         # Note: verifies [python] process using GPU via nvida-smi
@@ -185,7 +200,7 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search(fr"\b{pid}\b.*python", stderr))
         return
     
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_04_show_similar(self):
         """Test run_script to show similar document to QUERY"""
         debug.trace(4, f"test_04_show_similar(): self={self}")
@@ -197,9 +212,8 @@ class TestIt(TestWrapper):
         if not KEEP_TEMP_FILES:
             gh.delete_directory(self.index_temp_dir)
         self.do_assert("Lesser General Public License" in output)
-        
 
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_05_index_via_API(self):
         """Run indexing via class-based API"""
         debug.trace(4, f"test_05_index_via_API(): self={self}")
@@ -591,8 +605,8 @@ class TestLLMDesktopSearch(TestWrapper):
         last_modified_date = THE_MODULE.get_last_modified_date(temp_dir)
         self.assertIsInstance(last_modified_date, float)
     
-    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="--search option takes some time for operation")
+    @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
+    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_preliminary_is_model_loaded(self):
         """Test if test based model is loaded"""
 
@@ -634,8 +648,8 @@ class TestLLMDesktopSearch(TestWrapper):
         final_command_output = self.helper_run_script(options=f'--index "{self.mezcla_base}"')
         self.assertIn("chunks indexed", final_command_output)
 
-    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="--search option takes some time for operation")
+    @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
+    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_generate_index_store(self):
         """Test to ensure index files (faiss, pkl) are generated"""
         index_store_temp = gh.get_temp_dir()
@@ -645,8 +659,8 @@ class TestLLMDesktopSearch(TestWrapper):
         assert "index.faiss" in index_store_content
         assert "index.pkl" in index_store_content
     
-    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="--search option takes some time for operation")
+    @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
+    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_scenario_detect_document_file(self):
         """Test to check if document files are detected by THE_MODULE"""
         # temp_file_store = self.helper_create_sample_files()
@@ -663,7 +677,7 @@ class TestLLMDesktopSearch(TestWrapper):
         self.assertIn("pkl", index_store_contents)
         self.assertIn("faiss", index_store_contents)
 
-    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
+    @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
     def test_scenario_no_document_file(self):
         """Test to check if non document files are not detected by modules"""
         # Use an empty directory to ensure no documents are found
@@ -690,8 +704,8 @@ class TestLLMDesktopSearch(TestWrapper):
         index_store_contents = gh.run(f"ls {temp_index_store_dir}")
         self.assertEqual(index_store_contents.strip(), "")
 
-    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="--search option takes some time for operation")
+    @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
+    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_e2e_index_option(self):
         """End-to-end tests to check if --index option work as expected"""
         command_output = self.run_script(options=f"--index {self.mezcla_base}",
@@ -702,8 +716,8 @@ class TestLLMDesktopSearch(TestWrapper):
         self.assertIn("index.pkl", index_dir_contents)
 
     
-    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="--search option takes some time for operation")
+    @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
+    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_e2e_search_option(self):
         """End-to-end tests to check if --search option works as expected"""
         ## Create an index at first, and proceed for the search
@@ -726,8 +740,8 @@ class TestLLMDesktopSearch(TestWrapper):
         self.assertTrue(result_answer.endswith(".") and result_answer.count(".") == 1)
         self.assertTrue(len(command_output) >= 50)
 
-    @pytest.mark.skipif(not system.file_exists(LLM_PATH), reason="LLM_PATH does not exist")
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="--search option takes some time for operation")
+    @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
+    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_e2e_similar_option(self):
         """End-to-end tests to check if --similar option works as expected"""
         temp_index_store = gh.get_temp_dir()
