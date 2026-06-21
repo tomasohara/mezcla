@@ -45,6 +45,7 @@ SKIP_SLOW_TESTS = system.getenv_bool(
     "SKIP_SLOW_TESTS", (not (UNDER_RUNNER or RUN_SLOW_TESTS)),
     description="Omit tests that can take a while to run")
 SKIP_SLOW_REASON="Ignoring slow test"
+debug.assertion(debug.xor(SKIP_SLOW_TESTS, RUN_SLOW_TESTS))
 #
 TEST_UNIMPLEMENTED_TESTS = system.getenv_bool(
     "TEST_UNIMPLEMENTED_TESTS", False,
