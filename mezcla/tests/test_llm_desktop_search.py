@@ -602,6 +602,17 @@ class TestLLMDesktopSearch(TestWrapper):
         string_allow_unsafe_models = "ALLOW_UNSAFE_MODELS=True"
         string_qa_llm_model = f"QA_LLM_MODEL={LLM_PATH}" 
         command_base = f"python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {self.mezcla_base}"
+        llm_command_result = gh.run(
+            f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={temp_index_store_dir} python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {no_docs_path}"
+        )
+        ## TODO:
+        ## # Run with user site packages ignored. via python man page:
+        ## #  -s: don't add user site directory to sys.path
+        ## command_base = (
+        ##     f"{sys.executable} -s {self.mezcla_base}/mezcla/llm_desktop_search.py "
+        ##     f"--index {self.mezcla_base}"
+        ## )
+        ## NOTE: Change facilitated by Antigravity AI Assistant using Gemini 3.5.
         
         ##1 Test for base command
         base_output = gh.run(command_base)
@@ -657,11 +668,22 @@ class TestLLMDesktopSearch(TestWrapper):
         """Test to check if non document files are not detected by modules"""
         # Use an empty directory to ensure no documents are found
         no_docs_path = gh.get_temp_dir()
-        
+
         # If the documents are not accepted by script, no index is created
         temp_index_store_dir = gh.get_temp_dir()
+        ## OLD:
+        ## llm_command_result = gh.run(
+        ##     f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} "
+        ##     f"INDEX_STORE_DIR={temp_index_store_dir} "
+        ##     f"python3 {self.mezcla_base}/mezcla/llm_desktop_search.py "
+        ##     f"--index {no_docs_path}"
+        ## )
+        # Change facilitated by Antigravity AI Assistant using Gemini 3.5.
         llm_command_result = gh.run(
-            f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={temp_index_store_dir} python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {no_docs_path}"
+            f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} "
+            f"INDEX_STORE_DIR={temp_index_store_dir} {sys.executable} -s "
+            f"{self.mezcla_base}/mezcla/llm_desktop_search.py "
+            f"--index {no_docs_path}"
         )
         # Should either show 0 chunks indexed or an error
         self.assertTrue("0 chunks indexed" in llm_command_result or "IndexError" in llm_command_result)
