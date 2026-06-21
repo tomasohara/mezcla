@@ -50,6 +50,9 @@ TEST_REGEX = system.getenv_value(
     "Regex for tests to include; ex: '^test_c.*' for debugging")
 UNDER_UNIX = (os.name == 'posix')
 UNDER_UNIX_REASON = "Only applies to Unix"
+RETAIN_VALIDATION = system.getenv_bool(
+    "RETAIN_VALIDATION", False,
+    "Keep @validate_call's for use in client scripts: see test_06_type_hinting")
 
 class TestMisc(TestWrapper):
     """Class for test case definitions"""
@@ -181,6 +184,12 @@ class TestMisc(TestWrapper):
     def count_failures(self, results):
         """Count the number of failures in the test results"""
         return sum(map(system.to_int, gh.extract_matches_from_text(r"(\d+) x?failed", results)))
+    
+    def extract_test_summary(self, results):
+        """Returns the pytest summary. For example,
+           [...===] 36 passed, 2 skipped, 3 xfailed, 25 xpassed [in 1.17s ===...].
+        """
+        return gh.extract_match_from_text(r"=== ([^=]+(error|fail|pass|skip)[^=]+) (in \S+\s*)? ===", results)
     
     @pytest.mark.xfail
     def test_01_check_for_tests(self):
@@ -351,6 +360,10 @@ class TestMisc(TestWrapper):
             temp_results = self.run_test("temp", temp_mezcla_dir, script)
             orig_results = self.run_test("orig", orig_mezcla_dir, script)
 
+            # Optionally, restore (n.b., avoids propogating type-hint problems to client scripts)
+            if not RETAIN_VALIDATION:
+                gh.copy_file(gh.form_path(orig_mezcla_dir, script), temp_mezcla_dir)
+            
             # Check for errors
             # exs: 1) more exceptions in transformed run vs original; 2) differences in number of failures
             bad_results = False
@@ -368,7 +381,8 @@ class TestMisc(TestWrapper):
                 bad_results = True
             if bad_results:
                 num_bad += 1
-            debug.trace_expr(5, num_temp_serious, num_orig_serious, num_temp_failed, num_orig_failed, bad_results, script)
+            summary = self.extract_test_summary(temp_results)
+            debug.trace_expr(4, num_temp_serious, num_orig_serious, num_temp_failed, num_orig_failed, bad_results, summary, script)
 
         # Only allow for a relatively small number of failures
         bad_pct = round(num_bad / num_cases * 100, 2)
