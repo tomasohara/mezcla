@@ -486,7 +486,8 @@ def main(runtime_args=None):
         tpo.debug_print("Reading input from stdin", 4)
         temp_file = TEMP_BASE
         filename = temp_file + ".txt"
-        system.write_file(filename, gh.read_file(None))
+        ## OLD: system.write_file(filename, gh.read_file(None))
+        system.write_file(filename, system.read_file(None))
 
     # Derive the basename if not given
     # TODO: TFIDF_MODEL_EXT = ".tfidf.mm"

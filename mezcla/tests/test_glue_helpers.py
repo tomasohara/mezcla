@@ -310,8 +310,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
             assert 'stderr' in captured
             assert 'bad_filename.bash' in captured
         ## TODO: for some reason the log_file is not being overriden
-        ## assert 'random content' not in gh.read_file(log_file)
-        ## assert 'bad_filename.bash' in gh.read_file(log_file)
+        ## assert 'random content' not in system.read_file(log_file)
+        ## assert 'bad_filename.bash' in system.read_file(log_file)
 
     def test_get_hex_dump(self):
         """Ensure get_hex_dump works as expected"""
@@ -453,7 +453,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         second_temp_file = f"{first_temp_file}_target_copy"
         system.write_file(first_temp_file, 'some random content')
         THE_MODULE.copy_file(first_temp_file, second_temp_file)
-        assert gh.read_file(second_temp_file) == 'some random content\n'
+        assert system.read_file(second_temp_file) == 'some random content\n'
 
     def test_rename_file(self):
         """Ensure rename_file works as expected"""
@@ -471,7 +471,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         # Check integrity of renamed file
         assert gh.file_exists(new_test_filename)
         assert not gh.file_exists(test_filename)
-        assert gh.read_file(new_test_filename) == 'some content\n'
+        assert system.read_file(new_test_filename) == 'some content\n'
 
     def test_delete_file(self):
         """Ensure delete_file works as expected"""

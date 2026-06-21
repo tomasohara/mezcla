@@ -87,7 +87,7 @@ def main():
     # note: doc ID mapping assumed to be 0-based list of labels
     docid_mapping_list = None
     if DOCID_MAPPING_FILE:
-        docid_mapping_list = gh.read_lines(DOCID_MAPPING_FILE)
+        docid_mapping_list = system.read_lines(DOCID_MAPPING_FILE)
     doc_freq_hash = {}
     if (DOC_FREQ_FILE and USE_SHELVE):
         doc_freq_hash = shelve.open(DOC_FREQ_FILE)
