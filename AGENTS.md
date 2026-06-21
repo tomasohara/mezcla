@@ -31,6 +31,8 @@ AI agent instructions for arbitrary repos. This is based on instructions designe
 
 0. Retain the existing code as much as possible. In particular, don't remove TODO comments that address the change you are making. 
 
+0. Avoid pre-function comments in Python and similar languages: place them below the docstring.
+
 0. Don't delete code without explicit confirmation. Instead, comment out the code with '## OLD:' block
 as follows:
 
@@ -54,7 +56,7 @@ Of course, this can be awkward for in-depth changes so ask for clarification.
 
 Some variations follow. For single-line changes, just use "## OLD: ...". When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
-0. When making most changes, create a new git branch based on development, using a name such as 'code-conversion'.
+0. When making most changes, create a new git branch based on development, using a task-specific name such as 'refine-type-hints' or 'fix-poe-client'.
 
 0. After making a group of commits, push the changes and make sure the remove upstream branch gets set.
 
