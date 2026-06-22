@@ -8,7 +8,7 @@
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_llm_desktop_search.py
 #
 # TODO3:
-# - Try to minize usage of run_script to just one or two tests:
+# - Try to minimize usage of run_script to just one or two tests:
 #   it is an older style of testing. It is better to use DesktopSearch
 #   class directly. More details follow in the warning.
 #
@@ -39,7 +39,8 @@ from types import SimpleNamespace
 import pytest
 
 # Local modules
-from mezcla.unittest_wrapper import TestWrapper, RUN_SLOW_TESTS, invoke_tests
+## OLD: from mezcla.unittest_wrapper import TestWrapper, RUN_SLOW_TESTS, invoke_tests
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla import gpu_utils
@@ -117,6 +118,7 @@ class TestIt(TestWrapper):
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_00_load_llm(self):
         """Verify that LLM can be loaded OK"""
+        debug.trace(4, f"TestIt.test_00_load_llm(); self={self}")
         CTransformers = importlib.import_module(
             "langchain_community.llms.ctransformers").CTransformers
         ds = THE_MODULE.DesktopSearch()
@@ -202,7 +204,7 @@ class TestIt(TestWrapper):
     
     @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_04_show_similar(self):
-        """Test run_script to show similar document to QUERY"""
+        """Test to show similar document to QUERY"""
         debug.trace(4, f"test_04_show_similar(): self={self}")
         self.ensure_shared_index()
         desktop = THE_MODULE.DesktopSearch(index_store_dir=self.index_temp_dir)
@@ -547,6 +549,10 @@ def test_import_disables_tensorflow_backend_by_default():
 
 #................................................................................
 # Warning: TestLLMDesktopSearch is work-in-progess
+#
+# TODO2: Rework gh.run(...llm_desktop_search.py...) via self.run_script; or,
+#        better yet via DesktopSearch(...)! See warning above about complications.
+#
 
 @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
 class TestLLMDesktopSearch(TestWrapper):
@@ -606,19 +612,29 @@ class TestLLMDesktopSearch(TestWrapper):
         self.assertIsInstance(last_modified_date, float)
     
     @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
-    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_preliminary_is_model_loaded(self):
         """Test if test based model is loaded"""
+        debug.trace(4, f"TestLLMDesktopSearch.test_preliminary_is_model_loaded(); self={self}")
+
+        # note: uses temp index and doc dirs (TODO2: put in setupClass)
+        #
+        # Use an empty directory to ensure no documents are found
+        no_docs_path = gh.get_temp_dir()
+        #
+        # If the documents are not accepted by script, no index is created
+        temp_index_store_dir = gh.get_temp_dir()
 
         # Check if QA_LLM_MODEL uses mistral by default
         self.assertIn("mistral-7b-instruct", THE_MODULE.QA_LLM_MODEL)
-
         string_allow_unsafe_models = "ALLOW_UNSAFE_MODELS=True"
         string_qa_llm_model = f"QA_LLM_MODEL={LLM_PATH}" 
         command_base = f"python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {self.mezcla_base}"
-        llm_command_result = gh.run(
+        _llm_command_result = gh.run(
             f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={temp_index_store_dir} python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {no_docs_path}"
         )
+        ## TODO3: assert("TODO:xyz" in _llm_command_result)
+        
         ## TODO:
         ## # Run with user site packages ignored. via python man page:
         ## #  -s: don't add user site directory to sys.path
@@ -649,7 +665,7 @@ class TestLLMDesktopSearch(TestWrapper):
         self.assertIn("chunks indexed", final_command_output)
 
     @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
-    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_generate_index_store(self):
         """Test to ensure index files (faiss, pkl) are generated"""
         index_store_temp = gh.get_temp_dir()
@@ -660,7 +676,7 @@ class TestLLMDesktopSearch(TestWrapper):
         assert "index.pkl" in index_store_content
     
     @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
-    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_scenario_detect_document_file(self):
         """Test to check if document files are detected by THE_MODULE"""
         # temp_file_store = self.helper_create_sample_files()
@@ -680,18 +696,16 @@ class TestLLMDesktopSearch(TestWrapper):
     @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
     def test_scenario_no_document_file(self):
         """Test to check if non document files are not detected by modules"""
+        debug.trace(4, f"TestLLMDesktopSearch.test_scenario_no_document_file(); self={self}")
+
+        # note: uses temp index and doc dirs (TODO2: put in setupClass)
+        #
         # Use an empty directory to ensure no documents are found
         no_docs_path = gh.get_temp_dir()
-
+        #
         # If the documents are not accepted by script, no index is created
         temp_index_store_dir = gh.get_temp_dir()
-        ## OLD:
-        ## llm_command_result = gh.run(
-        ##     f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} "
-        ##     f"INDEX_STORE_DIR={temp_index_store_dir} "
-        ##     f"python3 {self.mezcla_base}/mezcla/llm_desktop_search.py "
-        ##     f"--index {no_docs_path}"
-        ## )
+
         # Change facilitated by Antigravity AI Assistant using Gemini 3.5.
         llm_command_result = gh.run(
             f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} "
@@ -705,7 +719,7 @@ class TestLLMDesktopSearch(TestWrapper):
         self.assertEqual(index_store_contents.strip(), "")
 
     @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
-    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_e2e_index_option(self):
         """End-to-end tests to check if --index option work as expected"""
         command_output = self.run_script(options=f"--index {self.mezcla_base}",
@@ -714,10 +728,9 @@ class TestLLMDesktopSearch(TestWrapper):
         index_dir_contents = gh.run(f"ls {self.e2e_index_store}")
         self.assertIn("index.faiss", index_dir_contents)
         self.assertIn("index.pkl", index_dir_contents)
-
     
     @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
-    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_e2e_search_option(self):
         """End-to-end tests to check if --search option works as expected"""
         ## Create an index at first, and proceed for the search
@@ -741,7 +754,7 @@ class TestLLMDesktopSearch(TestWrapper):
         self.assertTrue(len(command_output) >= 50)
 
     @pytest.mark.skipif(LLM_PATH_MISSING, reason=LLM_PATH_REASON)
-    @pytest.mark.skipif(SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
+    @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_e2e_similar_option(self):
         """End-to-end tests to check if --similar option works as expected"""
         temp_index_store = gh.get_temp_dir()
@@ -762,9 +775,9 @@ class TestLLMDesktopSearch(TestWrapper):
         docs_occurrences = sum(command_output.count(c) for c in compatible_docs)
         self.assertTrue(docs_occurrences >= 1)
 
-
     def test_e2e_help_option(self):
         """End-to-end tests to check if --help option works as expected"""
+        debug.trace(4, f"TestLLMDesktopSearch.test_e2e_help_option(); self={self}")
         terms = ["usage", "llm_desktop_search.py", "verbose", "help", "Desktop search utility", "options", THE_MODULE.INDEX_ARG, THE_MODULE.SEARCH_ARG, THE_MODULE.SIMILAR_ARG]
         ## OLD (Below command equivalent to self.run_script(options="h"))
         # command_output = self.run_script(options="-h")
