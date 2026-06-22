@@ -440,6 +440,7 @@ class TestWrapper(unittest.TestCase):
         if self.use_temp_base_dir:
             default_temp_file = gh.form_path(self.temp_base, "test-")
         else:
+            debug.assertion(not system.is_directory(self.temp_base))
             default_temp_file = self.temp_base + "-test-"
         temp_file_basename = default_temp_file
         TestWrapper.test_num += 1
