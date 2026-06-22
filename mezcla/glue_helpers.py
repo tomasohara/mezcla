@@ -176,6 +176,9 @@ def get_temp_dir(delete: Optional[bool] = None, use_temp_base: Optional[bool] = 
     With USE_TEMP_BASE, uses gh.TEMP_BASE if defined, which normally is only used when debugging
     tests (via explicit CLI option).
     """
+    if use_temp_base is None:
+        ## TEMP: use_temp_base defaults to true if unspecied and TEMP_BASE true.
+        use_temp_base = bool(TEMP_BASE)
 
     # Try to use temporary file override
     ## TODO3: make option to bypass creation; extend to use TEMP_BASE automatically
@@ -1118,6 +1121,7 @@ def init() -> None:
         pass
 
     # Re-initialize flag blocking TEMP_FILE init from TEMP_BASE
+    # note: Normally unset except when running test: set to "1" by unittest_wrapper.py.
     global PRESERVE_TEMP_FILE
     PRESERVE_TEMP_FILE = system.getenv_bool(
         "PRESERVE_TEMP_FILE", None, allow_none=True, skip_register=initialized,
@@ -1125,7 +1129,7 @@ def init() -> None:
 
     # note: Normally TEMP_FILE gets overriden when TEMP_BASE set. However,
     # this complicates preserving test-specific test files (see unittest_wrapper.py).
-    # Further compications are due to the implicit module loading due to __init__.py.
+    # Further complications are due to the implicit module loading due to __init__.py.
     # See tests/test_unittest_wrapper.py for some diagnosis tips.
     temp_file_default = None
     if TEMP_BASE and not PRESERVE_TEMP_FILE:
