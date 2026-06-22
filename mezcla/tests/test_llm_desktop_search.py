@@ -629,7 +629,7 @@ class TestLLMDesktopSearch(TestWrapper):
         self.assertIn("mistral-7b-instruct", THE_MODULE.QA_LLM_MODEL)
         string_allow_unsafe_models = "ALLOW_UNSAFE_MODELS=True"
         string_qa_llm_model = f"QA_LLM_MODEL={LLM_PATH}" 
-        command_base = f"python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {self.mezcla_base}"
+        command_base = f"INDEX_STORE_DIR={temp_index_store_dir} python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {self.mezcla_base}"
         _llm_command_result = gh.run(
             f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={temp_index_store_dir} python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {no_docs_path}"
         )
