@@ -48,7 +48,7 @@ from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
-## TODO: import mezcla.tests.common_module as cm ... @skipif(not cm.RUN_SLOW_TESTS, ...)
+## TODO: import mezcla.tests.common_module as cm ... @skipif(cm.SKIP_SLOW_TESTS, cm.SKIP_SLOW_REASON)
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)
