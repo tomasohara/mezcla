@@ -227,6 +227,7 @@ def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST) -> None:
 
 def init_temp_settings() -> bool:
     """Initialize settings related to temp-file names"""
+    debug.trace(4, "unittest_wrapper.init_temp_settings()")
     ok = True
     # Re-initalize glue helper temp file settings
     ## TODO?: system.setenv("PRESERVE_TEMP_FILE", "1")
