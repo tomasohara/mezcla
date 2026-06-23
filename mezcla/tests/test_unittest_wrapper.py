@@ -70,7 +70,8 @@ class TestIt(TestWrapper):
     def test_01_usage(self):
         """Make sure usage warns that not intended for command line and that no stdout"""
         debug.trace(4, f"TestIt.test_01_usage(); self={self}")
-        log_file = self.temp_file + ".log"
+        ## OLD: log_file = self.temp_file + ".log"
+        log_file = self.get_temp_file() + ".log"
         ## BAD: output = self.run_script(log_file=log_file)
         output = self.run_script(env_options="DEBUG_LEVEL=4", log_file=log_file)
         self.do_assert(not output.strip())
@@ -233,7 +234,9 @@ class TestIt(TestWrapper):
 
     @pytest.mark.xfail
     def test_07_preserve_temp_file(self):
-        """Make sure PRESERVE_TEMP_FILE set appropriately"""
+        """Make sure PRESERVE_TEMP_FILE set appropriately
+        Note: It is currently set to 1 start of unittest_wrapper.py (unless already set).
+        """
         debug.trace(4, f"TestIt.test_07_preserve_temp_file(); self={self!r}")
         # Get setting related to temp-file name inference
         PRESERVE_TEMP_FILE_VALUE = os.environ.get(PRESERVE_TEMP_FILE_LABEL)
@@ -253,7 +256,7 @@ class TestIt(TestWrapper):
             assert PRESERVE_TEMP_FILE_VALUE == "1"
             # note: should be test-7 (or test-1 if run in isolation)
             assert my_re.search(r"test-[1-7]", self.temp_file)
-            
+        assert self.temp_file == self.get_temp_file(static=True)
 
 #------------------------------------------------------------------------
 
