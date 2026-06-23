@@ -44,9 +44,16 @@ import mezcla.html_utils as THE_MODULE
 # Constants and environment options
 TEST_SELENIUM_DESC = "Include tests requiring selenium"
 TEST_SELENIUM = system.getenv_bool(
-    "TEST_SELENIUM", False,
-    desc=TEST_SELENIUM_DESC)
-SKIP_SELENIUM = not TEST_SELENIUM
+    ## OLD: "TEST_SELENIUM", False,
+    ## TODO2: configure Github runner to support selenium
+    ## NOTE: TEST_SELENIUM enabled by default: to disable use "TEST_SELENIUM=0 python ..." in .bash_profile)
+    "TEST_SELENIUM", not cm.UNDER_RUNNER,
+    desc=f"{TEST_SELENIUM_DESC}--warning: deprecated alias for not[-]SKIP_SELENIUM")
+## OLD: SKIP_SELENIUM = not TEST_SELENIUM
+SKIP_SELENIUM = system.getenv_bool(
+    "SKIP_SELENIUM", not TEST_SELENIUM,
+    desc="Skip tests requiring selenium")
+debug.assertion(debug.xor(TEST_SELENIUM, SKIP_SELENIUM))
 SKIP_SELENIUM_REASON = f"Not-{TEST_SELENIUM_DESC}"
 #
 INCLUDE_HINT_TESTS = system.getenv_bool(
@@ -247,8 +254,11 @@ class TestHtmlUtils(TestWrapper):
     def test_run_script_for_inner_html(self):
         """Test of getting inner HTML via script invocation"""
         debug.trace(4, f"TestIt.test_run_script_for_inner_html(); self={self}")
+        temp_file = self.temp_file
+        self.temp_file = temp_file + "-regular"
         regular_output = self.run_script(options=f"--stdout {self.scrappycito_like_url}")
-        self.temp_file += "-2"
+        ## OLD: self.temp_file += "-2"
+        self.temp_file = temp_file + "-inner"
         inner_output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url + '/?section=tips'}")
         self.check_inner_html(regular_output, inner_output)
         return
@@ -608,6 +618,7 @@ class TestHtmlUtils(TestWrapper):
         browser = THE_MODULE.get_browser(self.dimensions_url)
         screenshot_path = gh.form_path(self.get_temp_dir(), f"{label}-screenshot.png")
         try:
+            # pylint: disable=import-outside-toplevel
             from PIL import Image       ## TODO3: move to top level
             browser.get_screenshot_as_file(screenshot_path)
             ok = True
@@ -883,7 +894,7 @@ class TestHtmlUtils(TestWrapper):
         data = "Hello World"
         filename = self.create_temp_file(contents="")
         as_binary = False
-        # pylint: ignore disable=assignment-from-none
+        # pylint: disable=assignment-from-none
         result = THE_MODULE._write_file(filename, data, as_binary)
 
         assert isinstance(data, (str, bytes))
