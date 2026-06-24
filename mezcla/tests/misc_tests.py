@@ -135,10 +135,12 @@ class TestMisc(TestWrapper):
                 debug.trace(4, f"FYI: Ignoring module {module!r}: {reason}")
         debug.trace_expr(5, ok_python_modules)
         return ok_python_modules
-    
-    def transform_for_validation(self, file_path):
-        """Creates a temporary copy of the script for validation of argument calls (using pydantic)"""
-        debug.trace(6, f"transform_for_validation({file_path})")
+
+    def transform_for_validation(self, file_path, to_dir):
+        """Creates a temporary copy of the script at FILE_PATH in TO_DIR for validation of argument calls (using pydantic).
+        Returns the path for the new file.
+        """
+        debug.trace(6, f"transform_for_validation({file_path}, {to_dir})")
         content = system.read_file(file_path)
 
         # Protect functions marked via SKIP_VALIDATE_CALL_MARKER from getting
@@ -173,7 +175,8 @@ class TestMisc(TestWrapper):
         ## OLD:
         ## ## TODO2: use self.get_temp_file(): Lorenzo added new functionality
         ## output_path = OUTPUT_PATH_PYDANTIC + gh.basename(file_path)
-        output_path = gh.form_path(self.get_temp_dir(), gh.basename(file_path))
+        ## OLD: output_path = gh.form_path(self.get_temp_dir(), gh.basename(file_path))
+        output_path = gh.form_path(to_dir, gh.basename(file_path))
         system.write_file(filename=output_path, text=content)
         return output_path
 
@@ -183,10 +186,12 @@ class TestMisc(TestWrapper):
                     prefix="in save_transformed_for_validation: ")
         original_path = gh.form_path(from_dir, script_name)
         ## OLD: new_code = self.transform_for_validation(original_path)
-        new_code_path = self.transform_for_validation(original_path)
-        new_code = system.read_file(new_code_path)
-        destination_path = gh.form_path(to_dir, script_name)
-        system.write_file(destination_path, new_code)
+        new_code_path = self.transform_for_validation(original_path, to_dir)
+        debug.assertion("validate_call" in system.read_file(new_code_path))
+        ## OLD:
+        ## new_code = system.read_file(new_code_path)
+        ## destination_path = gh.form_path(to_dir, script_name)
+        ## system.write_file(destination_path, new_code)
     
     def run_test(self, label, temp_dir, test_name):
         """Run a test script in a temporary directory.
@@ -231,6 +236,23 @@ class TestMisc(TestWrapper):
     def count_failures(self, results):
         """Count the number of failures in the test results"""
         return sum(map(system.to_int, gh.extract_matches_from_text(r"(\d+) x?failed", results)))
+
+    def extract_test_failures(self, results):
+        """Extract pytest FAILED/XFAIL tests from RESULTS for verbose diagnostics."""
+        # Include both per-test -vv test label and short-summary lines.
+        # ex: test_copy_file for "mezcla/tests/test_glue_helpers.py::TestGlueHelpers::test_copy_file FAILED"
+        failed_lines = gh.extract_matches_from_text(
+            ## OLD: r"^(\S+::\S+.*\s(?:FAILED|XFAIL)\b.*)$",
+            r"^\S+::([^:]+)\s(?:FAILED|XFAIL)\b.*$",
+            results
+        )
+        # ex: test_count_it for "FAILED tests/test_glue_helpers.py::TestGlueHelpers::test_count_it"
+        failed_summary = gh.extract_matches_from_text(
+            ## OLD: r"^((?:FAILED|XFAIL)\s+.+)$",
+            r"^(?:FAILED|XFAIL).*::([^:]+)\s*$",
+            results
+        )
+        return system.unique_items(failed_lines + failed_summary)
     
     def extract_test_summary(self, results):
         """Returns the pytest summary. For example,
@@ -351,7 +373,8 @@ class TestMisc(TestWrapper):
         ]
         orig_mezcla_dir = MEZCLA_DIR
         ## OLD: temp_mezcla_dir = self.temp_file + "-mezcla"
-        temp_mezcla_dir = gh.form_path(self.get_temp_dir(), "mezcla")
+        ## OLD: temp_mezcla_dir = gh.form_path(self.get_temp_dir(), "mezcla")
+        temp_mezcla_dir = gh.form_path(self.get_temp_dir(static=True), "validate", "mezcla")
 
         # Create copy of mezcla scripts (n.b., expedient to allow simple PYTHONPATH change)
         temp_mezcla_test_dir = gh.form_path(temp_mezcla_dir, "tests")
@@ -379,6 +402,8 @@ class TestMisc(TestWrapper):
 
             # Optionally, restore (n.b., avoids propagating type-hint problems to client scripts)
             if not RETAIN_VALIDATION:
+                valid_path = gh.form_path(temp_mezcla_dir, script)
+                gh.rename_file(valid_path, valid_path + ".validate")
                 gh.copy_file(gh.form_path(orig_mezcla_dir, script), temp_mezcla_dir)
             
             # Check for errors
@@ -400,6 +425,16 @@ class TestMisc(TestWrapper):
                 num_bad += 1
             temp_summary = self.extract_test_summary(temp_results)
             orig_summary = self.extract_test_summary(orig_results)
+
+            # Show trace with detailed summary to help diagnose issues (via Codex 5.3)
+            if debug.verbose_debugging():
+                temp_failures = self.extract_test_failures(temp_results)
+                orig_failures = self.extract_test_failures(orig_results)
+                # Show exactly which FAILED/XFAIL entries changed in the transformed run.
+                added_failures = [f for f in temp_failures if f not in orig_failures]
+                removed_failures = [f for f in orig_failures if f not in temp_failures]
+                debug.trace_expr(6, temp_failures, orig_failures, sep="\n")
+                debug.trace_expr(5, added_failures, removed_failures, sep="\n")
             debug.trace_expr(4, num_temp_serious, num_orig_serious, num_temp_failed, num_orig_failed,
                              temp_summary, orig_summary, bad_results, script)
 
