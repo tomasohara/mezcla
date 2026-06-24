@@ -141,7 +141,7 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(6, f"TestIt.setUp(); self={self}")
         # note: must do parent processing first (e.g., for temp file support)
         super().setUp()
-        self.monkeypatch.setattr(THE_MODULE, THE_MODULE.DOWNLOAD_DIR, self.get_temp_dir())
+        self.monkeypatch.setattr(THE_MODULE, "DOWNLOAD_DIR", self.get_temp_dir())
         return
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)

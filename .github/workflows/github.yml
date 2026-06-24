@@ -92,7 +92,19 @@ jobs:
           ## TODO3: put post-install support in mezcla to minimize redundancy
           python3 -m nltk.downloader -d "$HOME/nltk_data" punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng stopwords
 
+      - name: Setup Firefox
+        uses: browser-actions/setup-firefox@v1
+        with:
+          firefox-version: 'latest'
+
+      - name: Setup Geckodriver
+        uses: browser-actions/setup-geckodriver@v1
+        with:
+          geckodriver-version: 'latest'
+
       - name: Run Python Tests under Runner
+        env:
+          TEST_SELENIUM: 1
         run: |
           PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash --all
           
