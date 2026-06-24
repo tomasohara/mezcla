@@ -61,24 +61,33 @@ except:
     debug.trace_exception(3, "llm_desktop_search import")
 
 # Environment Variables for newer tests
-LLM_PATH = system.getenv_text(
-    "LLM_PATH", THE_MODULE.QA_LLM_MODEL if THE_MODULE else "mistral-7b-instruct-v0.3-q4_k_m.gguf",
-    description="Path for LLM model"
-)
+## OLD:
+## LLM_PATH = system.getenv_text(
+##     "LLM_PATH", THE_MODULE.QA_LLM_MODEL if THE_MODULE else "mistral-7b-instruct-v0.3-q4_k_m.gguf",
+##     description="Path for LLM model"
+## )
+LLM_PATH = (THE_MODULE.QA_LLM_MODEL if THE_MODULE else "unknown-model.gguf")
 
 # Constants
+
+## UPDATE: 06/23/2026: Consolidated index creation
 LLM_PATH_MISSING = not system.file_exists(LLM_PATH)
-LLM_PATH_REASON = "LLM_PATH does not exist"
+LLM_PATH_REASON = f"LLM_PATH does not exist: {LLM_PATH}"
+DOCUMENTS = "documents"
+INDEX = "index"
     
 #------------------------------------------------------------------------
 
 @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
-class TestIt(TestWrapper):
-    """Class for command-line based testcase definition"""
+## OLD: class TestIt(TestWrapper):
+class TestLLMDesktopSearchMain(TestWrapper):
+    """Class for main testcase definitions"""
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    ## TODO?: script_file = TestWrapper.get_module_file_path(__file__)
     ## TODO2: simplify logic (e.g. lstrip) and reduce redundancy
-    INDEX_STORE_DIR = (THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator())
-                       if THE_MODULE else None)
+    ## OLD:
+    ## INDEX_STORE_DIR = (THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator())
+    ##                    if THE_MODULE else None)
     use_temp_base_dir = True            # needed for self.temp_base to be a dir    
     # set a temp dir to test index indexingL setUpClass
     # Note: index_temp_dir needs to be unique
@@ -93,7 +102,8 @@ class TestIt(TestWrapper):
         # note: should do parent processing first
         super().setUpClass(filename, module)
         cls.index_parent = cls.temp_base
-        cls.index_temp_dir = gh.form_path(cls.index_parent, cls.INDEX_STORE_DIR)
+        ## OLD: cls.index_temp_dir = gh.form_path(cls.index_parent, cls.INDEX_STORE_DIR)
+        cls.index_temp_dir = gh.form_path(cls.index_parent, INDEX)
         if not system.is_directory(cls.index_temp_dir):
             gh.full_mkdir(cls.index_temp_dir)
         if THE_MODULE.INDEX_ONLY_RECENT:
@@ -115,6 +125,20 @@ class TestIt(TestWrapper):
         desktop.index_dir(repo_base_dir)
         debug.assertion(system.file_exists(index_file))
 
+    def get_documents_dir(self):
+        """Return test-specific documents dir"""
+        result = gh.form_path(self.get_temp_dir(), DOCUMENTS)
+        gh.full_mkdir(result)
+        debug.trace(5, f"get_documents_dir() => {result!r}")
+        return result
+
+    def get_index_dir(self):
+        """Return test-specific index dir"""
+        result = gh.form_path(self.get_temp_dir(), "index")
+        gh.full_mkdir(result)
+        debug.trace(5, f"get_index_dir() => {result!r}")
+        return result
+
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_00_load_llm(self):
         """Verify that LLM can be loaded OK"""
@@ -132,9 +156,10 @@ class TestIt(TestWrapper):
         debug.trace(4, f"TestIt.test_01_index_dir(); self={self}")
         if not KEEP_TEMP_FILES:
             atexit.register(gh.delete_directory, self.index_temp_dir)
-            
+
+        debug.assertion(system.is_directory(self.index_parent))
         if not system.is_directory(self.index_parent):
-            debug.assertion(False)
+            ## OLD: debug.assertion(False)
             gh.full_mkdir(self.index_parent)
         
         # test if indexing works with with no existing db
@@ -222,7 +247,7 @@ class TestIt(TestWrapper):
         
         # Index the files
         # note: index is specific to this test case
-        temp_index_dir = gh.form_path(self.temp_base, "index")
+        temp_index_dir = self.get_index_dir()
         test_dir = gh.dirname(__file__)
         doc_dir = gh.resolve_path("resources", base_dir=test_dir)
         ds = THE_MODULE.DesktopSearch(index_store_dir=temp_index_dir)
@@ -461,8 +486,8 @@ def desktop_search_env_fixture(tmp_path, monkeypatch):
     """Prepare a deterministic DesktopSearch environment with fake FAISS persistence"""
     if not THE_MODULE:
         pytest.skip("Unable to load llm_desktop_search module")
-    doc_dir = tmp_path / "docs"
-    index_dir = tmp_path / "index"
+    doc_dir = tmp_path / DOCUMENTS
+    index_dir = tmp_path / INDEX
     doc_dir.mkdir()
     (doc_dir / "z-license.txt").write_text(
         "GNU Lesser General Public License\n",
@@ -555,18 +580,23 @@ def test_import_disables_tensorflow_backend_by_default():
 #
 
 @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
-class TestLLMDesktopSearch(TestWrapper):
-    """Class for command-line based testcase definition"""
-    script_module = TestWrapper.get_testing_module_name(__file__)
-    script_file = TestWrapper.get_module_file_path(__file__)
-    INDEX_STORE_DIR = (THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator()) if THE_MODULE else None)
-    use_temp_base_dir = True
+## OLD: class TestLLMDesktopSearch(TestWrapper):
+class TestLLMDesktopSearchCLI(TestLLMDesktopSearchMain):
+    """Class for command-line based testcase definitions"""
+    ## OLD: script_module = TestWrapper.get_testing_module_name(__file__)
+    ## OLD: script_file = TestWrapper.get_module_file_path(__file__)
+    ## OLD:
+    ## INDEX_STORE_DIR = (THE_MODULE.INDEX_STORE_DIR.lstrip().lstrip(system.path_separator()) if THE_MODULE else None)
+    ## use_temp_base_dir = True
     mezcla_base = gh.form_path(gh.dirname(__file__), "..", "..")   
-    e2e_index_store = gh.get_temp_dir()
+    ## OLD: e2e_index_store = gh.get_temp_dir()
     ## TODO: Use (new) script_output method if possible instead of gh.run()
 
-    def helper_run_script(self, allow_unsafe_models=True, qa_llm_model=LLM_PATH, index_store_dir=e2e_index_store, options="-h", env_variables=""):
+    ## OLD: def helper_run_script(self, allow_unsafe_models=True, qa_llm_model=LLM_PATH, index_store_dir=e2e_index_store, options="-h", env_variables=""):
+    def helper_run_script(self, allow_unsafe_models=True, qa_llm_model=LLM_PATH, index_store_dir=None, options="-h", env_variables=""):
         """Helper script for self.run_script()"""
+        if index_store_dir is None:
+            index_store_dir = self.get_index_dir()
         ## NOTE: In case of stderr, the function doesn't return anything. Use gh.run in such cases
         env_options= f"ALLOW_UNSAFE_MODELS={allow_unsafe_models} QA_LLM_MODEL={qa_llm_model} INDEX_STORE_DIR={index_store_dir} " + env_variables
         cmd_options = f'{options}'
@@ -574,7 +604,8 @@ class TestLLMDesktopSearch(TestWrapper):
 
     def helper_create_sample_files(self):
         """Create a temporary directory consisting of document type files"""
-        temp_dir = gh.get_temp_dir()
+        ## OLD: temp_dir = gh.get_temp_dir()
+        temp_dir = gh.form_path(self.get_temp_dir(), DOCUMENTS)
         doc_content = "You can generate random words or sentences in Python without using any external libraries (like nltk or faker) by using built-in modules like random and defining your own word lists."
         file_extensions = ["txt", "doc", "pdf", "html"]
         for ext in file_extensions[0]:
@@ -607,7 +638,8 @@ class TestLLMDesktopSearch(TestWrapper):
 
     def test_func_get_last_modified_date(self):
         """Ensures get_last_modified_date works as expected"""
-        temp_dir = gh.get_temp_dir()
+        ## OLD: temp_dir = gh.get_temp_dir()
+        temp_dir = self.get_temp_dir()
         last_modified_date = THE_MODULE.get_last_modified_date(temp_dir)
         self.assertIsInstance(last_modified_date, float)
     
@@ -620,20 +652,23 @@ class TestLLMDesktopSearch(TestWrapper):
         # note: uses temp index and doc dirs (TODO2: put in setupClass)
         #
         # Use an empty directory to ensure no documents are found
-        no_docs_path = gh.get_temp_dir()
+        ## OLD: no_docs_path = gh.get_temp_dir()
+        no_docs_path = self.get_documents_dir() + "-missing"
         #
         # If the documents are not accepted by script, no index is created
-        temp_index_store_dir = gh.get_temp_dir()
+        ## OLD: temp_index_store_dir = gh.get_temp_dir()
+        temp_index_store_dir = self.get_index_dir()
 
         # Check if QA_LLM_MODEL uses mistral by default
         self.assertIn("mistral-7b-instruct", THE_MODULE.QA_LLM_MODEL)
         string_allow_unsafe_models = "ALLOW_UNSAFE_MODELS=True"
-        string_qa_llm_model = f"QA_LLM_MODEL={LLM_PATH}" 
+        string_qa_llm_model = f"QA_LLM_MODEL={LLM_PATH}"
+        ## TODO2: rework via run_script
         command_base = f"INDEX_STORE_DIR={temp_index_store_dir} python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {self.mezcla_base}"
-        _llm_command_result = gh.run(
+        llm_command_result = gh.run(
             f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={temp_index_store_dir} python3 {self.mezcla_base}/mezcla/llm_desktop_search.py --index {no_docs_path}"
         )
-        ## TODO3: assert("TODO:xyz" in _llm_command_result)
+        assert("0 chunks indexed" in llm_command_result)
         
         ## TODO:
         ## # Run with user site packages ignored. via python man page:
@@ -668,7 +703,8 @@ class TestLLMDesktopSearch(TestWrapper):
     @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_generate_index_store(self):
         """Test to ensure index files (faiss, pkl) are generated"""
-        index_store_temp = gh.get_temp_dir()
+        ## OLD: index_store_temp = gh.get_temp_dir()
+        index_store_temp =         gh.form_path(self.get_temp_dir(), "index")
         self.run_script(options=f"--index {self.mezcla_base}",
                         env_options=f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={index_store_temp}")
         index_store_content = gh.run(f"ls {index_store_temp}")
@@ -683,9 +719,10 @@ class TestLLMDesktopSearch(TestWrapper):
         valid_extensions = "pdf|docx|html|txt"
         doc_files_path = self.mezcla_base
         doc_files_count = gh.run(f"ls {doc_files_path} | grep -E '{valid_extensions}' | wc -l")
-        
+
         # If the documents are accepted by script, index is created
-        temp_index_store_dir = gh.get_temp_dir()
+        ## OLD: temp_index_store_dir = gh.get_temp_dir()
+        temp_index_store_dir = self.get_index_dir()
         llm_command_result = self.helper_run_script(index_store_dir=temp_index_store_dir, options=f'--index {doc_files_path}')
         self.assertGreaterEqual(int(doc_files_count), 0)
         self.assertIn("chunks indexed", llm_command_result)
@@ -701,12 +738,15 @@ class TestLLMDesktopSearch(TestWrapper):
         # note: uses temp index and doc dirs (TODO2: put in setupClass)
         #
         # Use an empty directory to ensure no documents are found
-        no_docs_path = gh.get_temp_dir()
+        ## OLD: no_docs_path = gh.get_temp_dir()
+        no_docs_path = self.get_documents_dir()
         #
         # If the documents are not accepted by script, no index is created
-        temp_index_store_dir = gh.get_temp_dir()
+        ## OLD: temp_index_store_dir = gh.get_temp_dir()
+        temp_index_store_dir = self.get_index_dir()
 
         # Change facilitated by Antigravity AI Assistant using Gemini 3.5.
+        ## TODO2: rework via run_script
         llm_command_result = gh.run(
             f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} "
             f"INDEX_STORE_DIR={temp_index_store_dir} {sys.executable} -s "
@@ -722,10 +762,11 @@ class TestLLMDesktopSearch(TestWrapper):
     @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_e2e_index_option(self):
         """End-to-end tests to check if --index option work as expected"""
+        temp_index_store_dir = self.get_index_dir()
         command_output = self.run_script(options=f"--index {self.mezcla_base}",
-                        env_options=f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={self.e2e_index_store}")
+                                         env_options=f"ALLOW_UNSAFE_MODELS=1 QA_LLM_MODEL={LLM_PATH} INDEX_STORE_DIR={temp_index_store_dir}")
         self.assertIn("chunks indexed", command_output)
-        index_dir_contents = gh.run(f"ls {self.e2e_index_store}")
+        index_dir_contents = gh.run(f"ls {temp_index_store_dir}")
         self.assertIn("index.faiss", index_dir_contents)
         self.assertIn("index.pkl", index_dir_contents)
     
@@ -734,7 +775,8 @@ class TestLLMDesktopSearch(TestWrapper):
     def test_e2e_search_option(self):
         """End-to-end tests to check if --search option works as expected"""
         ## Create an index at first, and proceed for the search
-        temp_index_store = gh.get_temp_dir()
+        ## OLD: temp_index_store = gh.get_temp_dir()
+        temp_index_store = self.get_index_dir()
         CONTEXT_LENGTH = 1152
         self.helper_run_script(index_store_dir=temp_index_store, options=f"--index {self.mezcla_base}")
         search_term = "Explain me in a sentence about the licenses used in this project"
@@ -757,7 +799,8 @@ class TestLLMDesktopSearch(TestWrapper):
     @pytest.mark.skipif(cm.SKIP_SLOW_TESTS, reason=cm.SKIP_SLOW_REASON)
     def test_e2e_similar_option(self):
         """End-to-end tests to check if --similar option works as expected"""
-        temp_index_store = gh.get_temp_dir()
+        ## OLD: temp_index_store = gh.get_temp_dir()
+        temp_index_store = self.get_index_dir()
         self.helper_run_script(index_store_dir=temp_index_store, options=f"--index {self.mezcla_base}")
         similar_term = "GNU"
         command_output = self.helper_run_script(index_store_dir=temp_index_store, options=f"--similar {similar_term}")
