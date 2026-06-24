@@ -168,20 +168,23 @@ class TestIt(TestWrapper):
 
     @pytest.mark.xfail
     def test_04_get_temp_dir(self):
-        """Tests get_temp_dir"""
+        """Tests get_temp_dir (global)"""
         ## TODO3: Cleanup this test: rework to work around disabled rmtree and atexit calls
         ## NOTE: By default temp files placed under /tmp, which system will delete if needed.
         ## TODO3: skip if not posix
         ##
         debug.trace(4, f"TestIt.test_04_get_temp_dir(); self={self}")
         ## BAD: tmp_dir = system.form_path(system.getenv_text("TMP"), 'test_get_temp_dir')
-        tmp_dir = gh.form_path(gh.get_temp_dir(), 'test_get_temp_dir')
+        ## OLD: tmp_dir = gh.form_path(gh.get_temp_dir(), 'test_get_temp_dir')
+        tmp_dir = gh.form_path(self.get_temp_dir(), 'test_get_temp_dir')
         self.monkeypatch.setattr("mezcla.glue_helpers.TEMP_FILE", tmp_dir)
         #
         if system.is_directory(tmp_dir):
             # Note: Should only occurs when TEMP_FILE or TEMP_BASE overriden (for debugging).
             debug.trace(4, "Warning: Temporary directory unexpectedly exists: {tmp_dir!r}")
             ## BAD: shutil.rmtree(tmp_dir, ignore_errors=True)
+            debug.assertion(gh.TEMP_BASE)
+            gh.rename_file(tmp_dir, tmp_dir + ".old")
         assert not system.is_directory(tmp_dir)
         unittest_temp_dir = THE_MODULE.get_temp_dir(keep=False)
         ## OLD: atexit.register(gh.delete_directory, unittest_temp_dir)
@@ -192,7 +195,8 @@ class TestIt(TestWrapper):
         
         # Test argument unique=True
         ## BAD: tmp_dir_2 = system.form_path(system.getenv_text("TMP"), 'test_get_temp_dir_2')
-        tmp_dir_2 = gh.form_path(gh.get_temp_dir(), 'test_get_temp_dir_2')
+        ## OLD: tmp_dir_2 = gh.form_path(gh.get_temp_dir(), 'test_get_temp_dir_2')
+        tmp_dir_2 = gh.form_path(self.get_temp_dir(), 'test_get_temp_dir_2')
         self.monkeypatch.setattr("mezcla.glue_helpers.TEMP_FILE", tmp_dir_2)
         if system.is_directory(tmp_dir_2):
             ## Note: Should only occurs when TEMP_FILE or TEMP_BASE overriden (for debugging).
@@ -205,6 +209,12 @@ class TestIt(TestWrapper):
         #
         assert (tmp_dir_2 + '_temp_dir_') in unittest_temp_dir_2
         assert system.is_directory(unittest_temp_dir_2)
+
+    @pytest.mark.xfail
+    def test_04_get_temp_dir_self(self):
+        """Tests self.get_temp_dir"""
+        debug.trace(4, f"TestIt.test_04_get_temp_dir_self(); self={self}")
+        assert self.get_temp_dir() != THE_MODULE.get_temp_dir()
 
     @pytest.mark.xfail
     def test_05_check_temp_part1(self):
