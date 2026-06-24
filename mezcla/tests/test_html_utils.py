@@ -88,12 +88,13 @@ DIMENSIONS_EXPECTED_TEXT = """
 # NOTE: Whitespace and punctuation gets normalized
 # TODO: restore bullet points (e.g., "* Screen dimensions")
 
-# Global initialization
-## TODO3: Do via class setup method(s), monkey patching, and/or download-dir arg
-## (e.g., download_dir for download_web_document).
-## TODO4: Also, extend get_temp_dir to use TEMP_BASE automatically.
-THE_MODULE.DOWNLOAD_DIR = gh.form_path(gh.get_temp_dir(use_temp_base=True),
-                                       "downloads", create=True)
+## OLD:
+## # Global initialization
+## ## TODO3: Do via class setup method(s), monkey patching, and/or download-dir arg
+## ## (e.g., download_dir for download_web_document).
+## ## TODO4: Also, extend get_temp_dir to use TEMP_BASE automatically.
+## THE_MODULE.DOWNLOAD_DIR = gh.form_path(gh.get_temp_dir(use_temp_base=True),
+##                                        "downloads", create=True)
 
 # Sanity checks (e.g., selenium installed and imported OK)
 debug.assertion(SKIP_SELENIUM or getattr(THE_MODULE, "webdriver"))
@@ -134,6 +135,14 @@ class TestHtmlUtils(TestWrapper):
     dimensions_url = "file://" + resolve_mezcla_path(DIMENSIONS_HTML_FILENAME)
     pacman_path = resolve_mezcla_path(PACMAN_FILENAME)
     pacman_url = resolve_mezcla_url(PACMAN_FILENAME)
+
+    def setUp(self):
+        """Per-test setup: ensure download dir test specific"""
+        debug.trace(6, f"TestIt.setUp(); self={self}")
+        # note: must do parent processing first (e.g., for temp file support)
+        super().setUp()
+        self.monkeypatch.setattr(THE_MODULE, THE_MODULE.DOWNLOAD_DIR, self.get_temp_dir())
+        return
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
