@@ -20,6 +20,7 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
