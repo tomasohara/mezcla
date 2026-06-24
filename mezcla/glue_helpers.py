@@ -143,6 +143,29 @@ initialized = False
 
 #------------------------------------------------------------------------
 
+def in_test_context() -> bool:
+    """Returns True if the current execution is within a unit test context.
+    Note: Facilitated by Gemini 3.5 Flash (Medium).
+    """
+    in_test = False
+    if system.getenv_bool("PRESERVE_TEMP_FILE", False):
+        in_test = True
+    elif 'pytest' in sys.modules:
+        in_test = True
+    else:
+        try:
+            # Check call stack for any file in tests/ or starting with test_
+            for frame in inspect.stack():
+                filename = frame.filename
+                if "tests/" in filename or os.path.basename(filename).startswith("test_"):
+                    in_test = True
+                    break
+        except:
+            pass
+    debug.trace(5, f"gh.in_test_context() => {in_test}")
+    return in_test
+
+
 def get_temp_file(delete: Optional[bool] = None) -> str:
     """Return name of unique temporary file, optionally with DELETE.
     Note: when debugging this might be based on TEMP_BASE (see init).
@@ -154,6 +177,15 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
     NTF_ARGS = {'prefix': TEMP_PREFIX,
                 'delete': delete,
                 'suffix': TEMP_SUFFIX}
+    if TEMP_BASE and in_test_context():
+        is_dir = USE_TEMP_BASE_DIR or system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")
+        if is_dir:
+            if not system.file_exists(TEMP_BASE):
+                full_mkdir(TEMP_BASE, force=True)
+            NTF_ARGS['dir'] = TEMP_BASE
+        else:
+            NTF_ARGS['prefix'] = f"{TEMP_BASE}-"
+
     temp_file_name = TEMP_FILE
     if not temp_file_name:
         # note: uses context so not deleted right away if delete=True
