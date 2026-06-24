@@ -760,7 +760,7 @@ class TestWrapper(unittest.TestCase):
         """Return name of temporary dir based on self.temp_file, optionally with DELETE.
         Also, the directory will be created unless SKIP_CREATE;
         this possibly overwrites existing file with same name.
-        In addition, the directory will be unique unless STATIC specified.
+        Warning: the directory will be unique unless STATIC specified.
         Note: delete option not yet functional
         """
         temp_dir = self.get_temp_file(delete=delete, static=static, as_dir=True)
