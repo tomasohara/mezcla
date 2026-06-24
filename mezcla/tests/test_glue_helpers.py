@@ -130,7 +130,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         ## OLD: test_dir = THE_MODULE.dir_path(__file__)
         # Note: Use of temp files in repo tree should be avoided.
         ## BAD: res_2_dir = THE_MODULE.form_path(test_dir, "resources_2")
-        res_2_dir = gh.form_path(gh.get_temp_dir(), "resources_2")
+        ## OLD: res_2_dir = gh.form_path(gh.get_temp_dir(), "resources_2")
+        res_2_dir = gh.form_path(self.get_temp_dir(), "resources_2")
         ## OLD: _ = THE_MODULE.form_path(test_dir, "resources")
         THE_MODULE.create_directory(res_2_dir)
         ## OLD:
@@ -168,6 +169,39 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         temp_dir4 = THE_MODULE.get_temp_dir()
         assert temp_dir3 == temp_dir4 == static_temp_dir
         assert system.is_directory(temp_dir3)
+
+    def test_get_temp_file_with_temp_base(self):
+        """Ensure get_temp_file uses TEMP_BASE if set in test context"""
+        debug.trace(4, "test_get_temp_file_with_temp_base()")
+        # Test when TEMP_BASE is a directory prefix
+        test_temp_base_prefix = gh.form_path(self.get_temp_dir(), "temp-prefix")
+        self.monkeypatch.setattr(gh, "TEMP_BASE", test_temp_base_prefix)
+        self.monkeypatch.setattr(gh, "USE_TEMP_BASE_DIR", False)
+        
+        temp_file = THE_MODULE.get_temp_file()
+        assert temp_file.startswith(f"{test_temp_base_prefix}-")
+        
+        # Test when TEMP_BASE is a directory
+        test_temp_base_dir = gh.form_path(self.get_temp_dir(), "temp-dir")
+        self.monkeypatch.setattr(gh, "TEMP_BASE", test_temp_base_dir)
+        self.monkeypatch.setattr(gh, "USE_TEMP_BASE_DIR", True)
+        
+        temp_file2 = THE_MODULE.get_temp_file()
+        assert temp_file2.startswith(test_temp_base_dir)
+        assert system.file_exists(test_temp_base_dir)
+
+    def test_get_temp_dir_with_temp_base(self):
+        """Ensure get_temp_dir uses TEMP_BASE if set in test context"""
+        debug.trace(4, "test_get_temp_dir_with_temp_base()")
+        test_temp_base_dir = gh.form_path(self.get_temp_dir(), "temp-dir-get")
+        self.monkeypatch.setattr(gh, "TEMP_BASE", test_temp_base_dir)
+        self.monkeypatch.setattr(gh, "USE_TEMP_BASE_DIR", True)
+        
+        temp_dir = THE_MODULE.get_temp_dir()
+        # Since we are in test context, it should return test_temp_base_dir directly
+        assert temp_dir == test_temp_base_dir
+        assert temp_dir.startswith(test_temp_base_dir)
+        assert system.is_directory(temp_dir)
 
     @pytest.mark.xfail
     def test_create_temp_file(self):
@@ -463,6 +497,10 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         system.write_file(test_filename, 'some content')
 
         # Check existense of files before rename
+        if gh.file_exists(new_test_filename):
+            # note: handles special case of reinvocation with same TEMP_BASE
+            debug.assertion(THE_MODULE.TEMP_BASE)
+            THE_MODULE.rename_file(new_test_filename, new_test_filename + ".old")
         assert gh.file_exists(test_filename)
         assert not gh.file_exists(new_test_filename)
 
