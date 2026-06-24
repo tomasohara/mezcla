@@ -1,4 +1,4 @@
-#! /usr/bin/env/bash
+#! /usr/bin/env bash
 
 # This script uses GitHub local actions via act:
 #   https://github.com/nektos/act
@@ -78,6 +78,12 @@ if [[ "$RUN_WORKFLOW" == "1" ]]; then
     # invocation. A workaround is to modify the 'Run tests' steps in the
     # workflow configuration file (e.g., .github/workflows/debug.yml).
     act="${ACT_PROGRAM:-act}"
+    ## BAD:
+    ## if ! command -v "$act" &> /dev/null; then
+    ##     if [ -x "/usr/local/misc/programs/go/act/dist/local/act" ]; then
+    ##         act="/usr/local/misc/programs/go/act/dist/local/act"
+    ##     fi
+    ## fi
     misc_args=()
     # note: ACT_JSON can be used to disable act-specific flags (e.g., to enable runner matrix)
     json="${ACT_JSON:-""}"
