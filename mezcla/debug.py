@@ -436,14 +436,17 @@ if __debug__:
                         out_text += self.do_print("[Warning: converted non-text to str] ", end="", max_len=max_len)
                         max_len -= len(out_text)
                     text = str(text)
+                # Check for braced variable-like reference (e.g., "123 {abc} 456") in text,
+                # such as if caller forgot to use f-string.
                 if ((not skip_sanity_checks)
                     and (match := re.search(r"{[^0-9]\S+}", text))
                     and not re.search(r"{{[^0-9]\S+}}", text)):
                     # TODO3: show caller info; also rework indent (pep8 quirk)
                     if include_trace_diagnostics:
                         out_text += self.do_print(f"[FYI: potential f-string issue in trace: unresolved {match.group()}] ",
-                                             end="", max_len=max_len)
+                                                  end="", max_len=max_len)
                         max_len -= len(out_text)
+                # Output the text with optional logging
                 end = "\n" if (not no_eol) else ""
                 out_text += self.do_print(_to_utf8(text), end=end, max_len=max_len)
                 max_len -= len(out_text)
@@ -495,10 +498,13 @@ if __debug__:
                 skip_sanity_checks = kwargs.get('_skip_sanity_checks') or kwargs.get('skip_sanity_checks')
                 try:
                     try:
+                        # Check for missing braced variable-like references in text (e.g., "123 {abc] 356"),
+                        # such as if trace_fmt called with expanded f-string.
                         # TODO: add version of assertion that doesn't use trace or trace_fmtd
                         if (not skip_sanity_checks) and not (re.search(r"{\S*}", text)):
                             if include_trace_diagnostics:
                                  self.trace(level, "[FYI: potential extraneous f-string issue in  in trace_fmt: missing {}'s?] ", no_eol=True)
+                        # Format the text
                         kwargs_unicode = {k: format_value(_to_unicode(_to_string(v)), max_len=max_len)
                                           for (k, v) in list(kwargs.items())}
                         result = self.trace(level, _to_unicode(text).format(**kwargs_unicode), max_len=max_len)
