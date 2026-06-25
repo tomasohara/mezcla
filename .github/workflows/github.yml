@@ -98,7 +98,8 @@ jobs:
           firefox-version: 'latest'
 
       - name: Setup Geckodriver
-        uses: browser-actions/setup-geckodriver@v1
+        ## BAD: uses: browser-actions/setup-geckodriver@v1
+        uses: browser-actions/setup-geckodriver@latest
         with:
           geckodriver-version: 'latest'
 
