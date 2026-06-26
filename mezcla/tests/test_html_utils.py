@@ -17,6 +17,8 @@
 #      www.tomasohara.trade => new www.scrappycito.trade
 #   
 
+# Change facilitated by Antigravity (AI coding assistant designed by Google DeepMind).
+
 """Tests for html_utils module"""
 
 # Standard packages
@@ -208,7 +210,7 @@ class TestHtmlUtils(TestWrapper):
             rendered_html,
             )
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_scrappycito_urls(self):
         """Some sanity checks on URLs for ScrappyCito, LLC and Tom O'Hara's consulting.
         Note: www.scrappycito.com should be avoided and www.tomasohara.trade used instead.
@@ -220,7 +222,7 @@ class TestHtmlUtils(TestWrapper):
         self.do_assert("tomasohara" in self.scrappycito_like_url)
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_main_url_content(self):
         """Make sure expected web content at scrappycito-like and tomasohara.trade[-like] URLs"""
         debug.trace(4, f"TestIt.test_main_url_content(); self={self}")
@@ -344,7 +346,7 @@ class TestHtmlUtils(TestWrapper):
         assert THE_MODULE.get_url_param('bad-request-status', default_value='400') == '400'
         assert THE_MODULE.get_url_param('default-body', escaped=True) == 'Joe&#x27;s hat'
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_url_param_checkbox_spec(self):
         """Ensure get_url_param_checkbox_spec() works as expected"""
         debug.trace(4, "test_get_url_param_checkbox_spec()")
@@ -368,7 +370,7 @@ class TestHtmlUtils(TestWrapper):
         assert THE_MODULE.get_url_parameter_bool("abc", False, { "abc": "on" })
         assert THE_MODULE.get_url_param_bool("abc", False, { "abc": "True" })
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_url_parameter_int(self):
         """Ensure get_url_parameter_int() works as expected"""
         debug.trace(4, "test_get_url_parameter_int()")
@@ -398,7 +400,7 @@ class TestHtmlUtils(TestWrapper):
         }
         assert THE_MODULE.expand_misc_param(misc_dict, 'z') == expected
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test__read_file(self):
         """Ensure _read_file() works as expected"""
         debug.trace(4, "test__read_file()")
@@ -422,7 +424,7 @@ class TestHtmlUtils(TestWrapper):
             THE_MODULE._read_file(filename=test_filename, as_binary=True) ==
             bytes("open binary"+ os.linesep , "UTF-8"))
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test__write_file(self):
         """Ensure _write_file() works as expected"""
         debug.trace(4, "test__write_file()")
@@ -453,18 +455,18 @@ class TestHtmlUtils(TestWrapper):
         """Check web downloads via DOWNLOAD_FUNC"""
         assert download_func("www. bogus. url.html") is None
         
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_old_download_web_document(self):
         """Test old_download_web_document() over good downloads"""
         self.check_download_web_document(download_func=THE_MODULE.old_download_web_document)
 
     @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_bad_old_download_web_document(self):
         """Test old_download_web_document() over bad downloads"""
         self.check_bad_download_web_document(download_func=THE_MODULE.old_download_web_document)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_web_document(self):
         """Test download_web_document() over good downloads"""
         debug.trace(4, "test_download_web_document()")
@@ -474,13 +476,13 @@ class TestHtmlUtils(TestWrapper):
         self.check_download_web_document(download_func=THE_MODULE.download_web_document)
 
     @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_bad_download_web_document(self):
         """Test download_web_document() over bad downloads"""
         debug.trace(4, "test_download_web_document()")
         self.check_bad_download_web_document(download_func=THE_MODULE.download_web_document)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_test_download_html_document(self):
         """Ensure test_download_html_document() works as expected"""
         debug.trace(4, "test_test_download_html_document()")
@@ -488,13 +490,13 @@ class TestHtmlUtils(TestWrapper):
         ## TODO2: use website accessible to all team members
         assert "Tomás" not in THE_MODULE.test_download_html_document(f"{self.tomasohara_trade_like_url}", encoding="big5")
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_html_document(self):
         """Ensure download_html_document() works as expected"""
         debug.trace(4, "test_download_html_document()")
 
         # Set tmp_dir and filename for testing
-        tmp_dir = system.getenv("TMP")
+        tmp_dir = self.get_temp_dir()
         filename = "test_download_file"
 
         # Assert file is downloaded and created in tmp_dir
@@ -518,7 +520,7 @@ class TestHtmlUtils(TestWrapper):
         err = self.get_stderr()
         assert "Error during retrieve_web_document" not in err
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_binary_file(self):
         """Ensure download_binary_file() works as expected"""
         debug.trace(4, "test_download_binary_file()")
@@ -540,7 +542,7 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE.init_BeautifulSoup()
         assert THE_MODULE.BeautifulSoup
     
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_extract_html_link(self):
         """Ensure extract_html_link() works as expected"""
         debug.trace(4, "test_extract_html_link()")
@@ -690,7 +692,7 @@ class TestHtmlUtils(TestWrapper):
         assert my_re.search(r"'width': \d+", str(result))
         assert my_re.search(r"'height': \d+", str(result))
 
-    @pytest.mark.xfail
+    ## OLD: @pytest.mark.xfail
     def test_set_param_dict_alt(self):
         param_dict = {
             1: "a+b+c",
@@ -911,7 +913,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(as_binary, bool)
         assert result is None  
 
-    @pytest.mark.xfail
+    ## OLD: @pytest.mark.xfail
     def test_format_checkbox(self):
         """Verify simple format_checkbox usage"""
         # ex: <input type='hidden' name='fubar' value='off'><label id='fubar-label-id' >Fubar?<input type='checkbox' id='fubar-id' name='fubar'   ></label>"
@@ -922,7 +924,7 @@ class TestHtmlUtils(TestWrapper):
         assert my_re.search(r"<label\s*id='fubar-label-id'\s*>Fubar\?<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*disabled\s*></label>",
                             field_spec)
 
-    @pytest.mark.xfail
+    ## OLD: @pytest.mark.xfail
     def test_format_input_field(self):
         """Verify simple format_input_field usage"""
         ## HACK: ensures that single quotes used in tested result
@@ -939,7 +941,7 @@ class TestHtmlUtils(TestWrapper):
         assert my_re.search(r"<label\s*id='age-label-id'\s*>Age:&nbsp;<input id='age-id'\s*value='19'\s*name='age'\s*type='number'\s*></label>",
                             field_spec)
         
-    @pytest.mark.xfail
+    ## OLD: @pytest.mark.xfail
     def test_format_url_param(self):
         """Verify format_url_param"""
         THE_MODULE.set_param_dict({"f": "'my dog's fleas'"})

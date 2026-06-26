@@ -93,7 +93,9 @@ jobs:
           python3 -m nltk.downloader -d "$HOME/nltk_data" punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng stopwords
 
       - name: Install GTK/X11 for Firefox (local act run only)
-        ## TODO1: clarify why just local act
+        # Note: Official GitHub runner VMs pre-install X11, GTK, ALSA, and other GUI
+        # dependencies required to run headless Firefox. However, minimal local 'act'
+        # containers lack these libraries, causing Firefox startup crashes if not installed.
         if: ${{ env.ACT == 'true' }}
         run: |
           sudo apt-get update
@@ -109,6 +111,10 @@ jobs:
         uses: browser-actions/setup-geckodriver@latest
         with:
           geckodriver-version: 'latest'
+
+      - name: Install Selenium
+        run: |
+          pip install selenium
 
       - name: Run Python Tests under Runner
         env:
