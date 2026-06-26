@@ -116,6 +116,7 @@ def run(command, trace_level=4, subtrace_level=None, **namespace) -> str :
     - If OUTPUT, the result will be printed.
     """
     ## NOTE: streamlined version of gh.run
+    ## TODO3: reconcile both version
     debug.assertion(isinstance(trace_level, int))
     debug.trace(6, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}")
     # Keep track of current debug level setting
