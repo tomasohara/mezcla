@@ -92,8 +92,15 @@ jobs:
           ## TODO3: put post-install support in mezcla to minimize redundancy
           python3 -m nltk.downloader -d "$HOME/nltk_data" punkt punkt_tab averaged_perceptron_tagger averaged_perceptron_tagger_eng stopwords
 
+      - name: Install GTK/X11 for Firefox (local act run only)
+        ## TODO1: clarify why just local act
+        if: ${{ env.ACT == 'true' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-0 libasound2t64 libdbus-glib-1-2 libx11-xcb1 libxt6 || sudo apt-get install -y libgtk-3-0 libasound2 libdbus-glib-1-2 libx11-xcb1 libxt6
+
       - name: Setup Firefox
-        uses: browser-actions/setup-firefox@v1
+        uses: browser-actions/setup-firefox@v1.7.0
         with:
           firefox-version: 'latest'
 
