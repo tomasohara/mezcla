@@ -101,16 +101,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-0 libasound2t64 libdbus-glib-1-2 libx11-xcb1 libxt6 || sudo apt-get install -y libgtk-3-0 libasound2 libdbus-glib-1-2 libx11-xcb1 libxt6
 
+      # Change facilitated by Antigravity AI Assistant using Gemini
       - name: Setup Firefox
         uses: browser-actions/setup-firefox@v1.7.0
         with:
           firefox-version: 'latest'
 
-      - name: Setup Geckodriver
-        ## BAD: uses: browser-actions/setup-geckodriver@v1
-        uses: browser-actions/setup-geckodriver@latest
-        with:
-          geckodriver-version: 'latest'
+      ## NOTE: Gecko installation disabled due to complex dependencies
+      ##
+      ## - name: Setup Geckodriver
+      ##   ## BAD: uses: browser-actions/setup-geckodriver@v1
+      ##   uses: browser-actions/setup-geckodriver@latest
+      ##   with:
+      ##     geckodriver-version: 'latest'
 
       - name: Install Selenium
         run: |
