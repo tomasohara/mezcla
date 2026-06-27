@@ -23,6 +23,7 @@
 
 # Standard packages
 import os
+import urllib.request
 
 # Installed packages
 ## TEMP: Uses dynamic import
@@ -180,12 +181,18 @@ class TestHtmlUtils(TestWrapper):
         html_path = resolve_mezcla_path(html_filename)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
-        unrendered_text = gh.run(f"lynx -dump {url}")
+        # Change facilitated by Antigravity AI Assistant using Gemini
+        ## OLD:
+        ## unrendered_text = gh.run(f"lynx -dump {url}")
+        ## unrendered_text = THE_MODULE.html_to_text(system.read_file(html_path))
+        with urllib.request.urlopen(url) as response:
+            unrendered_html = response.read().decode('utf-8')
+        unrendered_text = THE_MODULE.html_to_text(unrendered_html)
         debug.trace_expr(5, unrendered_text)
-        assert my_re.search(r"Browser dimensions: \?", unrendered_text)
+        assert my_re.search(r"Browser dimensions:\s*\?", unrendered_text)
         rendered_text = THE_MODULE.get_inner_text(url)
         debug.trace_expr(5, rendered_text)
-        assert my_re.search(r"Browser dimensions: \d+x\d+", rendered_text)
+        assert my_re.search(r"Browser dimensions:\s*\d+x\d+", rendered_text)
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -197,7 +204,12 @@ class TestHtmlUtils(TestWrapper):
         html_path = resolve_mezcla_path(html_filename)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
-        unrendered_html = gh.run(f"lynx -source {url}")
+        ## OLD:
+        ## unrendered_html = gh.run(f"lynx -source {url}")
+        ## unrendered_html = system.read_file(html_path)
+        # Change facilitated by Antigravity AI Assistant using Gemini
+        with urllib.request.urlopen(url) as response:
+            unrendered_html = response.read().decode('utf-8')
         debug.trace_expr(5, unrendered_html)
         assert my_re.search(
             r"<li>Browser dimensions:\s*<span.*>\?\?\?</span></li>",
@@ -255,7 +267,9 @@ class TestHtmlUtils(TestWrapper):
         debug.assertion("scrappycito.com" not in self.scrappycito_like_url,
                         f"The production server should not be used in tests: {self.scrappycito_url}")
         ## TODO: regular_output = THE_MODULE.download_web_document(self.scrappycito_like_url)
-        regular_output = gh.run(f"lynx -source {self.scrappycito_like_url}")
+        ## OLD:
+        ## regular_output = gh.run(f"lynx -source {self.scrappycito_like_url}")
+        regular_output = THE_MODULE.download_web_document(self.scrappycito_like_url)
         inner_output = THE_MODULE.get_inner_html(self.scrappycito_like_url + "/?section=tips")
         self.check_inner_html(regular_output, inner_output)
         return
