@@ -94,7 +94,8 @@ def main():
 
     # Apply optional sentence and word tokenization
     if (tokenize):
-        gh.run(f"python -m text_processing  --lowercase --just-tokenize {filename} > {output_basename}.tokenized.txt 2> {output_basename}.tokenized.log")
+        ## BAD: gh.run(f"python -m text_processing  --lowercase --just-tokenize {filename} > {output_basename}.tokenized.txt 2> {output_basename}.tokenized.log")
+        gh.run(f"python -m mezcla.text_processing  --lowercase --just-tokenize {filename} > {output_basename}.tokenized.txt 2> {output_basename}.tokenized.log")
         filename = output_basename + ".tokenized.txt"
 
     # Create the language model using 3-grams by default (via ~/programs/kenlm/bin/lmplz)
