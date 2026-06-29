@@ -98,7 +98,7 @@ def translated_text(model_obj):
 
 def main():
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
     
     # Show simple usage if --help given
     dummy_app = Main(description=__doc__.format(script=gh.basename(__file__)),

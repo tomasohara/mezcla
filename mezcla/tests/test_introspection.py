@@ -17,6 +17,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
@@ -34,7 +35,6 @@ class TestIt(TestWrapper):
     # note: script_module used in argument parsing sanity check (e.g., --help)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_01_simple_introspection(self):
         """Test for simple introspection"""
         debug.trace(4, f"TestIt.test_01_simple_introspection(); self={self}")
@@ -43,7 +43,6 @@ class TestIt(TestWrapper):
         self.do_assert(my_re.search("fubar.*123.321", fubar_expr))
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_02_multiline_introspection(self):
         """Test for multi-line introspection"""
         debug.trace(4, f"TestIt.test_02_multiline_introspection(); self={self}")
@@ -58,7 +57,6 @@ class TestIt(TestWrapper):
                                     flags=my_re.DOTALL|my_re.MULTILINE))
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_prefix(self):
         """Test for prefix added to introspection result"""
         debug.trace(4, f"TestIt.test_03_prefix(); self={self}")
@@ -67,18 +65,18 @@ class TestIt(TestWrapper):
         assert my_re.search("here: var.*456", var_expr)
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_04_max_len(self):
         """Test for introspection truncation"""
+        # See test_debug.test_trace_expr_max_len for similar check.
         debug.trace(4, f"TestIt.test_04_max_len(); self={self}")
         var = "-" * 123
         var_expr = THE_MODULE.intro.format(var, max_len=4)
-        ## TODO2: assert my_re.search("var='----\.\.\.'", var_expr)
-        ##                                            ^ (i.e., make sure quote closed)
-        assert my_re.search(r"var='----\.\.\.", var_expr)
+
+        assert my_re.search(r"var='----\.\.\.'", var_expr)
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(cm.SKIP_TBD_TESTS, reason=cm.SKIP_TBD_REASON)
+    @pytest.mark.xfail                  ## note: likely to be long-term xfail
     def test_05_quirks(self):
         """Test for known introspection quirks"""
         debug.trace(4, f"TestIt.test_05_quirks(); self={self}")
@@ -112,6 +110,35 @@ class TestIt(TestWrapper):
         add1_add1_num = add1(add1(num))
         expr = indirect_introspection(add1_add1_num)
         assert my_re.search(rf"^add1_add1_num={add1_add1_num}", expr)
+        return
+
+    def test_06_string_formatting_options(self):
+        """Test formatting options (use_repr, max_len) for string values"""
+        # Change facilitated by Antigravity using Gemini 3.5 Flash.
+        debug.trace(4, f"TestIt.test_06_string_formatting_options(); self={self}")
+        var = "-" * 16
+
+        # 1. use_repr=True, max_len=None (default) -> should have quotes
+        expr = THE_MODULE.intro.format(var)
+        assert my_re.search(r"var='----------------'", expr)
+
+        # 2. use_repr=True, max_len=256 -> should have quotes
+        expr = THE_MODULE.intro.format(var, max_len=256)
+        assert my_re.search(r"var='----------------'", expr)
+
+        # 3. use_repr=True, max_len=4 -> should have quotes and ellipsis
+        expr = THE_MODULE.intro.format(var, max_len=4)
+        assert my_re.search(r"var='----\.\.\.'", expr)
+
+        # 4. use_repr=False, max_len=None -> should NOT have quotes
+        expr = THE_MODULE.intro.format(var, use_repr=False)
+        assert my_re.search(r"var=----------------", expr)
+        assert not my_re.search(r"var='----------------'", expr)
+
+        # 5. use_repr=False, max_len=4 -> should NOT have quotes, but should have ellipsis
+        expr = THE_MODULE.intro.format(var, use_repr=False, max_len=4)
+        assert my_re.search(r"var=----\.\.\.", expr)
+        assert not my_re.search(r"var='----\.\.\.'", expr)
         return
 
 #------------------------------------------------------------------------

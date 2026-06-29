@@ -61,6 +61,8 @@ from mezcla.html_utils import format_html_message
 #................................................................................
 # Constants (e.g., environment-based options)
 
+CLF = "clf"
+TFIDF = "tfidf"
 SERVER_PORT = system.getenv_integer("SERVER_PORT", 9010,
                                     "TCP port for web interface")
 OUTPUT_BAD = system.getenv_bool("OUTPUT_BAD", False)
@@ -106,7 +108,13 @@ SGD_MAX_ITER = system.getenv_int("SGD_MAX_ITER", 5)
 SGD_VERBOSE = system.getenv_bool("SGD_VERBOSE", False)
 
 # Options for Extreme Gradient Boost (XGBoost)
-USE_XGB = system.getenv_bool("USE_XGB", False)
+XGB_JSON = system.getenv_bool(
+    "XGB_JSON", False,
+    desc="Use XGBoost model in JSON format")
+## OLD: USE_XGB = system.getenv_bool("USE_XGB", False)
+USE_XGB = system.getenv_bool(
+    "USE_XGB", XGB_JSON,
+    desc="Use XGBoost for classifier")
 xgb = None
 if USE_XGB:
     # pylint: disable=import-outside-toplevel, import-error
@@ -114,9 +122,10 @@ if USE_XGB:
 XGB_BOOSTER = system.getenv_value("XGB_BOOSTER", None)
 XGB_USE_GPUS = system.getenv_bool("XGB_USE_GPUS", False)
 XGB_VERBOSITY = getenv_int("XGB_VERBOSITY", 0, "Degree of verbosity from 0 to 3")
+## OLD
 XGB_JSON = system.getenv_bool("XGB_JSON", False,
                               "Use XGBoost model in JSON format")
-debug.assertion(not XGB_JSON, "JSON support is broke due to obscure manuals")
+## OLD: debug.assertion(not XGB_JSON, "JSON support is broke due to obscure manuals")
 
 # Options for Logistic Regression (LR)
 # TODO: add regularization
@@ -325,7 +334,7 @@ class ClassifierWrapper(BaseEstimator, ClassifierMixin):
 
 #...............................................................................
 
-class TextCategorizer(object):
+class TextCategorizer:
     """Class for building text categorization"""
     # TODO: add cross-fold validation support; make TF/IDF weighting optional
 
@@ -414,13 +423,14 @@ class TextCategorizer(object):
             tfidf_parameters['stop_words'] = 'english'
         if self.tfidf_char_ngrams:
             tfidf_parameters['analyzer'] = 'char'
+        ## UPDATE: 06/19/2026: Fixed XGB_JSON (accounting for pipeline)
         self.cat_pipeline = Pipeline(
-            [('tfidf', TfidfVectorizer(**tfidf_parameters)),
-             ('clf', classifier)])
+            [(TFIDF, TfidfVectorizer(**tfidf_parameters)),
+             (CLF, classifier)])
         if use_classifier_wrapper:
             pipeline_steps = list(self.cat_pipeline._iter())
-            debug.assertion(pipeline_steps[0][1] == 'tfidf')
-            ## TODO: classifier.tfidf_vectorizer = self.cat_pipeline['tfidf']
+            debug.assertion(pipeline_steps[0][1] == TFIDF)
+            ## TODO: classifier.tfidf_vectorizer = self.cat_pipeline[TFIDF]
             classifier.tfidf_vectorizer = pipeline_steps[0][2]
         debug.trace_object(5, self, "TextCategorizer")
         return
@@ -550,15 +560,21 @@ class TextCategorizer(object):
         return dist
 
     def save(self, filename):
-        """Save classifier to FILENAME
+        """Save classifier to FILENAME, using pickle format by default.
+        This saves the entire pipeline object, including the vectorizer.
         Note: with XGB_JSON, the XGBoost JSON format is used (for better portability).
+        In addition, the vectorizer compontent is omitted when JSON used.
         """
         debug.trace_fmtd(4, "tc.save({f})", f=filename)
         try:
             # pylint: disable=no-value-for-parameter, no-else-raise, unreachable
             if XGB_JSON:
-                raise NotImplementedError()
-                xgb.XGBModel.save_model(filename)
+                ## OLD:
+                ## raise NotImplementedError()
+                ## xgb.XGBModel.save_model(filename)
+                debug.assertion(isinstance(self.classifier, Pipeline))
+                debug.assertion(isinstance(self.classifier[CLF], xgb.XGBModel))
+                self.classifier[CLF].save_model(filename)
                 ## TODO: get xgboost to save the keys in the model JSON file
                 system.write_file(filename + ".keys", json.dumps(self.keys))
             else:
@@ -568,16 +584,19 @@ class TextCategorizer(object):
         return
 
     def load(self, filename):
-        """Load classifier from FILENAME
-        Note: with XGB_JSON, uses the XGBoost JSON format.
+        """Load classifier from FILENAME (n.b., using pickle by default--see save method).
+        Note: with XGB_JSON, this uses the XGBoost JSON format but just for the classifier proper.
         """
         debug.trace_fmtd(4, "tc.load({f})", f=filename)
         try:
             # pylint: disable=no-value-for-parameter, no-else-raise, unreachable, assignment-from-none
             if XGB_JSON:
-                raise NotImplementedError()
-                ## TODO2: fix assignment
-                self.classifier = xgb.XGBModel.load_model(filename)
+                ## OLD
+                ## raise NotImplementedError()
+                ## ## TODO2: fix assignment
+                ## self.classifier = xgb.XGBModel.load_model(filename)
+                self.classifier[CLF] = xgb.XGBModel()
+                self.classifier[CLF].load_model(filename)
                 ## HACK: load keys separately
                 self.keys = json.loads(system.read_file(filename + ".keys"))
             else:
@@ -694,7 +713,7 @@ def format_index_html(base_url=None):
 #................................................................................
 # Main class
 
-class web_controller(object):
+class web_controller:
     """Controller for CherryPy web server with embedded text categorizer"""
     
     def __init__(self, model_filename, *args, **kwargs):

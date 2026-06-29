@@ -30,6 +30,7 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests, get_temp_dir
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
 from mezcla import debug
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:            global module object
@@ -211,6 +212,7 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.getenv_int('BAD VAR', default=None, allow_none=True) is None
         assert THE_MODULE.getenv_int('BAD VAR', default=None, allow_none=False) == 0
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
     def test_get_exception(self):
         """Ensure get_exception works as expected"""
         debug.trace(4, "test_get_exception()")
@@ -235,6 +237,7 @@ class TestSystem(TestWrapper):
         captured = self.get_stderr()
         assert "Error: FOObar!" in captured
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
     def test_print_exception_info(self):
         """Ensure print_exception_info works as expected"""
         debug.trace(4, "test_print_exception_info()")
@@ -272,6 +275,7 @@ class TestSystem(TestWrapper):
         THE_MODULE.setenv('NEW_TEST_ENV_VAR', 'the gravity is 10, pi is 3')
         assert THE_MODULE.getenv('NEW_TEST_ENV_VAR') == 'the gravity is 10, pi is 3'
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
     def test_print_full_stack(self):
         """Ensure print_full_stack works as expected"""
         debug.trace(4, "test_print_full_stack()")
@@ -300,10 +304,14 @@ class TestSystem(TestWrapper):
     def test_open_file(self):
         """Ensure open_file works as expected with existent files"""
         debug.trace(4, "test_open_file()")
-        #test file exists and can be open
+        # test file exists and can be open
         test_filename = self.create_temp_file("open file")
         assert THE_MODULE.open_file(test_filename).read() == "open file\n"
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def test_open_file_error(self):
+        """Verify open_file indicates appropriate errors"""
+        debug.trace(4, "test_open_file_error()")
         # assert opening a nonexistent file returns none
         assert THE_MODULE.open_file("empty") is None
 
@@ -337,6 +345,11 @@ class TestSystem(TestWrapper):
             pickle.dump(test_dict, test_file)
             test_file.close()
         assert THE_MODULE.load_object(test_filename) == test_dict
+
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def test_load_object_error(self):
+        """Verify load_object reports errors appropriately"""
+        debug.trace(4, "test_load_object_error()")
 
         # Test invalid file
         THE_MODULE.load_object('bad_file_name')
@@ -422,7 +435,9 @@ class TestSystem(TestWrapper):
         test_iter = THE_MODULE.stdin_reader()
         assert next(test_iter) == 'my\tinput'
         assert next(test_iter) == 'some\tline'
-        assert next(test_iter) == ''
+        ## OLD: assert next(test_iter) == ''
+        with pytest.raises(StopIteration):
+            assert next(test_iter) == ''
 
     def test_read_all_stdin(self):
         """Ensure read_all_stdin works as expected"""
@@ -567,6 +582,11 @@ class TestSystem(TestWrapper):
         temp_file = self.get_temp_file()
         system.write_file(temp_file, content_tab_delim)
         assert THE_MODULE.create_boolean_lookup_table(temp_file, retain_case=True) == expected_uppercase
+
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def test_create_boolean_lookup_table_error(self):
+        """Verify create_boolean_lookup_table error handling"""
+        debug.trace(4, "test_create_boolean_lookup_table_error()")
 
         # Test invalid file
         ## Note: AssertionError now trapped by create_boolean_lookup_table
@@ -740,8 +760,26 @@ class TestSystem(TestWrapper):
         """Ensure get_current_directory works as expected"""
         debug.trace(4, "test_get_current_directory()")
         ## BAD: assert '/home/' in THE_MODULE.get_current_directory()
-        assert 'mezcla' in THE_MODULE.get_current_directory()
+        ## OLD: assert 'mezcla' in THE_MODULE.get_current_directory()
+        ## NOTE: generalized to not assume the local clone is named "mezcla"
+        ## (e.g., it could be checked out as "model_a"): instead derives the
+        ## repo root via git and checks the current dir is under it, falling
+        ## back to the original literal check if not run from a git checkout.
+        current_dir = THE_MODULE.real_path(THE_MODULE.get_current_directory())
+        repo_url = gh.run("git config --get remote.origin.url")
+        if 'mezcla' in repo_url:
+            repo_dir = THE_MODULE.real_path(gh.run("git rev-parse --show-toplevel"))
+            assert current_dir.startswith(repo_dir)
+        else:
+            assert 'mezcla' in current_dir
 
+    def test_get_current_directory_alt(self):
+        """Verify get_current_directory using mocking"""
+        debug.trace(4, "test_get_current_directory_alt()")
+        fake_dir = "/tmp/mezcla_test_dir"
+        self.monkeypatch.setattr("os.getcwd", lambda: fake_dir)
+        assert THE_MODULE.get_current_directory() == fake_dir
+            
     @pytest.mark.xfail
     def test_set_current_directory(self):
         """Ensure set_current_directory works as expected"""

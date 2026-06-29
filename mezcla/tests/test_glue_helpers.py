@@ -130,7 +130,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         ## OLD: test_dir = THE_MODULE.dir_path(__file__)
         # Note: Use of temp files in repo tree should be avoided.
         ## BAD: res_2_dir = THE_MODULE.form_path(test_dir, "resources_2")
-        res_2_dir = gh.form_path(gh.get_temp_dir(), "resources_2")
+        ## OLD: res_2_dir = gh.form_path(gh.get_temp_dir(), "resources_2")
+        res_2_dir = gh.form_path(self.get_temp_dir(), "resources_2")
         ## OLD: _ = THE_MODULE.form_path(test_dir, "resources")
         THE_MODULE.create_directory(res_2_dir)
         ## OLD:
@@ -168,6 +169,39 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         temp_dir4 = THE_MODULE.get_temp_dir()
         assert temp_dir3 == temp_dir4 == static_temp_dir
         assert system.is_directory(temp_dir3)
+
+    def test_get_temp_file_with_temp_base(self):
+        """Ensure get_temp_file uses TEMP_BASE if set in test context"""
+        debug.trace(4, "test_get_temp_file_with_temp_base()")
+        # Test when TEMP_BASE is a directory prefix
+        test_temp_base_prefix = gh.form_path(self.get_temp_dir(), "temp-prefix")
+        self.monkeypatch.setattr(gh, "TEMP_BASE", test_temp_base_prefix)
+        self.monkeypatch.setattr(gh, "USE_TEMP_BASE_DIR", False)
+        
+        temp_file = THE_MODULE.get_temp_file()
+        assert temp_file.startswith(f"{test_temp_base_prefix}-")
+        
+        # Test when TEMP_BASE is a directory
+        test_temp_base_dir = gh.form_path(self.get_temp_dir(), "temp-dir")
+        self.monkeypatch.setattr(gh, "TEMP_BASE", test_temp_base_dir)
+        self.monkeypatch.setattr(gh, "USE_TEMP_BASE_DIR", True)
+        
+        temp_file2 = THE_MODULE.get_temp_file()
+        assert temp_file2.startswith(test_temp_base_dir)
+        assert system.file_exists(test_temp_base_dir)
+
+    def test_get_temp_dir_with_temp_base(self):
+        """Ensure get_temp_dir uses TEMP_BASE if set in test context"""
+        debug.trace(4, "test_get_temp_dir_with_temp_base()")
+        test_temp_base_dir = gh.form_path(self.get_temp_dir(), "temp-dir-get")
+        self.monkeypatch.setattr(gh, "TEMP_BASE", test_temp_base_dir)
+        self.monkeypatch.setattr(gh, "USE_TEMP_BASE_DIR", True)
+        
+        temp_dir = THE_MODULE.get_temp_dir()
+        # Since we are in test context, it should return test_temp_base_dir directly
+        assert temp_dir == test_temp_base_dir
+        assert temp_dir.startswith(test_temp_base_dir)
+        assert system.is_directory(temp_dir)
 
     @pytest.mark.xfail
     def test_create_temp_file(self):
@@ -310,8 +344,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
             assert 'stderr' in captured
             assert 'bad_filename.bash' in captured
         ## TODO: for some reason the log_file is not being overriden
-        ## assert 'random content' not in gh.read_file(log_file)
-        ## assert 'bad_filename.bash' in gh.read_file(log_file)
+        ## assert 'random content' not in system.read_file(log_file)
+        ## assert 'bad_filename.bash' in system.read_file(log_file)
 
     def test_get_hex_dump(self):
         """Ensure get_hex_dump works as expected"""
@@ -453,7 +487,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         second_temp_file = f"{first_temp_file}_target_copy"
         system.write_file(first_temp_file, 'some random content')
         THE_MODULE.copy_file(first_temp_file, second_temp_file)
-        assert gh.read_file(second_temp_file) == 'some random content\n'
+        assert system.read_file(second_temp_file) == 'some random content\n'
 
     def test_rename_file(self):
         """Ensure rename_file works as expected"""
@@ -463,6 +497,10 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         system.write_file(test_filename, 'some content')
 
         # Check existense of files before rename
+        if gh.file_exists(new_test_filename):
+            # note: handles special case of reinvocation with same TEMP_BASE
+            debug.assertion(THE_MODULE.TEMP_BASE)
+            THE_MODULE.rename_file(new_test_filename, new_test_filename + ".old")
         assert gh.file_exists(test_filename)
         assert not gh.file_exists(new_test_filename)
 
@@ -471,7 +509,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         # Check integrity of renamed file
         assert gh.file_exists(new_test_filename)
         assert not gh.file_exists(test_filename)
-        assert gh.read_file(new_test_filename) == 'some content\n'
+        assert system.read_file(new_test_filename) == 'some content\n'
 
     def test_delete_file(self):
         """Ensure delete_file works as expected"""
@@ -555,7 +593,8 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         test_filename = self.get_temp_file()
         with open(test_filename, 'wb') as _:
             pass # system.write_file cant be used because appends a newline
-        debug.set_level(7)
+        ## BAD: debug.set_level(7)  # left global debug level at 7 for all subsequent tests
+        self.patch_trace_level(7)
         self.monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
         # This avoids flaky tpo.stderr due to other tests
         ## TODO: fix tpo.restore_stderr() to work with pytest
@@ -675,6 +714,15 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         self.monkeypatch.setattr('mezcla.glue_helpers.PID', PID)
         PID_basename = f"temp-{PID}"
         self.monkeypatch.setattr('mezcla.glue_helpers.PID_BASENAME', PID_basename)
+
+        # Protect globals that init() will modify so state is restored after test
+        # note: THE_MODULE.init() changes TEMP_FILE, TEMP_LOG_FILE, TEMP_SCRIPT_FILE, and
+        # PRESERVE_TEMP_FILE based on env settings; without protection they'd persist and
+        # corrupt subsequent tests in the same pytest session
+        self.monkeypatch.setattr('mezcla.glue_helpers.TEMP_FILE', gh.TEMP_FILE)
+        self.monkeypatch.setattr('mezcla.glue_helpers.TEMP_LOG_FILE', gh.TEMP_LOG_FILE)
+        self.monkeypatch.setattr('mezcla.glue_helpers.TEMP_SCRIPT_FILE', gh.TEMP_SCRIPT_FILE)
+        self.monkeypatch.setattr('mezcla.glue_helpers.PRESERVE_TEMP_FILE', gh.PRESERVE_TEMP_FILE)
 
         # Case of USE_TEMP_BASE_DIR False but TEMP_BASE
         self.monkeypatch.setattr('mezcla.glue_helpers.USE_TEMP_BASE_DIR', False)

@@ -9,11 +9,25 @@
 # - For tests that capture standard error, see
 #       https://docs.pytest.org/en/6.2.x/capture.html
 # - This uses capsys fixture mentioned in above link.
+# - Some tests take extra care to ensure that the output doesn't lead to false positives
+#   by error-checking scripts like check_errors.py. For example, test_multiline_assertion
+#   uses Spanish for error messages that would otherwise get flagged.
+#
+# Warning:
+# - Unfortunately, capsys captures stderr and get_stdout_stderr doesn't mirror
+#   unless VERBOSE (5) debugging enabled: use DEBUG_FILE to output copy of stderr.
+# - In addition, there is subtle interaction with this and self.patch_trace_level:
+#   ex: self.patch_trace_level(3) disables stderr trace in test_assertion.
+#   Alternatively, use CAPSYS_DEBUG_LEVEL (see unittest_wrapper.py).
 #................................................................................
 # TODO:
 # - make sure trace_fmt traps all exceptions
 #   debug.trace_fmt(1, "fu={fu}", fuu=1)
 #                           ^^    ^^^
+# - replace -1 trace level usages w/ self.patch_trace_level(1) ... 1
+#................................................................................
+# Global pylint filter:
+#   pylint: disable=protected-access
 #
 
 """Tests for debug module"""
@@ -22,6 +36,7 @@
 import sys
 from datetime import datetime
 import inspect
+from pathlib import Path
 
 # Installed packages
 import pytest
@@ -34,21 +49,15 @@ from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 import mezcla.glue_helpers as gh
-from mezcla.tests.common_module import fix_indent
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:                        global module object
 #    TestIt.script_module:              path to file
-import mezcla.debug as THE_MODULE # pylint: disable=reimported
+import mezcla.debug as THE_MODULE       # pylint: disable=reimported
 
-# Environment options
-# Note: These are just intended for internal options, not for end users.
-# It also allows for enabling options in one place.
-#
-## OLD:
-## TEST_TBD = system.getenv_bool("TEST_TBD", False,
-##                               description="Test features to be designed: TBD")
-
+# Constants
+ERROR_FUBAR = "falta fubar"            # spanish for error
 
 #................................................................................
 # Classes for testing
@@ -100,8 +109,6 @@ class TestDebug(TestWrapper):
     def test_set_level(self):
         """Ensure set_level works as expected"""
         debug.trace(4, f"test_set_level(): self={self}")
-        ## TODO3: set_level directly; for example, rename as test_99_set_level
-        ## so tested last (thus no side effect concerns)
         self.patch_trace_level(5)
         assert (THE_MODULE.trace_level == 5) or (not __debug__)
         self.patch_trace_level(6)
@@ -115,16 +122,40 @@ class TestDebug(TestWrapper):
         self.patch_trace_level(6)
         assert THE_MODULE.get_level() == 6
 
+    def test_detect_shadowed_package(self):
+        """Ensure detect_shadowed_package catches higher-priority package paths"""
+        debug.trace(4, f"test_detect_shadowed_package(): self={self}")
+
+        # Create minimal package tree that shadows mezcla via sys.path precedence.
+        shadow_root = self.get_temp_dir()
+        shadow_pkg_dir = gh.form_path(shadow_root, "mezcla")
+        gh.full_mkdir(shadow_pkg_dir)
+        system.write_file(gh.form_path(shadow_pkg_dir, "__init__.py"), "# temp package for shadow detection test\n")
+
+        # Put the temporary package root at the front of sys.path.
+        self.monkeypatch.setattr(sys, "path", [shadow_root] + list(sys.path))
+
+        # Run detection and confirm the leading path is the temporary package.
+        is_shadowed, shadow_details = THE_MODULE.detect_shadowed_package()
+        assert is_shadowed
+        assert shadow_details.get("shadowed")
+        assert shadow_details.get("ahead_index") == 0
+        assert THE_MODULE._same_path(Path(shadow_details.get("ahead_pkg_dir", "")), Path(shadow_pkg_dir))
+        assert shadow_details.get("package") == "mezcla"
+
     def test_get_output_timestamps(self):
         """Ensure get_output_timestamps works as expected"""
         debug.trace(4, f"test_get_output_timestamps(): self={self}")
-        THE_MODULE.output_timestamps = 'some-test-value'
+        ## BAD: THE_MODULE.output_timestamps = 'some-test-value'
+        ## TODO1: Weed out other potential problems due to lack of mocking.
+        self.monkeypatch.setattr(THE_MODULE, "output_timestamps", 'some-test-value')
         assert THE_MODULE.get_output_timestamps() == 'some-test-value'
 
     def test_set_output_timestamps(self):
         """Ensure set_output_timestamps works as expected"""
         debug.trace(4, f"test_set_output_timestamps(): self={self}")
-        THE_MODULE.output_timestamps = False
+        ## OLD: THE_MODULE.output_timestamps = False
+        self.monkeypatch.setattr(THE_MODULE, "output_timestamps", False)
         THE_MODULE.set_output_timestamps('some-test-value')
         assert THE_MODULE.output_timestamps == 'some-test-value'
 
@@ -133,15 +164,15 @@ class TestDebug(TestWrapper):
         debug.trace(4, f"test_trace(): self={self}")
         THE_MODULE.output_timestamps = True
 
-        THE_MODULE.trace(-1, 'error foobar', indentation=' -> ')
-        out,err  = self.get_stdout_stderr()
-        assert " -> error foobar" in err
+        THE_MODULE.trace(-1, ERROR_FUBAR, indentation=' -> ')
+        out, err  = self.get_stdout_stderr()
+        assert f" -> {ERROR_FUBAR}" in err
         assert not out
 
         # Test debug_file
         THE_MODULE.debug_file = sys.stdout
         THE_MODULE.trace(-1, 'some text to test debug file')
-        out,err  = self.get_stdout_stderr()
+        out, err  = self.get_stdout_stderr()
         assert 'some text to test debug file' in out
         THE_MODULE.debug_file = None
 
@@ -230,9 +261,11 @@ class TestDebug(TestWrapper):
             assert f": {char}" in err
 
         # Test non list collection (tuple)
-        THE_MODULE.trace_values(-1, 123)
+        ## OLD: THE_MODULE.trace_values(-1, 123)
+        THE_MODULE.trace_values(-1, (123, 321))
         err = self.get_stderr()
         assert ": 123" in err
+        assert ": 321" in err
 
         # Test use_repr parameter
         THE_MODULE.trace_values(-1, [Person("Kiran")], use_repr=True)
@@ -242,7 +275,7 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_simple_trace_expr(self):
         """Make sure trace_expr shows 'expr1=value1; expr2=value2'"""
-        debug.trace(4, f"test_trace_expr(): self={self}")
+        debug.trace(4, f"test_simple_trace_expr(): self={self}")
         var1 = 3
         var2 = 6
         THE_MODULE.trace_expr(debug.get_level(), var1, var2)
@@ -252,7 +285,7 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_trace_expr_prefix(self):
         """Make sure trace_expr outputs prefix'"""
-        debug.trace(4, f"test_trace_expr(): self={self}")
+        debug.trace(4, f"test_trace_expr_prefix(): self={self}")
         var = 4
         THE_MODULE.trace_expr(debug.get_level(), var, prefix="here: ")
         err = self.get_stderr()
@@ -261,6 +294,7 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_multiline_trace_expr(self):
         """Make sure trace_expr expression resolved when split across lines"""
+        debug.trace(4, f"test_multiline_trace_expr(): self={self}")
         var1 = 3
         var2 = 6
         THE_MODULE.trace_expr(debug.get_level(),
@@ -272,34 +306,59 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_newline_trace_expr(self):
         """Test trace_expr with newline delim"""
-        debug.trace(4, f"test_trace_expr(): self={self}")
+        debug.trace(4, f"test_newline_trace_expr(): self={self}")
         var1 = 3
         var2 = 6
         THE_MODULE.trace_expr(debug.get_level(), var1, var2, delim="\n")
         err = self.get_stderr()
         assert(my_re.search(r"var1=3\nvar2=6;?", err))
 
-    @pytest.mark.xfail
     def test_trace_expr_max_len(self):
         """Test trace_expr with max_len"""
-        debug.trace(4, f"test_trace_expr(): self={self}")
-        var = "-" * 32
+        # See test_introspection.test_04_max_len for similar check.
+        debug.trace(4, f"test_trace_expr_max_len(): self={self}")
+        VAR_LEN = 32
+        MAX_LEN = 16
+        var = "-" * VAR_LEN
         self.patch_trace_level(1)
-        THE_MODULE.trace_expr(1, var, max_len=16)
+        THE_MODULE.trace_expr(1, var, max_len=MAX_LEN)
         err = self.get_stderr()
-        # note: max_len includes variable name, quote and ellipsis
-        assert my_re.search(r"var='-{5,8}\.\.\.", err)
-        ##
+        # note: max_len now applies to value text only (as in test_introspection.test_04_max_len).
+        # Previously, trace_expr was incorrectly applying additional clipping.
+        assert my_re.search(rf"var='-{{{MAX_LEN}}}\.\.\.'", err)
+
+    @pytest.mark.xfail
+    def test_trace_expr_old_introspection(self):
+        """Test trace_expr with max_len via old introspection"""
+        debug.trace(4, f"test_trace_expr_old_introspection(): self={self}")
         # note: trace_expr had bug where OK up to hard-coded limit (e.g., 1024)
         MAX_LEN = 2048
         var = "-" * (2 * MAX_LEN)
         self.monkeypatch.setattr(THE_MODULE, "use_old_introspection", True)
         result = THE_MODULE.trace_expr(1, var, max_len=MAX_LEN)
+        debug.trace(5, f"old: {len(result)=}")
         assert (len(result) > MAX_LEN)
         self.monkeypatch.setattr(THE_MODULE, "use_old_introspection", False)
         result = THE_MODULE.trace_expr(1, var, max_len=MAX_LEN)
+        debug.trace(5, f"new: {len(result)=}")
         assert (len(result) > MAX_LEN)
 
+    @pytest.mark.skipif(cm.SKIP_TBD_TESTS, reason=cm.SKIP_TBD_REASON)
+    @pytest.mark.xfail
+    def test_trace_expr_string(self):
+        """Test trace_expr with string values (e.g., with and without max_len)"""
+        # Note: this test was added to ensure that the introspection process produces similar
+        # results regardless of whether max_len specified.
+        debug.trace(4, f"test_trace_expr_string(): self={self}")
+        var = "-" * 16
+        assert(len(var) < THE_MODULE.max_trace_value_len)
+        self.patch_trace_level(1)
+        # Check for var='----------------' (n.b., a known failure)
+        result = THE_MODULE.trace_expr(1, var)
+        assert my_re.search(r"var='----------------'", result)
+        result = THE_MODULE.trace_expr(1, var, max_len=256)
+        assert my_re.search(r"var='----------------'", result)
+        
     @pytest.mark.xfail
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
@@ -329,7 +388,10 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_trace_exception(self):
         """Ensure trace_exception works as expected"""
+        # Note: This raised an exception and then verifies traced properly,
+        # with "Exception during" reflecting custom error in trace_exception.
         debug.trace(4, f"test_trace_exception(): self={self}")
+        self.patch_trace_level(4)
         with pytest.raises(RuntimeError):
             raise RuntimeError("debug.trace failed")
         THE_MODULE.trace_exception(4, "debug.trace")
@@ -338,16 +400,21 @@ class TestDebug(TestWrapper):
         
     @pytest.mark.xfail
     def test_raise_exception(self):
-        """Ensure raise_exception works as expected"""
+        """Check that raise_exception does so unless debug level too high"""
         debug.trace(4, f"test_raise_exception(): self={self}")
+        self.patch_trace_level(3)
         with pytest.raises(Exception):
-            THE_MODULE.raise_exception()
-        THE_MODULE.raise_exception(10)
+            THE_MODULE.raise_exception(3)
+        THE_MODULE.raise_exception(4)
 
     @pytest.mark.xfail
     def test_assertion(self):
         """Ensure assertion works as expected"""
         debug.trace(4, f"test_assertion(): self={self}")
+
+        # Set trace level to avoid details (e.g., false positive with check_errors.py)
+        ## TODO3: add level to get_stderr, etc.
+        self.patch_trace_level(3)
         
         # Doesn't print in stderr
         THE_MODULE.assertion((2 + 2 + 1) == 5)
@@ -371,10 +438,12 @@ class TestDebug(TestWrapper):
     @pytest.mark.xfail
     def test_multiline_assertion(self):
         """Make sure assertion expression split across lines resolved"""
+        # Note: issue uses the Spanish equivalent of "Assertion failed" in order to
+        # avoid false positives with check_errors.py.
         debug.trace(4, f"test_multiline_assertion(): self={self}")
         THE_MODULE.assertion(2 +
                              2 ==
-                             5)
+                             5, issue="Afirmación fallida")
         err = self.get_stderr()
         self.do_assert(my_re.search(r"2.*\+.*2.*==.*5", err,
                                     flags=my_re.DOTALL|my_re.MULTILINE))
@@ -409,15 +478,15 @@ class TestDebug(TestWrapper):
         debug.trace(4, f"test_debug_print(): self={self}")
         self.monkeypatch.setattr("mezcla.debug.output_timestamps", True)
 
-        THE_MODULE.debug_print('error foobar', -1)
-        out,err  = self.get_stdout_stderr()
-        assert "error foobar" in err
+        THE_MODULE.debug_print(ERROR_FUBAR, -1)
+        out, err  = self.get_stdout_stderr()
+        assert ERROR_FUBAR in err
         assert not out
 
         # Test debug_file
         self.monkeypatch.setattr("mezcla.debug.debug_file", sys.stdout)
         THE_MODULE.debug_print('some text to test debug file', -1)
-        out,err  = self.get_stdout_stderr()
+        out, err  = self.get_stdout_stderr()
         assert 'some text to test debug file' in out
 
     @pytest.mark.xfail
@@ -516,7 +585,7 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert "xor3" in err
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_init_logging(self):
         """Ensure init_logging works as expected"""
         debug.trace(4, f"test_init_logging(): self={self}")
@@ -546,7 +615,7 @@ class TestDebug(TestWrapper):
         new_level = THE_MODULE.logging.root.getEffectiveLevel()
         assert new_level == 20
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_profile_function(self):
         """Ensure profile_function works as expected"""
         debug.trace(4, f"test_profile_function(): self={self}")
@@ -564,7 +633,7 @@ class TestDebug(TestWrapper):
         stderr = self.get_stderr()
         assert "out: mezcla.tests.test_debug:test_profile_function => result" in stderr
         
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_reference_var(self):
         """Ensure reference_var works as expected"""
         debug.trace(4, f"test_reference_var(): self={self}")
@@ -580,11 +649,11 @@ class TestDebug(TestWrapper):
         assert THE_MODULE.clip_value('helloworld', 5) == 'hello...'
         assert THE_MODULE.clip_value('12345678910111213141516', 7) == '1234567...'
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_read_line(self):
         """Ensure read_line works as expected"""
         debug.trace(4, f"test_read_line(): self={self}")
-        content = fix_indent(
+        content = cm.fix_indent(
             """
             line1
             line2
@@ -598,7 +667,8 @@ class TestDebug(TestWrapper):
         line_3 = THE_MODULE.read_line(temp_file, 3)
         assert my_re.search(fr"{line_1}.*{line_2}.*{line_3}", content)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(cm.SKIP_VERBOSE_TESTS, reason=cm.SKIP_VERBOSE_REASON)
+    @pytest.mark.xfail
     def test_debug_init(self):
         """Ensure debug_init works as expected"""
         debug.trace(4, f"test_debug_init(): self={self}")
@@ -623,7 +693,7 @@ class TestDebug(TestWrapper):
         assert f"DEBUG_FILE: {temp_debug_filename}" in err
         assert "ENABLE_LOGGING: True" in err
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.xfail
     def test_display_ending_time_etc(self):
         """Ensure display_ending_time_etc works as expected"""
         debug.trace(4, f"test_display_ending_time_etc(): self={self}")
@@ -655,7 +725,7 @@ class TestDebug(TestWrapper):
         out, err = self.get_stdout_stderr()
         assert(self.expected_stdout_trace in out)
         assert(self.expected_stderr_trace in err)
-        THE_MODULE.trace_expr(6, (pre_out, pre_err), (out,err))
+        THE_MODULE.trace_expr(6, (pre_out, pre_err), (out, err))
 
     def test_hidden_simple_trace(self):
         """Make sure level-N+1 trace doesn't output to stderr"""
@@ -672,7 +742,7 @@ class TestDebug(TestWrapper):
         out, err = self.get_stdout_stderr()
         assert self.expected_stdout_trace in out
         assert self.expected_stderr_trace in err
-        THE_MODULE.trace_expr(6, (pre_out, pre_err), (out,err))
+        THE_MODULE.trace_expr(6, (pre_out, pre_err), (out, err))
 
     @pytest.mark.xfail
     def test_do_print(self):
@@ -717,6 +787,250 @@ class TestDebug2(TestWrapper):
             no_exception = False
             debug.trace_exception(5, "test_trace_exceptions")
         self.do_assert(no_exception)
+
+    def test_debug_wrapper_class(self):
+        """Verify DebugWrapper class exists and is the backing instance for module-level API"""
+        debug.trace(4, f"test_debug_wrapper_class(): self={self}")
+        self.do_assert(__debug__ == hasattr(THE_MODULE, 'DebugWrapper'))
+        self.do_assert(__debug__ == hasattr(THE_MODULE, '_debug'))
+        if __debug__:
+            self.do_assert(isinstance(THE_MODULE._debug, THE_MODULE.DebugWrapper))
+
+#------------------------------------------------------------------------
+
+class TestDebugWrapper(TestWrapper):
+    """Tests for DebugWrapper class methods accessed via THE_MODULE._debug.
+    Verifies that the OO API works correctly and shares state with the
+    module-level functional API."""
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+
+    def test_dw_instance(self):
+        """DebugWrapper class and _debug global instance exist with correct type"""
+        debug.trace(4, f"test_dw_instance(): self={self}")
+        self.do_assert(__debug__ == hasattr(THE_MODULE, 'DebugWrapper'))
+        self.do_assert(__debug__ == hasattr(THE_MODULE, '_debug'))
+        if __debug__:
+            self.do_assert(isinstance(THE_MODULE._debug, THE_MODULE.DebugWrapper))
+            self.do_assert(inspect.isclass(THE_MODULE.DebugWrapper))
+
+    def test_dw_new_instance(self):
+        """Ensure a separate DebugWrapper instance can be created independently"""
+        debug.trace(4, f"test_dw_new_instance(): self={self}")
+        if not __debug__:
+            return
+        new_debug = THE_MODULE.DebugWrapper()
+        assert hasattr(new_debug, 'trace')
+        assert hasattr(new_debug, 'assertion')
+        assert hasattr(new_debug, 'trace_expr')
+        assert callable(new_debug.trace)
+
+    def test_dw_module_funcs_delegate(self):
+        """Ensure module-level functions delegate to _debug instance methods"""
+        debug.trace(4, f"test_dw_module_funcs_delegate(): self={self}")
+        if not __debug__:
+            return
+        # Module-level wrappers should produce identical results to _debug methods
+        self.patch_trace_level(5)
+        assert THE_MODULE.get_level() == THE_MODULE._debug.get_level()
+        assert THE_MODULE.val(5, 42) == THE_MODULE._debug.val(5, 42)
+        assert THE_MODULE.val(6, 42) == THE_MODULE._debug.val(6, 42)
+
+    def test_dw_set_get_level(self):
+        """_debug.set_level/_debug.get_level share state with module-level wrappers"""
+        debug.trace(4, f"test_dw_set_get_level(): self={self}")
+        if not __debug__:
+            return
+        old_level = THE_MODULE._debug.get_level()
+        # OO setter reflected by module-level getter
+        THE_MODULE._debug.set_level(old_level + 1)
+        self.do_assert(THE_MODULE.get_level() == old_level + 1)
+        # Module-level setter reflected by OO getter
+        THE_MODULE.set_level(old_level + 2)
+        self.do_assert(THE_MODULE._debug.get_level() == old_level + 2)
+        THE_MODULE._debug.set_level(old_level)
+
+    def test_dw_output_timestamps(self):
+        """_debug get/set_output_timestamps share state with module global"""
+        debug.trace(4, f"test_dw_output_timestamps(): self={self}")
+        if not __debug__:
+            return
+        orig = THE_MODULE.output_timestamps
+        THE_MODULE._debug.set_output_timestamps(True)
+        self.do_assert(THE_MODULE.output_timestamps is True)
+        self.do_assert(THE_MODULE._debug.get_output_timestamps() is True)
+        THE_MODULE._debug.set_output_timestamps(orig)
+
+    def test_dw_do_print(self):
+        """_debug.do_print outputs to stderr and respects max_len"""
+        debug.trace(4, f"test_dw_do_print(): self={self}")
+        if not __debug__:
+            return
+        THE_MODULE._debug.do_print("oo-hello")
+        err = self.get_stderr()
+        self.do_assert("oo-hello" in err)
+        # max_len truncation: "1234567890" with max_len=4 => "1..."
+        out = THE_MODULE._debug.do_print("1234567890", max_len=4)
+        self.do_assert("1..." in out)
+
+    def test_dw_trace(self):
+        """_debug.trace outputs at the right level and is silent below it"""
+        debug.trace(4, f"test_dw_trace(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(3)
+        THE_MODULE._debug.trace(3, "oo-visible-trace")
+        err = self.get_stderr()
+        self.do_assert("oo-visible-trace" in err)
+        self.clear_stderr()
+        THE_MODULE._debug.trace(4, "oo-hidden-trace")
+        err = self.get_stderr()
+        self.do_assert("oo-hidden-trace" not in err)
+
+    @pytest.mark.xfail
+    def test_dw_trace_fmtd(self):
+        """_debug.trace_fmtd formats text with kwargs and respects max_len"""
+        debug.trace(4, f"test_dw_trace_fmtd(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(5)
+        THE_MODULE._debug.trace_fmtd(4, "oo-val={v}", v="fmtd-test")
+        err = self.get_stderr()
+        self.do_assert("oo-val=fmtd-test" in err)
+        self.clear_stderr()
+        THE_MODULE._debug.trace_fmtd(4, "oo-{txt}", txt="formatted", max_len=8)
+        err = self.get_stderr()
+        self.do_assert("oo-fo..." in err)
+
+    @pytest.mark.xfail
+    def test_dw_trace_expr(self):
+        """_debug.trace_expr resolves expression names via introspection"""
+        debug.trace(4, f"test_dw_trace_expr(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(3)
+        oo_var = 77
+        THE_MODULE._debug.trace_expr(3, oo_var)
+        err = self.get_stderr()
+        self.do_assert(my_re.search(r"oo_var=77;?", err))
+
+    def test_dw_trace_values(self):
+        """_debug.trace_values outputs each element of a collection"""
+        debug.trace(4, f"test_dw_trace_values(): self={self}")
+        if not __debug__:
+            return
+        THE_MODULE._debug.trace_values(-1, ["oo-alpha", "oo-beta"])
+        err = self.get_stderr()
+        self.do_assert(": oo-alpha" in err)
+        self.do_assert(": oo-beta" in err)
+
+    def test_dw_trace_frame(self):
+        """_debug.trace_frame outputs function name and file for a given frame"""
+        debug.trace(4, f"test_dw_trace_frame(): self={self}")
+        if not __debug__:
+            return
+        frame = inspect.currentframe()
+        self.patch_trace_level(5)
+        THE_MODULE._debug.trace_frame(4, frame, label="oo-frame")
+        err = self.get_stderr()
+        self.do_assert("oo-frame" in err)
+        self.do_assert("test_dw_trace_frame" in err)
+
+    def test_dw_trace_stack(self):
+        """_debug.trace_stack outputs a stack trace including the caller"""
+        debug.trace(4, f"test_dw_trace_stack(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(5)
+        THE_MODULE._debug.trace_stack(5)
+        err = self.get_stderr()
+        self.do_assert("test_dw_trace_stack" in err)
+
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def test_dw_trace_exception(self):
+        """_debug.trace_exception outputs exception info"""
+        debug.trace(4, f"test_dw_trace_exception(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(5)
+        try:
+            raise ValueError("oo-exc-test")
+        except:                             # pylint: disable=bare-except
+            THE_MODULE._debug.trace_exception(4, "oo-task")
+        err = self.get_stderr()
+        self.do_assert("Exception during oo-task" in err)
+
+    @pytest.mark.xfail
+    def test_dw_raise_exception(self):
+        """_debug.raise_exception re-raises at level; no-op when level not met"""
+        debug.trace(4, f"test_dw_raise_exception(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(1)
+        with pytest.raises(Exception):
+            THE_MODULE._debug.raise_exception(1)
+        # level above trace_level: should be a no-op
+        THE_MODULE._debug.raise_exception(10)
+
+    @pytest.mark.xfail
+    def test_dw_assertion(self):
+        """_debug.assertion warns on failure but not on success"""
+        debug.trace(4, f"test_dw_assertion(): self={self}")
+        if not __debug__:
+            return
+        oo_true_cond = (2 + 3 == 5)
+        THE_MODULE._debug.assertion(oo_true_cond)
+        err = self.get_stderr()
+        self.do_assert("failed" not in err)
+        oo_false_cond = (2 + 3 == 6)
+        THE_MODULE._debug.assertion(oo_false_cond)
+        err = self.get_stderr()
+        self.do_assert("Assertion failed" in err)
+
+    def test_dw_val(self):
+        """_debug.val returns value at level, None when level not met"""
+        debug.trace(4, f"test_dw_val(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(5)
+        self.do_assert(THE_MODULE._debug.val(5, 55) == 55)
+        self.patch_trace_level(0)
+        self.do_assert(THE_MODULE._debug.val(1, 55) is None)
+
+    def test_dw_code(self):
+        """_debug.code executes function at level, skips it below level"""
+        debug.trace(4, f"test_dw_code(): self={self}")
+        if not __debug__:
+            return
+        count = [0]
+        def increment():
+            """Increment counter"""
+            count[0] += 1
+        self.patch_trace_level(4)
+        THE_MODULE._debug.code(4, increment)
+        self.do_assert(count[0] == 1)
+        THE_MODULE._debug.code(5, increment)   # level 5 > trace_level 4: skipped
+        self.do_assert(count[0] == 1)
+
+    def test_dw_call(self):
+        """_debug.call invokes function with args at level, returns None otherwise"""
+        debug.trace(4, f"test_dw_call(): self={self}")
+        if not __debug__:
+            return
+        self.patch_trace_level(4)
+        result = THE_MODULE._debug.call(4, lambda x: x * 3, 7)
+        self.do_assert(result == 21)
+        self.patch_trace_level(0)
+        result = THE_MODULE._debug.call(1, lambda x: x * 3, 7)
+        self.do_assert(result is None)
+
+    def test_dw_get_elapsed_time(self):
+        """_debug.get_elapsed_time returns a non-negative float"""
+        debug.trace(4, f"test_dw_get_elapsed_time(): self={self}")
+        if not __debug__:
+            return
+        elapsed = THE_MODULE._debug.get_elapsed_time()
+        self.do_assert(isinstance(elapsed, float))
+        self.do_assert(elapsed >= 0)
 
 #------------------------------------------------------------------------
 

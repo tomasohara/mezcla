@@ -169,7 +169,7 @@ class ValidateArgumentsScript(Main):
 
     def run_main_step(self) -> None:
         """Process main script"""
-        debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+        debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
         ## OLD: code = system.read_file(self.filename)
         filename = (self.filename if (self.filename != "-") else "_stdin_")
         code = self.read_entire_input()
@@ -186,8 +186,8 @@ class ValidateArgumentsScript(Main):
         print(output)
 
 
-if __name__ == '__main__':
-    debug.trace_current_context(level=TL.QUITE_VERBOSE)
+def main():
+    """Entry point"""
     app = ValidateArgumentsScript(
         description=__doc__,
         ## OLD:
@@ -201,3 +201,9 @@ if __name__ == '__main__':
         manual_input=True,
     )
     app.run()
+
+#-------------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    debug.trace_current_context(level=TL.QUITE_VERBOSE)
+    main()

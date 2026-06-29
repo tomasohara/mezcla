@@ -2,9 +2,9 @@
 # 
 # Evaluate '# EX:' tests placed in python source. This reformats EX comments
 # into the doctest text format. For example,
-#    # EX: system.is_number("3.14159") => False    # conventional PI
+#    # EX: system.is_number("pi") => False
 # gets converted as follows:
-#    >>> system.is_number("3.14159")
+#    >>> system.is_number("pi")
 #    False
 #
 # Note:
@@ -12,7 +12,7 @@
 #
 
 """
-Convert example comments in Python scource to doctest format and evaluate.
+Convert example comments in Python source to doctest format and evaluate.
 
 Sample usage:
    {script} text_utils.py
@@ -63,7 +63,7 @@ class TestConverter:
     def get_tests(self):
         """Returns set of tests as string"""
         result = self.test_text
-        debug.trace(6, f"get_tests() => {result}")
+        debug.trace(6, f"get_tests() => {{\n{gh.indent_lines(result)}\n}}")
         return result
 
     def add_module(self, module_spec, dir_path=None):
@@ -96,8 +96,10 @@ class TestConverter:
             debug.trace(4, f"FYI: Ignoring comment at line {line_num}: {comment}")
         
         # Parse test expression
+        arrow_format = False
         if my_re.search(r"# +EX: (.*)\s*=>\s*(.*)", line):
             expression, result = my_re.groups()
+            arrow_format = True
             OK = True
         elif my_re.search(r"# +EX: (.*)", line):
             expression = my_re.group(1)
@@ -112,12 +114,6 @@ class TestConverter:
             OK = False
 
         # Normalize result (e.g., change double quote to single)
-        ## OLD:
-        ## ## TODO3: my_re.search(r'^".*[^"].*"$', result)
-        ## if result and NORMALIZE_RESULT and my_re.search(r'^\s*(".*")\s*$', result):
-        ##     ## OLD: result = f'{result[1:-1]}'
-        ##     result_proper = my_re.sub(r"[^\\]'", "\\'", result[1:-1])
-        ##     result = f"'{result_proper}'"
         if OK and result and NORMALIZE_RESULT:
             debug.trace_expr(5, expression, result)
             new_result = result
@@ -129,6 +125,12 @@ class TestConverter:
             if new_result != result:
                 debug.trace(5, f"FYI: Normalized result to {new_result!r}")
                 result = new_result
+
+        # Warn about '... => None' quirk with doctest
+        # Note: doctest returns empty string instead of None
+        debug.trace_expr(6, arrow_format, result)
+        if arrow_format and (result is None):
+            debug.trace(3, f"Warning: Use 'expr is None' rather than 'expr => None': doctest quirk; {line_num=}")
 
         # Add to tests
         if ((not OK) or ((expression is None) and (result is None))):

@@ -68,11 +68,11 @@ import mezcla.transpose_data as THE_MODULE
 ##         # Problem with output (self.run_script(self.temp_file) returns '')
 ##         # ERROR: ...Full output truncated (1 line hidden), use '-vv' to show
 ##         # FIXED 1: Replaced self.temp_file with self.get_temp_file
-##         # FIXED 2: Replaced self.run_script with gh.read_file
+##         # FIXED 2: Replaced self.run_script with system.read_file
 ##         # FIXED 3: Replaced == with in comparing output and SAMPLE_OUTPUT
 ##         # NOTE 1: Changing the position of """ in SAMPLE_OUTPUT varies the output
 ##
-##         output = gh.read_file(tmp_cmd_2)
+##         output = system.read_file(tmp_cmd_2)
 ##         assert (output in SAMPLE_OUTPUT_ACTUAL)
 ##         return
 

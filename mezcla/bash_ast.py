@@ -125,7 +125,7 @@ class BashAST:
 
 def main():
     """Entry point"""
-    debug.trace(TL.USUAL, f"main(): script={system.real_path(__file__)}")
+    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
 
     # Show simple usage if --help given
     dummy_main_app = Main(description=__doc__.format(prog=gh.basename(__file__)),

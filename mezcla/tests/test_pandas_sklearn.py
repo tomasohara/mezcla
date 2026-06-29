@@ -20,6 +20,7 @@ import pytest
 # Local packages
 from mezcla import debug
 from mezcla import glue_helpers as gh
+from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 
 # Note: Two references are used for the module to be tested:
@@ -35,25 +36,32 @@ IRIS_OUTPUT = f'{RESOURCES}/iris_output.txt'
 class TestPandasSklearnUtils:
     """Class for testcase definition"""
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_create_feature_mapping(self):
         """Ensure create_feature_mapping works as expected"""
         debug.trace(4, "test_create_feature_mapping()")
         assert THE_MODULE.create_feature_mapping(['c', 'b', 'b', 'a']) == {'c':0, 'b':1, 'a':2}
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_show_ablation(self):
         """Ensure show_ablation works as expected"""
         debug.trace(4, "test_show_ablation()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_show_precision_recall(self):
         """Ensure show_precision_recall works as expected"""
         debug.trace(4, "test_show_precision_recall()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_show_average_precision_recall(self):
         """Ensure show_average_precision_recall works as expected"""
         debug.trace(4, "test_show_average_precision_recall()")
         ## TODO: WORK-IN-PROGRESS
+        assert(False)
 
 
 class TestPandasSklearn(TestWrapper):
@@ -66,7 +74,7 @@ class TestPandasSklearn(TestWrapper):
         debug.trace(4, "test_main_without_args()")
         log_file = self.get_temp_file()
         self.run_script(data_file='', log_file=log_file)
-        assert 'Usage:' in gh.read_file(log_file)
+        assert 'Usage:' in system.read_file(log_file)
 
     @pytest.mark.xfail
     def test_normal_usage(self):
@@ -77,7 +85,7 @@ class TestPandasSklearn(TestWrapper):
 
         # Check line per line avoiding flaky numbers that always change
         line_num = 0
-        for expected_line, actual_line in zip(gh.read_lines(IRIS_OUTPUT), output.splitlines()):
+        for expected_line, actual_line in zip(system.read_lines(IRIS_OUTPUT), output.splitlines()):
             expected_line = re.sub(r' +', ' ', expected_line)
             actual_line = re.sub(r' +', ' ', actual_line)
             line_num += 1

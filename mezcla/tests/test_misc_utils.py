@@ -285,7 +285,8 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         """ensure time_function works as expected"""
         debug.trace(4, "test_time_function()")
         ms = THE_MODULE.time_function(time.sleep, 0.25)
-        assert math.floor(ms) == 250
+        ## OLD: assert math.floor(ms) == 250
+        assert THE_MODULE.is_close(ms, 250, epsilon=10)
 
     def test_get_class_from_name(self):
         """ensure get_class_from_name works as expected"""

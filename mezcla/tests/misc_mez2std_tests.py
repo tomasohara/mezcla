@@ -432,7 +432,8 @@ class TestM2SBatchConversion(TestWrapper):
             pytest.skip("No scripts found to test")
         
         m2s_path = self.get_mezcla_to_standard_script_path()
-        output_dir = gh.get_temp_dir()
+        ## OLD: output_dir = gh.get_temp_dir()
+        output_dir = self.get_temp_dir()
         
         # Initialize metrics tracking
         metrics = {
@@ -557,7 +558,8 @@ class TestM2SBatchConversion(TestWrapper):
 
         print(f"[DEBUG] Conversion script path: {m2s_path}")
         
-        output_path = gh.get_temp_dir()
+        ## OLD: output_path = gh.get_temp_dir()
+        output_path = self.get_temp_dir()
         if not output_path:
             print("[ERROR] Temporary directory for output is not available.")
             return

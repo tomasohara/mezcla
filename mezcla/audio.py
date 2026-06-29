@@ -130,7 +130,8 @@ class AudioArgumentProcessing(Main):
 
         # Check if is a list of audios
         elif extension == 'list':
-            self.audios = gh.read_lines(source)
+            ## OLD: self.audios = gh.read_lines(source)
+            self.audios = system.read_lines(source)
 
         # Check if is a folder
         elif path and not extension:

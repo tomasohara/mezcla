@@ -116,6 +116,7 @@ def run(command, trace_level=4, subtrace_level=None, **namespace) -> str :
     - If OUTPUT, the result will be printed.
     """
     ## NOTE: streamlined version of gh.run
+    ## TODO3: reconcile both version
     debug.assertion(isinstance(trace_level, int))
     debug.trace(6, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}")
     # Keep track of current debug level setting
@@ -135,7 +136,7 @@ def run(command, trace_level=4, subtrace_level=None, **namespace) -> str :
     command_line = command
     if my_re.search("{.*}", command):
         command_line = tpo.format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
-    debug.trace(6 , f"issuing: {command_line}")
+    debug.trace(5 , f"issuing: {command_line}")
     # Run the command
     result = str(subprocess.run(command_line, check=False, shell=True))
     # Restore debug level setting in environment
@@ -365,13 +366,15 @@ def main():
     """Main function"""
     # Parse command line options, show usage if --help given
     RUN_OPT = "run"
+    RUN_ALL_OPT = "all"
     main_app = Main(
         ## TODO2: skip_input=True,
         description=__doc__.format(script=gh.basename(__file__)),
-        boolean_options=[(RUN_OPT, "Run the tests")],
+        boolean_options=[(RUN_OPT, "Run the tests"), (RUN_ALL_OPT, "Run all tests")],
     )
     debug.assertion(main_app.parsed_args)
     run_opt = main_app.get_parsed_option(RUN_OPT)
+    run_all_opt = main_app.get_parsed_option(RUN_ALL_OPT)
     if not run_opt:
         system.exit(f"Error: need to specify --{RUN_OPT}")
 
@@ -383,9 +386,21 @@ def main():
     mypy_thresholds = {
         module: 40.0 for module in gh.get_matching_files(f"{MYPY_TEST_PATH}/*.py")
     }
-    test_thresholds = {
-        test_file: 25.0 for test_file in gh.get_matching_files(f"{PYTEST_TEST_PATH}/*.py")
-    }
+
+    if run_all_opt:
+        # find all tests directories, except _git-trash
+        # n.b., glob ** matches all subdirs
+        test_pattern = f"{gh.dirname(__file__)}/**/tests/test_*.py"
+        all_test_files = [f for f in gh.get_matching_files(test_pattern, recursive=True)
+                          if "_git-trash" not in f]
+        test_thresholds = {
+            test_file: 25.0 for test_file in all_test_files
+        }
+    else:
+        test_thresholds = {
+            test_file: 25.0 for test_file in gh.get_matching_files(f"{PYTEST_TEST_PATH}/*.py")
+        }
+
     # note: thresholds = mypy_thresholds | test_thresholds for python 3.9+
     default_thresholds = {**mypy_thresholds, **test_thresholds}
     debug.trace_expr(5, default_thresholds, prefix="default thresholds: ")

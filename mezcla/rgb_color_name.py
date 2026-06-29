@@ -43,7 +43,7 @@
 
 r"""Convert RGB tuples into color names
 
-Sample usages:
+Sample usage:
    {script} --hex6 <<<"#36454F"
 
    {script} --hex3 <<<"#eee"
@@ -51,9 +51,11 @@ Sample usages:
    extcolors tests/resources/orange-gradient.png | {script} -
 
    DUMP_HEXNAMES=1 {script} > {basename}.colors.list 2>&1
+
+   for hex in {{0..9}} {{a..f}}; do
+       QUIET_MODE=1 {script} --hex3 <<<"#$hex$hex$hex"
+   done
 """
-##
-## TODO4: DUMP_HEXNAMES=1 {script} > {script.replace(".py", "")}.colors.log 2>&1
 
 ## TODO3: modernize extract_document_text.py (e.g., --html --stdout)
 ##
@@ -91,8 +93,6 @@ DUMP_HEXNAMES = system.getenv_bool(
 HEX_CH = "[0-9A-F]"
 
 VERBOSE_SAMPLE_USAGE = r"""
-   {script} --hex3 <<<"#eee"
-
    green_wiki="https://en.wikipedia.org/wiki/Shades_of_green"
    curl --silent "$green_wiki" | HTML=1 STDOUT-1 extract_document_text.py - | {script} --hex6 - | egrep '\|'
 """

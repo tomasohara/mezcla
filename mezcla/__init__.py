@@ -24,9 +24,11 @@ __version__ = __VERSION__
 
 # Standard module(s)
 import sys
+import builtins
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
 # Note: requires python 3 or higher
+# TODO2: upgrade checks to cover 3.6 (mandatory) and 3.8+ (practical)
 PYTHON3_PLUS = (sys.version_info[0] >= 3)
 assert PYTHON3_PLUS, "Python 3 or higher: ¡por favor!"
 
@@ -48,20 +50,24 @@ assert PYTHON3_PLUS, "Python 3 or higher: ¡por favor!"
 ##     ## DEBUG: debug.trace_expr(TL.DEFAULT, debug, mezcla, system, TL)
 ## else:
 ##     TL = None
-from mezcla import debug
-from mezcla import glue_helpers as gh
-from mezcla.my_regex import my_re
-from mezcla import system
 
-# Constants
-TL = debug.TL
+# Optional helpers for import context
+def _in_ipython() -> bool:
+    """Whether running under an active IPython/Jupyter session"""
+    get_ipython = getattr(builtins, "get_ipython", None)
+    if callable(get_ipython):
+        return bool(get_ipython())
+    return (("ipykernel" in sys.modules) or ("IPython" in sys.modules))
 
-# Expose commonly used modules
-__all__ = ["debug", "gh", "my_re", "system", "TL", "__VERSION__"]
+# Set convenience exports based on runtime mode.
+if _in_ipython():
+    # FYI to make import source explicit in interactive sessions.
+    print("FYI: mezcla using ipython_utils imports: debug, gh, my_re, system, TL")
+    from mezcla.ipython_utils import debug, gh, my_re, system, TL  # pylint: disable=ungrouped-imports
+    __all__ = ["debug", "gh", "my_re", "system", "TL", "__VERSION__"]
+else:
+    __all__ = ["__VERSION__"]
 
-## OLD:
-## if __name__ == '__main__':
-##     debug.trace(TL.USUAL, f"Version: {__VERSION__}")
-##     system.print_error(f"Warning: {__file__} is not intended to be run standalone\n")
-## NOTE: See https://stackoverflow.com/questions/43393764/python-3-6-project-structure-leads-to-runtimewarning
-debug.trace(TL.DETAILED, f"mezcla version: {__VERSION__}")
+## PREVIOUS:
+## NOTE: See __main__.py
+## debug.trace(TL.DETAILED, f"mezcla version: {__VERSION__}")

@@ -60,7 +60,7 @@ MAX_NUM_TOKENS = tpo.getenv_integer("MAX_NUM_TOKENS", None)
 
 #------------------------------------------------------------------------
 
-class CorpusData(object):
+class CorpusData:
     """Class for processing corpora with gensim (based on MyCorpus from gensim samples)"""
     # Note: Corpora can be too large for main memory, so designed around iterators.
     # TODO: Add option for using all available memory.
@@ -213,7 +213,7 @@ class CorpusData(object):
 
 #------------------------------------------------------------------------
 
-class UserIdMapping(object):
+class UserIdMapping:
     """Class for mapping Gensim document ID's into user ID's"""
 
     def __init__(self, docid_filename):
@@ -244,7 +244,7 @@ class UserIdMapping(object):
 
 #------------------------------------------------------------------------
 
-class SimilarDocument(object):
+class SimilarDocument:
     """Base class for finding similar documents via vector-space cosine measure"""
     # TODO: rework so that CorpusData class used to encapsulate both corpus and dictionary
 
@@ -486,7 +486,8 @@ def main(runtime_args=None):
         tpo.debug_print("Reading input from stdin", 4)
         temp_file = TEMP_BASE
         filename = temp_file + ".txt"
-        system.write_file(filename, gh.read_file(None))
+        ## OLD: system.write_file(filename, gh.read_file(None))
+        system.write_file(filename, system.read_file(None))
 
     # Derive the basename if not given
     # TODO: TFIDF_MODEL_EXT = ".tfidf.mm"

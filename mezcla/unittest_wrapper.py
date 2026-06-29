@@ -15,6 +15,7 @@
 #   is raised by default. To disable this, set the SUB_DEBUG_LEVEL as follows:
 #      l=5; DEBUG_LEVEL=$l SUB_DEBUG_LEVEL=$l pytest -s tests/test_spell.py
 #   See glue_helper.py for implementation along with related ALLOW_SUBCOMMAND_TRACING.
+# - Use CAPSYS_DEBUG_LEVEL to override VERBOSE (5) mirror of stdout/stderr.
 # TODO:
 # - * Clarify TEMP_BASE vs. TEMP_FILE usage.
 #   via glue_helpers.py: default base prefix vs fixed override
@@ -60,7 +61,7 @@ import sys
 import tempfile
 import unittest
 from typing import (
-    Optional, Callable, Any, Tuple,
+    Optional, Callable, Any, List, Tuple,
 )
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
 
@@ -83,6 +84,7 @@ from mezcla.my_regex import my_re
 from mezcla import system
 ## DEBUG: debug.trace_expr(6, __file__)
 from mezcla.debug import IntOrTraceLevel
+from mezcla.validate_arguments_types import OptStr
 
 # Constants (e.g., environment options)
 
@@ -117,7 +119,7 @@ UNDER_RUNNER = system.getenv_bool(
     description="Whether running under Github actions")
 RUN_SLOW_TESTS = system.getenv_bool(
     "RUN_SLOW_TESTS", UNDER_RUNNER,
-    description="Run tests that can a while to run")
+    description="Run tests that can take a while to run--warning: deprecated alias for not[-]SKIP_SLOW_TESTS")
 debug.reference_var(RUN_SLOW_TESTS)
 
 UNDER_COVERAGE = system.getenv_bool(
@@ -137,7 +139,7 @@ if PROFILE_CODE:
 
 #-------------------------------------------------------------------------------
 
-def get_temp_dir(keep: Optional[bool] = None, unique=None) -> str:
+def get_temp_dir(keep: Optional[bool] = None, unique: Optional[bool] = None) -> str:
     """Get temporary directory, omitting later deletion if KEEP
     Note: Optionally returns UNIQUE dir
     """
@@ -161,7 +163,8 @@ def get_temp_dir(keep: Optional[bool] = None, unique=None) -> str:
     return dir_path
 
 
-def trap_exception(function: Callable) -> Any:
+## OLD: function: Callable) -> Any
+def trap_exception(function: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to trap exception during function execution
     Note:
     - Only intended for use in tests (e.g., fix for maldito pytest).
@@ -170,7 +173,7 @@ def trap_exception(function: Callable) -> Any:
     """
     debug.trace(8, f"trap_exception({gh.elide(function)}")
     #
-    def wrapper(*args):
+    def wrapper(*args) -> Any:
         """Wrapper around variable arity function f"""   ## TODO: {function.__name__}
         debug.trace(7, f"in wrapper: args={args}")
         result = None
@@ -187,7 +190,8 @@ def trap_exception(function: Callable) -> Any:
     return wrapper
 
 
-def pytest_fixture_wrapper(function: Callable) -> Callable:
+## OLD: function: Callable) -> Callable
+def pytest_fixture_wrapper(function: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator for use with pytest fixtures like capsys
     Usage:
         @pytest_fixture_wrapper
@@ -199,7 +203,7 @@ def pytest_fixture_wrapper(function: Callable) -> Callable:
     # Note: This is currently usused. It was previously used with trap_exception.
     debug.trace(8, f"pytest_fixture_wrapper({gh.elide(function)}")
     #
-    def wrapper(x):
+    def wrapper(x: Any) -> Any:
         """Wrapper around unary function f(x)"""   ## TODO: {function.__name__}
         debug.trace(7, f"in wrapper: x={x}")
         return function(x)
@@ -208,7 +212,7 @@ def pytest_fixture_wrapper(function: Callable) -> Callable:
     return wrapper
 
 
-def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
+def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST) -> None:
     """Invoke TESTS defined in FILENAME, optionally VIA_UNITTEST"""
     debug.trace(5, f"invoke_tests({filename}, [{via_unittest}])")
     try:
@@ -221,8 +225,9 @@ def invoke_tests(filename: str, via_unittest: bool = VIA_UNITTEST):
         system.print_exception_info("invoke_tests")
 
 
-def init_temp_settings():
+def init_temp_settings() -> bool:
     """Initialize settings related to temp-file names"""
+    debug.trace(4, "unittest_wrapper.init_temp_settings()")
     ok = True
     # Re-initalize glue helper temp file settings
     ## TODO?: system.setenv("PRESERVE_TEMP_FILE", "1")
@@ -252,15 +257,18 @@ class TestWrapper(unittest.TestCase):
         desc="Check coverage during unit testing")
     ## TODO: temp_file = None
     ## TEMP: initialize to unique value independent of temp_base
-    temp_file = None
+    temp_file: OptStr = None
     use_temp_base_dir = (system.is_directory(temp_base) if temp_base else False)
     ## OLD: test_num = 1
     test_num = 0
     temp_file_count = 0
     class_setup = False
-    profiler = None
-    monkeypatch = None
-    capsys = None
+    profiler: Any = None        # cProfile.Profile when PROFILE_CODE (conditionally imported below)
+    monkeypatch: Optional[pytest.MonkeyPatch] = None
+    capsys: Optional[pytest.CaptureFixture] = None
+    capsys_debug_level = system.getenv_int(
+        "CAPSYS_DEBUG_LEVEL", 5,
+        desc="Base debug level for capsys stdout/stderr tracing")
 
     ## TEST:
     ## NOTE: leads to pytest warning. See
@@ -274,7 +282,7 @@ class TestWrapper(unittest.TestCase):
     ## __test__ = False                 # make sure not assumed test
         
     @classmethod
-    def setUpClass(cls, filename=None, module=None):
+    def setUpClass(cls, filename: OptStr = None, module: Optional[object] = None) -> None:
         """Per-class initialization: make sure script_module set properly
         Note: Optional FILENAME is path for testing script and MODULE the imported object for tested script
         """
@@ -298,6 +306,9 @@ class TestWrapper(unittest.TestCase):
                             assert_level=6)
             debug.assertion("No module named" not in help_errors,
                             f"problem running via 'python -m {cls.script_module}'")
+            # ex: ValueError: unsupported format character 't' ... (e.g., unescaped % in argparse help)
+            debug.assertion("Traceback (most recent call last)" not in help_errors,
+                            f"exception during --help via 'python -m {cls.script_module}'")
             # Warn about lack of usage statement unless "not intended for command-line" type warning issued
             # TODO: standardize the not-intended wording
             if (not ((my_re.search(r"(error|warning|FYI):.*not intended", help_usage,
@@ -400,7 +411,7 @@ class TestWrapper(unittest.TestCase):
         cls.script_file = cls.get_module_file_path(test_filename)
         return 
     
-    def ensure_file_dir_exists(self, filename):
+    def ensure_file_dir_exists(self, filename: str) -> None:
         """Make sure that directory for FILENAME exists"""
         debug.trace(5, f"TestWrapper.ensure_file_dir_exists({filename})")
         dir_path = gh.dirname(filename)
@@ -417,7 +428,11 @@ class TestWrapper(unittest.TestCase):
         debug.trace(5, "TestWrapper.setUp()")
         if not self.class_setup:
             debug.trace(3, "Warning: invoking setUpClass in setUp; make sure seUpClass calls parent")
-            TestWrapper.setUpClass(self.__class__)
+            ## BAD: TestWrapper.setUpClass(self.__class__)
+            ## NOTE: the above passed self.__class__ as the filename: OptStr argument
+            ## (a type[TestWrapper], not a filename); now flagged by mypy. The intent
+            ## is to invoke setUpClass bound to the actual subclass.
+            self.__class__.setUpClass()
         if not gh.ALLOW_SUBCOMMAND_TRACING:
             gh.disable_subcommand_tracing()
         # The temp file is an extension of temp-base file by default.
@@ -425,6 +440,7 @@ class TestWrapper(unittest.TestCase):
         if self.use_temp_base_dir:
             default_temp_file = gh.form_path(self.temp_base, "test-")
         else:
+            debug.assertion(not system.is_directory(self.temp_base))
             default_temp_file = self.temp_base + "-test-"
         temp_file_basename = default_temp_file
         TestWrapper.test_num += 1
@@ -648,13 +664,13 @@ class TestWrapper(unittest.TestCase):
         assert equals, message
     
     @pytest.fixture(autouse=True, name='monkeypatch')
-    def monkeypatch_fixture(self, monkeypatch) -> None:
+    def monkeypatch_fixture(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Support for using pytest monkeypatch to modify objects (e.g., dictionaries or environment variables)"""
         # See https://docs.pytest.org/en/latest/how-to/monkeypatch.html
         self.monkeypatch = monkeypatch
 
     @pytest.fixture(autouse=True, name='capsys')
-    def capsys_fixture(self, capsys) -> None:
+    def capsys_fixture(self, capsys: pytest.CaptureFixture) -> None:
         """Support for capturing stdout and stderr"""
         # See https://docs.pytest.org/en/latest/how-to/capture-stdout-stderr.html
         self.capsys = capsys
@@ -663,22 +679,26 @@ class TestWrapper(unittest.TestCase):
         """Get currently captured standard output and error
         Note: Clears both stdout and stderr captured afterwards. This might
         be needed beforehand to clear capsys buffer.
+        In addition, you might need to use DEBUG_FILE to see all tracing (see debug.py)
 
         Warning: The capsys clearing workaround is not foolproof, so you
         might need to disable capsys beforehand (e.g., in setUp): see
         tests/template.py. Alternatively, use multiple test functions:
             https://stackoverflow.com/questions/56187165/how-to-clear-captured-stdout-stderr-in-between-of-multiple-assert-statements
         """
+        ## TODO3: add level option for tracing (e.g. 5=>level and 7=>level+2)
         stdout, stderr = ("", "")
         try:
             if self.capsys:
                 with self.capsys.disabled():
                     stdout, stderr = self.capsys.readouterr()
                     ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
-                    debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
+                    ## OLD: debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
+                    debug.trace_expr(self.capsys_debug_level, stdout, stderr,
+                                     prefix="get_stdout_stderr:\n", delim="\n", max_len=32768)
         except:
             # note: trace level high so as not to affect normal testing
-            debug.trace_exception(7, "get_stdout_stderr")
+            debug.trace_exception(self.capsys_debug_level + 2, "get_stdout_stderr")
         return stdout, stderr
         
     def get_stdout(self) -> str:
@@ -740,7 +760,7 @@ class TestWrapper(unittest.TestCase):
         """Return name of temporary dir based on self.temp_file, optionally with DELETE.
         Also, the directory will be created unless SKIP_CREATE;
         this possibly overwrites existing file with same name.
-        In addition, the directory will be unique unless STATIC specified.
+        Warning: the directory will be unique unless STATIC specified.
         Note: delete option not yet functional
         """
         temp_dir = self.get_temp_file(delete=delete, static=static, as_dir=True)
@@ -756,8 +776,19 @@ class TestWrapper(unittest.TestCase):
         debug.trace(6, f"create_temp_file({contents!r}) => {temp_filename}")
         return temp_filename
 
-    def patch_trace_level(self, level):
-        """Monkey patch the trace LEVEL (e.g., DEBUG_LEVEL)"""
+    def create_data_file(self, data: List[Any],  **kwargs) -> str:
+        """Create temporary file with list DATA and return full path
+        Note: version of create_temp_file with list input
+        """
+        contents = [str(v) for v in data]
+        return self.create_temp_file(contents + "\n", **kwargs)
+
+    def patch_trace_level(self, level: IntOrTraceLevel) -> None:
+        """Monkey patch the trace LEVEL (e.g., DEBUG_LEVEL)
+        Note: You might need to adjust capsys_debug_level.
+        """
+        ## NOTE: monkeypatch is set via the autouse monkeypatch_fixture (see __init__)
+        assert self.monkeypatch is not None
         self.monkeypatch.setattr("mezcla.debug.trace_level", level)
 
     def tearDown(self) -> None:

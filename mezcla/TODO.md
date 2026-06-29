@@ -14,3 +14,5 @@ An optional priority is indicated by [Pn]
 - [P5] Drop old 'use_stdin=True' TODO comments in tests.
 - [P5] Change obsolete TestIt2.test_xyz method traces to TestIt.test_xyz.
 - [P3] Clarify common command line interface (CLI) usages, such as using TEMP_BASE to a fixed directory when debugging tests.
+- [P3] Standardize on usage formatting (e.g., indentation): see examples/youtube_transcript.py for intentionally narrow indentation).
+- [P2] Change `self.temp_file` => `self.get_temp_file()` in tests.

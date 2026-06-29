@@ -92,6 +92,7 @@ _ABSENT = object()
 BTL = 0                                 # base trace level
 INTROSPECTION_DEBUG_LABEL = "INTROSPECTION_DEBUG"
 INTROSPECTION_DEBUG = os.getenv(INTROSPECTION_DEBUG_LABEL)
+MAX_TRACE_LEN = 1024                    # length of trace output
 
 # Conditional imports
 debug = system = None
@@ -109,6 +110,12 @@ def trace(text, level=BTL, **kwargs):
     """
     if debug:
         debug.trace(level, text, skip_sanity_checks=True, **kwargs)
+
+
+def trace_object(obj, level=BTL, label=None, **kwargs):
+    """Wrapper around debug.trace_object"""
+    if debug:
+        debug.trace_object(level, obj, label=label, **kwargs)
 
 
 def stderr_print(*args):
@@ -161,8 +168,10 @@ class Source(executing.Source):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if INTROSPECTION_DEBUG:
-            trace(f"Source.__init__{(*args, kwargs)}", max_len=1024)
-            debug.trace_object(BTL+2, self, label="Source instance")
+            trace(f"Source.__init__{(*args, kwargs)}", max_len=MAX_TRACE_LEN)
+            ## OLD: debug.trace_object(BTL+2, self, label="Source instance")
+            ## BAD: trace_object(BTL+2, self, label="Source instance")
+            trace_object(self, level=BTL+2, label="Source instance")
 
     def get_text_with_indentation(self, node):
         """
@@ -233,7 +242,7 @@ def argument_to_string(obj, **kwargs) -> str:
     Note: Also uses `DEFAULT_ARG_TO_STRING_KWARGS`. Normally pprint is called with defaults,
     except for width (e.g., 80 => 512); see `DEFAULT_ARG_TO_STRING_WIDTH`.
     """
-    if kwargs is {}:
+    if not kwargs:
         kwargs = DEFAULT_ARG_TO_STRING_KWARGS
     s = DEFAULT_ARG_TO_STRING_FUNCTION(obj, **kwargs)
     s = s.replace("\\n", "\n")  # Preserve string newlines in output.
@@ -289,7 +298,7 @@ class MezclaDebugger:
         self.context_abs_path = context_abs_path
         self.icecream_like = icecream_like
 
-    def __call__(self, *args, arg_offset=0, indirect=False, **kwargs):
+    def __call__(self, *args, arg_offset=0, indirect=False, levels_back=0, **kwargs):
         """
         Formats the given arguments and prints the formatted string
         
@@ -298,7 +307,7 @@ class MezclaDebugger:
         # NOTE: this is not separated into a function
         # as to not generate another call frame
         if INTROSPECTION_DEBUG:
-            trace(f"in __call__:\n\t{args=}\n\t{arg_offset=}\n\t{indirect=}\n\t{kwargs=}",
+            trace(f"in __call__:\n\t{args=}\n\t{arg_offset=}\n\t{indirect=}\n\t{levels_back=}\n\t{kwargs=}",
                   level=BTL+1)
         call_frame = inspect.currentframe()
         if INTROSPECTION_DEBUG:
@@ -313,6 +322,12 @@ class MezclaDebugger:
                 call_frame = call_frame.f_back
                 if INTROSPECTION_DEBUG:
                     trace_frame(call_frame, "call_frame2")
+            # Skip additional frames (e.g., for OO wrapper layers)
+            for _i in range(levels_back):
+                if call_frame is not None:
+                    call_frame = call_frame.f_back
+                    if INTROSPECTION_DEBUG:
+                        trace_frame(call_frame, f"call_frame{3 + _i}")
         if call_frame is None:
             raise ValueError("Cannot access the call frame")
         self.output_function(self._format(call_frame, arg_offset, *args, **kwargs))
@@ -325,7 +340,7 @@ class MezclaDebugger:
             passthrough = args
         return passthrough
 
-    def format(self, *args, arg_offset=0, indirect=False, **kwargs):
+    def format(self, *args, arg_offset=0, indirect=False, levels_back=0, **kwargs):
         """
         Formats the given arguments and returns the formatted string,
         ignoring the first `arg_offset` arguments
@@ -333,9 +348,9 @@ class MezclaDebugger:
         :raises ValueError: If the call frame cannot be accessed
         """
         if INTROSPECTION_DEBUG:
-            trace(f"in format:\n\t{args=}\n\t{arg_offset=}\n\t{indirect=}\n\t{kwargs=}",
+            trace(f"in format:\n\t{args=}\n\t{arg_offset=}\n\t{indirect=}\n\t{levels_back=}\n\t{kwargs=}",
                   level=BTL+1)
-        ## TODO2: add levels_back param (e.g., 2 for gh.assertion)
+        ## TODO2: add levels_back param (e.g., 2 for gh.assertion) [done via levels_back]
         # NOTE: this is not separated into a function
         # as to not generate another call frame
         call_frame = None
@@ -353,6 +368,12 @@ class MezclaDebugger:
                     call_frame = call_frame.f_back
                     if INTROSPECTION_DEBUG:
                         trace_frame(call_frame, "call_frame2")
+                # Skip additional frames (e.g., for OO wrapper layers)
+                for _i in range(levels_back):
+                    if call_frame is not None:
+                        call_frame = call_frame.f_back
+                        if INTROSPECTION_DEBUG:
+                            trace_frame(call_frame, f"call_frame{3 + _i}")
             if call_frame is None:
                 raise ValueError("Cannot access the call frame")
             out = self._format(call_frame, arg_offset, *args, **kwargs)
@@ -362,7 +383,8 @@ class MezclaDebugger:
             sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
             sys.stderr.write(f"\t{sys.exc_info()}\n")
             if INTROSPECTION_DEBUG:
-                traceback.print_stack(file=sys.stderr)
+                ## OLD: traceback.print_stack(file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
         if INTROSPECTION_DEBUG:
             trace(f"out format: {out!r}", level=BTL+1)
         return out
@@ -418,7 +440,8 @@ class MezclaDebugger:
         call_node = Source.executing(call_frame).node
         if call_node and INTROSPECTION_DEBUG:
             try:
-                debug.trace_fmt(BTL+1, "call_node: {d}", d=ast.dump(call_node), max_len=1024)
+                debug.trace_fmt(BTL+1, "call_node: {d}", d=ast.dump(call_node),
+                                max_len=MAX_TRACE_LEN)
             except:
                 debug.trace_exception_info(BTL, f"trace for {call_node=}")
         if call_node is not None:
@@ -433,14 +456,16 @@ class MezclaDebugger:
             if INTROSPECTION_DEBUG:
                 trace(f"{sanitized_arg_strs=}")
         else:
-            sys.stderr.write("Warning: unable to extract args:\n")
+            sys.stderr.write("Warning: unable to extract args for introspection:\n")
             sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
             sys.stderr.write(f"\t{sys.exc_info()}\n")
             sanitized_arg_strs = [_ABSENT] * len(args)
 
         pairs = list(zip(sanitized_arg_strs, args))
         if INTROSPECTION_DEBUG:
-            debug.trace_object(BTL, pairs, "pairs", show_all=False)
+            ## OLD: debug.trace_object(BTL, pairs, "pairs", show_all=False)
+            ## BAD: trace_object(BTL, pairs, "pairs", show_all=False)
+            trace_object(pairs, level=BTL, label="pairs", show_all=False)
 
         out = self._construct_argument_output(prefix, context, pairs, **kwargs)
         return out
@@ -452,24 +477,47 @@ class MezclaDebugger:
         Note: Uses self.arg_to_string_function unless max_len specified (then format_value).
         """
         if INTROSPECTION_DEBUG:
-            trace(f"_construct_argument_output{(prefix, context, pairs)}; kwargs={kwargs}",
+            trace(f"in _construct_argument_output{(prefix, context, pairs)}; kwargs={kwargs}",
                   level=BTL+1)
         def arg_prefix(arg, delim='=') -> str:
             """Return ARG concatenated with DELIM"""
             return f"{arg}{delim}"
+        ## BAD:
+        ## def format_value(val, max_len):
+        ##     """Return up to MAX_LEN of VAL as text, adding ... if truncated"""
+        ##     result = str(val)
+        ##     if isinstance(max_len, int) and len(result) > max_len:
+        ##         result = repr(result[:max_len] + "...")
+        ##     return result
         def format_value(val, max_len):
             """Return up to MAX_LEN of VAL as text, adding ... if truncated"""
+            # Change facilitated by Antigravity using Gemini 3.5 Flash.
+            use_repr = kwargs.get('use_repr', True)
+            if use_repr:
+                if isinstance(val, str):
+                    if isinstance(max_len, int) and len(val) > max_len:
+                        return repr(val[:max_len] + "...")
+                    return repr(val)
+                result = repr(val)
+                if isinstance(max_len, int) and len(result) > max_len:
+                    return result[:max_len] + "..."
+                return result
             result = str(val)
-            if isinstance(max_len, int) and len(val) > max_len:
-                result = val[:max_len + 1] + "..."
+            if isinstance(max_len, int) and len(result) > max_len:
+                return result[:max_len] + "..."
             return result
 
         # Derive pairs of arguments (specifications) from call with resolved value.
         # Checks for debug.assertion's omit_values option.
         omit_values = kwargs.get('omit_values')
         ## OLD: pairs = [(arg, self.arg_to_string_function(val)) for arg, val in pairs]
-        if "max_len" in kwargs:
-            pairs = [(arg, format_value(val, kwargs["max_len"]))
+        ## TODO2: use format_value consistently
+        ## BAD:
+        ## if "max_len" in kwargs:
+        ##     pairs = [(arg, format_value(val, kwargs["max_len"]))
+        ##              for (arg, val) in pairs]
+        if "max_len" in kwargs or not kwargs.get('use_repr', True):
+            pairs = [(arg, format_value(val, kwargs.get("max_len")))
                      for (arg, val) in pairs]
         else:
             pairs = [(arg, self.arg_to_string_function(val, **self.arg_to_string_kwargs))
@@ -510,7 +558,11 @@ class MezclaDebugger:
 
         no_eol = kwargs.get('no_eol', False)
         end = "" if no_eol else "\n"
-        return "".join(lines) + end
+        result = "".join(lines) + end
+        if INTROSPECTION_DEBUG:
+            trace(f"out _construct_argument_output: {result!r}",
+                  level=BTL+2)
+        return result
 
     def _format_context(self, call_frame: FrameType) -> str:
         """

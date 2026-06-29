@@ -45,31 +45,49 @@ SKIP_SLOW_TESTS = system.getenv_bool(
     "SKIP_SLOW_TESTS", (not (UNDER_RUNNER or RUN_SLOW_TESTS)),
     description="Omit tests that can take a while to run")
 SKIP_SLOW_REASON="Ignoring slow test"
-##
+debug.assertion(debug.xor(SKIP_SLOW_TESTS, RUN_SLOW_TESTS))
+#
+TEST_UNIMPLEMENTED_TESTS = system.getenv_bool(
+    "TEST_UNIMPLEMENTED_TESTS", False,
+    description="Skip tests not yet implemented")
 SKIP_UNIMPLEMENTED_TESTS = system.getenv_bool(
     # Note: used to avoid clutter due to (so many) unimplemented tests, such as
     # when using --runxfail for better test failure diagnostics.
     "SKIP_UNIMPLEMENTED_TESTS", 
-    False,
+    (not (UNDER_RUNNER or TEST_UNIMPLEMENTED_TESTS)),
     description="Skip tests not yet implemented")
 SKIP_UNIMPLEMENTED_REASON = "Ignoring unimplemented test"
+#
+TEST_EXPECTED_ERRORS = system.getenv_bool(
+    ## UPDATE: 05/10/26 requires explicit setting to skip expected errors
+    "TEST_EXPECTED_ERRORS", True,
+    description="Alias for not[-]SKIP_EXPECTED_ERRORS")
 SKIP_EXPECTED_REASON = "Skipping cases that should never pass (e.g., intentional error)"
 SKIP_EXPECTED_ERRORS = system.getenv_bool(
     # Note: this helps filter known errors before running error checking script,
     # (e.g., check_errors.py in companion repo tomasohara/shell-scripts).
     # It is different from xfail in that the tests are not likely to ever pass.
     "SKIP_EXPECTED_ERRORS",
-    False,
+    (not (UNDER_RUNNER or TEST_EXPECTED_ERRORS)),
     description="Skip cases intentionally causing conversion errors, etc.")
 #
 TEST_TBD_TESTS = system.getenv_bool(
     "TEST_TBD_TESTS", False,
     description="Run tests to be designed")
-SKIP_TBD_REASON="Ignore test to be designed"
+SKIP_TBD_REASON="Ignoring test to be designed"
 SKIP_TBD_TESTS = system.getenv_bool(
+    ## OLD: "SKIP_TBD_TESTS", (not (UNDER_RUNNER or TEST_TBD_TESTS)),
+    # Note: Enabled under runner by default (unlike SKIP_EXPECTED_ERRORS, etc. above).
+    # This works around time out issue with test_text_categorizer.py.
     "SKIP_TBD_TESTS", not TEST_TBD_TESTS,
     description=SKIP_TBD_REASON)
 debug.assertion(not (TEST_TBD_TESTS and SKIP_TBD_TESTS))
+#
+SKIP_VERBOSE_TESTS = system.getenv_bool(
+    "SKIP_VERBOSE_TESTS", False,
+    # Note: added for adhoc testing with reduced trace level to avoid those that increase it intentionally
+    description="Skip tests that generate a lot of output (e.g., due to patched trace level)")
+SKIP_VERBOSE_REASON="Ignoring tests generating verbose output to stdout or stderr"
 
 # Globals
 mezcla_root_dir = None
@@ -90,7 +108,7 @@ def fix_indent(code):
     if isinstance(result, str) and my_re.search(r"^\n( +)", result):
         indentation = my_re.group(1)
         result = my_re.sub(fr"^{indentation}", "", result, flags=my_re.MULTILINE)
-    debug.trace(8, f"fix_indent{code!r} => {result!r}")
+    debug.trace(8, f"fix_indent({code!r}) => {result!r}")
     return result
 
 

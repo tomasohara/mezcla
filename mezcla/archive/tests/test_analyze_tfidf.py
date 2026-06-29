@@ -93,7 +93,7 @@ class TestIt(unittest.TestCase):
         # Extract impresssion IDs and query keywords
         base = self.base
         gh.run("cut -f1,12 {data_file} >| {self.base}.data")
-        self.assertTrue(len(gh.read_lines(base + ".data")) == 92)
+        self.assertTrue(len(system.read_lines(base + ".data")) == 92)
 
         # Index the keywords from sample query log
         output = gh.run("SHOW_TFIDF=1 INCLUSION_FIELDS=2  INDEX_DIR={self.index_dir} python  -m index_table_file  {base}.data")
@@ -101,7 +101,7 @@ class TestIt(unittest.TestCase):
 
         # Create TF/IDF listing for documents
         gh.run("SHOW_TFIDF=1 INDEX_DIR={self.index_dir}  python -m search_table_file_index - >| {base}.search.log")
-        output = gh.read_file(base + ".search.log")
+        output = system.read_file(base + ".search.log")
         # ex: doc=0 tfidf=['k:3.829']
         self.assertTrue(re.search("docid=0.*tfidf.*'k:", output))
         # ex: doc=91 tfidf=['attorney:2.124', 'patent:2.037']
