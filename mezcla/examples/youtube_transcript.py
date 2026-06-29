@@ -5,16 +5,24 @@
 # Based on following:
 #   https://github.com/jdepoix/youtube-transcript-api/issues/234 [expose functionality for formatting timestamps in textual formats]
 #
+# Note:
+## UPDATE: 06/06/2026: usage tweaks for sake of yt-transcript alias
+# - Usage integrates debugging tips (e.g., in case transcript not enabled).
+# - Indentation is narrower than usual for sake of the yt-transcript alias:
+#   https://github.com/tomasohara/shell-scripts/blob/7bc80231406fa9996cc48764373fcb44b9f4f937/tomohara-proper-aliases.bash#L854
+# 
 
 """
 Download YouTube transcript
 
-Sample usages:
-   {script} 'https://www.youtube.com/watch?v=1KcdgFxmnb4' > Caravaggio-examples.txt
+Simple usage:
+  {script} 'www.youtube.com/watch?v=1KcdgFxmnb4' > Caravaggio-examples.txt
 
-   VIDEO_LANGS="en es" {script} 'https://www.youtube.com/watch?v=G6FuWd4wNd8' > bad-bunny-halftime.list
+Other usages:
+  VIDEO_LANGS="en es" {script} 'www.youtube.com/watch?v=G6FuWd4wNd8' > bad-bunny-halftime.txt
 
-   id=3UWxmt7VAlU; {script} "$id" > edward-loper-doc.txt
+  id="HoS-pMWCnvk"; base="$TMP/_youtube-tornado-$id"
+  DEBUG_LEVEL=4 {script} "$id" >| "$base.txt" 2>| "$base.log"; head "$base"*
 """
 
 # Standard modules
@@ -38,6 +46,10 @@ DEFAULT_VIDEO_LANGS = "en"
 VIDEO_LANGS = system.getenv_text(
     "VIDEO_LANGS", DEFAULT_VIDEO_LANGS,
     desc="Codes for languages to check")
+DEBUGGING_USAGE = (
+    "Debugging usage (e.g., transcript access):\n" +
+    "    {script_path} --verbose 'https://www.youtube.com/watch?v=HoS-pMWCnvk'\n"
+)
 
 #-------------------------------------------------------------------------------
 # Note: custom class due lack of help by youtube_transcript_api developers
@@ -57,10 +69,10 @@ class YouTubeLikeFormatter(formatters._TextBasedFormatter):      # pylint: disab
     def _format_transcript_header(self, lines):
         return "Transcript\n\n" + "\n".join(lines) + "\n"
 
-    def _format_transcript_helper(self, i, time_text, line):
+    def _format_transcript_helper(self, i, time_text, snippet):
         # drops second timestamp (e.g., "00:00:28.500 --> 00:00:30.060" => "00:00:28.500")
         time_text = my_re.sub(r" --> \S+", "", time_text)
-        return "{} {}".format(time_text, line.text)
+        return "{} {}".format(time_text, snippet.text)
 
     def format_transcript(self, transcript, **kwargs):
         """Format transcript with YouTube-like timestamps."""
@@ -76,10 +88,16 @@ class YouTubeLikeFormatter(formatters._TextBasedFormatter):      # pylint: disab
 
 def main():
     """Entry point"""
-    debug.trace(TL.DETAILED, f"main(): script={system.real_path(__file__)}")
+    script_file = __file__
+    full_script_path = system.real_path(script_file)
+    debug.trace(TL.DETAILED, f"main(): script={full_script_path}")
 
     # Parse command line options, show usage if --help given
-    main_app = Main(description=__doc__.format(script=gh.basename(__file__)),
+    usage_description = __doc__
+    if debug.debugging():
+        usage_description += "\n\n" + DEBUGGING_USAGE
+    main_app = Main(description=usage_description.
+                    format(script=gh.basename(script_file), script_path=full_script_path),
                     skip_input=False, manual_input=False)
     debug.assertion(main_app.parsed_args)
     url = main_app.filename
@@ -92,6 +110,8 @@ def main():
         url = YOUTUBE_PREFIX + url
     ## TODO: video_id = my_re.sub(r"(https://)?www.youtube.com/watch\?v=", "", main_app.filename)
     debug.trace_expr(5, url, video_id)
+    ## TODO: strip url parameters
+    debug.assertion("t=" not in url)
 
     # Download the transcript and print using YouTubeLike-format
     # note: youtube_transcript_api
@@ -99,18 +119,30 @@ def main():
     print("")
     print(url)
     print("")
+    video_languages = VIDEO_LANGS.split()
+    debug_snippet = (
+        f"""
+        import youtube_transcript_api as ytt_api
+        ytt_api.YouTubeTranscriptApi().fetch({video_id!r}, languages={video_languages!r})
+        """)
+    if main_app.verbose:
+        print("To debug issues, try following:\n" +
+              "  ipython <<END\n" +
+              f"    {debug_snippet}\n" +
+              "END\n")
     try:
         # Get the transcript using the specified languages
         ## TODO4: add enhancement request for accepting None
         ## OLD: transcript = ytt_api.YouTubeTranscriptApi().fetch()
         transcript = ytt_api.YouTubeTranscriptApi().fetch(
-            video_id, languages=VIDEO_LANGS.split())
+            video_id, languages=video_languages)
         debug.trace_expr(5, transcript, max_len=256)
         debug.trace_values(6, transcript, "transcript")
         print(YouTubeLikeFormatter().format_transcript(transcript))
     except:
-        system.print_exception_info("transcript access")
+        system.print_exception_info(f"transcript access ({video_languages=}")
         print("n/a")
+        debug.trace(3, f"Try via ipython:\n{debug_snippet}")
 
     return
 

@@ -380,7 +380,7 @@ class TestTpoCommon(TestWrapper):
         THE_MODULE.redirect_stderr(temp)
         THE_MODULE.print_stderr("stderr redirected")
         THE_MODULE.restore_stderr()
-        assert "stderr redirected" in gh.read_file(temp)
+        assert "stderr redirected" in system.read_file(temp)
 
     @pytest.mark.xfail
     def test_restore_stderr(self):

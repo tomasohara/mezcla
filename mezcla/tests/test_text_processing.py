@@ -8,10 +8,6 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_text_processing.py
 #
-# TODO1: Combine testes classes into one.
-# TODO2: Remove RUN_SLOW_TESTS from test_chunk_noun_phrases.
-# TODO3: Remove xfail's.
-#
 
 """Tests for text_processing module"""
 
@@ -123,7 +119,6 @@ class TestTextProcessing(TestWrapper):
         assert THE_MODULE.is_stopword('i')
         assert not THE_MODULE.is_stopword('cow')
 
-    @pytest.mark.xfail
     def test_has_spelling_mistake(self):
         """Ensure has_spelling_mistake works as expected"""
         debug.trace(4, "test_has_spelling_mistake()")
@@ -148,7 +143,7 @@ class TestTextProcessing(TestWrapper):
     def test_read_freq_data(self):
         """Ensure read_freq_data works as expected"""
         debug.trace(4, "test_read_freq_data()")
-        lines = gh.read_lines(WORD_FREQ_FILE)
+        lines = system.read_lines(WORD_FREQ_FILE)
         freq = THE_MODULE.read_freq_data(WORD_FREQ_FILE)
         for line in lines:
             if line.startswith("#"):
@@ -160,7 +155,7 @@ class TestTextProcessing(TestWrapper):
     def test_read_word_POS_data(self): # pylint: disable=invalid-name
         """Ensure read_word_POS_data works as expected"""
         debug.trace(4, "test_read_word_POS_data()")
-        lines = gh.read_lines(WORD_POS_FREQ_FILE)
+        lines = system.read_lines(WORD_POS_FREQ_FILE)
         freq_pos = THE_MODULE.read_word_POS_data(WORD_POS_FREQ_FILE)
         for line in lines:
             if line.startswith("#"):
@@ -238,26 +233,19 @@ class TestTextProcessing(TestWrapper):
         assert "sentence splitting, word tokenization, and part-of-speech tagging" in captured
         assert "- Set SKIP_NLTK environment variable to 1 to disable NLTK usage." in captured
 
-class TestTextProcessingScript(TestWrapper):
-    """Class for testcase definition"""
-    script_file = TestWrapper.get_module_file_path(__file__)
-    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-
-    @pytest.mark.xfail
     def test_all(self):
         """Ensure text_processing without argument works as expected"""
         debug.trace(4, "test_all()")
         output = [tag.strip() for tag in self.run_script(data_file=TEXT_EXAMPLE).split(',')]
-        expected_tags = [tag.strip() for tag in gh.read_file(TEXT_EXAMPLE_TAGS)[:-1].split(',')]
+        expected_tags = [tag.strip() for tag in system.read_file(TEXT_EXAMPLE_TAGS)[:-1].split(',')]
         for output_tag, expected_tag in zip(output, expected_tags):
             assert output_tag == expected_tag
 
-    @pytest.mark.xfail
     def test_just_tokenize(self):
         """Ensure just_tokenize argument works as expected"""
         debug.trace(4, "test_just_tokenize()")
         tokenized_text = self.run_script(data_file=TEXT_EXAMPLE,options="--just-tokenize")
-        non_tokenized_text = gh.read_file(TEXT_EXAMPLE)
+        non_tokenized_text = system.read_file(TEXT_EXAMPLE)
         # match every token except whitespaces, 
         # that way tokenized and non-tokenized texts are equals 
         matches_tokenized = my_re.match(r'\S', tokenized_text).groups()
@@ -274,7 +262,6 @@ class TestTextProcessingScript(TestWrapper):
         self.do_assert(output_lower == output_normal.lower(), "TODO: code test")
 
     @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
-    @pytest.mark.xfail
     def test_download_nltk_resources(self):
         """Makes sure download_nltk_resources actually does so"""
         THE_MODULE.download_nltk_resources()
@@ -288,13 +275,6 @@ class TestTextProcessingScript(TestWrapper):
                     gh.form_path(NLTK_DIR, subdir, resource))
         return
 
-
-class TestTextProc(TestWrapper):
-    """Test TextProc classes"""
-    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
-
-    @pytest.mark.xfail
-    @pytest.mark.skipif(not RUN_SLOW_TESTS, reason="Ignoring slow test")
     ## DEBUG:
     @pytest.mark.skipif(UNDER_COVERAGE,reason="skipped because crashes when run under coverage")
     @trap_exception            # TODO: remove when debugged

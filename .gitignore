@@ -59,11 +59,14 @@
 **/output-files
 **/downloads
 **/cache
+**/cachedir
 *.pyc
 *.pyo
 
 # Model files
+# ex: llama-2-7b-chat.ggmlv3.q8_0.bin and mistral-7b-instruct-v0.3-q4_k_m.gguf
 *.bin
+*.gguf
 
 # Top level distribution dir and related
 # Note: tox support PyPi packaging

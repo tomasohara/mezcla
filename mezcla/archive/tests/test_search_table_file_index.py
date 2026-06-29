@@ -28,6 +28,7 @@ import pytest
 from mezcla import glue_helpers as gh
 from mezcla import tpo_common as tpo
 from mezcla import system
+from mezcla.unittest_wrapper import TestWrapper
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)

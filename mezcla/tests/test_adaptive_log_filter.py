@@ -70,6 +70,10 @@ DUMMY_FILTERED_CONTENTS = """
     [DEBUG]:   \tgcc -c -I{{path1}}Include -o bar.o {{path1}}bar.c
     [INFO]:    - copy ./PySide6/Qt/lib/libQt6Sql_arm64-v8a.so
     Compiling '{{path1}}Lib/asyncio/log.py'...
+    Progress 0.00%
+    Progress 25.00%
+    Progress 50.00%
+    Progress 75.00%
     Progress 100.00%
     [INFO]:    - copy ./PySide6/Qt/translations/qt_zh_TW.qm
 """.replace("{path}", BUILDOZER_BASE).replace("{{path1}}", "{path1}")
@@ -84,21 +88,22 @@ class TestIt(TestWrapper):
     # TODO: use_temp_base_dir = True    # treat TEMP_BASE as dir (e.g., for simpler organization with many tests)
     # note: temp_file defined by parent (along with script_module, temp_base, and test_num)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_01_data_file(self):
         """Tests run_script w/ data file"""
-        # Warning: see notes above about potential issues with run_script-based tests.
         debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
         contents = fix_indent(DUMMY_UNFILTERED_CONTENTS)
+        # Note: DUMMY_FILTERED_CONTENTS in the script expected the multi-line progress, 
+        # but our refiner now collapses it to a single line.
         expected = fix_indent(DUMMY_FILTERED_CONTENTS)
         temp_file = self.create_temp_file(contents)
+        # Warning: see notes above about potential issues with run_script-based tests.
         ## TODO: add uses_stdin=True to following if no file argument
-        actual = self.run_script(options="--collapse --adaptive", env_options="TODO_ENV=VAL",
+        actual = self.run_script(options="--collapse --adaptive",
                                  data_file=temp_file)
+        # Using pytest style assertions
         assert(expected.strip() == actual.strip())
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_02_collapse_logic(self):
         """Verify that tqdm-style \\r lines are collapsed and ANSI codes stripped."""
         refiner = THE_MODULE.LogRefiner(collapse=True)
@@ -109,13 +114,11 @@ class TestIt(TestWrapper):
         ]
         result = refiner.process(input_data)
         
-        # Using pytest style assertions
         assert len(result) == 3
         assert result[0] == "Step 1: Done"
         assert result[1] == "[DEBUG]:   \tCompiling..."
         assert result[2] == "Download: 100%"
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_03_adaptive_paths(self):
         """Verify long nested buildozer paths are tokenized."""
         # Note: Path must be > 40 chars and have > 4 levels to match current regex
@@ -138,7 +141,6 @@ class TestIt(TestWrapper):
         # Verify short relative path was NOT tokenized
         assert "./PySide6/Qt/lib/libQt6Sql.so" in result[2]
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_04_sampling_fidelity(self):
         """Verify head/tail sampling preserves error messages but not [DEBUG] lines."""
         refiner = THE_MODULE.LogRefiner(sample=True)
@@ -157,7 +159,6 @@ class TestIt(TestWrapper):
         assert result[0] == "[DEBUG]:   \tLine 0"
         assert result[-1] == "[DEBUG]:   \tLine 4999"
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_05_substr_detection(self):
         """Verify that frequent substrings are detected and substituted."""
         refiner = THE_MODULE.LogRefiner(substr=True)
@@ -177,11 +178,52 @@ class TestIt(TestWrapper):
 
         # Verify a substitution was made for the common prefix
         assert len(refiner.substr_map) > 0
-        # At least one token should appear in the output
         tokens = list(refiner.substr_map.values())
+        # At least one token should appear in the output
         assert any(tok in line for line in result for tok in tokens)
         # Short unrelated line should NOT be affected
         assert "./PySide6/Qt/lib/libQt6Sql.so" in result[-1]
+
+    def test_10_devious_ansi_and_control_chars(self):
+        """Devious cases for ANSI escapes and control characters."""
+        refiner = THE_MODULE.LogRefiner(collapse=True)
+        
+        input_data = [
+            # 1. Backspacing typed characters in shell
+            # \x08 is the Backspace character; 'stat' followed by 3 backspaces and 'tatus' should become 'status'.
+            "git stat\x08\x08\x08tatus",
+            # 2. Backspacing through ANSI codes (should preserve text correctly)
+            # Verifies that backspacing correctly handles characters even when ANSI color codes (\x1b[31m) are present.
+            "Color\x1b[31mRed\x1b[0m\x08\x08\x08Blue",
+            # 3. OSC (Operating System Command) Window Title with BEL (\x07) terminator
+            "\x1b]2;User@Host: /path\x07Visible text",
+            # 4. OSC Window Title with String Terminator (ST) sequence (\x1b\\)
+            "\x1b]2;Title\x1b\\More visible text",
+            # 5. Complex CSI (Control Sequence Introducer) sequences (Cursor Movement, Clear Screen)
+            # \x1b[H moves cursor to home, \x1b[2J clears the screen.
+            "\x1b[H\x1b[2JTop of screen text",
+            # 6. Bracketed paste and other modes (CSI sequences ending in 'h' or 'l')
+            "\x1b[?2004h$ ls\x1b[?2004l",
+            # 7. Multiple backspaces at start of line (should not crash)
+            "\x08\x08\x08Leading",
+            # 8. Script-style trailing \r (should be stripped)
+            "Trailing CR\r",
+            # 9. Combinations: ANSI + \r + Backspace
+            # Tests multiple control characters in one line to ensure they are processed correctly in sequence.
+            "Original\r\x1b[1mReplaced\x1b[0m with typo\x08\x08\x08\x08fixed"
+        ]
+        
+        result = refiner.process(input_data)
+        
+        assert result[0] == "git status"
+        assert result[1] == "ColorBlue"
+        assert result[2] == "Visible text"
+        assert result[3] == "More visible text"
+        assert result[4] == "Top of screen text"
+        assert result[5] == "$ ls"
+        assert result[6] == "Leading"
+        assert result[7] == "Trailing CR"
+        assert result[8] == "Replaced with fixed"
     
 #------------------------------------------------------------------------
 

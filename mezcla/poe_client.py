@@ -33,7 +33,7 @@ from mezcla import system
 # Environment options
 POE_API = system.getenv_value(
     "POE_API", None,
-    desc="API key for POE")
+    desc="API key for Platform for Open Exploration (POE)")
 # TODO: find out why POE_MODEL default was disabled (see git log)
 POE_MODEL = system.getenv_value(
     ## OLD: "POE_MODEL", ("GPT-4.1-nano" if POE_API else None),
