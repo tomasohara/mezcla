@@ -456,7 +456,7 @@ class MezclaDebugger:
             if INTROSPECTION_DEBUG:
                 trace(f"{sanitized_arg_strs=}")
         else:
-            sys.stderr.write("Warning: unable to extract args:\n")
+            sys.stderr.write("Warning: unable to extract args for introspection:\n")
             sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
             sys.stderr.write(f"\t{sys.exc_info()}\n")
             sanitized_arg_strs = [_ABSENT] * len(args)
@@ -482,11 +482,29 @@ class MezclaDebugger:
         def arg_prefix(arg, delim='=') -> str:
             """Return ARG concatenated with DELIM"""
             return f"{arg}{delim}"
+        ## BAD:
+        ## def format_value(val, max_len):
+        ##     """Return up to MAX_LEN of VAL as text, adding ... if truncated"""
+        ##     result = str(val)
+        ##     if isinstance(max_len, int) and len(result) > max_len:
+        ##         result = repr(result[:max_len] + "...")
+        ##     return result
         def format_value(val, max_len):
             """Return up to MAX_LEN of VAL as text, adding ... if truncated"""
+            # Change facilitated by Antigravity using Gemini 3.5 Flash.
+            use_repr = kwargs.get('use_repr', True)
+            if use_repr:
+                if isinstance(val, str):
+                    if isinstance(max_len, int) and len(val) > max_len:
+                        return repr(val[:max_len] + "...")
+                    return repr(val)
+                result = repr(val)
+                if isinstance(max_len, int) and len(result) > max_len:
+                    return result[:max_len] + "..."
+                return result
             result = str(val)
             if isinstance(max_len, int) and len(result) > max_len:
-                result = repr(result[:max_len] + "...")
+                return result[:max_len] + "..."
             return result
 
         # Derive pairs of arguments (specifications) from call with resolved value.
@@ -494,8 +512,12 @@ class MezclaDebugger:
         omit_values = kwargs.get('omit_values')
         ## OLD: pairs = [(arg, self.arg_to_string_function(val)) for arg, val in pairs]
         ## TODO2: use format_value consistently
-        if "max_len" in kwargs:
-            pairs = [(arg, format_value(val, kwargs["max_len"]))
+        ## BAD:
+        ## if "max_len" in kwargs:
+        ##     pairs = [(arg, format_value(val, kwargs["max_len"]))
+        ##              for (arg, val) in pairs]
+        if "max_len" in kwargs or not kwargs.get('use_repr', True):
+            pairs = [(arg, format_value(val, kwargs.get("max_len")))
                      for (arg, val) in pairs]
         else:
             pairs = [(arg, self.arg_to_string_function(val, **self.arg_to_string_kwargs))

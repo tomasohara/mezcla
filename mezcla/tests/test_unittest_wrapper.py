@@ -70,7 +70,8 @@ class TestIt(TestWrapper):
     def test_01_usage(self):
         """Make sure usage warns that not intended for command line and that no stdout"""
         debug.trace(4, f"TestIt.test_01_usage(); self={self}")
-        log_file = self.temp_file + ".log"
+        ## OLD: log_file = self.temp_file + ".log"
+        log_file = self.get_temp_file() + ".log"
         ## BAD: output = self.run_script(log_file=log_file)
         output = self.run_script(env_options="DEBUG_LEVEL=4", log_file=log_file)
         self.do_assert(not output.strip())
@@ -167,20 +168,23 @@ class TestIt(TestWrapper):
 
     @pytest.mark.xfail
     def test_04_get_temp_dir(self):
-        """Tests get_temp_dir"""
+        """Tests get_temp_dir (global)"""
         ## TODO3: Cleanup this test: rework to work around disabled rmtree and atexit calls
         ## NOTE: By default temp files placed under /tmp, which system will delete if needed.
         ## TODO3: skip if not posix
         ##
         debug.trace(4, f"TestIt.test_04_get_temp_dir(); self={self}")
         ## BAD: tmp_dir = system.form_path(system.getenv_text("TMP"), 'test_get_temp_dir')
-        tmp_dir = gh.form_path(gh.get_temp_dir(), 'test_get_temp_dir')
+        ## OLD: tmp_dir = gh.form_path(gh.get_temp_dir(), 'test_get_temp_dir')
+        tmp_dir = gh.form_path(self.get_temp_dir(), 'test_get_temp_dir')
         self.monkeypatch.setattr("mezcla.glue_helpers.TEMP_FILE", tmp_dir)
         #
         if system.is_directory(tmp_dir):
             # Note: Should only occurs when TEMP_FILE or TEMP_BASE overriden (for debugging).
             debug.trace(4, "Warning: Temporary directory unexpectedly exists: {tmp_dir!r}")
             ## BAD: shutil.rmtree(tmp_dir, ignore_errors=True)
+            debug.assertion(gh.TEMP_BASE)
+            gh.rename_file(tmp_dir, tmp_dir + ".old")
         assert not system.is_directory(tmp_dir)
         unittest_temp_dir = THE_MODULE.get_temp_dir(keep=False)
         ## OLD: atexit.register(gh.delete_directory, unittest_temp_dir)
@@ -191,7 +195,8 @@ class TestIt(TestWrapper):
         
         # Test argument unique=True
         ## BAD: tmp_dir_2 = system.form_path(system.getenv_text("TMP"), 'test_get_temp_dir_2')
-        tmp_dir_2 = gh.form_path(gh.get_temp_dir(), 'test_get_temp_dir_2')
+        ## OLD: tmp_dir_2 = gh.form_path(gh.get_temp_dir(), 'test_get_temp_dir_2')
+        tmp_dir_2 = gh.form_path(self.get_temp_dir(), 'test_get_temp_dir_2')
         self.monkeypatch.setattr("mezcla.glue_helpers.TEMP_FILE", tmp_dir_2)
         if system.is_directory(tmp_dir_2):
             ## Note: Should only occurs when TEMP_FILE or TEMP_BASE overriden (for debugging).
@@ -204,6 +209,12 @@ class TestIt(TestWrapper):
         #
         assert (tmp_dir_2 + '_temp_dir_') in unittest_temp_dir_2
         assert system.is_directory(unittest_temp_dir_2)
+
+    @pytest.mark.xfail
+    def test_04_get_temp_dir_self(self):
+        """Tests self.get_temp_dir"""
+        debug.trace(4, f"TestIt.test_04_get_temp_dir_self(); self={self}")
+        assert self.get_temp_dir() != THE_MODULE.get_temp_dir()
 
     @pytest.mark.xfail
     def test_05_check_temp_part1(self):
@@ -227,11 +238,15 @@ class TestIt(TestWrapper):
         global last_self                # TODO4 (use class member)
         # NOTE: The following will fail: apparently each test is run using
         # a separate class instance.
-        debug.assertion(last_self == self)
+        ## OLD: debug.assertion(last_self == self)
+        ## NOTE: Kept in because the test should be reworked
+        debug.assertion(last_self == self, assert_level=6)
 
     @pytest.mark.xfail
     def test_07_preserve_temp_file(self):
-        """Make sure PRESERVE_TEMP_FILE set appropriately"""
+        """Make sure PRESERVE_TEMP_FILE set appropriately
+        Note: It is currently set to 1 start of unittest_wrapper.py (unless already set).
+        """
         debug.trace(4, f"TestIt.test_07_preserve_temp_file(); self={self!r}")
         # Get setting related to temp-file name inference
         PRESERVE_TEMP_FILE_VALUE = os.environ.get(PRESERVE_TEMP_FILE_LABEL)
@@ -251,7 +266,7 @@ class TestIt(TestWrapper):
             assert PRESERVE_TEMP_FILE_VALUE == "1"
             # note: should be test-7 (or test-1 if run in isolation)
             assert my_re.search(r"test-[1-7]", self.temp_file)
-            
+        assert self.temp_file == self.get_temp_file(static=True)
 
 #------------------------------------------------------------------------
 

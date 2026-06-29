@@ -47,7 +47,7 @@ from mezcla import debug
 from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
-## TODO: import mezcla.tests.common_module as cm ... @skipif(not RUN_SLOW_TESTS, ...)
+## TODO: import mezcla.tests.common_module as cm ... @skipif(cm.SKIP_SLOW_TESTS, cm.SKIP_SLOW_REASON)
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:               module object (e.g., <module 'mezcla.main' ...>)
@@ -121,16 +121,20 @@ class TestIt(TestWrapper):
         ## TODO: add uses_stdin=True to following if no file argument
         output = self.run_script(options="--TODO-arg", env_options="TODO_ENV=VAL",
                                  data_file=temp_file)
-        self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
+        ## OLD: self.do_assert(my_re.search(r"TODO-pattern", output.strip()))
+        self.do_assert(my_re.search(r"TODO-pattern", output.strip()),
+                       "TODO: Implement")
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_02_something_else(self):
         """Test for something_else: TODO..."""
         debug.trace(4, f"TestIt.test_02_something_else(); self={self}")
-        assert THE_MODULE.Helper().process("TODO") == "TODO"
-        ## TODO3: remove following
-        self.do_assert("TODO" == THE_MODULE.Helper().process("TODO"))
+        ## OLD:
+        ## assert THE_MODULE.Helper().process("TODO") == "TODO"
+        ## ## TODO3: remove following
+        ## self.do_assert("TODO" == THE_MODULE.Helper().process("TODO"))
+        assert THE_MODULE.Helper().process("TODO") == "TODO", "TODO: Implement"
         return
 
     @pytest.mark.xfail                   # TODO: remove xfail

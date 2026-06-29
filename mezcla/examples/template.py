@@ -50,7 +50,7 @@ TL = debug.TL
 ##    M-: (query-replace-regexp "todo\\([-_]\\)arg" "arg\\1name")
 ## where M-: is the emacs keystroke short-cut for eval-expression.
 ##
-## TODO: TODO_BOOL_OPT = "todo-bool-option"
+TODO_BOOL_OPT = "todo-bool-option"
 ## TODO: TODO_TEXT_OPT = "todo-text-option"
 
 # Environment options
@@ -97,8 +97,7 @@ def main() -> None:
         skip_input=False,
         manual_input=True,
         description=__doc__.format(script=gh.basename(__file__)),
-        ## TODO1 (refine based on following tips):
-        ## TODO2: boolean_options=[(TODO_BOOL_OPT, "TODO desc1")],
+        boolean_options=[(TODO_BOOL_OPT, "TODO desc1")],
         ## TODO2: text_options=[(TODO_TEXT_OPT, "TODO desc2")],
         ## NOTE: FILENAME is default argument unless skip_input
         ## TODO3: positional_arguments=[FILENAME, ALT_FILENAME], 
@@ -106,7 +105,7 @@ def main() -> None:
         ## TODO4: use arcane options (see ../template.py)
     )
     debug.reference_var(FILENAME)
-    debug.assertion(main_app.parsed_args)
+    debug.assertion(main_app.parsed_args, "No parsed args: check runtime_args and boolean_options, etc. in main_app")
     ## TODO_opt1 = main_app.get_parsed_option(TODO_BOOL_OPT)
 
     # Process the input
@@ -128,5 +127,5 @@ def main() -> None:
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_VERBOSE)
     debug.trace(5, f"module __doc__: {__doc__}")
-    debug.assertion("TODO:" not in __doc__)
+    debug.assertion("TODO:" not in __doc__, assert_level=TL.DETAILED)
     main()

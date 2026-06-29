@@ -12,11 +12,19 @@
 # - Some tests take extra care to ensure that the output doesn't lead to false positives
 #   by error-checking scripts like check_errors.py. For example, test_multiline_assertion
 #   uses Spanish for error messages that would otherwise get flagged.
+#
+# Warning:
+# - Unfortunately, capsys captures stderr and get_stdout_stderr doesn't mirror
+#   unless VERBOSE (5) debugging enabled: use DEBUG_FILE to output copy of stderr.
+# - In addition, there is subtle interaction with this and self.patch_trace_level:
+#   ex: self.patch_trace_level(3) disables stderr trace in test_assertion.
+#   Alternatively, use CAPSYS_DEBUG_LEVEL (see unittest_wrapper.py).
 #................................................................................
 # TODO:
 # - make sure trace_fmt traps all exceptions
 #   debug.trace_fmt(1, "fu={fu}", fuu=1)
 #                           ^^    ^^^
+# - replace -1 trace level usages w/ self.patch_trace_level(1) ... 1
 #................................................................................
 # Global pylint filter:
 #   pylint: disable=protected-access
@@ -28,6 +36,7 @@
 import sys
 from datetime import datetime
 import inspect
+from pathlib import Path
 
 # Installed packages
 import pytest
@@ -112,6 +121,27 @@ class TestDebug(TestWrapper):
         assert THE_MODULE.get_level() == 5
         self.patch_trace_level(6)
         assert THE_MODULE.get_level() == 6
+
+    def test_detect_shadowed_package(self):
+        """Ensure detect_shadowed_package catches higher-priority package paths"""
+        debug.trace(4, f"test_detect_shadowed_package(): self={self}")
+
+        # Create minimal package tree that shadows mezcla via sys.path precedence.
+        shadow_root = self.get_temp_dir()
+        shadow_pkg_dir = gh.form_path(shadow_root, "mezcla")
+        gh.full_mkdir(shadow_pkg_dir)
+        system.write_file(gh.form_path(shadow_pkg_dir, "__init__.py"), "# temp package for shadow detection test\n")
+
+        # Put the temporary package root at the front of sys.path.
+        self.monkeypatch.setattr(sys, "path", [shadow_root] + list(sys.path))
+
+        # Run detection and confirm the leading path is the temporary package.
+        is_shadowed, shadow_details = THE_MODULE.detect_shadowed_package()
+        assert is_shadowed
+        assert shadow_details.get("shadowed")
+        assert shadow_details.get("ahead_index") == 0
+        assert THE_MODULE._same_path(Path(shadow_details.get("ahead_pkg_dir", "")), Path(shadow_pkg_dir))
+        assert shadow_details.get("package") == "mezcla"
 
     def test_get_output_timestamps(self):
         """Ensure get_output_timestamps works as expected"""
@@ -231,9 +261,11 @@ class TestDebug(TestWrapper):
             assert f": {char}" in err
 
         # Test non list collection (tuple)
-        THE_MODULE.trace_values(-1, 123)
+        ## OLD: THE_MODULE.trace_values(-1, 123)
+        THE_MODULE.trace_values(-1, (123, 321))
         err = self.get_stderr()
         assert ": 123" in err
+        assert ": 321" in err
 
         # Test use_repr parameter
         THE_MODULE.trace_values(-1, [Person("Kiran")], use_repr=True)
@@ -635,6 +667,7 @@ class TestDebug(TestWrapper):
         line_3 = THE_MODULE.read_line(temp_file, 3)
         assert my_re.search(fr"{line_1}.*{line_2}.*{line_3}", content)
 
+    @pytest.mark.skipif(cm.SKIP_VERBOSE_TESTS, reason=cm.SKIP_VERBOSE_REASON)
     @pytest.mark.xfail
     def test_debug_init(self):
         """Ensure debug_init works as expected"""
@@ -912,6 +945,7 @@ class TestDebugWrapper(TestWrapper):
         err = self.get_stderr()
         self.do_assert("test_dw_trace_stack" in err)
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
     def test_dw_trace_exception(self):
         """_debug.trace_exception outputs exception info"""
         debug.trace(4, f"test_dw_trace_exception(): self={self}")
