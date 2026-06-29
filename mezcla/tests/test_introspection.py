@@ -112,6 +112,35 @@ class TestIt(TestWrapper):
         assert my_re.search(rf"^add1_add1_num={add1_add1_num}", expr)
         return
 
+    def test_06_string_formatting_options(self):
+        """Test formatting options (use_repr, max_len) for string values"""
+        # Change facilitated by Antigravity using Gemini 3.5 Flash.
+        debug.trace(4, f"TestIt.test_06_string_formatting_options(); self={self}")
+        var = "-" * 16
+
+        # 1. use_repr=True, max_len=None (default) -> should have quotes
+        expr = THE_MODULE.intro.format(var)
+        assert my_re.search(r"var='----------------'", expr)
+
+        # 2. use_repr=True, max_len=256 -> should have quotes
+        expr = THE_MODULE.intro.format(var, max_len=256)
+        assert my_re.search(r"var='----------------'", expr)
+
+        # 3. use_repr=True, max_len=4 -> should have quotes and ellipsis
+        expr = THE_MODULE.intro.format(var, max_len=4)
+        assert my_re.search(r"var='----\.\.\.'", expr)
+
+        # 4. use_repr=False, max_len=None -> should NOT have quotes
+        expr = THE_MODULE.intro.format(var, use_repr=False)
+        assert my_re.search(r"var=----------------", expr)
+        assert not my_re.search(r"var='----------------'", expr)
+
+        # 5. use_repr=False, max_len=4 -> should NOT have quotes, but should have ellipsis
+        expr = THE_MODULE.intro.format(var, use_repr=False, max_len=4)
+        assert my_re.search(r"var=----\.\.\.", expr)
+        assert not my_re.search(r"var='----\.\.\.'", expr)
+        return
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':

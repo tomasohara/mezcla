@@ -75,7 +75,7 @@ except ImportError:
 from mezcla import debug
 from mezcla.debug import trace_level as debug_level
 from mezcla import system
-from mezcla import text_utils
+## OLD: from mezcla import text_utils
             
 # Defaults for globals
 ## OLD:
@@ -1292,8 +1292,17 @@ def is_numeric(text):
     Deprecated: uses version in text_utils.py"
     """
     debug.trace(3, "Warning: in deprecated text_utils.is_numeric")
-    return text_utils.is_numeric(text)
-
+    ## OLD: return text_utils.is_numeric(text)
+    ## NOTE: inlines implementation to avoid circular import:
+    ##       tpo_common < text_utils < glue_helpers < tpo_common
+    numeric = False
+    try:
+        value = float(text)
+        numeric = True
+    except ValueError:
+        value = None
+    debug.trace(8, f"is_numeric({text!r}) => {numeric}; value={value}")
+    return numeric
 
 ## OLD:
 ## 

@@ -544,7 +544,7 @@ def invoke_distributed(command_line, index_dir, total_num_docs):
                     dispatcher.copy_file_from_worker(i, remote_output_file)
                     local_output_file = gh.basename(remote_output_file)
                     tpo.debug_format("Output from host {i}: {local_output_file}", 4)
-                    print(gh.read_file(local_output_file))
+                    print(system.read_file(local_output_file))
     return
 
 #-------------------------------------------------------------------------------

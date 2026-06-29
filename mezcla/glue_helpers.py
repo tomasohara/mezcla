@@ -43,7 +43,7 @@ from subprocess import getoutput
 import sys
 import tempfile
 from typing import (
-    Optional, Any, List, Dict, Union,
+    Optional, Any, List, Dict, Union, overload,
     ## OLD: TextIO,
 )
 from types import FrameType
@@ -59,7 +59,7 @@ from mezcla import system
 from mezcla.tpo_common import format as tpo_format
 ## TODO3: debug.trace_expr(6, __file__)
 from mezcla.validate_arguments_types import (
-    FileDescriptorOrPath, StrOrBytesPath
+    FileDescriptorOrPath, StrOrBytesPath, DirListing,
 )
 
 # Custom Types
@@ -143,6 +143,29 @@ initialized = False
 
 #------------------------------------------------------------------------
 
+def in_test_context() -> bool:
+    """Returns True if the current execution is within a unit test context.
+    Note: Facilitated by Gemini 3.5 Flash (Medium).
+    """
+    in_test = False
+    if system.getenv_bool("PRESERVE_TEMP_FILE", False):
+        in_test = True
+    elif 'pytest' in sys.modules:
+        in_test = True
+    else:
+        try:
+            # Check call stack for any file in tests/ or starting with test_
+            for frame in inspect.stack():
+                filename = frame.filename
+                if "tests/" in filename or os.path.basename(filename).startswith("test_"):
+                    in_test = True
+                    break
+        except:
+            pass
+    debug.trace(5, f"gh.in_test_context() => {in_test}")
+    return in_test
+
+
 def get_temp_file(delete: Optional[bool] = None) -> str:
     """Return name of unique temporary file, optionally with DELETE.
     Note: when debugging this might be based on TEMP_BASE (see init).
@@ -154,6 +177,15 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
     NTF_ARGS = {'prefix': TEMP_PREFIX,
                 'delete': delete,
                 'suffix': TEMP_SUFFIX}
+    if TEMP_BASE and in_test_context():
+        is_dir = USE_TEMP_BASE_DIR or system.is_directory(TEMP_BASE) or TEMP_BASE.endswith("/")
+        if is_dir:
+            if not system.file_exists(TEMP_BASE):
+                full_mkdir(TEMP_BASE, force=True)
+            NTF_ARGS['dir'] = TEMP_BASE
+        else:
+            NTF_ARGS['prefix'] = f"{TEMP_BASE}-"
+
     temp_file_name = TEMP_FILE
     if not temp_file_name:
         # note: uses context so not deleted right away if delete=True
@@ -170,12 +202,15 @@ def get_temp_file(delete: Optional[bool] = None) -> str:
     return temp_file_name
 
 
-def get_temp_dir(delete=None, use_temp_base=None) -> str:
+def get_temp_dir(delete: Optional[bool] = None, use_temp_base: Optional[bool] = None) -> str:
     """Gets temporary file to use as a directory
     Note: Optionally DELETEs directory afterwards. 
     With USE_TEMP_BASE, uses gh.TEMP_BASE if defined, which normally is only used when debugging
     tests (via explicit CLI option).
     """
+    if use_temp_base is None:
+        ## TEMP: use_temp_base defaults to true if unspecied and TEMP_BASE true.
+        use_temp_base = bool(TEMP_BASE)
 
     # Try to use temporary file override
     ## TODO3: make option to bypass creation; extend to use TEMP_BASE automatically
@@ -479,7 +514,8 @@ def indent_lines(text: str, indentation: Optional[str] = None, max_width: int = 
 
 MAX_ELIDED_TEXT_LEN = system.getenv_integer("MAX_ELIDED_TEXT_LEN", 128)
 #
-def elide(value: Optional[Any], max_len: Optional[int] = None) -> str:
+## OLD: value: Optional[Any] (redundant: Any already subsumes None)
+def elide(value: Any, max_len: Optional[int] = None) -> str:
     """Returns VALUE converted to text and elided to at most MAX_LEN characters (with '...' used to indicate remainder). 
     Note: intended for tracing long strings."""
     # EX: elide("=" * 80, max_len=8) => "========..."
@@ -539,6 +575,7 @@ def run(
     # TODO: add automatic log file support as in run_script from unittest_wrapper.py
     # TODO: make sure no template markers left in command text (e.g., "tar cvfz {tar_file}")
     # EX: "root" in run("ls /")
+    # TODO3: reconcile with master_test.run, which usese subprocess.run.
     # Note: Script tracing controlled DEBUG_LEVEL environment variable.
     debug.assertion(isinstance(trace_level, int))
     debug.trace(trace_level + 2, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}, iss={just_issue}, out={output})", skip_sanity_checks=True)
@@ -820,11 +857,12 @@ def extract_pattern(pattern: str, text: str, **kwargs) -> Optional[MatchResult]:
     return extract_match(pattern, text.split("\n"), **kwargs)
 
 
+## BAD: multiple: Optional[None] = None (Optional[None] is just None; cf. extract_matches_from_text)
 def count_it(
         pattern: str,
         text: str,
         field: int = 1,
-        multiple: Optional[None] = None
+        multiple: Optional[bool] = None
     ) -> Dict[str, int]:
     """Counts how often PATTERN's FIELD occurs in TEXT, returning hash.
     Note: By default MULTIPLE matches are tabulated"""
@@ -906,7 +944,7 @@ def copy_file(source: str, target: str) -> None:
     return
 
 
-def non_empty_directory(path):
+def non_empty_directory(path: str) -> bool:
     """Whether PATH exists and is not empty"""
     size = len(get_directory_listing(path)) if is_directory(path) else -1
     non_empty = size > 0
@@ -914,14 +952,14 @@ def non_empty_directory(path):
     return non_empty
 
 
-def copy_directory(source, dest):
+def copy_directory(source: str, dest: str) -> None:
     """copy SOURCE dir to DEST dir
     Note: The DEST directory must not exist beforehand
     """
     ## TODO4: add option to overwrite files (e.g., via copytree's dirs_exist_ok)
     # Note: meta data is not copied (e.g., access control lists)); see
     #    https://docs.python.org/3/library/shutil.html
-    debug.trace_fmt(5, f"copy_directory({source}, {dest})")
+    debug.trace(5, f"copy_directory({source}, {dest})")
 
     ## OLD: debug.assertion(non_empty_directory(source))
     dest_path = shutil.copytree(src=source, dst=dest)
@@ -964,12 +1002,12 @@ def delete_existing_file(filename: StrOrBytesPath) -> bool:
     debug.trace_fmtd(5, "delete_existing_file({f}) => {r}", f=filename, r=ok)
     return ok
 
-def delete_directory(path):
+def delete_directory(path: str) -> Optional[bool]:
     """Deletes directory at PATH
     Warning: Unless DISABLE_RECURSIVE_DELETE, this removes entire directory tree
     """
     debug.trace_fmt(5, f"delete_directory({path})")
-    ok = False
+    ok: Optional[bool] = False
     try:
         if DISABLE_RECURSIVE_DELETE:
             files = get_directory_listing(path)
@@ -1020,16 +1058,23 @@ def get_files_matching_specs(patterns: List[str]) -> List[str]:
     return files
 
 
+## OLD: -> Union[List[str], List[str], List[bytes]] (redundant duplicate List[str])
+## NOTE: overloads mirror system.read_directory (str/int => List[str]; bytes => List[bytes])
+@overload
+def get_directory_listing(dir_name: Union[int, str], make_unicode: bool = False) -> List[str]: ...
+@overload
+def get_directory_listing(dir_name: bytes, make_unicode: bool = False) -> List[bytes]: ...
+
 def get_directory_listing(
         dir_name: Union[int, str, bytes],
         make_unicode: bool = False
-    ) -> Union[List[str], List[str], List[bytes]]:
+    ) -> DirListing:
     """Returns files in DIR_NAME
     Note: make_unicode is deprecated
     """
     # TODO: Union[List[str], List[bytes]] = []
     ## TODO3: drop make_unicode; implement via system.get_directory_filenames
-    all_file_names: Union[List[str], List[str], List[bytes]] = []
+    all_file_names: DirListing = []
     try:
         all_file_names = os.listdir(dir_name)
     except OSError:
@@ -1109,6 +1154,7 @@ def init() -> None:
         pass
 
     # Re-initialize flag blocking TEMP_FILE init from TEMP_BASE
+    # note: Normally unset except when running test: set to "1" by unittest_wrapper.py.
     global PRESERVE_TEMP_FILE
     PRESERVE_TEMP_FILE = system.getenv_bool(
         "PRESERVE_TEMP_FILE", None, allow_none=True, skip_register=initialized,
@@ -1116,7 +1162,7 @@ def init() -> None:
 
     # note: Normally TEMP_FILE gets overriden when TEMP_BASE set. However,
     # this complicates preserving test-specific test files (see unittest_wrapper.py).
-    # Further compications are due to the implicit module loading due to __init__.py.
+    # Further complications are due to the implicit module loading due to __init__.py.
     # See tests/test_unittest_wrapper.py for some diagnosis tips.
     temp_file_default = None
     if TEMP_BASE and not PRESERVE_TEMP_FILE:

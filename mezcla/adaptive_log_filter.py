@@ -198,9 +198,35 @@ class LogRefiner:
         if self.collapse:
             debug.trace(TL.VERBOSE, "Filtering: Collapsing carriage returns and ANSI codes")
             ## TODO3: make sure the stripped segments overlap
-            processed = [my_re.sub(r'.*\r', '', line) for line in processed if line.strip()]
-            ## Note: ANSI codes common in android_deploy/buildozer logs (e.g., colored [DEBUG]/[INFO])
-            processed = [my_re.sub(r'\x1b\[[0-9;]*m', '', line) for line in processed]
+            new_processed = []
+            for line in processed:
+                if not line.strip():
+                    continue
+                # Handle end-of-line \r (frequent in typescripts)
+                line = line.rstrip('\r')
+                # Collapse progress bars
+                line = my_re.sub(r'.*\r', '', line)
+                
+                # Strip OSC (Operating System Command) sequences (e.g., window titles)
+                line = my_re.sub(r'\x1b\].*?(?:\x07|\x1b\\)', '', line)
+                # Strip CSI sequences (covers colors, movements, bracketed paste)
+                line = my_re.sub(r'\x1b\[[0-9;?]*[A-Za-z@~]', '', line)
+                
+                # Apply backspaces
+                while '\x08' in line:
+                    new_line = my_re.sub(r'[^\x08]\x08', '', line)
+                    if new_line == line:
+                        break
+                    line = new_line
+                line = line.replace('\x08', '')
+                
+                # Strip any remaining standalone BEL or ESC
+                line = line.replace('\x07', '')
+                line = line.replace('\x1b', '')
+                
+                if line.strip():
+                    new_processed.append(line)
+            processed = new_processed
 
         # 2. Adaptive Path Substitution - Identify paths BEFORE sampling
         if self.adaptive:

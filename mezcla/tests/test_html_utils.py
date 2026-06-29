@@ -17,13 +17,17 @@
 #      www.tomasohara.trade => new www.scrappycito.trade
 #   
 
+# Change facilitated by Antigravity (AI coding assistant designed by Google DeepMind).
+
 """Tests for html_utils module"""
 
 # Standard packages
 import os
+import urllib.request
 
 # Installed packages
-from PIL import Image
+## TEMP: Uses dynamic import
+## OLD: from PIL import Image
 import pytest
 
 # Local packages
@@ -33,6 +37,7 @@ from mezcla import misc_utils
 from mezcla import system
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
+import mezcla.tests.common_module as cm
 from mezcla.tests.common_module import normalize_text
 
 # Note: Two references are used for the module to be tested:
@@ -42,9 +47,16 @@ import mezcla.html_utils as THE_MODULE
 # Constants and environment options
 TEST_SELENIUM_DESC = "Include tests requiring selenium"
 TEST_SELENIUM = system.getenv_bool(
-    "TEST_SELENIUM", False,
-    desc=TEST_SELENIUM_DESC)
-SKIP_SELENIUM = not TEST_SELENIUM
+    ## OLD: "TEST_SELENIUM", False,
+    ## TODO2: configure Github runner to support selenium
+    ## NOTE: TEST_SELENIUM enabled by default: to disable use "TEST_SELENIUM=0 python ..." in .bash_profile)
+    "TEST_SELENIUM", not cm.UNDER_RUNNER,
+    desc=f"{TEST_SELENIUM_DESC}--warning: deprecated alias for not[-]SKIP_SELENIUM")
+## OLD: SKIP_SELENIUM = not TEST_SELENIUM
+SKIP_SELENIUM = system.getenv_bool(
+    "SKIP_SELENIUM", not TEST_SELENIUM,
+    desc="Skip tests requiring selenium")
+debug.assertion(debug.xor(TEST_SELENIUM, SKIP_SELENIUM))
 SKIP_SELENIUM_REASON = f"Not-{TEST_SELENIUM_DESC}"
 #
 INCLUDE_HINT_TESTS = system.getenv_bool(
@@ -79,12 +91,13 @@ DIMENSIONS_EXPECTED_TEXT = """
 # NOTE: Whitespace and punctuation gets normalized
 # TODO: restore bullet points (e.g., "* Screen dimensions")
 
-# Global initialization
-## TODO3: Do via class setup method(s), monkey patching, and/or download-dir arg
-## (e.g., download_dir for download_web_document).
-## TODO4: Also, extend get_temp_dir to use TEMP_BASE automatically.
-THE_MODULE.DOWNLOAD_DIR = gh.form_path(gh.get_temp_dir(use_temp_base=True),
-                                       "downloads", create=True)
+## OLD:
+## # Global initialization
+## ## TODO3: Do via class setup method(s), monkey patching, and/or download-dir arg
+## ## (e.g., download_dir for download_web_document).
+## ## TODO4: Also, extend get_temp_dir to use TEMP_BASE automatically.
+## THE_MODULE.DOWNLOAD_DIR = gh.form_path(gh.get_temp_dir(use_temp_base=True),
+##                                        "downloads", create=True)
 
 # Sanity checks (e.g., selenium installed and imported OK)
 debug.assertion(SKIP_SELENIUM or getattr(THE_MODULE, "webdriver"))
@@ -126,6 +139,14 @@ class TestHtmlUtils(TestWrapper):
     pacman_path = resolve_mezcla_path(PACMAN_FILENAME)
     pacman_url = resolve_mezcla_url(PACMAN_FILENAME)
 
+    def setUp(self):
+        """Per-test setup: ensure download dir test specific"""
+        debug.trace(6, f"TestIt.setUp(); self={self}")
+        # note: must do parent processing first (e.g., for temp file support)
+        super().setUp()
+        self.monkeypatch.setattr(THE_MODULE, "DOWNLOAD_DIR", self.get_temp_dir())
+        return
+
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_browser(self):
@@ -160,12 +181,18 @@ class TestHtmlUtils(TestWrapper):
         html_path = resolve_mezcla_path(html_filename)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
-        unrendered_text = gh.run(f"lynx -dump {url}")
+        # Change facilitated by Antigravity AI Assistant using Gemini
+        ## OLD:
+        ## unrendered_text = gh.run(f"lynx -dump {url}")
+        ## unrendered_text = THE_MODULE.html_to_text(system.read_file(html_path))
+        with urllib.request.urlopen(url) as response:
+            unrendered_html = response.read().decode('utf-8')
+        unrendered_text = THE_MODULE.html_to_text(unrendered_html)
         debug.trace_expr(5, unrendered_text)
-        assert my_re.search(r"Browser dimensions: \?", unrendered_text)
+        assert my_re.search(r"Browser dimensions:\s*\?", unrendered_text)
         rendered_text = THE_MODULE.get_inner_text(url)
         debug.trace_expr(5, rendered_text)
-        assert my_re.search(r"Browser dimensions: \d+x\d+", rendered_text)
+        assert my_re.search(r"Browser dimensions:\s*\d+x\d+", rendered_text)
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -177,7 +204,12 @@ class TestHtmlUtils(TestWrapper):
         html_path = resolve_mezcla_path(html_filename)
         url = ("file:" + system.absolute_path(html_path))
         # TODO: use direct API call to return unrendered text
-        unrendered_html = gh.run(f"lynx -source {url}")
+        ## OLD:
+        ## unrendered_html = gh.run(f"lynx -source {url}")
+        ## unrendered_html = system.read_file(html_path)
+        # Change facilitated by Antigravity AI Assistant using Gemini
+        with urllib.request.urlopen(url) as response:
+            unrendered_html = response.read().decode('utf-8')
         debug.trace_expr(5, unrendered_html)
         assert my_re.search(
             r"<li>Browser dimensions:\s*<span.*>\?\?\?</span></li>",
@@ -190,7 +222,7 @@ class TestHtmlUtils(TestWrapper):
             rendered_html,
             )
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_scrappycito_urls(self):
         """Some sanity checks on URLs for ScrappyCito, LLC and Tom O'Hara's consulting.
         Note: www.scrappycito.com should be avoided and www.tomasohara.trade used instead.
@@ -202,7 +234,7 @@ class TestHtmlUtils(TestWrapper):
         self.do_assert("tomasohara" in self.scrappycito_like_url)
         return
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_main_url_content(self):
         """Make sure expected web content at scrappycito-like and tomasohara.trade[-like] URLs"""
         debug.trace(4, f"TestIt.test_main_url_content(); self={self}")
@@ -235,7 +267,9 @@ class TestHtmlUtils(TestWrapper):
         debug.assertion("scrappycito.com" not in self.scrappycito_like_url,
                         f"The production server should not be used in tests: {self.scrappycito_url}")
         ## TODO: regular_output = THE_MODULE.download_web_document(self.scrappycito_like_url)
-        regular_output = gh.run(f"lynx -source {self.scrappycito_like_url}")
+        ## OLD:
+        ## regular_output = gh.run(f"lynx -source {self.scrappycito_like_url}")
+        regular_output = THE_MODULE.download_web_document(self.scrappycito_like_url)
         inner_output = THE_MODULE.get_inner_html(self.scrappycito_like_url + "/?section=tips")
         self.check_inner_html(regular_output, inner_output)
         return
@@ -245,8 +279,11 @@ class TestHtmlUtils(TestWrapper):
     def test_run_script_for_inner_html(self):
         """Test of getting inner HTML via script invocation"""
         debug.trace(4, f"TestIt.test_run_script_for_inner_html(); self={self}")
+        temp_file = self.temp_file
+        self.temp_file = temp_file + "-regular"
         regular_output = self.run_script(options=f"--stdout {self.scrappycito_like_url}")
-        self.temp_file += "-2"
+        ## OLD: self.temp_file += "-2"
+        self.temp_file = temp_file + "-inner"
         inner_output = self.run_script(options=f"--inner --stdout {self.scrappycito_like_url + '/?section=tips'}")
         self.check_inner_html(regular_output, inner_output)
         return
@@ -323,7 +360,7 @@ class TestHtmlUtils(TestWrapper):
         assert THE_MODULE.get_url_param('bad-request-status', default_value='400') == '400'
         assert THE_MODULE.get_url_param('default-body', escaped=True) == 'Joe&#x27;s hat'
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_url_param_checkbox_spec(self):
         """Ensure get_url_param_checkbox_spec() works as expected"""
         debug.trace(4, "test_get_url_param_checkbox_spec()")
@@ -347,7 +384,7 @@ class TestHtmlUtils(TestWrapper):
         assert THE_MODULE.get_url_parameter_bool("abc", False, { "abc": "on" })
         assert THE_MODULE.get_url_param_bool("abc", False, { "abc": "True" })
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_url_parameter_int(self):
         """Ensure get_url_parameter_int() works as expected"""
         debug.trace(4, "test_get_url_parameter_int()")
@@ -377,7 +414,7 @@ class TestHtmlUtils(TestWrapper):
         }
         assert THE_MODULE.expand_misc_param(misc_dict, 'z') == expected
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test__read_file(self):
         """Ensure _read_file() works as expected"""
         debug.trace(4, "test__read_file()")
@@ -401,7 +438,7 @@ class TestHtmlUtils(TestWrapper):
             THE_MODULE._read_file(filename=test_filename, as_binary=True) ==
             bytes("open binary"+ os.linesep , "UTF-8"))
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test__write_file(self):
         """Ensure _write_file() works as expected"""
         debug.trace(4, "test__write_file()")
@@ -417,29 +454,49 @@ class TestHtmlUtils(TestWrapper):
 
     def check_download_web_document(self, download_func):
         """Check web downloads via DOWNLOAD_FUNC"""
+        ## UPDATE: 05/10/26: added expected failure skip
+        # note: expected failures moved to check_bad_download_web_document to facilitate diagnosis
         ## TODO2: change to html file from repo
         assert "currency" in THE_MODULE.download_web_document(f"{self.tomasohara_trade_like_url}/Dollar_-_Simple_English_Wikipedia_the_free_encyclopedia.html")
-        assert download_func("www. bogus. url.html") is None
+        ## OLD: assert download_func("www. bogus. url.html") is None
         remote_pacman_image_data = download_func(self.pacman_url, as_binary=True)
         local_pacman_image_data = system.read_binary_file(self.pacman_path)
         assert len(remote_pacman_image_data) == len(local_pacman_image_data)
         assert remote_pacman_image_data == local_pacman_image_data
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def check_bad_download_web_document(self, download_func):
+        """Check web downloads via DOWNLOAD_FUNC"""
+        assert download_func("www. bogus. url.html") is None
+        
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_old_download_web_document(self):
-        """Ensure old_download_web_document() works as expected"""
+        """Test old_download_web_document() over good downloads"""
         self.check_download_web_document(download_func=THE_MODULE.old_download_web_document)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
+    def test_bad_old_download_web_document(self):
+        """Test old_download_web_document() over bad downloads"""
+        self.check_bad_download_web_document(download_func=THE_MODULE.old_download_web_document)
+
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_web_document(self):
-        """Ensure download_web_document() works as expected"""
+        """Test download_web_document() over good downloads"""
         debug.trace(4, "test_download_web_document()")
         ## NOTE: Wikipedia/WikiMedia complaining about robots (even though single document access)
         ## during GitHub actions run. See https://wikitech.wikimedia.org/wiki/Robot_policy.
         ## TODO2: use website accessible to all team members
         self.check_download_web_document(download_func=THE_MODULE.download_web_document)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
+    def test_bad_download_web_document(self):
+        """Test download_web_document() over bad downloads"""
+        debug.trace(4, "test_download_web_document()")
+        self.check_bad_download_web_document(download_func=THE_MODULE.download_web_document)
+
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_test_download_html_document(self):
         """Ensure test_download_html_document() works as expected"""
         debug.trace(4, "test_test_download_html_document()")
@@ -447,13 +504,13 @@ class TestHtmlUtils(TestWrapper):
         ## TODO2: use website accessible to all team members
         assert "Tomás" not in THE_MODULE.test_download_html_document(f"{self.tomasohara_trade_like_url}", encoding="big5")
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_html_document(self):
         """Ensure download_html_document() works as expected"""
         debug.trace(4, "test_download_html_document()")
 
         # Set tmp_dir and filename for testing
-        tmp_dir = system.getenv("TMP")
+        tmp_dir = self.get_temp_dir()
         filename = "test_download_file"
 
         # Assert file is downloaded and created in tmp_dir
@@ -477,7 +534,7 @@ class TestHtmlUtils(TestWrapper):
         err = self.get_stderr()
         assert "Error during retrieve_web_document" not in err
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_download_binary_file(self):
         """Ensure download_binary_file() works as expected"""
         debug.trace(4, "test_download_binary_file()")
@@ -499,7 +556,7 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE.init_BeautifulSoup()
         assert THE_MODULE.BeautifulSoup
     
-    @pytest.mark.xfail                   # TODO: remove xfail
+    ## OLD: @pytest.mark.xfail                   # TODO: remove xfail
     def test_extract_html_link(self):
         """Ensure extract_html_link() works as expected"""
         debug.trace(4, "test_extract_html_link()")
@@ -576,6 +633,7 @@ class TestHtmlUtils(TestWrapper):
         test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_alt_path, timeout=5)
         self.do_assert(not test_document_ready)
 
+    @pytest.mark.xfail
     def check_browser_dimensions(self, width, height, label):
         """Verify that browser accepts dimensions of WIDTH x HEIGHT via selenium"""
         debug.trace(5, f"check_browser_dimensions{(width, height, label)}")
@@ -585,6 +643,8 @@ class TestHtmlUtils(TestWrapper):
         browser = THE_MODULE.get_browser(self.dimensions_url)
         screenshot_path = gh.form_path(self.get_temp_dir(), f"{label}-screenshot.png")
         try:
+            # pylint: disable=import-outside-toplevel
+            from PIL import Image       ## TODO3: move to top level
             browser.get_screenshot_as_file(screenshot_path)
             ok = True
             with Image.open(screenshot_path) as img:
@@ -641,9 +701,12 @@ class TestHtmlUtils(TestWrapper):
         result = THE_MODULE.selenium_function(url=self.dimensions_url,
                                               call="set_window_rect(width=123, height=123)")
         # ex: {'x': 0, 'y': 0, 'width': 450, 'height': 123}
-        assert my_re.search(r"'width': \d+, 'height': \d+", result)
+        ## BAD: assert my_re.search(r"'width': \d+, 'height': \d+", str(result))
+        # note: order is not guaranteed, so testing individually
+        assert my_re.search(r"'width': \d+", str(result))
+        assert my_re.search(r"'height': \d+", str(result))
 
-    @pytest.mark.xfail
+    ## OLD: @pytest.mark.xfail
     def test_set_param_dict_alt(self):
         param_dict = {
             1: "a+b+c",
@@ -856,7 +919,7 @@ class TestHtmlUtils(TestWrapper):
         data = "Hello World"
         filename = self.create_temp_file(contents="")
         as_binary = False
-        # pylint: ignore disable=assignment-from-none
+        # pylint: disable=assignment-from-none
         result = THE_MODULE._write_file(filename, data, as_binary)
 
         assert isinstance(data, (str, bytes))
@@ -864,7 +927,7 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(as_binary, bool)
         assert result is None  
 
-    @pytest.mark.xfail
+    ## OLD: @pytest.mark.xfail
     def test_format_checkbox(self):
         """Verify simple format_checkbox usage"""
         # ex: <input type='hidden' name='fubar' value='off'><label id='fubar-label-id' >Fubar?<input type='checkbox' id='fubar-id' name='fubar'   ></label>"
@@ -875,7 +938,7 @@ class TestHtmlUtils(TestWrapper):
         assert my_re.search(r"<label\s*id='fubar-label-id'\s*>Fubar\?<input\s*type='checkbox'\s*id='fubar-id'\s*name='fubar'\s*disabled\s*></label>",
                             field_spec)
 
-    @pytest.mark.xfail
+    ## OLD: @pytest.mark.xfail
     def test_format_input_field(self):
         """Verify simple format_input_field usage"""
         ## HACK: ensures that single quotes used in tested result
@@ -892,7 +955,7 @@ class TestHtmlUtils(TestWrapper):
         assert my_re.search(r"<label\s*id='age-label-id'\s*>Age:&nbsp;<input id='age-id'\s*value='19'\s*name='age'\s*type='number'\s*></label>",
                             field_spec)
         
-    @pytest.mark.xfail
+    ## OLD: @pytest.mark.xfail
     def test_format_url_param(self):
         """Verify format_url_param"""
         THE_MODULE.set_param_dict({"f": "'my dog's fleas'"})

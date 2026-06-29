@@ -72,23 +72,23 @@ import inspect
 from itertools import zip_longest
 import logging
 import os
+from pathlib import Path
 from pprint import pprint
 import re
 from typing import (
-    Optional, Any, Union, Callable, List,
+    Optional, Any, Union, Callable, List, Tuple, Dict,
 )
-from types import CodeType
+from types import CodeType, FrameType
 from typing_extensions import Buffer
 import six
 import sys
 import time
 import traceback
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
-from mezcla.validate_arguments_types import (
-    FileDescriptorOrPath,
-)
 
 # Local modules
+# Warning: avoid other mezcla modules to work around dependency circles.
+from mezcla.validate_arguments_types import FileDescriptorOrPath, OptStr
 intro = None
 
 
@@ -154,14 +154,88 @@ def docstring_parameter(**kwargs):
         return obj
     return decorator
 
+def _same_path(path1: Path, path2: Path) -> bool:
+    """Heuristic path equality, including symlink-aware checks."""
+    try:
+        return os.path.samefile(path1, path2)
+    except:
+        return (path1.resolve() == path2.resolve())
+
+def detect_shadowed_package() -> Tuple[bool, Dict[str, Any]]:
+    """Heuristic indicating whether another version of this package is ahead of this one in sys.path?
+    Returns tuple with shadow status flag and details hash.
+    """
+    # Resolve current module and script metadata.
+    mod = sys.modules[__name__]
+    mod_file = getattr(mod, "__file__", None)
+    if not mod_file:
+        return False, {"shadowed": False, "reason": "no __file__"}
+    current_module_file = Path(mod_file).resolve()
+    script_path = (Path(sys.argv[0]).resolve() if (sys.argv and sys.argv[0]) else None)
+    package_name = (__package__ or getattr(mod, "__package__", "") or "")
+    pkg_dir = None
+    pkg_name = None
+
+    # Infer package directory from module metadata when available.
+    if package_name:
+        pkg_name = package_name.split(".")[0]
+        pkg_dir = current_module_file.parent
+        depth = max(len(package_name.split(".")) - 1, 0)
+        for _ in range(depth):
+            pkg_dir = pkg_dir.parent
+    # Otherwise, use script-mode heuristics (e.g., running ./debug.py).
+    elif (current_module_file.parent / "__init__.py").is_file():
+        pkg_dir = current_module_file.parent
+        pkg_name = pkg_dir.name
+    elif script_path and (script_path.parent / "__init__.py").is_file():
+        pkg_dir = script_path.parent
+        pkg_name = pkg_dir.name
+    else:
+        return False, {"shadowed": False, "reason": "not in a package"}
+
+    assert pkg_dir is not None
+    assert pkg_name is not None
+    pkg_dir = pkg_dir.resolve()
+    trace_expr(5, pkg_dir, pkg_name, script_path)
+
+    # Scan python path entries in import precedence order.
+    first_hit = None
+    current_index = None
+    for i, entry in enumerate(sys.path):
+        base = Path(entry or os.getcwd()).resolve()
+        candidate = (base / pkg_name)
+        trace_expr(5, i, entry, candidate)
+        if not candidate.is_dir():
+            continue
+        candidate = candidate.resolve()
+        if first_hit is None:
+            first_hit = (i, candidate)
+        if _same_path(candidate, pkg_dir):
+            current_index = i
+            break
+
+    # Determine whether another package dir comes before this package dir.
+    shadowed = False
+    if first_hit:
+        same_first_dir = _same_path(first_hit[1], pkg_dir)
+        first_hit_ahead = ((current_index is None) or (first_hit[0] < current_index))
+        shadowed = ((not same_first_dir) and first_hit_ahead)
+    return shadowed, {
+        "shadowed": shadowed,
+        "package": pkg_name,
+        "current_pkg_dir": str(pkg_dir),
+        "current_index": current_index,
+        "ahead_index": (first_hit[0] if first_hit else None),
+        "ahead_pkg_dir": (str(first_hit[1]) if first_hit else None),
+        "script_path": (str(script_path) if script_path else None),
+    }
+
 #...............................................................................
-
-
 
 if __debug__:    
 
     # Initialize debug tracing level
-    # TODO: mark as "private" (e.g., trace_level => _trace_level)
+    # TODO1: mark as "private" (e.g., trace_level => _trace_level)
     DEBUG_LEVEL_LABEL = "DEBUG_LEVEL"
     trace_level: IntOrTraceLevel = TL.DEFAULT  # typically 3 (1 + WARNING); TODO: global_trace_level
     output_timestamps: bool = False     # prefix output with timestamp
@@ -206,7 +280,8 @@ if __debug__:
         return result
 
 
-    def _to_unicode(text: str, encoding: Optional[bool] = None) -> str:
+    ## BAD: def _to_unicode(text: str, encoding: Optional[bool] = None) -> str:
+    def _to_unicode(text: str, encoding: OptStr = None) -> str:
         """Ensure TEXT in ENCODING is Unicode, such as from the default UTF8"""
         result = text
         reference_var(encoding)
@@ -275,7 +350,7 @@ if __debug__:
             global output_timestamps
             output_timestamps = do_output_timestamps
 
-        def do_print(self, value, max_len = None, end: Optional[str] = None) -> str:
+        def do_print(self, value: Any, max_len: Optional[int] = None, end: Optional[str] = None) -> str:
             """Print VALUE to stderr and optionally to DEBUG_FILE.
             Outputs up to MAX_LEN characters including added ellipses.
             Includes END text or newline (n.b., omitted from MAX_LEN check).
@@ -312,7 +387,7 @@ if __debug__:
                 empty_arg: Optional[bool] = None,
                 no_eol: Optional[bool] = None,
                 indentation: Optional[str] = None,
-                max_len = None,
+                max_len: Optional[int] = None,
                 skip_sanity_checks: Optional[bool] = None
             ) -> str:
             """Print TEXT if at trace LEVEL or higher, including newline unless SKIP_NEWLINE.
@@ -361,14 +436,17 @@ if __debug__:
                         out_text += self.do_print("[Warning: converted non-text to str] ", end="", max_len=max_len)
                         max_len -= len(out_text)
                     text = str(text)
+                # Check for braced variable-like reference (e.g., "123 {abc} 456") in text,
+                # such as if caller forgot to use f-string.
                 if ((not skip_sanity_checks)
                     and (match := re.search(r"{[^0-9]\S+}", text))
                     and not re.search(r"{{[^0-9]\S+}}", text)):
                     # TODO3: show caller info; also rework indent (pep8 quirk)
                     if include_trace_diagnostics:
                         out_text += self.do_print(f"[FYI: potential f-string issue in trace: unresolved {match.group()}] ",
-                                             end="", max_len=max_len)
+                                                  end="", max_len=max_len)
                         max_len -= len(out_text)
+                # Output the text with optional logging
                 end = "\n" if (not no_eol) else ""
                 out_text += self.do_print(_to_utf8(text), end=end, max_len=max_len)
                 max_len -= len(out_text)
@@ -381,17 +459,17 @@ if __debug__:
                 sys.stderr.write("Error: trace only accepts two positional arguments (was trace_expr intended?)\n")
             return out_text
 
-        def check_keyword_args(self, level, expected, kwargs,
-                               function, format_text=None, add_underscore=False):
+        def check_keyword_args(self, level: IntOrTraceLevel, expected: str, kwargs: Dict[str, Any],
+                               function: str, format_text: OptStr = None, add_underscore: bool = False) -> None:
             """Make sure KWARGS in EXPECTED list for FUNCTION at trace LEVEL
             Note: Checks for leading underscore if ADD_UNDERSCORE. Excludes keywords
             mentioned in FORMAT_TEXT.
             """
             if debugging(level):
-                expected = expected.split()
+                expected_list = expected.split()
                 if add_underscore:
-                    expected += [f"_{k}" for k in expected]
-                all_diff = set(kwargs.keys()).difference(expected)
+                    expected_list += [f"_{k}" for k in expected_list]
+                all_diff = set(kwargs.keys()).difference(expected_list)
                 diff = [kw for kw in all_diff
                         ## TODO3: rf"{{{kw\W*}}" -or- rf"{{ {kw}[^a-z0-9_]* }}" -or- rf"{{ {kw}[^}}]* }}",
                         if not re.search(rf"{{ {kw}.* }}",
@@ -420,10 +498,13 @@ if __debug__:
                 skip_sanity_checks = kwargs.get('_skip_sanity_checks') or kwargs.get('skip_sanity_checks')
                 try:
                     try:
+                        # Check for missing braced variable-like references in text (e.g., "123 {abc] 356"),
+                        # such as if trace_fmt called with expanded f-string.
                         # TODO: add version of assertion that doesn't use trace or trace_fmtd
                         if (not skip_sanity_checks) and not (re.search(r"{\S*}", text)):
                             if include_trace_diagnostics:
                                  self.trace(level, "[FYI: potential extraneous f-string issue in  in trace_fmt: missing {}'s?] ", no_eol=True)
+                        # Format the text
                         kwargs_unicode = {k: format_value(_to_unicode(_to_string(v)), max_len=max_len)
                                           for (k, v) in list(kwargs.items())}
                         result = self.trace(level, _to_unicode(text).format(**kwargs_unicode), max_len=max_len)
@@ -573,16 +654,18 @@ if __debug__:
             return
 
 
+        ## OLD: collection: Union[list, dict, Any] (redundant: Any already subsumes list/dict)
         def trace_values(
                 self,
                 level: IntOrTraceLevel,
-                collection: Union[list, dict, Any],
+                collection: object,
                 label: Optional[str] = None,
                 indentation: Optional[str] = None,
                 use_repr: Optional[bool] = None,
                 max_len: Optional[int] = None
             ) -> None:
             """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
+            ## TODO2: mention other types coerced into collections (e.g., mapping to dict)
             # TODO3: return text as with trace and trace_expr
             self.trace_fmt(MOST_VERBOSE, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
                       dl=level, lbl=label, coll=collection, ind=indentation)
@@ -598,10 +681,13 @@ if __debug__:
             # note: sets will be coerced to lists
             if not isinstance(collection, (list, dict)):
                 if hasattr(collection, '__iter__'):
-                    self.trace(level + 1, "Warning: [trace_values] consuming iterator")
+                    if not isinstance(collection, tuple):
+                        self.trace(level + 1, "Warning: [trace_values] consuming iterator")
                     collection = list(collection)
                 else:
-                    self.trace(level + 1, "Warning: [trace_values] coercing input into list")
+                    ## TODO3: drop support for scalars
+                    ## OLD: self.trace(level + 1, "Warning: [trace_values] coercing input into list")
+                    self.trace(level + 1, "Deprecation warning: [trace_values] coercing single value into list")
                     collection = [collection]
             if indentation is None:
                 indentation = INDENT1
@@ -693,10 +779,6 @@ if __debug__:
                 if intro:
                     expression = intro.format(*values, arg_offset=1, indirect=True, levels_back=_caller_depth, max_len=max_len,
                                               no_eol=no_eol, delim=delim, use_repr=use_repr, _prefix=prefix, suffix=suffix)
-                    ## OLD:
-                    ## if max_len and len(expression) > max_len:
-                    ##     trace(7, ("Warning: error in introspection max_len; " +
-                    ##               f"{len(expression)} vs. {max_len}; {expression=}"))
 
                 ## TEST:
                 ## expression = []
@@ -705,7 +787,6 @@ if __debug__:
                 ## expression = "@".join(expression)
                 ## trace(3, f"{values=} {expression=}")
                 ##
-                ## OLD: out_text += trace(level, expression, skip_sanity_checks=True, max_len=max_len)
                 # Note: when max_len specified, intro.format already applied it to values;
                 # use expression length to avoid trace re-truncating (expression includes
                 # arg names, delimiters, etc. beyond max_len).
@@ -771,7 +852,7 @@ if __debug__:
             return out_text
 
 
-        def trace_frame(self, level: IntOrTraceLevel, frame, label="frame"):
+        def trace_frame(self, level: IntOrTraceLevel, frame: Optional[FrameType], label: str = "frame") -> None:
             """Trace info about FRAME to stderr if LEVEL or higher, using LABEL prefix"""
             # example: trace_frame debug.py:680
             frame_spec = (f"{frame.f_code.co_name} {inspect.getfile(frame)}:{frame.f_lineno}"
@@ -834,7 +915,7 @@ if __debug__:
                 self.trace(level, "")
             return
 
-        def trace_stack(self, level=VERBOSE):
+        def trace_stack(self, level: IntOrTraceLevel = VERBOSE) -> None:
             """Output stack trace to stderr (if at trace LEVEL or higher)"""
             if (level <= trace_level):
                 traceback.print_stack(file=sys.stderr)
@@ -842,7 +923,8 @@ if __debug__:
                     traceback.print_stack(file=debug_file)
             return
 
-        def trace_exception(self, level: IntOrTraceLevel, task: Any,
+        ## OLD: task: Any
+        def trace_exception(self, level: IntOrTraceLevel, task: str,
                             show_stack: Optional[bool] = None) -> None:
             """Trace exception information regarding TASK (e.g., function) at LEVEL.
             Note: If SHOW_STACK, includes stack trace (default when verbose debugging)
@@ -860,7 +942,7 @@ if __debug__:
         # Note: alias to match print_exception_info in system
         trace_exception_info = trace_exception
 
-        def raise_exception(self, level: IntOrTraceLevel = 1):
+        def raise_exception(self, level: IntOrTraceLevel = 1) -> None:
             """Raise an exception if debugging (at specified trace LEVEL)
             Note: useful to re-raise exceptions normally ignored when not debugging
             """
@@ -869,9 +951,10 @@ if __debug__:
             return
 
 
+        ## OLD: expression: Union[bool, Any] (redundant: Any already subsumes bool)
         def assertion(
                 self,
-                expression: Union[bool, Any],
+                expression: object,
                 issue: Optional[str] = None,
                 message: Optional[str] = None,
                 assert_level: Optional[IntOrTraceLevel] = None,
@@ -910,7 +993,6 @@ if __debug__:
                         expression = "???"
                         if intro:
                             expression = intro.format(expression, indirect=True, omit_values=True, levels_back=_caller_depth)
-                        ## OLD: expression = re.sub("=False$", "", expression)
                         ## TODO2: drop newlines due to argument split across lines
                         ##   expression = re.sub("\n", " ", expression)???
                         expression_text = expression
@@ -931,7 +1013,6 @@ if __debug__:
 
                     # Output information
                     # TODO: omit subsequent warnings
-                    ## OLD: trace_fmtd(ALWAYS, "Assertion failed: {expr} (at {file}:{line}){qual}",
                     self.trace_fmtd(ALWAYS, "{issue_spec}: {expr} (at {file}:{line}){qual}",
                                issue_spec=(issue or "Assertion failed"),
                                expr=expression_text, file=filename, line=line_number, qual=qualification_spec)
@@ -948,7 +1029,7 @@ if __debug__:
             return (value if (trace_level >= level) else None)
 
 
-        def code(self, level: IntOrTraceLevel, no_arg_function: Callable) -> Any:
+        def code(self, level: IntOrTraceLevel, no_arg_function: Callable[[], Any]) -> Any:
             """Execute NO_ARG_FUNCTION if at trace LEVEL or higher.
             Returns result of invocation or None.
             Notes:
@@ -968,7 +1049,7 @@ if __debug__:
                 result = no_arg_function()
             return result
 
-        def call(self, level: IntOrTraceLevel, function: Callable, *args, **kwargs) -> Any:
+        def call(self, level: IntOrTraceLevel, function: Callable[..., Any], *args, **kwargs) -> Any:
             """Invoke FUNCTION with ARGS and KWARGS if at trace LEVEL or higher
             Note: Use self.code() for simpler invocation (e.g., via lambda function)
             """
@@ -980,7 +1061,7 @@ if __debug__:
             return result
 
 
-        def get_elapsed_time(self):
+        def get_elapsed_time(self) -> float:
             """Get elapsed (debugging) time in seconds from import time
             Note: convenience function for use in notebooks for quick-and-dirty timing.
             Also used to avoid blank cell when executing last cell.
@@ -1053,10 +1134,14 @@ if __debug__:
             if (time_start > 0 and not force):
                 ## TODO3: track down source of re-init
                 self.trace(DETAILED, f"debug_init early exit: {time_start=} {force=}")
+                self.trace_stack(VERBOSE)
                 return
+            self.trace(DETAILED, f"in debug_init(force={force}); DEBUG_LEVEL={trace_level}; {timestamp()}")
+            self.trace(VERBOSE, f"{time_start=}")
             time_start = time.time()
-            self.trace(DETAILED, f"in debug_init(); DEBUG_LEVEL={trace_level}; {timestamp()}")
-            ## DEBUG: trace_values(8, inspect.stack(), max_len=256)
+            ## NOTE: Useful for tracking down multiple invocations (e.g., due to imports or __init__.py),
+            ## which is complicated by python path conflicts (see shadow detection below).
+            ## DEBUG: self.trace_stack(VERBOSE)
             # note: shows command invocation unless invoked via "python -c ..."
             command_line = " ".join(sys.argv)
             if (command_line and (command_line != "-c") and (command_line != "-m")):
@@ -1076,9 +1161,14 @@ if __debug__:
             self.trace_fmtd(DETAILED, "[{f}] loaded at {t}", f=module_file, t=timestamp())
             self.trace_fmtd(DETAILED, "trace_level={l}; output_timestamps={ots}", l=trace_level, ots=output_timestamps)
             self.trace_expr(QUITE_DETAILED, __file__)
+            self.trace_values(VERBOSE, sys.path, "sys.path")
             # note: also show python path if under Unix (TODO3: generalize)
             if (os.name == "posix"):
                 self.code(VERBOSE, lambda: os.system("(echo -n 'Python: '; which python) 1>&2"))
+            is_shadowed, shadow_details = detect_shadowed_package()
+            self.trace_expr(DETAILED, shadow_details)
+            if is_shadowed:
+                self.trace(USUAL, f"Warning: package likely shadowed: {shadow_details}")
 
             # Determine other debug-only environment options
             global para_mode_tracing
@@ -1136,6 +1226,7 @@ if __debug__:
             self.trace_expr(4, skip_atexit)
             if not skip_atexit:
                 atexit.register(self.display_ending_time_etc)
+            self.trace(VERBOSE, f"out debug_init(); {timestamp()}")
 
             return
 
@@ -1163,7 +1254,7 @@ if __debug__:
         """Enable (or disable) the outputting of timestamps"""
         return _debug.set_output_timestamps(do_output_timestamps)
 
-    def do_print(value, max_len = None, end: Optional[str] = None) -> str:
+    def do_print(value: Any, max_len: Optional[int] = None, end: Optional[str] = None) -> str:
         """Print VALUE to stderr and optionally to DEBUG_FILE"""
         return _debug.do_print(value, max_len, end)
 
@@ -1173,13 +1264,14 @@ if __debug__:
             empty_arg: Optional[bool] = None,
             no_eol: Optional[bool] = None,
             indentation: Optional[str] = None,
-            max_len = None,
+            max_len: Optional[int] = None,
             skip_sanity_checks: Optional[bool] = None
         ) -> str:
         """Print TEXT if at trace LEVEL or higher"""
         return _debug.trace(level, text, empty_arg, no_eol, indentation, max_len, skip_sanity_checks)
 
-    def check_keyword_args(level, expected, kwargs, function, format_text=None, add_underscore=False):
+    def check_keyword_args(level: IntOrTraceLevel, expected: str, kwargs: Dict[str, Any],
+                           function: str, format_text: OptStr = None, add_underscore: bool = False) -> None:
         """Make sure KWARGS in EXPECTED list for FUNCTION at trace LEVEL"""
         return _debug.check_keyword_args(level, expected, kwargs, function, format_text, add_underscore)
 
@@ -1205,9 +1297,10 @@ if __debug__:
         return _debug.trace_object(level, obj, label, show_all, show_private, show_methods_etc,
                                    indentation, pretty_print, max_value_len, max_depth, regular_standard)
 
+    ## OLD: collection: Union[list, dict, Any] (redundant: Any already subsumes list/dict)
     def trace_values(
             level: IntOrTraceLevel,
-            collection: Union[list, dict, Any],
+            collection: object,
             label: Optional[str] = None,
             indentation: Optional[str] = None,
             use_repr: Optional[bool] = None,
@@ -1222,7 +1315,7 @@ if __debug__:
         Note: _caller_depth=1 is passed to account for this wrapper frame."""
         return _debug.trace_expr(level, *values, _caller_depth=1, **kwargs)
 
-    def trace_frame(level: IntOrTraceLevel, frame, label="frame"):
+    def trace_frame(level: IntOrTraceLevel, frame: Optional[FrameType], label: str = "frame") -> None:
         """Trace info about FRAME to stderr if LEVEL or higher, using LABEL prefix"""
         return _debug.trace_frame(level, frame, label)
 
@@ -1236,11 +1329,12 @@ if __debug__:
         return _debug.trace_current_context(level, label, show_methods_etc, indirect,
                                              max_value_len, _caller_depth=1)
 
-    def trace_stack(level=VERBOSE):
+    def trace_stack(level: IntOrTraceLevel = VERBOSE) -> None:
         """Output stack trace to stderr (if at trace LEVEL or higher)"""
         return _debug.trace_stack(level)
 
-    def trace_exception(level: IntOrTraceLevel, task: Any,
+    ## OLD: task: Any
+    def trace_exception(level: IntOrTraceLevel, task: str,
                         show_stack: Optional[bool] = None) -> None:
         """Trace exception information regarding TASK (e.g., function) at LEVEL"""
         return _debug.trace_exception(level, task, show_stack)
@@ -1248,12 +1342,13 @@ if __debug__:
     # Note: alias to match print_exception_info in system
     trace_exception_info = trace_exception
     
-    def raise_exception(level: IntOrTraceLevel = 1):
+    def raise_exception(level: IntOrTraceLevel = 1) -> None:
         """Raise an exception if debugging (at specified trace LEVEL)"""
         return _debug.raise_exception(level)
 
+    ## OLD: expression: Union[bool, Any] (redundant: Any already subsumes bool)
     def assertion(
-            expression: Union[bool, Any],
+            expression: object,
             issue: Optional[str] = None,
             message: Optional[str] = None,
             assert_level: Optional[IntOrTraceLevel] = None,
@@ -1267,15 +1362,15 @@ if __debug__:
         """Returns VALUE if at trace LEVEL or higher otherwise None"""
         return _debug.val(level, value)
 
-    def code(level: IntOrTraceLevel, no_arg_function: Callable) -> Any:
+    def code(level: IntOrTraceLevel, no_arg_function: Callable[[], Any]) -> Any:
         """Execute NO_ARG_FUNCTION if at trace LEVEL or higher"""
         return _debug.code(level, no_arg_function)
 
-    def call(level: IntOrTraceLevel, function: Callable, *args, **kwargs) -> Any:
+    def call(level: IntOrTraceLevel, function: Callable[..., Any], *args, **kwargs) -> Any:
         """Invoke FUNCTION with ARGS and KWARGS if at trace LEVEL or higher"""
         return _debug.call(level, function, *args, **kwargs)
 
-    def get_elapsed_time():
+    def get_elapsed_time() -> float:
         """Get elapsed (debugging) time in seconds from import time"""
         return _debug.get_elapsed_time()
 
@@ -1463,9 +1558,9 @@ def _getenv_int(name: str, default_value: int) -> int:
     return result
 
 @docstring_parameter(max_len=max_trace_value_len)
-def format_value(value: str, max_len: Optional[int] = None,
-                 strict: Optional[bool] = None, skip_sanity_checks=None) -> str:
-    """Format VALUE for output with trace_values, etc.: truncates if too long and encodes newlines
+def format_value(value: Any, max_len: Optional[int] = None,
+                 strict: Optional[bool] = None, skip_sanity_checks: Optional[bool] = None) -> str:
+    """Format arbitrary VALUE for output with trace_values, etc.: truncates if too long and encodes newlines
     Note: With STRICT, MAX_LEN is maximum length ({max_len}) for returned string (i.e., including "...")
     """
     # EX: format_value("    \n\n\n\n", max_len=11) => "    \\n\\n..."
@@ -1502,7 +1597,8 @@ def format_value(value: str, max_len: Optional[int] = None,
     return result
 
 
-def xor(value1: Any, value2: Any) -> bool:
+## OLD: def xor(value1: Any, value2: Any) -> bool:
+def xor(value1: object, value2: object) -> bool:
     """Whether VALUE1 and VALUE2 differ when interpretted as booleans"""
     # Note: Used to clarify assertions; same as bool(value1) != bool(value2).
     # See https://stackoverflow.com/questions/432842/how-do-you-get-the-logical-xor-of-two-variables-in-python
@@ -1545,7 +1641,8 @@ def init_logging() -> None:
     return
 
 
-def _print_exception_info(task: Any) -> None:
+## OLD: def _print_exception_info(task: Any) -> None:
+def _print_exception_info(task: str) -> None:
     """Output exception information to stderr regarding TASK (e.g., function)"""
     # Note: non-tracing version of system's print_exception_info
     sys.stderr.write("Error during {t}: {exc}\n".
@@ -1553,7 +1650,12 @@ def _print_exception_info(task: Any) -> None:
     return
 
 
-def profile_function(frame, event, arg):
+## SKIP_VALIDATE_CALL: frame: FrameType has no pydantic-core schema (would need
+## config=ConfigDict(arbitrary_types_allowed=True)); decorating this with a bare
+## @validate_call breaks "import mezcla.debug" for the transformed copy used by
+## tests/misc_tests.py's test_06_type_hinting (see TODO3 there), which cascades
+## to every other main_script since they all "from mezcla import debug".
+def profile_function(frame: FrameType, event: str, arg: Any) -> None:
     """Function for monitoring function entry and exit (FEE), etc., currently just tracing at level 4. See sys.setprofile.
     # Note: Use a package like viztracer for non-trivial monitoring"""
     ## TODO: add type hints to run checks (e.g., mypy)
@@ -1676,6 +1778,9 @@ def main(args: List[str]) -> None:
     ## TODO: for i in range(3, 0, -1):
     trace_expr(ERROR, n-i, n, n+i)
     ALL = True
+    dashes = "-" * 16
+    trace_expr(USUAL, dashes) 
+    trace_expr(USUAL, dashes, max_len=8) 
     trace_expr(ALWAYS, ALL, prefix="Tha-tha-that's ", suffix=" folks!")
     return
 

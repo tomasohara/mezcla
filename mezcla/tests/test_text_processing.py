@@ -143,7 +143,7 @@ class TestTextProcessing(TestWrapper):
     def test_read_freq_data(self):
         """Ensure read_freq_data works as expected"""
         debug.trace(4, "test_read_freq_data()")
-        lines = gh.read_lines(WORD_FREQ_FILE)
+        lines = system.read_lines(WORD_FREQ_FILE)
         freq = THE_MODULE.read_freq_data(WORD_FREQ_FILE)
         for line in lines:
             if line.startswith("#"):
@@ -155,7 +155,7 @@ class TestTextProcessing(TestWrapper):
     def test_read_word_POS_data(self): # pylint: disable=invalid-name
         """Ensure read_word_POS_data works as expected"""
         debug.trace(4, "test_read_word_POS_data()")
-        lines = gh.read_lines(WORD_POS_FREQ_FILE)
+        lines = system.read_lines(WORD_POS_FREQ_FILE)
         freq_pos = THE_MODULE.read_word_POS_data(WORD_POS_FREQ_FILE)
         for line in lines:
             if line.startswith("#"):
@@ -237,7 +237,7 @@ class TestTextProcessing(TestWrapper):
         """Ensure text_processing without argument works as expected"""
         debug.trace(4, "test_all()")
         output = [tag.strip() for tag in self.run_script(data_file=TEXT_EXAMPLE).split(',')]
-        expected_tags = [tag.strip() for tag in gh.read_file(TEXT_EXAMPLE_TAGS)[:-1].split(',')]
+        expected_tags = [tag.strip() for tag in system.read_file(TEXT_EXAMPLE_TAGS)[:-1].split(',')]
         for output_tag, expected_tag in zip(output, expected_tags):
             assert output_tag == expected_tag
 
@@ -245,7 +245,7 @@ class TestTextProcessing(TestWrapper):
         """Ensure just_tokenize argument works as expected"""
         debug.trace(4, "test_just_tokenize()")
         tokenized_text = self.run_script(data_file=TEXT_EXAMPLE,options="--just-tokenize")
-        non_tokenized_text = gh.read_file(TEXT_EXAMPLE)
+        non_tokenized_text = system.read_file(TEXT_EXAMPLE)
         # match every token except whitespaces, 
         # that way tokenized and non-tokenized texts are equals 
         matches_tokenized = my_re.match(r'\S', tokenized_text).groups()

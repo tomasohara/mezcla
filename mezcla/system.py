@@ -26,6 +26,8 @@
 
 # Standard packages
 from collections import defaultdict, OrderedDict
+## UPDATE: 06/20/2026: Integrates alternative model's type hints.
+from collections.abc import Iterator
 import datetime
 ## OLD: import importlib_metadata
 import inspect
@@ -36,7 +38,7 @@ import sys
 import time
 from typing import (
     Any, IO, Optional, Union, overload, List,
-    Tuple, Callable, Dict
+    Tuple, Callable, Dict, Set
 )
 from io import TextIOWrapper
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
@@ -52,6 +54,9 @@ from mezcla.debug import UTF8, TraceLevel
 from mezcla.validate_arguments_types import (
     FileDescriptorOrPath, OptExcInfo, StrOrBytesPath,
 )
+
+# Types
+ListOrSet = Union[List[Any], Set[Any]]         # stable
 
 # Constants
 STRING_TYPES = six.string_types
@@ -82,7 +87,7 @@ env_options: Dict[str, str] = {}
 env_defaults: Dict[str, Any] = {}
 env_diagnostic_level = 6
 #
-def set_env_diagnostic_level(level):
+def set_env_diagnostic_level(level: debug.IntOrTraceLevel) -> None:
     """Set trace LEVEL at which getenv_xyz-related diagnostics occur"""
     global env_diagnostic_level
     env_diagnostic_level = level
@@ -203,9 +208,10 @@ def normalize_env_var(var: str) -> str:
     return var
 
 
+## OLD: value: Any (str(value) is used, so any object works)
 def setenv(
         var: str,
-        value: Any,
+        value: object,
         normalize: bool = False
     ) -> None:
     """Set environment VAR to non-null VALUE (converted to str).
@@ -228,7 +234,7 @@ def getenv_text(
         helper: bool = False,
         update: Optional[bool] = None,
         skip_register: Optional[bool] = None,
-        normalize = None,
+        normalize: Optional[bool] = None,
     ) -> str:
     """Returns textual value for environment variable VAR (or DEFAULT value, excluding None).
     Notes:
@@ -275,14 +281,15 @@ def getenv_text(
     return (text_value)
 
 
+## OLD: default: Optional[Any] = None (redundant: Any already subsumes None)
 def getenv_value(
         var: str,
-        default: Optional[Any] = None,
+        default: Any = None,
         description: str = "",
         desc: str = "",
         update: Optional[bool] = None,
         skip_register: Optional[bool] = None,
-        normalize = None,
+        normalize: Optional[bool] = None,
     ) -> Any:
     """Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE. (See getenv_text for option details.)
     Note: If NORMALIZE, then lookup falls back to variable uppercased and with underscores for dashes.
@@ -592,7 +599,8 @@ def save_object(file_name: FileDescriptorOrPath, obj: Any) -> None:
     return
 
     
-def load_object(file_name: FileDescriptorOrPath, ignore_error: bool = False) -> Optional[Any]:
+## OLD: -> Optional[Any] (redundant: Any already subsumes None)
+def load_object(file_name: FileDescriptorOrPath, ignore_error: bool = False) -> Any:
     """Loads object from FILE_NAME in pickle format"""
     # Note: Reads in binary mode to avoid unicode decode error. See
     #    https://stackoverflow.com/questions/32957708/python-pickle-error-unicodedecodeerror
@@ -688,39 +696,40 @@ unescape_html_text = unescape_html_value
 NEWLINE = "\n"
 TAB = "\t"
 #
-class stdin_reader(object):
+class stdin_reader:
     """Iterator for reading from stdin that replaces runs of whitespace by tabs"""
-    # TODO: generalize to file-based iterator
+    # TODO: generalize to file-based iterator; rename as StdinReader
+    ## TODO2: deprecate since unused???!
+    ## UPDATE: 06/20/2026: Revised via Claude Sonnet 4.8
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """Class constructor"""
-        debug.trace_fmtd(5, "Script.__init__({a}): keywords={kw}; self={s}",
+        debug.trace_fmtd(5, "stdin_reader.__init__({a}): keywords={kw}; self={s}",
                          a=",".join(args), kw=kwargs, s=self)
-        self.delimiter = kwargs.get('delimiter', "\t")
-        super().__init__(*args, **kwargs)
-    
-    def __iter__(self):
-        """Returns first line in stdin iteration (empty string upon EOF)"""
-        return self.__next__()
+        self.delimiter = kwargs.get('delimiter', TAB)
 
-    def __next__(self):
-        """Returns next line in stdin iteration (empty string upon EOF)"""
+    def __iter__(self) -> Iterator[str]:
+        """Return the iterator (self)"""
+        return self
+
+    def __next__(self) -> str:
+        """Returns next line in stdin iteration, raising StopIteration upon EOF"""
         try:
             line = self.normalize_line(input())
-        except EOFError:
-            line = ""
+        except EOFError as exc:
+            raise StopIteration from exc
         return line
 
     def normalize_line(self, original_line: str) -> str:
         """Normalize line (e.g., replacing spaces with single tab)"""
         debug.trace_fmtd(6, "in normalize_line({ol})", ol=original_line)
         line = original_line
-        # Remove trailing newline
+        # Remove trailing newline (n.b., perhaps obsolete)
         if line.endswith(NEWLINE):
             line = line[:-1]
-        # Replace runs of spaces with a single tab
+        # Replace runs of whitespaces with a single tab
         if (self.delimiter == TAB):
-            line = re.sub(r"  *", TAB, line)
+            line = re.sub(r" +", TAB, line)
         # Trace the revised line and return it
         debug.trace_fmtd(6, "normalize_line() => {l}", l=line)
         return line
@@ -843,7 +852,7 @@ def read_lookup_table(
         delim: Optional[str] = None,
         retain_case: bool = False,
         ignore_comments: Optional[bool] = None
-    ) -> defaultdict:
+    ) -> defaultdict[str, str]:
     """Reads FILENAME and returns as hash lookup, optionally SKIP[ing]_HEADER and using DELIM (tab by default).
     Note:
     - Input is made lowercase unless RETAIN_CASE.
@@ -890,7 +899,7 @@ def create_boolean_lookup_table(
         retain_case: bool = False,
         ignore_comments: Optional[bool] = None,
         **kwargs
-    ) -> defaultdict:
+    ) -> defaultdict[str, bool]:
     """Create lookup hash table from string keys to boolean occurrence indicator.
     Notes:
     - The key is first field, based on DELIM (tab by default): other values ignored.
@@ -924,7 +933,7 @@ def create_boolean_lookup_table(
     return lookup_hash
 
 
-def lookup_entry(hash_table: defaultdict, entry: str, retain_case: bool = False) -> str:
+def lookup_entry(hash_table: defaultdict[str, str], entry: str, retain_case: bool = False) -> str:
     """Return HASH_TABLE value for ENTRY, optionally RETAINing_CASE"""
     key = entry if retain_case else entry.lower()
     result = hash_table[key]
@@ -1048,7 +1057,8 @@ def split_path(path: str) -> Tuple[str, str]:
     dir_name, filename = os.path.split(path)
     debug.assertion((not dir_name.endswith(os.path.sep)) or (dir_name == os.path.sep))
     result = dir_name, filename
-    debug.assertion(dir_name or filename)
+    ## OLD: debug.assertion(dir_name or filename)
+    debug.assertion(dir_name or filename or not path)
     if dir_name and debug.active() and file_exists(path):
         debug.assertion(file_exists(dir_name))
     debug.trace(6, f"split_path({path}) => {result}")
@@ -1091,7 +1101,7 @@ def remove_extension(filename: str, extension: Optional[str] = None) -> str:
     return new_filename
 
 
-def get_extension(filename: str, keep_period=False) -> str:
+def get_extension(filename: str, keep_period: bool = False) -> str:
     """Return extension in FILENAME"""
     # EX: get_extension("document.pdf") => "pdf"
     # EX: get_extension("it.abc.def") => "def"
@@ -1123,7 +1133,7 @@ def get_file_size(filename: FileDescriptorOrPath) -> int:
     return size
 
 
-def path_separator(sysname: Optional[str] = None):
+def path_separator(sysname: Optional[str] = None) -> str:
     """Return text used to separate paths components under current OS (e.g., / or \\).
     This is basically a wrapper around os.path.sep with tracing, added to avoid using non-existent os.path.delim.
     Note: can overide SYSNAME to get separator for another system; see os.uname()"""
@@ -1225,7 +1235,7 @@ def from_utf8(text: str) -> str:
     return result
 
 
-def to_unicode(text: str, encoding: Optional[str] = None):
+def to_unicode(text: str, encoding: Optional[str] = None) -> str:
     """Ensure TEXT in ENCODING is Unicode, such as from the default UTF8
     Note: now a no-op
     """
@@ -1237,7 +1247,7 @@ def to_unicode(text: str, encoding: Optional[str] = None):
     return result
 
 
-def from_unicode(text: str, encoding: Optional[str] = None):
+def from_unicode(text: str, encoding: Optional[str] = None) -> str:
     """Convert TEXT to ENCODING from Unicode, such as to the default UTF8"""
     # TODO: rework to_utf8 in terms of this
     result = text
@@ -1326,7 +1336,7 @@ def get_module_version(module_name: str) -> str:
     return version
 
 
-def intersection(list1: list, list2: list, as_set: bool = False) -> Union[list, set]:
+def intersection(list1: list, list2: list, as_set: bool = False) -> ListOrSet:
     """Return intersection of LIST1 and LIST2
     Note: result is a list unless AS_SET specified
     """
@@ -1334,7 +1344,7 @@ def intersection(list1: list, list2: list, as_set: bool = False) -> Union[list, 
     # EX: sorted(intersection([1, 2, 3, 4, 5], [2, 4])) => [2, 4]
     # EX: intersection([1, 2, 3, 4, 5], [2, 4], as_set=True) => {2, 4}
     # TODO: have option for returning list
-    result: Union[list, set] = set(list1).intersection(set(list2))
+    result: ListOrSet = set(list1).intersection(set(list2))
     if not as_set:
         result = list(result)
     debug.trace_fmtd(7, "intersection({l1}, {l2}) => {r}",
@@ -1342,7 +1352,7 @@ def intersection(list1: list, list2: list, as_set: bool = False) -> Union[list, 
     return result
 
 
-def relative_intersection(list1: list, list2: list, as_set: bool = False):
+def relative_intersection(list1: list, list2: list, as_set: bool = False) -> float:
     """Compute relative size of intersection for LIST1 and LIST2"""
     # EX: relative_intersection([1, 2], [2]) => 0.5
     min_size = max(len(list1), len(list2))
@@ -1352,13 +1362,13 @@ def relative_intersection(list1: list, list2: list, as_set: bool = False):
     return result
 
 
-def union(list1: list, list2: list, as_set: bool = False) -> Union[list, set]:
+def union(list1: list, list2: list, as_set: bool = False) -> ListOrSet:
     """Return union of LIST1 and LIST2
     Note: result is a list unless AS_SET specified
     """
     # EX: union([1, 3, 5], [5, 7]) => [1, 3, 5, 7]
     # note: wrapper around set.union used for tracing
-    result: Union[list, set] = set(list1).union(set(list2))
+    result: ListOrSet = set(list1).union(set(list2))
     if not as_set:
         result = list(result)
     debug.trace_fmtd(7, "union({l1}, {l2}) => {r}",
@@ -1366,23 +1376,23 @@ def union(list1: list, list2: list, as_set: bool = False) -> Union[list, set]:
     return result
 
 
-def difference(list1: list, list2: list, as_set: bool = False) -> Union[list, set]:
+def difference(list1: list, list2: list, as_set: bool = False) -> ListOrSet:
     """Return set difference from LIST1 vs LIST2, preserving order
     Note: result is a list unless AS_SET specified
     """
     # TODO: optmize (e.g., via a hash table)
     # EX: difference([5, 4, 3, 2, 1], [1, 2, 3]) => [5, 4]
-    diff_as_list = []
+    diff_as_list: List[Any] = []
     for item1 in list1:
         if item1 not in list2:
             diff_as_list.append(item1)
-    diff: Union[list, set] = set(diff_as_list) if as_set else diff_as_list
+    diff: ListOrSet = set(diff_as_list) if as_set else diff_as_list
     debug.trace_fmtd(7, "difference({l1}, {l2}) => {d}",
                      l1=list1, l2=list2, d=diff)
     return diff
 
 
-def append_new(in_list: list, item: Any) -> list:
+def append_new(in_list: List[Any], item: Any) -> List[Any]:
     """Returns copy of LIST with ITEM included unless already in it"""
     # ex: append_new([1, 2], 3) => [1, 2, 3]
     # ex: append_new([1, 2, 3], 3) => [1, 2, 3]
@@ -1394,7 +1404,7 @@ def append_new(in_list: list, item: Any) -> list:
     return result
 
 
-def just_one_true(in_list: list, strict: bool = False) -> bool:
+def just_one_true(in_list: List[Any], strict: bool = False) -> bool:
     """True if only one element of IN_LIST is considered True (or all None unless STRICT)"""
     # Note: Consider using misc_utils.just1 (based on more_itertools.exactly_n)
     # TODO: Trap exceptions (e.g., string input)
@@ -1404,7 +1414,7 @@ def just_one_true(in_list: list, strict: bool = False) -> bool:
     return is_true
 
 
-def just_one_non_null(in_list: list, strict: bool = False) -> bool:
+def just_one_non_null(in_list: List[Any], strict: bool = False) -> bool:
     """True if only one element of IN_LIST is not None (or all None unless STRICT)"""
     min_count = 1 if strict else 0
     is_true = (min_count <= sum(int(x is not None) for x in in_list) <= 1)
@@ -1412,10 +1422,10 @@ def just_one_non_null(in_list: list, strict: bool = False) -> bool:
     return is_true
 
 
-def unique_items(values: list,
+def unique_items(values: List[Any],
                  prune_empty: Optional[bool] = False,
                  ignore_case: Optional[bool] = None,
-                 key: Optional[Callable] = None) -> list:
+                 key: Optional[Callable[[Any], Any]] = None) -> List[Any]:
     """Returns unique items from VALUES, preserving order
     Note: Optionally PRUN[ing]_EMPTY items and IGNOR[ing]_CASE,
     in which case earlier items take precedence.
@@ -1587,13 +1597,13 @@ def get_args() -> List[str]:
     return result
 
 
-def make_wrapper(function_name, function, trace_level=6):
+def make_wrapper(function_name: str, function: Callable[..., Any], trace_level: debug.IntOrTraceLevel = 6) -> Callable[..., Any]:
     """Creates wrapper around FUNCTION with NAME"""
     debug.trace(7, f"make_wrapper{(function_name, function, trace_level)}")
     # EX: make_wrapper("get_process_id", os.getpid).__doc__ => "Wrapper around posix.getpid"
     # TODO3: resolve module used in reference so that docstring more intuitive (e.g., posix.getpid => os.getpid)
     #
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs) -> Any:
         """placeholder docstring"""
         debug.trace(trace_level + 1, f"in f{function_name}: {args=} {kwargs=}")
         result = function(*args, **kwargs)
@@ -1604,7 +1614,7 @@ def make_wrapper(function_name, function, trace_level=6):
     wrapper.__doc__ = f"Wrapper around {function_spec}"
     return wrapper
 
-def install_wrapper(function_name, function, **kwargs):
+def install_wrapper(function_name: str, function: Callable[..., Any], **kwargs) -> None:
     """Creates wrapper via make_wrapper (q.v.) and install in current namespace"""
     debug.trace(7, f"install_wrapper{(function_name, function, kwargs)}")
     wrapper = make_wrapper(function_name, function, **kwargs)
@@ -1632,12 +1642,12 @@ get_process_id = make_wrapper("get_process_id", os.getpid, trace_level=7)
 #        return result
 #
 
-def memodict(f: Callable) -> Callable:
+def memodict(f: Callable[[Any], Any]) -> Callable[[Any], Any]:
     """Memoization decorator for a function taking a single argument"""
     class _memodict(dict):
         """Internal class for implementing memoization"""
         #
-        def __missing__(self, key):
+        def __missing__(self, key: Any) -> Any:
             """Invokes function to produce value if arg not in hash"""
             ret = self[key] = f(key)
             return ret

@@ -4,6 +4,8 @@
 #     http://kheafield.com/code/kenlm [./python/example.py]
 # This assumes the language model has already been created via lmplz
 #
+# Warning: This module is deprecrated and is scheduled to be archived.
+#
 #--------------------------------------------------------------------------------
 # Note: Build steps for C-based utility (based on https://github.com/kpu/kenlm)
 # - Requirements:

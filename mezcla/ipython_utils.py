@@ -7,6 +7,7 @@
 #   (~/.ipython/profile_default/startup/25-quarter.py).
 # - To faciliate importing functions and variables for testing purposes (e.g., EX tests),
 #   use import_module_globals as illustrated in second example below.
+# - Use `jupyter console` to invoke a CLI verson of Jupyter (i.e., not ipython).
 #
 
 """

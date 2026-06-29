@@ -11,10 +11,16 @@
 
 import re
 import sys
-from mezcla import debug
-from mezcla.__main__ import main as mezcla_main
+from pathlib import Path
 
 if __name__ == '__main__':
+    # Ensure this checkout of mezcla is used (not another installed copy).
+    repo_root = str(Path(__file__).resolve().parent.parent)
+    sys.path.insert(0, repo_root)
+
+    # Invoke the package entry point in mezcla.__main__.
+    from mezcla import debug
+    from mezcla.__main__ import main as mezcla_main
     sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
     skip_warnings = debug.debugging()
     sys.exit(mezcla_main(omit_warnings=skip_warnings))

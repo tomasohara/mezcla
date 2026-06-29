@@ -13,6 +13,40 @@
 #
 # TODO3:
 # - Check for common pylint issues (n.b., not nitpicking ones like spacing).
+#-------------------------------------------------------------------------------
+# Notes on tyope hint validation (via Claude)
+#
+# Mechanically decorating every top-level def with @validate_call (see
+# transform_for_validation) used to make mezcla/debug.py fail to *import* in
+# temp_mezcla_dir, because profile_function(frame: FrameType, ...) got
+# decorated and types.FrameType has no pydantic schema without
+# config=ConfigDict(arbitrary_types_allowed=True) -- raising
+# PydanticSchemaGenerationError at import time. Since debug.py is FIRST in
+# main_scripts and every other script here does "from mezcla import debug",
+# the broken transformed mezcla/debug.py cascaded into a 0-tests-collected
+# "temp" run for *every* main_script (not just debug.py).
+# FIXED: profile_function in debug.py is now preceded by a
+# SKIP_VALIDATE_CALL_MARKER comment, which transform_for_validation honors
+# by leaving that one function undecorated--i.e., it was disabled from this
+# test's @validate_call transform specifically due to the cascading-errors
+# issue described above.
+#
+# TODO3: html_utils.py's WebDriver-typed functions (e.g. get_browser,
+# shutdown_browser) and system.py's IO-typed functions (e.g. open_file,
+# print_full_stack, trace_stack) are NOT marked with
+# SKIP_VALIDATE_CALL_MARKER, so they would independently make those two
+# scripts' own "temp" runs fail to collect any tests (0 vs. dozens) the same
+# way debug.py did. They no longer cascade to other scripts though, since
+# debug.py's transformed copy now imports fine.
+#
+# TODO3: count_serious_errors/count_failures are regex counts over the pytest
+# *text output*; when a transformed module fails to import, pytest emits no
+# "N passed/failed" summary at all, so both counts read 0 and bad_results
+# stays False--i.e., this metric doesn't detect a 0-vs-dozens collection
+# collapse, such as the html_utils.py/system.py cases noted above.
+# Restructuring (e.g., also comparing collected-test counts, or marking more
+# functions with SKIP_VALIDATE_CALL_MARKER) would be needed for this test to
+# catch those.
 #
 
 """Miscellaneous/non-module tests"""
@@ -36,6 +70,13 @@ LINE_IMPORT_PYDANTIC = "from pydantic import validate_call\n"
 ## TODO1: don't hardcode /tmp (see below)
 ## OLD: OUTPUT_PATH_PYDANTIC = "/tmp/temp_"
 DECORATOR_VALIDATION_CALL = "@validate_call\ndef"
+## NOTE: Marker comment placed on the line immediately before a top-level "def" to
+## have transform_for_validation skip adding @validate_call to it (e.g., for
+## functions with arguments like FrameType/WebDriver/IO that pydantic can't build
+## a schema for without arbitrary_types_allowed). See debug.profile_function and
+## the TODO3 notes in test_06_type_hinting.
+SKIP_VALIDATE_CALL_MARKER = "## SKIP_VALIDATE_CALL"
+SKIP_VALIDATE_CALL_PLACEHOLDER = "__SKIP_VALIDATE_CALL_DEF__"
 MEZCLA_DIR = gh.form_path(gh.dir_path(__file__), "..")
 ##
 TEST_REGEX = system.getenv_value(
@@ -43,6 +84,9 @@ TEST_REGEX = system.getenv_value(
     "Regex for tests to include; ex: '^test_c.*' for debugging")
 UNDER_UNIX = (os.name == 'posix')
 UNDER_UNIX_REASON = "Only applies to Unix"
+RETAIN_VALIDATION = system.getenv_bool(
+    "RETAIN_VALIDATION", False,
+    "Keep @validate_call's for use in client scripts: see test_06_type_hinting")
 
 class TestMisc(TestWrapper):
     """Class for test case definitions"""
@@ -91,12 +135,32 @@ class TestMisc(TestWrapper):
                 debug.trace(4, f"FYI: Ignoring module {module!r}: {reason}")
         debug.trace_expr(5, ok_python_modules)
         return ok_python_modules
-    
-    def transform_for_validation(self, file_path):
-        """Creates a temporary copy of the script for validation of argument calls (using pydantic)"""
-        debug.trace(6, f"transform_for_validation({file_path})")
+
+    def transform_for_validation(self, file_path, to_dir):
+        """Creates a temporary copy of the script at FILE_PATH in TO_DIR for validation of argument calls (using pydantic).
+        Returns the path for the new file.
+        """
+        debug.trace(6, f"transform_for_validation({file_path}, {to_dir})")
         content = system.read_file(file_path)
-        content = my_re.sub(r"^def ", r"@validate_call\n\g<0>", content, flags=my_re.MULTILINE)
+
+        # Protect functions marked via SKIP_VALIDATE_CALL_MARKER from getting
+        # @validate_call added (e.g., debug.profile_function: see header comments above).
+        content = my_re.sub(rf"^({SKIP_VALIDATE_CALL_MARKER}.*\n(?:## .*\n)*)def ",
+                            rf"\1{SKIP_VALIDATE_CALL_PLACEHOLDER}",
+                            content, flags=my_re.MULTILINE)
+
+        ## OLD: content = my_re.sub(r"^def ", r"@validate_call\n\g<0>", content, flags=my_re.MULTILINE)
+
+        # Match defs that DO NOT contain the problematic type hints
+        content = my_re.sub(
+            r"^def (?![^\n]*(?:WebDriver|FrameType|IO|CodeType)).*", 
+            r"@validate_call\n\g<0>", 
+            content, 
+            flags=my_re.MULTILINE
+        )
+
+        content = content.replace(SKIP_VALIDATE_CALL_PLACEHOLDER, "def ")
+
         ## Uncomment the line below (and comment the line above) if the decorators are previously used
         ## May not be compatible with scripts in mezcla/tests
         ##
@@ -111,7 +175,8 @@ class TestMisc(TestWrapper):
         ## OLD:
         ## ## TODO2: use self.get_temp_file(): Lorenzo added new functionality
         ## output_path = OUTPUT_PATH_PYDANTIC + gh.basename(file_path)
-        output_path = gh.form_path(self.get_temp_dir(), gh.basename(file_path))
+        ## OLD: output_path = gh.form_path(self.get_temp_dir(), gh.basename(file_path))
+        output_path = gh.form_path(to_dir, gh.basename(file_path))
         system.write_file(filename=output_path, text=content)
         return output_path
 
@@ -121,18 +186,27 @@ class TestMisc(TestWrapper):
                     prefix="in save_transformed_for_validation: ")
         original_path = gh.form_path(from_dir, script_name)
         ## OLD: new_code = self.transform_for_validation(original_path)
-        new_code_path = self.transform_for_validation(original_path)
-        new_code = system.read_file(new_code_path)
-        destination_path = gh.form_path(to_dir, script_name)
-        system.write_file(destination_path, new_code)
+        new_code_path = self.transform_for_validation(original_path, to_dir)
+        debug.assertion("validate_call" in system.read_file(new_code_path))
+        ## OLD:
+        ## new_code = system.read_file(new_code_path)
+        ## destination_path = gh.form_path(to_dir, script_name)
+        ## system.write_file(destination_path, new_code)
     
     def run_test(self, label, temp_dir, test_name):
         """Run a test script in a temporary directory.
-           Note: Example invocation: run_test("orig", "/tmp/mezcla-original", "html_utils.py")"""
+           Note: Example invocation: run_test("orig", "/tmp/mezcla-original/mezcla", "html_utils.py")"""
         debug.trace_expr(6, label, temp_dir, test_name,
                     prefix="in run_test: ")
-        test_script = gh.form_path(temp_dir, "tests", f"test_{test_name}")
-        result = gh.run(f"PYTHONPATH='{temp_dir}/..' pytest {test_script}")
+        debug.assertion("mezcla" in temp_dir)
+        temp_repo_dir = gh.form_path(temp_dir, "..")
+        ## OLD:
+        ## test_script = gh.form_path(temp_dir, "tests", f"test_{test_name}")
+        ## result = gh.run(f"PYTHONPATH='{temp_dir}/..' pytest {test_script}")
+        # note: cd's into test directory to avoid pytest collection issues
+        test_script = gh.form_path("mezcla", "tests", f"test_{test_name}")
+        ## OLD: result = gh.run(f"cd {temp_repo_dir} && env -u PYTHONPATH PYTHONPATH='{temp_repo_dir}' pytest {test_script}")
+        result = gh.run(f"cd {temp_repo_dir} && env -u PYTHONPATH PYTHONPATH='{temp_repo_dir}' pytest -vv --capture=no {test_script}")
         if debug.verbose_debugging():
             ## OLD:
             ## number = random.randint(10000, 99999)
@@ -141,22 +215,50 @@ class TestMisc(TestWrapper):
             system.write_file(result_file, result)
             check_errors_script = gh.run("which check_errors.perl")
             if system.file_exists(check_errors_script):
-                gh.run("perl -sw {check_errors_script} {result_file}")
+                print(gh.run(f"perl -sw {check_errors_script} {result_file}"))
             else:
                 debug.trace(5, "FYI: Install shell-script repo for useful utilities like check_errors.perl")
         return result    
 
     def count_serious_errors(self, results):
         """Return number of errors in RESULTS
-        Note: This mostly covers exceptions butalso includes some errors"""
+        Note: This mostly covers exceptions but also includes some errors"""
         # This doesn't user check_errors.perl as above because not part of repo
+        ## OLD:
+        ## num_errors = len(my_re.findall(r"Exception|ModuleNotFoundError|RuntimeError|SyntaxError|TypeError", results))
+        ## debug.trace(6, f"count_serious_errors({gh.elide(results)!r}) => {num_errors}")
+        debug.trace(6, f"in count_serious_errors({gh.elide(results)!r})")
+        errors = my_re.findall(r"Exception|ModuleNotFoundError|RuntimeError|SyntaxError|TypeError", results)
         num_errors = len(my_re.findall(r"Exception|ModuleNotFoundError|RuntimeError|SyntaxError|TypeError", results))
-        debug.trace(6, f"count_serious_errors({gh.elide(results)!r}) => {num_errors}")
+        debug.trace(6, f"count_serious_errors() => {num_errors}; errors={gh.elide(errors)!r}")
         return num_errors
     
     def count_failures(self, results):
         """Count the number of failures in the test results"""
         return sum(map(system.to_int, gh.extract_matches_from_text(r"(\d+) x?failed", results)))
+
+    def extract_test_failures(self, results):
+        """Extract pytest FAILED/XFAIL tests from RESULTS for verbose diagnostics."""
+        # Include both per-test -vv test label and short-summary lines.
+        # ex: test_copy_file for "mezcla/tests/test_glue_helpers.py::TestGlueHelpers::test_copy_file FAILED"
+        failed_lines = gh.extract_matches_from_text(
+            ## OLD: r"^(\S+::\S+.*\s(?:FAILED|XFAIL)\b.*)$",
+            r"^\S+::([^:]+)\s(?:FAILED|XFAIL)\b.*$",
+            results
+        )
+        # ex: test_count_it for "FAILED tests/test_glue_helpers.py::TestGlueHelpers::test_count_it"
+        failed_summary = gh.extract_matches_from_text(
+            ## OLD: r"^((?:FAILED|XFAIL)\s+.+)$",
+            r"^(?:FAILED|XFAIL).*::([^:]+)\s*$",
+            results
+        )
+        return system.unique_items(failed_lines + failed_summary)
+    
+    def extract_test_summary(self, results):
+        """Returns the pytest summary. For example,
+           [...===] 36 passed, 2 skipped, 3 xfailed, 25 xpassed [in 1.17s ===...].
+        """
+        return gh.extract_match_from_text(r"=== ([^=]+(error|fail|pass|skip)[^=]+) (in \S+\s*)? ===", results)
     
     @pytest.mark.xfail
     def test_01_check_for_tests(self):
@@ -264,18 +366,21 @@ class TestMisc(TestWrapper):
         """
         debug.trace(4, "test_06_type_hinting()")
         ## TODO: create a module with very broken python code to test the test (for false positives)
+        ## TODO4: put this above for use in other scripts
         main_scripts = [
             "debug.py", "glue_helpers.py", "html_utils.py",
             "my_regex.py", "system.py", "unittest_wrapper.py",
         ]
         orig_mezcla_dir = MEZCLA_DIR
         ## OLD: temp_mezcla_dir = self.temp_file + "-mezcla"
-        temp_mezcla_dir = gh.form_path(self.get_temp_dir(), "mezcla")
+        ## OLD: temp_mezcla_dir = gh.form_path(self.get_temp_dir(), "mezcla")
+        temp_mezcla_dir = gh.form_path(self.get_temp_dir(static=True), "validate", "mezcla")
 
         # Create copy of mezcla scripts (n.b., expedient to allow simple PYTHONPATH change)
         temp_mezcla_test_dir = gh.form_path(temp_mezcla_dir, "tests")
         ## TODO2: copy_dir
         gh.full_mkdir(temp_mezcla_test_dir)
+        ## TODO3: copy root dir files (e.g., LICENSE.txt) and others used in tests
         gh.run(f"cp -vf {orig_mezcla_dir}/*.py {temp_mezcla_dir}")
         gh.run(f"cp -vf {orig_mezcla_dir}/tests/*.py {temp_mezcla_test_dir}")
 
@@ -283,8 +388,11 @@ class TestMisc(TestWrapper):
         num_bad = 0
         test_scripts = (main_scripts if not TEST_REGEX
                         else self.get_python_module_files(include_tests=False))
-        num_cases = len(main_scripts)
-        for script in main_scripts:
+        ## BAD:
+        ## num_cases = len(main_scripts)
+        ## for script in main_scripts:
+        num_cases = len(test_scripts)
+        for script in test_scripts:
             # Add dynamic type checking to scripts (e.g., via pydantic)
             self.save_transformed_for_validation(orig_mezcla_dir, temp_mezcla_dir, script)
 
@@ -292,21 +400,43 @@ class TestMisc(TestWrapper):
             temp_results = self.run_test("temp", temp_mezcla_dir, script)
             orig_results = self.run_test("orig", orig_mezcla_dir, script)
 
+            # Optionally, restore (n.b., avoids propagating type-hint problems to client scripts)
+            if not RETAIN_VALIDATION:
+                valid_path = gh.form_path(temp_mezcla_dir, script)
+                gh.rename_file(valid_path, valid_path + ".validate")
+                gh.copy_file(gh.form_path(orig_mezcla_dir, script), temp_mezcla_dir)
+            
             # Check for errors
             # exs: 1) more exceptions in transformed run vs original; 2) differences in number of failures
             bad_results = False
             ## OLD: if (temp_results.count("Exception") > orig_results.count("Exception")):
-            if (self.count_serious_errors(temp_results) > self.count_serious_errors(orig_results)):
+            num_temp_serious = self.count_serious_errors(temp_results)
+            num_orig_serious = self.count_serious_errors(orig_results)
+            if (num_temp_serious > num_orig_serious):
                 debug.trace(4, f"Warning: more exceptions or errors running test of transformed script {script}")
                 bad_results = True
             num_temp_failed = self.count_failures(temp_results)
             num_orig_failed = self.count_failures(orig_results)
             debug.assertion(num_temp_failed >= num_orig_failed)
-            debug.trace_expr(5, num_temp_failed, num_orig_failed, script)
+            ## OLD: debug.trace_expr(5, num_temp_failed, num_orig_failed, script)
             if (num_temp_failed > num_orig_failed):
                 bad_results = True
             if bad_results:
                 num_bad += 1
+            temp_summary = self.extract_test_summary(temp_results)
+            orig_summary = self.extract_test_summary(orig_results)
+
+            # Show trace with detailed summary to help diagnose issues (via Codex 5.3)
+            if debug.verbose_debugging():
+                temp_failures = self.extract_test_failures(temp_results)
+                orig_failures = self.extract_test_failures(orig_results)
+                # Show exactly which FAILED/XFAIL entries changed in the transformed run.
+                added_failures = [f for f in temp_failures if f not in orig_failures]
+                removed_failures = [f for f in orig_failures if f not in temp_failures]
+                debug.trace_expr(6, temp_failures, orig_failures, sep="\n")
+                debug.trace_expr(5, added_failures, removed_failures, sep="\n")
+            debug.trace_expr(4, num_temp_serious, num_orig_serious, num_temp_failed, num_orig_failed,
+                             temp_summary, orig_summary, bad_results, script)
 
         # Only allow for a relatively small number of failures
         bad_pct = round(num_bad / num_cases * 100, 2)
