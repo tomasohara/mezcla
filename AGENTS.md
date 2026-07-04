@@ -11,6 +11,9 @@ AI agent instructions for arbitrary repos. This is based on instructions designe
 	    Make sure python-lint alias lists no issues: use pylint if alias not defined.
     *   Code style is "R&D focused" rather than strict "Pythonic production" code.
 	    Nonetheless, use good software engineering practices, such as using single return calls and adding sanity checks via assert (preferably debug.assertion).
+	*   Make sure the code is well documented with a focus on capturing intention rather than describing the low-level implementation details. The model header should provide sufficient detail of the context (e.g., via pointers to Wikipedia), so that documentation for classes and functions can focus on the implementation specifics. Lastly, the code comments should be more like guideposts to facilitate skimming.
+	    <!-- TODO2: add specific examples to clarify the types of documentation expected -->
+	. For example, 
 	*   Use defensive programming such as via debug-only sanity checks and ample tracing:
 	    see usages of debug.assertion and debug.trace (e.g., see trace level conventions below).
 	*   Readability is important. For example, make sure dynamic imports are not buried without an indication that used at top (e.g., via comment in modules section).
@@ -33,8 +36,7 @@ AI agent instructions for arbitrary repos. This is based on instructions designe
 
 0. Avoid pre-function comments in Python and similar languages: place them below the docstring.
 
-0. Don't delete code without explicit confirmation. Instead, comment out the code with '## OLD:' block
-as follows:
+0. Don't delete code without explicit confirmation. Instead, comment it out and add a block prefix of '## OLD:' as follows:
 
 	```
 	num /= sum
@@ -54,7 +56,7 @@ as follows:
 
 Of course, this can be awkward for in-depth changes so ask for clarification.
 
-Some variations follow. For single-line changes, just use "## OLD: ...". When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
+Some variations follow. For single-line changes, just use "## OLD: statement ..." (i.e., one comment not two). When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
 0. When making most changes, create a new git branch based on development, using a task-specific name such as 'refine-type-hints' or 'fix-poe-client'.
 
