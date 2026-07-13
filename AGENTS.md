@@ -58,9 +58,9 @@ Of course, this can be awkward for in-depth changes so ask for clarification.
 
 Some variations follow. For single-line changes, just use "## OLD: statement ..." (i.e., one comment not two). When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
-0. When making most changes, create a new git branch based on development, using a task-specific name such as 'refine-type-hints' or 'fix-poe-client'.
+0. When making significant changes, create a new git branch based on development, using a task-specific name such as 'refine-type-hints' or 'fix-poe-client'. The intention is to minimize conflicts without a proliferation of miscellaneous branches.
 
-0. After making a group of commits, push the changes and make sure the remove upstream branch gets set.
+0. After making a group of commits, push the changes and make sure the remove upstream branch gets set. In general, the remote should be kept updated except when testing tentative changes locally.
 
 0. Don't make edits outside of code directory without confirmation.
 
