@@ -36,7 +36,7 @@ AI agent instructions for arbitrary repos. This is based on instructions designe
 
 0. Avoid pre-function comments in Python and similar languages: place them below the docstring.
 
-0. Don't delete code without explicit confirmation. Instead, comment it out and add a block prefix of '## OLD:' as follows:
+0. Don't delete code without explicit confirmation. Instead, comment it out and add a block prefix of '## OLD:' as follows (n.b., only one OLD per block):
 
 	```
 	num /= sum
