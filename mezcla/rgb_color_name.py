@@ -39,6 +39,8 @@
 #   extcolors self.filename | self.program -
 # - Add option to invoke extcolors automatically.
 # - Add direct way to generate webcolor listing.
+#................................................................................
+# UPDATE 16 Jul 26: hex3 values not expanded
 #
 
 r"""Convert RGB tuples into color names
@@ -62,9 +64,6 @@ Sample usage:
 ## TODO4: add extcolors-style one-liner:
 ##    $ rgb_color_name.py - <<<"(39, 39, 39)   :  24.35% (630)"
 ##    <(39, 39, 39), darkslategray>   :  24.35% (630
-
-# Standard packages
-## OLD: import re
 
 # Installed packages
 import webcolors
@@ -100,7 +99,6 @@ VERBOSE_SAMPLE_USAGE = r"""
 
 class Script(Main):
     """Input processing class: convert RGB tuples to <RGB, label> pairs"""
-    ## OLD: rgb_regex = rf"\((0?x?{HEX_CH}+), (0?x?{HEX_CH}+), (0?x?{HEX_CH}+)\)"
     rgb_regex = rf"\((0?x?{HEX_CH}+), *(0?x?{HEX_CH}+), *(0?x?{HEX_CH}+)\)"
     ## TODO: replacement = r"<COLOR, \1>"
     space_color_db = None
@@ -109,6 +107,7 @@ class Script(Main):
     skip_direct = False
     show_hex = None
     check_direct_match = None
+    expand_hex3 = True
 
     def setup(self):
         """Check results of command line processing"""
@@ -119,6 +118,7 @@ class Script(Main):
             self.rgb_regex = f"#({HEX_CH})({HEX_CH})({HEX_CH})"
             debug.assertion(self.hex is None)
             self.hex = True
+            self.expand_hex3 = False
         if self.get_parsed_option(HEX6):
             self.rgb_regex = f"#({HEX_CH}{HEX_CH})({HEX_CH}{HEX_CH})({HEX_CH}{HEX_CH})"
             debug.assertion(self.hex is None)
@@ -133,7 +133,6 @@ class Script(Main):
 
         # Populate color names into spatial name database
         # TODO2: isolate into helper class
-        ## OLD:
         if hasattr(webcolors, "CSS3_HEX_TO_NAMES"):
             hexnames = webcolors.CSS3_HEX_TO_NAMES
         else:
@@ -168,6 +167,7 @@ class Script(Main):
     def process_line(self, line):
         """Processes current line from input"""
         debug.trace_fmtd(6, "Script.process_line({l})", l=line)
+        target_hex3 = self.get_parsed_option(HEX3)
 
         # Do sanity check for inadvertant image input
         # TODO: abort processing unless --force option given
@@ -177,7 +177,6 @@ class Script(Main):
         
         # Extract RGB references and add color name label
         # ex: "(128, 128, 128):  72.98% (1888)" => "<Grey, (128, 128, 128)>:  72.98% (1888)
-        ## OLD: MAX_TRIES = max(1, line.count("("))
         MAX_TRIES = (1 + len(my_re.findall(self.rgb_regex, line, flags=my_re.IGNORECASE)))
         debug.trace(5, f"len: {len(line)}; MAX_TRIES={MAX_TRIES}")
         num_tries = 0
@@ -202,12 +201,15 @@ class Script(Main):
                     debug.trace(4, f"FYI: Assuming hex RGB spec '{rgb}' on line {self.line_num}")
                 rgb_base = 16
             # Handle special case of #xyz => #xxyyzz
-            if (my_re.search(r"^#...$", rgb)):
-                debug.trace(4, f"Expanding hex shortcut at line {self.line_num}: {line}")
+            ## TODO2: deprecate this feature #xxx expansion
+            if target_hex3 or self.expand_hex3:
                 red += red
                 green += green
                 blue += blue
+            if (my_re.search(r"^#...$", rgb) and self.expand_hex3):
+                debug.trace(4, f"FYI: Deprecated expansion of hex3 shortcut at line {self.line_num}: {line}")
                 rgb = "#" + red + green + blue
+                
             # Convert to tuple of integers
             query_color = [system.safe_int(c, base=rgb_base) for c in [red, green, blue]]
 
