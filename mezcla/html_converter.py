@@ -36,6 +36,9 @@ debug.assertion(__doc__)
 TL = debug.TL
 FORMAT_OPT = "format"
 ENGINE_OPT = "engine"
+WEBDRIVER_OPTIONS = system.getenv_value(
+    "WEBDRIVER_OPTIONS", None,
+    description="Space delimited options for the web driver (chromium)")
 
 #-------------------------------------------------------------------------------
 
@@ -102,7 +105,7 @@ class HtmlConverter:
                 
                 debug.trace(TL.DETAILED, f"Running: {' '.join(cmd)}")
                 subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                if os.path.exists("./pandoc_media_tmp"):
+                if os.path.exists("./pandoc_media_tmp") and not debug.verbose_debugging():
                     shutil.rmtree("./pandoc_media_tmp", ignore_errors=True)
 
             elif self.engine == "selenium":
@@ -114,12 +117,18 @@ class HtmlConverter:
                     return False
                 
                 options = Options()
-                options.add_argument('--headless')
-                options.add_argument('--disable-gpu')
-                options.add_argument('--no-sandbox')
-                options.add_argument('--disable-dev-shm-usage')
+                if WEBDRIVER_OPTIONS:
+                    for option in WEBDRIVER_OPTIONS.split():
+                        options.add_argument(option)
+                else:
+                    options.add_argument('--headless')
+                    options.add_argument('--disable-gpu')
+                    options.add_argument('--no-sandbox')
+                    # note: uses /tmp instead of system's shared memory partition (/dev/shm)
+                    options.add_argument('--disable-dev-shm-usage')
                 
                 debug.trace(TL.DETAILED, "Starting Selenium Chrome WebDriver")
+                debug.trace(TL.VERBOSE, f"\toptions={options.arguments}")
                 driver = webdriver.Chrome(options=options)
                 try:
                     file_url = f"file://{os.path.abspath(work_html)}"
@@ -138,7 +147,8 @@ class HtmlConverter:
                     ''')
 
                     print_options = {
-                        'landscape': False,
+                        ## TODO2: add portrait option
+                        ## OLD: 'landscape': False,
                         'displayHeaderFooter': False,
                         'printBackground': True,
                         'preferCSSPageSize': True,
@@ -159,7 +169,7 @@ class HtmlConverter:
             system.print_error(f"Conversion failed: {e}")
             return False
         finally:
-            if temp_html and os.path.exists(temp_html):
+            if temp_html and os.path.exists(temp_html) and not debug.verbose_debugging():
                 os.remove(temp_html)
 
 #-------------------------------------------------------------------------------
