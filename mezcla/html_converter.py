@@ -147,13 +147,15 @@ class HtmlConverter:
                     ''')
 
                     print_options = {
-                        ## TODO2: add portrait option
                         ## OLD: 'landscape': False,
+                        ## TODO2: add portrait option
+                        'landscape': True,
                         'displayHeaderFooter': False,
                         'printBackground': True,
                         'preferCSSPageSize': True,
                     }
                     debug.trace(TL.DETAILED, "Executing Page.printToPDF")
+                    debug.trace(TL.VERBOSE, f"\toptions={print_options}")
                     result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
                     
                     with open(output_file, 'wb') as f:
