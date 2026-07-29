@@ -25,14 +25,17 @@
 # - Flesh out cheatsheet
 # - Add examples for group(), groups(), etc.
 # - Clean up script (e.g., regex => regex_wrapper).
-#
+# - Rework entry/exit tracing to omit redundant argument ouput (e.g., elide pattern in sub exit).
+# - Add base_trace_level to other search-like methods (e.g., findall and sub).
+
 
 """Wrapper class for regex match results"""
 
 # Standard packages
 import re
-from typing import Any, AnyStr, List, Match, Optional, Tuple, Union
+from typing import Any, AnyStr, Callable, List, Match, Optional, Tuple, Union
 ## TODO: from re import *
+AnyStrOrCallable = Union[AnyStr, Callable]
 
 # Installed packages
 ## OLD: import six
@@ -132,6 +135,7 @@ class regex_wrapper():
     def __init__(self) -> None:
         debug.trace_fmtd(4, "my_regex.__init__(): self={s}", s=self)
         self.match_result: Optional[Match[Any]] = None
+        ## TODO2: replace self.search_text w/ self.match_result.string
         self.search_text: Optional[StrOrBytes] = None
         # TODO: self.regex = ""
 
@@ -245,8 +249,20 @@ class regex_wrapper():
         debug.trace_fmt(self.TRACE_LEVEL + 1, "my_regex.end({g}) => {r!r}: self={s}", r=result, s=self, g=group)
         return result
 
-    def sub(self, pattern: AnyStr, replacement: AnyStr, string: AnyStr, *, count: int = 0, flags: int = 0) -> AnyStr:
-        """Version of re.sub requiring explicit keyword parameters"""
+    def sub(self, pattern: AnyStr, replacement: AnyStrOrCallable, string: AnyStr,
+            *, count: int = 0, flags: int = 0) -> AnyStr:
+        """Version of re.sub requiring explicit keyword parameters.
+        note: Python doesn't support using Perl-style pre-match ($`) or post-match ($') in the replacement.
+        However, the replacement can be a callable to achieve this. For example, change from Perl's
+            $text =~ s/pattern/<$`>$&=>replacement<$'>/;
+        to Python's
+            text = re.sub(r"pattern", lambda m: f"<{m.string[0 :m.start()]}>replacement<{m.string[m.start()]}>",
+                          text, count=1)
+        Nonetheless, it is usually clearer to just use search and then pre_match"
+            if my_re.search(r"pattern", text): text = f"<{my_re.pre_match()}>replacement<{my_re.post_match()}>
+        This example is a bit contrived and changes "abc" to "a<a>b=>B<c>;c" for pattern "b" and replacement "B".
+        """
+        debug.trace_expr(self.TRACE_LEVEL + 2, pattern, replacement, string, count, flags, prefix="in sub: ")
         # Note: Explicit keywords enforced to avoid confusion
         result = re.sub(pattern, replacement, string, count, flags)
         debug.reference_var(self)
@@ -260,6 +276,7 @@ class regex_wrapper():
 
     def split(self, pattern: AnyStr, string: AnyStr, maxsplit: int = 0, flags: int = 0) -> List[AnyStr]:
         """Use PATTERN to split STRING, optionally up to MAXSPLIT with FLAGS"""
+        debug.trace_expr(self.TRACE_LEVEL + 2, pattern, string, maxsplit, flags, prefix="in split: ")
         result = re.split(pattern, string, maxsplit, flags)
         debug.trace_fmt(self.TRACE_LEVEL, "split{args} => {r!r}",
                         args=tuple([pattern, string, maxsplit, flags]), r=result, max_len=2048)
@@ -267,6 +284,7 @@ class regex_wrapper():
     
     def findall(self, pattern: AnyStr, string: AnyStr, flags: int = 0) -> List[AnyStr]:
         """Use PATTERN to find all matches in STRING, optionally with specified FLAGS"""
+        debug.trace_expr(self.TRACE_LEVEL + 2, pattern, string, flags, prefix="in findall: ")
         # Note: Docstring says "split" but method does findall (returns list of matches)
         result = re.findall(pattern, string, flags)
         debug.trace_fmt(self.TRACE_LEVEL, "findall{args} => {r!r}",
@@ -302,7 +320,10 @@ class regex_wrapper():
 
     def compile(self, pattern: AnyStr, flags: int = 0) -> re.Pattern[AnyStr]:
         """Compile a regular expression PATTERN using FLAGS, returning a Pattern object."""
-        return re.compile(pattern, flags)
+        ## OLD: return re.compile(pattern, flags)
+        result = re.compile(pattern, flags)
+        debug.trace(self.TRACE_LEVEL, f"compile({pattern!r}, {flags}) => {result!r}")
+        return result
 
     ## Note: Placeholder for other methods (n.b., to avoid silly errors like forgetting self)
     ##
