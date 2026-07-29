@@ -5,6 +5,29 @@
 #
 # note:
 # - Created via Gemini.
+# - revised via Claude Sonnet 4.6
+# - applies following CSS
+#    @media print {
+#        body, html {
+#            height: auto !important;
+#            overflow: visible !important;
+#            position: static !important;
+#            display: block !important;
+#        }
+#        * {
+#            overflow: visible !important;
+#            height: auto !important;
+#          }
+#        /* Omit SavePage-WE header */
+#        #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] {
+#            display: none !important;
+#        }
+#    }
+# - includes optional styling:
+#        /* Use wide sections in Tailwind websites */
+#        .max-w-\[704px\], .max-w-\[760px\] {
+#            max-width: none !important;
+#        }
 #
 
 """
@@ -39,17 +62,24 @@ ENGINE_OPT = "engine"
 WEBDRIVER_OPTIONS = system.getenv_value(
     "WEBDRIVER_OPTIONS", None,
     description="Space delimited options for the web driver (chromium)")
+USE_LANDSCAPE = system.getenv_bool(
+    "USE_LANDSCAPE", False,
+    description="Use landscape orientation when converting to PDF")
+TAILWIND_WIDTH_HACK = system.getenv_bool(
+    "TAILWIND_WIDTH_HACK", False,
+    description="Apply fixup for specific Tailwind quirks")
 
 #-------------------------------------------------------------------------------
 
 class HtmlConverter:
     """Class for converting HTML to PDF or DOCX"""
 
-    def __init__(self, engine: str = "libreoffice", out_format: str = "pdf", **kwargs) -> None:
+    def __init__(self, engine: str = "libreoffice", out_format: str = "pdf", landscape: bool = False, **kwargs) -> None:
         """Initializer"""
-        debug.trace_expr(TL.VERBOSE, engine, out_format, kwargs, prefix="in HtmlConverter.__init__: ")
+        debug.trace_expr(TL.VERBOSE, engine, out_format, landscape, kwargs, prefix="in HtmlConverter.__init__: ")
         self.engine = engine.lower()
         self.out_format = out_format.lower()
+        self.landscape = landscape or USE_LANDSCAPE
         debug.assertion(self.engine in ["libreoffice", "pandoc", "selenium"], "Invalid engine")
         debug.assertion(self.out_format in ["pdf", "docx"], "Invalid format")
         if self.engine == "selenium" and self.out_format != "pdf":
@@ -57,13 +87,24 @@ class HtmlConverter:
             self.out_format = "pdf"
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
-    def _apply_print_fix(self, html_path: str) -> str:
-        """Applies CSS override for single-page printing issue and hides Save Page WE info bar."""
+    def _apply_print_fix(self, html_path: str, landscape: bool = False) -> str:
+        """Applies CSS override for single-page printing issue and hides Save Page WE info bar.
+        Also injects @page landscape rule when landscape=True (honoured by LibreOffice and Pandoc).
+        """
         temp_fd, temp_path = tempfile.mkstemp(suffix=".html", text=True)
+        # Build the @page orientation rule (empty string when portrait so no extra CSS is emitted)
+        page_orientation_css = "@page { size: landscape; } " if landscape else ""
+        section_width_css = "" if not TAILWIND_WIDTH_HACK else """
+            /* Use wide sections in Tailwind websites (TODO: generalize) */
+            .max-w-\[704px\], .max-w-\[760px\] {
+                 max-width: none !important;
+            }
+        """
+
         with os.fdopen(temp_fd, "w", encoding="utf-8") as out_f, open(html_path, "r", encoding="utf-8") as in_f:
             for line in in_f:
-                if "</head>" in line.lower() or "</HEAD>" in line:
-                    out_f.write("<style>@media print { body, html { height: auto !important; overflow: visible !important; position: static !important; display: block !important; } * { overflow: visible !important; height: auto !important; } #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] { display: none !important; } }</style>\n")
+                if "</head>" in line.lower() or "</HEAD>" in line:    ## TODO2: wth?
+                    out_f.write(f"<style>{page_orientation_css}@media print {{ body, html {{ height: auto !important; overflow: visible !important; position: static !important; display: block !important; }} * {{ overflow: visible !important; height: auto !important; }} #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] {{ display: none !important; }} {section_width_css} }}</style>\n")
                 out_f.write(line)
         return temp_path
 
@@ -76,12 +117,13 @@ class HtmlConverter:
         debug.trace(TL.DETAILED, f"Converting {input_file} to {output_file} using {self.engine}")
         
         temp_html = None
-        if self.engine in ["libreoffice", "selenium"]:
-            # Apply CSS fix for print truncation
-            temp_html = self._apply_print_fix(input_file)
+        if self.engine in ["libreoffice", "selenium", "pandoc"]:
+            # Apply CSS fix for print truncation; also inject landscape @page rule if requested
+            temp_html = self._apply_print_fix(input_file, landscape=self.landscape)
             work_html = temp_html
-        else:
-            work_html = input_file
+        ## OLD:
+        ## else:
+        ##     work_html = input_file
 
         try:
             if self.engine == "libreoffice":
@@ -99,6 +141,7 @@ class HtmlConverter:
 
             elif self.engine == "pandoc":
                 if self.out_format == "pdf":
+                    ## OLD: cmd = ["pandoc", work_html, "-o", output_file]
                     cmd = ["pandoc", work_html, "-o", output_file]
                 else:
                     cmd = ["pandoc", work_html, "--extract-media=./pandoc_media_tmp", "-o", output_file]
@@ -112,6 +155,7 @@ class HtmlConverter:
                 try:
                     from selenium import webdriver
                     from selenium.webdriver.chrome.options import Options
+                    from selenium.webdriver.chrome.service import Service
                 except ImportError:
                     system.print_error("Error: Selenium engine requires selenium to be installed (pip install selenium).")
                     return False
@@ -129,7 +173,12 @@ class HtmlConverter:
                 
                 debug.trace(TL.DETAILED, "Starting Selenium Chrome WebDriver")
                 debug.trace(TL.VERBOSE, f"\toptions={options.arguments}")
-                driver = webdriver.Chrome(options=options)
+                service = None
+                if debug.debugging(6):
+                    ## TODO3: add argument to enable low-level webdriver logs; also refine gh.create_temp_file to take filename
+                    log_path = gh.write_temp_file("chromedriver-verbose.log", "")
+                    service = Service(log_output=log_path, service_args=["--verbose"])
+                driver = webdriver.Chrome(service=service, options=options)
                 try:
                     file_url = f"file://{os.path.abspath(work_html)}"
                     debug.trace(TL.DETAILED, f"Loading {file_url}")
@@ -147,13 +196,19 @@ class HtmlConverter:
                     ''')
 
                     print_options = {
-                        ## OLD: 'landscape': False,
-                        ## TODO2: add portrait option
-                        'landscape': True,
+                        'landscape': self.landscape,
                         'displayHeaderFooter': False,
                         'printBackground': True,
-                        'preferCSSPageSize': True,
+                        ## OLD: 'preferCSSPageSize': True,
+                        # note: preferCSSPageSize must be False when landscape=True so that
+                        # CSS @page rules in the saved HTML cannot override the orientation
+                        'preferCSSPageSize': not self.landscape,
                     }
+                    # Chrome's CDP landscape flag internally swaps width/height, so supply
+                    # portrait dimensions (8.5×11) and let landscape=True flip them to 11×8.5
+                    if self.landscape:
+                        print_options['paperWidth'] = 8.5
+                        print_options['paperHeight'] = 11.0
                     debug.trace(TL.DETAILED, "Executing Page.printToPDF")
                     debug.trace(TL.VERBOSE, f"\toptions={print_options}")
                     result = driver.execute_cdp_cmd("Page.printToPDF", print_options)
@@ -190,6 +245,7 @@ def main() -> None:
             ("libreoffice", "Conversion engine is LibreOffice (default)"),
             ("pandoc", "Conversion engine is Pandoc"),
             ("selenium", "Conversion engine is Selenium (PDF only)"),
+            ("landscape", "Use landscape orientation (default: portrait)"),
         ],
         text_options=[
             (FORMAT_OPT, "Output format (pdf or docx). Default: pdf", "pdf"),
@@ -214,8 +270,9 @@ def main() -> None:
         eng_opt = "libreoffice"
     in_file = main_app.get_parsed_argument(FILENAME)
     out_file = main_app.get_parsed_argument("output_file")
+    landscape_opt = main_app.get_parsed_option("landscape", default=False)
 
-    converter = HtmlConverter(engine=eng_opt, out_format=fmt_opt)
+    converter = HtmlConverter(engine=eng_opt, out_format=fmt_opt, landscape=landscape_opt)
     
     if in_file:
         converter.process(in_file, out_file)
