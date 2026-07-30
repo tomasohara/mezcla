@@ -8,6 +8,7 @@
 
 # Standard modules
 import os
+import re
 
 # Installed modules
 
@@ -71,6 +72,77 @@ class TestIt(TestWrapper):
         """Tests converting a simple HTML to PDF using selenium"""
         debug.trace(4, f"TestIt.test_03_selenium_pdf(); self={self}")
         self.perform_conversion_test("selenium", "pdf", "Selenium PDF")
+        return
+
+    def test_04_tailwind_width_fix(self):
+        """Tests that --tailwind / tailwind_fix injects CSS stripping Tailwind max-w-[*] classes.
+        Uses tests/resources/tailwind-width-example.html which has real max-w-[760px] and
+        max-w-[704px] classes; verifies the fix appears in the modified temp HTML.
+        """
+        debug.trace(4, f"TestIt.test_04_tailwind_width_fix(); self={self}")
+        resource_dir = os.path.join(os.path.dirname(__file__), "resources")
+        in_file = os.path.join(resource_dir, "tailwind-width-example.html")
+        self.do_assert(os.path.exists(in_file), f"Test resource not found: {in_file}")
+
+        # Verify the resource actually contains Tailwind arbitrary max-width classes
+        html_src = system.read_entire_file(in_file)
+        self.do_assert("max-w-[760px]" in html_src or r"max-w-\[760px\]" in html_src,
+                       "tailwind-width-example.html missing expected max-w-[760px] class")
+
+        # Apply the print fix with tailwind_fix=True and inspect the generated temp HTML
+        if THE_MODULE:
+            converter = THE_MODULE.HtmlConverter(engine="selenium", out_format="pdf",
+                                                 tailwind_fix=True)
+            # pylint: disable=protected-access
+            temp_html = converter._apply_print_fix(in_file, tailwind_fix=True)
+            try:
+                modified = system.read_entire_file(temp_html)
+                # The injected CSS must include the [class*="max-w-\["] selector
+                self.do_assert(r'class*="max-w-\["' in modified or
+                               r"class*='max-w-\['" in modified or
+                               "max-w-\\[" in modified,
+                               "Tailwind width fix CSS not found in modified HTML")
+            finally:
+                if os.path.exists(temp_html):
+                    os.remove(temp_html)
+        return
+
+    def test_05_landscape_pdf(self):
+        """Tests that --landscape produces a landscape-orientation PDF (792x612 pts).
+        Uses tests/resources/dummy-word-wrap.html as a simple self-contained input.
+        Requires pdfinfo to verify page dimensions.
+        """
+        debug.trace(4, f"TestIt.test_05_landscape_pdf(); self={self}")
+        resource_dir = os.path.join(os.path.dirname(__file__), "resources")
+        in_file = os.path.join(resource_dir, "dummy-word-wrap.html")
+        self.do_assert(os.path.exists(in_file), f"Test resource not found: {in_file}")
+
+        out_file = self.create_temp_file("") + ".pdf"
+        if THE_MODULE:
+            converter = THE_MODULE.HtmlConverter(engine="selenium", out_format="pdf",
+                                                 landscape=True)
+            success = converter.process(in_file, out_file)
+            self.do_assert(success, "Landscape PDF conversion failed")
+            self.do_assert(os.path.exists(out_file), "Landscape PDF output file not created")
+            if os.path.exists(out_file) and os.path.getsize(out_file) > 0:
+                # Use pdfinfo to confirm page size is landscape (792x612 pts = 11x8.5 in)
+                try:
+                    import subprocess  # pylint: disable=import-outside-toplevel
+                    result = subprocess.run(["pdfinfo", out_file], capture_output=True, text=True,
+                                           check=False)
+                    page_size_line = next(
+                        (ln for ln in result.stdout.splitlines() if "Page size" in ln), "")
+                    debug.trace(4, f"pdfinfo page size: {page_size_line!r}")
+                    # Landscape letter: width > height (792 x 612 pts)
+                    nums = re.findall(r"[\d.]+", page_size_line)
+                    if len(nums) >= 2:
+                        width_pts, height_pts = float(nums[0]), float(nums[1])
+                        self.do_assert(width_pts > height_pts,
+                                       f"PDF is not landscape: {width_pts} x {height_pts} pts")
+                    else:
+                        debug.trace(3, "pdfinfo output not parseable; skipping dimension check")
+                except FileNotFoundError:
+                    debug.trace(3, "pdfinfo not installed; skipping page dimension check")
         return
 
 #------------------------------------------------------------------------

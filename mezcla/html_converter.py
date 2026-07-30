@@ -66,21 +66,29 @@ WEBDRIVER_OPTIONS = system.getenv_value(
 USE_LANDSCAPE = system.getenv_bool(
     "USE_LANDSCAPE", False,
     description="Use landscape orientation when converting to PDF")
-TAILWIND_WIDTH_HACK = system.getenv_bool(
+## OLD: TAILWIND_WIDTH_HACK = system.getenv_bool(
+##     "TAILWIND_WIDTH_HACK", False,
+##     description="Apply fixup for specific Tailwind quirks")
+# note: TAILWIND_WIDTH_HACK kept as backward-compat alias
+TAILWIND_WIDTH_FIX = system.getenv_bool(
+    "TAILWIND_WIDTH_FIX", False,
+    description="Apply principled max-width fixup for Tailwind-based pages")
+TAILWIND_WIDTH_HACK = TAILWIND_WIDTH_FIX or system.getenv_bool(
     "TAILWIND_WIDTH_HACK", False,
-    description="Apply fixup for specific Tailwind quirks")
+    description="Alias for TAILWIND_WIDTH_FIX (deprecated)")
 
 #-------------------------------------------------------------------------------
 
 class HtmlConverter:
     """Class for converting HTML to PDF or DOCX"""
 
-    def __init__(self, engine: str = "libreoffice", out_format: str = "pdf", landscape: bool = False, **kwargs) -> None:
+    def __init__(self, engine: str = "libreoffice", out_format: str = "pdf", landscape: bool = False, tailwind_fix: bool = False, **kwargs) -> None:
         """Initializer"""
-        debug.trace_expr(TL.VERBOSE, engine, out_format, landscape, kwargs, prefix="in HtmlConverter.__init__: ")
+        debug.trace_expr(TL.VERBOSE, engine, out_format, landscape, tailwind_fix, kwargs, prefix="in HtmlConverter.__init__: ")
         self.engine = engine.lower()
         self.out_format = out_format.lower()
         self.landscape = landscape or USE_LANDSCAPE
+        self.tailwind_fix = tailwind_fix or TAILWIND_WIDTH_HACK
         debug.assertion(self.engine in ["libreoffice", "pandoc", "selenium"], "Invalid engine")
         debug.assertion(self.out_format in ["pdf", "docx"], "Invalid format")
         if self.engine == "selenium" and self.out_format != "pdf":
@@ -88,32 +96,37 @@ class HtmlConverter:
             self.out_format = "pdf"
         debug.trace_object(5, self, label=f"{self.__class__.__name__} instance")
 
-    def _apply_print_fix(self, html_path: str, landscape: bool = False) -> str:
+    def _apply_print_fix(self, html_path: str, landscape: bool = False, tailwind_fix: bool = False) -> str:
         """Applies CSS override for single-page printing issue and hides Save Page WE info bar.
-        Also injects @page landscape rule when landscape=True (honoured by LibreOffice and Pandoc).
-        When landscape=True also removes max-width constraints so content fills the full page width.
+        When landscape=True: injects @page landscape rule and strips max-width constraints so
+        content fills the full landscape page width.
+        When tailwind_fix=True: strips Tailwind-specific arbitrary max-width classes independently
+        of landscape mode (useful for portrait Tailwind pages with narrow content columns).
         """
-        debug.trace_expr(TL.VERBOSE, html_path, landscape, prefix="in _apply_print_fix: ")
+        debug.trace_expr(TL.VERBOSE, html_path, landscape, tailwind_fix, prefix="in _apply_print_fix: ")
         ## OLD: temp_fd, temp_path = tempfile.mkstemp(suffix=".html", text=True)
 
-        # Build the @page orientation rule (empty string when portrait so no extra CSS is emitted)
+        # Build the @page orientation rule (empty when portrait so no extra CSS is emitted)
         page_orientation_css = "@page { size: landscape; } " if landscape else ""
-        # In landscape mode, strip max-width from common layout containers so content
-        # reflows across the full page width rather than staying in a narrow column.
-        # Also keep the legacy TAILWIND_WIDTH_HACK selectors for backward-compat.
-        tailwind_css = "" if not TAILWIND_WIDTH_HACK else r"""
-            /* Use wide sections in Tailwind websites (TODO: generalize) */
-            .max-w-\[704px\], .max-w-\[760px\] {
-                 max-width: none !important;
-            }
-        """
-        landscape_width_css = "" if not landscape else r"""
-            /* Strip max-width from Tailwind arbitrary-value classes (e.g. max-w-[760px]) */
+
+        # --- Tailwind width fix (independent of landscape) ---
+        # Strips Tailwind arbitrary max-width classes (e.g. max-w-[760px], max-w-[704px])
+        # that pin content to a narrow column even on wide viewports.
+        # Activated by --tailwind flag, TAILWIND_WIDTH_FIX env var, or landscape mode.
+        tailwind_css = "" if not (tailwind_fix or landscape) else r"""
+            /* Tailwind width fix: remove arbitrary max-width constraints */
             [class*="max-w-\["] {
                 max-width: none !important;
                 width: auto !important;
             }
-            /* Strip named Tailwind max-w utilities and common layout containers */
+        """
+
+        # --- Landscape full-width fix (landscape mode only) ---
+        # Strips additional named Tailwind max-w utilities, prose containers, and
+        # inline padding-right reserved for fixed right-side nav/TOC elements.
+        # Only applied in landscape mode since it reflows the entire layout.
+        landscape_width_css = "" if not landscape else r"""
+            /* Landscape width fix: remove named Tailwind max-w utilities and prose containers */
             .max-w-none, .max-w-xs, .max-w-sm, .max-w-md, .max-w-lg,
             .max-w-xl, .max-w-2xl, .max-w-3xl, .max-w-4xl, .max-w-5xl,
             .max-w-6xl, .max-w-7xl, .max-w-full, .max-w-screen-sm,
@@ -166,8 +179,9 @@ class HtmlConverter:
         temp_html = None
         work_html = ""
         if self.engine in ["libreoffice", "selenium", "pandoc"]:
-            # Apply CSS fix for print truncation; also inject landscape @page rule if requested
-            temp_html = self._apply_print_fix(input_file, landscape=self.landscape)
+            # Apply CSS fix for print truncation; pass both landscape and tailwind_fix flags
+            temp_html = self._apply_print_fix(input_file, landscape=self.landscape,
+                                              tailwind_fix=self.tailwind_fix)
             work_html = temp_html
         ## OLD:
         ## else:
@@ -300,6 +314,7 @@ def main() -> None:
             ("pandoc", "Conversion engine is Pandoc"),
             ("selenium", "Conversion engine is Selenium (PDF only)"),
             ("landscape", "Use landscape orientation (default: portrait)"),
+            ("tailwind", "Apply Tailwind max-width fixup (strips max-w-[*] constraints)"),
         ],
         text_options=[
             (FORMAT_OPT, "Output format (pdf or docx). Default: pdf", "pdf"),
@@ -325,8 +340,10 @@ def main() -> None:
     in_file = main_app.get_parsed_argument(FILENAME)
     out_file = main_app.get_parsed_argument("output_file")
     landscape_opt = main_app.get_parsed_option("landscape", default=False)
+    tailwind_opt = main_app.get_parsed_option("tailwind", default=False)
 
-    converter = HtmlConverter(engine=eng_opt, out_format=fmt_opt, landscape=landscape_opt)
+    converter = HtmlConverter(engine=eng_opt, out_format=fmt_opt,
+                              landscape=landscape_opt, tailwind_fix=tailwind_opt)
     
     if in_file:
         converter.process(in_file, out_file)
