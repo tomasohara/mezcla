@@ -107,12 +107,26 @@ class HtmlConverter:
                  max-width: none !important;
             }
         """
-        landscape_width_css = "" if not landscape else """
-            body, html, main, article, section, aside, nav,
-            div[class*="max-w"], div[class*="container"], div[class*="wrapper"],
-            div[class*="content"], div[class*="layout"], div[class*="page"] {
+        landscape_width_css = "" if not landscape else r"""
+            /* Strip max-width from Tailwind arbitrary-value classes (e.g. max-w-[760px]) */
+            [class*="max-w-\["] {
                 max-width: none !important;
                 width: auto !important;
+            }
+            /* Strip named Tailwind max-w utilities and common layout containers */
+            .max-w-none, .max-w-xs, .max-w-sm, .max-w-md, .max-w-lg,
+            .max-w-xl, .max-w-2xl, .max-w-3xl, .max-w-4xl, .max-w-5xl,
+            .max-w-6xl, .max-w-7xl, .max-w-full, .max-w-screen-sm,
+            .max-w-screen-md, .max-w-screen-lg, .max-w-screen-xl,
+            .max-w-prose, .prose, .rune-prose, .rune-grid,
+            main, article, section {
+                max-width: none !important;
+                width: auto !important;
+            }
+            /* Remove inline padding-right reserved for fixed right-side nav/TOC */
+            main[style*="padding-right"], [style*="padding-right: 2"],
+            [style*="padding-right: 3"] {
+                padding-right: 0 !important;
             }
         """
 
