@@ -40,7 +40,7 @@ Sample usage:
 # Standard modules
 import os
 import shutil
-import tempfile
+## OLD: import tempfile
 import subprocess
 import base64
 import time
@@ -50,6 +50,7 @@ from typing import Optional
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.main import Main, FILENAME
+from mezcla.my_regex import my_re
 from mezcla import system
 
 debug.trace(5, f"global __doc__: {__doc__}")
@@ -90,22 +91,54 @@ class HtmlConverter:
     def _apply_print_fix(self, html_path: str, landscape: bool = False) -> str:
         """Applies CSS override for single-page printing issue and hides Save Page WE info bar.
         Also injects @page landscape rule when landscape=True (honoured by LibreOffice and Pandoc).
+        When landscape=True also removes max-width constraints so content fills the full page width.
         """
-        temp_fd, temp_path = tempfile.mkstemp(suffix=".html", text=True)
+        debug.trace_expr(TL.VERBOSE, html_path, landscape, prefix="in _apply_print_fix: ")
+        ## OLD: temp_fd, temp_path = tempfile.mkstemp(suffix=".html", text=True)
+
         # Build the @page orientation rule (empty string when portrait so no extra CSS is emitted)
         page_orientation_css = "@page { size: landscape; } " if landscape else ""
-        section_width_css = "" if not TAILWIND_WIDTH_HACK else """
+        # In landscape mode, strip max-width from common layout containers so content
+        # reflows across the full page width rather than staying in a narrow column.
+        # Also keep the legacy TAILWIND_WIDTH_HACK selectors for backward-compat.
+        tailwind_css = "" if not TAILWIND_WIDTH_HACK else r"""
             /* Use wide sections in Tailwind websites (TODO: generalize) */
             .max-w-\[704px\], .max-w-\[760px\] {
                  max-width: none !important;
             }
         """
+        landscape_width_css = "" if not landscape else """
+            body, html, main, article, section, aside, nav,
+            div[class*="max-w"], div[class*="container"], div[class*="wrapper"],
+            div[class*="content"], div[class*="layout"], div[class*="page"] {
+                max-width: none !important;
+                width: auto !important;
+            }
+        """
 
-        with os.fdopen(temp_fd, "w", encoding="utf-8") as out_f, open(html_path, "r", encoding="utf-8") as in_f:
-            for line in in_f:
-                if "</head>" in line.lower() or "</HEAD>" in line:    ## TODO2: wth?
-                    out_f.write(f"<style>{page_orientation_css}@media print {{ body, html {{ height: auto !important; overflow: visible !important; position: static !important; display: block !important; }} * {{ overflow: visible !important; height: auto !important; }} #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] {{ display: none !important; }} {section_width_css} }}</style>\n")
-                out_f.write(line)
+        ## OLD:
+        ## with os.fdopen(temp_fd, "w", encoding="utf-8") as out_f, open(html_path, "r", encoding="utf-8") as in_f:
+        ##    for line in in_f:
+        ##         if "</head>" in line.lower() or "</HEAD>" in line:    ## TODO2: wth?
+        ##             out_f.write(f"<style>{page_orientation_css}@media print {{ body, html {{ height: auto !important; overflow: visible !important; position: static !important; display: block !important; }} * {{ overflow: visible !important; height: auto !important; }} #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] {{ display: none !important; }} {tailwind_css}{landscape_width_css} }}</style>\n")
+        ##         out_f.write(line)
+        ##
+        new_style = (f"<style>{page_orientation_css}@media print {{ body, html {{ height: auto !important; overflow: visible !important; position: static !important; display: block !important; }} * {{ overflow: visible !important; height: auto !important; }} #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] {{ display: none !important; }} {tailwind_css}{landscape_width_css} }}</style>\n")
+        ##
+        original_html = system.read_entire_file(html_path)
+        ## TODO4: get one-liner to work w/ sub (b.b., hanging on latge file)
+        ## modified_html = my_re.sub(r"(.*?)(</head>)", rf"\1{new_style}\2", original_html,
+        ##                           count=1, flags=my_re.IGNORECASE)
+        end_head = r"</head>"
+        if my_re.search(end_head, original_html, flags=my_re.IGNORECASE):
+            modified_html = my_re.pre_match() + new_style + my_re.group(0) + my_re.post_match()
+        else:
+            debug.trace(TL.WARNING, "_apply_print_fix: no </head> tag found; appending style")          
+            modified_html = original_html + new_style
+        debug.assertion(modified_html != original_html)
+        debug.assertion("overflow: visible !important" in modified_html)
+        temp_path = gh.write_temp_file("apply_print_fix.html", modified_html)
+        
         return temp_path
 
     def process(self, input_file: str, output_file: Optional[str] = None) -> bool:
@@ -117,6 +150,7 @@ class HtmlConverter:
         debug.trace(TL.DETAILED, f"Converting {input_file} to {output_file} using {self.engine}")
         
         temp_html = None
+        work_html = ""
         if self.engine in ["libreoffice", "selenium", "pandoc"]:
             # Apply CSS fix for print truncation; also inject landscape @page rule if requested
             temp_html = self._apply_print_fix(input_file, landscape=self.landscape)
@@ -153,6 +187,8 @@ class HtmlConverter:
 
             elif self.engine == "selenium":
                 try:
+                    ## TODO4: put this above (e.g., module scope)
+                    # pylint: disable=import-outside-toplevel
                     from selenium import webdriver
                     from selenium.webdriver.chrome.options import Options
                     from selenium.webdriver.chrome.service import Service
@@ -219,11 +255,15 @@ class HtmlConverter:
                     driver.quit()
 
             return True
-        except subprocess.CalledProcessError as e:
-            system.print_error(f"Conversion failed: {e.stderr.decode('utf-8')}")
-            return False
-        except Exception as e:
-            system.print_error(f"Conversion failed: {e}")
+        ## OLD:
+        ## except subprocess.CalledProcessError as e:
+        ##     system.print_error(f"Conversion failed: {e.stderr.decode('utf-8')}")
+        ##     return False
+        ## except Exception as e:
+        ##     system.print_error(f"Conversion failed: {e}")
+        ##     return False
+        except:
+            system.print_exception_info("conversion-process")
             return False
         finally:
             if temp_html and os.path.exists(temp_html) and not debug.verbose_debugging():
