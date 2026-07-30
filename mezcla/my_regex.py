@@ -214,6 +214,15 @@ class regex_wrapper():
                          r=result, s=self)
         return result
 
+    def matching_text(self) -> Optional[StrOrBytes]:
+        """Return matched text for last search or match.
+        note: This is an alias for self.group(0).
+        """
+        result = self.group(0)
+        debug.trace_fmtd(self.TRACE_LEVEL + 1, "my_regex.matching_text() => {r!r}: self={s}",
+                         r=result, s=self)
+        return result
+
     def group(self, num: int) -> Optional[StrOrBytes]:
         """Return group NUM from match result from last search"""
         debug.assertion(self.match_result)
