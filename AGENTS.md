@@ -73,8 +73,7 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 0. In general, wait for me to assign a task. I will explicitly ask for suggested code changes.
 
 0. When making changes, try to keep the code differences from the previous version as minimal as
-possible. This will facilitate reviewed the code. When the requested change requires a substantial
-revision, request clarification about how to proceed.
+possible. In particular, avoid purely stylistic changes. This will facilitate reviewing the code. When the requested change requires a substantial revision, request clarification about how to proceed.
 
 0. Follow the repo code conventions:
    * Avoid putting function definitions inside of other code (e.g., use bottom for Perl and top for Python). Exceptions would be for small functions incorporating context (e.g., sorting helper function).
