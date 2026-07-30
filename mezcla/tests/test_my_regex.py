@@ -20,6 +20,7 @@ import pytest
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:            global module object
@@ -101,6 +102,18 @@ class TestMyRegex(TestWrapper):
         regex = r"\d+"
         output = self.helper_my_regex(regex, text, is_match=1)
         assert isinstance(output, re.Match)
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_matching_text(self):
+        """Verify matching text returned"""
+        debug.trace(4, f"test_matching_text(); self={self}")
+        text = "0123456789"
+        assert self.my_re.search(r"...\d...", text)
+        assert self.my_re.matching_text() == "0123456"
+        assert not self.my_re.search(r"...\D...", text)
+        # note: the following works around assertion failure
+        if not cm.SKIP_EXPECTED_ERRORS:
+            assert self.my_re.matching_text() is None
 
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_group(self):
