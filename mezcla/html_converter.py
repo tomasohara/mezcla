@@ -150,7 +150,13 @@ class HtmlConverter:
         ##             out_f.write(f"<style>{page_orientation_css}@media print {{ body, html {{ height: auto !important; overflow: visible !important; position: static !important; display: block !important; }} * {{ overflow: visible !important; height: auto !important; }} #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] {{ display: none !important; }} {tailwind_css}{landscape_width_css} }}</style>\n")
         ##         out_f.write(line)
         ##
-        new_style = (f"<style>{page_orientation_css}@media print {{ body, html {{ height: auto !important; overflow: visible !important; position: static !important; display: block !important; }} * {{ overflow: visible !important; height: auto !important; }} #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] {{ display: none !important; }} {tailwind_css}{landscape_width_css} }}</style>\n")
+        ## BAD:
+        ## new_style = (f"<style>{page_orientation_css}@media print {{ body, html {{ height: auto !important; overflow: visible !important; position: static !important; display: block !important; }} * {{ overflow: visible !important; height: auto !important; }} #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] {{ display: none !important; }} {tailwind_css}{landscape_width_css} }}</style>\n")
+        ## BAD:
+        ## new_style = (f"<style>{page_orientation_css}@media print {{ body, html {{ height: auto !important; overflow: visible !important; position: static !important; display: block !important; }} *:not(svg):not(svg *) {{ overflow: visible !important; height: auto !important; }} .legendtext, text.legendtext {{ fill: #000000 !important; font-family: Arial, sans-serif !important; }} #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] {{ display: none !important; }} {tailwind_css}{landscape_width_css} }}</style>\n")
+        # note: *:not(svg):not(svg *) overflow: visible prevents clipping; height: auto omitted to allow multi-page printing.
+        # Change facilitated by Antigravity assistant (Gemini 3.6 Flash).
+        new_style = (f"<style>{page_orientation_css}@media print {{ body, html {{ height: auto !important; overflow: visible !important; position: static !important; display: block !important; }} *:not(svg):not(svg *) {{ overflow: visible !important; }} .legendtext, text.legendtext {{ fill: #000000 !important; font-family: Arial, sans-serif !important; }} #savepage-pageinfo-bar-container, #savepage-pageinfo-bar, [id^=\"savepage-pageinfo-bar\"] {{ display: none !important; }} {tailwind_css}{landscape_width_css} }}</style>\n")
         ##
         original_html = system.read_entire_file(html_path)
         ## TODO4: get one-liner to work w/ sub (b.b., hanging on latge file)
@@ -249,7 +255,18 @@ class HtmlConverter:
                     driver.get(file_url)
                     time.sleep(1) # wait for rendering
                     
-                    # Remove "Save Page WE" info bar
+                    ## OLD:
+                    ## # Remove "Save Page WE" info bar
+                    ## driver.execute_script('''
+                    ##     var container = document.getElementById("savepage-pageinfo-bar-container");
+                    ##     if (container) container.remove();
+                    ##     var bar = document.getElementById("savepage-pageinfo-bar");
+                    ##     if (bar) bar.remove();
+                    ##     var dt = document.getElementById("savepage-pageinfo-bar-datetime");
+                    ##     if (dt) dt.remove();
+                    ## ''')
+                    # note: removes SavePage WE bar and auto-repositions top horizontal Plotly legends to bottom
+                    # Change facilitated by Antigravity assistant (Gemini 3.6 Flash).
                     driver.execute_script('''
                         var container = document.getElementById("savepage-pageinfo-bar-container");
                         if (container) container.remove();
@@ -257,6 +274,22 @@ class HtmlConverter:
                         if (bar) bar.remove();
                         var dt = document.getElementById("savepage-pageinfo-bar-datetime");
                         if (dt) dt.remove();
+                        if (window.Plotly) {
+                            var plots = document.querySelectorAll(".js-plotly-plot");
+                            plots.forEach(function(p) {
+                                if (p.layout && p.layout.legend) {
+                                    var updates = {
+                                        "legend.font.color": "#000000",
+                                        "legend.font.family": "Arial, sans-serif"
+                                    };
+                                    if (p.layout.legend.orientation === "h" && p.layout.legend.y >= 1) {
+                                        updates["legend.y"] = -0.25;
+                                        updates["legend.yanchor"] = "top";
+                                    }
+                                    Plotly.relayout(p, updates);
+                                }
+                            });
+                        }
                     ''')
 
                     print_options = {

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<!--
+    Plot for radar reflectivity
+    via ChatGPT 5.
+    Also see https://en.wikipedia.org/wiki/DBZ_(meteorology)
+  -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Radar Reflectivity (Z) Intuition Plot</title>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 1rem;
+        background: #f4f6f8;
+    }
+    h2 {
+        text-align: center;
+    }
+    #plot {
+        width: 100%;
+        max-width: 1000px;
+        margin: auto;
+    }
+    .formula {
+        max-width: 1000px;
+        margin: 0.5rem auto 0.8rem auto;
+        text-align: center;
+    }
+    .formula img {
+        width: 100%;
+        max-width: 780px;
+        height: auto;
+    }
+    .note {
+        max-width: 950px;
+        margin: 1.2rem auto 0 auto;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+</style>
+</head>
+<body>
+
+<h2>Intuition for Radar Reflectivity Z</h2>
+<div class="formula">
+<img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/e339835dbb8718af8e89402bf614e923249217c0"
+     alt="Reflectivity factor formula: Z = ∫ N(D)D^6 dD">
+</div>
+<div id="plot"></div>
+
+<div class="note">
+<b>Explanation.</b><br><br>
+
+The reflectivity factor <b>Z</b> is defined as the integral shown above:
+it sums contributions from raindrops of all sizes.<br><br>
+
+The function <b>N(D) = N₀ e<sup>−ΛD</sup></b> is the drop size distribution —
+it describes how many drops of diameter <i>D</i> exist per unit volume per unit size interval.
+Small drops are common, while large drops are exponentially rarer.<br><br>
+
+Each drop’s radar return scales as <b>D<sup>6</sup></b>.
+Because of this sixth‑power dependence, larger drops dominate the total reflectivity,
+even though they are fewer in number.<br><br>
+
+The solid curves show the quantity being integrated (N(D)·D<sup>6</sup>)
+for light and heavy rain. The dotted curves show the underlying drop distributions.
+Heavy rain contains relatively more large drops, which dramatically increases Z.
+</div>
+
+<script>
+function computeZ(N0, lambda) {
+    let Dmax = 6;
+    let step = 0.01;
+    let Z = 0;
+    for (let D = 0; D <= Dmax; D += step) {
+        let N = N0 * Math.exp(-lambda * D);
+        Z += N * Math.pow(D, 6) * step;
+    }
+    return Z;
+}
+
+let D = [];
+let N_light = [];
+let N_heavy = [];
+let D6 = [];
+let integrand_light = [];
+let integrand_heavy = [];
+
+let N0 = 8000;
+let lambda_light = 2.5;
+let lambda_heavy = 1.2;
+
+for (let d = 0; d <= 6; d += 0.05) {
+    D.push(d);
+    let Nl = N0 * Math.exp(-lambda_light * d);
+    let Nh = N0 * Math.exp(-lambda_heavy * d);
+    N_light.push(Nl);
+    N_heavy.push(Nh);
+    D6.push(Math.pow(d, 6));
+    integrand_light.push(Nl * Math.pow(d, 6));
+    integrand_heavy.push(Nh * Math.pow(d, 6));
+}
+
+let Z_light = computeZ(N0, lambda_light);
+let Z_heavy = computeZ(N0, lambda_heavy);
+
+let traces = [
+    {
+        x: D, y: integrand_light,
+        name: "Light",
+        line: {color: "red"}
+    },
+    {
+        x: D, y: integrand_heavy,
+        name: "Heavy",
+        line: {color: "darkred"}
+    },
+    {
+        x: D, y: N_light,
+        name: "N(D) light",
+        line: {dash: "dot"},
+        yaxis: "y2"
+    },
+    {
+        x: D, y: N_heavy,
+        name: "N(D) heavy",
+        line: {dash: "dot"},
+        yaxis: "y2"
+    },
+    {
+        x: D, y: D6,
+        name: "D⁶",
+        line: {color: "green"},
+        yaxis: "y2"
+    }
+];
+
+let layout = {
+    responsive: true,
+    margin: {t: 80, b: 100},
+    xaxis: {
+        title: "Raindrop Diameter (mm)"
+    },
+    yaxis: {
+        title: "N(D) × D⁶"
+    },
+    yaxis2: {
+        title: "Reflective Scale",
+        overlaying: "y",
+        side: "right",
+        showgrid: false
+    },
+    legend: {
+        orientation: "h",
+        y: 1.02
+    }
+};
+
+Plotly.newPlot('plot', traces, layout, {responsive: true});
+</script>
+
+</body>
+</html>

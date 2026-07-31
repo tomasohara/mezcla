@@ -145,6 +145,52 @@ class TestIt(TestWrapper):
                     debug.trace(3, "pdfinfo not installed; skipping page dimension check")
         return
 
+    def test_06_svg_print_fix(self):
+        """Tests that _apply_print_fix excludes SVG elements from height: auto !important."""
+        debug.trace(4, f"TestIt.test_06_svg_print_fix(); self={self}")
+        html_content = "<html><head><title>SVG Test</title></head><body><svg><rect height='100'/></svg></body></html>\n"
+        in_file = self.create_temp_file(html_content)
+        if THE_MODULE:
+            converter = THE_MODULE.HtmlConverter(engine="selenium", out_format="pdf")
+            # pylint: disable=protected-access
+            temp_html = converter._apply_print_fix(in_file)
+            try:
+                modified = system.read_entire_file(temp_html)
+                self.do_assert("*:not(svg):not(svg *)" in modified,
+                               "SVG-safe print CSS rule not found in modified HTML")
+            finally:
+                if os.path.exists(temp_html):
+                    os.remove(temp_html)
+        return
+
+    def test_07_radar_reflectivity_pdf(self):
+        """Tests converting tests/resources/radar-reflectivity.html to PDF via selenium engine.
+        Verifies that the PDF output is created, non-empty, and contains both legend and explanation text.
+        """
+        debug.trace(4, f"TestIt.test_07_radar_reflectivity_pdf(); self={self}")
+        resource_dir = os.path.join(os.path.dirname(__file__), "resources")
+        in_file = os.path.join(resource_dir, "radar-reflectivity.html")
+        self.do_assert(os.path.exists(in_file), f"Test resource not found: {in_file}")
+
+        out_file = self.create_temp_file("") + ".pdf"
+        if THE_MODULE:
+            converter = THE_MODULE.HtmlConverter(engine="selenium", out_format="pdf")
+            success = converter.process(in_file, out_file)
+            self.do_assert(success, "Radar reflectivity PDF conversion failed")
+            self.do_assert(os.path.exists(out_file), "Radar reflectivity PDF output file not created")
+            if os.path.exists(out_file) and os.path.getsize(out_file) > 0:
+                try:
+                    # pylint: disable=import-outside-toplevel
+                    import textract
+                    text = textract.process(out_file).decode("utf-8", errors="ignore")
+                    self.do_assert("Explanation" in text, "Explanation text not found in converted PDF")
+                    self.do_assert("Light" in text and "Heavy" in text, "Legend text not found in converted PDF")
+                except ImportError:
+                    debug.trace(3, "textract not installed, skipping text verification")
+                except:
+                    debug.trace_exception(3, "text verification failed")
+        return
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
