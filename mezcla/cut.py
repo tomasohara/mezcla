@@ -346,21 +346,46 @@ class Script(Main):
         debug.assertion(field_list)
         debug.trace_fmtd(4, "parse_field_spec() => {fl}", fl=field_list)
         return field_list
-    
+
+    def TODO_init_input(self) -> None:
+        """Override the input initialization to make no-op"""
+        # Warning: this affects some special case handling done by the base class
+        # (e.g., relaxed input handling). See main.py.
+        debug.trace(5, "Main.init_input()")
+
+    @staticmethod
+    def open_file(filename, mode):
+        """Version of system open_file that preserves newlines as is.
+        Note: via help(open): If newline is '', universal newline mode is enabled, but line
+  endings are returned to the caller untranslated."""
+        ;; 
+        return system.open_file(filename, mode, newline="")
+
     def run_main_step(self):
         """Main processing step: read each line (i.e. row) and extract specified columns.
         Note: The fields are 1-based (i.e., first column specified 1 not 0)"""
         debug.trace_fmtd(4, "run_main_step()")
 
         # Support multiple input files by creating a single iterable input stream.
+        debug.trace_expr(5, self.filename)
         multi_filenames = []
         if isinstance(self.filename, list):
             multi_filenames = self.filename
         elif self.other_filenames:
             multi_filenames = [self.filename] + self.other_filenames
-        use_fileinput = bool(multi_filenames and (multi_filenames != ["-"]))
+        else:
+            multi_filenames = [self.filename]
+        debug.assertion(len(multi_filenames) > 0)
+        ## OLD: use_fileinput = bool(multi_filenames and (multi_filenames != ["-"]))
+        use_fileinput = len(multi_filenames) > 1
+
+        # Open the input ensuring that newlines are preserved
         if use_fileinput:
-            self.input_stream = fileinput.input(files=multi_filenames)
+            self.input_stream = fileinput.input(files=multi_filenames, openhook=self.open_file)
+        elif multi_filenames[0] == "-":           ## TODO2: have main.py handle this (e.g., via init_input)
+            self.input_stream = sys.stdin
+        else:
+            self.input_stream = self.open_file(multi_filenames[0], mode="r")
 
         # Overide the maxium field size if specified
         if MAX_FIELD_SIZE > -1:
@@ -406,11 +431,13 @@ class Script(Main):
 
         # Create reader and writer
         debug.trace_expr(4, self.delimiter, self.output_delimiter, self.dialect, self.output_dialect)
-        if ((self.input_stream != sys.stdin) and (not use_fileinput)):
-            # note: silly csv.reader requirement for newline option to open (TODO, open what?)
-            # TODO: add support for multiple filenames
-            self.input_stream = system.open_file(self.filename, newline="")
-            debug.assertion(not self.other_filenames)
+        debug.trace_expr(5, self.input_stream, sys.stdin)
+        ## OLD:
+        ## if ((self.input_stream != sys.stdin) and (not use_fileinput)):
+        ##     # note: silly csv.reader requirement for newline option to open (TODO, open what?)
+        ##     # TODO: add support for multiple filenames
+        ##     self.input_stream = system.open_file(self.filename, newline="")
+        ##     debug.assertion(not self.other_filenames)
         self.csv_reader = csv.reader(self.input_stream, delimiter=self.delimiter, 
                                      dialect=self.dialect)
         csv_writer = csv.writer(sys.stdout, delimiter=self.output_delimiter, 
