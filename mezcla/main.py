@@ -72,6 +72,7 @@
 #       dummy_app = Main([], use_temp_base_dir=True)
 #       temp_wav_path = gh.form_path(dummy_app.temp_base, "sample.wav")
 # - Remove obsolete pylint disable specs (e.g., unbalanced-tuple-unpacking).
+# - P2 cleanup self.filename list usage with respect to mypy (i.e., multiple_files)
 #
 # UPDATE 01 Aug 26: Fixes long-standing multiple_files bug.
 #
@@ -760,8 +761,10 @@ class Main:
         # Get filename unless input ignored and fixup if returned as list
         # TODO: add an option to retain self.filename as is
         if not self.skip_input:
-            self.filename = self.parsed_args[FILENAME]
-            if (isinstance(self.filename, list)):
+            ## OLD: self.filename = self.parsed_args[FILENAME]
+            filename = self.parsed_args[FILENAME]
+            self.other_filenames = []
+            if (isinstance(filename, list)):
                 ## VERY BAD (tab indent issue):
                 ## if not self.multiple_files:
                 ##     debug.trace(3, "Warning: Making (list) self.filename a string & setting self.other_filenames to remainder")
@@ -770,12 +773,14 @@ class Main:
                 ## self.filename = file_list[0] if len(file_list) else "-"
                 
                 if self.multiple_files:
-                    debug.trace(4, f"FYI: Retaining list-based filename as per multiple_files: {self.filename!r}")
+                    debug.trace(4, f"FYI: Retaining list-based filename as per multiple_files: {filename!r}")
+                    self.filename = filename      # noQA
                 else:
                     debug.trace(3, "Warning: Making (list) self.filename a string & setting self.other_filenames to remainder")
-                    file_list = self.filename
-                    self.other_filenames = file_list[1:]
-                    self.filename = file_list[0] if len(file_list) else "-"
+                    self.other_filenames = filename[1:]
+                    self.filename = filename[0] if len(filename) else "-"
+            else:
+                self.filename = filename
         debug.trace(6, "end Main.check_arguments()")
         return
 
@@ -811,12 +816,13 @@ class Main:
         Note: self.newlines is used to override stream (e.g., so \r not treated as line delim).
         Aside: The manual_input/skip_input logic is a bit convoluted, so an expedient
         to disable input processing entirely is to override in subclass (e.g., no-op).
+        For example, see cut.py which uses fileinput.
         """
         ## TODO3: cleanup manual_input/skip_input dependencies
         debug.trace(5, "Main.init_input()")
         self.input_stream = sys.stdin
         if (self.filename and (self.filename != "-")):
-            if (isinstance(self.filename, list) or (len(self.other_filenames) > 0)):
+            if (isinstance(self.filename, list) or (len(self.other_filenames) > 0)):      # noQA
                 debug.assertion(self.filename != ["-"])
                 if not self.multiple_files:
                     # note: check_arguments sets self.other_filenames
@@ -837,14 +843,15 @@ class Main:
                                                          errors=self.input_error_mode)
                     debug.assertion(self.input_stream)
         # Optionally reopen stream to change built-in settings
+        input_stream_error_mode = getattr(self.input_stream, "errors")
         error_handling_change = (self.input_error_mode
-                                 and (self.input_error_mode != self.input_stream.errors))
+                                 and (self.input_error_mode != input_stream_error_mode))
         reopen_stream = (error_handling_change or self.newlines)
         if reopen_stream and self.input_stream:
             if self.newlines:
                 debug.trace(4, f"Changing input stream newlines from {self.input_stream.newlines!r} to {self.newlines!r}")
             if error_handling_change:
-                debug.trace(4, f"Changing input stream error handling from {self.input_stream.errors!r} to {self.input_error_mode!r}")
+                debug.trace(4, f"Changing input stream error handling from {input_stream_error_mode!r} to {self.input_error_mode!r}")
             ## TODO3: track down mypy issue with following call:
             ##   Item "TextIO" of "TextIO | Any" has no attribute "write_through"  [union-attr]
             self.input_stream = io.TextIOWrapper(
