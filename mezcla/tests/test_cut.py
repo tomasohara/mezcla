@@ -73,6 +73,13 @@ class TestCutScript(TestWrapper):
         assert script_output
         assert script_output + '\n' == system.read_file(FIELDS_2_3_4)
 
+    def test_multiple_input_files(self):
+        """Ensure multiple positional filenames are handled without stdin blocking"""
+        one_file_output = self.run_script(options='--F1', data_file=CSV_EXAMPLE)
+        two_file_output = self.run_script(options='--F1', data_file=CSV_EXAMPLE,
+                                          post_options=CSV_EXAMPLE)
+        assert two_file_output == f"{one_file_output}\n{one_file_output}"
+
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_symbolic_fields(self):
         """Ensure symbolic field names resolved"""
