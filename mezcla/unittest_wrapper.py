@@ -163,13 +163,13 @@ def get_temp_dir(keep: Optional[bool] = None, unique: Optional[bool] = None) -> 
     return dir_path
 
 
-## OLD: function: Callable) -> Any
 def trap_exception(function: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to trap exception during function execution
     Note:
     - Only intended for use in tests (e.g., fix for maldito pytest).
     - Issues assertion so that test fails.
-    - Should be inside any pytest.mark.xfail decorators.
+    Warning: Should be inside any pytest decorators:
+       @trap\n@xfail\ndef test => @xfail\n@trap ...
     """
     debug.trace(8, f"trap_exception({gh.elide(function)}")
     #
@@ -190,7 +190,6 @@ def trap_exception(function: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-## OLD: function: Callable) -> Callable
 def pytest_fixture_wrapper(function: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator for use with pytest fixtures like capsys
     Usage:
@@ -259,7 +258,6 @@ class TestWrapper(unittest.TestCase):
     ## TEMP: initialize to unique value independent of temp_base
     temp_file: OptStr = None
     use_temp_base_dir = (system.is_directory(temp_base) if temp_base else False)
-    ## OLD: test_num = 1
     test_num = 0
     temp_file_count = 0
     class_setup = False
@@ -693,7 +691,6 @@ class TestWrapper(unittest.TestCase):
                 with self.capsys.disabled():
                     stdout, stderr = self.capsys.readouterr()
                     ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
-                    ## OLD: debug.trace_expr(5, stdout, stderr, prefix="get_stdout_stderr:\n", delim="\n", max_len=16384)
                     debug.trace_expr(self.capsys_debug_level, stdout, stderr,
                                      prefix="get_stdout_stderr:\n", delim="\n", max_len=32768)
         except:
@@ -806,7 +803,6 @@ class TestWrapper(unittest.TestCase):
             self.profiler.disable()
             ## TODO: debug.trace(1, f"Test {self.test_num} code profiling results")
             print(f"Test {self.test_num} code profiling results")
-            ## OLD: self.profiler.print_stats(sort='cumulative')
             ## NOTE: Based on cProfile's print_stats (in order to use stderr)
             stats = pstats.Stats(self.profiler, stream=sys.stderr)
             stats.strip_dirs().sort_stats('cumulative').print_stats()
