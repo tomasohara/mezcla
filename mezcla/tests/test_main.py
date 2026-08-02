@@ -25,6 +25,7 @@ from mezcla import system
 from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.unittest_wrapper import trap_exception
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:            global module object
@@ -51,7 +52,6 @@ class TestMain(TestWrapper):
     main_step_invoked = None
     process_line_count = -1
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_script_options(self):
         """Makes sure script option specifications are parsed OK"""
         debug.trace(4, f"in test_script_options(); self={self}")
@@ -98,8 +98,7 @@ class TestMain(TestWrapper):
         self.do_assert(app.get_parsed_argument(FILE_PATH_OPT) == MY_FILE)
         debug.trace(5, "out test_script_options")
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    @trap_exception
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
     def test_script_without_input(self):
         """Makes sure script class without input doesn't process input and that
         the main step gets invoked"""
@@ -154,6 +153,7 @@ class TestMain(TestWrapper):
         debug.trace(6, "app2")
         ## NOTE: This produces an extraneous error, but the test class still executes:
         ##   test_main.py: error: unrecognized arguments: tests/test_main.py
+        ## Run via `SKIP_EXPECTED_ERRORS=1 test-python-script main.py` To ignore temporarily.
         ## BAD:
         app2 = Test(skip_input=True, manual_input=True, runtime_args=[__file__], program=MAIN_SCRIPT)          # avoids pytest if invoked via it
         ## TODO2: app3 = Test(skip_input=True, manual_input=True, runtime_args=["-", "<", __file__], program=MAIN_SCRIPT)        # avoids pytest if invoked via it
@@ -184,8 +184,7 @@ class TestMain(TestWrapper):
         ## ...
         debug.trace(5, "out test_script_without_input")
 
-    @pytest.mark.xfail                   # TODO: remove xfail
-    @trap_exception
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
     def test_perl_arg(self):
         """Make sure perl-style arg can be parsed"""
         # TODO: create generic app-creation helper
@@ -214,7 +213,6 @@ class TestMain2:
     """Another class for testcase definition
     Note: Needed to avoid error with pytest due to inheritance with unittest.TestCase via TestWrapper (e.g., capsys)"""
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_input_modes(self, capsys, monkeypatch):
         """Make sure input processed OK with respect to line/para/file mode"""
         debug.trace(4, f"in test_input_modes({capsys}); self={self}")
@@ -247,7 +245,6 @@ class TestMain2:
         debug.trace_expr(5, main, num_lines, pre_captured)
         debug.trace(5, "out test_input_modes")
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_missing_newline(self, capsys, monkeypatch):
         """Make sure file with missing newline at end processed OK"""
         debug.trace(4, f"in test_missing_newline({capsys}); self={self}")
