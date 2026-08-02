@@ -73,6 +73,8 @@
 #       temp_wav_path = gh.form_path(dummy_app.temp_base, "sample.wav")
 # - Remove obsolete pylint disable specs (e.g., unbalanced-tuple-unpacking).
 #
+# UPDATE 01 Aug 26: Fixes long-standing multiple_files bug.
+#
 
 """Module for encapsulating main() processing"""
 
@@ -111,7 +113,6 @@ from mezcla.system import getenv_bool
 ArgValue = Union[str, int, float, bool, List[str]]
 OptArgValue = Optional[ArgValue]
 #
-## OLD: Tuple[..., Optional[Any], ...] (redundant: Any already subsumes None; see ArgValue/OptArgValue above)
 UserArgInfoType = Union[
     str,
     Tuple[str, str],
@@ -183,7 +184,7 @@ VERBOSE_MODE = system.getenv_value(
 
 #-------------------------------------------------------------------------------
 
-class Main(object):
+class Main:
     """Class encompassing common script processing"""
     argument_parser = None
     force_unicode = False
@@ -389,6 +390,7 @@ class Main(object):
         self.multiple_files = multiple_files      # sets other_filenames if multiple w/ nargs=+ 
         # Set defaults
         self.parsed_args: Dict[str, Any] = {}
+        ## TODO2: Optional[str|List[str]]???; see multiple_files support below
         self.filename: Optional[str] = None
         self.other_filenames: List[str] = []
         # Do command-line parsing
@@ -396,7 +398,6 @@ class Main(object):
         if not skip_args and runtime_args:
             self.check_arguments(runtime_args)
         debug.trace_current_context(level=debug.QUITE_DETAILED)
-        ## OLD:
         debug.trace_object(6, self, label="Main instance")
         ## TEST: debug.trace_object(6, self, label=f"{self.__init__.__qualname__.split('.')[0]} instance")
         debug.trace_fmt(debug.QUITE_DETAILED, "end of Main.__init__(); self={s}",
@@ -420,7 +421,6 @@ class Main(object):
         debug.trace(6, f"get_arguments([pos?={just_positional}, opt?={just_optional}] => {arguments}")
         return arguments
     
-    ## OLD: default_value: Optional[Any] = None
     def convert_option(
             self,
             option_spec: UserArgInfoType,
@@ -464,18 +464,12 @@ class Main(object):
         else:
             opt_label = opt_prefix + str(option_spec)
         debug.assertion(not " " in opt_label)
-        ## OLD:
-        ## result_list = [opt_label, opt_desc, opt_default, opt_nargs]
-        ## result = tuple(result_list)
-        ## NOTE: tuple(list) loses the fixed 4-element SysArgInfoType shape (mypy
-        ## infers a variable-length homogeneous tuple instead).
         result: SysArgInfoType = (opt_label, opt_desc, opt_default, opt_nargs)
         debug.trace_fmtd(5, "convert_option({o}, {d}, {p}): self={s} => {r}",
                          o=option_spec, d=default_value, p=positional,
                          s=self, r=result)
         return result
 
-    ## OLD: default_value: Optional[Any] = None
     def convert_argument(
             self,
             argument_spec: UserArgInfoType,
@@ -510,7 +504,6 @@ class Main(object):
                          l=label, r=has_option)
         return has_option
 
-    ## OLD: -> Optional[Any]
     def has_parsed_option(self, label: str) -> OptArgValue:
         """Value for LABEL specified or None if not applicable
         Note: This is a deprecated method (use get_parsed_option instead);
@@ -530,7 +523,6 @@ class Main(object):
                          l=label, r=option_value)
         return option_value
 
-    ## OLD: value: Any) -> Any
     def convert_option_value(self, label: str, value: ArgValue) -> ArgValue:
         """Convert the option LABEL's text VALUE into its type
         Note: boolean options account for symbolic ones like False and off."""
@@ -550,7 +542,6 @@ class Main(object):
         debug.trace(5, f"convert_option_value({label}, {value!r}) => {typed_value!r}")
         return typed_value
     
-    ## OLD: default: Optional[Any] = None, ... -> Optional[Any]
     def get_parsed_option(
             self,
             label: str,
@@ -606,7 +597,6 @@ class Main(object):
     # EX: m.get_parsed_option("missing") => None
     # EX: m.get_parsed_option("missing", default=3) => 3
 
-    ## OLD: default: Optional[Any] = None, ... -> Optional[Any]
     def get_parsed_argument(self, label: str,
                             default: OptArgValue = None,
                             allow_under: Optional[bool] = None) -> OptArgValue:
@@ -772,11 +762,20 @@ class Main(object):
         if not self.skip_input:
             self.filename = self.parsed_args[FILENAME]
             if (isinstance(self.filename, list)):
-                if not self.multiple_files:
+                ## VERY BAD (tab indent issue):
+                ## if not self.multiple_files:
+                ##     debug.trace(3, "Warning: Making (list) self.filename a string & setting self.other_filenames to remainder")
+                ## file_list = self.filename
+                ## self.other_filenames = file_list[1:]
+                ## self.filename = file_list[0] if len(file_list) else "-"
+                
+                if self.multiple_files:
+                    debug.trace(4, f"FYI: Retaining list-based filename as per multiple_files: {self.filename!r}")
+                else:
                     debug.trace(3, "Warning: Making (list) self.filename a string & setting self.other_filenames to remainder")
-                file_list = self.filename
-                self.other_filenames = file_list[1:]
-                self.filename = file_list[0] if len(file_list) else "-"
+                    file_list = self.filename
+                    self.other_filenames = file_list[1:]
+                    self.filename = file_list[0] if len(file_list) else "-"
         debug.trace(6, "end Main.check_arguments()")
         return
 
