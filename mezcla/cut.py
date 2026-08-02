@@ -17,12 +17,15 @@
 # - Add option for specifying output dialect.
 # - Add support for selecting by columns instead of fields (e.g., as with -c1-40 with cut command).
 #
+## UPDATE 02 Aug 26: fix for multiple input files via Codex 5.3
+#
 
 """Extracts columns from a file as with Unix cut command"""
 
 # Standard modules
 import argparse
 import csv
+import fileinput
 import re
 import sys
 
@@ -349,6 +352,16 @@ class Script(Main):
         Note: The fields are 1-based (i.e., first column specified 1 not 0)"""
         debug.trace_fmtd(4, "run_main_step()")
 
+        # Support multiple input files by creating a single iterable input stream.
+        multi_filenames = []
+        if isinstance(self.filename, list):
+            multi_filenames = self.filename
+        elif self.other_filenames:
+            multi_filenames = [self.filename] + self.other_filenames
+        use_fileinput = bool(multi_filenames and (multi_filenames != ["-"]))
+        if use_fileinput:
+            self.input_stream = fileinput.input(files=multi_filenames)
+
         # Overide the maxium field size if specified
         if MAX_FIELD_SIZE > -1:
             old_limit = csv.field_size_limit()
@@ -360,12 +373,15 @@ class Script(Main):
         # Notes: doesn't recognize escapes properly, such as \"); and,
         # sniffer doesn't work for stdin due to python limitation with backtracking.
         if ((self.delimiter == COMMA) and (not self.dialect) and self.run_sniffer):
-            debug.assertion(self.input_stream != sys.stdin)
-            self.dialect = csv.Sniffer().sniff(self.input_stream.read(SNIFFER_LOOKAHEAD))
-            debug.trace_object(4, self.dialect, "csv sniffer")
-            self.input_stream.seek(0)
-            if (self.output_dialect is None):
-                self.output_dialect = self.dialect
+            if use_fileinput:
+                debug.trace(2, "Warning: --sniffer ignored for multiple input files")
+            else:
+                debug.assertion(self.input_stream != sys.stdin)
+                self.dialect = csv.Sniffer().sniff(self.input_stream.read(SNIFFER_LOOKAHEAD))
+                debug.trace_object(4, self.dialect, "csv sniffer")
+                self.input_stream.seek(0)
+                if (self.output_dialect is None):
+                    self.output_dialect = self.dialect
 
         # Optionally, fixup input if TSV changing multiple spaces into single tab.
         # Note: makes pass through data, writes to temp file, and then resets input stream to
@@ -375,7 +391,7 @@ class Script(Main):
             debug.assertion(self.delimiter == TAB)
             temp_file_stream = system.open_file(self.temp_file, mode="w")
             num_fixed = 0
-            for line in self.input_stream.readlines():
+            for line in self.input_stream:
                 new_line = re.sub(r" +", TAB, line)
                 if (new_line != line):
                     num_fixed += 1
@@ -390,7 +406,7 @@ class Script(Main):
 
         # Create reader and writer
         debug.trace_expr(4, self.delimiter, self.output_delimiter, self.dialect, self.output_dialect)
-        if (self.input_stream != sys.stdin):
+        if ((self.input_stream != sys.stdin) and (not use_fileinput)):
             # note: silly csv.reader requirement for newline option to open (TODO, open what?)
             # TODO: add support for multiple filenames
             self.input_stream = system.open_file(self.filename, newline="")
@@ -471,7 +487,7 @@ class Script(Main):
 
         # Do sanity checks
         # Note: this compares row extraction against Pandas dataframe
-        if (debug.debugging() and (self.input_stream != sys.stdin)):
+        if (debug.debugging() and (self.input_stream != sys.stdin) and (not use_fileinput)):
             debug.trace(4, "note: csv vs. pandas row count sanity check")
             dataframe = du.read_csv(self.filename, delimiter=self.delimiter, dialect=self.dialect)
             valid_dataframe = (dataframe is not None)
