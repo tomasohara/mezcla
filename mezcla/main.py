@@ -355,7 +355,8 @@ class Main:
                     break
                 if my_re.search(r"^-([a-z0-9_]+\w*)=?(.*)$", arg, flags=re.IGNORECASE):
                     option = my_re.group(1)
-                    value = (my_re.group(2) if len(my_re.group(2)) else "1")
+                    ## OLD: value = (my_re.group(2) if len(my_re.group(2)) else "1")
+                    value = (my_re.group(2) or "1")
                     new_arg = f"--{option}={value}"
                     debug.trace(4, f"Converted Perl-style arg {i} from {arg!r} to {new_arg}")
                     debug.assertion(not system.file_exists(arg))
@@ -774,7 +775,7 @@ class Main:
                 
                 if self.multiple_files:
                     debug.trace(4, f"FYI: Retaining list-based filename as per multiple_files: {filename!r}")
-                    self.filename = filename      # noQA
+                    self.filename = filename      # type: ignore[assignment]
                 else:
                     debug.trace(3, "Warning: Making (list) self.filename a string & setting self.other_filenames to remainder")
                     self.other_filenames = filename[1:]
@@ -814,6 +815,7 @@ class Main:
     def init_input(self) -> None:
         """Resolve input stream from either explicit filename or via standard input.
         Note: self.newlines is used to override stream (e.g., so \r not treated as line delim).
+        See the discussion of universal newlines mode in help(open).
         Aside: The manual_input/skip_input logic is a bit convoluted, so an expedient
         to disable input processing entirely is to override in subclass (e.g., no-op).
         For example, see cut.py which uses fileinput.
@@ -822,7 +824,7 @@ class Main:
         debug.trace(5, "Main.init_input()")
         self.input_stream = sys.stdin
         if (self.filename and (self.filename != "-")):
-            if (isinstance(self.filename, list) or (len(self.other_filenames) > 0)):      # noQA
+            if (isinstance(self.filename, list) or (len(self.other_filenames) > 0)):
                 debug.assertion(self.filename != ["-"])
                 if not self.multiple_files:
                     # note: check_arguments sets self.other_filenames
