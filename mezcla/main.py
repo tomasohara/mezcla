@@ -354,9 +354,9 @@ class Main:
                 if arg in ["-", "--"]:
                     break
                 if my_re.search(r"^-([a-z0-9_]+\w*)=?(.*)$", arg, flags=re.IGNORECASE):
-                    option = my_re.group(1)
+                    option = str(my_re.group(1))
                     ## OLD: value = (my_re.group(2) if len(my_re.group(2)) else "1")
-                    value = (my_re.group(2) or "1")
+                    value = str(my_re.group(2) or "1")
                     new_arg = f"--{option}={value}"
                     debug.trace(4, f"Converted Perl-style arg {i} from {arg!r} to {new_arg}")
                     debug.assertion(not system.file_exists(arg))
@@ -389,7 +389,9 @@ class Main:
             # TODO: mark positional_options as deprecated
             debug.assertion(not (positional_options and positional_arguments))
             self.positional_options = positional_options or positional_arguments or []
-        self.multiple_files = multiple_files      # sets other_filenames if multiple w/ nargs=+ 
+        self.multiple_files = multiple_files      # sets other_filenames if multiple w/ nargs=+
+        debug.assertion(not (self.multiple_files and not self.manual_input),
+                        "Multiple-file input streams not implemented (just arg parsing)")
         # Set defaults
         self.parsed_args: Dict[str, Any] = {}
         ## TODO2: Optional[str|List[str]]???; see multiple_files support below
@@ -649,7 +651,7 @@ class Main:
             if add_short is None:
                 add_short = self.short_options
             if add_short and my_re.search(r"-(-[a-z])[a-z]+", opt_label):
-                short_label = my_re.group(1)
+                short_label = str(my_re.group(1))
                 parser.add_argument(short_label, opt_label, **kwargs)
             else:
                 parser.add_argument(opt_label, **kwargs)
@@ -744,7 +746,7 @@ class Main:
             # and: "Typical example:\n   some_script.py - <<<"Hey, Joe..."
             if my_re.search(r"^.*(usage|example)s?:\s*\n(.*)", self.description,
                             flags=my_re.IGNORECASE|my_re.MULTILINE):
-                simple_usage = my_re.group(2)
+                simple_usage = str(my_re.group(2))
                 simple_usage = my_re.sub(r"\n\s*\n.*", "", simple_usage)
                 print("example:\n{ex}".format(ex=gh.indent(simple_usage)))
             sys.exit()
