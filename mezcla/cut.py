@@ -156,10 +156,10 @@ class pyspark_dialect(csv.Dialect):
     lineterminator = '\n'
     quoting = csv.QUOTE_MINIMAL  # only delimiter, double quote or end-of-line
 #
-csv.register_dialect("pyspark", pyspark_dialect)
+csv.register_dialect("pyspark", pyspark_dialect)  # type: ignore[arg-type]
 #
 # note: Uses hive as alias for pyspark.
-csv.register_dialect("hive", pyspark_dialect)
+csv.register_dialect("hive", pyspark_dialect)     # type: ignore[arg-type]
 
 class tab_dialect(csv.Dialect):
     """TSV module dialect for tab-separated values (non-Excel)."""
@@ -172,7 +172,7 @@ class tab_dialect(csv.Dialect):
     lineterminator = '\n'
     quoting = csv.QUOTE_NONE     # no special processing for quotes
 #
-csv.register_dialect("tab", tab_dialect)
+csv.register_dialect("tab", tab_dialect)          # type: ignore[arg-type]
 
 #...............................................................................
 
@@ -180,8 +180,8 @@ class Script(Main):
     """Input processing class"""
     inclusion_spec = ''
     exclusion_spec = ''
-    fields = []
-    exclude_fields = []
+    fields: list[str] = []
+    exclude_fields: list[bool] = []
     encode_values = False
     fix = False
     delimiter = None
@@ -358,7 +358,6 @@ class Script(Main):
         """Version of system open_file that preserves newlines as is.
         Note: via help(open): If newline is '', universal newline mode is enabled, but line
   endings are returned to the caller untranslated."""
-        ;; 
         return system.open_file(filename, mode, newline="")
 
     def run_main_step(self):
@@ -376,7 +375,6 @@ class Script(Main):
         else:
             multi_filenames = [self.filename]
         debug.assertion(len(multi_filenames) > 0)
-        ## OLD: use_fileinput = bool(multi_filenames and (multi_filenames != ["-"]))
         use_fileinput = len(multi_filenames) > 1
 
         # Open the input ensuring that newlines are preserved
@@ -432,12 +430,6 @@ class Script(Main):
         # Create reader and writer
         debug.trace_expr(4, self.delimiter, self.output_delimiter, self.dialect, self.output_dialect)
         debug.trace_expr(5, self.input_stream, sys.stdin)
-        ## OLD:
-        ## if ((self.input_stream != sys.stdin) and (not use_fileinput)):
-        ##     # note: silly csv.reader requirement for newline option to open (TODO, open what?)
-        ##     # TODO: add support for multiple filenames
-        ##     self.input_stream = system.open_file(self.filename, newline="")
-        ##     debug.assertion(not self.other_filenames)
         self.csv_reader = csv.reader(self.input_stream, delimiter=self.delimiter, 
                                      dialect=self.dialect)
         csv_writer = csv.writer(sys.stdout, delimiter=self.output_delimiter, 
@@ -539,11 +531,13 @@ if __name__ == '__main__':
         manual_input=True,
         multiple_files=True,
         boolean_options=(
+            # note: --Fn is just tip for user as --F1 ... --F9 not shown
             [("Fn", "alias for --field n")] +
             [(f"F{i + 1}", argparse.SUPPRESS) for i in range(NUM_FN_SHORTCUTS)] +
             [(CSV, "Comma-separated values ({xls} as per csv module)".format(xls=EXCEL_STYLE)),
              (TSV, "Tab-separated values"),
-             OUTPUT_CSV, OUTPUT_TSV,
+             (OUTPUT_CSV, "Use CSV output"),
+             (OUTPUT_TSV, "Use TSV output"),
              (CONVERT_DELIM, "Convert csv to tsv (or vice versa)"),
              (SNIFFER_ARG, "Detect csv dialect by lookahead (file-input only)"),
              ## TODO: INPUT_CSV, OUTPUT_CSV, INPUT_TSV, OUTPUT_TSV,
