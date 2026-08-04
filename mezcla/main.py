@@ -753,6 +753,7 @@ class Main:
 
         # Parse the command line and get result
         debug.trace_fmtd(6, "parser={p}", p=parser)
+        debug.trace_expr(5, parser._actions, max_len=4096)
         debug.trace_object(8, parser, max_depth=2)
         self.parser = parser
         # note: not trapped to allow for early exit
