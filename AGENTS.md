@@ -90,6 +90,8 @@ possible. In particular, avoid purely stylistic changes. This will facilitate re
 
 0. Avoid embedded functions except in cases requiring local context: this facilitates testing.
 
+0. Avoid overly specific function names, instead chose a name that generalizes the intention  (e.g., `test_hello_world_batspp_epoch_seconds_updates` => `test_hello_world_timestamp_update`).
+
 ## Debug level conventions
 
 ```
