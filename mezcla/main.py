@@ -746,7 +746,7 @@ class Main:
             # and: "Typical example:\n   some_script.py - <<<"Hey, Joe..."
             if my_re.search(r"^.*(usage|example)s?:\s*\n(.*)", self.description,
                             flags=my_re.IGNORECASE|my_re.MULTILINE):
-                simple_usage = str(my_re.group(2))
+                simple_usage = str(my_re.group(2) or "")
                 simple_usage = my_re.sub(r"\n\s*\n.*", "", simple_usage)
                 print("example:\n{ex}".format(ex=gh.indent(simple_usage)))
             sys.exit()
