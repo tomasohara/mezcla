@@ -37,7 +37,7 @@ import operator
 from mezcla import data_utils as du
 from mezcla import debug
 from mezcla import glue_helpers as gh
-from mezcla.main import Main
+from mezcla.main import Main, UserArgInfoType
 from mezcla.my_regex import my_re
 from mezcla import system
 
@@ -56,9 +56,7 @@ CONVERT_DELIM = "convert-delim"         # convert input csv to tsv (or vice vers
 SNIFFER_ARG = "sniffer"                 # run CSV sniffer to detect dialect
 ## TODO
 ## INPUT_CSV = "input-csv"
-## OUTPUT_CSV = "output-csv"
 ## INPUT_TSV = "input-tsv"
-## OUTPUT_TSV = "output-tsv"
 DELIM = "delim"                         # input delimiter
 OUT_DELIM = "output-delim"              # output delimiter if not same for input
 ALL_FIELDS = "all-fields"               # use all fields in output (e.g., for delimiter conversion)
@@ -370,6 +368,7 @@ class Script(Main):
         multi_filenames = []
         if isinstance(self.filename, list):
             multi_filenames = self.filename
+            self.filename = multi_filenames[0] if multi_filenames else "-"
         elif self.other_filenames:
             multi_filenames = [self.filename] + self.other_filenames
         else:
@@ -525,40 +524,47 @@ if __name__ == '__main__':
     debug.trace_current_context()
     debug.trace_fmt(4, "Environment options: {eo}",
                     eo=system.formatted_environment_option_descriptions())
+
+    # Create specifications for argument parsing
+    # note: --Fn is just tip for user as --F1 ... --F9 not shown
+    bool_options: list[UserArgInfoType] = [("Fn", "alias for --field n")]
+    bool_options.extend((f"F{i + 1}", argparse.SUPPRESS) for i in range(NUM_FN_SHORTCUTS))
+    bool_options.extend([
+        (CSV, "Comma-separated values ({xls} as per csv module)".format(xls=EXCEL_STYLE)),
+        (TSV, "Tab-separated values"),
+        (OUTPUT_CSV, "Use CSV output"),
+        (OUTPUT_TSV, "Use TSV output"),
+        (CONVERT_DELIM, "Convert csv to tsv (or vice versa)"),
+        (SNIFFER_ARG, "Detect csv dialect by lookahead (file-input only)"),
+        ## TODO: INPUT_CSV, INPUT_TSV
+        (FIX, "Fix up sloppy input (e.g., multiple spaces into tab)--csv fixup not yet supported"),
+        (ALL_FIELDS, "Alternative to {f} option".format(f=FIELDS)),
+        (EXCEL_STYLE, "Use Excel conventions for CSV files (see csv python package docs)"),
+        (PYSPARK_STYLE, "Use PySpark conventions for CSV files (see {f} source)".format(f=__file__)),
+        (SINGLE_LINE, "Remove embedded newlines from mult-line fields"),
+        (TAB_STYLE, "Non-excel TSV conventions (default)"),
+        ## (TODO_ARG, "TODO: arg desc").
+        (UNIX_STYLE, "Use Unix conventions for CSV files (see csv python package docs)"),
+        (ENCODE_OPT, "Output field encoded via repr (i.e., canonical representation)"),
+    ])
+    text_options: list[UserArgInfoType] = [
+        (DELIM, "Input field separator"),
+        (DIALECT, "CSV module dialect: standard (i.e., excel, excel-tab, or unix) or adhoc (e.g., pyspark, hive)"),
+        (OUTPUT_DIALECT, "dialect for output--defaults to input one"),
+        (FIELDS, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
+        (F_OPT, "Alias for --fields"),
+        (OUT_DELIM, "Output field separator"),
+        (EXCLUDE_OPT, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
+        (X_OPT, "Alias for --exclude")]
+    int_options: list[UserArgInfoType] = [(MAX_FIELD_LEN, "Maximum length per field")]
+
+    # Invoke the script with custom I/O processing and multiple files allowed
     app = Script(
         description=__doc__,
         skip_input=False,
         manual_input=True,
         multiple_files=True,
-        boolean_options=(
-            # note: --Fn is just tip for user as --F1 ... --F9 not shown
-            [("Fn", "alias for --field n")] +
-            [(f"F{i + 1}", argparse.SUPPRESS) for i in range(NUM_FN_SHORTCUTS)] +
-            [(CSV, "Comma-separated values ({xls} as per csv module)".format(xls=EXCEL_STYLE)),
-             (TSV, "Tab-separated values"),
-             (OUTPUT_CSV, "Use CSV output"),
-             (OUTPUT_TSV, "Use TSV output"),
-             (CONVERT_DELIM, "Convert csv to tsv (or vice versa)"),
-             (SNIFFER_ARG, "Detect csv dialect by lookahead (file-input only)"),
-             ## TODO: INPUT_CSV, OUTPUT_CSV, INPUT_TSV, OUTPUT_TSV,
-             (FIX, "Fix up sloppy input (e.g., multiple spaces into tab)--csv fixup not yet supported"),
-             (ALL_FIELDS, "Alternative to {f} option".format(f=FIELDS)),
-             (EXCEL_STYLE, "Use Excel conventions for CSV files (see csv python package docs)"),
-             (PYSPARK_STYLE, "Use PySpark conventions for CSV files (see {f} source)".format(f=__file__)),
-             (SINGLE_LINE, "Remove embedded newlines from mult-line fields"),
-             (TAB_STYLE, "Non-excel TSV conventions (default)"),
-             ## (TODO_ARG, "TODO: arg desc").
-             (UNIX_STYLE, "Use Unix conventions for CSV files (see csv python package docs)"),
-             (ENCODE_OPT, "Output field encoded via repr (i.e., canonical representation)"),
-             ]),
-        int_options = [(MAX_FIELD_LEN, "Maximum length per field")],
-        text_options=[(DELIM, "Input field separator"),
-                      (DIALECT, "CSV module dialect: standard (i.e., excel, excel-tab, or unix) or adhoc (e.g., pyspark, hive)"),
-                      (OUTPUT_DIALECT, "dialect for output--defaults to input one"),
-                      (FIELDS, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
-                      (F_OPT, "Alias for --fields"),
-                      (OUT_DELIM, "Output field separator"),
-                      (EXCLUDE_OPT, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
-                      (X_OPT, "Alias for --exclude"),
-                      ])
+        boolean_options=bool_options,
+        int_options=int_options,
+        text_options=text_options)
     app.run()
