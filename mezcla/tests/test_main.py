@@ -5,7 +5,7 @@
 # Notes:
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_main.py
-# For tips on pytest monkeypatch, see
+# - For tips on pytest monkeypatch, see
 #   https://stackoverflow.com/questions/38723140/i-want-to-use-stdin-in-a-pytest-test
 #
 
@@ -24,7 +24,7 @@ from mezcla import debug
 from mezcla import system
 from mezcla import tpo_common as tpo
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
-from mezcla.unittest_wrapper import trap_exception
+## OLD: from mezcla.unittest_wrapper import trap_exception
 import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
@@ -58,7 +58,6 @@ class TestMain(TestWrapper):
         class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
-            ## OLD: skip_args = True
             ## TODO: rename as TestMain?; drop MyArgumentParser?
 
         # note: verbose-mode and file-path used as main supplies --verbose and filename
@@ -192,7 +191,6 @@ class TestMain(TestWrapper):
         class Test(THE_MODULE.Main):
             """"Dummy test class"""
             argument_parser = MyArgumentParser
-            ## OLD: skip_args = True
 
         # Test with and without Perl support
         app = Test(boolean_options=[("fubar", "testing fubar option")],
