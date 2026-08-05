@@ -50,8 +50,11 @@
 # - Add sanity check to trace_fmt for when keyword in kaargs unused.
 # - Weed out lingering issues with max_len for trace-related functions.
 #
+# TODO2:
+# - Add test for @docstring_parameter.
+#
 # TODO3:
-# - Fill in more defaults like max_len using @docstring_parameter
+# - Fill in more defaults like max_len using @docstring_parameter.
 #
 # TODO:
 # - * Add sanity checks for unused environment variables specified on command line (e.g., FUBAR=1 python script.py ...)!
@@ -140,14 +143,25 @@ IntOrTraceLevel = Union[int, TraceLevel]
 #...............................................................................
 # Utility functions
 
+def _print_exception_info(task: str) -> None:
+    """Output exception information to stderr regarding TASK (e.g., function)"""
+    # Note: non-tracing version of system's print_exception_info
+    sys.stderr.write("Error during {t}: {exc}\n".
+                     format(t=task, exc=sys.exc_info()))
+    return
+
 def docstring_parameter(**kwargs):
     """Decorator to reformat docstring using specified KWARGS"""
     # Note: Docstrings should not contain extraneous braces (e.g., "avoid {}'s")
     # based on https://stackoverflow.com/questions/10307696/how-to-put-a-variable-into-python-docstring/71377925#71377925
+    # example: @docstring_parameter(max_len=max_trace_value_len)
+    #          def trace_it() ... """Print it to stderr up to the maximum length ({max_len})"""
     def decorator(obj):
         new_doc = obj.__doc__
         try:
-            new_doc = obj.__doc__.format(**kwargs)
+            # Update if defined (n.b., not available with python -OO)
+            if obj.__doc__:
+                new_doc = obj.__doc__.format(**kwargs)
         except:
             _print_exception_info("docstring_parameter")
         obj.__doc__ = new_doc
@@ -1275,7 +1289,6 @@ if __debug__:
         """Make sure KWARGS in EXPECTED list for FUNCTION at trace LEVEL"""
         return _debug.check_keyword_args(level, expected, kwargs, function, format_text, add_underscore)
 
-    @docstring_parameter(max_len=max_trace_value_len)
     def trace_fmtd(level: IntOrTraceLevel, text: str, **kwargs) -> None:
         """Print TEXT with formatting using optional format KWARGS if at trace LEVEL or higher"""
         return _debug.trace_fmtd(level, text, **kwargs)
@@ -1309,7 +1322,6 @@ if __debug__:
         """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
         return _debug.trace_values(level, collection, label, indentation, use_repr, max_len)
 
-    @docstring_parameter(max_len=max_trace_value_len)
     def trace_expr(level: IntOrTraceLevel, *values, **kwargs) -> str:
         """Trace each of the argument VALUES (if at trace LEVEL or higher).
         Note: _caller_depth=1 is passed to account for this wrapper frame."""
@@ -1641,13 +1653,14 @@ def init_logging() -> None:
     return
 
 
-## OLD: def _print_exception_info(task: Any) -> None:
-def _print_exception_info(task: str) -> None:
-    """Output exception information to stderr regarding TASK (e.g., function)"""
-    # Note: non-tracing version of system's print_exception_info
-    sys.stderr.write("Error during {t}: {exc}\n".
-                     format(t=task, exc=sys.exc_info()))
-    return
+## BAD (not defined for docstring_parameter):
+## ## OLD: def _print_exception_info(task: Any) -> None:
+## def _print_exception_info(task: str) -> None:
+##     """Output exception information to stderr regarding TASK (e.g., function)"""
+##     # Note: non-tracing version of system's print_exception_info
+##     sys.stderr.write("Error during {t}: {exc}\n".
+##                      format(t=task, exc=sys.exc_info()))
+##     return
 
 
 ## SKIP_VALIDATE_CALL: frame: FrameType has no pydantic-core schema (would need
