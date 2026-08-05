@@ -327,8 +327,15 @@ class Main:
             default_temp_file = gh.form_path(self.temp_base, "temp.txt")
         else:
             default_temp_file = self.temp_base
-        self.temp_file = (TEMP_FILE or default_temp_file)
-
+        ## BAD: self.temp_file = (TEMP_FILE or default_temp_file)
+        #
+        # Avoid overriding temp_file with TEMP_FILE if TEMP_FILE is exactly
+        # temp_base and temp_base is being used as a directory. (Fix via Gemini 3.1 Pro).
+        if TEMP_FILE and not (self.use_temp_base_dir and TEMP_FILE == self.temp_base):
+            self.temp_file = TEMP_FILE
+        else:
+            self.temp_file = default_temp_file
+        
         # Note: --help assumed for input-less scripts with command line options
         # to avoid inadvertent script processing.
         #
@@ -414,14 +421,17 @@ class Main:
             self,
             just_positional: bool = False,
             just_optional: bool = False
-        ) -> List[UserArgInfoType]:
+        ) -> List[str]:
         """Return list of arguments, optionally JUST_POSITIONAL and JUST_OPTIONAL"""
         argument_specs = []
         if not just_positional:
             argument_specs += self.boolean_options + self.text_options + self.int_options + self.float_options
         if not just_optional:
             argument_specs += self.positional_options
-        arguments = [(spec[0] if isinstance(spec, list) else spec) for spec in argument_specs]
+        arguments = []
+        for spec in argument_specs:
+            label = (spec[0] if isinstance(spec, (list, tuple)) else spec)
+            arguments.append(str(label))
         debug.trace(6, f"get_arguments([pos?={just_positional}, opt?={just_optional}] => {arguments}")
         return arguments
     
@@ -574,7 +584,7 @@ class Main:
             alt_label = under_label if positional else dash_label
             value = self.parsed_args.get(alt_label)
             if value:
-                debug.trace(4, f"FYI: Resolved for alternative label workaround: {alt_label=} {value=}")
+                debug.trace(4, f"FYI: Resolved via alternative label workaround: {alt_label=} {value=}")
         # Override null value with default
         if value is None:
             if ((default is None) and ENV_OPTION_PREFIX):
@@ -608,10 +618,22 @@ class Main:
         debug.trace_fmtd(6, "get_parsed_agument({l}, [{d}])",
                          l=label, d=default)
         ## TODO2: debug.assertion(label in ((l[0] if isinstance(l, list) else l)) for l in self.positional_options)
-        is_positional = (label in self.get_arguments(just_positional=True))
+        ## BAD: is_positional = (label in self.get_arguments(just_positional=True))
+        positional_labels = self.get_arguments(just_positional=True)
+        resolved_label = label
+        is_positional = (label in positional_labels)
+        if (not is_positional) and allow_under:
+            # Support underscore/dash aliases when caller requests relaxed lookup.
+            # EX: file_path should match positional label file-path.
+            normalized_label = label.replace("-", "_")
+            for pos_label in positional_labels:
+                if normalized_label == pos_label.replace("-", "_"):
+                    resolved_label = pos_label
+                    is_positional = True
+                    break
         if not is_positional:
             debug.trace(4, f"FYI: Use get_parsed_option for non-positional option {label}")
-        return self.get_parsed_option(label, default, positional=is_positional,
+        return self.get_parsed_option(resolved_label, default, positional=is_positional,
                                       allow_under=allow_under)
 
     def check_arguments(self, runtime_args: List[str]) -> None:
@@ -753,7 +775,7 @@ class Main:
 
         # Parse the command line and get result
         debug.trace_fmtd(6, "parser={p}", p=parser)
-        debug.trace_expr(5, parser._actions, max_len=4096)
+        debug.trace_values(5, parser._actions, "parser._actions")       # pylint: disable=protected-access
         debug.trace_object(8, parser, max_depth=2)
         self.parser = parser
         # note: not trapped to allow for early exit
