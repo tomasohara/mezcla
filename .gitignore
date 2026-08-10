@@ -22,7 +22,12 @@
 #   $ git check-ignore --non-matching --verbose missing-file.txt
 #   ::  missing-file.txt
 # - This uses format <file>:<line>:<pattern> (n.b., '::' indicates no match).
-#
+#-------------------------------------------------------------------------------
+# Warning:
+# - The gitignore framework doesn't account for empty directories:
+#   https://stackoverflow.com/questions/3030230/does-git-ignore-empty-folders
+# - Use clean with --dry-run for that instead:
+#   $ git clean --dry-run .
 #-------------------------------------------------------------------------------
 # TODO:
 # - Address the TODO's below.
