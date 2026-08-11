@@ -36,7 +36,7 @@ AI agent instructions for arbitrary repos. This is based on instructions designe
 
 0. Avoid pre-function comments in Python and similar languages: place them below the docstring.
 
-0. Don't delete code without explicit confirmation. Instead, comment it out and add a block prefix of '## OLD:' as follows (n.b., only one OLD per block):
+0. Don't delete code without explicit confirmation, even if superseded by code change. Instead, comment it out and add a block prefix of '## OLD:' as follows (n.b., only use one OLD label per block):
 
 	```
 	num /= sum
@@ -54,7 +54,7 @@ AI agent instructions for arbitrary repos. This is based on instructions designe
 		print(f"Error: unexpected condition with {num=} {sum=}")
 	```
 
-Of course, this can be awkward for in-depth changes so ask for clarification.
+Because the use of OLD-comments blocks can be awkward for in-depth changes, ask for clarification.
 
 Some variations follow. For single-line changes, just use "## OLD: statement ..." (i.e., one comment not two). When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
