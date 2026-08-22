@@ -94,14 +94,14 @@ dist
 # ex: reempl-notes.txt
 **/*notes*txt
 
-# Dated backup files
+# Dated backup files (extension-like timestamp affix)
 # ex: html_utils.py.09mar22
-**/*.[0-9][0-9][A-Za-z]*[0-9][0-9]
+**/*.[0-9][0-9][A-Za-z][A-Za-z][A-Za-z]*[0-9][0-9]
 # ex: usage.list.08Jan22.2
-**/*.[0-9][0-9][A-Za-z]*[0-9][0-9].*
+**/*.[0-9][0-9][A-Za-z][A-Za-z][A-Za-z]*[0-9][0-9].*
 ## TEST:
 ## ex: poe-models-25sep25.json
-**/*[.-][0-9][0-9][A-Za-z]*[0-9][0-9][.-]*
+**/*[.-][0-9][0-9][A-Za-z][A-Za-z][A-Za-z]*[0-9][0-9][.-]*
 versioned-files
 
 # Emacs
