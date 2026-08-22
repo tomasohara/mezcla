@@ -97,6 +97,6 @@ def main():
     
 if __name__ == '__main__':
     debug.trace_current_context(level=TL.QUITE_DETAILED)
-    debug.trace_fmt(TL.USUAL, "Environment options: {eo}",
+    debug.trace_fmt(TL.DETAILED, "Environment options: {eo}",
                     eo=system.formatted_environment_option_descriptions())
     main()
