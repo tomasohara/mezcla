@@ -29,17 +29,17 @@ setup(name='Mezcla',
       # TODO3: find out which email key is preferred
       email="tomasohara@gmail.com",
       author_email="tomasohara@gmail.com",
-      python_requires=">=3.8",
+      python_requires=">=3.9",
       ## TODO4?:
       install_requires=["asttokens", "executing", "six"],
       home_page="https://github.com/tomasohara/Mezcla",
       classifiers=[
           "License :: OSI Approved :: LGPLv3",
           "Programming Language :: Python :: 3",
-          "Programming Language :: Python :: 3.8",
+          "Programming Language :: Python :: 3.9",
       ],
       description="""
 Package with core modules from https://github.com/tomasohara/misc-utility
 note: mezcla is Spanish for mixture.
 """)
-# TODO1: Muchas gracias a Bruno y Tana; <thanks in Tibet> to Aviyan
+# TODO1: Muchas gracias a Bruno y Tana; <thanks in Nepali> to Aviyan
