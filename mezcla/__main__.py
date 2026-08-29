@@ -5,6 +5,8 @@
 # Also see
 #    https://stackoverflow.com/questions/4042905/what-is-main-py
 #
+## UPDATE 29 Aug 26: adds client arg to main
+#
 
 """Entry point for mezcla"""
 
@@ -21,13 +23,16 @@ from mezcla import system
 # Contants
 TL = debug.TL
 
-def main(omit_warnings=False):
+def main(omit_warnings=None, client=None):
     """Entry point: shows version info if debugging otherwise a warning"""
+    if omit_warnings is None:
+        omit_warnings = client
     if not omit_warnings:
         system.print_error(f"Warning: {__file__} is not intended as standalone.")
     file_path = system.real_path(gh.dirname(__file__))
-    debug.trace(TL.USUAL, f"Version: {mezcla.__VERSION__}")
-    debug.trace(TL.USUAL, f"Install path: {file_path}")
+    level = (TL.USUAL if not client else TL.ALWAYS)
+    debug.trace(level, f"Version: {mezcla.__VERSION__}")
+    debug.trace(level, f"Install path: {file_path}")
 
     # Derive module name
     # example: /home/tomohara/python/Mezcla/mezcla/__main__.py => "mezcla"
