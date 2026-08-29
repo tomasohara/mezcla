@@ -6,6 +6,8 @@
 # - This is currently just used to trace out path and version info.
 # - A warning is shown if invoked in non-debug mode.
 #
+## UPDATE 29 Aug 26: uses new client arg to mezcla_main
+#
 
 """Wrapper for mezcla module info display"""
 
@@ -19,8 +21,13 @@ if __name__ == '__main__':
     sys.path.insert(0, repo_root)
 
     # Invoke the package entry point in mezcla.__main__.
+    # note: applies standard workaround for Windows invocation quirks
     from mezcla import debug
     from mezcla.__main__ import main as mezcla_main
     sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
-    skip_warnings = debug.debugging()
-    sys.exit(mezcla_main(omit_warnings=skip_warnings))
+    ##
+    ## OLD:
+    ## skip_warnings = debug.debugging()
+    ## sys.exit(mezcla_main(omit_warnings=skip_warnings))
+    ##
+    sys.exit(mezcla_main(client=True))
