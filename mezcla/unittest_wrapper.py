@@ -692,7 +692,7 @@ class TestWrapper(unittest.TestCase):
                     stdout, stderr = self.capsys.readouterr()
                     ## TODO4: resolve issue with resolve_assertion call-stack tracing being clippped
                     debug.trace_expr(self.capsys_debug_level, stdout, stderr,
-                                     prefix="get_stdout_stderr:\n", delim="\n", max_len=32768)
+                                     prefix="get_stdout_stderr:\n", delim="\n", max_len=65536)
         except:
             # note: trace level high so as not to affect normal testing
             debug.trace_exception(self.capsys_debug_level + 2, "get_stdout_stderr")
