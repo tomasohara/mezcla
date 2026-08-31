@@ -62,6 +62,7 @@
 # - Add exception handling throughout (e.g., more in trace_object).
 # - Apply format_value consistently.
 #
+## UPDATE 31 Aug 26: trace_values optionally coerces single values
 #
 
 """Debugging functions (e.g., tracing)"""
@@ -667,8 +668,6 @@ if __debug__:
                 self.trace(ALWAYS, "")
             return
 
-
-        ## OLD: collection: Union[list, dict, Any] (redundant: Any already subsumes list/dict)
         def trace_values(
                 self,
                 level: IntOrTraceLevel,
@@ -676,11 +675,16 @@ if __debug__:
                 label: Optional[str] = None,
                 indentation: Optional[str] = None,
                 use_repr: Optional[bool] = None,
-                max_len: Optional[int] = None
+                max_len: Optional[int] = None,
+                coerce: Optional[bool] = None,
             ) -> None:
-            """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher"""
-            ## TODO2: mention other types coerced into collections (e.g., mapping to dict)
-            # TODO3: return text as with trace and trace_expr
+            """Trace out elements of array or hash COLLECTION if at trace LEVEL or higher.
+            note: Coerces common collection-like objects, such as mappings to dict,
+            as well as sets or iterators to list.
+            Optionlly COERCEs other values into a list (e.g., scalar).
+            Warning: an iterator will be consumed, so save to list beforehand.
+            """
+            # TODO2: return text as with trace and trace_expr
             self.trace_fmt(MOST_VERBOSE, "trace_values(dl, {coll}, label={lbl}, indent={ind})",
                       dl=level, lbl=label, coll=collection, ind=indentation)
             if (trace_level < level):
@@ -695,13 +699,13 @@ if __debug__:
             # note: sets will be coerced to lists
             if not isinstance(collection, (list, dict)):
                 if hasattr(collection, '__iter__'):
-                    if not isinstance(collection, tuple):
+                    if not isinstance(collection, (tuple, set)):
                         self.trace(level + 1, "Warning: [trace_values] consuming iterator")
                     collection = list(collection)
                 else:
-                    ## TODO3: drop support for scalars
-                    ## OLD: self.trace(level + 1, "Warning: [trace_values] coercing input into list")
-                    self.trace(level + 1, "Deprecation warning: [trace_values] coercing single value into list")
+                    if not coerce:
+                        ## TODO2: drop automatic conversion of scalars
+                        self.trace(level + 1, "Deprecation warning: [trace_values] coercing single value into list")
                     collection = [collection]
             if indentation is None:
                 indentation = INDENT1
@@ -937,7 +941,6 @@ if __debug__:
                     traceback.print_stack(file=debug_file)
             return
 
-        ## OLD: task: Any
         def trace_exception(self, level: IntOrTraceLevel, task: str,
                             show_stack: Optional[bool] = None) -> None:
             """Trace exception information regarding TASK (e.g., function) at LEVEL.
@@ -965,7 +968,6 @@ if __debug__:
             return
 
 
-        ## OLD: expression: Union[bool, Any] (redundant: Any already subsumes bool)
         def assertion(
                 self,
                 expression: object,
@@ -1310,7 +1312,6 @@ if __debug__:
         return _debug.trace_object(level, obj, label, show_all, show_private, show_methods_etc,
                                    indentation, pretty_print, max_value_len, max_depth, regular_standard)
 
-    ## OLD: collection: Union[list, dict, Any] (redundant: Any already subsumes list/dict)
     def trace_values(
             level: IntOrTraceLevel,
             collection: object,
@@ -1345,7 +1346,6 @@ if __debug__:
         """Output stack trace to stderr (if at trace LEVEL or higher)"""
         return _debug.trace_stack(level)
 
-    ## OLD: task: Any
     def trace_exception(level: IntOrTraceLevel, task: str,
                         show_stack: Optional[bool] = None) -> None:
         """Trace exception information regarding TASK (e.g., function) at LEVEL"""
@@ -1358,7 +1358,6 @@ if __debug__:
         """Raise an exception if debugging (at specified trace LEVEL)"""
         return _debug.raise_exception(level)
 
-    ## OLD: expression: Union[bool, Any] (redundant: Any already subsumes bool)
     def assertion(
             expression: object,
             issue: Optional[str] = None,
@@ -1609,7 +1608,6 @@ def format_value(value: Any, max_len: Optional[int] = None,
     return result
 
 
-## OLD: def xor(value1: Any, value2: Any) -> bool:
 def xor(value1: object, value2: object) -> bool:
     """Whether VALUE1 and VALUE2 differ when interpretted as booleans"""
     # Note: Used to clarify assertions; same as bool(value1) != bool(value2).
@@ -1654,7 +1652,7 @@ def init_logging() -> None:
 
 
 ## BAD (not defined for docstring_parameter):
-## ## OLD: def _print_exception_info(task: Any) -> None:
+## ## PREVIOUS: def _print_exception_info(task: Any) -> None:
 ## def _print_exception_info(task: str) -> None:
 ##     """Output exception information to stderr regarding TASK (e.g., function)"""
 ##     # Note: non-tracing version of system's print_exception_info
