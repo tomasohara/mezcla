@@ -54,7 +54,8 @@
 # TODO2:
 # - Document selenium/webdriver installation (e.g., gecko drivers).
 # - Add more selenium diagnostics (e.g., using temporary profile via FIREFOX_PROFILE).
-# 
+#
+## UPDATE 31 Aug 26: Sanity check tweaks (on change, etc.).
 
 """HTML utility functions"""
 
@@ -995,7 +996,7 @@ def format_checkbox(param_name : str, label : Optional[str] = None, skip_capital
     status_spec = f"{checkbox_spec} {disabled_spec}".strip()
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
-    debug.assertion("'" not in str(on_change))
+    debug.assertion('\"' not in str(on_change))
     misc_spec += (f" onchange=\"{on_change}\"" if on_change else "")
     label_misc_spec = ""
     if (label is None):
@@ -1074,7 +1075,7 @@ def format_input_field(
     # Note: See https://stackoverflow.com/questions/25247565/difference-between-maxlength-size-attribute-in-html
     # For tooltip support, see https://stackoverflow.com/questions/65854934/is-a-css-only-inline-tooltip-with-html-content-inside-eg-images-possible.
     debug.trace_expr(7, param_name, label, skip_capitalize, default_value, max_len, size, max_value,
-                     disabled, style, misc_attr, tooltip, text_area, num_rows, on_change,
+                     disabled, style, misc_attr, tooltip, text_area, num_rows, on_change, on_input,
                      field_type, concat_label, outer_span_class, param_dict,
                      prefix="in format_input_field: ")
     if (label is None):
@@ -1097,9 +1098,9 @@ def format_input_field(
     disabled_spec = ("disabled" if disabled else "")
     style_spec = (f"style='{style}'" if style else "")
     misc_spec = (misc_attr if misc_attr else "")
-    debug.assertion("'" not in str(on_change))
+    debug.assertion('"' not in str(on_change))
     misc_spec += (f" onchange=\"{on_change}\"" if on_change else "")
-    debug.assertion("'" not in str(on_input))
+    debug.assertion('"' not in str(on_input))
     misc_spec += (f" oninput=\"{on_input}\"" if on_input else "")
     label_misc_spec = ""
     tooltip_start_spec = tooltip_end_spec = ""
