@@ -19,7 +19,7 @@ AI agent instructions for arbitrary repos. This is based on instructions designe
 	*   Readability is important. For example, make sure dynamic imports are not buried without an indication that used at top (e.g., via comment in modules section).
 	* Similarly, make sure all functions and methods use docstrings. They can be brief for inherited methods.
 *   **License**: Code is licensed under **LGPLv3**.
-*   **Imports**: The package is designed to be installed or used with `PYTHONPATH` set to include the root directory (handled automatically by `run_tests.bash`).
+*   **Imports**: The package is designed to be installed or used with `PYTHONPATH` set to include the root directory (handled automatically by `run_tests.bash`). If the changes are simple and isolated, it is OK to invoke the tests directly (e.g., `pytest -k method ...`).
 
 ## General code agent guidelines
 
@@ -97,6 +97,8 @@ possible. In particular, avoid purely stylistic changes. This will facilitate re
 0. Don't remove existing files without confirmation: rename them instead (e.g., <filename>.DDMmmYY).
 
 0. Don't try to run sudo: ask me to run commands that require special permissions.
+
+0. When running tests, use headless mode to avoid desktop clutter and conflicts.
 
 ## Debug level conventions
 
