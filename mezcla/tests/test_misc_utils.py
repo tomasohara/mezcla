@@ -12,7 +12,7 @@
 """Tests for misc_utils module"""
 
 # Standard packages
-import math
+## OLD: import math
 import datetime
 import time
 import os
@@ -29,7 +29,6 @@ from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import SKIP_EXPECTED_ERRORS, SKIP_EXPECTED_REASON
-## OLD: from mezcla.mezcla_to_standard import EqCall, Features
 # note: mezcla_to_standard uses packages not installed by default (e.g., libcst)
 try:
     from mezcla import mezcla_to_standard
@@ -285,7 +284,6 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         """ensure time_function works as expected"""
         debug.trace(4, "test_time_function()")
         ms = THE_MODULE.time_function(time.sleep, 0.25)
-        ## OLD: assert math.floor(ms) == 250
         assert THE_MODULE.is_close(ms, 250, epsilon=10)
 
     def test_get_class_from_name(self):
@@ -300,7 +298,6 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         actual = THE_MODULE.apply_numeric_suffixes(text, just_once=just_once)
         assert actual.strip() == expect.strip()
     
-    @pytest.mark.xfail                  # TODO: remove xfail
     @parametrize(
         "text, actual",
         ## TODO? ("text, actual")     # see https://github.com/adamchainz/unittest-parametrize
@@ -321,7 +318,6 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         self.check_apply_numeric_suffixes("2048 16384", "2K 16K")
         self.check_apply_numeric_suffixes("2048 16384", "2K 16384", just_once=True)
 
-    @pytest.mark.xfail                  # TODO: remove xfail
     def test_stdin_apply_numeric_suffixes(self):
         """Check apply_numeric_suffixes_stdin"""
         debug.trace(5, f"TestIt.test_stdin_apply_numeric_suffixes(); self={self}")
@@ -331,7 +327,6 @@ class TestMiscUtils(TestWrapper, ParametrizedTestCase):
         actual = self.get_stdout().strip()
         assert actual == "999 1K"
 
-    @pytest.mark.xfail                  # TODO: remove xfail
     def test_GlobalSetter(self):
         """Ensure that GlobalSetter's changes are temporary"""
         self.patch_trace_level(3)
@@ -360,7 +355,6 @@ class TestFileToInstance(TestWrapper):
         EqCall(gh.dir_path, dests=os.path.dirname, eq_params={"filename": "p"}),
     ]
 
-    @pytest.mark.xfail                  # TODO: remove xfail
     def check_instances(self, instances):
         """Check that INSTANCES match expected_instances"""
         assert self.expected_instances[0].targets[0].path == instances[0].targets[0].path
@@ -370,7 +364,6 @@ class TestFileToInstance(TestWrapper):
         assert self.expected_instances[1].dests[0].path == instances[1].dests[0].path
         
     
-    @pytest.mark.xfail                  # TODO: remove xfail
     def test_convert_json_to_instance(self):
         """ensure convert_json_to_instance works as expected"""
         debug.trace(4, "test_convert_json_to_instance()")
@@ -385,7 +378,6 @@ class TestFileToInstance(TestWrapper):
         )
         self.check_instances(instances)
         
-    @pytest.mark.xfail                  # TODO: remove xfail
     def test_convert_yaml_to_instance(self):
         """ensure convert_yaml_to_instance works as expected"""
         debug.trace(4, "test_convert_yaml_to_instance()")
@@ -416,7 +408,6 @@ class TestFileToInstance(TestWrapper):
         )
         self.check_instances(instances)
 
-    @pytest.mark.xfail                  # TODO: remove xfail
     def test_convert_py_data_to_instance(self):
         """verify convert_py_data_to_instance"""
         debug.trace(4, "test_convert_py_data_to_instance()")
