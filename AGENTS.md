@@ -100,6 +100,10 @@ possible. In particular, avoid purely stylistic changes. This will facilitate re
 
 0. When running tests, use headless mode to avoid desktop clutter and conflicts.
 
+0. Note that batch deletions such as `rm -rf dir` are forbidden! Instead, rename the files with an affix based on the current date. For example,
+   $ mkdir /tmp/fubar; rename-with-file-date /tmp/fubar
+   renamed '/tmp/fubar' -> '/tmp/fubar.02Sep26'
+
 ## Debug level conventions
 
 ```
