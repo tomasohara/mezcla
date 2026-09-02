@@ -44,6 +44,7 @@ class TestRgbColorName(TestWrapper, ParametrizedTestCase):
         """Runs script over FILE_CONTENT using CMD_OPTION
         Note: keyword args for run_script passed along (e.g., env_options and log_file
         """
+        ## TODO3: cmd_option => cmd_options (for consistency with run_script); similarly for file_content
         data_file = self.create_temp_file(contents=file_content)
         output = self.run_script(options=cmd_option, data_file=data_file, **kwargs)
         return output
@@ -91,24 +92,29 @@ class TestRgbColorName(TestWrapper, ParametrizedTestCase):
     def test_rgb_hex3(self, hex3_val, color):
         """Test the hex3 option"""
         debug.trace(4, f"test_rgb_hex3({hex3_val}, {color})")
+        debug.assertion(my_re.search(r"^#[0-9a-f]{3}$", hex3_val))
         option = "--hex3"
         helper_output = self.helper_rgb_color_name(
             cmd_option=option,
             file_content=hex3_val
         )
         # example: <#ddd, gainsboro>
+        ## TODO4?:
+        ## clean_hex = hex3_val.replace(',', '')
+        ## assert f"<{clean_hex}, {color}>" in helper_output
         assert f"<{hex3_val}, {color}>" in helper_output
 
     @parametrize(
         "hex6_val, color",
-        [("a36651", "sienna"),
+        [("#a36651", "sienna"),
          ("#f5deb3", "wheat"),
-         ("#,", ""),
+         ("#7fff00,", "chartreuse"),
          ## TODO: ("xHHHHHH", "color"),
         ])
     def test_rgb_hex6(self, hex6_val, color):
         """Test the hex6 option"""
         debug.trace(4, f"test_rgb_hex6({hex6_val}, {color})")
+        debug.assertion(my_re.search(r"^#[0-9a-f]{6}$", hex6_val))
         option = "--hex6"
         helper_output = self.helper_rgb_color_name(
             cmd_option=option,
@@ -167,8 +173,10 @@ class TestRgbColorName(TestWrapper, ParametrizedTestCase):
     def test_bad_regex(self):
         """Verify invalid regex flagged"""
         temp_log_file = self.get_temp_file() + ".log"
-        output = self.helper_rgb_color_name("--rgb-regex '(.) (.) (.'",
-                                            "a b c", log_file=temp_log_file)
+        output = self.helper_rgb_color_name(
+            cmd_option="--rgb-regex '(.) (.) (.'",
+            file_content="a b c",
+            log_file=temp_log_file)
         # Should lead to exception
         # example: "re.error: missing ), unterminated subpattern at position 8"
         assert output == ""
@@ -180,13 +188,17 @@ class TestRgbColorName(TestWrapper, ParametrizedTestCase):
     def test_dump_hexnames(self):
         """Verify that DUMP_HEXNAMES covers 100+ unique colors"""
         temp_log_file = self.get_temp_file() + ".log"
-        output = self.helper_rgb_color_name("n/a", "-", log_file=temp_log_file,
-                                            env_options="DUMP_HEXNAMES=1")
+        output = self.helper_rgb_color_name(
+            # note: with DUMP_HEXNAMES, no filename required
+            cmd_option="",
+            env_options="DUMP_HEXNAMES=1",
+            file_content="n/a",
+            log_file=temp_log_file)
         log_lines = system.read_lines(temp_log_file)
         assert output == ""
         # There should be 100+ entries (currently 138)
         # example: color: thistle=#d8bfd8
-        color_info = gh.extract_matches(fr"color: (\w+)=(#[0-9a-f]{6})",
+        color_info = gh.extract_matches(r"color: (\w+)=(#[0-9a-f]{6})",
                                         log_lines, fields=2)
         color_names, color_codes = unzip(color_info)
         debug.trace_expr(5, color_names, color_codes)
