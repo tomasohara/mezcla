@@ -5,3 +5,10 @@
 #
 $ python -c 'import gradio' 2>&1 | grep -c Error
 0
+
+#------------------------------------------------------------------------------
+#
+## TODO: diagnose wheat color (should not be white)
+$ echo '#F5DEB3' | ~/mezcla/rgb_color_name.py --hex6 -
+Processing input
+<#F5DEB3, wheat>
