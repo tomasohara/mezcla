@@ -101,6 +101,7 @@ intro = None
 class TraceLevel(enum.IntEnum):
     """Constants for use in tracing"""
     ALWAYS = 0                          # no filtering; added mainly for completeness
+    NONE = ALWAYS                       # alias for no filtering
     ERROR = 1                           # definite errors; typically shown
     WARNING = 2                         # possible errors; typically shown
     DEFAULT = WARNING                   # by default just warnings and errors
