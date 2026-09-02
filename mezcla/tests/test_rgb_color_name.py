@@ -9,9 +9,9 @@
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_rgb_color_name.py
 #
 # TODO2:
-# - Bite the bullet and drop the xfail's.
 # - Likewise remove long-in-place xfail's in other test files (unless brittle).
 #
+## UPDATE 02 Sep 26: paramwterizes hex3 and hex6 tests
 
 """Tests for rgb_color_name module"""
 
@@ -20,29 +20,34 @@ import re
 
 # Installed packages
 import pytest
+from unittest_parametrize import ParametrizedTestCase, parametrize
 
 # Local packages
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import debug
-## OLD: from mezcla import glue_helpers as gh
+from mezcla import glue_helpers as gh
 from mezcla import system
+from mezcla.my_regex import my_re
+from mezcla.misc_utils import unzip
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:            global module object
 import mezcla.rgb_color_name as THE_MODULE
 
-class TestRgbColorName(TestWrapper):
+class TestRgbColorName(TestWrapper, ParametrizedTestCase):
     """Class for testcase definition"""
     script_file = TestWrapper.get_module_file_path(__file__)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
-    def helper_rgb_color_name(self, cmd_option:str, file_content:str):
-        """Runs script over FILE_CONTENT using CMD_OPTION"""
-        data_file =self.create_temp_file(contents=file_content)
-        output = self.run_script(options=cmd_option, data_file=data_file)
+    def helper_rgb_color_name(self, cmd_option:str, file_content:str, **kwargs):
+        """Runs script over FILE_CONTENT using CMD_OPTION
+        Note: keyword args for run_script passed along (e.g., env_options and log_file
+        """
+        data_file = self.create_temp_file(contents=file_content)
+        output = self.run_script(options=cmd_option, data_file=data_file, **kwargs)
         return output
 
-    @pytest.mark.xfail
     def test_data_file(self):
         """Makes sure colors annotated as expected"""
         debug.trace(4, "TestRgbColorName.test_data_file()")
@@ -64,7 +69,6 @@ class TestRgbColorName(TestWrapper):
         self.do_assert(re.search(r"<\(0, 255, 0\), lime>", output))
         return
         
-    @pytest.mark.xfail
     def test_rgb_regex(self):
         """Test the regex for RGB specification"""
         debug.trace(4, "test_rgb_regex()")
@@ -76,34 +80,43 @@ class TestRgbColorName(TestWrapper):
             file_content=color_tuple
         )
         assert color in helper_output
-    
-    @pytest.mark.xfail
-    def test_rgb_hex3(self):
+
+    @parametrize(
+        "hex3_val, color",
+        [("#f45", "tomato"),
+         ("#ddd", "gainsboro"),
+         ("#eee,", "whitesmoke"),
+         ## TODO: ("xHHH", "color"),
+        ])
+    def test_rgb_hex3(self, hex3_val, color):
         """Test the hex3 option"""
-        debug.trace(4, "test_rgb_hex3()")
+        debug.trace(4, f"test_rgb_hex3({hex3_val}, {color})")
         option = "--hex3"
-        hex3_val = "#f45"
-        color = "tomato"
         helper_output = self.helper_rgb_color_name(
             cmd_option=option,
             file_content=hex3_val
         )
-        assert color in helper_output
+        # example: <#ddd, gainsboro>
+        assert f"<{hex3_val}, {color}>" in helper_output
 
-    @pytest.mark.xfail
-    def test_rgb_hex6(self):
+    @parametrize(
+        "hex6_val, color",
+        [("a36651", "sienna"),
+         ("#f5deb3", "wheat"),
+         ("#,", ""),
+         ## TODO: ("xHHHHHH", "color"),
+        ])
+    def test_rgb_hex6(self, hex6_val, color):
         """Test the hex6 option"""
-        debug.trace(4, "test_rgb_hex3()")
+        debug.trace(4, f"test_rgb_hex6({hex6_val}, {color})")
         option = "--hex6"
-        hex6_val = "#a36651"
-        color = "sienna"
         helper_output = self.helper_rgb_color_name(
             cmd_option=option,
             file_content=hex6_val
         )
+        # example: <#f5deb3, wheat>
         assert color in helper_output
 
-    @pytest.mark.xfail
     def test_rgb_show_hex(self):
         """Test the show-hex option"""
         debug.trace(4, "test_rgb_shiw_hex()")
@@ -118,7 +131,6 @@ class TestRgbColorName(TestWrapper):
         assert color in helper_output
         assert color_hex in helper_output
 
-    @pytest.mark.xfail
     def test_rgb_hex(self):
         """Test the hex option"""
         debug.trace(4, "test_rgb_hex()")
@@ -131,7 +143,6 @@ class TestRgbColorName(TestWrapper):
         )
         assert color in helper_output
 
-    @pytest.mark.xfail
     def test_rgb_skip_direct(self):
         """Test the skip-direct option"""
         debug.trace(4, "test_rgb_skip_direct()")
@@ -152,6 +163,36 @@ class TestRgbColorName(TestWrapper):
         )
         assert color in helper_output
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def test_bad_regex(self):
+        """Verify invalid regex flagged"""
+        temp_log_file = self.get_temp_file() + ".log"
+        output = self.helper_rgb_color_name("--rgb-regex '(.) (.) (.'",
+                                            "a b c", log_file=temp_log_file)
+        # Should lead to exception
+        # example: "re.error: missing ), unterminated subpattern at position 8"
+        assert output == ""
+        assert "re.error" in system.read_entire_file(temp_log_file)
+        # Should have no color spec: <a b c, lightsteelblue>
+        assert not my_re.search(r"<a b c, \w+>", output)
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_dump_hexnames(self):
+        """Verify that DUMP_HEXNAMES covers 100+ unique colors"""
+        temp_log_file = self.get_temp_file() + ".log"
+        output = self.helper_rgb_color_name("n/a", "-", log_file=temp_log_file,
+                                            env_options="DUMP_HEXNAMES=1")
+        log_lines = system.read_lines(temp_log_file)
+        assert output == ""
+        # There should be 100+ entries (currently 138)
+        # example: color: thistle=#d8bfd8
+        color_info = gh.extract_matches(fr"color: (\w+)=(#[0-9a-f]{6})",
+                                        log_lines, fields=2)
+        color_names, color_codes = unzip(color_info)
+        debug.trace_expr(5, color_names, color_codes)
+        assert 128 < len(system.unique_items(color_names)) < 256
+        assert 128 < len(system.unique_items(color_codes)) < 256
+            
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':
