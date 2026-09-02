@@ -40,7 +40,8 @@
 # - Add option to invoke extcolors automatically.
 # - Add direct way to generate webcolor listing.
 #................................................................................
-# UPDATE 16 Jul 26: hex3 values not expanded
+## UPDATE 02 Sep 26: fixes legacy hex3 expansion
+## UPDATE 16 Jul 26: hex3 values not expanded
 #
 
 r"""Convert RGB tuples into color names
@@ -152,6 +153,7 @@ class Script(Main):
         color_positions = []
         #
         for hex_code, name in hexnames.items():
+            # note: traces at TL.AWLAYS (1) if DUMP_HEXNAMES else TL.QUITE_DETAILED (6)
             hex_level = int(DUMP_HEXNAMES) or 6
             debug.trace(hex_level, f"color: {name}={hex_code}")
             self.color_names.append(name)
@@ -203,9 +205,13 @@ class Script(Main):
             # Handle special case of #xyz => #xxyyzz
             ## TODO2: deprecate this feature #xxx expansion
             if target_hex3 or self.expand_hex3:
-                red += red
-                green += green
-                blue += blue
+                debug.assertion(len(red) == len(green) == len(blue))
+                if len(red) == 1:
+                    red += red
+                    green += green
+                    blue += blue
+                else:
+                    debug.trace(4, f"Warning: not expanding hex3: {rgb_original=} {text=}")
             if (my_re.search(r"^#...$", rgb) and self.expand_hex3):
                 debug.trace(4, f"FYI: Deprecated expansion of hex3 shortcut at line {self.line_num}: {line}")
                 rgb = "#" + red + green + blue
@@ -255,7 +261,8 @@ def main():
     script = gh.basename(__file__)
     basename = script.replace(".py", "")
     app = Script(
-        skip_input=DUMP_HEXNAMES,
+        ## OLD: skip_input=DUMP_HEXNAMES,
+        manual_input=DUMP_HEXNAMES,
         description=usage.format(script=script, basename=basename),
         usage_notes="Note: Input is not an image (e.g., use extcolors)",
         # Note: skip_input controls the line-by-line processing, which is inefficient but simple to
