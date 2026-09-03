@@ -90,6 +90,9 @@ SHOW_HEX = "show-hex"
 DUMP_HEXNAMES = system.getenv_bool(
     "DUMP_HEXNAMES", False,
     desc="Trace out hexnames hash")
+EXPAND_HEX3 = system.getenv_bool(
+    "EXPAND_HEX3", False,
+    desc="Expand hex3 patterns by default")
 HEX_CH = "[0-9A-F]"
 
 VERBOSE_SAMPLE_USAGE = r"""
@@ -108,7 +111,7 @@ class Script(Main):
     skip_direct = False
     show_hex = None
     check_direct_match = None
-    expand_hex3 = True
+    expand_hex3 = EXPAND_HEX3
 
     def setup(self):
         """Check results of command line processing"""
@@ -203,18 +206,19 @@ class Script(Main):
                     debug.trace(4, f"FYI: Assuming hex RGB spec '{rgb}' on line {self.line_num}")
                 rgb_base = 16
             # Handle special case of #xyz => #xxyyzz
-            ## TODO2: deprecate this feature #xxx expansion
             if target_hex3 or self.expand_hex3:
-                debug.assertion(len(red) == len(green) == len(blue))
                 if len(red) == 1:
+                    debug.assertion(len(red) == len(green) == len(blue))
                     red += red
                     green += green
                     blue += blue
                 else:
                     debug.trace(4, f"Warning: not expanding hex3: {rgb_original=} {text=}")
-            if (my_re.search(r"^#...$", rgb) and self.expand_hex3):
-                debug.trace(4, f"FYI: Deprecated expansion of hex3 shortcut at line {self.line_num}: {line}")
-                rgb = "#" + red + green + blue
+            if my_re.search(r"^#...$", rgb):
+                if self.expand_hex3:
+                    rgb = "#" + red + green + blue
+                else:
+                    debug.trace(4, f"FYI: not expanding hex3 shortcut at line {self.line_num}: {line}; enable via EXPAND_HEX3=1 ...")
                 
             # Convert to tuple of integers
             query_color = [system.safe_int(c, base=rgb_base) for c in [red, green, blue]]
