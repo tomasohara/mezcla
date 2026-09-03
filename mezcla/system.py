@@ -1433,6 +1433,7 @@ def unique_items(values: List[Any],
     """
     # EX: unique_items([1, 2, 3, 2, 1]) => [1, 2, 3]
     # EX: unique_items(["dog", "DOG", "cat"], ignore_case=True) => ["dog", "cat"]
+    debug.trace(6, f"unique_items: in len={len(values)}")
     ordered_hash = OrderedDict()
     in_values = []
     for item in values:
@@ -1448,6 +1449,8 @@ def unique_items(values: List[Any],
             if item_key not in ordered_hash:
                 ordered_hash[item_key] = item
     result = list(ordered_hash.values())
+    ## OLD: debug.trace_fmt(8, "unique_items({l}) => {r}", l=in_values, r=result)
+    debug.trace(6, f"unique_items: out len={len(result)}")
     debug.trace_fmt(8, "unique_items({l}) => {r}", l=in_values, r=result)
     return result
 #
