@@ -86,7 +86,7 @@ class TestRgbColorName(TestWrapper, ParametrizedTestCase):
         "hex3_val, color",
         [("#f45", "tomato"),
          ("#ddd", "gainsboro"),
-         ("#eee,", "whitesmoke"),
+         ("#eee", "whitesmoke"),
          ## TODO: ("xHHH", "color"),
         ])
     def test_rgb_hex3(self, hex3_val, color):
@@ -108,7 +108,7 @@ class TestRgbColorName(TestWrapper, ParametrizedTestCase):
         "hex6_val, color",
         [("#a36651", "sienna"),
          ("#f5deb3", "wheat"),
-         ("#7fff00,", "chartreuse"),
+         ("#7fff00", "chartreuse"),
          ## TODO: ("xHHHHHH", "color"),
         ])
     def test_rgb_hex6(self, hex6_val, color):
@@ -184,16 +184,15 @@ class TestRgbColorName(TestWrapper, ParametrizedTestCase):
         # Should have no color spec: <a b c, lightsteelblue>
         assert not my_re.search(r"<a b c, \w+>", output)
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_dump_hexnames(self):
         """Verify that DUMP_HEXNAMES covers 100+ unique colors"""
         temp_log_file = self.get_temp_file() + ".log"
-        output = self.helper_rgb_color_name(
-            # note: with DUMP_HEXNAMES, no filename required
-            cmd_option="",
-            env_options="DUMP_HEXNAMES=1",
-            file_content="n/a",
-            log_file=temp_log_file)
+        output = self.run_script(
+            log_file=temp_log_file,
+            options="",
+            # note: trace level 1 (ERROR) overrides the default of 0 (NONE) for subprocesses;
+            # see disable_subcommand_tracing in unittest_wrapper.py and glue_helpers.py.
+            env_options="DUMP_HEXNAMES=1 DEBUG_LEVEL=1")
         log_lines = system.read_lines(temp_log_file)
         assert output == ""
         # There should be 100+ entries (currently 138)
