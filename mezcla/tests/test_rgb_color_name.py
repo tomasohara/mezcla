@@ -189,7 +189,7 @@ class TestRgbColorName(TestWrapper, ParametrizedTestCase):
         temp_log_file = self.get_temp_file() + ".log"
         output = self.run_script(
             log_file=temp_log_file,
-            options="",
+            options="--verbose",        # dummy arg to bypass usage
             # note: trace level 1 (ERROR) overrides the default of 0 (NONE) for subprocesses;
             # see disable_subcommand_tracing in unittest_wrapper.py and glue_helpers.py.
             env_options="DUMP_HEXNAMES=1 DEBUG_LEVEL=1")
