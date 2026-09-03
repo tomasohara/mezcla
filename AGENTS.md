@@ -79,8 +79,6 @@ possible. In particular, avoid purely stylistic changes. This will facilitate re
    * Avoid putting function definitions inside of other code (e.g., use bottom for Perl and top for Python). Exceptions would be for small functions incorporating context (e.g., sorting helper function).
    * Use full extension names (e.g., ".perl" instead of ".pl").
 
-0. Name temporary files with leading `_` (e.g., `_test_regex.perl`).
-
 0. Make sure your in-line code comments abstract from the implementation to cover intention. If needed,
    added separate comments with special implementation notes.
  
@@ -103,6 +101,9 @@ possible. In particular, avoid purely stylistic changes. This will facilitate re
 0. Note that batch deletions such as `rm -rf dir` are forbidden! Instead, rename the files with an affix based on the current date. For example,
    $ mkdir /tmp/fubar; rename-with-file-date /tmp/fubar
    renamed '/tmp/fubar' -> '/tmp/fubar.02Sep26'
+
+0. Name temporary programs with leading `_` (e.g., `_test_regex.perl`), so that `git check-ignore` will filter them. 
+   Similarly, timestamp temporary input and output filenames (e.g., out-02Sep26.txt).
 
 ## Debug level conventions
 
