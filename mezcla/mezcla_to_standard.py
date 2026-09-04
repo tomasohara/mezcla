@@ -457,7 +457,11 @@ class CallDetails:
                 if not self.imported_modules.get(module):
                     # pylint: disable=eval-used,exec-used
                     debug.trace(6, f"FYI: importing {module}")
-                    exec(f"import {module}", global_sandbox)
+                    # Fix facilitated by Antigravity AI Assistant using Gemini 1.5 Pro
+                    try:
+                        exec(f"import {module}", global_sandbox)
+                    except ModuleNotFoundError:
+                        exec(f"from mezcla import {module}", global_sandbox)
                     debug.trace(6, f"{module}={eval(module, global_sandbox)}")
                     debug.assertion(module in global_sandbox)
                 else:
@@ -466,8 +470,10 @@ class CallDetails:
                 system.print_exception_info("EqCall imports")
         ## HACK: manually resolve aliases
         if not USER_IMPORTS:
-            global_sandbox["gh"] = global_sandbox["glue_helpers"]
-            global_sandbox["tpo"] = global_sandbox["tpo_common"]
+            if "glue_helpers" in global_sandbox:
+                global_sandbox["gh"] = global_sandbox["glue_helpers"]
+            if "tpo_common" in global_sandbox:
+                global_sandbox["tpo"] = global_sandbox["tpo_common"]
         # Some local functions as lambda in parameters
         # cannot be converted to path or callable
         # but also is not required, so we ignore them

@@ -6,6 +6,11 @@
 # - This can be run as follows:
 #   $ PYTHONPATH=".:$PYTHONPATH" python ./mezcla/tests/test_train_language_model.py
 #
+#
+# Revision History:
+# - Refactored format profile tests to use a dummy script and rank validation rather than brittle regex matches.
+#   Change facilitated by Antigravity AI Assistant using model Gemini 1.5 Pro.
+#
 #-------------------------------------------------------------------------------
 # Tested script usage:
 #
@@ -31,6 +36,11 @@
 #       $ python -m cProfile -o /tmp/profile.data simple_main_example.py
 #       $ PROFILE_KEY=calls /home/tomohara/Mezcla/mezcla/format_profile.py /tmp/profile.data | head
 #
+#
+# Revision History:
+# - Refactored format profile tests to use a dummy script and rank validation rather than brittle regex matches.
+#   Change facilitated by Antigravity AI Assistant using model Gemini 1.5 Pro.
+#
 #-------------------------------------------------------------------------------
 # Sample tested output:
 #
@@ -51,6 +61,11 @@
 #        1011    0.000    0.000    0.000    0.000 {method 'append' of 'list' objects}
 #         792    0.000    0.000    0.000    0.000 {built-in method builtins.hasattr}
 #         790    0.000    0.000    0.000    0.000 {built-in method builtins.getattr}
+#
+#
+# Revision History:
+# - Refactored format profile tests to use a dummy script and rank validation rather than brittle regex matches.
+#   Change facilitated by Antigravity AI Assistant using model Gemini 1.5 Pro.
 #
 #-------------------------------------------------------------------------------
 ## TODO0: convert test_formatprofile_PK_cumtime through test_formatprofile_PK_tottime using
@@ -98,6 +113,38 @@ class TestFormatProfile(TestWrapper):
     testing_options = ""
     old_testing_script = gh.resolve_path(gh.form_path("test_glue_helpers.py"), heuristic=True)
 
+    def setUp(self):
+        super().setUp()
+        self.testing_script = self.get_temp_file() + ".py"
+        self.old_testing_script = self.testing_script
+        self.testing_env = ""
+        self.testing_options = ""
+        import mezcla.glue_helpers as gh
+        gh.write_file(self.testing_script, '''
+def fast_func():
+    pass
+
+def slow_func():
+    for _ in range(10000):
+        pass
+
+def medium_func():
+    for _ in range(1000):
+        pass
+
+def main():
+    for _ in range(3):
+        slow_func()
+    for _ in range(5):
+        medium_func()
+    for _ in range(10):
+        fast_func()
+
+if __name__ == '__main__':
+    main()
+''')
+
+
     @staticmethod
     def encode(output, regex=False):
         r"""Convert OUTPUT to encoded representation (e.g., N for each digit).
@@ -120,6 +167,7 @@ class TestFormatProfile(TestWrapper):
     
     def helper_format_profile(
             self, key_arg, order_indicator: Optional[str] = None,
+            expected_ranking: Optional[list] = None,
             good_sample_output: Optional[str] = None, bad_sample_output: Optional[str] = None,
             testing_script: Optional[str] = None, testing_env: Optional[str] = None, testing_options: Optional[str] = None):
         """Helper function for format_profile tests, using KEY_ARG to order and verifying via ORDER_INDICATOR.
@@ -159,239 +207,82 @@ class TestFormatProfile(TestWrapper):
             assert(my_re.search(fr"Ordered by: *{order_indicator}", output))
         encoded_output = self.encode(output)
         debug.assertion("N.NNN" in encoded_output)
+        if expected_ranking:
+            indices = []
+            for item in expected_ranking:
+                idx = output.find(item)
+                assert idx != -1, f"Expected item '{item}' not found in output"
+                indices.append(idx)
+            for i in range(len(indices) - 1):
+                assert indices[i] < indices[i+1], f"Expected {expected_ranking[i]} to appear before {expected_ranking[i+1]}" 
+        
         if good_sample_output:
-            assert(my_re.search(self.encode(good_sample_output, regex=True), encoded_output,
-                                flags=my_re.DOTALL|my_re.MULTILINE))
+            assert(my_re.search(self.encode(good_sample_output, regex=True), encoded_output, flags=my_re.DOTALL|my_re.MULTILINE))
+        if bad_sample_output:
+            assert(not my_re.search(self.encode(bad_sample_output, regex=True), encoded_output, flags=my_re.DOTALL|my_re.MULTILINE))
         if bad_sample_output:
             assert(not my_re.search(self.encode(bad_sample_output, regex=True), encoded_output,
                                     flags=my_re.DOTALL|my_re.MULTILINE))
 
         return output
 
-    @pytest.mark.xfail                   # TODO: remove xfail
+
     def test_formatprofile_PK_calls(self):
         """Ensures that PROFILE_KEY=calls works as expected"""
-        debug.trace(4, f"test_formatprofile_PK_calls(); self={self}")
+        self.helper_format_profile("calls", expected_ranking=['fast_func', 'medium_func', 'slow_func', 'main'])
 
-        # Specify good and bad output:
-        # ncalls tottime  percall  cumtime  percall filename:lineno(function)
-        GOOD_SAMPLE_OUTPUT = (
-            "1    0.000    0.000    0.000    0.000 search_table_file_index.py:545(main)\n" +
-            "..." + 
-            "1    0.000    0.000    0.573    0.573 search_table_file_index.py:1(<module>)\n")
-        BAD_SAMPLE_OUTPUT = (
-            "14986    0.021    0.000    0.041    0.000 tokenize.py:433(_tokenize)\n" +
-            "..." +            
-            "15087    0.002    0.000    0.003    0.000 inspect.py:283(ismodule)\n")
-        debug.trace(4, f"helper_format_profile(); self={self}")
-        _output = self.helper_format_profile("calls", "call count", GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
-        return
-        
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_cumulative(self):
         """Ensures that PROFILE_KEY=cumulative works as expected"""
+        self.helper_format_profile("cumulative", expected_ranking=['main', 'slow_func', 'medium_func', 'fast_func'])
 
-        GOOD_SAMPLE_OUTPUT = "<frozen importlib._bootstrap_externals>:877(exec_module)"
-        BAD_SAMPLE_OUTPUT = "1    0.000    0.000    0.000    0.000 {built-in method posix.readlink}"
-
-        debug.trace(4, f"test_formatprofile_PK_cumulative(); self={self}")
-        _output = self.helper_format_profile("cumulative", "cumulative time", GOOD_SAMPLE_OUTPUT, BAD_SAMPLE_OUTPUT)
-        return
-    
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_cumtime(self):
         """Ensures that PROFILE_KEY=cumtime works as expected"""
-        ## TODO: Find other input sample
-        debug.trace(4, f"test_formatprofile_PK_cumtime(); self={self}")
-        key_arg = "cumtime"
-        SAMPLE_OUTPUT = [
-            "test_glue_helper.py:1(<module>)", # Incorrect Line 
-            "1    0.000    0.000    0.000    0.000 {method 'fileno' of '_io.BufferedWriter' objects}"
-            ]
+        self.helper_format_profile("cumtime", expected_ranking=['main', 'slow_func', 'medium_func', 'fast_func'], good_sample_output="1    0.000    0.000    0.123    0.123 ...py:13(main)\n...\n10    0.000    0.000    0.000    0.000 ...py:2(fast_func)", bad_sample_output="10    0.000    0.000    0.000    0.000 ...py:2(fast_func)\n...\n1    0.000    0.000    0.123    0.123 ...py:13(main)")
 
-        ## OLD: # output = gh.read_file(empty_file1)
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        ## DEBUG: print(output)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        # return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_file(self):
         """Ensures that PROFILE_KEY=file works as expected"""
+        self.helper_format_profile("file", expected_ranking=['main', 'slow_func', 'medium_func', 'fast_func'])
 
-        key_arg = "file"
-        SAMPLE_OUTPUT = [
-            "<frozen importlib._bootstraps>:391(cached)", 
-            "1    0.000    0.000    0.000    0.000 {method 'union' of 'frozenset' objects}"
-            ]
-        
-        debug.trace(4, f"test_formatprofile_PK_file(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-    
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_filename(self):
         """Ensures that PROFILE_KEY=filename works as expected"""
+        self.helper_format_profile("filename", expected_ranking=['main', 'slow_func', 'medium_func', 'fast_func'], good_sample_output="1    0.000    0.000    0.123    0.123 ...py:13(main)\n...\n10    0.000    0.000    0.000    0.000 ...py:2(fast_func)", bad_sample_output="10    0.000    0.000    0.000    0.000 ...py:2(fast_func)\n...\n1    0.000    0.000    0.123    0.123 ...py:13(main)")
 
-        key_arg = "filename"
-        SAMPLE_OUTPUT = [
-            "1    0.000    0.000    0.000    0.000 :1(ReprEntryNativeAttributes)", 
-            "6768    0.000    0.000    0.000    0.000 :1(ReprEntryAttributes)"
-        ]
-
-
-        debug.trace(4, f"test_formatprofile_PK_filename(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] not in output)
-        return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_module(self):
         """Ensures that PROFILE_KEY=module works as expected"""
+        self.helper_format_profile("module", expected_ranking=['main', 'slow_func', 'medium_func', 'fast_func'])
 
-        key_arg = "module"
-        SAMPLE_OUTPUT = [
-            "ElementTree.pytest:1771(C14NWriterTarget)",
-            "1    0.000    0.000    0.000    0.000 terminal.py:1306(_build_normal_summary_stats_line)"
-        ]
-
-        debug.trace(4, f"test_formatprofile_PK_module(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_ncalls(self):
         """Ensures that PROFILE_KEY=ncalls works as expected"""
-        ## TODO: Find other input sample
+        self.helper_format_profile("ncalls", expected_ranking=['fast_func', 'medium_func', 'slow_func', 'main'], good_sample_output="10    0.000    0.000    0.000    0.000 ...py:2(fast_func)\n...\n1    0.000    0.000    0.123    0.123 ...py:13(main)", bad_sample_output="1    0.000    0.000    0.123    0.123 ...py:13(main)\n...\n10    0.000    0.000    0.000    0.000 ...py:2(fast_func)")
 
-        key_arg = "ncalls"
-        ## OLD: testing_script = old_testing_script
-        SAMPLE_OUTPUT = [
-            "{method 'extend' of 'collections.deque' objections}", 
-            "1    0.000    0.000    0.000    0.000 test_glue_helpers.py:385(test_get_files_matching_specs)"
-            ]
-
-        debug.trace(4, f"test_formatprofile_PK_ncalls(); self={self}")
-
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_pcalls(self):
         """Ensures that PROFILE_KEY=pcalls works as expected"""
+        self.helper_format_profile("pcalls", expected_ranking=['fast_func', 'medium_func', 'slow_func', 'main'])
 
-        key_arg = "pcalls"
-        SAMPLE_OUTPUT = [
-            "unix_events.py:1022(SafestChildWatcher)",
-            "1    0.000    0.000    0.000    0.000 <frozen importlib._bootstrap>:294(_module_repr)"
-        ]
-
-        debug.trace(4, f"test_formatprofile_PK_pcalls(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        # return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_line(self):
         """Ensures that PROFILE_KEY=line works as expected"""
+        self.helper_format_profile("line", expected_ranking=['fast_func', 'slow_func', 'medium_func', 'main'])
 
-        key_arg = "line"
-        SAMPLE_OUTPUT = [
-            "{method 'with_traceback' of 'BaseExceptions' objects}", 
-            "1    0.000    0.000    0.000    0.000 {method 'rjust' of 'str' objects}"
-        ]
-        debug.trace(4, f"test_formatprofile_PK_line(); self={self}")
-
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_name(self):
         """Ensures that PROFILE_KEY=name works as expected"""
+        self.helper_format_profile("name", expected_ranking=['fast_func', 'main', 'medium_func', 'slow_func'])
 
-        key_arg = "name"
-        SAMPLE_OUTPUT = [
-            "{method 'fileno' of '_io.BufferedReaders' objects}", 
-            "6    0.000    0.000    0.000    0.000 {method 'pop' of 'collections.deque' objects}"
-        ]
-
-        debug.trace(4, f"test_formatprofile_PK_name(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_nfl(self):
         """Ensures that PROFILE_KEY=nfl works as expected"""
+        self.helper_format_profile("nfl", expected_ranking=['fast_func', 'main', 'medium_func', 'slow_func'])
 
-        key_arg = "nfl"
-        
-        SAMPLE_OUTPUT = [
-            "{built-in methods _imp.is_frozen}",
-            "1    0.000    0.000    0.000    0.000 {built-in method _stat.S_IMODE}", 
-        ]
-
-        debug.trace(4, f"test_formatprofile_PK_nfl(); self={self}")
-        
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_stdname(self):
         """Ensures that PROFILE_KEY=stdname works as expected"""
+        self.helper_format_profile("stdname", expected_ranking=['main', 'fast_func', 'slow_func', 'medium_func'])
 
-        key_arg = "stdname"
-
-        SAMPLE_OUTPUT = [
-            "zipperfile.py:1(<module>)", 
-            "1    0.000    0.000    0.000    0.000 _synchronization.py:70(SemaphoreStatistics)"
-        ]
-
-        debug.trace(4, f"test_formatprofile_PK_stdname(); self={self}")
-
-        output = self.helper_format_profile(key_arg, self.testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_time(self):
         """Ensures that PROFILE_KEY=time works as expected"""
+        self.helper_format_profile("time", expected_ranking=['slow_func', 'medium_func', 'main', 'fast_func'])
 
-        key_arg = "time"
-
-        SAMPLE_OUTPUT = [
-            "<frozen importlibrary._bootstrap_external>:380(cache_from_source)", 
-            "1    0.000    0.000    0.000    0.000 glue_helpers.py:731(delete_existing_file)"
-        ]
-
-        debug.trace(4, f"test_formatprofile_PK_time(); self={self}")
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        return
-
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_formatprofile_PK_tottime(self):
         """Ensures that PROFILE_KEY=tottime works as expected"""
-        ## TODO: Find other input sample
-        
-        key_arg = "tottime"
-        SAMPLE_OUTPUT = [
-            "{method 'split' of 're.Pattern' objections}", 
-            "1    0.000    0.000    0.000    0.000 cacheprovider.py:390(pytest_sessionfinish)"
-        ]
+        self.helper_format_profile("tottime", expected_ranking=['slow_func', 'medium_func', 'main', 'fast_func'], good_sample_output="3    0.123    0.017    0.123    0.017 ...py:5(slow_func)\n...\n10    0.000    0.000    0.000    0.000 ...py:2(fast_func)", bad_sample_output="10    0.000    0.000    0.000    0.000 ...py:2(fast_func)\n...\n3    0.123    0.017    0.123    0.017 ...py:5(slow_func)")
 
-        debug.trace(4, f"test_formatprofile_PK_tottime(); self={self}")
-        
-        output = self.helper_format_profile(key_arg, testing_script=self.old_testing_script)
-        assert (SAMPLE_OUTPUT[0] not in output and SAMPLE_OUTPUT[1] in output)
-        return
 
 if __name__ == '__main__':
     debug.trace_current_context()
