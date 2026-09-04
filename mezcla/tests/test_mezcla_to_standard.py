@@ -50,7 +50,7 @@ except:
 from mezcla import debug
 from mezcla import glue_helpers as gh   # pylint: disable=unused-import
 from mezcla import misc_utils
-from mezcla import system
+## OLD: from mezcla import system
 try:
     import mezcla.mezcla_to_standard as THE_MODULE
 except:
@@ -843,6 +843,7 @@ class TestTransform(TestWrapper):
     def test_leave_module(self):
         """Ensures that leave_Module method of ReplaceCallsTransformer works as expected"""
         debug.trace(5, f"TestTransform.test_leave_module(); self={self}")
+        # pylint: disable=too-many-ancestors
 
         class TestVisitor(THE_MODULE.ReplaceCallsTransformer):
             """Sample class of TestVisitor to test leave_module function"""
