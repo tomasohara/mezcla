@@ -216,6 +216,7 @@
 #- Move or drop the pylint disable=invalid-name specifications (e.g., via pylint call).
 #  Note: comments immediately preceding function defs disrupt flow.
 #
+## UPDATE 04 Sep 26: pylint cleanup.
 
 """
 Mezcla to Standard call conversion script
@@ -1195,21 +1196,25 @@ def cst_to_path(tree: cst.CSTNode) -> str:
     """
     ## TODO3: restructure w/ result = ... result = ... return result
     # pylint: disable=no-else-return
+    result = "n/a"
     if isinstance(tree, cst.Attribute):
-        return f"{cst_to_path(tree.value)}.{tree.attr.value}"
+        result = f"{cst_to_path(tree.value)}.{tree.attr.value}"
     elif isinstance(tree, cst.Call):
-        return f"{cst_to_path(tree.func)}"
+        result = f"{cst_to_path(tree.func)}"
     elif isinstance(tree, cst.Name):
-        return tree.value
+        result = tree.value
     elif isinstance(tree, cst.SimpleString):
-        return tree.value
+        result = tree.value
     elif isinstance(tree, cst.ImportAlias):
-        return cst_to_path(tree.name)
+        result = cst_to_path(tree.name)
     elif isinstance(tree, cst.Subscript):
-        return cst_to_path(tree.value)
+        result = cst_to_path(tree.value)
     elif isinstance(tree, cst.Param):
-        return cst_to_path(tree.name)
-    raise ValueError(f"Unsupported node type: {type(tree)}")
+        result = cst_to_path(tree.name)
+    else:
+        raise ValueError(f"Unsupported node type: {type(tree)}")
+    debug.trace(6, "cst_to_path({tree}) => {result}")
+    return result
 
 
 def cst_to_paths(tree: cst.CSTNode) -> List[str]:
