@@ -397,7 +397,9 @@ def resolve_path(
         debug.assertion(" " not in path)
         if (not base_dir):
             debug.trace(5, f"FYI: using . for base_dir (i.e., {system.real_path('.')})")
-        path = run(f"find {base_dir or '.'} -name '{path}'")
+        ## OLD: path = run(f"find {base_dir or '.'} -name '{path}'")
+        ## TODO2: give preference to files in repo (e.g., tests/README.md, not ._git-trash/README.md)
+        path = run(f"find {base_dir or '.'} -name '{path}' | head -1")
 
     # Make sure full path if desired
     if absolute:
