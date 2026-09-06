@@ -190,7 +190,8 @@ def split_word_tokens(text, omit_punct=False, omit_stop=None,
     Note: run split_sentences first (e.g., to allow for proper handling of periods).
     By default, this uses NLTK's PunktSentenceTokenizer."""
     # EX: split_word_tokens("How now, brown cow?") => ['How', 'now', ',', 'brown', 'cow', '?']
-    debug.trace(7, "split_word_tokens(%s); type=%s" % (text, type(text)))
+    ## OLD: debug.trace(7, "split_word_tokens(%s); type=%s" % (text, type(text)))
+    debug.trace(7, f"split_word_tokens({text!r}); type={type(text)}")
     if skip_nltk:
         tokens = [t.strip() for t in re.split(r"(\W+)", text) if (len(t.strip()) > 0)]
     else:
