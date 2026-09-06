@@ -9,16 +9,21 @@
 # TODO1:
 # - Remove old comments (e.g., prior to parameterization).
 # - Reduce the redundancy. (e.g., through more helper functions and variables for code).
+# - Rework assert_m2s_transform_flaky usages to use single header (now that import sort resolved).
+# - Address issues identified by Claude (see docs/claude-re-mez2std.odt).
 #
 # TODO2:
 # - Implement the unimplemented tests!
 # - Rename cruptic m2s as mez2std.
+# - Make sure each @parametrize has more than one case!
 #
 # TODO3:
 # - Remove extraneous code unless specifically tested (e.g., try/except clauses).
 # - Fix calls to debug.trace to use positional trace argument unless testing for error:
 #   for example, 'debug.trace("Copy created", level=3)' => 'debug.trace(3, "Copy created")'.
 # - Use pytest assert for most checks (e.g., for diff-based diagnostics).
+#
+## UPDATE 06 Sep 26: Start of much-needed cleanup.
 
 """
 Main tests for mezcla_to_standard module
@@ -42,7 +47,6 @@ try:
     import unittest_parametrize
     from unittest_parametrize import (
         ParametrizedTestCase, parametrize as ut_parametrize, param as ut_param)
-    ## OLD: pass
 except:
     unittest_parametrize = ParametrizedTestCase = ut_parametrize = ut_param = None
 
@@ -62,21 +66,6 @@ from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla.tests.common_module import (
     SKIP_EXPECTED_ERRORS, SKIP_EXPECTED_REASON,
     SKIP_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON, fix_indent)
-
-## OLD:
-##
-## NOTE:
-## - Nitpicking pylint exclusions are handled on the command line, so that
-##   the full pylint output can be checked (a la strict mode). (See the
-##   python-lint aliases in tomohara-aliases.bash from the shell-scripts-repo.)
-## - In addition, symbolic names are used (e.g., "C0303" => "trailing-whitespace").
-##
-## # Pylint configurations
-## 
-## ## 1 disable "Line Too Long"
-## # pylint: disable=C0301
-## ## 2 disable "Too many lines in module"
-## # pylint: disable=C0302
 
 # Backup of production mezcla_to_standard equivalent
 # calls to restore after some tests that modify it
@@ -161,6 +150,20 @@ class TestCSTFunctions:
 
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
 
+    @pytest.mark.xfail                  # TODO: remove xfail
+    def test_value_to_arg(self):
+        """Verify value_to_arg"""
+        debug.trace(5, f"TestCSTFunctions.test_value_to_arg(); self={self}")
+        # pylint: disable=protected-access
+
+        # Boolean
+        # note: regression for value_to_arg(True)
+        assert(type(THE_MODULE.value_to_arg(True).value != cst._nodes.expression.Integer))
+        assert(type(THE_MODULE.value_to_arg(1).value == cst._nodes.expression.Integer))
+
+        ## TODO2: other common types (Float, Integer, String, etc.)
+        return
+    
     def test_arg_to_value(self):
         """Ensures that value_to_arg method works as expected"""
         debug.trace(5, f"TestCSTFunctions.test_arg_to_value(); self={self}")
@@ -856,10 +859,11 @@ class TestTransform(TestWrapper):
             def __init__(self, to_module):
                 super().__init__(to_module)
 
-        code = (
+        ## BAD: needed fix_indent and `x = [dummy_]module_a.func1(1, 2)`
+        code = fix_indent(
             """
             import dummy_module_a
-            x = module_a.func1(1, 2)
+            x = dummy_module_a.func1(1, 2)
             """)
 
         tree = cst.parse_module(code)
@@ -867,10 +871,10 @@ class TestTransform(TestWrapper):
         visitor.to_import.append(cst.Name("new_module"))
         modified_tree = tree.visit(visitor)
 
-        expected_code = (
+        expected_code = fix_indent(
             """
             import dummy_module_b
-            x = module_b.func1(1, 2)
+            x = dummy_module_b.func1(1, 2)
             """)
         # Result currently similar/same to original code (no changes)
         # BAD: assert result.strip() == code.strip()
@@ -911,12 +915,14 @@ class TestTransform(TestWrapper):
     def test_leave_call(self):
         """Ensures that leave_Call method of ReplaceCallsTransformer works as expected"""
         debug.trace(5, f"TestTransform.test_leave_call(); self={self}")
-        original_code = (
+        ## BAD: original_code = (
+        original_code = fix_indent(
             """
             import module_a
             result = module_a.old_function(2, 3)
             """)
-        expected_code = (
+        ## BAD: expected_code = (
+        expected_code = fix_indent(
             """
             from module_b import new_function
             result = new_function(2, 3)
@@ -1280,8 +1286,7 @@ class TestUsageImportTypes(TestWrapper):
 
 
 @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
-## OLD: @pytest.mark.xfail
-class TestUsage(TestWrapper):
+class TestUsage(TestWrapper, ParametrizedTestCase):
     """Class for several test usages for mezcla_to_standard"""
 
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
@@ -1328,15 +1333,20 @@ class TestUsage(TestWrapper):
         """Whether CODE1 and CODE2 segments are roughly equivalent"""
         ## TODO2: add option for oracle and for direct match
         debug.trace_expr(6, code1, code2, prefix="in TestUsage.similar_code: ", delim="\n\t")
-        return 0.90 <= system.relative_intersection(self.tokenize(code1),
-                                                    self.tokenize(code2))
-        
+        ok = (0.90 <= system.relative_intersection(self.tokenize(code1),
+                                                   self.tokenize(code2)))
+        if not ok:
+            missing = system.difference(self.tokenize(code2), self.tokenize(code1))
+            debug.trace(5, f"Missing code tokens: {missing}")
+        return ok
+              
     def assert_m2s_transform_flaky(
         self, input_code: str, expected_body: str, expected_code_heads: list
     ):
         """Assert that m2s transformation produces the expected result for flaky tests"""
         debug.trace(4, f"TestUsage.assert_m2s_transform_flaky(); self={self}")
         debug.trace_expr(5, input_code, expected_body, expected_code_heads, delim="\n")
+        debug.trace(4, "Warning: assert_m2s_transform_flaky is deprecated")
         input_code = fix_indent(input_code)
         result = self.helper_m2s(input_code)
         ## OLD:
@@ -1382,6 +1392,11 @@ class TestUsage(TestWrapper):
         self.assertIn(unsupported_message, result)
 
     @pytest.mark.xfail
+    ## TODO:
+    ## @ut_parametrize(
+    ##     argnames="input_code, expected_code, expected_heads",
+    ##     argvalues=[
+    ##        ut_param(
     @parametrize(
         [
             (
@@ -1391,15 +1406,36 @@ class TestUsage(TestWrapper):
                 gh.rename_file("/tmp/fubar.list1", "/tmp/fubar.list2")
                 gh.form_path("/tmp", "fubar")
                 """,
+                #
                 """
                 os.remove("/tmp/fubar.list")
                 os.rename("/tmp/fubar.list1", "/tmp/fubar.list2")
                 path.join("/tmp", "fubar")
                 """,
-            )
+                #
+                [
+                    # TODO2: rework mezcla_to_standard so that sort order is guaranteed
+                    """
+                    import os
+                    from os import path
+                    """,
+                    """
+                    from os import path
+                    import os
+                    """,
+                ],
+            ## TODO: id="gh_delete_file_rename_file_form_path",
+            ),
+
+            ## (
+            ##    "TODO: input",
+            ##    "TODO: expected",
+            ##    "TODO: heads",
+            ##    id="TODO: id",
+            ## )
         ]
     )
-    def test_conversion_mezcla_to_standard(self, input_code, expected_code):
+    def test_conversion_mezcla_to_standard(self, input_code, expected_code, expected_heads):
         """Test the conversion from mezcla to standard calls"""
         debug.trace(
             5,
@@ -1417,15 +1453,19 @@ class TestUsage(TestWrapper):
         # result = THE_MODULE.transform(to_standard, input_code)
         # self.assertEqual(result.strip(), expected_output_code.strip())
 
-        expected_code_heads = [
-            """import os\nfrom os import path\nfrom mezcla import glue_helpers as gh""",
-            """from os import path\nimport os\nfrom mezcla import glue_helpers as gh""",
-        ]
-        self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
+        ## BAD (hard-coded and gh bug):
+        ## expected_code_heads = [
+        ##     """import os\nfrom os import path\nfrom mezcla import glue_helpers as gh""",
+        ##     """from os import path\nimport os\nfrom mezcla import glue_helpers as gh""",
+        ## ]
+        self.assert_m2s_transform_flaky(input_code, expected_code, expected_heads)
 
     @pytest.mark.xfail
     @pytest.mark.xfail
     @parametrize(
+        ## TODO:
+        ## @ut_parametrize(
+        ##     "input_code, expected_code", ...
         [
             (
                 """
@@ -1602,6 +1642,7 @@ class TestUsage(TestWrapper):
             (
                 """
                 from mezcla import glue_helpers as gh
+                ## TODO3: from mezcla import system
                 system.write_file("/tmp/fubar.list", "fubar.list")
                 gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
                 gh.delete_file("/tmp/fubar.list")
@@ -1610,6 +1651,7 @@ class TestUsage(TestWrapper):
                 """,
                 """
                 from mezcla import glue_helpers as gh
+                ## TODO3: ((lambda path, text: open(path, "w", encoding="UTF-8").write(text + "\n"))("/tmp/fubar.list", "fubar.list")))
                 # WARNING not supported: system.write_file("/tmp/fubar.list", "fubar.list")
                 # WARNING not supported: gh.copy_file("/tmp/fubar.list", "/tmp/fubar.list1")
                 os.remove("/tmp/fubar.list")
@@ -1649,6 +1691,7 @@ class TestUsage(TestWrapper):
         # path.join("/tmp", "fubar")
         #         """
 
+        ## TODO1: put in @parametrize spec or drop [assert_m2s_transform_]flaky
         expected_code_heads = [
             """from os import path\nimport os""",
             """import os\nfrom os import path""",
@@ -1835,9 +1878,13 @@ class TestUsage(TestWrapper):
         # result = self.helper_m2s(input_code)
         # print(result)
         # assert result == actual_output
+        ## TODO1: put in @parametrize spec or drop [assert_m2s_transform_]flaky
         expected_code_heads = [
-            """import os\nfrom os import path\nfrom mezcla import glue_helpers as gh""",
-            """from os import path\nimport os\nfrom mezcla import glue_helpers as gh""",
+            ## BAD:
+            ## """import os\nfrom os import path\nfrom mezcla import glue_helpers as gh""",
+            ## """from os import path\nimport os\nfrom mezcla import glue_helpers as gh""",
+            """import os\nfrom os import path""",
+            """from os import path\nimport os""",
         ]
         self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
@@ -2002,9 +2049,13 @@ class TestUsage(TestWrapper):
         #     # WARNING not supported: system.write_file("/home/user/file2.txt", "content")
         #     pass
         # """
+        ## TODO1: put in @parametrize spec or drop [assert_m2s_transform_]flaky
         expected_code_heads = [
-            """import os\nfrom os import path\nfrom mezcla import glue_helpers as gh""",
-            """from os import path\nimport os\nfrom mezcla import glue_helpers as gh""",
+            ## BAD:
+            ## """import os\nfrom os import path\nfrom mezcla import glue_helpers as gh""",
+            ## """from os import path\nimport os\nfrom mezcla import glue_helpers as gh""",
+            """import os\nfrom os import path""",
+            """from os import path\nimport os""",
         ]
         ## OLD: Before assert_m2s_transform
         # result = self.helper_m2s(input_code)
@@ -2461,9 +2512,13 @@ class TestUsage(TestWrapper):
         ##     "import os\nfrom os import path",
         ##     "from os import path\nimport os",
         ## ]
+        ## TODO1: put in @parametrize spec or drop [assert_m2s_transform_]flaky
         expected_code_heads = [
-            "import os\nfrom os import path\nfrom mezcla import glue_helpers as gh",
-            "from os import path\nimport os\nfrom mezcla import glue_helpers as gh",
+            ## BAD:
+            ## "import os\nfrom os import path\nfrom mezcla import glue_helpers as gh",
+            ## "from os import path\nimport os\nfrom mezcla import glue_helpers as gh",
+            "import os\nfrom os import path",
+            "from os import path\nimport os",
         ]
         self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
