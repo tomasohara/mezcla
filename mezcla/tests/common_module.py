@@ -6,11 +6,12 @@
 # - Deprecates certain environment settings involving aliases: for example,
 #   SKIP_TBD_TESTS is preferred over TEST_TBD_REASON.
 #
+## UPDATE 05 Sep 26: Uses textwrap; updates docstring and EX-comment tests.
 
 """Common test module"""
 
 # Standard modules
-## TODO: from collections import defaultdict
+import textwrap
 
 # Installed modules
 ## TODO: import pytest
@@ -95,16 +96,25 @@ def fix_indent(code):
     Note: this accounts for code defined with indented triple-quoted strings
     
     >>> fix_indent('''
-                   print("ok")
-                   ''')
-    'print("ok")'
+    ...            print("ok")
+    ...            ''')
+    '\\nprint("ok")\\n'
     """
     result = code
-    if isinstance(result, str) and my_re.search(r"^\n( +)", result):
-        indentation = my_re.group(1)
-        result = my_re.sub(fr"^{indentation}", "", result, flags=my_re.MULTILINE)
+    ## OLD:
+    ## if isinstance(result, str) and my_re.search(r"^\n( +)", result):
+    ##     indentation = my_re.group(1)
+    ##     result = my_re.sub(fr"^{indentation}", "", result, flags=my_re.MULTILINE)
+    
+    ## Note: Switched to using textwrap.dedent as it natively handles
+    ## dedenting triple-quoted strings more robustly than the custom regex.
+    if isinstance(result, str):
+        result = textwrap.dedent(result)
     debug.trace(8, f"fix_indent({code!r}) => {result!r}")
     return result
+#
+# EX: fix_indent("\n    pass\n") => "\npass\n"
+# EX: fix_indent("\n    if True:\n        pass\n") => "\nif True:\n    pass\n"
 
 
 def get_mezcla_root_dir():
@@ -118,11 +128,11 @@ def get_mezcla_root_dir():
 
 def normalize_text(text):
     """Trim excess whitespace and convert punctuation to <PUNCT>"""
-    # EX: normalize_test_text("   h  e y?! ") => "h e y<PUNCT>"
+    # EX: normalize_text("   h  e y?! ") => "h e y<PUNCT>"
     result = text.strip()
     result = my_re.sub(r"\s+", " ", result)
     result = my_re.sub(r"[^\w\s]+", "<PUNCT>", result)
-    debug.trace(4, f"normalize_test_text({text}) => {result}")
+    debug.trace(4, f"normalize_text({text}) => {result}")
     return result
 
 #-------------------------------------------------------------------------------
