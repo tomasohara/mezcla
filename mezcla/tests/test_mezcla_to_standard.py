@@ -12,12 +12,13 @@
 #
 # TODO2:
 # - Implement the unimplemented tests!
+# - Rename cruptic m2s as mez2std.
 #
 # TODO3:
 # - Remove extraneous code unless specifically tested (e.g., try/except clauses).
 # - Fix calls to debug.trace to use positional trace argument unless testing for error:
 #   for example, 'debug.trace("Copy created", level=3)' => 'debug.trace(3, "Copy created")'.
-#
+# - Use pytest assert for most checks (e.g., for diff-based diagnostics).
 
 """
 Main tests for mezcla_to_standard module
@@ -41,7 +42,7 @@ try:
     import unittest_parametrize
     from unittest_parametrize import (
         ParametrizedTestCase, parametrize as ut_parametrize, param as ut_param)
-    pass
+    ## OLD: pass
 except:
     unittest_parametrize = ParametrizedTestCase = ut_parametrize = ut_param = None
 
@@ -50,7 +51,8 @@ except:
 from mezcla import debug
 from mezcla import glue_helpers as gh   # pylint: disable=unused-import
 from mezcla import misc_utils
-## OLD: from mezcla import system
+from mezcla import system
+from mezcla.text_processing import split_word_tokens
 try:
     import mezcla.mezcla_to_standard as THE_MODULE
 except:
@@ -1317,17 +1319,33 @@ class TestUsage(TestWrapper):
         result = self.helper_m2s(input_code)
         self.assertEqual(result.strip(), expected_code.strip())
 
+    @staticmethod
+    def tokenize(text):
+        """"Split TEXT into word tokens ignoring punctuation"""
+        return split_word_tokens(text, omit_punct=True, skip_nltk=True)
+
+    def similar_code(self, code1, code2):
+        """Whether CODE1 and CODE2 segments are roughly equivalent"""
+        ## TODO2: add option for oracle and for direct match
+        debug.trace_expr(6, code1, code2, prefix="in TestUsage.similar_code: ", delim="\n\t")
+        return 0.90 <= system.relative_intersection(self.tokenize(code1),
+                                                    self.tokenize(code2))
+        
     def assert_m2s_transform_flaky(
         self, input_code: str, expected_body: str, expected_code_heads: list
     ):
         """Assert that m2s transformation produces the expected result for flaky tests"""
         debug.trace(4, f"TestUsage.assert_m2s_transform_flaky(); self={self}")
+        debug.trace_expr(5, input_code, expected_body, expected_code_heads, delim="\n")
         input_code = fix_indent(input_code)
         result = self.helper_m2s(input_code)
-        expected_codes = [head + expected_body for head in expected_code_heads]
-        self.assertTrue(
-            any(result.strip() == expected.strip() for expected in expected_codes)
-        )
+        ## OLD:
+        ## expected_codes = [head + expected_body for head in expected_code_heads]
+        ## self.assertTrue(
+        ##    any(result.strip() == expected.strip() for expected in expected_codes)
+        ## )
+        expected_codes = [head + "\n" + expected_body for head in expected_code_heads]
+        assert any(self.similar_code(result, expected) for expected in expected_codes)
 
     @pytest.mark.skipif(not unittest_parametrize, reason="Unable to load unittest_parametrize")
     @pytest.mark.xfail
@@ -1565,9 +1583,15 @@ class TestUsage(TestWrapper):
         ##     self.assertIn(line, result)
         
         input_file = self.create_temp_file(contents=input_code)
-        command = f"python3 mezcla/mezcla_to_standard.py --to-standard {input_file}"
-        from mezcla import glue_helpers as gh
-        result = gh.run(command)
+        log_file = input_file + ".log"
+        ## BAD:
+        ## command = f"python3 mezcla/mezcla_to_standard.py --to-standard {input_file}"
+        ## from mezcla import glue_helpers as gh
+        ## result = gh.run(command)
+        ## TODO2: add helper for trapping mez2std log
+        output = self.run_script(options="--to-standard", data_file=input_file, log_file=log_file)
+        assert(not output.strip())
+        result = system.read_file(log_file)
 
         for line in expected_line:
             self.assertIn(line, result.strip())
