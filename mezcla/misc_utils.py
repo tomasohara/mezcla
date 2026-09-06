@@ -5,6 +5,7 @@
 # TODO:
 # - Separate list related functions (e.g., as list_utils.py).
 #
+## UPDATE 05 Sep 26: Updates doctests.
 
 """Misc. utility functions"""
 
@@ -658,14 +659,18 @@ class GlobalSetter(ContextDecorator):
         value (Any): The temporary value to set for the global variable.
 
     Example:
-        >>> import debug
-        >>> def trace_values():
+        >>> from mezcla import debug
+        >>> from mezcla.misc_utils import GlobalSetter
+        >>> def print_trace_level():
         ...     print(debug.trace_level)
         >>> debug.trace_level = 3
-        >>> trace_values()  # Prints: 3
+        >>> print_trace_level()
+        3
         >>> with GlobalSetter(debug, 'trace_level', 6):
-        ...     trace_values()  # Prints: 6
-        >>> trace_values()  # Prints: 3
+        ...     print_trace_level()
+        6
+        >>> print_trace_level()
+        3
 
     Note:
         - This context manager is not thread-safe. Use synchronization mechanisms
