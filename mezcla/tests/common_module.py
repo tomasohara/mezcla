@@ -106,7 +106,7 @@ def fix_indent(code):
     ##     indentation = my_re.group(1)
     ##     result = my_re.sub(fr"^{indentation}", "", result, flags=my_re.MULTILINE)
     
-    ## Note: Switched to using textwrap.dedent as it natively handles
+    ## NOTE: Switched to using textwrap.dedent as it natively handles
     ## dedenting triple-quoted strings more robustly than the custom regex.
     if isinstance(result, str):
         result = textwrap.dedent(result)
