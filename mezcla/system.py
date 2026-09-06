@@ -1355,10 +1355,11 @@ def intersection(list1: list, list2: list, as_set: bool = False) -> ListOrSet:
 def relative_intersection(list1: list, list2: list, as_set: bool = False) -> float:
     """Compute relative size of intersection for LIST1 and LIST2"""
     # EX: relative_intersection([1, 2], [2]) => 0.5
-    min_size = max(len(list1), len(list2))
+    ## BAD: min_size = max(len(list1), len(list2))
+    min_size = max(len(unique_items(list1)), len(unique_items(list2)))
     result = (len(intersection(list1, list2, as_set=as_set)) / min_size
               if min_size else 0)
-    debug.trace(6, f"relative_intersection({list1}, {list2}, {as_set=}) => {result}")
+    debug.trace(6, f"relative_intersection({list1}, {list2}, {as_set=}) => {result}; {min_size=}")
     return result
 
 
