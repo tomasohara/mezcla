@@ -58,6 +58,8 @@ Because the use of OLD-comments blocks can be awkward for in-depth changes, ask 
 
 Some variations follow. For single-line changes, just use "## OLD: statement ..." (i.e., one comment not two). When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
+0. Other common meta-comments include '## NOTE', '## TODO[n]', and "## UPDATE". These are comments meant more for development than for the code logic. This uses a doubled pound sign (i.e., '##') as the comment indicator, so that the comments are can be more readily removed when development is complete.
+
 0. When making significant changes, create a new git branch based on development, using a task-specific name such as 'refine-type-hints' or 'fix-poe-client'. The intention is to minimize conflicts without a proliferation of miscellaneous branches.
 
 0. After making a group of commits, push the changes and make sure the remove upstream branch gets set. In general, the remote should be kept updated except when testing tentative changes locally.
@@ -72,8 +74,7 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 
 0. In general, wait for me to assign a task. I will explicitly ask for suggested code changes.
 
-0. When making changes, try to keep the code differences from the previous version as minimal as
-possible. In particular, avoid purely stylistic changes. This will facilitate reviewing the code. When the requested change requires a substantial revision, request clarification about how to proceed.
+0. When making changes, keep the code differences from the previous version as minimal as possible. In particular, avoid purely stylistic changes. This will facilitate reviewing the code. When the requested change requires a substantial revision, request clarification about how to proceed.
 
 0. Follow the repo code conventions:
    * Avoid putting function definitions inside of other code (e.g., use bottom for Perl and top for Python). Exceptions would be for small functions incorporating context (e.g., sorting helper function).
