@@ -105,6 +105,8 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 
 0. Name temporary programs with leading `_` (e.g., `_test_regex.perl`), so that `git check-ignore` will filter them. 
    Similarly, timestamp temporary input and output filenames (e.g., out-02Sep26.txt).
+   
+0. Get explicit confirmation before changing files outside of the current repo.
 
 ## Debug level conventions
 
