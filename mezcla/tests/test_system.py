@@ -915,6 +915,9 @@ class TestSystem(TestWrapper):
         debug.trace(4, "test_relative_intersection()")
         assert (MOD.round3(MOD.relative_intersection([1, 2, 3], [3, 4, 5]))
                 == 0.333)
+        # note: old version didn't count unique items when relativizing
+        assert (MOD.round3(MOD.relative_intersection([3, 3, 3], [3, 4, 5]))
+                == 0.333)
 
     def test_union(self):
         """Ensure union works as expected"""
