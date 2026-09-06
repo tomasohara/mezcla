@@ -208,6 +208,7 @@
 # TODO2:
 # - Consolidate ToMezcla and ToStandard because too much duplicated code.
 # - Block usage under admin-like users, as in shell-scripts repo's batspp_report.py.
+# - Address issues identified by Claude (see docs/claude-re-mez2std.odt).
 #
 # TODO3:
 # - Write pretty printer for CST tree for sake of more understandable tracing
@@ -216,6 +217,7 @@
 #- Move or drop the pylint disable=invalid-name specifications (e.g., via pylint call).
 #  Note: comments immediately preceding function defs disrupt flow.
 #
+## UPDATE 06 Sep 26: Revisions and todo items based on Claude Fauble 5.1 critique.
 ## UPDATE 04 Sep 26: pylint cleanup.
 
 """
@@ -1112,7 +1114,8 @@ if not EQCALL_DATAFILE:
         ),
         EqCall(
             system.write_file,
-            dests=lambda path, text: open(path, "w", encoding="UTF-8").write(text),
+            ## BAD:: lambda path, text: open(path, "w", encoding="UTF-8").write(text),
+            dests=lambda path, text: open(path, "w", encoding="UTF-8").write(text + ("\n" if not text.endswith("\n") else "")),
             eq_params={ "filename": "path", "text": "text" },
             features=[Features.COPY_DEST_SOURCE]
         ),
@@ -1213,7 +1216,7 @@ def cst_to_path(tree: cst.CSTNode) -> str:
         result = cst_to_path(tree.name)
     else:
         raise ValueError(f"Unsupported node type: {type(tree)}")
-    debug.trace(6, "cst_to_path({tree}) => {result}")
+    debug.trace(6, f"cst_to_path({tree}) => {result}")
     return result
 
 
@@ -1264,13 +1267,16 @@ def value_to_arg(value: object) -> cst.Arg:
         # OLD: result = cst.Arg(cst.SimpleString(value=value))
         ## TODO3: (value=f'"{value!r}"')?
         result = cst.Arg(cst.SimpleString(value=f'"{value}"'))
-    elif isinstance(value, int):
-        result = cst.Arg(cst.Integer(value=str(value)))
+    ## BAD (n.b., isinstance(True, int):
+    ## elif isinstance(value, int):
+    ##     result = cst.Arg(cst.Integer(value=str(value)))
     elif isinstance(value, float):
         result = cst.Arg(cst.Float(value=str(value)))
     elif isinstance(value, bool):
         # OLD: result = cst.Arg(cst.Name(value=str(value)))
         result = cst.Arg(cst.Name(value='True' if value else 'False'))
+    elif isinstance(value, int):
+        result = cst.Arg(cst.Integer(value=str(value)))
     elif isinstance(value, io.TextIOWrapper):
         ## TODO3: what about sys.stdin and sys.stdout?
         result = cst.Arg(cst.Attribute(
@@ -1860,7 +1866,7 @@ class ToStandard(BaseTransformerStrategy):
     """Mezcla to standard call conversion class"""
 
     def __init__(self, *args, **kwargs):
-        debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in ToStandard.__init__({a})")
+        debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in ToStandard.__init__: ")
         super().__init__(*args, **kwargs)
     
     def find_eq_call(self, path: str, args: List[cst.Arg]) -> Optional[EqCall]:
@@ -1927,7 +1933,7 @@ class ToMezcla(BaseTransformerStrategy):
     """Standard to Mezcla call conversion class"""
 
     def __init__(self, *args, **kwargs):
-        debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in ToStandard.__init__({a})")
+        debug.trace_expr(TL.VERBOSE, self, args, kwargs, delim="\n\t", prefix="in ToStandard.__init__: ")
         super().__init__(*args, **kwargs)
     
     def find_eq_call(self, path: str, args: List[cst.Arg]) -> Optional[EqCall]:
@@ -2080,7 +2086,11 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         """Leave a Module node"""
         # Add new imports
         new_body = list(updated_node.body)
-        for module in set(self.to_import):
+        ## OLD:
+        ## for module in set(self.to_import):
+        ##     new_body = [path_to_import(module)] + new_body
+        # note: makes the imports deterministic
+        for module in sorted(dict.fromkeys(self.to_import)):
             new_body = [path_to_import(module)] + new_body
         self.to_import = []
         result = updated_node.with_changes(body=new_body)
@@ -2321,6 +2331,7 @@ class MezclaToStandardScript(Main):
         debug.trace(5, "MezclaToStandardScript.setup()")
         self.to_std = self.get_parsed_option(TO_STD, self.to_std)
         self.to_mezcla = self.get_parsed_option(TO_MEZCLA, self.to_mezcla)
+        debug.assertion(debug.xor(self.to_std, self.to_mezcla))
         self.metrics = self.get_parsed_option(METRICS, self.metrics)
         self.in_place = self.get_parsed_option(IN_PLACE, self.in_place)
         self.skip_warnings = self.get_parsed_option(SKIP_WARNINGS, self.skip_warnings)
@@ -2436,7 +2447,6 @@ class MezclaToStandardScript(Main):
 
 def main():
     """Entry point"""
-    ## TODO4: use main()
     app = MezclaToStandardScript(
         description=__doc__.format(script=gh.basename(__file__)),
         boolean_options = [
