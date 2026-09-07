@@ -1939,11 +1939,11 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
                 """)
                 #       => (3, "Copy created")
                 +
-                """
+                fix_indent("""
                 gh.delete_file("/tmp/test.txt")
                 if path.exists("/tmp/test_copy.txt"):
                     debug.trace("File exists", level=2)
-                """,
+                """),
                 #               ^ likewise
                 fix_indent("""
                 import os
