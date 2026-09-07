@@ -66,7 +66,7 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 
 0. Don't make edits outside of code directory without confirmation.
 
-0. Don't check-in code without permission (e.g., get confirmation before making commits): I wish to review code before updating git.
+0. Don't check-in code without permission (e.g., get confirmation before making commits): I wish to review code before updating git. In general, don't do any destructive git operations without confirmation.
 
 0. Don't do any code refactoring without confirmation.
 
