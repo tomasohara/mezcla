@@ -2320,8 +2320,11 @@ class MezclaToStandardScript(Main):
 
     # Class-level member variables for arguments
     # (avoids need for class constructor)
-    to_std = False
-    to_mezcla = False
+    ## OLD:
+    ## to_std = False
+    ## to_mezcla = False
+    to_std = None
+    to_mezcla = None
     metrics = False
     in_place = False
     skip_warnings = False
@@ -2329,8 +2332,11 @@ class MezclaToStandardScript(Main):
     def setup(self) -> None:
         """Process arguments"""
         debug.trace(5, "MezclaToStandardScript.setup()")
-        self.to_std = self.get_parsed_option(TO_STD, self.to_std)
+        ## OLD:
+        ## self.to_std = self.get_parsed_option(TO_STD, self.to_std)
+        ## self.to_mezcla = self.get_parsed_option(TO_MEZCLA, self.to_mezcla)
         self.to_mezcla = self.get_parsed_option(TO_MEZCLA, self.to_mezcla)
+        self.to_std = self.get_parsed_option(TO_STD, not self.to_mezcla)
         debug.assertion(debug.xor(self.to_std, self.to_mezcla))
         self.metrics = self.get_parsed_option(METRICS, self.metrics)
         self.in_place = self.get_parsed_option(IN_PLACE, self.in_place)
