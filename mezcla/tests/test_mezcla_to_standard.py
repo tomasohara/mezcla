@@ -1322,7 +1322,8 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
         input_code = fix_indent(input_code)
         expected_code = fix_indent(expected_code)
         result = self.helper_m2s(input_code)
-        self.assertEqual(result.strip(), expected_code.strip())
+        ## OLD: self.assertEqual(result.strip(), expected_code.strip())
+        assert result.strip() == expected_code.strip()
 
     @staticmethod
     def tokenize(text):
