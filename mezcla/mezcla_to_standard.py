@@ -500,7 +500,6 @@ class CallDetails:
         except:
             ## DEBUG: debug.raise_exception(6)
             debug.trace(4, f"FYI: Exception deriving function specification from {func!r}: {sys.exc_info()}")
-            ## OLD: debug.trace_stack(7)
             debug.trace_exception(7, "CallDetails.__init__")
         debug.trace_object(6, self, label="CallDetails instance")
 
@@ -1271,7 +1270,6 @@ def value_to_arg(value: object) -> cst.Arg:
     """
     result = None
     if isinstance(value, str):
-        # OLD: result = cst.Arg(cst.SimpleString(value=value))
         ## TODO3: (value=f'"{value!r}"')?
         result = cst.Arg(cst.SimpleString(value=f'"{value}"'))
     ## BAD (n.b., isinstance(True, int):
@@ -1280,7 +1278,6 @@ def value_to_arg(value: object) -> cst.Arg:
     elif isinstance(value, float):
         result = cst.Arg(cst.Float(value=str(value)))
     elif isinstance(value, bool):
-        # OLD: result = cst.Arg(cst.Name(value=str(value)))
         result = cst.Arg(cst.Name(value='True' if value else 'False'))
     elif isinstance(value, int):
         result = cst.Arg(cst.Integer(value=str(value)))
@@ -2096,9 +2093,6 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
         debug.trace(7, f"ReplaceCallsTransformer.leave_Module(original_node={original_node}, updated_node={updated_node})")
         # Add new imports
         new_body = list(updated_node.body)
-        ## OLD:
-        ## for module in set(self.to_import):
-        ##     new_body = [path_to_import(module)] + new_body
         # note: makes the imports deterministic
         debug.trace_expr(7, self.to_import)
         for module in sorted(dict.fromkeys(self.to_import)):
@@ -2331,9 +2325,6 @@ class MezclaToStandardScript(Main):
 
     # Class-level member variables for arguments
     # (avoids need for class constructor)
-    ## OLD:
-    ## to_std = False
-    ## to_mezcla = False
     to_std = None
     to_mezcla = None
     metrics = False
@@ -2343,9 +2334,6 @@ class MezclaToStandardScript(Main):
     def setup(self) -> None:
         """Process arguments"""
         debug.trace(5, "MezclaToStandardScript.setup()")
-        ## OLD:
-        ## self.to_std = self.get_parsed_option(TO_STD, self.to_std)
-        ## self.to_mezcla = self.get_parsed_option(TO_MEZCLA, self.to_mezcla)
         self.to_mezcla = self.get_parsed_option(TO_MEZCLA, self.to_mezcla)
         self.to_std = self.get_parsed_option(TO_STD, not self.to_mezcla)
         debug.assertion(debug.xor(self.to_std, self.to_mezcla))
