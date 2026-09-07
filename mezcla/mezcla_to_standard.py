@@ -322,6 +322,7 @@ def path_to_callable(path: str) -> Callable:
     Returns:
     callable: The actual function.
     """
+    debug.trace(6, f"path_to_callable(func_string={path!r}")
     components = path.split('.')
     # Get the base module from the global namespace
     module = lambda _x: None            # pylint: disable=unnecessary-lambda-assignment
@@ -332,7 +333,7 @@ def path_to_callable(path: str) -> Callable:
             module = getattr(module, component)
     except:
         system.print_exception_info("path_to_callable")
-    debug.trace(7, f"path_to_callable(func_string={path}) => {module}")
+    debug.trace(6, f"path_to_callable(func_string={path!r}) => {module!r}")
     return module
 
 
@@ -464,6 +465,7 @@ class CallDetails:
                     try:
                         exec(f"import {module}", global_sandbox)
                     except ModuleNotFoundError:
+                        debug.trace(6, f"FYI: importing {module} from mezcla [fallback]")
                         exec(f"from mezcla import {module}", global_sandbox)
                     debug.trace(6, f"{module}={eval(module, global_sandbox)}")
                     debug.assertion(module in global_sandbox)
@@ -498,7 +500,8 @@ class CallDetails:
         except:
             ## DEBUG: debug.raise_exception(6)
             debug.trace(4, f"FYI: Exception deriving function specification from {func!r}: {sys.exc_info()}")
-            debug.trace_stack(7)
+            ## OLD: debug.trace_stack(7)
+            debug.trace_exception(7, "CallDetails.__init__")
         debug.trace_object(6, self, label="CallDetails instance")
 
     @staticmethod
@@ -1245,13 +1248,17 @@ def path_to_cst(path: str) -> cst.CSTNode:
     convert_path_to_cst("foo.bar.baz") => cst.Attribute(value=...)
     ```
     """
+    debug.trace(7, f"path_to_cst(path={path!r})")
+    debug.assertion(isinstance(path, str))
     parts = path.split(".")
+    result = None
     if len(parts) == 1:
-        return cst.Name(parts[0])
-    return cst.Attribute(
-        value=path_to_cst(".".join(parts[:-1])),
-        attr=cst.Name(parts[-1])
-    )
+        result = cst.Name(parts[0])
+    else:
+        result = cst.Attribute(value=path_to_cst(".".join(parts[:-1])),
+                               attr=cst.Name(parts[-1]))                  
+    debug.trace(6, f"path_to_cst(path={path!r}) => {result!r}")
+    return result
 
 
 def value_to_arg(value: object) -> cst.Arg:
@@ -1640,7 +1647,9 @@ def path_to_import(path: str) -> cst.SimpleStatementLine:
     path_to_import("debug") => cst.SimpleStatementLine(body=cst.Import(...))
     ```
     """
+    debug.trace(7, f"path_to_import(path={path!r})")
     result = None
+    debug.assertion(isinstance(path, str))
     parts = path.split(".")
     if len(parts) == 1:
         result = cst.Import([cst.ImportAlias(cst.Name(parts[0]))])
@@ -1654,7 +1663,7 @@ def path_to_import(path: str) -> cst.SimpleStatementLine:
     result = cst.SimpleStatementLine(
         body=[result]
     )
-    debug.trace(7, f"path_to_import(path={path!r}) => {result!r}")
+    debug.trace(6, f"path_to_import(path={path!r}) => {result!r}")
     return result
 
 
@@ -2084,12 +2093,14 @@ class ReplaceCallsTransformer(StoreAliasesTransformer, StoreMetrics):
             updated_node: cst.Module
         ) -> cst.Module:
         """Leave a Module node"""
+        debug.trace(7, f"ReplaceCallsTransformer.leave_Module(original_node={original_node}, updated_node={updated_node})")
         # Add new imports
         new_body = list(updated_node.body)
         ## OLD:
         ## for module in set(self.to_import):
         ##     new_body = [path_to_import(module)] + new_body
         # note: makes the imports deterministic
+        debug.trace_expr(7, self.to_import)
         for module in sorted(dict.fromkeys(self.to_import)):
             new_body = [path_to_import(module)] + new_body
         self.to_import = []
