@@ -51,6 +51,7 @@
 # TODO:
 # - Add method to invoke unittest.main(), so clients don't need to import unittest.
 #
+## UPDATE 07 Sep 26: tips on monkeypatch usage
 
 """Unit test support class"""
 
@@ -245,6 +246,18 @@ class TestWrapper(unittest.TestCase):
     Note:
     - script_module should be overriden to specify the module instance, such as via get_testing_module_name (see test/template.py)
     - set it to None to avoid command-line invocation checks
+    - self.monkeypatch gets initialized automatically without having to add method argument
+    - likewise for self.capsys (see get_stderr)
+    - see test_system.py and test_debug.py for various examples
+
+    Example:
+      class TestOS(TestWrapper):
+        '''Class with monkeypatched OS calls'''
+        def test_get_current_directory(self):
+            '''Make sure get_current_directory uses getcwd override'''
+            # based on based on test_get_current_directory_alt in test_system.py
+            self.monkeypatch.setattr("os.getcwd", lambda: "/tmp")
+            assert system.get_current_directory() == "/tmp"
     """
     init_ok = init_temp_settings()
 
@@ -784,7 +797,7 @@ class TestWrapper(unittest.TestCase):
         """Monkey patch the trace LEVEL (e.g., DEBUG_LEVEL)
         Note: You might need to adjust capsys_debug_level.
         """
-        ## NOTE: monkeypatch is set via the autouse monkeypatch_fixture (see __init__)
+        # note: monkeypatch is set via the autouse monkeypatch_fixture method
         assert self.monkeypatch is not None
         self.monkeypatch.setattr("mezcla.debug.trace_level", level)
 
