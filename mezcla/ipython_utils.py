@@ -93,6 +93,7 @@ h = {'a': 1, 'b': 2, 'c': 3}
 l = [1, 2, 3]
 t = "some text"
 text = t
+test_it = TestWrapper()
 try:
     english_stopwords = nltk.corpus.stopwords.words('english')
     spanish_stopwords = nltk.corpus.stopwords.words('spanish')
