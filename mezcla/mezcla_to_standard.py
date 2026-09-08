@@ -1183,6 +1183,8 @@ if not EQCALL_DATAFILE:
         EqCall(
             targets="system.setenv",
             dests="os.putenv",
+            ## TODO2: add way to ignore parameters and just change function
+            eq_params={"var": "name"},
         ),
         ## TODO2: Make sure new additions are for commonly used functions.
         ## For tips, see header comments and notes above under "NEW CALLS".
