@@ -25,6 +25,7 @@
 #   for example, 'debug.trace("Copy created", level=3)' => 'debug.trace(3, "Copy created")'.
 # - Use pytest assert for most checks (e.g., for diff-based diagnostics).
 #
+## UPDATE 07 Sep 26-2: Reworking class-based fixtures to be global.
 ## UPDATE 07 Sep 26: Tweaking tests.
 ## UPDATE 06 Sep 26: Start of much-needed cleanup.
 
@@ -91,10 +92,17 @@ def parametrize(parameters):
         return wrapper
     return decorator
 
+#................................................................................
+# Fixture support
+#
+# note: Global functions define the features and then local (member) functions map
+# them into class instances. For example, global_mock_to_module_fixture is referenced
+# as TestTransform.mock_to_module (via TestTransform.local_mock_to_module_fixture).
+
 @pytest.fixture(name="mock_to_module")
-def fixture_mock_to_module():
+def global_mock_to_module_fixture():
     """Mock for the to_module dependency"""
-    debug.trace(6, "fixture_mock_to_module()")
+    debug.trace(6, "global_mock_to_module_fixture()")
 
     # Define mock behavior for get_replacement
     # TODO2: make sure mock_get_replacement invoked (i.e., for side effect)
@@ -123,6 +131,55 @@ def fixture_mock_to_module():
         lambda path, args: mock_get_replacement("mock_to_module", path, args))
     return new_mock_to_module
 
+
+# Sample functions to be used in tests
+
+def sample_func1(a):
+    """First sample function"""
+    print(f"sample_func1{a}")
+
+
+def sample_func2(b):
+    """Second sample function"""
+    print(f"sample_func2{b}")
+
+
+@pytest.fixture(name="setup_to_standard")
+def global_setup_to_standard_fixture():
+    """Returns a pytest fixture for to_standard conversion
+    """
+    debug.trace(5, "global_setup_to_standard_fixture()")
+
+    # Use reflexive mapping for each function (i.e., self equality)
+    THE_MODULE.mezcla_to_standard = [
+        THE_MODULE.EqCall(targets=sample_func1, dests=sample_func1),
+            THE_MODULE.EqCall(targets=sample_func2, dests=sample_func2),
+    ]
+    # THE_MODULE.ToStandard must be initialized before
+    # setting the mezcla_to_standard list
+    to_standard = THE_MODULE.ToStandard()
+    return to_standard
+
+
+@pytest.fixture(name='setup_to_standard_with_condition')
+def global_setup_to_standard_with_condition_fixture():
+    """Returns a pytest fixture for the ToStandard conversion with conditions.
+    """
+    debug.trace(5, "TestToStandard.setup_to_standard_with_condition_fixture()") 
+    THE_MODULE.mezcla_to_standard = [
+        THE_MODULE.EqCall(
+            targets=sample_func1, dests=None, condition=lambda a, b: a > b
+        ),
+        THE_MODULE.EqCall(
+            targets=sample_func2, dests=None, condition=lambda a, b: a == b
+        ),
+    ]
+    # THE_MODULE.ToStandard must be initialized before
+    # setting the mezcla_to_standard list
+    to_standard = THE_MODULE.ToStandard()
+    return to_standard
+
+#................................................................................
 
 # Define stubs for the sake of getting module to compile
 ## TODO3: rework via mocking
@@ -415,60 +472,59 @@ class TestBaseTransformerStrategy:
 
 
 @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
-## OLD: @pytest.mark.xfail
-## TEST:
 class TestToStandard(TestWrapper):
-## OLD: class TestToStandard:
-    """Class for test usage of ToStandard class in mezcla_to_standard"""
+    """Class for test usage of ToStandard class in mezcla_to_standard
+    Warning: This inherits from TestWrapper for sake of monkeypatch and capsys;
+    but, it block pytest from automatically injecting class-based fixtures.
+    For details, see site-packages/_pytest/unittest/TestCaseFunction.
+    """
 
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+    mock_to_module = None
+    setup_to_standard = None
+    setup_to_standard_with_condition = None
 
-    # Sample functions to be used in tests
+    @pytest.fixture(autouse=True, name='setup_to_standard')
+    def local_setup_to_standard_fixture(self, setup_to_standard):
+        """Fixture to setup mock modules for TestToStandard
+        Note: This uses the top-level fixture local_setup_to_standard_with_condition_fixture, which
+        gets mapped into class member self.setup_to_standard.
+        """
+        debug.trace(5, f"TestToStandard.local_setup_to_standard_fixture({setup_to_standard}); self={self}")
+        debug.trace(8, "calling context:")
+        debug.trace_stack(8)
+        self.setup_to_standard = setup_to_standard
+    
+    @pytest.fixture(autouse=True, name='setup_to_standard_with_condition')
+    def local_setup_to_standard_with_condition_fixture(self, setup_to_standard_with_condition):
+        """Fixture-like setup for the ToStandard conversion with conditions.
+        Note: This uses the top-level fixture local_setup_to_standard_with_condition_fixture, which
+        gets mapped into class member self.setup_to_standard_with_condition.
+        """
+        debug.trace(5, f"TestToStandard.local_setup_to_standard_with_condition_fixture({setup_to_standard_with_condition}); self={self}")
+        debug.trace(8, "calling context:")
+        debug.trace_stack(8)
+        self.setup_to_standard_with_condition = setup_to_standard_with_condition
 
-    @staticmethod
-    def sample_func1(a):
-        """First sample function"""
-        pass
-
-    @staticmethod
-    def sample_func2(b):
-        """Second sample function"""
-        pass
-
-    @pytest.fixture
-    def setup_to_standard(self):
-        """Returns a pytest fixture for to_standard conversion"""
-        debug.trace(5, f"TestToStandard.setup_to_standard(); self={self}")
-
-        # Use reflexive mapping for each function (i.e., self equality)
-        THE_MODULE.mezcla_to_standard = [
-            THE_MODULE.EqCall(targets=self.sample_func1, dests=self.sample_func1),
-            THE_MODULE.EqCall(targets=self.sample_func2, dests=self.sample_func2),
-        ]
-        # THE_MODULE.ToStandard must be initialized before
-        # setting the mezcla_to_standard list
-        to_standard = THE_MODULE.ToStandard()
-        return to_standard
-
-    def test_tostandard_find_eq_call_existing(self, setup_to_standard):
+    def test_tostandard_find_eq_call_existing(self):
         """Test for finding an existing equivalent call"""
-        debug.trace(5, f"TestToStandard.test_tostandard_find_eq_call_existing({setup_to_standard}); self={self}") 
+        debug.trace(5, f"TestToStandard.test_tostandard_find_eq_call_existing(); self={self}") 
         ## TODO3: rework test to be independent of test filename (likewise below)
         path = "test_mezcla_to_standard.sample_func1"
         args = [THE_MODULE.value_to_arg("a")]
-        to_standard = setup_to_standard
+        to_standard = self.setup_to_standard
         eq_call = to_standard.find_eq_call(path, args)
         assert eq_call is not None
         assert isinstance(eq_call, THE_MODULE.EqCall)
         ## OLD: assert eq_call.targets[0].path == path
         assert path in eq_call.targets[0].path
 
-    def test_tostandard_find_eq_call_non_existing(self, setup_to_standard):
+    def test_tostandard_find_eq_call_non_existing(self):
         """Test for trying to find a non-existing equivalent call"""
-        debug.trace(5, f"TestToStandard.test_tostandard_find_eq_call_non_existing({setup_to_standard}); self={self}") 
+        debug.trace(5, f"TestToStandard.test_tostandard_find_eq_call_non_existing(); self={self}") 
         path = "mezcla.no_exist_func"
         args = [THE_MODULE.value_to_arg("b")]
-        to_standard = setup_to_standard
+        to_standard = self.setup_to_standard
         # Correct assertion, but does not work as intended (no need for XFAIL)
         eq_call = to_standard.find_eq_call(path, args=args)
         assert eq_call is None
@@ -532,27 +588,10 @@ class TestToStandard(TestWrapper):
         assert self.normalize_repr(mezcla_to_standard[0].targets[0]) in self.normalize_repr(result)
         assert self.normalize_repr(mezcla_to_standard[1].targets[0]) not in self.normalize_repr(result)
 
-    @pytest.fixture
-    def setup_to_standard_with_condition(self):
-        """Fixture setup for the ToStandard conversion with conditions"""
-        debug.trace(5, f"TestToStandard.setup_to_standard_with_condition(); self={self}") 
-        THE_MODULE.mezcla_to_standard = [
-            THE_MODULE.EqCall(
-                targets=self.sample_func1, dests=None, condition=lambda a, b: a > b
-            ),
-            THE_MODULE.EqCall(
-                targets=self.sample_func2, dests=None, condition=lambda a, b: a == b
-            ),
-        ]
-        # THE_MODULE.ToStandard must be initialized before
-        # setting the mezcla_to_standard list
-        to_standard = THE_MODULE.ToStandard()
-        return to_standard
-
-    def test_is_condition_to_replace_met(self, setup_to_standard_with_condition):
+    def test_is_condition_to_replace_met(self):
         """Ensures that is_condition_to_replace_met of ToStandard class works as expected"""
-        debug.trace(5, f"TestToStandard.test_is_condition_to_replace_met(); self={self}")        
-        to_standard = setup_to_standard_with_condition
+        debug.trace(5, f"TestToStandard.test_is_condition_to_replace_met(); self={self}")     
+        to_standard = self.setup_to_standard_with_condition
 
         def sample_func(a, b):
             """Sample function"""
@@ -776,9 +815,11 @@ class TestToMezcla:
 
 
 @pytest.mark.skipif(not THE_MODULE, reason="Unable to load module")
-## OLD: @pytest.mark.xfail
 class TestTransform(TestWrapper):
-    """Class for test usage for methods of transform method in mezcla"""
+    """Class for test usage for methods of transform method in mezcla
+    Warning: This inherits from TestWrapper for sake of monkeypatch and capsys;
+    but, it block pytest from automatically injecting class-based fixtures.
+    """
 
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     mocked_to_module = None
@@ -796,16 +837,17 @@ class TestTransform(TestWrapper):
         self.py_data_file = gh.form_path(gh.dirname(__file__), "resources", "dummy_eq_call.py-data")
         self.eq_call_data = misc_utils.convert_python_data_to_instance(self.py_data_file, "mezcla.mezcla_to_standard", "EqCall", THE_MODULE.DEFAULT_EQCALL_FIELDS)
 
-    @pytest.fixture(autouse=True)
-    def setup(self, mock_to_module):
-        """Fixture to setup mock modules for TestTransform"""
+    @pytest.fixture(autouse=True, name='mock_to_module')
+    def local_mock_to_module_fixture(self, mock_to_module):
+        """Fixture to setup mock modules for TestTransform
+        Note: This just uses the top-level fixture: global_mock_to_module_fixture
+        """
         # Note: defined by pytest (see _pytest/unittest/TestCaseFunction)
-        debug.trace(5, f"TestTransform.setup({mock_to_module}); self={self}")
+        debug.trace(5, f"TestTransform.local_mock_to_module_fixture({mock_to_module}); self={self}")
         debug.trace(8, "calling context:")
         debug.trace_stack(8)
         self.mocked_to_module = mock_to_module
 
-    ## OLD: @pytest.mark.xfail
     def test_simple_transform(self):
         """Unit test for simple transform function"""
         code = fix_indent(
@@ -823,12 +865,11 @@ class TestTransform(TestWrapper):
         assert transformed_code.strip() == expected_code.strip()
 
     @pytest.mark.xfail
-    @pytest.mark.xfail
     def test_transform(self):
         """Unit test for transform function"""
         ## TODO2: Simply this overly complicated mocked unit test!
         ## OLD:
-        ## # Note: see fixture_mock_to_module for import_ prefix usage; for example,
+        ## # Note: see global_mock_to_module_fixture for import_ prefix usage; for example,
         ## # module_a replacement module is import_dummy_module_a.
         debug.trace(5, f"TestTransform.test_transform(); self={self}")
         debug.assertion(self.mocked_to_module)
@@ -886,7 +927,6 @@ class TestTransform(TestWrapper):
         ## TEMP:
         debug.reference_var(ANY)
 
-    @pytest.mark.xfail
     @pytest.mark.xfail
     def test_leave_module(self):
         """Ensures that leave_Module method of ReplaceCallsTransformer works as expected"""
@@ -955,7 +995,6 @@ class TestTransform(TestWrapper):
         assert visitor.aliases == expected_aliases
 
     @pytest.mark.xfail
-    @pytest.mark.xfail
     def test_leave_call(self):
         """Ensures that leave_Call method of ReplaceCallsTransformer works as expected"""
         debug.trace(5, f"TestTransform.test_leave_call(); self={self}")
@@ -998,7 +1037,6 @@ class TestUsageM2SEqCall(TestWrapper, ParametrizedTestCase):
         new_code, _ = THE_MODULE.transform(THE_MODULE.ToStandard(), input_code)
         return new_code
 
-    ## OLD: @pytest.mark.xfail
     @ut_parametrize(
         argnames="input_code, expected_code",
         argvalues=[
@@ -1279,7 +1317,6 @@ class TestUsageImportTypes(TestWrapper):
     @pytest.mark.skipif(not unittest_parametrize, reason="Unable to load unittest_parametrize")
     ## TODO1: fix parameter mismatch problem
     ##    TypeError: TestUsageImportTypes.test_import_transformation() missing 3 required positional arguments: 'original_code', 'expected_output', and 'msg'
-    @pytest.mark.xfail
     @ut_parametrize(
         argnames="original_code, expected_output, msg",
         argvalues=[
@@ -1506,7 +1543,6 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
         self.assert_m2s_transform_flaky(input_code, expected_code, expected_heads)
 
     @pytest.mark.xfail
-    @pytest.mark.xfail
     @parametrize(
         ## TODO:
         ## @ut_parametrize(
@@ -1554,7 +1590,6 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
         result = self.helper_m2s(input_code)
         self.assertEqual(result.strip(), expected_code.strip())
 
-    @pytest.mark.xfail
     @pytest.mark.xfail
     @parametrize(
         [
@@ -1614,7 +1649,6 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
         self.assert_m2s_transform(input_code=input_code, expected_code=expected_code)
 
     @pytest.mark.skipif(SKIP_EXPECTED_ERRORS, reason=SKIP_EXPECTED_REASON)
-    ## OLD: @pytest.mark.xfail
     @parametrize(
         [
             # Leads to "SyntaxError: unterminated string literal (detected at line 4)"
@@ -1848,7 +1882,6 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
         self.assert_m2s_transform(std_code, result)
 
     ## NOTE: This test failed due to ToMezcla class not working as expected
-    @pytest.mark.xfail
     @pytest.mark.xfail
     @parametrize(
         [
@@ -2107,7 +2140,6 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
         # assert result.strip() == expected_code.strip()
         self.assert_m2s_transform_flaky(input_code, expected_code, expected_code_heads)
 
-    @pytest.mark.xfail
     @pytest.mark.xfail
     @parametrize(
         [
@@ -2403,7 +2435,6 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
         self.assert_m2s_transform(input_code, expected_code)
 
     @pytest.mark.xfail
-    @pytest.mark.xfail
     @parametrize(
         [
             (
@@ -2466,7 +2497,6 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
 
     ## TODO: Check if this is a valid condition, import inside a for loop is a very rare scenario.
     ## TODO: Fix import inside for loop or another block.
-    @pytest.mark.xfail
     @pytest.mark.xfail
     @parametrize(
         [
@@ -3110,7 +3140,6 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
     ## TODO: check if this is a valid condition, import inside a block is a very rare scenario.
     ## TODO: fix import at the start of the block
     @pytest.mark.xfail
-    @pytest.mark.xfail
     @parametrize(
         [
             (
@@ -3235,7 +3264,6 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
         self.assert_m2s_transform(input_code, expected_code)
 
     @pytest.mark.xfail
-    @pytest.mark.xfail
     def test_regression(self):
         """Make sure known conversions work
         Note: isolated to just be a small number"""
@@ -3244,7 +3272,6 @@ class TestUsage(TestWrapper, ParametrizedTestCase):
             "from mezcla import system\nsystem.setenv('ABC', 'abc')",
             "import os\nos.putenv('ABC', 'abc')")
 
-    @pytest.mark.xfail
     @pytest.mark.xfail
     def test_adhoc(self):
         """Adhoc test for debugging
