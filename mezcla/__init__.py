@@ -1,5 +1,11 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
+#
+# Package initialization for mezcla.
+#
+## UPDATE 2026-09-23: adds SKIP_COMMON_EXPORT and omits FYI if not debugging proper
+#
+
 """
 Mezcla is Spanish for mixture, and this repository contains a variety of Python scripts.
 
@@ -23,6 +29,7 @@ __VERSION__ = version
 __version__ = __VERSION__
 
 # Standard module(s)
+import os
 import sys
 import builtins
 ## DEBUG: sys.stderr.write(f"{__file__=}\n")
@@ -60,13 +67,24 @@ def _in_ipython() -> bool:
     return (("ipykernel" in sys.modules) or ("IPython" in sys.modules))
 
 # Set convenience exports based on runtime mode.
-if _in_ipython():
-    # FYI to make import source explicit in interactive sessions.
-    print("FYI: mezcla using ipython_utils imports: debug, gh, my_re, system, TL")
-    from mezcla.ipython_utils import debug, gh, my_re, system, TL  # pylint: disable=ungrouped-imports
-    __all__ = ["debug", "gh", "my_re", "system", "TL", "__VERSION__"]
-else:
-    __all__ = ["__VERSION__"]
+# note: Skips import to avoid overhead and debugging complications due to packages
+# in different repos. See debug.detect_shadowed_package.
+__all__ = ["__VERSION__"]
+skip_common_export = os.environ.get("SKIP_COMMON_EXPORT")
+if _in_ipython and not skip_common_export:
+    # Shows FYI to make import source explicit in interactive sessions.
+    try:
+        debug_level = int(os.environ["DEBUG_LEVEL"], 0)
+        if (debug_level >= 4):
+            print("FYI: mezcla using ipython_utils imports: debug, system, etc.; disable via SKIP_COMMON_EXPORT")
+        from mezcla.ipython_utils import debug, gh, my_re, system, TL  # pylint: disable=ungrouped-imports
+        __all__ += ["debug", "gh", "my_re", "system", "TL"]
+    except:
+        # Swallows the exception unless production
+        if __debug__:
+            sys.stderr.write(f"Exception importing __init__: {sys.exc_info()}\n")
+        else:
+            raise
 
 ## PREVIOUS:
 ## NOTE: See __main__.py
