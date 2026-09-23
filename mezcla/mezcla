@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
+# Command line interface (CLI) for version info, etc.
+#
 # Note:
 # - Based on wrapper scripts from Anaconda (e.g., ~/anaconda3/envs/nlp-py-3-9/bin/python/pytest).
 # - This is currently just used to trace out path and version info.
