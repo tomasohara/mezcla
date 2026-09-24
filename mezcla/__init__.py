@@ -3,8 +3,7 @@
 #
 # Package initialization for mezcla.
 #
-## UPDATE 2026-09-23: adds SKIP_COMMON_EXPORT and omits FYI if not debugging proper
-#
+## UPDATE 2026-09-24: reworks via ADD_COMMON_EXPORT (disabled by default)
 
 """
 Mezcla is Spanish for mixture, and this repository contains a variety of Python scripts.
@@ -63,6 +62,7 @@ def _in_ipython() -> bool:
     """Whether running under an active IPython/Jupyter session"""
     get_ipython = getattr(builtins, "get_ipython", None)
     if callable(get_ipython):
+        # pylint: disable=not-callable
         return bool(get_ipython())
     return (("ipykernel" in sys.modules) or ("IPython" in sys.modules))
 
@@ -70,21 +70,23 @@ def _in_ipython() -> bool:
 # note: Skips import to avoid overhead and debugging complications due to packages
 # in different repos. See debug.detect_shadowed_package.
 __all__ = ["__VERSION__"]
-skip_common_export = os.environ.get("SKIP_COMMON_EXPORT")
-if _in_ipython and not skip_common_export:
+add_common_export = os.environ.get("ADD_COMMON_EXPORT", None)
+if add_common_export and _in_ipython():
     # Shows FYI to make import source explicit in interactive sessions.
     try:
         debug_level = int(os.environ["DEBUG_LEVEL"], 0)
-        if (debug_level >= 4):
-            print("FYI: mezcla using ipython_utils imports: debug, system, etc.; disable via SKIP_COMMON_EXPORT")
+        if (debug_level >= 3):
+            print("FYI: mezcla exporting ipython_utils imports: debug, system, etc.:\n" +
+                  "  Use ADD_COMMON_EXPORT=0 to disable (n.b., the default).")
         from mezcla.ipython_utils import debug, gh, my_re, system, TL  # pylint: disable=ungrouped-imports
-        __all__ += ["debug", "gh", "my_re", "system", "TL"]
+        from mezcla.main import dummy_app
+        # note: dummy_app mainly for testing
+        __all__ += ["debug", "gh", "my_re", "system", "TL", "dummy_app"]
     except:
         # Swallows the exception unless production
         if __debug__:
-            sys.stderr.write(f"Exception importing __init__: {sys.exc_info()}\n")
-        else:
             raise
+        sys.stderr.write(f"Warning: Exception importing __init__: {sys.exc_info()}\n")
 
 ## PREVIOUS:
 ## NOTE: See __main__.py
