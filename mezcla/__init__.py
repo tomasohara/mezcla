@@ -69,15 +69,16 @@ def _in_ipython() -> bool:
 # Set convenience exports based on runtime mode.
 # note: Skips import to avoid overhead and debugging complications due to packages
 # in different repos. See debug.detect_shadowed_package.
+## TODO2: remove ADD_COMMON_EXPORT support after validatation of clients (e.g., shell-scripts repo)
 __all__ = ["__VERSION__"]
-add_common_export = os.environ.get("ADD_COMMON_EXPORT", None)
+add_common_export = os.environ.get("ADD_COMMON_EXPORT", None) == "1"
 if add_common_export and _in_ipython():
     # Shows FYI to make import source explicit in interactive sessions.
     try:
         debug_level = int(os.environ["DEBUG_LEVEL"], 0)
         if (debug_level >= 3):
-            print("FYI: mezcla exporting ipython_utils imports: debug, system, etc.:\n" +
-                  "  Use ADD_COMMON_EXPORT=0 to disable (n.b., the default).")
+            print("FYI: mezcla exporting ipython_utils imports: debug, system, etc.: " +
+                  "Use ADD_COMMON_EXPORT=0 to disable (n.b., the default).")
         from mezcla.ipython_utils import debug, gh, my_re, system, TL  # pylint: disable=ungrouped-imports
         from mezcla.main import dummy_app
         # note: dummy_app mainly for testing

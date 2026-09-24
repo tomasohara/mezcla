@@ -14,6 +14,7 @@
 
 # Standard packages
 ## OLD: import re
+import shlex
 
 # Installed packages
 import pytest
@@ -47,8 +48,9 @@ class TestIt(TestWrapper):
         """Verify ipython includes convenience exports but not regular python"""
         debug.trace(4, f"TestIt.test_convenience_exports(); self={self}")
 
-        # Put mezcla first in path and check for debug trace level
-        self.monkeypatch.syspath_prepend(cm.get_mezcla_root_dir)
+        pytest.importorskip("IPython")
+        mezcla_root = shlex.quote(cm.get_mezcla_root_dir())
+        pythonpath = f"PYTHONPATH={mezcla_root}"
         import_snippet = cm.fix_indent(
             """
             from mezcla import *;
@@ -57,15 +59,21 @@ class TestIt(TestWrapper):
         undefined_regex = "Error.*dummy_app.*not.defined"
 
         # Only valid for ipython with flag set (others raise expeption)
-        output = gh.run(f"ADD_COMMON_EXPORT=0 python -c '{import_snippet}' 2>&1")
+        output = gh.run(f"{pythonpath} ADD_COMMON_EXPORT=0 python -c '{import_snippet}' 2>&1")
         assert(my_re.search(undefined_regex, output))
         #
-        output = gh.run(f"ADD_COMMON_EXPORT=0 ipython -c '{import_snippet}' 2>&1")
+        output = gh.run(f"{pythonpath} ADD_COMMON_EXPORT=0 ipython -c '{import_snippet}' 2>&1")
         assert(my_re.search(undefined_regex, output))
         #
-        output = gh.run(f"ADD_COMMON_EXPORT=1 ipython -c '{import_snippet}' 2>&1")
+        output = gh.run(f"{pythonpath} ADD_COMMON_EXPORT=1 ipython -c '{import_snippet}' 2>&1")
         assert(not my_re.search(undefined_regex, output))
 
+        return
+
+    def test_common_exports(self):
+        """Verify the regular package export contract"""
+        debug.trace(4, f"TestIt.test_common_exports(); self={self}")
+        assert(THE_MODULE.__all__ == ["__VERSION__"])
         return
 
     ## OLD:
