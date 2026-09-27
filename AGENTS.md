@@ -60,7 +60,7 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 
 0. Other common meta-comments include '## NOTE', '## TODO[n]', and "## UPDATE". These are comments meant more for development than for the code logic. This uses a doubled pound sign (i.e., '##') as the comment indicator, so that the comments are can be more readily removed when development is complete.
 
-0. When making significant changes, create a new git branch based on development, using a task-specific name such as 'refine-type-hints' or 'fix-poe-client'. The intention is to minimize conflicts without a proliferation of miscellaneous branches.
+0. When making significant changes, create a new git branch based on development, using a task-specific name such as 'refine-type-hints' or 'fix-poe-client'. The intention is to minimize conflicts without a proliferation of miscellaneous branches. (Significant changes generally involve multiple files or a substantial revision of a file.)
 
 0. After making a group of commits, push the changes and make sure the remove upstream branch gets set. In general, the remote should be kept updated except when testing tentative changes locally.
 
