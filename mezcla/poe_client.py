@@ -18,6 +18,7 @@ Sample usage:
 
 # Standard modules
 from typing import Any, Dict, Optional, List
+import json
 
 # Installed modules
 import requests
@@ -361,7 +362,10 @@ def main():
         # Test model listing
         if list_models:
             models = client.list_models()
-            print(f"Available models:\n\t{models}")
+            ## OLD: print(f"Available models:\n\t{models}")
+            ## TODO3: output to file (e.g., via file_utils.write_json)
+            model_spec = json.dumps(models, indent=2)
+            print(f"Available models:\n{model_spec}")
             
         # Test basic ask functionality
         if llm_command:
