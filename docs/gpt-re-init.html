@@ -1,0 +1,2682 @@
+<!DOCTYPE html>
+<html lang="en" data-color-mode="dark" data-light-theme="light" data-dark-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Review the recent change to __init__.py and suggest some improvements. Also c...</title>
+<style>
+[data-color-mode=light][data-light-theme=light],[data-color-mode=light][data-light-theme=light] ::backdrop,[data-color-mode=auto][data-light-theme=light],[data-color-mode=auto][data-light-theme=light] ::backdrop{--topicTag-borderColor: #ffffff00;--highlight-neutral-bgColor: #fff8c5;--page-header-bgColor: #f6f8fa;--diffBlob-addition-fgColor-text: #1f2328;--diffBlob-addition-fgColor-num: #1f2328;--diffBlob-addition-bgColor-num: #d1f8d9;--diffBlob-addition-bgColor-line: #dafbe1;--diffBlob-addition-bgColor-word: #aceebb;--diffBlob-deletion-fgColor-text: #1f2328;--diffBlob-deletion-fgColor-num: #1f2328;--diffBlob-deletion-bgColor-num: #ffcecb;--diffBlob-deletion-bgColor-line: #ffebe9;--diffBlob-deletion-bgColor-word: #ff818266;--diffBlob-hunk-bgColor-num: #54aeff66;--diffBlob-expander-iconColor: #59636e;--codeMirror-fgColor: #1f2328;--codeMirror-bgColor: #ffffff;--codeMirror-gutters-bgColor: #ffffff;--codeMirror-gutterMarker-fgColor-default: #ffffff;--codeMirror-gutterMarker-fgColor-muted: #59636e;--codeMirror-lineNumber-fgColor: #59636e;--codeMirror-cursor-fgColor: #1f2328;--codeMirror-selection-bgColor: #54aeff66;--codeMirror-activeline-bgColor: #818b981f;--codeMirror-matchingBracket-fgColor: #1f2328;--codeMirror-lines-bgColor: #ffffff;--codeMirror-syntax-fgColor-comment: #1f2328;--codeMirror-syntax-fgColor-constant: #0550ae;--codeMirror-syntax-fgColor-entity: #8250df;--codeMirror-syntax-fgColor-keyword: #cf222e;--codeMirror-syntax-fgColor-storage: #cf222e;--codeMirror-syntax-fgColor-string: #0a3069;--codeMirror-syntax-fgColor-support: #0550ae;--codeMirror-syntax-fgColor-variable: #953800;--header-fgColor-default: #ffffffb3;--header-fgColor-logo: #ffffff;--header-bgColor: #25292e;--header-borderColor-divider: #818b98;--headerSearch-bgColor: #25292e;--headerSearch-borderColor: #818b98;--data-blue-color-emphasis: #006edb;--data-blue-color-muted: #d1f0ff;--data-auburn-color-emphasis: #9d615c;--data-auburn-color-muted: #f2e9e9;--data-orange-color-emphasis: #eb670f;--data-orange-color-muted: #ffe7d1;--data-yellow-color-emphasis: #b88700;--data-yellow-color-muted: #ffec9e;--data-green-color-emphasis: #30a147;--data-green-color-muted: #caf7ca;--data-teal-color-emphasis: #179b9b;--data-teal-color-muted: #c7f5ef;--data-purple-color-emphasis: #894ceb;--data-purple-color-muted: #f1e5ff;--data-pink-color-emphasis: #ce2c85;--data-pink-color-muted: #ffe5f1;--data-red-color-emphasis: #df0c24;--data-red-color-muted: #ffe2e0;--data-gray-color-emphasis: #808fa3;--data-gray-color-muted: #e8ecf2;--display-blue-bgColor-muted: #d1f0ff;--display-blue-bgColor-emphasis: #006edb;--display-blue-fgColor: #005fcc;--display-blue-borderColor-muted: #ade1ff;--display-blue-borderColor-emphasis: #006edb;--display-green-bgColor-muted: #caf7ca;--display-green-bgColor-emphasis: #2c8141;--display-green-fgColor: #2b6e3f;--display-green-borderColor-muted: #9ceda0;--display-green-borderColor-emphasis: #2c8141;--display-orange-bgColor-muted: #ffe7d1;--display-orange-bgColor-emphasis: #b8500f;--display-orange-fgColor: #a24610;--display-orange-borderColor-muted: #fecfaa;--display-orange-borderColor-emphasis: #b8500f;--display-purple-bgColor-muted: #f1e5ff;--display-purple-bgColor-emphasis: #894ceb;--display-purple-fgColor: #783ae4;--display-purple-borderColor-muted: #e6d2fe;--display-purple-borderColor-emphasis: #894ceb;--display-plum-bgColor-muted: #f8e5ff;--display-plum-bgColor-emphasis: #a830e8;--display-plum-fgColor: #961edc;--display-plum-borderColor-muted: #f0cdfe;--display-plum-borderColor-emphasis: #a830e8;--display-red-bgColor-muted: #ffe2e0;--display-red-bgColor-emphasis: #df0c24;--display-red-fgColor: #c50d28;--display-red-borderColor-muted: #fecdcd;--display-red-borderColor-emphasis: #df0c24;--display-coral-bgColor-muted: #ffe5db;--display-coral-bgColor-emphasis: #d43511;--display-coral-fgColor: #ba2e12;--display-coral-borderColor-muted: #fecebe;--display-coral-borderColor-emphasis: #d43511;--display-yellow-bgColor-muted: #ffec9e;--display-yellow-bgColor-emphasis: #946a00;--display-yellow-fgColor: #805900;--display-yellow-borderColor-muted: #ffd642;--display-yellow-borderColor-emphasis: #946a00;--display-gray-bgColor-muted: #e8ecf2;--display-gray-bgColor-emphasis: #647182;--display-gray-fgColor: #5c6570;--display-gray-borderColor-muted: #d2dae4;--display-gray-borderColor-emphasis: #647182;--display-auburn-bgColor-muted: #f2e9e9;--display-auburn-bgColor-emphasis: #9d615c;--display-auburn-fgColor: #8a5551;--display-auburn-borderColor-muted: #e6d6d5;--display-auburn-borderColor-emphasis: #9d615c;--display-brown-bgColor-muted: #eeeae2;--display-brown-bgColor-emphasis: #856d4c;--display-brown-fgColor: #755f43;--display-brown-borderColor-muted: #dfd7c8;--display-brown-borderColor-emphasis: #856d4c;--display-lemon-bgColor-muted: #f7eea1;--display-lemon-bgColor-emphasis: #866e04;--display-lemon-fgColor: #786002;--display-lemon-borderColor-muted: #f0db3d;--display-lemon-borderColor-emphasis: #866e04;--display-olive-bgColor-muted: #f0f0ad;--display-olive-bgColor-emphasis: #64762d;--display-olive-fgColor: #56682c;--display-olive-borderColor-muted: #dbe170;--display-olive-borderColor-emphasis: #64762d;--display-lime-bgColor-muted: #e3f2b5;--display-lime-bgColor-emphasis: #527a29;--display-lime-fgColor: #476c28;--display-lime-borderColor-muted: #c7e580;--display-lime-borderColor-emphasis: #527a29;--display-pine-bgColor-muted: #bff8db;--display-pine-bgColor-emphasis: #167e53;--display-pine-fgColor: #156f4b;--display-pine-borderColor-muted: #80efb9;--display-pine-borderColor-emphasis: #167e53;--display-teal-bgColor-muted: #c7f5ef;--display-teal-bgColor-emphasis: #127e81;--display-teal-fgColor: #106e75;--display-teal-borderColor-muted: #89ebe1;--display-teal-borderColor-emphasis: #127e81;--display-cyan-bgColor-muted: #bdf4ff;--display-cyan-bgColor-emphasis: #007b94;--display-cyan-fgColor: #006a80;--display-cyan-borderColor-muted: #7ae9ff;--display-cyan-borderColor-emphasis: #007b94;--display-indigo-bgColor-muted: #e5e9ff;--display-indigo-bgColor-emphasis: #5a61e7;--display-indigo-fgColor: #494edf;--display-indigo-borderColor-muted: #d2d7fe;--display-indigo-borderColor-emphasis: #5a61e7;--display-pink-bgColor-muted: #ffe5f1;--display-pink-bgColor-emphasis: #ce2c85;--display-pink-fgColor: #b12f79;--display-pink-borderColor-muted: #fdc9e2;--display-pink-borderColor-emphasis: #ce2c85;--avatar-bgColor: #ffffff;--avatar-borderColor: #1f232826;--avatar-shadow: 0px 0px 0px 2px #ffffffcc;--avatarStack-fade-bgColor-default: #c8d1da;--avatarStack-fade-bgColor-muted: #dae0e7;--control-bgColor-rest: #f6f8fa;--control-bgColor-hover: #eff2f5;--control-bgColor-active: #e6eaef;--control-bgColor-disabled: #eff2f5;--control-bgColor-selected: #f6f8fa;--control-fgColor-rest: #25292e;--control-fgColor-placeholder: #59636e;--control-fgColor-disabled: #818b98;--control-borderColor-rest: #d1d9e0;--control-borderColor-emphasis: #818b98;--control-borderColor-disabled: #818b981a;--control-borderColor-selected: #f6f8fa;--control-borderColor-success: #1a7f37;--control-borderColor-danger: #cf222e;--control-borderColor-warning: #9a6700;--control-iconColor-rest: #59636e;--control-transparent-bgColor-rest: #ffffff00;--control-transparent-bgColor-hover: #818b981a;--control-transparent-bgColor-active: #818b9826;--control-transparent-bgColor-disabled: #eff2f5;--control-transparent-bgColor-selected: #818b9826;--control-transparent-borderColor-rest: #ffffff00;--control-transparent-borderColor-hover: #ffffff00;--control-transparent-borderColor-active: #ffffff00;--control-danger-fgColor-rest: #d1242f;--control-danger-fgColor-hover: #d1242f;--control-danger-bgColor-hover: #ffebe9;--control-danger-bgColor-active: #ffebe966;--control-checked-bgColor-rest: #0969da;--control-checked-bgColor-hover: #0860ca;--control-checked-bgColor-active: #0757ba;--control-checked-bgColor-disabled: #818b98;--control-checked-fgColor-rest: #ffffff;--control-checked-fgColor-disabled: #ffffff;--control-checked-borderColor-rest: #0969da;--control-checked-borderColor-hover: #0860ca;--control-checked-borderColor-active: #0757ba;--control-checked-borderColor-disabled: #818b98;--controlTrack-bgColor-rest: #e6eaef;--controlTrack-bgColor-hover: #e0e6eb;--controlTrack-bgColor-active: #dae0e7;--controlTrack-bgColor-disabled: #818b98;--controlTrack-fgColor-rest: #59636e;--controlTrack-fgColor-disabled: #ffffff;--controlTrack-borderColor-rest: #d1d9e0;--controlTrack-borderColor-disabled: #818b98;--controlKnob-bgColor-rest: #ffffff;--controlKnob-bgColor-disabled: #eff2f5;--controlKnob-bgColor-checked: #ffffff;--controlKnob-borderColor-rest: #818b98;--controlKnob-borderColor-disabled: #eff2f5;--controlKnob-borderColor-checked: #0969da;--counter-borderColor: #ffffff00;--counter-bgColor-muted: #818b981f;--counter-bgColor-emphasis: #59636e;--button-default-fgColor-rest: #25292e;--button-default-bgColor-rest: #f6f8fa;--button-default-bgColor-hover: #eff2f5;--button-default-bgColor-active: #e6eaef;--button-default-bgColor-selected: #e6eaef;--button-default-bgColor-disabled: #eff2f5;--button-default-borderColor-rest: #d1d9e0;--button-default-borderColor-hover: #d1d9e0;--button-default-borderColor-active: #d1d9e0;--button-default-borderColor-disabled: #818b981a;--button-default-shadow-resting: 0px 1px 0px 0px #1f23280a;--button-primary-fgColor-rest: #ffffff;--button-primary-fgColor-disabled: #ffffffcc;--button-primary-iconColor-rest: #ffffffcc;--button-primary-bgColor-rest: #1f883d;--button-primary-bgColor-hover: #1c8139;--button-primary-bgColor-active: #197935;--button-primary-bgColor-disabled: #95d8a6;--button-primary-borderColor-rest: #1f232826;--button-primary-borderColor-hover: #1f232826;--button-primary-borderColor-active: #1f232826;--button-primary-borderColor-disabled: #95d8a6;--button-primary-shadow-selected: inset 0px 1px 0px 0px #002d114d;--button-invisible-fgColor-rest: #25292e;--button-invisible-fgColor-hover: #25292e;--button-invisible-fgColor-disabled: #818b98;--button-invisible-iconColor-rest: #59636e;--button-invisible-iconColor-hover: #59636e;--button-invisible-iconColor-disabled: #818b98;--button-invisible-bgColor-rest: #ffffff00;--button-invisible-bgColor-hover: #818b981a;--button-invisible-bgColor-active: #818b9826;--button-invisible-bgColor-disabled: #eff2f5;--button-invisible-borderColor-rest: #ffffff00;--button-invisible-borderColor-hover: #ffffff00;--button-invisible-borderColor-disabled: #818b981a;--button-outline-fgColor-rest: #0969da;--button-outline-fgColor-hover: #ffffff;--button-outline-fgColor-active: #ffffff;--button-outline-fgColor-disabled: #0969da80;--button-outline-bgColor-rest: #f6f8fa;--button-outline-bgColor-hover: #0969da;--button-outline-bgColor-active: #0757ba;--button-outline-bgColor-disabled: #eff2f5;--button-outline-borderColor-hover: #1f232826;--button-outline-borderColor-active: #1f232826;--button-outline-shadow-selected: inset 0px 1px 0px 0px #00215533;--button-danger-fgColor-rest: #d1242f;--button-danger-fgColor-hover: #ffffff;--button-danger-fgColor-active: #ffffff;--button-danger-fgColor-disabled: #d1242f80;--button-danger-iconColor-rest: #d1242f;--button-danger-iconColor-hover: #ffffff;--button-danger-bgColor-rest: #f6f8fa;--button-danger-bgColor-hover: #a40e26;--button-danger-bgColor-active: #8b0820;--button-danger-bgColor-disabled: #eff2f5;--button-danger-borderColor-rest: #d1d9e0;--button-danger-borderColor-hover: #1f232826;--button-danger-borderColor-active: #1f232826;--button-danger-shadow-selected: inset 0px 1px 0px 0px #4c001433;--button-inactive-fgColor: #59636e;--button-inactive-bgColor: #e6eaef;--button-star-iconColor: #eac54f;--buttonCounter-default-bgColor-rest: #818b981f;--buttonCounter-invisible-bgColor-rest: #818b981f;--buttonCounter-primary-bgColor-rest: #002d1133;--buttonCounter-outline-bgColor-rest: #0969da1a;--buttonCounter-outline-bgColor-hover: #ffffff33;--buttonCounter-outline-bgColor-disabled: #0969da0d;--buttonCounter-outline-fgColor-rest: #0550ae;--buttonCounter-outline-fgColor-hover: #ffffff;--buttonCounter-outline-fgColor-disabled: #0969da80;--buttonCounter-danger-bgColor-hover: #ffffff33;--buttonCounter-danger-bgColor-disabled: #cf222e0d;--buttonCounter-danger-bgColor-rest: #cf222e1a;--buttonCounter-danger-fgColor-rest: #c21c2c;--buttonCounter-danger-fgColor-hover: #ffffff;--buttonCounter-danger-fgColor-disabled: #d1242f80;--reactionButton-selected-bgColor-rest: #ddf4ff;--reactionButton-selected-bgColor-hover: #caecff;--reactionButton-selected-fgColor-rest: #0969da;--reactionButton-selected-fgColor-hover: #0550ae;--focus-outlineColor: #0969da;--focus-outline: #0969da solid 2px;--menu-bgColor-active: #ffffff00;--overlay-bgColor: #ffffff;--overlay-borderColor: #d1d9e080;--overlay-backdrop-bgColor: #c8d1da66;--selectMenu-borderColor: #ffffff00;--selectMenu-bgColor-active: #b6e3ff;--sideNav-bgColor-selected: #ffffff;--skeletonLoader-bgColor: #818b981a;--timelineBadge-bgColor: #f6f8fa;--treeViewItem-leadingVisual-iconColor-rest: #54aeff;--underlineNav-borderColor-active: #fd8c73;--underlineNav-borderColor-hover: #d1d9e0b3;--underlineNav-iconColor-rest: #59636e;--selection-bgColor: #0969da33;--card-bgColor: #ffffff;--label-green-bgColor-rest: #caf7ca;--label-green-bgColor-hover: #9ceda0;--label-green-bgColor-active: #54d961;--label-green-fgColor-rest: #2b6e3f;--label-green-fgColor-hover: #285c3b;--label-green-fgColor-active: #254b34;--label-orange-bgColor-rest: #ffe7d1;--label-orange-bgColor-hover: #fecfaa;--label-orange-bgColor-active: #fbaf74;--label-orange-fgColor-rest: #a24610;--label-orange-fgColor-hover: #8d3c11;--label-orange-fgColor-active: #70300f;--label-purple-bgColor-rest: #f1e5ff;--label-purple-bgColor-hover: #e6d2fe;--label-purple-bgColor-active: #d1b1fc;--label-purple-fgColor-rest: #783ae4;--label-purple-fgColor-hover: #6223d7;--label-purple-fgColor-active: #4f21ab;--label-red-bgColor-rest: #ffe2e0;--label-red-bgColor-hover: #fecdcd;--label-red-bgColor-active: #fda5a7;--label-red-fgColor-rest: #c50d28;--label-red-fgColor-hover: #a60c29;--label-red-fgColor-active: #880c27;--label-yellow-bgColor-rest: #ffec9e;--label-yellow-bgColor-hover: #ffd642;--label-yellow-bgColor-active: #ebb400;--label-yellow-fgColor-rest: #805900;--label-yellow-fgColor-hover: #704d00;--label-yellow-fgColor-active: #5c3d00;--label-gray-bgColor-rest: #e8ecf2;--label-gray-bgColor-hover: #d2dae4;--label-gray-bgColor-active: #b4c0cf;--label-gray-fgColor-rest: #5c6570;--label-gray-fgColor-hover: #4e535a;--label-gray-fgColor-active: #424448;--label-auburn-bgColor-rest: #f2e9e9;--label-auburn-bgColor-hover: #e6d6d5;--label-auburn-bgColor-active: #d4b7b5;--label-auburn-fgColor-rest: #8a5551;--label-auburn-fgColor-hover: #744744;--label-auburn-fgColor-active: #5d3937;--label-brown-bgColor-rest: #eeeae2;--label-brown-bgColor-hover: #dfd7c8;--label-brown-bgColor-active: #cbbda4;--label-brown-fgColor-rest: #755f43;--label-brown-fgColor-hover: #64513a;--label-brown-fgColor-active: #51412f;--label-lemon-bgColor-rest: #f7eea1;--label-lemon-bgColor-hover: #f0db3d;--label-lemon-bgColor-active: #d8bd0e;--label-lemon-fgColor-rest: #786002;--label-lemon-fgColor-hover: #654f01;--label-lemon-fgColor-active: #523f00;--label-olive-bgColor-rest: #f0f0ad;--label-olive-bgColor-hover: #dbe170;--label-olive-bgColor-active: #b9c832;--label-olive-fgColor-rest: #56682c;--label-olive-fgColor-hover: #495a2b;--label-olive-fgColor-active: #3b4927;--label-lime-bgColor-rest: #e3f2b5;--label-lime-bgColor-hover: #c7e580;--label-lime-bgColor-active: #9bd039;--label-lime-fgColor-rest: #476c28;--label-lime-fgColor-hover: #3a5b25;--label-lime-fgColor-active: #2f4a21;--label-pine-bgColor-rest: #bff8db;--label-pine-bgColor-hover: #80efb9;--label-pine-bgColor-active: #1dd781;--label-pine-fgColor-rest: #156f4b;--label-pine-fgColor-hover: #135d41;--label-pine-fgColor-active: #114b36;--label-teal-bgColor-rest: #c7f5ef;--label-teal-bgColor-hover: #89ebe1;--label-teal-bgColor-active: #22d3c7;--label-teal-fgColor-rest: #106e75;--label-teal-fgColor-hover: #0d5b63;--label-teal-fgColor-active: #0a4852;--label-cyan-bgColor-rest: #bdf4ff;--label-cyan-bgColor-hover: #7ae9ff;--label-cyan-bgColor-active: #00d0fa;--label-cyan-fgColor-rest: #006a80;--label-cyan-fgColor-hover: #00596b;--label-cyan-fgColor-active: #004857;--label-indigo-bgColor-rest: #e5e9ff;--label-indigo-bgColor-hover: #d2d7fe;--label-indigo-bgColor-active: #b1b9fb;--label-indigo-fgColor-rest: #494edf;--label-indigo-fgColor-hover: #393cd5;--label-indigo-fgColor-active: #2d2db4;--label-blue-bgColor-rest: #d1f0ff;--label-blue-bgColor-hover: #ade1ff;--label-blue-bgColor-active: #75c8ff;--label-blue-fgColor-rest: #005fcc;--label-blue-fgColor-hover: #004db3;--label-blue-fgColor-active: #003d99;--label-plum-bgColor-rest: #f8e5ff;--label-plum-bgColor-hover: #f0cdfe;--label-plum-bgColor-active: #e2a7fb;--label-plum-fgColor-rest: #961edc;--label-plum-fgColor-hover: #7d1eb8;--label-plum-fgColor-active: #651d96;--label-pink-bgColor-rest: #ffe5f1;--label-pink-bgColor-hover: #fdc9e2;--label-pink-bgColor-active: #f8a5cf;--label-pink-fgColor-rest: #b12f79;--label-pink-fgColor-hover: #8e2e66;--label-pink-fgColor-active: #6e2b53;--label-coral-bgColor-rest: #ffe5db;--label-coral-bgColor-hover: #fecebe;--label-coral-bgColor-active: #fcab92;--label-coral-fgColor-rest: #ba2e12;--label-coral-fgColor-hover: #9b2712;--label-coral-fgColor-active: #7e2011;--tooltip-bgColor: #25292e;--tooltip-fgColor: #ffffff;--fgColor-default: #1f2328;--fgColor-muted: #59636e;--fgColor-onEmphasis: #ffffff;--fgColor-onInverse: #ffffff;--fgColor-white: #ffffff;--fgColor-black: #1f2328;--fgColor-disabled: #818b98;--fgColor-link: #0969da;--fgColor-neutral: #59636e;--fgColor-accent: #0969da;--fgColor-success: #1a7f37;--fgColor-open: #1a7f37;--fgColor-attention: #9a6700;--fgColor-severe: #bc4c00;--fgColor-danger: #d1242f;--fgColor-closed: #d1242f;--fgColor-done: #8250df;--fgColor-upsell: #8250df;--fgColor-sponsors: #bf3989;--bgColor-default: #ffffff;--bgColor-muted: #f6f8fa;--bgColor-inset: #f6f8fa;--bgColor-emphasis: #25292e;--bgColor-inverse: #25292e;--bgColor-white: #ffffff;--bgColor-black: #1f2328;--bgColor-disabled: #eff2f5;--bgColor-transparent: #ffffff00;--bgColor-neutral-muted: #818b981f;--bgColor-neutral-emphasis: #59636e;--bgColor-accent-muted: #ddf4ff;--bgColor-accent-emphasis: #0969da;--bgColor-success-muted: #dafbe1;--bgColor-success-emphasis: #1f883d;--bgColor-open-muted: #dafbe1;--bgColor-open-emphasis: #1f883d;--bgColor-attention-muted: #fff8c5;--bgColor-attention-emphasis: #9a6700;--bgColor-severe-muted: #fff1e5;--bgColor-severe-emphasis: #bc4c00;--bgColor-danger-muted: #ffebe9;--bgColor-danger-emphasis: #cf222e;--bgColor-closed-muted: #ffebe9;--bgColor-closed-emphasis: #cf222e;--bgColor-done-muted: #fbefff;--bgColor-done-emphasis: #8250df;--bgColor-upsell-muted: #fbefff;--bgColor-upsell-emphasis: #8250df;--bgColor-sponsors-muted: #ffeff7;--bgColor-sponsors-emphasis: #bf3989;--borderColor-default: #d1d9e0;--borderColor-muted: #d1d9e0b3;--borderColor-emphasis: #818b98;--borderColor-disabled: #818b981a;--borderColor-transparent: #ffffff00;--borderColor-translucent: #1f232826;--borderColor-neutral-muted: #d1d9e0b3;--borderColor-neutral-emphasis: #59636e;--borderColor-accent-muted: #54aeff66;--borderColor-accent-emphasis: #0969da;--borderColor-success-muted: #4ac26b66;--borderColor-success-emphasis: #1a7f37;--borderColor-open-muted: #4ac26b66;--borderColor-open-emphasis: #1a7f37;--borderColor-attention-muted: #d4a72c66;--borderColor-attention-emphasis: #9a6700;--borderColor-severe-muted: #fb8f4466;--borderColor-severe-emphasis: #bc4c00;--borderColor-danger-muted: #ff818266;--borderColor-danger-emphasis: #cf222e;--borderColor-closed-muted: #ff818266;--borderColor-closed-emphasis: #cf222e;--borderColor-done-muted: #c297ff66;--borderColor-done-emphasis: #8250df;--borderColor-upsell-muted: #c297ff66;--borderColor-upsell-emphasis: #8250df;--borderColor-sponsors-muted: #ff80c866;--borderColor-sponsors-emphasis: #bf3989;--color-ansi-black: #1f2328;--color-ansi-black-bright: #393f46;--color-ansi-white: #59636e;--color-ansi-white-bright: #818b98;--color-ansi-gray: #59636e;--color-ansi-red: #cf222e;--color-ansi-red-bright: #a40e26;--color-ansi-green: #116329;--color-ansi-green-bright: #1a7f37;--color-ansi-yellow: #4d2d00;--color-ansi-yellow-bright: #633c01;--color-ansi-blue: #0969da;--color-ansi-blue-bright: #218bff;--color-ansi-magenta: #8250df;--color-ansi-magenta-bright: #a475f9;--color-ansi-cyan: #1b7c83;--color-ansi-cyan-bright: #3192aa;--color-prettylights-syntax-comment: #59636e;--color-prettylights-syntax-constant: #0550ae;--color-prettylights-syntax-constant-other-reference-link: #0a3069;--color-prettylights-syntax-entity: #6639ba;--color-prettylights-syntax-storage-modifier-import: #1f2328;--color-prettylights-syntax-entity-tag: #0550ae;--color-prettylights-syntax-keyword: #cf222e;--color-prettylights-syntax-string: #0a3069;--color-prettylights-syntax-variable: #953800;--color-prettylights-syntax-brackethighlighter-unmatched: #82071e;--color-prettylights-syntax-brackethighlighter-angle: #59636e;--color-prettylights-syntax-invalid-illegal-text: #f6f8fa;--color-prettylights-syntax-invalid-illegal-bg: #82071e;--color-prettylights-syntax-carriage-return-text: #f6f8fa;--color-prettylights-syntax-carriage-return-bg: #cf222e;--color-prettylights-syntax-string-regexp: #116329;--color-prettylights-syntax-markup-list: #3b2300;--color-prettylights-syntax-markup-heading: #0550ae;--color-prettylights-syntax-markup-italic: #1f2328;--color-prettylights-syntax-markup-bold: #1f2328;--color-prettylights-syntax-markup-deleted-text: #82071e;--color-prettylights-syntax-markup-deleted-bg: #ffebe9;--color-prettylights-syntax-markup-inserted-text: #116329;--color-prettylights-syntax-markup-inserted-bg: #dafbe1;--color-prettylights-syntax-markup-changed-text: #953800;--color-prettylights-syntax-markup-changed-bg: #ffd8b5;--color-prettylights-syntax-markup-ignored-text: #d1d9e0;--color-prettylights-syntax-markup-ignored-bg: #0550ae;--color-prettylights-syntax-meta-diff-range: #8250df;--color-prettylights-syntax-sublimelinter-gutter-mark: #818b98;--shadow-inset: inset 0px 1px 0px 0px #1f23280a;--shadow-resting-xsmall: 0px 1px 0px 0px #1f23281a;--shadow-resting-small: 0px 1px 0px 0px #1f23280a;--shadow-resting-medium: 0px 3px 6px 0px #25292e1f;--shadow-floating-small: 0px 0px 0px 1px #d1d9e080, 0px 6px 12px -3px #25292e0a, 0px 6px 18px 0px #25292e1f;--shadow-floating-medium: 0px 0px 0px 1px #d1d9e0, 0px 8px 16px -4px #25292e14, 0px 4px 32px -4px #25292e14, 0px 24px 48px -12px #25292e14, 0px 48px 96px -24px #25292e14;--shadow-floating-large: 0px 0px 0px 1px #d1d9e0, 0px 40px 80px 0px #25292e3d;--shadow-floating-xlarge: 0px 0px 0px 1px #d1d9e0, 0px 56px 112px 0px #25292e52;--shadow-floating-legacy: 0px 6px 12px -3px #25292e0a, 0px 6px 18px 0px #25292e1f}
+[data-color-mode=dark][data-dark-theme=dark],[data-color-mode=dark][data-dark-theme=dark] ::backdrop,[data-color-mode=auto][data-light-theme=dark],[data-color-mode=auto][data-light-theme=dark] ::backdrop{--topicTag-borderColor: #00000000;--highlight-neutral-bgColor: #d2992266;--page-header-bgColor: #0d1117;--diffBlob-addition-fgColor-text: #f0f6fc;--diffBlob-addition-fgColor-num: #f0f6fc;--diffBlob-addition-bgColor-num: #3fb9504d;--diffBlob-addition-bgColor-line: #2ea04326;--diffBlob-addition-bgColor-word: #2ea04366;--diffBlob-deletion-fgColor-text: #f0f6fc;--diffBlob-deletion-fgColor-num: #f0f6fc;--diffBlob-deletion-bgColor-num: #f851494d;--diffBlob-deletion-bgColor-line: #f8514926;--diffBlob-deletion-bgColor-word: #f8514966;--diffBlob-hunk-bgColor-num: #388bfd66;--diffBlob-expander-iconColor: #9198a1;--codeMirror-fgColor: #f0f6fc;--codeMirror-bgColor: #0d1117;--codeMirror-gutters-bgColor: #0d1117;--codeMirror-gutterMarker-fgColor-default: #0d1117;--codeMirror-gutterMarker-fgColor-muted: #9198a1;--codeMirror-lineNumber-fgColor: #9198a1;--codeMirror-cursor-fgColor: #f0f6fc;--codeMirror-selection-bgColor: #388bfd66;--codeMirror-activeline-bgColor: #656c7633;--codeMirror-matchingBracket-fgColor: #f0f6fc;--codeMirror-lines-bgColor: #0d1117;--codeMirror-syntax-fgColor-comment: #656c76;--codeMirror-syntax-fgColor-constant: #79c0ff;--codeMirror-syntax-fgColor-entity: #d2a8ff;--codeMirror-syntax-fgColor-keyword: #ff7b72;--codeMirror-syntax-fgColor-storage: #ff7b72;--codeMirror-syntax-fgColor-string: #a5d6ff;--codeMirror-syntax-fgColor-support: #79c0ff;--codeMirror-syntax-fgColor-variable: #ffa657;--header-fgColor-default: #ffffffb3;--header-fgColor-logo: #f0f6fc;--header-bgColor: #151b23f2;--header-borderColor-divider: #656c76;--headerSearch-bgColor: #0d1117;--headerSearch-borderColor: #2a313c;--data-blue-color-emphasis: #0576ff;--data-blue-color-muted: #001a47;--data-auburn-color-emphasis: #a86f6b;--data-auburn-color-muted: #271817;--data-orange-color-emphasis: #984b10;--data-orange-color-muted: #311708;--data-yellow-color-emphasis: #895906;--data-yellow-color-muted: #2e1a00;--data-green-color-emphasis: #2f6f37;--data-green-color-muted: #122117;--data-teal-color-emphasis: #106c70;--data-teal-color-muted: #041f25;--data-purple-color-emphasis: #975bf1;--data-purple-color-muted: #211047;--data-pink-color-emphasis: #d34591;--data-pink-color-muted: #2d1524;--data-red-color-emphasis: #eb3342;--data-red-color-muted: #3c0614;--data-gray-color-emphasis: #576270;--data-gray-color-muted: #1c1c1c;--display-blue-bgColor-muted: #001a47;--display-blue-bgColor-emphasis: #005bd1;--display-blue-fgColor: #4da0ff;--display-blue-borderColor-muted: #002766;--display-blue-borderColor-emphasis: #0576ff;--display-green-bgColor-muted: #122117;--display-green-bgColor-emphasis: #2f6f37;--display-green-fgColor: #41b445;--display-green-borderColor-muted: #182f1f;--display-green-borderColor-emphasis: #388f3f;--display-orange-bgColor-muted: #311708;--display-orange-bgColor-emphasis: #984b10;--display-orange-fgColor: #ed8326;--display-orange-borderColor-muted: #43200a;--display-orange-borderColor-emphasis: #c46212;--display-purple-bgColor-muted: #211047;--display-purple-bgColor-emphasis: #7730e8;--display-purple-fgColor: #b687f7;--display-purple-borderColor-muted: #31146b;--display-purple-borderColor-emphasis: #975bf1;--display-plum-bgColor-muted: #2a0e3f;--display-plum-bgColor-emphasis: #9518d8;--display-plum-fgColor: #d07ef7;--display-plum-borderColor-muted: #40125e;--display-plum-borderColor-emphasis: #b643ef;--display-red-bgColor-muted: #3c0614;--display-red-bgColor-emphasis: #c31328;--display-red-fgColor: #f27d83;--display-red-borderColor-muted: #58091a;--display-red-borderColor-emphasis: #eb3342;--display-coral-bgColor-muted: #3c0614;--display-coral-bgColor-emphasis: #c31328;--display-coral-fgColor: #f27d83;--display-coral-borderColor-muted: #58091a;--display-coral-borderColor-emphasis: #eb3342;--display-yellow-bgColor-muted: #2e1a00;--display-yellow-bgColor-emphasis: #895906;--display-yellow-fgColor: #d3910d;--display-yellow-borderColor-muted: #3d2401;--display-yellow-borderColor-emphasis: #aa7109;--display-gray-bgColor-muted: #1c1c1c;--display-gray-bgColor-emphasis: #576270;--display-gray-fgColor: #92a1b5;--display-gray-borderColor-muted: #2a2b2d;--display-gray-borderColor-emphasis: #6e7f96;--display-auburn-bgColor-muted: #271817;--display-auburn-bgColor-emphasis: #87534f;--display-auburn-fgColor: #bf9592;--display-auburn-borderColor-muted: #3a2422;--display-auburn-borderColor-emphasis: #a86f6b;--display-brown-bgColor-muted: #241c14;--display-brown-bgColor-emphasis: #755e3e;--display-brown-fgColor: #b69a6d;--display-brown-borderColor-muted: #342a1d;--display-brown-borderColor-emphasis: #94774c;--display-lemon-bgColor-muted: #291d00;--display-lemon-bgColor-emphasis: #786008;--display-lemon-fgColor: #ba9b12;--display-lemon-borderColor-muted: #372901;--display-lemon-borderColor-emphasis: #977b0c;--display-olive-bgColor-muted: #171e0b;--display-olive-bgColor-emphasis: #5e681d;--display-olive-fgColor: #a2a626;--display-olive-borderColor-muted: #252d10;--display-olive-borderColor-emphasis: #7a8321;--display-lime-bgColor-muted: #141f0f;--display-lime-bgColor-emphasis: #496c28;--display-lime-fgColor: #7dae37;--display-lime-borderColor-muted: #1f3116;--display-lime-borderColor-emphasis: #5f892f;--display-pine-bgColor-muted: #082119;--display-pine-bgColor-emphasis: #14714c;--display-pine-fgColor: #1bb673;--display-pine-borderColor-muted: #0b3224;--display-pine-borderColor-emphasis: #18915e;--display-teal-bgColor-muted: #041f25;--display-teal-bgColor-emphasis: #106c70;--display-teal-fgColor: #1cb0ab;--display-teal-borderColor-muted: #073036;--display-teal-borderColor-emphasis: #158a8a;--display-cyan-bgColor-muted: #001f29;--display-cyan-bgColor-emphasis: #036a8c;--display-cyan-fgColor: #07ace4;--display-cyan-borderColor-muted: #002e3d;--display-cyan-borderColor-emphasis: #0587b3;--display-indigo-bgColor-muted: #1b183f;--display-indigo-bgColor-emphasis: #514ed4;--display-indigo-fgColor: #9899ec;--display-indigo-borderColor-muted: #25215f;--display-indigo-borderColor-emphasis: #7070e1;--display-pink-bgColor-muted: #2d1524;--display-pink-bgColor-emphasis: #ac2f74;--display-pink-fgColor: #e57bb2;--display-pink-borderColor-muted: #451c35;--display-pink-borderColor-emphasis: #d34591;--avatar-bgColor: #ffffff1a;--avatar-borderColor: #ffffff26;--avatar-shadow: 0px 0px 0px 2px #0d1117;--avatarStack-fade-bgColor-default: #3d444d;--avatarStack-fade-bgColor-muted: #2a313c;--control-bgColor-rest: #212830;--control-bgColor-hover: #262c36;--control-bgColor-active: #2a313c;--control-bgColor-disabled: #212830;--control-bgColor-selected: #212830;--control-fgColor-rest: #f0f6fc;--control-fgColor-placeholder: #9198a1;--control-fgColor-disabled: #656c7699;--control-borderColor-rest: #3d444d;--control-borderColor-emphasis: #656c76;--control-borderColor-disabled: #656c761a;--control-borderColor-selected: #f0f6fc;--control-borderColor-success: #238636;--control-borderColor-danger: #da3633;--control-borderColor-warning: #9e6a03;--control-iconColor-rest: #9198a1;--control-transparent-bgColor-rest: #00000000;--control-transparent-bgColor-hover: #656c7633;--control-transparent-bgColor-active: #656c7640;--control-transparent-bgColor-disabled: #212830;--control-transparent-bgColor-selected: #656c761a;--control-transparent-borderColor-rest: #00000000;--control-transparent-borderColor-hover: #00000000;--control-transparent-borderColor-active: #00000000;--control-danger-fgColor-rest: #f85149;--control-danger-fgColor-hover: #ff7b72;--control-danger-bgColor-hover: #f851491a;--control-danger-bgColor-active: #f8514966;--control-checked-bgColor-rest: #1f6feb;--control-checked-bgColor-hover: #2a7aef;--control-checked-bgColor-active: #3685f3;--control-checked-bgColor-disabled: #656c7699;--control-checked-fgColor-rest: #ffffff;--control-checked-fgColor-disabled: #010409;--control-checked-borderColor-rest: #1f6feb;--control-checked-borderColor-hover: #2a7aef;--control-checked-borderColor-active: #3685f3;--control-checked-borderColor-disabled: #656c7699;--controlTrack-bgColor-rest: #262c36;--controlTrack-bgColor-hover: #2a313c;--controlTrack-bgColor-active: #2f3742;--controlTrack-bgColor-disabled: #656c7699;--controlTrack-fgColor-rest: #9198a1;--controlTrack-fgColor-disabled: #ffffff;--controlTrack-borderColor-rest: #3d444d;--controlTrack-borderColor-disabled: #656c7699;--controlKnob-bgColor-rest: #010409;--controlKnob-bgColor-disabled: #212830;--controlKnob-bgColor-checked: #ffffff;--controlKnob-borderColor-rest: #656c76;--controlKnob-borderColor-disabled: #212830;--controlKnob-borderColor-checked: #1f6feb;--counter-borderColor: #00000000;--counter-bgColor-muted: #656c7633;--counter-bgColor-emphasis: #656c76;--button-default-fgColor-rest: #f0f6fc;--button-default-bgColor-rest: #212830;--button-default-bgColor-hover: #262c36;--button-default-bgColor-active: #2a313c;--button-default-bgColor-selected: #2a313c;--button-default-bgColor-disabled: #212830;--button-default-borderColor-rest: #3d444d;--button-default-borderColor-hover: #3d444d;--button-default-borderColor-active: #3d444d;--button-default-borderColor-disabled: #656c761a;--button-default-shadow-resting: 0px 0px 0px 0px #000000;--button-primary-fgColor-rest: #ffffff;--button-primary-fgColor-disabled: #ffffff66;--button-primary-iconColor-rest: #ffffff;--button-primary-bgColor-rest: #238636;--button-primary-bgColor-hover: #29903b;--button-primary-bgColor-active: #2e9a40;--button-primary-bgColor-disabled: #105823;--button-primary-borderColor-rest: #ffffff1a;--button-primary-borderColor-hover: #ffffff1a;--button-primary-borderColor-active: #ffffff1a;--button-primary-borderColor-disabled: #105823;--button-primary-shadow-selected: 0px 0px 0px 0px #000000;--button-invisible-fgColor-rest: #f0f6fc;--button-invisible-fgColor-hover: #f0f6fc;--button-invisible-fgColor-disabled: #656c7699;--button-invisible-iconColor-rest: #9198a1;--button-invisible-iconColor-hover: #9198a1;--button-invisible-iconColor-disabled: #656c7699;--button-invisible-bgColor-rest: #00000000;--button-invisible-bgColor-hover: #656c7633;--button-invisible-bgColor-active: #656c7640;--button-invisible-bgColor-disabled: #212830;--button-invisible-borderColor-rest: #00000000;--button-invisible-borderColor-hover: #00000000;--button-invisible-borderColor-disabled: #656c761a;--button-outline-fgColor-rest: #388bfd;--button-outline-fgColor-hover: #58a6ff;--button-outline-fgColor-active: #ffffff;--button-outline-fgColor-disabled: #4493f880;--button-outline-bgColor-rest: #f0f6fc;--button-outline-bgColor-hover: #262c36;--button-outline-bgColor-active: #0d419d;--button-outline-bgColor-disabled: #212830;--button-outline-borderColor-hover: #3d444d;--button-outline-borderColor-selected: #3d444d;--button-outline-shadow-selected: 0px 0px 0px 0px #000000;--button-danger-fgColor-rest: #fa5e55;--button-danger-fgColor-hover: #ffffff;--button-danger-fgColor-active: #ffffff;--button-danger-fgColor-disabled: #f8514980;--button-danger-iconColor-rest: #fa5e55;--button-danger-iconColor-hover: #ffffff;--button-danger-bgColor-rest: #212830;--button-danger-bgColor-hover: #b62324;--button-danger-bgColor-active: #d03533;--button-danger-bgColor-disabled: #212830;--button-danger-borderColor-rest: #3d444d;--button-danger-borderColor-hover: #ffffff1a;--button-danger-borderColor-active: #ffffff1a;--button-danger-shadow-selected: 0px 0px 0px 0px #000000;--button-inactive-fgColor: #9198a1;--button-inactive-bgColor: #262c36;--button-star-iconColor: #e3b341;--buttonCounter-default-bgColor-rest: #2f3742;--buttonCounter-invisible-bgColor-rest: #656c7633;--buttonCounter-primary-bgColor-rest: #04260f33;--buttonCounter-outline-bgColor-rest: #051d4d33;--buttonCounter-outline-bgColor-hover: #051d4d33;--buttonCounter-outline-bgColor-disabled: #1f6feb0d;--buttonCounter-outline-fgColor-rest: #388bfd;--buttonCounter-outline-fgColor-hover: #58a6ff;--buttonCounter-outline-fgColor-disabled: #4493f880;--buttonCounter-danger-bgColor-hover: #ffffff33;--buttonCounter-danger-bgColor-disabled: #da36330d;--buttonCounter-danger-bgColor-rest: #49020233;--buttonCounter-danger-fgColor-rest: #f85149;--buttonCounter-danger-fgColor-hover: #ffffff;--buttonCounter-danger-fgColor-disabled: #f8514980;--reactionButton-selected-bgColor-rest: #388bfd33;--reactionButton-selected-bgColor-hover: #3a8cfd5c;--reactionButton-selected-fgColor-rest: #4493f8;--reactionButton-selected-fgColor-hover: #79c0ff;--focus-outlineColor: #1f6feb;--menu-bgColor-active: #151b23;--overlay-bgColor: #151b23;--overlay-borderColor: #3d444db3;--overlay-backdrop-bgColor: #21283066;--selectMenu-borderColor: #3d444d;--selectMenu-bgColor-active: #0c2d6b;--sideNav-bgColor-selected: #212830;--skeletonLoader-bgColor: #656c7633;--timelineBadge-bgColor: #212830;--treeViewItem-leadingVisual-iconColor-rest: #9198a1;--underlineNav-borderColor-active: #f78166;--underlineNav-borderColor-hover: #3d444db3;--underlineNav-iconColor-rest: #9198a1;--selection-bgColor: #1f6febb3;--card-bgColor: #151b23;--label-green-bgColor-rest: #122117;--label-green-bgColor-hover: #182f1f;--label-green-bgColor-active: #214529;--label-green-fgColor-rest: #41b445;--label-green-fgColor-hover: #46c144;--label-green-fgColor-active: #75d36f;--label-orange-bgColor-rest: #311708;--label-orange-bgColor-hover: #43200a;--label-orange-bgColor-active: #632f0d;--label-orange-fgColor-rest: #ed8326;--label-orange-fgColor-hover: #f1933b;--label-orange-fgColor-active: #f6b06a;--label-purple-bgColor-rest: #211047;--label-purple-bgColor-hover: #31146b;--label-purple-bgColor-active: #481a9e;--label-purple-fgColor-rest: #b687f7;--label-purple-fgColor-hover: #c398fb;--label-purple-fgColor-active: #d2affd;--label-red-bgColor-rest: #3c0614;--label-red-bgColor-hover: #58091a;--label-red-bgColor-active: #790c20;--label-red-fgColor-rest: #f27d83;--label-red-fgColor-hover: #f48b8d;--label-red-fgColor-active: #f7adab;--label-yellow-bgColor-rest: #2e1a00;--label-yellow-bgColor-hover: #3d2401;--label-yellow-bgColor-active: #5a3702;--label-yellow-fgColor-rest: #d3910d;--label-yellow-fgColor-hover: #df9e11;--label-yellow-fgColor-active: #edb431;--label-gray-bgColor-rest: #1c1c1c;--label-gray-bgColor-hover: #2a2b2d;--label-gray-bgColor-active: #393d41;--label-gray-fgColor-rest: #92a1b5;--label-gray-fgColor-hover: #9babbf;--label-gray-fgColor-active: #b3c0d1;--label-auburn-bgColor-rest: #271817;--label-auburn-bgColor-hover: #3a2422;--label-auburn-bgColor-active: #543331;--label-auburn-fgColor-rest: #bf9592;--label-auburn-fgColor-hover: #c6a19f;--label-auburn-fgColor-active: #d4b7b5;--label-brown-bgColor-rest: #241c14;--label-brown-bgColor-hover: #342a1d;--label-brown-bgColor-active: #483a28;--label-brown-fgColor-rest: #b69a6d;--label-brown-fgColor-hover: #bfa77d;--label-brown-fgColor-active: #cdbb98;--label-lemon-bgColor-rest: #291d00;--label-lemon-bgColor-hover: #372901;--label-lemon-bgColor-active: #4f3c02;--label-lemon-fgColor-rest: #ba9b12;--label-lemon-fgColor-hover: #c4a717;--label-lemon-fgColor-active: #d7bc1d;--label-olive-bgColor-rest: #171e0b;--label-olive-bgColor-hover: #252d10;--label-olive-bgColor-active: #374115;--label-olive-fgColor-rest: #a2a626;--label-olive-fgColor-hover: #b2af24;--label-olive-fgColor-active: #cbc025;--label-lime-bgColor-rest: #141f0f;--label-lime-bgColor-hover: #1f3116;--label-lime-bgColor-active: #2c441d;--label-lime-fgColor-rest: #7dae37;--label-lime-fgColor-hover: #89ba36;--label-lime-fgColor-active: #9fcc3e;--label-pine-bgColor-rest: #082119;--label-pine-bgColor-hover: #0b3224;--label-pine-bgColor-active: #0e4430;--label-pine-fgColor-rest: #1bb673;--label-pine-fgColor-hover: #1ac176;--label-pine-fgColor-active: #1bda81;--label-teal-bgColor-rest: #041f25;--label-teal-bgColor-hover: #073036;--label-teal-bgColor-active: #0a464d;--label-teal-fgColor-rest: #1cb0ab;--label-teal-fgColor-hover: #1fbdb2;--label-teal-fgColor-active: #24d6c4;--label-cyan-bgColor-rest: #001f29;--label-cyan-bgColor-hover: #002e3d;--label-cyan-bgColor-active: #014156;--label-cyan-fgColor-rest: #07ace4;--label-cyan-fgColor-hover: #09b7f1;--label-cyan-fgColor-active: #45cbf7;--label-indigo-bgColor-rest: #1b183f;--label-indigo-bgColor-hover: #25215f;--label-indigo-bgColor-active: #312c90;--label-indigo-fgColor-rest: #9899ec;--label-indigo-fgColor-hover: #a2a5f1;--label-indigo-fgColor-active: #b7baf6;--label-blue-bgColor-rest: #001a47;--label-blue-bgColor-hover: #002766;--label-blue-bgColor-active: #00378a;--label-blue-fgColor-rest: #4da0ff;--label-blue-fgColor-hover: #61adff;--label-blue-fgColor-active: #85c2ff;--label-plum-bgColor-rest: #2a0e3f;--label-plum-bgColor-hover: #40125e;--label-plum-bgColor-active: #5c1688;--label-plum-fgColor-rest: #d07ef7;--label-plum-fgColor-hover: #d889fa;--label-plum-fgColor-active: #e4a5fd;--label-pink-bgColor-rest: #2d1524;--label-pink-bgColor-hover: #451c35;--label-pink-bgColor-active: #65244a;--label-pink-fgColor-rest: #e57bb2;--label-pink-fgColor-hover: #ec8dbd;--label-pink-fgColor-active: #f4a9cd;--label-coral-bgColor-rest: #351008;--label-coral-bgColor-hover: #51180b;--label-coral-bgColor-active: #72220d;--label-coral-fgColor-rest: #f7794b;--label-coral-fgColor-hover: #fa8c61;--label-coral-fgColor-active: #fdaa86;--tooltip-bgColor: #3d444d;--tooltip-fgColor: #ffffff;--fgColor-default: #f0f6fc;--fgColor-muted: #9198a1;--fgColor-onEmphasis: #ffffff;--fgColor-onInverse: #010409;--fgColor-white: #ffffff;--fgColor-black: #010409;--fgColor-disabled: #656c7699;--fgColor-link: #4493f8;--fgColor-neutral: #9198a1;--fgColor-accent: #4493f8;--fgColor-success: #3fb950;--fgColor-open: #3fb950;--fgColor-attention: #d29922;--fgColor-severe: #db6d28;--fgColor-danger: #f85149;--fgColor-closed: #f85149;--fgColor-done: #ab7df8;--fgColor-upsell: #ab7df8;--fgColor-sponsors: #db61a2;--bgColor-default: #0d1117;--bgColor-muted: #151b23;--bgColor-inset: #010409;--bgColor-emphasis: #3d444d;--bgColor-inverse: #ffffff;--bgColor-white: #ffffff;--bgColor-black: #010409;--bgColor-disabled: #212830;--bgColor-transparent: #00000000;--bgColor-neutral-muted: #656c7633;--bgColor-neutral-emphasis: #656c76;--bgColor-accent-muted: #388bfd1a;--bgColor-accent-emphasis: #1f6feb;--bgColor-success-muted: #2ea04326;--bgColor-success-emphasis: #238636;--bgColor-open-muted: #2ea04326;--bgColor-open-emphasis: #238636;--bgColor-attention-muted: #bb800926;--bgColor-attention-emphasis: #9e6a03;--bgColor-severe-muted: #db6d281a;--bgColor-severe-emphasis: #bd561d;--bgColor-danger-muted: #f851491a;--bgColor-danger-emphasis: #da3633;--bgColor-closed-muted: #f851491a;--bgColor-closed-emphasis: #da3633;--bgColor-done-muted: #ab7df826;--bgColor-done-emphasis: #8957e5;--bgColor-upsell-muted: #ab7df826;--bgColor-upsell-emphasis: #8957e5;--bgColor-sponsors-muted: #db61a21a;--bgColor-sponsors-emphasis: #bf4b8a;--borderColor-default: #3d444d;--borderColor-muted: #3d444db3;--borderColor-emphasis: #656c76;--borderColor-disabled: #656c761a;--borderColor-transparent: #00000000;--borderColor-translucent: #ffffff26;--borderColor-neutral-muted: #3d444db3;--borderColor-neutral-emphasis: #656c76;--borderColor-accent-muted: #388bfd66;--borderColor-accent-emphasis: #1f6feb;--borderColor-success-muted: #2ea04366;--borderColor-success-emphasis: #238636;--borderColor-open-muted: #2ea04366;--borderColor-open-emphasis: #238636;--borderColor-attention-muted: #bb800966;--borderColor-attention-emphasis: #9e6a03;--borderColor-severe-muted: #db6d2866;--borderColor-severe-emphasis: #bd561d;--borderColor-danger-muted: #f8514966;--borderColor-danger-emphasis: #da3633;--borderColor-closed-muted: #f8514966;--borderColor-closed-emphasis: #da3633;--borderColor-done-muted: #ab7df866;--borderColor-done-emphasis: #8957e5;--borderColor-upsell-muted: #ab7df866;--borderColor-upsell-emphasis: #8957e5;--borderColor-sponsors-muted: #db61a266;--borderColor-sponsors-emphasis: #bf4b8a;--color-ansi-black: #2f3742;--color-ansi-black-bright: #656c76;--color-ansi-white: #f0f6fc;--color-ansi-white-bright: #ffffff;--color-ansi-gray: #656c76;--color-ansi-red: #ff7b72;--color-ansi-red-bright: #ffa198;--color-ansi-green: #3fb950;--color-ansi-green-bright: #56d364;--color-ansi-yellow: #d29922;--color-ansi-yellow-bright: #e3b341;--color-ansi-blue: #58a6ff;--color-ansi-blue-bright: #79c0ff;--color-ansi-magenta: #be8fff;--color-ansi-magenta-bright: #d2a8ff;--color-ansi-cyan: #39c5cf;--color-ansi-cyan-bright: #56d4dd;--color-prettylights-syntax-comment: #9198a1;--color-prettylights-syntax-constant: #79c0ff;--color-prettylights-syntax-constant-other-reference-link: #a5d6ff;--color-prettylights-syntax-entity: #d2a8ff;--color-prettylights-syntax-storage-modifier-import: #f0f6fc;--color-prettylights-syntax-entity-tag: #7ee787;--color-prettylights-syntax-keyword: #ff7b72;--color-prettylights-syntax-string: #a5d6ff;--color-prettylights-syntax-variable: #ffa657;--color-prettylights-syntax-brackethighlighter-unmatched: #f85149;--color-prettylights-syntax-brackethighlighter-angle: #9198a1;--color-prettylights-syntax-invalid-illegal-text: #f0f6fc;--color-prettylights-syntax-invalid-illegal-bg: #8e1519;--color-prettylights-syntax-carriage-return-text: #f0f6fc;--color-prettylights-syntax-carriage-return-bg: #b62324;--color-prettylights-syntax-string-regexp: #7ee787;--color-prettylights-syntax-markup-list: #f2cc60;--color-prettylights-syntax-markup-heading: #1f6feb;--color-prettylights-syntax-markup-italic: #f0f6fc;--color-prettylights-syntax-markup-bold: #f0f6fc;--color-prettylights-syntax-markup-deleted-text: #ffdcd7;--color-prettylights-syntax-markup-deleted-bg: #67060c;--color-prettylights-syntax-markup-inserted-text: #aff5b4;--color-prettylights-syntax-markup-inserted-bg: #033a16;--color-prettylights-syntax-markup-changed-text: #ffdfb6;--color-prettylights-syntax-markup-changed-bg: #5a1e02;--color-prettylights-syntax-markup-ignored-text: #f0f6fc;--color-prettylights-syntax-markup-ignored-bg: #1158c7;--color-prettylights-syntax-meta-diff-range: #d2a8ff;--color-prettylights-syntax-sublimelinter-gutter-mark: #3d444d;--shadow-inset: inset 0px 1px 0px 0px #0104093d;--shadow-resting-xsmall: 0px 1px 0px 0px #010409cc;--shadow-resting-small: 0px 1px 0px 0px #01040966;--shadow-resting-medium: 0px 3px 6px 0px #010409cc;--shadow-floating-small: 0px 0px 0px 1px #3d444d, 0px 6px 12px -3px #01040966, 0px 6px 18px 0px #01040966;--shadow-floating-medium: 0px 0px 0px 1px #3d444d, 0px 8px 16px -4px #01040966, 0px 4px 32px -4px #01040966, 0px 24px 48px -12px #01040966, 0px 48px 96px -24px #01040966;--shadow-floating-large: 0px 0px 0px 1px #3d444d, 0px 24px 48px 0px #010409;--shadow-floating-xlarge: 0px 0px 0px 1px #3d444d, 0px 32px 64px 0px #010409;--shadow-floating-legacy: 0px 6px 12px -3px #01040966, 0px 6px 18px 0px #01040966;--outline-focus: #1f6feb solid 2px}
+.markdown-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji";font-size:16px;line-height:1.5;word-wrap:break-word}.markdown-body::before{display:table;content:""}.markdown-body::after{display:table;clear:both;content:""}.markdown-body>*:first-child{margin-top:0 !important}.markdown-body>*:last-child{margin-bottom:0 !important}.markdown-body a:not([href]){color:inherit;text-decoration:none}.markdown-body .absent{color:var(--fgColor-danger, var(--color-danger-fg))}.markdown-body .anchor{float:left;padding-right:var(--base-size-4);margin-left:-20px;line-height:1}.markdown-body .anchor:focus{outline:none}.markdown-body p,.markdown-body blockquote,.markdown-body ul,.markdown-body ol,.markdown-body dl,.markdown-body table,.markdown-body pre,.markdown-body details{margin-top:0;margin-bottom:var(--base-size-16)}.markdown-body hr{height:.25em;padding:0;margin:var(--base-size-24) 0;background-color:var(--borderColor-default, var(--color-border-default));border:0}.markdown-body blockquote{padding:0 1em;color:var(--fgColor-muted, var(--color-fg-muted));border-left:.25em solid var(--borderColor-default, var(--color-border-default))}.markdown-body blockquote>:first-child{margin-top:0}.markdown-body blockquote>:last-child{margin-bottom:0}.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6{margin-top:var(--base-size-24);margin-bottom:var(--base-size-16);font-weight:var(--base-text-weight-semibold, 600);line-height:1.25}.markdown-body h1 .octicon-link,.markdown-body h2 .octicon-link,.markdown-body h3 .octicon-link,.markdown-body h4 .octicon-link,.markdown-body h5 .octicon-link,.markdown-body h6 .octicon-link{color:var(--fgColor-default, var(--color-fg-default));vertical-align:middle;visibility:hidden}.markdown-body h1:hover .anchor,.markdown-body h2:hover .anchor,.markdown-body h3:hover .anchor,.markdown-body h4:hover .anchor,.markdown-body h5:hover .anchor,.markdown-body h6:hover .anchor{text-decoration:none}.markdown-body h1:hover .anchor .octicon-link,.markdown-body h2:hover .anchor .octicon-link,.markdown-body h3:hover .anchor .octicon-link,.markdown-body h4:hover .anchor .octicon-link,.markdown-body h5:hover .anchor .octicon-link,.markdown-body h6:hover .anchor .octicon-link{visibility:visible}.markdown-body h1 tt,.markdown-body h1 code,.markdown-body h2 tt,.markdown-body h2 code,.markdown-body h3 tt,.markdown-body h3 code,.markdown-body h4 tt,.markdown-body h4 code,.markdown-body h5 tt,.markdown-body h5 code,.markdown-body h6 tt,.markdown-body h6 code{padding:0 .2em;font-size:inherit}.markdown-body h1{padding-bottom:.3em;font-size:2em;border-bottom:1px solid var(--borderColor-muted, var(--color-border-muted))}.markdown-body h2{padding-bottom:.3em;font-size:1.5em;border-bottom:1px solid var(--borderColor-muted, var(--color-border-muted))}.markdown-body h3{font-size:1.25em}.markdown-body h4{font-size:1em}.markdown-body h5{font-size:.875em}.markdown-body h6{font-size:.85em;color:var(--fgColor-muted, var(--color-fg-muted))}.markdown-body summary h1,.markdown-body summary h2,.markdown-body summary h3,.markdown-body summary h4,.markdown-body summary h5,.markdown-body summary h6{display:inline-block}.markdown-body summary h1 .anchor,.markdown-body summary h2 .anchor,.markdown-body summary h3 .anchor,.markdown-body summary h4 .anchor,.markdown-body summary h5 .anchor,.markdown-body summary h6 .anchor{margin-left:-40px}.markdown-body summary h1,.markdown-body summary h2{padding-bottom:0;border-bottom:0}.markdown-body ul,.markdown-body ol{padding-left:2em}.markdown-body ul.no-list,.markdown-body ol.no-list{padding:0;list-style-type:none}.markdown-body ol[type="a s"]{list-style-type:lower-alpha}.markdown-body ol[type="A s"]{list-style-type:upper-alpha}.markdown-body ol[type="i s"]{list-style-type:lower-roman}.markdown-body ol[type="I s"]{list-style-type:upper-roman}.markdown-body ol[type="1"]{list-style-type:decimal}.markdown-body div>ol:not([type]){list-style-type:decimal}.markdown-body ul ul,.markdown-body ul ol,.markdown-body ol ol,.markdown-body ol ul{margin-top:0;margin-bottom:0}.markdown-body li>p{margin-top:var(--base-size-16)}.markdown-body li+li{margin-top:.25em}.markdown-body dl{padding:0}.markdown-body dl dt{padding:0;margin-top:var(--base-size-16);font-size:1em;font-style:italic;font-weight:var(--base-text-weight-semibold, 600)}.markdown-body dl dd{padding:0 var(--base-size-16);margin-bottom:var(--base-size-16)}.markdown-body table{display:block;width:100%;width:max-content;max-width:100%;overflow:auto;font-variant:tabular-nums}.markdown-body table th{font-weight:var(--base-text-weight-semibold, 600)}.markdown-body table th,.markdown-body table td{padding:6px 13px;border:1px solid var(--borderColor-default, var(--color-border-default))}.markdown-body table td>:last-child{margin-bottom:0}.markdown-body table tr{background-color:var(--bgColor-default, var(--color-canvas-default));border-top:1px solid var(--borderColor-muted, var(--color-border-muted))}.markdown-body table tr:nth-child(2n){background-color:var(--bgColor-muted, var(--color-canvas-subtle))}.markdown-body table img{background-color:rgba(0,0,0,0)}.markdown-body img{max-width:100%;box-sizing:content-box}.markdown-body img[align=right]{padding-left:20px}.markdown-body img[align=left]{padding-right:20px}.markdown-body .emoji{max-width:none;vertical-align:text-top;background-color:rgba(0,0,0,0)}.markdown-body span.frame{display:block;overflow:hidden}.markdown-body span.frame>span{display:block;float:left;width:auto;padding:7px;margin:13px 0 0;overflow:hidden;border:1px solid var(--borderColor-default, var(--color-border-default))}.markdown-body span.frame span img{display:block;float:left}.markdown-body span.frame span span{display:block;padding:5px 0 0;clear:both;color:var(--fgColor-default, var(--color-fg-default))}.markdown-body span.align-center{display:block;overflow:hidden;clear:both}.markdown-body span.align-center>span{display:block;margin:13px auto 0;overflow:hidden;text-align:center}.markdown-body span.align-center span img{margin:0 auto;text-align:center}.markdown-body span.align-right{display:block;overflow:hidden;clear:both}.markdown-body span.align-right>span{display:block;margin:13px 0 0;overflow:hidden;text-align:right}.markdown-body span.align-right span img{margin:0;text-align:right}.markdown-body span.float-left{display:block;float:left;margin-right:13px;overflow:hidden}.markdown-body span.float-left span{margin:13px 0 0}.markdown-body span.float-right{display:block;float:right;margin-left:13px;overflow:hidden}.markdown-body span.float-right>span{display:block;margin:13px auto 0;overflow:hidden;text-align:right}.markdown-body code,.markdown-body tt{padding:.2em .4em;margin:0;font-size:85%;white-space:break-spaces;background-color:var(--bgColor-neutral-muted, var(--color-neutral-muted));border-radius:6px}.markdown-body code br,.markdown-body tt br{display:none}.markdown-body del code{text-decoration:inherit}.markdown-body samp{font-size:85%}.markdown-body pre{word-wrap:normal}.markdown-body pre code{font-size:100%}.markdown-body pre>code{padding:0;margin:0;word-break:normal;white-space:pre;background:rgba(0,0,0,0);border:0}.markdown-body .highlight{margin-bottom:var(--base-size-16)}.markdown-body .highlight pre{margin-bottom:0;word-break:normal}.markdown-body .highlight pre,.markdown-body pre{padding:var(--base-size-16);overflow:auto;font-size:85%;line-height:1.45;color:var(--fgColor-default, var(--color-fg-default));background-color:var(--bgColor-muted, var(--color-canvas-subtle));border-radius:6px}.markdown-body pre code,.markdown-body pre tt{display:inline;max-width:auto;padding:0;margin:0;overflow:visible;line-height:inherit;word-wrap:normal;background-color:rgba(0,0,0,0);border:0}.markdown-body .csv-data td,.markdown-body .csv-data th{padding:5px;overflow:hidden;font-size:12px;line-height:1;text-align:left;white-space:nowrap}.markdown-body .csv-data .blob-num{padding:10px var(--base-size-8) 9px;text-align:right;background:var(--bgColor-default, var(--color-canvas-default));border:0}.markdown-body .csv-data tr{border-top:0}.markdown-body .csv-data th{font-weight:var(--base-text-weight-semibold, 600);background:var(--bgColor-muted, var(--color-canvas-subtle));border-top:0}.markdown-body [data-footnote-ref]::before{content:"["}.markdown-body [data-footnote-ref]::after{content:"]"}.markdown-body .footnotes{font-size:12px;color:var(--fgColor-muted, var(--color-fg-muted));border-top:1px solid var(--borderColor-default, var(--color-border-default))}.markdown-body .footnotes ol{padding-left:var(--base-size-16)}.markdown-body .footnotes ol ul{display:inline-block;padding-left:var(--base-size-16);margin-top:var(--base-size-16)}.markdown-body .footnotes li{position:relative}.markdown-body .footnotes li:target::before{position:absolute;top:calc(var(--base-size-8)*-1);right:calc(var(--base-size-8)*-1);bottom:calc(var(--base-size-8)*-1);left:calc(var(--base-size-24)*-1);pointer-events:none;content:"";border:2px solid var(--borderColor-accent-emphasis, var(--color-accent-emphasis));border-radius:6px}.markdown-body .footnotes li:target{color:var(--fgColor-default, var(--color-fg-default))}.markdown-body .footnotes .data-footnote-backref g-emoji{font-family:monospace}
+/*# sourceMappingURL=markdown.css.map */
+
+/* Primer base variables not included in color-modes */
+:root {
+    --base-size-4: 4px;
+    --base-size-8: 8px;
+    --base-size-16: 16px;
+    --base-size-24: 24px;
+    --base-size-40: 40px;
+    --base-text-weight-semibold: 600;
+    --fontStack-monospace: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* Alias Primer tokens to app-level semantic variables */
+[data-color-mode] {
+    --bg-primary: var(--bgColor-default);
+    --bg-secondary: var(--bgColor-muted);
+    --bg-tertiary: var(--bgColor-neutral-muted);
+    --text-primary: var(--fgColor-default);
+    --text-secondary: var(--fgColor-muted);
+    --text-tertiary: var(--fgColor-muted);
+    --border-default: var(--borderColor-default);
+    --border-muted: var(--borderColor-muted);
+    --color-success: var(--fgColor-success);
+    --color-error: var(--fgColor-danger);
+    --color-warning: var(--fgColor-attention);
+    --color-info: var(--fgColor-accent);
+    --color-brand: var(--fgColor-done);
+    --border-copilot: var(--color-brand);
+    --border-user: var(--fgColor-accent);
+    --border-tool-success: var(--color-success);
+    --border-tool-failure: var(--color-error);
+    --border-tool-rejected: var(--color-warning);
+    --border-reasoning: var(--fgColor-muted);
+    --border-info: var(--color-info);
+    --border-error: var(--color-error);
+    --border-warning: var(--color-warning);
+    --diff-add-bg: var(--diffBlob-addition-bgColor-line);
+    --diff-add-text: var(--fgColor-success);
+    --diff-del-bg: var(--diffBlob-deletion-bgColor-line);
+    --diff-del-text: var(--fgColor-danger);
+    --diff-hunk-text: var(--fgColor-done);
+    --font-text: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+    --font-code: var(--fontStack-monospace);
+    --error-bg: var(--bgColor-danger-muted);
+    --focus-ring: var(--borderColor-accent-emphasis);
+    --syntax-keyword: var(--codeMirror-syntax-fgColor-keyword);
+    --syntax-string: var(--codeMirror-syntax-fgColor-string);
+    --syntax-comment: var(--codeMirror-syntax-fgColor-comment);
+    --syntax-number: var(--codeMirror-syntax-fgColor-constant);
+    --syntax-function: var(--codeMirror-syntax-fgColor-entity);
+    --syntax-type: var(--fgColor-success);
+    --syntax-operator: var(--codeMirror-syntax-fgColor-keyword);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { font-family: var(--font-text); font-size: 16px; line-height: 1.5; color: var(--text-primary); background: var(--bg-primary); height: 100%; }
+body { padding: 0; margin: 0; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+a { color: var(--color-info); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Fixed header -- outside the scroll container so overscroll bounce does not affect it */
+.sticky-header {
+    flex-shrink: 0; z-index: 100;
+    background: var(--bg-secondary); border-bottom: 1px solid var(--border-default);
+    padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+.scroll-container { flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; position: relative; }
+.header-meta { font-size: 13px; color: var(--text-secondary); margin-right: auto; }
+.header-meta code { font-family: var(--font-code); font-size: 12px; background: var(--bg-tertiary); padding: 1px 5px; border-radius: 4px; }
+.header-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.search-box {
+    background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: 6px;
+    color: var(--text-primary); font-size: 13px; padding: 4px 8px; width: 200px; outline: none;
+    font-family: var(--font-text);
+}
+.search-box:focus { border-color: var(--color-info); box-shadow: 0 0 0 2px var(--focus-ring); }
+.search-box::placeholder { color: var(--text-tertiary); }
+.btn {
+    background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: 6px;
+    color: var(--text-secondary); font-size: 12px; padding: 3px 8px; cursor: pointer;
+    font-family: var(--font-text); white-space: nowrap;
+}
+.btn:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
+.btn.active { background: var(--color-info); color: #fff; border-color: var(--color-info); }
+.filter-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+.filter-pill {
+    font-size: 11px; padding: 2px 8px; border-radius: 12px; cursor: pointer;
+    border: 1px solid var(--border-default); background: var(--bg-tertiary); color: var(--text-secondary);
+    font-family: var(--font-text); white-space: nowrap;
+}
+.filter-pill:hover { color: var(--text-primary); }
+.filter-pill.active { opacity: 1; }
+.filter-pill.inactive { opacity: 0.45; }
+.filter-pill .pill-count { font-size: 10px; opacity: 0.7; margin-left: 3px; }
+
+/* Main content */
+.main-container { max-width: 900px; margin: 0 auto; padding: 16px; }
+
+/* Entries */
+.entry {
+    border: 1px solid var(--border-default); border-radius: 8px; margin-bottom: 8px;
+    border-left: 3px solid var(--border-default); overflow: hidden;
+    background: var(--bg-secondary);
+}
+.entry.border-copilot { border-left-color: var(--border-copilot); }
+.entry.border-user { border-left-color: var(--border-user); }
+.entry.border-tool-success { border-left-color: var(--border-tool-success); }
+.entry.border-tool-failure { border-left-color: var(--border-tool-failure); }
+.entry.border-tool-rejected { border-left-color: var(--border-tool-rejected); }
+.entry.border-reasoning { border-left-color: var(--border-reasoning); }
+.entry.border-info { border-left-color: var(--border-info); }
+.entry.border-error { border-left-color: var(--border-error); }
+.entry.border-warning { border-left-color: var(--border-warning); }
+.entry-error-bg { background: var(--error-bg); }
+.entry.focused { box-shadow: 0 0 0 2px var(--focus-ring); }
+@keyframes entry-flash { 0% { box-shadow: 0 0 0 2px var(--focus-ring); } 100% { box-shadow: none; } }
+.entry.nav-flash { animation: entry-flash 1.2s ease-out; }
+.entry-header {
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+    cursor: pointer; user-select: none;
+}
+.entry-header:hover { background: var(--bg-tertiary); }
+.entry-icon { font-size: 14px; flex-shrink: 0; width: 20px; text-align: center; }
+.entry-number { font-size: 12px; color: var(--text-tertiary); font-family: var(--font-code); flex-shrink: 0; }
+.entry-label { font-size: 14px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-time { font-size: 12px; color: var(--text-tertiary); font-family: var(--font-code); flex-shrink: 0; text-decoration: none; }
+.entry-time:hover { color: var(--color-info); text-decoration: underline; }
+.collapse-indicator { flex-shrink: 0; width: 16px; text-align: center; font-size: 12px; color: var(--text-tertiary); }
+.entry:not(.collapsed) .collapse-indicator::after { content: "\25BC"; }
+.entry.collapsed .collapse-indicator::after { content: "\25B6"; }
+.entry.collapsed .entry-body { display: none; }
+.entry-body { padding: 4px 12px 12px; font-size: 14px; line-height: 1.6; overflow-x: auto; }
+
+/* Nested group entries */
+.nested-entries { padding-left: 12px; border-left: 2px solid var(--border-muted); margin-top: 8px; }
+.nested-entries .entry { margin-bottom: 6px; }
+
+/* Tool call details */
+.tool-args { margin-bottom: 8px; }
+.tool-output { margin-top: 8px; }
+
+/* Reasoning */
+.reasoning-text { font-style: italic; color: var(--text-secondary); white-space: pre-wrap; }
+
+/* User text */
+.user-text { white-space: pre-wrap; }
+
+/* Error text */
+.error-text { white-space: pre-wrap; color: var(--color-error); }
+
+/* Agent mode badge */
+.agent-mode {
+    font-size: 11px; padding: 1px 6px; border-radius: 10px;
+    background: var(--bg-tertiary); color: var(--text-secondary); font-weight: normal;
+}
+
+/* Markdown content: uses Primer .markdown-body for standard elements.
+   Only custom overrides needed for our layout context. */
+.markdown-body { font-size: 14px; line-height: 1.6; }
+.markdown-body > *:first-child { margin-top: 0; }
+.markdown-body > *:last-child { margin-bottom: 0; }
+.md-code-block {
+    background: var(--bg-tertiary); border-radius: 6px; padding: 12px; margin: 0 0 12px; overflow-x: auto;
+}
+.md-code-block pre {
+    margin: 0; font-family: var(--font-code); font-size: 13px; line-height: 1.45;
+    color: var(--text-primary); white-space: pre; overflow-x: auto;
+}
+.md-code-block code { font-family: inherit; background: none; padding: 0; border-radius: 0; }
+.md-fallback { white-space: pre-wrap; font-family: var(--font-code); font-size: 13px; }
+
+/* Diff line coloring */
+.diff-add { background: var(--diff-add-bg); color: var(--diff-add-text); }
+.diff-del { background: var(--diff-del-bg); color: var(--diff-del-text); }
+.diff-hunk { color: var(--diff-hunk-text); font-weight: 600; }
+.diff-line { display: block; padding: 0 4px; min-height: 1.45em; }
+
+/* Search highlighting */
+.search-highlight { background: #e2c02b; color: #000; border-radius: 2px; padding: 0 1px; }
+
+/* Sidebar minimap */
+.sidebar {
+    position: fixed; right: 0; top: 0; bottom: 0; width: 140px;
+    background: var(--bg-secondary); border-left: 1px solid var(--border-default);
+    overflow-y: auto; overflow-x: hidden; z-index: 90; display: block;
+    font-family: var(--font-text); font-size: 11px; padding: 4px 0;
+}
+.sidebar:not(.visible) { display: none; }
+.sidebar-entry {
+    display: flex; align-items: center; gap: 4px; padding: 2px 8px;
+    cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--text-secondary); border-left: 2px solid transparent; transition: background 0.1s;
+}
+.sidebar-entry:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.sidebar-entry.active { background: var(--bg-tertiary); border-left-color: var(--border-copilot); color: var(--text-primary); }
+.sidebar-entry.nested { padding-left: 16px; }
+.sidebar-entry.filter-hidden, .sidebar-entry.search-hidden { display: none; }
+.sidebar-indicator {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.sidebar-indicator[data-type="user"] { background: var(--border-user); }
+.sidebar-indicator[data-type="copilot"] { background: var(--border-copilot); }
+.sidebar-indicator[data-type="tool"] { background: var(--color-success); }
+.sidebar-indicator[data-type="error"] { background: var(--color-error); }
+.sidebar-indicator[data-type="reasoning"] { background: var(--border-reasoning); }
+.sidebar-indicator[data-type="info"], .sidebar-indicator[data-type="warning"],
+.sidebar-indicator[data-type="notification"], .sidebar-indicator[data-type="handoff"],
+.sidebar-indicator[data-type="compaction"], .sidebar-indicator[data-type="task_complete"],
+.sidebar-indicator[data-type="server_tool_use"],
+.sidebar-indicator[data-type="group"] { background: var(--color-info); }
+.sidebar-label { overflow: hidden; text-overflow: ellipsis; }
+.main-container.sidebar-visible { margin-right: max(calc((100% - 900px) / 2), 160px); }
+
+/* Jump buttons */
+.jump-buttons {
+    position: fixed; right: 156px; bottom: 16px; display: flex; flex-direction: column; gap: 6px; z-index: 90;
+}
+.jump-btn {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--bg-tertiary);
+    border: 1px solid var(--border-default); color: var(--text-secondary); cursor: pointer;
+    font-size: 16px; display: flex; align-items: center; justify-content: center;
+}
+.jump-btn:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
+
+/* Hidden by filter */
+.entry.filter-hidden { display: none; }
+.entry.search-hidden { display: none; }
+
+/* Empty state */
+.empty-state { text-align: center; padding: 64px 16px; color: var(--text-secondary); font-size: 15px; }
+
+/* Syntax highlight tokens */
+.syn-kw { color: var(--syntax-keyword); }
+.syn-str { color: var(--syntax-string); }
+.syn-cmt { color: var(--syntax-comment); font-style: italic; }
+.syn-num { color: var(--syntax-number); }
+.syn-fn { color: var(--syntax-function); }
+.syn-type { color: var(--syntax-type); }
+.syn-op { color: var(--syntax-operator); }
+
+@media (max-width: 640px) {
+    .sticky-header { padding: 6px 8px; }
+    .main-container { padding: 8px; }
+    .search-box { width: 120px; }
+    .filter-pills { display: none; }
+    .sidebar { display: none !important; }
+    .main-container.sidebar-visible { margin-right: 0; }
+    .jump-buttons { right: 16px; }
+}
+</style>
+</head>
+<body>
+<div class="sticky-header">
+<div class="header-meta">
+<code>66385cc4-a5c0-4ea0-95f4-dde3bac92f86</code> &middot; 9/23/2026, 8:15:17 PM &middot; 1206m 26s &middot; 36 entries
+</div>
+<div class="header-controls">
+<input type="text" id="search-input" class="search-box" placeholder="Search (/ to focus)" />
+<div class="filter-pills"><button class="filter-pill active" data-filter-type="user">User<span class="pill-count">1</span></button><button class="filter-pill active" data-filter-type="copilot">Copilot<span class="pill-count">3</span></button><button class="filter-pill active" data-filter-type="tool">Tools<span class="pill-count">23</span></button><button class="filter-pill active" data-filter-type="reasoning">Reasoning<span class="pill-count">5</span></button><button class="filter-pill active" data-filter-type="info">Info<span class="pill-count">3</span></button><button class="filter-pill active" data-filter-type="warning">Warning<span class="pill-count">1</span></button></div>
+<button class="btn" id="compact-mode">Compact</button>
+<button class="btn" id="collapse-all">Collapse all</button>
+<button class="btn" id="expand-all">Expand all</button>
+<button class="btn active" id="sidebar-toggle">Map</button>
+<button class="btn" id="theme-toggle">&#x2600;</button>
+</div>
+</div>
+<div class="scroll-container">
+<div id="sidebar" class="sidebar visible"></div>
+<div class="main-container sidebar-visible">
+<div class="entry collapsed border-info" data-type="info" data-entry-id="338b5905-cbc4-4b31-8a6b-d820db6066e3" data-index="0" id="entry-0">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2139;</span>
+<span class="entry-number">#1</span>
+<span class="entry-label">Info</span>
+<a class="entry-time" href="#entry-0">0s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body">Tip: /mcp</div>
+</div>
+<div class="entry collapsed border-warning" data-type="warning" data-entry-id="ac838565-59ef-42d5-8a45-fcd35ccbf90b" data-index="1" id="entry-1">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x26A0;</span>
+<span class="entry-number">#2</span>
+<span class="entry-label">Warning</span>
+<a class="entry-time" href="#entry-1">34s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body">Gave up waiting for MCP server to finish starting: github-mcp-server. Startup continued without it; it may still connect.</div>
+</div>
+<div class="entry collapsed border-info" data-type="info" data-entry-id="241268da-956e-49aa-9c78-12c890dbf80b" data-index="2" id="entry-2">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2139;</span>
+<span class="entry-number">#3</span>
+<span class="entry-label">Info</span>
+<a class="entry-time" href="#entry-2">34s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body">MCP Servers reloaded: 0 servers connected, 1 still starting (github-mcp-server)</div>
+</div>
+<div class="entry border-user" data-type="user" data-entry-id="a6ec5342-aa7d-491a-8e33-6f9bd960a0e8" data-index="3" id="entry-3">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x1F464;</span>
+<span class="entry-number">#4</span>
+<span class="entry-label">User <span class="agent-mode">interactive</span></span>
+<a class="entry-time" href="#entry-3">5m 7s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="user-text">Review the recent change to __init__.py and suggest some improvements. Also check __main__.py and the mezcla script. The goal is to make the ipython hooks more transparent. It is complicated by duplicating some code in debug.py and system.py to avoid a double import situation.</div></div>
+</div>
+<div class="entry collapsed border-reasoning" data-type="reasoning" data-entry-id="288d4b33-0190-4a90-ae83-3caf6a1b02c0" data-index="4" id="entry-4">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x1F4AD;</span>
+<span class="entry-number">#5</span>
+<span class="entry-label">Reasoning</span>
+<a class="entry-time" href="#entry-4">5m 10s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="reasoning-text">**Exploring document changes**
+
+I need to review some documents without any edits being requested. My focus is on exploring the changes, so I might need to look at the current files. I think it could involve checking the git diff, possibly with about three calls. It feels manageable to handle the wording review as well. I’ll ensure to set up everything with the necessary tools before diving in!</div></div>
+</div>
+<div class="entry border-copilot" data-type="copilot" data-entry-id="f8dd2f81-57bd-4d39-956c-6d338f547e07" data-index="5" id="entry-5">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x1F4AC;</span>
+<span class="entry-number">#6</span>
+<span class="entry-label">Copilot</span>
+<a class="entry-time" href="#entry-5">5m 10s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="markdown-body"><p>I’ll inspect the recent package-entry changes and trace the IPython initialization paths across the related modules before suggesting focused improvements.</p>
+</div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="003f694d-a2a9-46bf-b8b8-a0affc0397cf:call_cS49c4OpVZus2XioYxWAgtvM" data-index="6" id="entry-6">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#7</span>
+<span class="entry-label">bash - Inspect relevant changes</span>
+<a class="entry-time" href="#entry-6">5m 11s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">$ git --no-pager status --short &amp;&amp; git --no-pager diff -- mezcla/__init__.py mezcla/__main__.py mezcla/debug.py mezcla/system.py mezcla</code></div><div class="tool-output"><div class="md-code-block"><pre><code>?? mezcla/qt6_clipboard_button.py
+&lt;shellId: 0 completed with exit code 0&gt;</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="003f694d-a2a9-46bf-b8b8-a0affc0397cf:call_CPEmhblpEMgYPzb1eIBUiZxu" data-index="7" id="entry-7">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#8</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/__init__.py.</span>
+<a class="entry-time" href="#entry-7">5m 11s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/__init__.py</code></div><div class="tool-output"><div class="md-code-block"><pre><code>#! /usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Package initialization for mezcla.
+#
+## UPDATE 2026-09-23: adds SKIP_COMMON_EXPORT and omits FYI if not debugging proper
+#
+
+&quot;&quot;&quot;
+Mezcla is Spanish for mixture, and this repository contains a variety of Python scripts.
+
+Miscellaneous Python scripts developed over the course of several independent consulting projects. This also includes some code samples I adapted from publicly available source. (The code is not proprietary in nature. For example, it was not &quot;borrowed&quot; from proprietary source files, nor based on proprietary processes.)
+
+Spoiler alter: this is not &quot;Pythonic python&quot;: I&#39;m more into R&amp;D than production programming. Nonetheless, there&#39;s a some useful scripts here, so I made the repository available. It is public in the spirit of open source software. 
+ 
+This repository is licensed under the GNU Lesser General Public Version 3 (LGPLv3). See LICENSE.txt.
+
+Adhoc usage:
+
+    from mezcla import *
+    debug.trace(TL.DEFAULT, &quot;Hey&quot;)
+    debug.trace(TL.DETAILED, &quot;Joe&quot;)
+
+Tom O&#39;Hara
+Feb 2022
+&quot;&quot;&quot;
+version = &quot;1.4.0.8&quot;
+__VERSION__ = version
+__version__ = __VERSION__
+
+# Standard module(s)
+import os
+import sys
+import builtins
+## DEBUG: sys.stderr.write(f&quot;{__file__=}\n&quot;)
+
+# Note: requires python 3 or higher
+# TODO2: upgrade checks to cover 3.6 (mandatory) and 3.8+ (practical)
+PYTHON3_PLUS = (sys.version_info[0] &gt;= 3)
+assert PYTHON3_PLUS, &quot;Python 3 or higher: ¡por favor!&quot;
+
+# Local modules
+# Define most common imports for causual usage
+# Note: avoids syntax error is debug and system import directly
+## TODO
+## debug = None
+## mezcla = None
+## system = None
+## if PYTHON3_PLUS:
+##     ## TODO: get relative imports to work
+##     ## from . import debug
+##     ## from .mezcla import debug
+##     import mezcla
+##     from mezcla import debug
+##     from mezcla import system
+##     TL = debug.TL
+##     ## DEBUG: debug.trace_expr(TL.DEFAULT, debug, mezcla, system, TL)
+## else:
+##     TL = None
+
+# Optional helpers for import context
+def _in_ipython() -&gt; bool:
+    &quot;&quot;&quot;Whether running under an active IPython/Jupyter session&quot;&quot;&quot;
+    get_ipython = getattr(builtins, &quot;get_ipython&quot;, None)
+    if callable(get_ipython):
+        return bool(get_ipython())
+    return ((&quot;ipykernel&quot; in sys.modules) or (&quot;IPython&quot; in sys.modules))
+
+# Set convenience exports based on runtime mode.
+# note: Skips import to avoid overhead and debugging complications due to packages
+# in different repos. See debug.detect_shadowed_package.
+__all__ = [&quot;__VERSION__&quot;]
+skip_common_export = os.environ.get(&quot;SKIP_COMMON_EXPORT&quot;)
+if _in_ipython and not skip_common_export:
+    # Shows FYI to make import source explicit in interactive sessions.
+    try:
+        debug_level = int(os.environ[&quot;DEBUG_LEVEL&quot;], 0)
+        if (debug_level &gt;= 4):
+            print(&quot;FYI: mezcla using ipython_utils imports: debug, system, etc.; disable via SKIP_COMMON_EXPORT&quot;)
+        from mezcla.ipython_utils import debug, gh, my_re, system, TL  # pylint: disable=ungrouped-imports
+        __all__ += [&quot;debug&quot;, &quot;gh&quot;, &quot;my_re&quot;, &quot;system&quot;, &quot;TL&quot;]
+    except:
+        # Swallows the exception unless production
+        if __debug__:
+            sys.stderr.write(f&quot;Exception importing __init__: {sys.exc_info()}\n&quot;)
+        else:
+            raise
+
+## PREVIOUS:
+## NOTE: See __main__.py
+## debug.trace(TL.DETAILED, f&quot;mezcla version: {__VERSION__}&quot;)
+</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="003f694d-a2a9-46bf-b8b8-a0affc0397cf:call_IHOlXg1NW6GzwN0sjHzZE74V" data-index="8" id="entry-8">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#9</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/__main__.py.</span>
+<a class="entry-time" href="#entry-8">5m 11s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/__main__.py</code></div><div class="tool-output"><div class="md-code-block"><pre><code>#! /usr/bin/env python3
+#
+# Shows version, etc. in support of mezcla CLI script.
+#
+# Note: Test for working around &quot;:double import&quot; issue. See
+#    https://stackoverflow.com/questions/43393764/python-3-6-project-structure-leads-to-runtimewarning
+# Also see
+#    https://stackoverflow.com/questions/4042905/what-is-main-py
+#
+## UPDATE 2026-09-23: clarifies invocation
+## UPDATE 29 Aug 26: adds client arg to main
+#
+
+&quot;&quot;&quot;Entry point for mezcla&quot;&quot;&quot;
+
+# Standard module(s)
+## TODO: import logging
+
+# Installed modules
+import mezcla
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla.my_regex import my_re
+from mezcla import system
+
+# Contants
+TL = debug.TL
+
+def main(omit_warnings=None, client=None):
+    &quot;&quot;&quot;Entry point: shows version info if debugging otherwise a warning.
+    note: This will OMIT_WARNINGS unless a CLIENT like mezcla CLI script.
+    &quot;&quot;&quot;
+    if omit_warnings is None:
+        omit_warnings = client
+    if not omit_warnings:
+        system.print_error(f&quot;Warning: {__file__} is not intended as standalone.&quot;)
+    file_path = system.real_path(gh.dirname(__file__))
+    level = (TL.USUAL if not client else TL.ALWAYS)
+    debug.trace(level, f&quot;Version: {mezcla.__VERSION__}&quot;)
+    debug.trace(level, f&quot;Install path: {file_path}&quot;)
+
+    # Derive module name
+    # example: /home/tomohara/python/Mezcla/mezcla/__main__.py =&gt; &quot;mezcla&quot;
+    module = &quot;&lt;module&gt;&quot;
+    sep = my_re.escape(system.path_separator())
+    match = my_re.search(fr&quot;([^{sep}]*){sep}[^{sep}]*$&quot;, __file__)
+    if match:
+        module = match.group(1)
+    if not omit_warnings:
+        system.print_error(f&quot;Likewise for the package (e.g., via &#39;python -m {module}&#39;)\n&quot;)
+
+if __name__ == &#39;__main__&#39;:
+    main()
+</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="003f694d-a2a9-46bf-b8b8-a0affc0397cf:call_GE3I2LHfj6NGCLBNVrVZTZTK" data-index="9" id="entry-9">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#10</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla.</span>
+<a class="entry-time" href="#entry-9">5m 11s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla</code></div><div class="tool-output"><div class="md-code-block"><pre><code>.ipynb_checkpoints
+.mypy_cache
+.pytest_cache
+TAGS
+TODO.md
+__init__.py
+__init__.py.23Sep26
+__main__.py
+__pycache__
+__pycache__.20260902
+_bad-_run-together.log
+_copy_glue_helpers.py
+_cut.05aug26.run.1.log
+_doctest-_fix_indent-05sep26.2.log
+_doctest-_fix_indent-05sep26.3.log
+_doctest-_fix_indent-05sep26.4.log
+_doctest-_fix_indent-05sep26.5.log
+_doctest-_fix_indent-05sep26.6.log
+_doctest-common_module-05sep26.1.log
+_doctest-common_module-05sep26.7.log
+_doctest-common_module-05sep26.8.log
+_doctest-common_module-05sep26.9.log
+_doctest-misc_utils-05sep26.log
+_evaluate_example_tests.05sep26.run.5.log
+_evaluate_example_tests.05sep26.run.5.out
+_evaluate_example_tests.05sep26.run.6.log
+_evaluate_example_tests.05sep26.run.6.out
+_evaluate_example_tests.05sep26.run.7.log
+_evaluate_example_tests.05sep26.run.7.out
+_evaluate_example_tests.05sep26.run.8.log
+_evaluate_example_tests.05sep26.run.8.out
+_gemini-project-mark-examples.html
+_gemini-radar-reflectivity.html
+_gemini-radar-reflectivity.pdf
+_gemini_test_selenium.py
+_git-trash
+_glue_helpers_run.py
+_master_test_run.py
+_model_a-debug.py.txt
+_model_b-debug.py.txt
+_multi_template.py
+_pylint
+_rulez.2.selenium.pdf
+_run-ex-tests.05sep26.1.all.log
+_run-ex-tests.05sep26.1.all.out
+_run-ex-tests.05sep26.1.log
+_run-ex-tests.05sep26.1.temp.log
+_run-ex-tests.05sep26.1.temp.out
+_run-individually.log
+_run-together.log
+_test-comment-examples-05sep26.log
+_test_conversion_mezcla_to_standard.py
+_word-wrap.1.selenium.pdf
+_word-wrap.1.selenium.pdf.log
+_word-wrap.html
+adaptive_log_filter.py
+adhoc
+archive
+audio.py
+backup
+bash_ast.py
+bing_search.py
+check_html_javascript.py
+chromedriver_verbose.log
+clipboard_button.py
+compute_tfidf.py
+convert_emoticons.py
+convert_plasma_config.py
+cut.py
+data_utils.py
+debug.py
+docs
+downloads
+evaluate_example_tests.py
+examples
+extract_document_text.py
+file_utils.py
+filter_random.py
+flagged
+format_profile.py
+gensim_test.py
+glue_helpers.py
+google_word2vec.py
+gpu_utils.py
+html_converter.py
+html_utils.py
+introspection.py
+ipython_utils.py
+kenlm_example.py
+keras_param_search.py
+llm_desktop_search.py
+log-files
+main.py
+master_test.py
+merge_files.py
+merge_notes.py
+mezcla
+mezcla_to_standard.py
+mezcla_to_standard.py.07Sep26
+misc_utils.py
+my_regex.py
+ngram_tfidf.py
+nohup.out.23Sep26
+old
+os_utils.py
+output-files
+pandas_sklearn.py
+plot_utils.py
+poe_client.py
+python_ast.py
+qt6_clipboard_button.py
+randomize_lines.py
+rgb_color_name.py
+rulez.1.selenium.pdf.log
+rulez.2.selenium.pdf.log
+samples
+show_dependency_chain.py
+simple_main_example.py
+spacy_nlp.py
+spell.py
+summarize_pytest.py
+system.py
+template.py
+tests
+text_categorizer.py
+text_processing.py
+text_utils.py
+tfidf
+tpo_common.py
+train_language_model.py
+train_text_categorizer.py
+transpose_data.py
+unittest_wrapper.py
+usage.list
+validate_arguments.py
+validate_arguments_types.py
+xml_utils.py</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-reasoning" data-type="reasoning" data-entry-id="14a289de-9f8b-4aac-9791-95367c87e62c" data-index="10" id="entry-10">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x1F4AD;</span>
+<span class="entry-number">#11</span>
+<span class="entry-label">Reasoning</span>
+<a class="entry-time" href="#entry-10">5m 13s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="reasoning-text">**Debugging code issues**
+
+I noticed some odd behavior with the initial values in my system; it seems like the order is swapped—`__main__` should come first, and `init` should be second. There&#39;s a critical bug because the condition `if _in_ipython` is missing and is always returning true. I need to review the IPython utilities, inspect for duplication, and debug further. I’m considering whether the diff is unavailable due to a recent commit. I should check the git log to see the most recent changes.</div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="0496e705-5ebf-45e9-9f22-adaa5e37f99d:call_hjcu1ZvpbhRcR6eQ20CYimgl" data-index="11" id="entry-11">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#12</span>
+<span class="entry-label">bash - Find recent initialization commit</span>
+<a class="entry-time" href="#entry-11">5m 15s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">$ git --no-pager log --oneline -8 -- mezcla/__init__.py mezcla/__main__.py mezcla/mezcla mezcla/debug.py mezcla/system.py &amp;&amp; git --no-pager show --stat --oneline -1 -- mezcla/__init__.py</code></div><div class="tool-output"><div class="md-code-block"><pre><code>3f0c9231 clarifies support for mezcla CLI script
+e07c190c adds SKIP_COMMON_EXPORT and omits FYI if not debugging proper
+147db4f7 fixes relative_intersection to normalize on unique item len
+6fac04c1 comments out in trace of unique_items to avoid problems with generators
+13c29e18 traces unique_items in/out lengths
+46163c3a adds TL.NONE as more intuitive name for TL.ALWAYS
+8c97c4c2 adds coerce to trace_values and fleshes out docstring
+49435742 uses new client arg to mezcla_main
+e07c190c adds SKIP_COMMON_EXPORT and omits FYI if not debugging proper
+ mezcla/__init__.py | 32 +++++++++++++++++++++++++-------
+ 1 file changed, 25 insertions(+), 7 deletions(-)
+&lt;shellId: 1 completed with exit code 0&gt;</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="0496e705-5ebf-45e9-9f22-adaa5e37f99d:call_UokJ4gOFVY10Moda3aCnGP46" data-index="12" id="entry-12">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#13</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/ipython_utils.py.</span>
+<a class="entry-time" href="#entry-12">5m 15s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/ipython_utils.py</code></div><div class="tool-output"><div class="md-code-block"><pre><code>#! /usr/bin/env python3
+# 
+# Miscellanous utilities for ipython usage
+#
+# Note:
+# - This is idiosyncractic code based on Tom O&#39;Hara&#39;s ipython startup file
+#   (~/.ipython/profile_default/startup/25-quarter.py).
+# - To faciliate importing functions and variables for testing purposes (e.g., EX tests),
+#   use import_module_globals as illustrated in second example below.
+# - Use `jupyter console` to invoke a CLI verson of Jupyter (i.e., not ipython).
+#
+
+&quot;&quot;&quot;
+Adhoc stuff for ipython (or Jupyter notebooks)
+
+Simple usage:
+    from mezcla.ipython_utils import *
+
+Advanced usage:
+    # Make sure import-globals utility active
+    import mezcla.ipython_utils
+    reload(mezcla.ipython_utils)
+    import_module_globals = mezcla.ipython_utils.import_module_globals
+
+    # Run over misc_utils.py
+    import_module_globals(&quot;mezcla.misc_utils&quot;, globals_dict=builtins.globals())
+    #
+    # note: ipython chokes over the following when preceding comment included:
+    # &gt;&gt;&gt; (TYPICAL_EPSILON, VALUE_EPSILON)
+    # (1e-06, 0.001)
+
+Misc. usage:
+    set_xterm_title(&quot;ipython: &quot; + os.getcwd())
+&quot;&quot;&quot;
+
+# Note: most imports are done for the sake of ipython usage
+#
+# pylint: disable=unused-import
+
+# Standard modules
+import builtins
+from collections import defaultdict, namedtuple
+import json
+import math
+import os
+import random
+import re
+import sys
+from importlib import reload
+
+# Installed modules
+try:
+    import nltk
+    import numpy as np
+    import pandas as pd
+    import sklearn
+except:
+    nltk = np = pd = sklearn = None
+    sys.stderr.write(f&quot;Exception during installed imports: {sys.exc_info()}&quot;)
+
+# Local local modules
+import mezcla
+from mezcla import debug
+from mezcla import html_utils
+from mezcla.main import Main
+from mezcla import system
+from mezcla.my_regex import my_re
+from mezcla import glue_helpers as gh
+from mezcla import tpo_common as tpo
+try:
+    from mezcla import data_utils as du
+    from mezcla.unittest_wrapper import TestWrapper
+except:
+    du = TestWrapper = None
+    system.print_exception_info(&quot;loading local modules with dependencies&quot;)
+
+# Constants
+TL = debug.TL
+
+# Environment options
+HOME = gh.HOME_DIR
+USER = system.USER
+
+#-------------------------------------------------------------------------------
+# Global Variables
+#
+# Note:
+# - intended to faciliate experimentation in ipython
+# - crytic names for historical reasons (and since hash and list reserved words)
+#
+
+h = {&#39;a&#39;: 1, &#39;b&#39;: 2, &#39;c&#39;: 3}
+l = [1, 2, 3]
+t = &quot;some text&quot;
+text = t
+test_it = TestWrapper()
+try:
+    english_stopwords = nltk.corpus.stopwords.words(&#39;english&#39;)
+    spanish_stopwords = nltk.corpus.stopwords.words(&#39;spanish&#39;)
+except:
+    system.print_exception_info(&quot;loading resources like NLTK&quot;)
+  
+#-------------------------------------------------------------------------------
+# Helper functions
+
+def grep_obj_methods(obj, pattern, flags=None):
+    &quot;&quot;&quot;Return methods for OBJ matching PATTERN (with optional re.search FLAGS)
+    Note: in practice, all object members are grepped&quot;&quot;&quot;
+    ## TODO3: rename as grep_obj_attributes
+    # EX: grep_obj_methods(str, &quot;strip&quot;) =&gt; [&quot;lstrip&quot;, &quot;strip&quot;, &quot;rstrip&quot;]
+    if flags is None:
+        flags = re.IGNORECASE
+    return list(m for m in dir(obj) if re.search(pattern, m, flags))
+
+
+def import_module_globals(module_name, include_private=False, include_dunder=False, globals_dict=None, ignore_errors=None):
+    &quot;&quot;&quot;Import MODULE_NAME optionally with INCLUDE_PRIVATE and INCLUDE_DUNDER and setting GLOBALS_DICT&quot;&quot;&quot;
+    debug.trace_expr(5, module_name, include_private, include_dunder, globals_dict, ignore_errors,
+                     prefix=&quot;in import_module_globals: &quot;)
+    # note: intended to support reloading modules imported in ipython via &#39;from module import *&#39;
+    # TODO3: find a cleaner way of doing this (e.g., via import support)
+    # EX: import_module_globals(&quot;mezcla.misc_utils&quot;, globals_dict=builtins.globals()); VALUE_EPSILON =&gt; 1e-3
+    # pylint: disable=eval-used, exec-used
+    if globals_dict is None:
+        globals_dict = builtins.globals()
+    if ignore_errors is None:
+        ignore_errors = False
+    
+    # Ensure module_name is a string
+    if not isinstance(module_name, str):
+        if not ignore_errors:
+            system.print_error(f&quot;Error: module_name must be a string, got {type(module_name)}&quot;)
+        debug.trace(5, f&quot;module_name is not a string: {type(module_name)}&quot;)
+        return
+    
+    # Get list of modules attributes (e.g., variables)
+    module = None
+    module_attrs = []
+    try:
+        debug.trace(7, &quot;in try&quot;)
+        loaded = False
+        
+        # Check if module already exists in sys.modules
+        module_exists = module_name in sys.modules
+        
+        if module_exists:
+            try:
+                debug.trace(6, &quot;Module exists - trying reload&quot;)
+                # First import it into the namespace if not already there
+                import_command = f&quot;import {module_name}&quot;
+                exec(import_command, globals_dict)
+                module = eval(module_name, globals_dict)
+                module = reload(module)
+                loaded = True
+            except:
+                debug.trace_exception_info(7, &quot;existing reload&quot;)
+        
+        if not loaded:
+            try:
+                debug.trace(5, &quot;Trying import&quot;)
+                import_command = f&quot;import {module_name}&quot;
+                exec(import_command, globals_dict)
+                module = eval(module_name, globals_dict)
+                loaded = True
+            except:
+                debug.trace_exception_info(4, f&quot;{module_name} import&quot;)
+        
+        if loaded:
+            module_attrs = dir(module)
+        elif not ignore_errors:
+            system.print_error(f&quot;Error: unable to import or reload {module_name}&quot;)
+    except:
+        if not ignore_errors:
+            system.print_exception_info(&quot;import_module_globals&quot;)
+        else:
+            debug.trace_exception_info(6, &quot;import_module_globals&quot;)
+    debug.trace_expr(5, module)
+
+    # Import each individually
+    num_ok = 0
+    num_ignored = 0
+    for var in module_attrs:
+        debug.trace_expr(6, var)
+
+        # Optionally, include &quot;dunder&quot; attributes like __name__ or private ones like _name
+        include = True
+        if var.startswith(&quot;__&quot;):
+            if not include_dunder:
+                include = False
+                debug.trace(7, f&quot;excluding dunder attribute {var!r}&quot;)
+        elif (var.startswith(&quot;_&quot;) and not include_private):
+            include = False
+            debug.trace(7, f&quot;excluding private attribute {var!r}&quot;)
+
+        # Import the value
+        if include:
+            import_desc = (f&quot;import[ing] {var} from {module_name}&quot;)
+            try:
+                debug.trace(5, import_desc)
+                globals_dict[var] = getattr(module, var)
+                num_ok += 1
+            except:
+                debug.trace_exception_info(4, import_desc)
+        else:
+            num_ignored += 1
+    debug.trace(5, f&quot;{num_ok} of {len(module_attrs)} attributes loaded OK; {num_ignored=}&quot;)
+    return
+
+
+def pr_dir(obj):
+    &quot;&quot;&quot;Print dir listing for OBJ&quot;&quot;&quot;
+    print(dir(obj))
+
+
+def set_xterm_title(title=None):
+    &quot;&quot;&quot;Set xterm TITLE via set_xterm_title.bash
+    Note:
+    - Uses set_xterm_title.bash from https://github.com/tomasohara/shell-scripts.
+    - The TITLE can use environment variables (e.g., &quot;ipython [$CONDA_PREFIX]&quot;).
+    &quot;&quot;&quot;
+    # Sample result: &quot;ipython: /home/tomohara/mezcla: Py3.10(base)&quot;
+    if title is None:
+        title = &quot;ipython $PWD&quot;
+    gh.issue(f&#39;set_xterm_title.bash &quot;{title}&quot;&#39;)
+    
+#-------------------------------------------------------------------------------
+# Helper class
+
+class Fubar():
+    &quot;&quot;&quot;Dummy class used for cut-n-paste of method code (e.g., under ipython)
+    Example:
+      # setup
+      debug.assertion(&quot;Fubar&quot; in str(self))
+      self.dummy_arg = True
+      # cut-n-pasted code (see template.py_
+      debug.trace_object(1, self, label=f&quot;{self.__class__.__name__} instance&quot;)
+    Output:
+      Fubar instance: {
+          dummy_arg: True
+          }
+    &quot;&quot;&quot;
+    pass
+
+#-------------------------------------------------------------------------------
+# Initialization
+# note: self and dummy_main are for interactive usage
+
+self = Fubar()
+
+
+dummy_main = Main([])
+
+#-------------------------------------------------------------------------------
+    
+def main() -&gt; None:
+    &quot;&quot;&quot;Entry point&quot;&quot;&quot;
+    debug.trace(TL.DETAILED, f&quot;main(): script={system.real_path(__file__)}&quot;)
+    system.print_stderr(f&quot;Warning: {__file__} is not intended to be run standalone\n&quot;)
+    _main_app = Main(description=__doc__.format(script=gh.basename(__file__)))
+
+
+if __name__ == &#39;__main__&#39;:
+    debug.trace_current_context(level=TL.QUITE_VERBOSE)
+    debug.trace(5, f&quot;module __doc__: {__doc__}&quot;)
+    main()
+</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="0496e705-5ebf-45e9-9f22-adaa5e37f99d:call_brCVVtVlhFIXwSAYkih8Stq8" data-index="13" id="entry-13">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#14</span>
+<span class="entry-label">rg - ipython|IPython|get_ipython|SKIP_COMMON_EXPORT|common export|double import|detect_shadowed_package</span>
+<a class="entry-time" href="#entry-13">5m 15s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">&quot;ipython|IPython|get_ipython|SKIP_COMMON_EXPORT|common export|double import|detect_shadowed_package&quot; in *.py (mezcla)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>[grep content: 51 matches across 11 file(s) under /tpo/misc/programs/python/mezcla-devel-clone/mezcla]
+
+__init__.py (12 match(es)):
+  6: ## UPDATE 2026-09-23: adds SKIP_COMMON_EXPORT and omits FYI if not debugging proper
+  62: def _in_ipython() -&gt; bool:
+  63:     &quot;&quot;&quot;Whether running under an active IPython/Jupyter session&quot;&quot;&quot;
+  64:     get_ipython = getattr(builtins, &quot;get_ipython&quot;, None)
+  65:     if callable(get_ipython):
+  66:         return bool(get_ipython())
+  67:     return ((&quot;ipykernel&quot; in sys.modules) or (&quot;IPython&quot; in sys.modules))
+  71: # in different repos. See debug.detect_shadowed_package.
+  73: skip_common_export = os.environ.get(&quot;SKIP_COMMON_EXPORT&quot;)
+  74: if _in_ipython and not skip_common_export:
+  79:             print(&quot;FYI: mezcla using ipython_utils imports: debug, system, etc.; disable via SKIP_COMMON_EXPORT&quot;)
+  80:         from mezcla.ipython_utils import debug, gh, my_re, system, TL  # pylint: disable=ungrouped-imports
+
+ipython_utils.py (18 match(es)):
+  3: # Miscellanous utilities for ipython usage
+  6: # - This is idiosyncractic code based on Tom O&#39;Hara&#39;s ipython startup file
+  7: #   (~/.ipython/profile_default/startup/25-quarter.py).
+  10: # - Use `jupyter console` to invoke a CLI verson of Jupyter (i.e., not ipython).
+  14: Adhoc stuff for ipython (or Jupyter notebooks)
+  17:     from mezcla.ipython_utils import *
+  21:     import mezcla.ipython_utils
+  22:     reload(mezcla.ipython_utils)
+  23:     import_module_globals = mezcla.ipython_utils.import_module_globals
+  28:     # note: ipython chokes over the following when preceding comment included:
+  33:     set_xterm_title(&quot;ipython: &quot; + os.getcwd())
+  36: # Note: most imports are done for the sake of ipython usage
+  88: # - intended to faciliate experimentation in ipython
+  120:     # note: intended to support reloading modules imported in ipython via &#39;from module import *&#39;
+  219:     - The TITLE can use environment variables (e.g., &quot;ipython [$CONDA_PREFIX]&quot;).
+  221:     # Sample result: &quot;ipython: /home/tomohara/mezcla: Py3.10(base)&quot;
+  223:         title = &quot;ipython $PWD&quot;
+  230:     &quot;&quot;&quot;Dummy class used for cut-n-paste of method code (e.g., under ipython)
+__main__.py:5: # Note: Test for working around &quot;:double import&quot; issue. See
+
+debug.py (4 match(es)):
+  180: def detect_shadowed_package() -&gt; Tuple[bool, Dict[str, Any]]:
+  768:                 # note: Short-circuits processing to avoid errors about known problems (e.g., under ipython)
+  996:                 # note: Short-circuits processing to avoid extraneous warnings (e.g., trace_expr under ipython)
+  1185:             is_shadowed, shadow_details = detect_shadowed_package()
+audio.py:56: # TODO3: format code example using IPython example syntax (i.e., &#39;&gt;&gt;&gt;&#39;)
+text_categorizer.py:182:     # Note: intended for comparing results here against tutorial (e.g., in ipython shell)
+
+examples/youtube_transcript.py (2 match(es)):
+  130:               &quot;  ipython &lt;&lt;END\n&quot; +
+  145:         debug.trace(3, f&quot;Try via ipython:\n{debug_snippet}&quot;)
+introspection.py:55: # - pytest can wreck havoc with introspection (e.g., OK with ipython)
+archive/show_bert_representation.py:97: #   get the individual work vectors and manually combine vectors (e.g., ipython)
+
+tests/test_debug.py (5 match(es)):
+  125:     def test_detect_shadowed_package(self):
+  126:         &quot;&quot;&quot;Ensure detect_shadowed_package catches higher-priority package paths&quot;&quot;&quot;
+  127:         debug.trace(4, f&quot;test_detect_shadowed_package(): self={self}&quot;)
+  139:         is_shadowed, shadow_details = THE_MODULE.detect_shadowed_package()
+  434:         ## ex: Assertion failed: gpu=None\n (at &lt;ipython-input-14-e3c30214f890&gt;:1)
+
+tests/test_ipython_utils.py (5 match(es)):
+  3: # Test(s) for ../ipython_utils.py
+  9: #   $ PYTHONPATH=&quot;.:$PYTHONPATH&quot; python ./mezcla/tests/test_ipython_utils.py
+  12: &quot;&quot;&quot;Tests for ipython_utils module&quot;&quot;&quot;
+  26: import mezcla.ipython_utils as THE_MODULE
+  48:         # Import this module (i.e., &quot;mezcla.ipython_utils&quot;)</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="0496e705-5ebf-45e9-9f22-adaa5e37f99d:call_RC4DrQBuXiT7Ge3mj5ZisbaC" data-index="14" id="entry-14">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#15</span>
+<span class="entry-label">rg - def path_separator|path_separator\s*=|def print_error|def real_path|class TL</span>
+<a class="entry-time" href="#entry-14">5m 15s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">&quot;def path_separator|path_separator\s*=|def print_error|def real_path|class TL&quot; in {debug,system}.py (mezcla)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py:430:def print_error(text: str) -&gt; None:
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py:1136:def path_separator(sysname: Optional[str] = None) -&gt; str:
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py:1314:def real_path(path: str) -&gt; str:</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-reasoning" data-type="reasoning" data-entry-id="99ffbe95-8069-4c23-860d-e65b7eb00af3" data-index="15" id="entry-15">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x1F4AD;</span>
+<span class="entry-number">#16</span>
+<span class="entry-label">Reasoning</span>
+<a class="entry-time" href="#entry-15">5m 17s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="reasoning-text">**Inspecting commit issues**
+
+I need to review the commits and debug the sections to see if there are any duplicate system module headers or imports, though right now it seems like there’s no import issue. I want the recent diff for commit e07 and check the script root. The user mentioned mezcla, and it looks like the path might be incorrect, possibly leading to the root being `mezcla`. I&#39;ll also use glob to list initial directories and test the import behavior. Lastly, I should read through the latest commits for debugging.</div></div>
+</div>
+<div class="entry border-copilot" data-type="copilot" data-entry-id="ae90c9a1-1c60-483b-ac4c-dc605753b21d" data-index="16" id="entry-16">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x1F4AC;</span>
+<span class="entry-number">#17</span>
+<span class="entry-label">Copilot</span>
+<a class="entry-time" href="#entry-16">5m 18s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="markdown-body"><p>The new hook currently runs on every import because the predicate function is referenced rather than called; I’m now checking the intended CLI/package invocation paths and the existing shadow-import safeguards to distinguish that regression from the broader design improvements.</p>
+</div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="fed78806-15d7-4695-acb2-a3c6031fa84a:call_PLziksn1EfQzwQgNxkKr9VGm" data-index="17" id="entry-17">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#18</span>
+<span class="entry-label">bash - Read recent entry point changes</span>
+<a class="entry-time" href="#entry-17">6m 2s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">$ git --no-pager show --format=fuller --find-renames e07c190c -- mezcla/__init__.py &amp;&amp; printf &#39;\n--- __main__ follow-up ---\n&#39; &amp;&amp; git --no-pager show --format=fuller --find-renames 3f0c9231 -- mezcla/__main__.py</code></div><div class="tool-output"><div class="md-code-block"><pre data-lang="diff"><code>commit e07c190c7d6323643226599c4dcf274f1c7e2853
+Author:     Tom O&#39;Hara &lt;tohara@tohara.com&gt;
+AuthorDate: Wed Sep 23 17:40:48 2026 -0400
+Commit:     Tom O&#39;Hara &lt;tohara@tohara.com&gt;
+CommitDate: Wed Sep 23 17:40:48 2026 -0400
+
+    adds SKIP_COMMON_EXPORT and omits FYI if not debugging proper
+
+diff --git a/mezcla/__init__.py b/mezcla/__init__.py
+index 082c363c..f83f038d 100755
+--- a/mezcla/__init__.py
++++ b/mezcla/__init__.py
+@@ -1,5 +1,11 @@
+ #! /usr/bin/env python3
+ # -*- coding: utf-8 -*-
++#
++# Package initialization for mezcla.
++#
++## UPDATE 2026-09-23: adds SKIP_COMMON_EXPORT and omits FYI if not debugging proper
++#
++
+ &quot;&quot;&quot;
+ Mezcla is Spanish for mixture, and this repository contains a variety of Python scripts.
+ 
+@@ -23,6 +29,7 @@ __VERSION__ = version
+ __version__ = __VERSION__
+ 
+ # Standard module(s)
++import os
+ import sys
+ import builtins
+ ## DEBUG: sys.stderr.write(f&quot;{__file__=}\n&quot;)
+@@ -60,13 +67,24 @@ def _in_ipython() -&gt; bool:
+     return ((&quot;ipykernel&quot; in sys.modules) or (&quot;IPython&quot; in sys.modules))
+ 
+ # Set convenience exports based on runtime mode.
+-if _in_ipython():
+-    # FYI to make import source explicit in interactive sessions.
+-    print(&quot;FYI: mezcla using ipython_utils imports: debug, gh, my_re, system, TL&quot;)
+-    from mezcla.ipython_utils import debug, gh, my_re, system, TL  # pylint: disable=ungrouped-imports
+-    __all__ = [&quot;debug&quot;, &quot;gh&quot;, &quot;my_re&quot;, &quot;system&quot;, &quot;TL&quot;, &quot;__VERSION__&quot;]
+-else:
+-    __all__ = [&quot;__VERSION__&quot;]
++# note: Skips import to avoid overhead and debugging complications due to packages
++# in different repos. See debug.detect_shadowed_package.
++__all__ = [&quot;__VERSION__&quot;]
++skip_common_export = os.environ.get(&quot;SKIP_COMMON_EXPORT&quot;)
++if _in_ipython and not skip_common_export:
++    # Shows FYI to make import source explicit in interactive sessions.
++    try:
++        debug_level = int(os.environ[&quot;DEBUG_LEVEL&quot;], 0)
++        if (debug_level &gt;= 4):
++            print(&quot;FYI: mezcla using ipython_utils imports: debug, system, etc.; disable via SKIP_COMMON_EXPORT&quot;)
++        from mezcla.ipython_utils import debug, gh, my_re, system, TL  # pylint: disable=ungrouped-imports
++        __all__ += [&quot;debug&quot;, &quot;gh&quot;, &quot;my_re&quot;, &quot;system&quot;, &quot;TL&quot;]
++    except:
++        # Swallows the exception unless production
++        if __debug__:
++            sys.stderr.write(f&quot;Exception importing __init__: {sys.exc_info()}\n&quot;)
++        else:
++            raise
+ 
+ ## PREVIOUS:
+ ## NOTE: See __main__.py
+
+--- __main__ follow-up ---
+commit 3f0c9231229d4c9e65dab167f9ea89b1dd78684b
+Author:     Tom O&#39;Hara &lt;tohara@tohara.com&gt;
+AuthorDate: Wed Sep 23 17:50:43 2026 -0400
+Commit:     Tom O&#39;Hara &lt;tohara@tohara.com&gt;
+CommitDate: Wed Sep 23 17:50:43 2026 -0400
+
+    clarifies support for mezcla CLI script
+
+diff --git a/mezcla/__main__.py b/mezcla/__main__.py
+index f9543b77..d56ec661 100755
+--- a/mezcla/__main__.py
++++ b/mezcla/__main__.py
+@@ -1,10 +1,13 @@
+ #! /usr/bin/env python3
+ #
++# Shows version, etc. in support of mezcla CLI script.
++#
+ # Note: Test for working around &quot;:double import&quot; issue. See
+-#    See https://stackoverflow.com/questions/43393764/python-3-6-project-structure-leads-to-runtimewarning
++#    https://stackoverflow.com/questions/43393764/python-3-6-project-structure-leads-to-runtimewarning
+ # Also see
+ #    https://stackoverflow.com/questions/4042905/what-is-main-py
+ #
++## UPDATE 2026-09-23: clarifies invocation
+ ## UPDATE 29 Aug 26: adds client arg to main
+ #
+ 
+@@ -24,7 +27,9 @@ from mezcla import system
+ TL = debug.TL
+ 
+ def main(omit_warnings=None, client=None):
+-    &quot;&quot;&quot;Entry point: shows version info if debugging otherwise a warning&quot;&quot;&quot;
++    &quot;&quot;&quot;Entry point: shows version info if debugging otherwise a warning.
++    note: This will OMIT_WARNINGS unless a CLIENT like mezcla CLI script.
++    &quot;&quot;&quot;
+     if omit_warnings is None:
+         omit_warnings = client
+     if not omit_warnings:
+&lt;shellId: 2 completed with exit code 0&gt;</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="fed78806-15d7-4695-acb2-a3c6031fa84a:call_ZcyPDwgfKfn1G7kAylRNir64" data-index="18" id="entry-18">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#19</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py.</span>
+<a class="entry-time" href="#entry-18">6m 2s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py (lines 145-225)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>#...............................................................................
+# Utility functions
+
+def _print_exception_info(task: str) -&gt; None:
+    &quot;&quot;&quot;Output exception information to stderr regarding TASK (e.g., function)&quot;&quot;&quot;
+    # Note: non-tracing version of system&#39;s print_exception_info
+    sys.stderr.write(&quot;Error during {t}: {exc}\n&quot;.
+                     format(t=task, exc=sys.exc_info()))
+    return
+
+def docstring_parameter(**kwargs):
+    &quot;&quot;&quot;Decorator to reformat docstring using specified KWARGS&quot;&quot;&quot;
+    # Note: Docstrings should not contain extraneous braces (e.g., &quot;avoid {}&#39;s&quot;)
+    # based on https://stackoverflow.com/questions/10307696/how-to-put-a-variable-into-python-docstring/71377925#71377925
+    # example: @docstring_parameter(max_len=max_trace_value_len)
+    #          def trace_it() ... &quot;&quot;&quot;Print it to stderr up to the maximum length ({max_len})&quot;&quot;&quot;
+    def decorator(obj):
+        new_doc = obj.__doc__
+        try:
+            # Update if defined (n.b., not available with python -OO)
+            if obj.__doc__:
+                new_doc = obj.__doc__.format(**kwargs)
+        except:
+            _print_exception_info(&quot;docstring_parameter&quot;)
+        obj.__doc__ = new_doc
+        return obj
+    return decorator
+
+def _same_path(path1: Path, path2: Path) -&gt; bool:
+    &quot;&quot;&quot;Heuristic path equality, including symlink-aware checks.&quot;&quot;&quot;
+    try:
+        return os.path.samefile(path1, path2)
+    except:
+        return (path1.resolve() == path2.resolve())
+
+def detect_shadowed_package() -&gt; Tuple[bool, Dict[str, Any]]:
+    &quot;&quot;&quot;Heuristic indicating whether another version of this package is ahead of this one in sys.path?
+    Returns tuple with shadow status flag and details hash.
+    &quot;&quot;&quot;
+    # Resolve current module and script metadata.
+    mod = sys.modules[__name__]
+    mod_file = getattr(mod, &quot;__file__&quot;, None)
+    if not mod_file:
+        return False, {&quot;shadowed&quot;: False, &quot;reason&quot;: &quot;no __file__&quot;}
+    current_module_file = Path(mod_file).resolve()
+    script_path = (Path(sys.argv[0]).resolve() if (sys.argv and sys.argv[0]) else None)
+    package_name = (__package__ or getattr(mod, &quot;__package__&quot;, &quot;&quot;) or &quot;&quot;)
+    pkg_dir = None
+    pkg_name = None
+
+    # Infer package directory from module metadata when available.
+    if package_name:
+        pkg_name = package_name.split(&quot;.&quot;)[0]
+        pkg_dir = current_module_file.parent
+        depth = max(len(package_name.split(&quot;.&quot;)) - 1, 0)
+        for _ in range(depth):
+            pkg_dir = pkg_dir.parent
+    # Otherwise, use script-mode heuristics (e.g., running ./debug.py).
+    elif (current_module_file.parent / &quot;__init__.py&quot;).is_file():
+        pkg_dir = current_module_file.parent
+        pkg_name = pkg_dir.name
+    elif script_path and (script_path.parent / &quot;__init__.py&quot;).is_file():
+        pkg_dir = script_path.parent
+        pkg_name = pkg_dir.name
+    else:
+        return False, {&quot;shadowed&quot;: False, &quot;reason&quot;: &quot;not in a package&quot;}
+
+    assert pkg_dir is not None
+    assert pkg_name is not None
+    pkg_dir = pkg_dir.resolve()
+    trace_expr(5, pkg_dir, pkg_name, script_path)
+
+    # Scan python path entries in import precedence order.
+    first_hit = None
+    current_index = None
+    for i, entry in enumerate(sys.path):
+        base = Path(entry or os.getcwd()).resolve()
+        candidate = (base / pkg_name)
+        trace_expr(5, i, entry, candidate)
+        if not candidate.is_dir():
+            continue</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="fed78806-15d7-4695-acb2-a3c6031fa84a:call_QWQw2diuh5cMGO86QCmWsUvC" data-index="19" id="entry-19">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#20</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py.</span>
+<a class="entry-time" href="#entry-19">6m 2s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py (lines 1150-1210)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>            global time_start
+            if (time_start &gt; 0 and not force):
+                ## TODO3: track down source of re-init
+                self.trace(DETAILED, f&quot;debug_init early exit: {time_start=} {force=}&quot;)
+                self.trace_stack(VERBOSE)
+                return
+            self.trace(DETAILED, f&quot;in debug_init(force={force}); DEBUG_LEVEL={trace_level}; {timestamp()}&quot;)
+            self.trace(VERBOSE, f&quot;{time_start=}&quot;)
+            time_start = time.time()
+            ## NOTE: Useful for tracking down multiple invocations (e.g., due to imports or __init__.py),
+            ## which is complicated by python path conflicts (see shadow detection below).
+            ## DEBUG: self.trace_stack(VERBOSE)
+            # note: shows command invocation unless invoked via &quot;python -c ...&quot;
+            command_line = &quot; &quot;.join(sys.argv)
+            if (command_line and (command_line != &quot;-c&quot;) and (command_line != &quot;-m&quot;)):
+                # TODO2: simplify misc. trace suppression options (n.b., check shellscript repo)
+                if _getenv_bool(&quot;TRACE_INVOCATION&quot;, False):
+                    if not (_getenv_bool(&quot;QUIET_MODE&quot;, False) or _getenv_bool(&quot;DURING_ALIAS&quot;, False)):
+                        self.trace(USUAL, command_line)
+            self.trace_expr(DETAILED, sys.argv)
+            self.open_debug_file()
+
+            # Determine whether tracing include time and date
+            # note: Useful for adhoc profiling
+            global output_timestamps
+            output_timestamps = _getenv_bool(&quot;OUTPUT_DEBUG_TIMESTAMPS&quot;, False)
+
+            # Show startup time and tracing info
+            self.trace_fmtd(DETAILED, &quot;[{f}] loaded at {t}&quot;, f=module_file, t=timestamp())
+            self.trace_fmtd(DETAILED, &quot;trace_level={l}; output_timestamps={ots}&quot;, l=trace_level, ots=output_timestamps)
+            self.trace_expr(QUITE_DETAILED, __file__)
+            self.trace_values(VERBOSE, sys.path, &quot;sys.path&quot;)
+            # note: also show python path if under Unix (TODO3: generalize)
+            if (os.name == &quot;posix&quot;):
+                self.code(VERBOSE, lambda: os.system(&quot;(echo -n &#39;Python: &#39;; which python) 1&gt;&amp;2&quot;))
+            is_shadowed, shadow_details = detect_shadowed_package()
+            self.trace_expr(DETAILED, shadow_details)
+            if is_shadowed:
+                self.trace(USUAL, f&quot;Warning: package likely shadowed: {shadow_details}&quot;)
+
+            # Determine other debug-only environment options
+            global para_mode_tracing
+            para_mode_tracing = _getenv_bool(&quot;PARA_MODE_TRACING&quot;, para_mode_tracing)
+            global max_trace_value_len
+            max_trace_value_len = _getenv_int(&quot;MAX_TRACE_VALUE_LEN&quot;, max_trace_value_len)
+            global use_logging
+            use_logging = _getenv_bool(&quot;USE_LOGGING&quot;, use_logging)
+            enable_logging = _getenv_bool(&quot;ENABLE_LOGGING&quot;, use_logging)
+            if enable_logging:
+                init_logging()
+            global include_trace_diagnostics
+            include_trace_diagnostics = _getenv_bool(&quot;TRACE_DIAGNOSTICS&quot;, trace_level &gt;= QUITE_DETAILED)
+            global monitor_functions
+            monitor_functions = _getenv_bool(&quot;MONITOR_FUNCTIONS&quot;, False)
+            if monitor_functions:
+                sys.setprofile(profile_function)
+            ## TODO1: (all output_caller_info env. init; also add to trace_expr below)
+            ## global output_caller_info
+            ## output_caller_info = _getenv_bool(&quot;OUTPUT_CALLER_INFO&quot;, output_caller_info)
+            self.trace_expr(VERBOSE, para_mode_tracing, max_trace_value_len, use_logging, enable_logging, monitor_functions)
+            global use_old_introspection</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="fed78806-15d7-4695-acb2-a3c6031fa84a:call_fKouTJwAasehRksw8EZ1SYyM" data-index="20" id="entry-20">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#21</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py.</span>
+<a class="entry-time" href="#entry-20">6m 2s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py (lines 1-120)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>#! /usr/bin/env python3
+#
+# Functions for system related access, such as running command or
+# getting environment values.
+#
+# TODO:
+# - * Add support for checking for getenv_xyz-style parameters not used!
+# - Finish python 2/3 special case handling via six package (e.g., in order
+#   to remove stupud pylint warnings).
+# - Rename as system_utils so clear that non-standard package.
+# - Add support for maintaining table of environment variables with optional descriptions.
+# - Add safe_int from tpo_common, as includes support for base (e.g., 16 for hex).
+# - Reconcile against functions in tpo_common.py (e.g., to make sure functionality covered and similar tracing supported).
+# - Make sure format-based function tracing is well formed:
+#   ex: &quot;is_dir{p}&quot; =&gt; &quot;is_dir({p})&quot;.
+# - ** Define generic function for creating simple wrappers:
+#   ex: def fu(): r = sys.fu(); trace(N, f&quot;fub() returned {r}&quot;); return r
+#       =&gt; fu = define_wrapper(trace_level=N, sys.fu)
+#
+# TODO2:
+# - convert additional open() calls to open_file()
+# - drop python 2 support
+#
+
+&quot;&quot;&quot;System-related functions&quot;&quot;&quot;
+
+# Standard packages
+from collections import defaultdict, OrderedDict
+## UPDATE: 06/20/2026: Integrates alternative model&#39;s type hints.
+from collections.abc import Iterator
+import datetime
+## OLD: import importlib_metadata
+import inspect
+import os
+import pickle
+import re
+import sys
+import time
+from typing import (
+    Any, IO, Optional, Union, overload, List,
+    Tuple, Callable, Dict, Set
+)
+from io import TextIOWrapper
+## DEBUG: sys.stderr.write(f&quot;{__file__=}\n&quot;)
+
+# Installed packages
+import six
+
+# Local packages
+from mezcla import debug
+from mezcla.debug import UTF8, TraceLevel
+## TODO3: debug.trace_expr(6, __file__)
+## DEBUG: sys.stderr.write(f&quot;{__file__=}\n&quot;)
+from mezcla.validate_arguments_types import (
+    FileDescriptorOrPath, OptExcInfo, StrOrBytesPath,
+)
+
+# Types
+ListOrSet = Union[List[Any], Set[Any]]         # stable
+
+# Constants
+STRING_TYPES = six.string_types
+MAX_SIZE = six.MAXSIZE
+MAX_INT = MAX_SIZE
+TEMP_DIR = None
+ENCODING = &quot;encoding&quot;
+USER = None
+
+## TODO: debug.assertion(python_maj_min_version() &gt;= 3.8, &quot;Require Python 3.8+ for function def&#39;s with &#39;/&#39; or &#39;*&#39;&quot;)
+## See https://stackoverflow.com/questions/9079036/how-do-i-detect-the-python-version-at-runtime
+debug.assertion(sys.version_info &gt;= (3, 8), &quot;Require Python 3.8+ for function def&#39;s with &#39;/&#39; or &#39;*&#39;&quot;)
+
+#-------------------------------------------------------------------------------
+# Support for needless python changes
+
+def maxint() -&gt; int:
+    &quot;&quot;&quot;Maximum size for an integer&quot;&quot;&quot;
+    # Note: this is just a sanity check
+    debug.assertion(MAX_INT == MAX_SIZE)
+    return MAX_INT
+
+#-------------------------------------------------------------------------------
+# Support for environment variable access
+# TODO: Put in separate module
+
+env_options: Dict[str, str] = {}
+env_defaults: Dict[str, Any] = {}
+env_diagnostic_level = 6
+#
+def set_env_diagnostic_level(level: debug.IntOrTraceLevel) -&gt; None:
+    &quot;&quot;&quot;Set trace LEVEL at which getenv_xyz-related diagnostics occur&quot;&quot;&quot;
+    global env_diagnostic_level
+    env_diagnostic_level = level
+#
+def register_env_option(var: str, description: str, default: Any) -&gt; None:
+    &quot;&quot;&quot;Register environment VAR as option with DESCRIPTION and DEFAULT&quot;&quot;&quot;
+    # Note: The default value is typically the default value passes into the
+    # getenv_xyz call, not the current value from the environment.
+    debug.trace_fmt(7, &quot;register_env_option({v}, {dsc!r}, {dft!r})&quot;,
+                    v=var, dsc=description, dft=default)
+    global env_options
+    global env_defaults
+    ok = True
+    old_description = env_options.get(var)
+    if (old_description is not None) and (old_description != description):
+         debug.trace(4, f&quot;Warning: redefining env option description for {var}: {old_description=} {description=}&quot;)
+         ok = False
+    old_default = env_defaults.get(var)
+    if  (old_default is not None) and (old_default != default):
+         debug.trace(4, f&quot;Warning: redefining env option default for {var}: {old_default=} {default=}&quot;)
+         ok = False
+    if not ok:
+        debug.trace_stack(env_diagnostic_level)
+    env_options[var] = description
+    env_defaults[var] = default
+    return
+
+
+def get_registered_env_options() -&gt; List[str]:
+    &quot;&quot;&quot;Returns list of environment options registered via register_env_option&quot;&quot;&quot;</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="fed78806-15d7-4695-acb2-a3c6031fa84a:call_HjuYJrU0kCrng31xFEClzpYd" data-index="21" id="entry-21">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#22</span>
+<span class="entry-label">glob - **/mezcla</span>
+<a class="entry-time" href="#entry-21">6m 2s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">&quot;**/mezcla&quot;</code></div><div class="tool-output"><div class="md-code-block"><pre><code>/tpo/misc/programs/python/mezcla-devel-clone/mezcla/mezcla</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="fed78806-15d7-4695-acb2-a3c6031fa84a:call_tkHaaemt7LuyOhv8xmXwXNjf" data-index="22" id="entry-22">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#23</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/tests/test_ipython_utils.py.</span>
+<a class="entry-time" href="#entry-22">6m 2s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/tests/test_ipython_utils.py</code></div><div class="tool-output"><div class="md-code-block"><pre><code>#! /usr/bin/env python3
+#
+# Test(s) for ../ipython_utils.py
+#
+# Notes:
+# - For debugging the tested script, the ALLOW_SUBCOMMAND_TRACING environment
+#   option shows tracing output normally suppressed by unittest_wrapper.py.
+# - This can be run as follows:
+#   $ PYTHONPATH=&quot;.:$PYTHONPATH&quot; python ./mezcla/tests/test_ipython_utils.py
+#
+
+&quot;&quot;&quot;Tests for ipython_utils module&quot;&quot;&quot;
+
+# Standard packages
+import sys
+## TODO: from typing import Optional
+
+# Installed packages
+import pytest
+
+# Local packages
+from mezcla.unittest_wrapper import TestWrapper, invoke_tests
+from mezcla import debug
+from mezcla import glue_helpers as gh
+from mezcla import system
+import mezcla.ipython_utils as THE_MODULE
+
+#------------------------------------------------------------------------
+
+class TestIt(TestWrapper):
+    &quot;&quot;&quot;Class for command-line based testcase definition&quot;&quot;&quot;
+    script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
+
+    def test_grep_obj_methods(self):
+        &quot;&quot;&quot;Test (module) object grepping&quot;&quot;&quot;
+        debug.trace(4, f&quot;TestIt.test_grep_obj_methods(); self={self}&quot;)
+        import_functions = THE_MODULE.grep_obj_methods(THE_MODULE, &quot;import_*&quot;)
+        assert (&quot;import_module_globals&quot; in import_functions)
+        leading_space_names = THE_MODULE.grep_obj_methods(THE_MODULE, &quot;^ +&quot;)
+        assert (not leading_space_names)
+        return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_import_module_globals(self):
+        &quot;&quot;&quot;Test module globals import&quot;&quot;&quot;
+        debug.trace(4, f&quot;TestIt.test_import_module_globals(); self={self}&quot;)
+        #
+        # Import this module (i.e., &quot;mezcla.ipython_utils&quot;)
+        globals_dict = {}
+        THE_MODULE.import_module_globals(self.script_module, globals_dict=globals_dict)
+        assert (&quot;TL&quot; in globals_dict)
+        assert (&quot;import_module_globals&quot; in globals_dict)
+        #
+        # note: following fails because the module argument needs to be text (as above)
+        globals_dict = {}
+        THE_MODULE.import_module_globals(THE_MODULE, globals_dict=globals_dict, ignore_errors=True)
+        assert (not globals_dict)
+        return
+
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_import_reload(self):
+        &quot;&quot;&quot;Test reload via import_module_globals&quot;&quot;&quot;
+        debug.trace(4, f&quot;TestIt.test_import_module_globals(); self={self}&quot;)
+        # Make sure temp dir is current for sake of module loading
+        globals_dict = {}
+        temp_dir = self.get_temp_dir()
+        module_name = &quot;_test_import_reload&quot;
+        temp_file = gh.form_path(temp_dir, f&quot;_{module_name}.py&quot;)
+        ## BAD: system.set_current_directory(temp_dir)
+        ## debug.assertion(temp_dir in sys.path)
+        self.monkeypatch.setattr(sys, &quot;path&quot;, [temp_dir] + sys.path)
+        debug.assertion(temp_dir in sys.path)
+        
+        # Test version 1 of module _test_import_reload
+        system.write_file(temp_file, &quot;a=1&quot;)
+        THE_MODULE.import_module_globals(module_name, globals_dict=globals_dict)
+        assert (&quot;a&quot; in globals_dict)
+        assert (&quot;b&quot; not in globals_dict)
+
+        # Test version 2 of module _test_import_reload
+        gh.rename_file(temp_file, temp_file + &quot;.old&quot;)
+        system.write_file(temp_file, &quot;a=1\nb=1&quot;)
+        THE_MODULE.import_module_globals(module_name, globals_dict=globals_dict)
+        assert (&quot;b&quot; in globals_dict)
+        
+    @pytest.mark.xfail                   # TODO: remove xfail
+    def test_pr_dir(self):
+        &quot;&quot;&quot;Makes sure object directory printed&quot;&quot;&quot;
+        # Sample output:
+        #   In [67]: pr_dir(Dummy())
+        #   [&#39;__class__&#39;, &#39;__delattr__&#39;, &#39;__dict__&#39;, &#39;__dir__&#39;, &#39;__doc__&#39;, &#39;__eq__&#39;, &#39;__format__&#39;, &#39;__ge__&#39;, &#39;__getattribute__&#39;, &#39;__getstate__&#39;, &#39;__gt__&#39;, &#39;__hash__&#39;, &#39;__init__&#39;, &#39;__init_subclass__&#39;, &#39;__le__&#39;, &#39;__lt__&#39;, &#39;__module__&#39;, &#39;__ne__&#39;, &#39;__new__&#39;, &#39;__reduce__&#39;, &#39;__reduce_ex__&#39;, &#39;__repr__&#39;, &#39;__setattr__&#39;, &#39;__sizeof__&#39;, &#39;__str__&#39;, &#39;__subclasshook__&#39;, &#39;__weakref__&#39;, &#39;dummy_member&#39;]
+        #
+        class Dummy():
+            &quot;&quot;&quot;Dummy class for testing pr_dir&quot;&quot;&quot;
+            dummy_member = True
+        #
+        dummy_instance = Dummy()
+        THE_MODULE.pr_dir(dummy_instance)
+        stdout = self.get_stdout()
+        assert &quot;dummy_member&quot; in stdout
+        assert &quot;&#39;__class__&#39;&quot; in stdout
+
+#------------------------------------------------------------------------
+
+if __name__ == &#39;__main__&#39;:
+    debug.trace_current_context()
+    invoke_tests(__file__)
+</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-reasoning" data-type="reasoning" data-entry-id="c35a0b36-b857-4ee6-8860-686cc59f80d4" data-index="23" id="entry-23">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x1F4AD;</span>
+<span class="entry-number">#24</span>
+<span class="entry-label">Reasoning</span>
+<a class="entry-time" href="#entry-23">6m 9s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="reasoning-text">**Identifying findings and issues**
+
+I need to list all my findings, even the minor ones: first, there&#39;s a function that wasn&#39;t called. It seems the fallback detects IPython as merely installed instead of active. Importing might cause issues related to `get_ipython` throwing errors during initialization, but no errors show up. The import cascade for `ipython_utils` brings in heavy dependencies, and a bug causes an issue in normal imports. Additionally, a potential environment convention could complicate exporting. Maybe moving some detection logic into a lighter import utility could help!
+
+**Evaluating initialization and imports**
+
+I&#39;m considering whether `__init__` should only contain metadata, invoked either by IPython startup or through explicit importing from `mezcla.ipython_utils`. This could help with clarity. If I preserve it, maybe I&#39;d use a metadata flag like `__ipython_exports__`. I also see that `__all__` controls star imports, but direct attributes show up only after the hook is executed. There’s some peculiarity with package handling — it seems the `mezcla/mezcla` script might be double importing.</div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="8c75ef35-6949-4371-9ed7-35b51a02508e:call_9W8LU7fiMkthLf7QY2DWLbVJ" data-index="24" id="entry-24">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#25</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/mezcla.</span>
+<a class="entry-time" href="#entry-24">8m 13s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/mezcla</code></div><div class="tool-output"><div class="md-code-block"><pre><code>#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Command line interface (CLI) for version info, etc.
+#
+# Note:
+# - Based on wrapper scripts from Anaconda (e.g., ~/anaconda3/envs/nlp-py-3-9/bin/python/pytest).
+# - This is currently just used to trace out path and version info.
+# - A warning is shown if invoked in non-debug mode.
+#
+## UPDATE 29 Aug 26: uses new client arg to mezcla_main
+#
+
+&quot;&quot;&quot;Wrapper for mezcla module info display&quot;&quot;&quot;
+
+import re
+import sys
+from pathlib import Path
+
+if __name__ == &#39;__main__&#39;:
+    # Ensure this checkout of mezcla is used (not another installed copy).
+    repo_root = str(Path(__file__).resolve().parent.parent)
+    sys.path.insert(0, repo_root)
+
+    # Invoke the package entry point in mezcla.__main__.
+    # note: applies standard workaround for Windows invocation quirks
+    from mezcla import debug
+    from mezcla.__main__ import main as mezcla_main
+    sys.argv[0] = re.sub(r&#39;(-script\.pyw|\.exe)?$&#39;, &#39;&#39;, sys.argv[0])
+    ##
+    ## OLD:
+    ## skip_warnings = debug.debugging()
+    ## sys.exit(mezcla_main(omit_warnings=skip_warnings))
+    ##
+    sys.exit(mezcla_main(client=True))
+</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="8c75ef35-6949-4371-9ed7-35b51a02508e:call_jZ0ThRc3DMRNnzLGVfT4oADu" data-index="25" id="entry-25">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#26</span>
+<span class="entry-label">rg - ^from mezcla import system|^import mezcla\.system|^from mezcla import debug|^import mezcla\.debug|system\.|importlib</span>
+<a class="entry-time" href="#entry-25">8m 13s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">&quot;^from mezcla import system|^import mezcla\.system|^from mezcla import debug|^import mezcla\.debug|system\.|importlib&quot; (mezcla/debug.py)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py:10:#   imports standard packages. In particular, system.py is not imported,
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py:284:        # Note: version like one from system.py to avoid circular dependency
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py:1553:    &quot;&quot;&quot;Version of system.getenv_bool w/o tracing&quot;&quot;&quot;
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py:1562:    &quot;&quot;&quot;Version of system.getenv_int w/o tracing&quot;&quot;&quot;</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="8c75ef35-6949-4371-9ed7-35b51a02508e:call_SQQxC68jhusxXLrfhcB3SMpd" data-index="26" id="entry-26">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#27</span>
+<span class="entry-label">rg - getenv_bool\(|def getenv_bool|def getenv_text|DEBUG_LEVEL</span>
+<a class="entry-time" href="#entry-26">8m 13s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">&quot;getenv_bool\(|def getenv_bool|def getenv_text|DEBUG_LEVEL&quot; (mezcla/system.py)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py:229:def getenv_text(
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py:325:def getenv_bool(
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py:341:    # EX: getenv_bool(&quot;bad env var&quot;, None) =&gt; False
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py:342:    # EX: getenv_bool(&quot;bad env var&quot;, None, allow_none=True) is None
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py:355:    debug.trace_fmtd(5, &quot;getenv_bool({v}, {d}) =&gt; {r}&quot;,
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py:1677:    ## TODO: # Register DEBUG_LEVEL for sake of new users
+/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py:1678:    ## test_debug_level = getenv_integer(&quot;DEBUG_LEVEL&quot;, debug.get_level(),</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="8c75ef35-6949-4371-9ed7-35b51a02508e:call_sJ9kpG07kX4JeToG0hVkbJRT" data-index="27" id="entry-27">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#28</span>
+<span class="entry-label">bash - Exercise package and CLI entry paths</span>
+<a class="entry-time" href="#entry-27">8m 13s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">$ PYTHONPATH=. python -c &#39;import mezcla; print(&quot;EXPORTS&quot;, mezcla.__all__); print(&quot;DEBUG&quot;, hasattr(mezcla, &quot;debug&quot;))&#39; 2&gt;&amp;1 | head -80; printf &#39;\n--- skip ---\n&#39;; SKIP_COMMON_EXPORT=1 PYTHONPATH=. python -c &#39;import mezcla; print(&quot;EXPORTS&quot;, mezcla.__all__); print(&quot;DEBUG&quot;, hasattr(mezcla, &quot;debug&quot;))&#39; 2&gt;&amp;1 | head -40; printf &#39;\n--- module CLI ---\n&#39;; PYTHONPATH=. DEBUG_LEVEL=4 python -m mezcla 2&gt;&amp;1 | head -60; printf &#39;\n--- script CLI ---\n&#39;; PYTHONPATH=. DEBUG_LEVEL=4 mezcla/mezcla 2&gt;&amp;1 | head -60</code></div><div class="tool-output"><div class="md-code-block"><pre><code>EXPORTS [&#39;__VERSION__&#39;, &#39;debug&#39;, &#39;gh&#39;, &#39;my_re&#39;, &#39;system&#39;, &#39;TL&#39;]
+DEBUG True
+
+--- skip ---
+EXPORTS [&#39;__VERSION__&#39;]
+DEBUG False
+
+--- module CLI ---
+in debug_init(force=False); DEBUG_LEVEL=4; 2026-09-23 20:23:28.251069
+sys.argv=[&#39;-m&#39;]; 
+[/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py] loaded at 2026-09-23 20:23:28.352299
+trace_level=4; output_timestamps=False
+shadow_details={&#39;shadowed&#39;: False, &#39;package&#39;: &#39;mezcla&#39;, &#39;current_pkg_dir&#39;: &#39;/tpo/misc/programs/python/mezcla-devel-clone/mezcla&#39;, &#39;current_index&#39;: 0, &#39;ahead_index&#39;: 0, &#39;ahead_pkg_dir&#39;: &#39;/tpo/misc/programs/python/mezcla-devel-clone/mezcla&#39;, &#39;script_path&#39;: &#39;/tpo/misc/programs/python/mezcla-devel-clone/-m&#39;}; 
+skip_atexit=False
+getenv_text(&#39;ROUNDING_PRECISION&#39;, &#39;3&#39;) =&gt; &#39;3&#39;
+getenv_number(ROUNDING_PRECISION, 3) =&gt; 3
+starting tpo_common.py at 2026-09-23 20:23:28.623228: debug_level=4; args=[&#39;-m&#39;]
+getenv_text(&#39;SKIP_FORMAT_WARNING&#39;, &#39;False&#39;) =&gt; &#39;False&#39;
+getenv_boolean(SKIP_FORMAT_WARNING, False) =&gt; False
+my_regex.__init__(): self=&lt;mezcla.my_regex.regex_wrapper object at 0x709a1d355510&gt;
+Main.__init__(): self=&lt;mezcla.main.Main object at 0x709a1d39df10&gt;
+version_text: &#39;2.3.3&#39;
+remaining version_text: 3.3
+Component 1: &#39;2&#39;
+new_version_text: &#39;2.&#39;
+remaining version_text: 3
+Component 2: &#39;0003&#39;
+new_version_text: &#39;2.0003&#39;
+remaining version_text: 
+Component 3: &#39;0003&#39;
+new_version_text: &#39;2.00030003&#39;
+version_to_number(2.3.3) =&gt; 2.00030003
+version_text: &#39;1.3.0&#39;
+remaining version_text: 3.0
+Component 1: &#39;1&#39;
+new_version_text: &#39;1.&#39;
+remaining version_text: 0
+Component 2: &#39;0003&#39;
+new_version_text: &#39;1.0003&#39;
+remaining version_text: 
+Component 3: &#39;0000&#39;
+new_version_text: &#39;1.00030000&#39;
+version_to_number(1.3.0) =&gt; 1.0003
+unittest_wrapper.init_temp_settings()
+os.environ.get(PRESERVE_TEMP_FILE_LABEL)=&#39;1&#39;
+os.environ.get(PRESERVE_TEMP_FILE_LABEL)=&#39;1&#39;
+Main.__init__(): self=&lt;mezcla.main.Main object at 0x709a1cc16f10&gt;
+Warning: /tpo/misc/programs/python/mezcla-devel-clone/mezcla/__main__.py is not intended as standalone.
+Version: 1.4.0.8
+Install path: /tpo/misc/programs/python/mezcla-devel-clone/mezcla
+Likewise for the package (e.g., via &#39;python -m mezcla&#39;)
+
+[/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py] unloaded at 2026-09-23 20:23:28.812834; elapsed=0.562s
+FYI: mezcla using ipython_utils imports: debug, system, etc.; disable via SKIP_COMMON_EXPORT
+
+--- script CLI ---
+in debug_init(force=False); DEBUG_LEVEL=4; 2026-09-23 20:23:29.880749
+mezcla/mezcla
+sys.argv=[&#39;mezcla/mezcla&#39;]; 
+[/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py] loaded at 2026-09-23 20:23:29.977760
+trace_level=4; output_timestamps=False
+shadow_details={&#39;shadowed&#39;: False, &#39;package&#39;: &#39;mezcla&#39;, &#39;current_pkg_dir&#39;: &#39;/tpo/misc/programs/python/mezcla-devel-clone/mezcla&#39;, &#39;current_index&#39;: 0, &#39;ahead_index&#39;: 0, &#39;ahead_pkg_dir&#39;: &#39;/tpo/misc/programs/python/mezcla-devel-clone/mezcla&#39;, &#39;script_path&#39;: &#39;/tpo/misc/programs/python/mezcla-devel-clone/mezcla/mezcla&#39;}; 
+skip_atexit=False
+getenv_text(&#39;ROUNDING_PRECISION&#39;, &#39;3&#39;) =&gt; &#39;3&#39;
+getenv_number(ROUNDING_PRECISION, 3) =&gt; 3
+starting tpo_common.py at 2026-09-23 20:23:30.228132: debug_level=4; args=[&#39;mezcla/mezcla&#39;]
+getenv_text(&#39;SKIP_FORMAT_WARNING&#39;, &#39;False&#39;) =&gt; &#39;False&#39;
+getenv_boolean(SKIP_FORMAT_WARNING, False) =&gt; False
+my_regex.__init__(): self=&lt;mezcla.my_regex.regex_wrapper object at 0x763daea10410&gt;
+Main.__init__(): self=&lt;mezcla.main.Main object at 0x763dae85ce90&gt;
+version_text: &#39;2.3.3&#39;
+remaining version_text: 3.3
+Component 1: &#39;2&#39;
+new_version_text: &#39;2.&#39;
+remaining version_text: 3
+Component 2: &#39;0003&#39;
+new_version_text: &#39;2.0003&#39;
+remaining version_text: 
+Component 3: &#39;0003&#39;
+new_version_text: &#39;2.00030003&#39;
+version_to_number(2.3.3) =&gt; 2.00030003
+version_text: &#39;1.3.0&#39;
+remaining version_text: 3.0
+Component 1: &#39;1&#39;
+new_version_text: &#39;1.&#39;
+remaining version_text: 0
+Component 2: &#39;0003&#39;
+new_version_text: &#39;1.0003&#39;
+remaining version_text: 
+Component 3: &#39;0000&#39;
+new_version_text: &#39;1.00030000&#39;
+version_to_number(1.3.0) =&gt; 1.0003
+unittest_wrapper.init_temp_settings()
+os.environ.get(PRESERVE_TEMP_FILE_LABEL)=&#39;1&#39;
+os.environ.get(PRESERVE_TEMP_FILE_LABEL)=&#39;1&#39;
+Main.__init__(): self=&lt;mezcla.main.Main object at 0x763dae0aa9d0&gt;
+Version: 1.4.0.8
+Install path: /tpo/misc/programs/python/mezcla-devel-clone/mezcla
+FYI: mezcla using ipython_utils imports: debug, system, etc.; disable via SKIP_COMMON_EXPORT
+[/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py] unloaded at 2026-09-23 20:23:30.427909; elapsed=0.547s
+&lt;shellId: 3 completed with exit code 0&gt;</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="5d558d09-b2f4-4e4a-aede-348f971edbfa:call_qhH0yzZdbQfdMBKkCC2tkAFP" data-index="28" id="entry-28">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#29</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py.</span>
+<a class="entry-time" href="#entry-28">9m 21s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py (lines 1-28)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>#! /usr/bin/env python3
+#
+# Functions for debugging, such as console tracing. This is for intended
+# for verbose tracing not suitable for the logging facility.
+#
+# Notes:
+# - These are no-op&#39;s unless __debug__ is True.
+# - Running python with the -O (optimized) option ensures that __debug__ is False.
+# - So that other local packages can use tracing freely, this only
+#   imports standard packages. In particular, system.py is not imported,
+#   so functionality must be reproduced here (e.g., _to_utf8).
+# - Gotta hate Pythonista&#39;s who prevailed in Python3 breaking lots of Python2
+#   code just for the sake of simplicity, a la manera moronista (i.e., only one moronic way to do things)!
+# - A few functions from system are re-implemented here without tracing to
+#   avoid circular dependencies (e.g., _to_utf8).
+# - For f-string syntax, see following:
+#   https://docs.python.org/3/tutorial/inputoutput.html
+#   https://www.python.org/dev/peps/pep-0498
+#
+# Usage examples:
+#
+#   - casual usage (quick-n-dirty debugging)
+#
+#     from mezcla import debug
+#     debug.trace_expr(4, dir())
+#
+#   - long-term usuage (e.g., symbolic constants for consistency across scripts)
+#</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="5d558d09-b2f4-4e4a-aede-348f971edbfa:call_VfiJzFf1yyChkFIwlJe9MOmI" data-index="29" id="entry-29">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#30</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py.</span>
+<a class="entry-time" href="#entry-29">9m 21s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py (lines 268-295)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>    module_file = __file__              # file name for module script
+    use_old_introspection = True        # use old-style introspection (temp enabled until debug_init)
+    #
+    try:
+        trace_level_text = os.environ.get(DEBUG_LEVEL_LABEL, &quot;&quot;)
+        if trace_level_text.strip():
+            trace_level = int(trace_level_text)
+    except:
+        ## sys.stderr.write(&quot;Warning: Unable to set tracing level from {v}: {exc}\n&quot;.
+        ##                  format(v=DEBUG_LEVEL_LABEL, exc=sys.exc_info()))
+        pass
+
+
+
+    def _to_utf8(text: str) -&gt; str:
+        &quot;&quot;&quot;Convert TEXT to UTF-8 (e.g., for I/O)&quot;&quot;&quot;
+        # Note: version like one from system.py to avoid circular dependency
+        result = text
+        ##
+        ## TODO?:
+        ## if not isinstance(result, str):
+        ##     if debugging(7):
+        ##         sys.stderr.write(f&quot;Warning: _to_utf8 called with non-string: {result!r}&quot;)
+        ##     result = str(result)
+        ##
+        ## NOTE: python 2 is deprecated and to avoid errors with mypy, python 2 code was removed
+        ## if ((sys.version_info.major &lt; 3) and (isinstance(text, unicode))):  # pylint: disable=undefined-variable
+        ##    result = result.encode(&quot;UTF-8&quot;, &#39;ignore&#39;)</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="5d558d09-b2f4-4e4a-aede-348f971edbfa:call_w35Vz4HZFUugTGrDyXs8JXL9" data-index="30" id="entry-30">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#31</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py.</span>
+<a class="entry-time" href="#entry-30">9m 21s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/debug.py (lines 1540-1575)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>    return result
+
+def detailed_debugging() -&gt; bool:
+    &quot;&quot;&quot;Whether debugging with trace level DETAILED (4) or higher&quot;&quot;&quot;
+    return (get_level() &gt;= DETAILED)
+
+
+def verbose_debugging() -&gt; bool:
+    &quot;&quot;&quot;Whether debugging with trace level VERBOSE (5) or higher&quot;&quot;&quot;
+    return (get_level() &gt;= VERBOSE)
+
+
+def _getenv_bool(name: str, default_value: bool) -&gt; bool:
+    &quot;&quot;&quot;Version of system.getenv_bool w/o tracing&quot;&quot;&quot;
+    ## EX: os.setenv(&quot;FU&quot;, &quot;1&quot;); _getenv_bool(&quot;FU&quot;, False)) =&gt; True
+    result = default_value
+    if (str(os.environ.get(name) or default_value).upper() in [&quot;1&quot;, &quot;TRUE&quot;]):
+        result = True
+    return result
+
+
+def _getenv_int(name: str, default_value: int) -&gt; int:
+    &quot;&quot;&quot;Version of system.getenv_int w/o tracing&quot;&quot;&quot;
+    result = default_value
+    try:
+        env_value = os.environ.get(name)
+        if env_value is not None:
+            result = int(env_value)
+    except:
+        _print_exception_info(&quot;_getenv_int&quot;)
+    return result
+
+@docstring_parameter(max_len=max_trace_value_len)
+def format_value(value: Any, max_len: Optional[int] = None,
+                 strict: Optional[bool] = None, skip_sanity_checks: Optional[bool] = None) -&gt; str:
+    &quot;&quot;&quot;Format arbitrary VALUE for output with trace_values, etc.: truncates if too long and encodes newlines</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="5d558d09-b2f4-4e4a-aede-348f971edbfa:call_7QntP9IJsBQ1K9SVCYxrWV83" data-index="31" id="entry-31">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#32</span>
+<span class="entry-label">view - view the file at /tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py.</span>
+<a class="entry-time" href="#entry-31">9m 21s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">/tpo/misc/programs/python/mezcla-devel-clone/mezcla/system.py (lines 220-365)</code></div><div class="tool-output"><div class="md-code-block"><pre><code>    debug.trace_fmtd(5, &quot;setenv({v}, {val})&quot;, v=var, val=value)
+    debug.assertion(value is not None)
+    if normalize:
+        ## OLD: var = var.replace(&quot;-&quot;, &quot;_&quot;).upper()
+        var = normalize_env_var(var)
+    os.environ[var] = str(value)
+    return
+
+
+def getenv_text(
+        var: str,
+        default: Optional[str] = None,
+        description: str = &quot;&quot;,
+        desc: str = &quot;&quot;,
+        helper: bool = False,
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None,
+        normalize: Optional[bool] = None,
+    ) -&gt; str:
+    &quot;&quot;&quot;Returns textual value for environment variable VAR (or DEFAULT value, excluding None).
+    Notes:
+    - Use getenv_value if default can be None, as result is always a string.
+    - HELPER indicates that this call is in support of another getenv-type function (e.g., getenv_bool), so that tracing is only shown at higher verbosity level (e.g., 6 not 5).
+    - DESCRIPTION used for get_environment_option_descriptions.
+    - If UPDATE, then the environment is modified with value (e.g., based on default).
+    - If SKIP_REGISTER, the variable info is not recorded (see env_options global).
+    - If NORMALIZE, then lookup falls back to variable uppercased and with underscores for dashes.
+    &quot;&quot;&quot;
+    # Note: default is empty string to ensure result is string (not NoneType)
+    ## TODO: add way to block registration
+    if not skip_register:
+        register_env_option(var, description or desc, default)
+    if default is None:
+        debug.trace(4, f&quot;Warning: getenv_text treats default None as &#39;&#39;; consider using getenv_value for &#39;{var}&#39; instead&quot;)
+        default = &quot;&quot;
+        
+    # Get value, falling back to underscores instead of dashes
+    in_var = var
+    value = os.getenv(var)
+    if (value is None):
+        if normalize and re.search(&quot;[a-z-]&quot;, var):
+            var = var.replace(&quot;-&quot;, &quot;_&quot;).upper()
+            value = os.getenv(var, default)
+            level = 5 if value else 7
+            debug.trace(level, f&quot;FYI: Normalized env.var {in_var!r} to {var!r}&quot;)
+    if (value is None):
+        value = default
+
+    ## TODO?: if ((not helper and (text_value is None)) or (not text_value)):
+    text_value = value
+    if (text_value is None):
+        debug.trace_fmtd(6, &quot;getenv_text: no value for var {v}&quot;, v=var)
+        text_value = default
+
+    # Optionally, update the environment (n.b., always normalizes)
+    if update:
+        setenv(var, text_value, normalize=True)
+    trace_level = 6 if helper else 5
+    ## DEBUG: sys.stderr.write(&quot;debug.trace_fmtd({trace_level} \&quot;getenv_text(&#39;{v}&#39;, [def={dft}], [desc={desc}], [helper={hlpr}]) =&gt; {r}\&quot;&quot;.format(trace_level=trace_level, v=var, dft=default, desc=description, hlpr=helper, r=text_value))
+    debug.trace_fmtd(trace_level, &quot;getenv_text(&#39;{v}&#39;, [def={dft}], [desc={desc}], [helper={hlpr}]) =&gt; {r}&quot;,
+                     v=in_var, dft=default, desc=description, hlpr=helper, r=text_value)
+    return (text_value)
+
+
+## OLD: default: Optional[Any] = None (redundant: Any already subsumes None)
+def getenv_value(
+        var: str,
+        default: Any = None,
+        description: str = &quot;&quot;,
+        desc: str = &quot;&quot;,
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None,
+        normalize: Optional[bool] = None,
+    ) -&gt; Any:
+    &quot;&quot;&quot;Returns environment value for VAR as string or DEFAULT (can be None), with optional DESCRIPTION and env. UPDATE. (See getenv_text for option details.)
+    Note: If NORMALIZE, then lookup falls back to variable uppercased and with underscores for dashes.
+    &quot;&quot;&quot;
+    # EX: getenv_value(&quot;bad env var&quot;) is None
+    # TODO2: reconcile with getenv_value (e.g., via common helper); add way to set normalization as default
+    if not skip_register:
+        register_env_option(var, description or desc, default)
+
+    # Get value, falling back to underscores instead of dashes
+    in_var = var
+    value = os.getenv(var)
+    if (value is None):
+        if normalize and re.search(&quot;[a-z-]&quot;, var):
+            var = var.replace(&quot;-&quot;, &quot;_&quot;).upper()
+            value = os.getenv(var, default)
+            level = 5 if value else 7
+            debug.trace(level, f&quot;FYI: Normalized env.var {in_var!r} to {var!r}&quot;)
+    if (value is None):
+        value = default
+
+    # Optionally, update the environment (n.b., always normalizes)
+    if update:
+        setenv(var, value, normalize=True)
+    # note: uses !r for repr()
+    debug.trace_fmtd(5, &quot;getenv_value({v!r}, [def={dft!r}], [desc={dsc!r}]]) =&gt; {val!r}&quot;,
+                     v=var, dft=default, dsc=(description or desc), val=value)
+    return (value)
+
+
+DEFAULT_GETENV_BOOL = False
+#
+def getenv_bool(
+        var: str,
+        default: bool = DEFAULT_GETENV_BOOL,
+        description: str = &quot;&quot;,
+        desc: str = &quot;&quot;,
+        allow_none: Optional[bool] = False, 
+        update: Optional[bool] = None,
+        skip_register: Optional[bool] = None,
+        **kwargs
+    ) -&gt; bool:
+    &quot;&quot;&quot;Returns boolean flag based on environment VAR (or DEFAULT value), with optional DESCRIPTION and env. UPDATE
+    Note:
+    - &quot;0&quot; or &quot;False&quot; is interpreted as False, and any other explicit value as True (e.g., None =&gt; None)
+    - In general, it is best to use False as default instead of True, because getenv_bool is meant for environment overrides, not defaults.
+    - TODO2: Return is a bool unless ALLOW_NONE; defaults to False.
+    &quot;&quot;&quot;
+    # EX: getenv_bool(&quot;bad env var&quot;, None) =&gt; False
+    # EX: getenv_bool(&quot;bad env var&quot;, None, allow_none=True) is None
+    # TODO: * Add debugging sanity checks for type of default to help diagnose when incorrect getenv_xyz variant used (e.g., getenv_int(&quot;USE_FUBAR&quot;, False) =&gt; ... getenv_bool)!
+    bool_value = default
+    value_text = getenv_value(var, description=description, desc=desc, default=default, update=update, skip_register=skip_register, **kwargs)
+    if (isinstance(value_text, str) and value_text.strip()):
+        bool_value = to_bool(value_text)
+    if not isinstance(bool_value, bool):
+        if (bool_value is None):
+            bool_value = False if (not allow_none) else None
+        else:
+            ## OLD: debug.assertion(bool_value != default, f&quot;Check {var!r} default {default!r}&quot;)
+            bool_value = to_bool(bool_value)
+    debug.assertion(isinstance(bool_value, bool) or allow_none)
+    debug.trace_fmtd(5, &quot;getenv_bool({v}, {d}) =&gt; {r}&quot;,
+                     v=var, d=default, r=bool_value)
+    return (bool_value)
+#
+getenv_boolean = getenv_bool
+
+
+def getenv_number(
+        var: str,
+        default: float = -1.0,
+        description: str = &quot;&quot;,</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-tool-success" data-type="tool" data-entry-id="5d558d09-b2f4-4e4a-aede-348f971edbfa:call_vTZ2nVqHf8aHMsYbgOwxXu23" data-index="32" id="entry-32">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2714;</span>
+<span class="entry-number">#33</span>
+<span class="entry-label">bash - Confirm hook activation and environment semantics</span>
+<a class="entry-time" href="#entry-32">9m 21s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="tool-args"><code class="md-codespan">$ PYTHONPATH=. python -c &#39;import mezcla; print(&quot;ipython_utils loaded:&quot;, &quot;mezcla.ipython_utils&quot; in __import__(&quot;sys&quot;).modules)&#39; &amp;&amp; SKIP_COMMON_EXPORT=0 PYTHONPATH=. python -c &#39;import mezcla; print(&quot;exports:&quot;, mezcla.__all__)&#39; &amp;&amp; SKIP_COMMON_EXPORT=false PYTHONPATH=. python -c &#39;import mezcla; print(&quot;exports:&quot;, mezcla.__all__)&#39;</code></div><div class="tool-output"><div class="md-code-block"><pre><code>ipython_utils loaded: True
+exports: [&#39;__VERSION__&#39;]
+exports: [&#39;__VERSION__&#39;]
+&lt;shellId: 4 completed with exit code 0&gt;</code></pre></div></div></div>
+</div>
+<div class="entry collapsed border-reasoning" data-type="reasoning" data-entry-id="d7c169ce-2249-4068-8bf0-03b13baf6950" data-index="33" id="entry-33">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x1F4AD;</span>
+<span class="entry-number">#34</span>
+<span class="entry-label">Reasoning</span>
+<a class="entry-time" href="#entry-33">9m 27s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="reasoning-text">**Clarifying package usage**
+
+I need to clarify how to handle package imports. So, if I’m already using a package, I&#39;m considering modifying the `if __name__ == &quot;__main__&quot;:` to `main(client=True)`. This might help suppress warnings, but I&#39;ll have to ensure that I&#39;m always showing the version information correctly. If I run it with `python -m`, I believe it could display the version but may have certain expectations too. I&#39;ll keep refining this.</div></div>
+</div>
+<div class="entry border-copilot" data-type="copilot" data-entry-id="833a5ed4-936b-4ab6-8c70-129f90f12270" data-index="34" id="entry-34">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x1F4AC;</span>
+<span class="entry-number">#35</span>
+<span class="entry-label">Copilot</span>
+<a class="entry-time" href="#entry-34">9m 32s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body"><div class="markdown-body"><p><strong>Primary regression:</strong> <code>mezcla/__init__.py:74</code> tests the function object instead of invoking it:</p>
+<div class="md-code-block"><pre data-lang="python"><code>if _in_ipython and not skip_common_export:</code></pre></div>
+<p>This is always truthy when <code>SKIP_COMMON_EXPORT</code> is unset. Consequently, a plain <code>import mezcla</code> imports <code>ipython_utils</code>, including optional scientific packages, <code>Main</code>, and its interactive initialization. I confirmed that <code>mezcla.ipython_utils</code> is loaded outside IPython. Change this to <code>_in_ipython()</code> and add a subprocess regression test for a normal Python interpreter.</p>
+<p>Other focused improvements:</p>
+<ol><li><p><strong>Make the hook explicit rather than implicit.</strong> <code>ipython_utils</code> is a large interactive bootstrap, so importing it from package initialization makes <code>import mezcla</code> context-dependent and opaque. Prefer keeping <code>__init__.py</code> metadata-only and having the IPython startup explicitly run an opt-in function, e.g. <code>mezcla.enable_ipython_exports()</code>, or require <code>MEZCLA_IPYTHON_EXPORTS=1</code>. If automatic behavior is retained, expose a clear state such as <code>mezcla.IPYTHON_EXPORTS_ENABLED</code> and write the diagnostic to <code>stderr</code>.</p>
+</li>
+<li><p><strong>Use a light, shared stdlib-only import helper.</strong> The duplication in <code>debug.py</code> and <code>system.py</code> is justified because <code>system</code> imports <code>debug</code>, while <code>debug</code> intentionally avoids it (<code>debug.py:8-16</code>). Do not solve the hook by importing either module from <code>__init__</code>. Instead, extract only dependency-free primitives—active-IPython detection and environment-boolean parsing—into a tiny stdlib-only module. Both <code>debug</code> and <code>__init__</code> can safely import that helper without forming the <code>debug ↔ system</code> cycle.</p>
+</li>
+<li><p><strong>Avoid broad, inverted exception behavior.</strong> <code>__init__.py:82-87</code> catches every exception, leaves a partially initialized package, and only re-raises under <code>python -O</code>. The comment says it “swallows the exception unless production,” but normal execution is the swallowing case. Catch expected dependency/import exceptions specifically, retain the original exception as diagnostic context, and either fail clearly or deliberately disable the optional feature with a deterministic warning.</p>
+</li>
+<li><p><strong>Parse <code>SKIP_COMMON_EXPORT</code> as a boolean.</strong> The current <code>os.environ.get()</code> treats <code>&quot;0&quot;</code> and <code>&quot;false&quot;</code> as enabled skip values. That differs from <code>system.getenv_bool()</code>’s documented semantics. A stdlib-only local parser or the proposed shared helper should recognize at least <code>1/true/yes/on</code> and <code>0/false/no/off</code>, rejecting invalid values visibly.</p>
+</li>
+<li><p><strong>Tighten active-IPython detection.</strong> <code>_in_ipython()</code> falls back to <code>&quot;IPython&quot; in sys.modules</code>, which can be true merely because a library imported IPython—not because the code runs in an interactive shell. Prefer a successful callable <code>get_ipython()</code> result, optionally checking that its shell object is non-<code>None</code>; do not use module presence as an “active session” proxy.</p>
+</li>
+<li><p><strong>Align the two entry points.</strong> <code>python -m mezcla</code> calls <code>main()</code> without <code>client=True</code>, so it emits “not intended as standalone” even though <code>mezcla/__main__.py</code> is specifically the package entry point. The <code>mezcla</code> script does pass <code>client=True</code>. Replace the ambiguous <code>client</code>/<code>omit_warnings</code> coupling with explicit parameters such as <code>show_warning</code> and <code>always_show_version</code>, and have both entry points use the same intended mode. Also, <code>mezcla/mezcla:20</code> imports <code>debug</code> only for commented-out legacy code; removing that import would make the wrapper’s dependency path clearer.</p>
+</li>
+</ol>
+<p>Useful regression coverage would verify: normal imports do not load <code>ipython_utils</code>; a simulated active IPython session follows the documented opt-in policy; boolean environment values behave consistently; and <code>python -m mezcla</code> and <code>mezcla/mezcla</code> have intentionally matching output/exit behavior.</p>
+</div></div>
+</div>
+<div class="entry collapsed border-info" data-type="info" data-entry-id="65e299a1-c9ce-4ee0-a882-8f5cecac0dcc" data-index="35" id="entry-35">
+<div class="entry-header" role="button" tabindex="0">
+<span class="entry-icon">&#x2139;</span>
+<span class="entry-number">#36</span>
+<span class="entry-label">Info</span>
+<a class="entry-time" href="#entry-35">164m 19s</a>
+<span class="collapse-indicator"></span>
+</div>
+<div class="entry-body">Session shared. Anyone with read access to the repository can view it:
+https://github.com/tomasohara/mezcla/tasks/9531f96a-4d05-4abb-a937-1358fdd3f62f</div>
+</div>
+</div>
+<div class="jump-buttons">
+<button class="jump-btn" id="jump-prev" title="Previous user message">&#x25B2;</button>
+<button class="jump-btn" id="jump-next" title="Next user message">&#x25BC;</button>
+</div>
+</div>
+<script>
+(function() {
+    'use strict';
+
+    var scrollContainer = document.querySelector('.scroll-container');
+
+    // --- Collapse/Expand ---
+    document.querySelectorAll('.entry-header').forEach(function(header) {
+        header.addEventListener('click', function(e) {
+            if (e.target.closest('.entry-time')) return;
+            header.closest('.entry').classList.toggle('collapsed');
+        });
+        header.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                header.closest('.entry').classList.toggle('collapsed');
+            }
+        });
+    });
+
+    var collapseAllBtn = document.getElementById('collapse-all');
+    var expandAllBtn = document.getElementById('expand-all');
+    if (collapseAllBtn) {
+        collapseAllBtn.addEventListener('click', function() {
+            document.querySelectorAll('.entry').forEach(function(e) { e.classList.add('collapsed'); });
+        });
+    }
+    if (expandAllBtn) {
+        expandAllBtn.addEventListener('click', function() {
+            document.querySelectorAll('.entry').forEach(function(e) { e.classList.remove('collapsed'); });
+        });
+    }
+
+    // --- Search ---
+    var searchInput = document.getElementById('search-input');
+    var searchTimeout = null;
+
+    function clearHighlights() {
+        document.querySelectorAll('.search-highlight').forEach(function(el) {
+            var parent = el.parentNode;
+            parent.replaceChild(document.createTextNode(el.textContent), el);
+            parent.normalize();
+        });
+    }
+
+    function highlightText(node, query) {
+        if (!query) return;
+        var lowerQuery = query.toLowerCase();
+        var walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null);
+        var textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+        textNodes.forEach(function(tn) {
+            var text = tn.textContent;
+            var idx = text.toLowerCase().indexOf(lowerQuery);
+            if (idx === -1) return;
+            var before = document.createTextNode(text.substring(0, idx));
+            var mark = document.createElement('span');
+            mark.className = 'search-highlight';
+            mark.textContent = text.substring(idx, idx + query.length);
+            var after = document.createTextNode(text.substring(idx + query.length));
+            var parent = tn.parentNode;
+            parent.insertBefore(before, tn);
+            parent.insertBefore(mark, tn);
+            parent.insertBefore(after, tn);
+            parent.removeChild(tn);
+        });
+    }
+
+    function doSearch() {
+        var query = searchInput ? searchInput.value.trim() : '';
+        clearHighlights();
+        var entries = document.querySelectorAll('.main-container > .entry');
+        if (!query) {
+            entries.forEach(function(e) { e.classList.remove('search-hidden'); });
+            syncSidebarFilters();
+            return;
+        }
+        var lq = query.toLowerCase();
+        entries.forEach(function(entry) {
+            var text = entry.textContent.toLowerCase();
+            if (text.indexOf(lq) !== -1) {
+                entry.classList.remove('search-hidden');
+                highlightText(entry, query);
+            } else {
+                entry.classList.add('search-hidden');
+            }
+        });
+        syncSidebarFilters();
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(doSearch, 150);
+        });
+    }
+
+    // --- Type Filtering ---
+    var activeFilters = new Set();
+    var filterPills = document.querySelectorAll('.filter-pill');
+    filterPills.forEach(function(pill) {
+        var type = pill.getAttribute('data-filter-type');
+        activeFilters.add(type);
+        pill.classList.add('active');
+        pill.addEventListener('click', function() {
+            if (activeFilters.has(type)) {
+                activeFilters.delete(type);
+                pill.classList.remove('active');
+                pill.classList.add('inactive');
+            } else {
+                activeFilters.add(type);
+                pill.classList.add('active');
+                pill.classList.remove('inactive');
+            }
+            applyFilters();
+        });
+    });
+
+    var compactBtn = document.getElementById('compact-mode');
+    var compactActive = false;
+    if (compactBtn) {
+        compactBtn.addEventListener('click', function() {
+            compactActive = !compactActive;
+            compactBtn.classList.toggle('active', compactActive);
+            if (compactActive) {
+                filterPills.forEach(function(pill) {
+                    var type = pill.getAttribute('data-filter-type');
+                    if (type === 'user' || type === 'copilot') {
+                        activeFilters.add(type);
+                        pill.classList.add('active');
+                        pill.classList.remove('inactive');
+                    } else {
+                        activeFilters.delete(type);
+                        pill.classList.remove('active');
+                        pill.classList.add('inactive');
+                    }
+                });
+            } else {
+                filterPills.forEach(function(pill) {
+                    var type = pill.getAttribute('data-filter-type');
+                    activeFilters.add(type);
+                    pill.classList.add('active');
+                    pill.classList.remove('inactive');
+                });
+            }
+            applyFilters();
+        });
+    }
+
+    function applyFilters() {
+        document.querySelectorAll('.main-container > .entry').forEach(function(entry) {
+            var type = entry.getAttribute('data-type');
+            if (activeFilters.has(type)) {
+                entry.classList.remove('filter-hidden');
+            } else {
+                entry.classList.add('filter-hidden');
+            }
+        });
+        syncSidebarFilters();
+    }
+
+    // --- Keyboard Navigation ---
+    var focusedIndex = -1;
+    function getVisibleEntries() {
+        return Array.from(document.querySelectorAll('.main-container > .entry')).filter(function(e) {
+            return !e.classList.contains('filter-hidden') && !e.classList.contains('search-hidden');
+        });
+    }
+    function setFocus(idx) {
+        var entries = getVisibleEntries();
+        if (entries[focusedIndex]) entries[focusedIndex].classList.remove('focused');
+        focusedIndex = idx;
+        if (focusedIndex >= 0 && focusedIndex < entries.length) {
+            entries[focusedIndex].classList.add('focused');
+            entries[focusedIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT') {
+            if (e.key === 'Escape') { searchInput.blur(); searchInput.value = ''; doSearch(); }
+            return;
+        }
+        var entries = getVisibleEntries();
+        if (e.key === 'j') { setFocus(Math.min(focusedIndex + 1, entries.length - 1)); }
+        else if (e.key === 'k') { setFocus(Math.max(focusedIndex - 1, 0)); }
+        else if (e.key === 'Enter' && focusedIndex >= 0 && focusedIndex < entries.length) {
+            entries[focusedIndex].classList.toggle('collapsed');
+        }
+        else if (e.key === '/') { e.preventDefault(); if (searchInput) searchInput.focus(); }
+        else if (e.key === 'Escape') {
+            if (focusedIndex >= 0) {
+                entries[focusedIndex].classList.remove('focused');
+                focusedIndex = -1;
+            }
+        }
+    });
+
+    // --- Theme Toggle ---
+    var themeBtn = document.getElementById('theme-toggle');
+    function setTheme(theme) {
+        var el = document.documentElement;
+        el.setAttribute('data-color-mode', theme);
+        el.setAttribute('data-light-theme', 'light');
+        el.setAttribute('data-dark-theme', 'dark');
+        try { localStorage.setItem('copilot-share-theme', theme); } catch(e) {}
+        if (themeBtn) themeBtn.textContent = theme === 'dark' ? '\u2600' : '\u263E';
+    }
+    (function initTheme() {
+        var saved = null;
+        try { saved = localStorage.getItem('copilot-share-theme'); } catch(e) {}
+        if (saved === 'light' || saved === 'dark') { setTheme(saved); }
+        else { setTheme('dark'); }
+    })();
+    if (themeBtn) {
+        themeBtn.addEventListener('click', function() {
+            var current = document.documentElement.getAttribute('data-color-mode') || 'dark';
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        });
+    }
+
+    // --- Sidebar Minimap ---
+    var sidebar = document.getElementById('sidebar');
+    var sidebarBtn = document.getElementById('sidebar-toggle');
+    var mainContainer = document.querySelector('.main-container');
+
+    function getMapLabel(type, fullLabel) {
+        var shortLabels = {
+            'user': 'User', 'copilot': 'Copilot', 'error': 'Error',
+            'reasoning': 'Reasoning', 'info': 'Info', 'warning': 'Warning',
+            'handoff': 'Handoff', 'compaction': 'Compacted',
+            'task_complete': 'Complete', 'notification': 'Notification'
+        };
+        if (shortLabels[type]) return shortLabels[type];
+        var dashIdx = fullLabel.indexOf(' - ');
+        if (dashIdx > 0) return fullLabel.substring(0, dashIdx);
+        return fullLabel;
+    }
+
+    function createSidebarEntry(type, label, entryIndex, targetEl, isNested) {
+        var se = document.createElement('div');
+        se.className = 'sidebar-entry' + (isNested ? ' nested' : '');
+        if (entryIndex !== null) se.setAttribute('data-entry-index', entryIndex);
+
+        var dot = document.createElement('span');
+        dot.className = 'sidebar-indicator';
+        dot.setAttribute('data-type', type);
+        se.appendChild(dot);
+
+        var span = document.createElement('span');
+        span.className = 'sidebar-label';
+        span.textContent = getMapLabel(type, label);
+        se.appendChild(span);
+
+        var tip = label;
+        if (entryIndex !== null) tip += ' (#' + (parseInt(entryIndex) + 1) + ')';
+        se.title = tip;
+
+        se.addEventListener('click', function() {
+            // Immediately highlight this sidebar entry
+            document.querySelectorAll('.sidebar-entry.active').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            se.classList.add('active');
+
+            // Suppress scroll-based sync while the smooth scroll is in progress
+            navClickActive = true;
+            clearTimeout(navClickTimer);
+            navClickTimer = setTimeout(function() { navClickActive = false; }, 800);
+
+            // Flash the target entry in the main content
+            targetEl.classList.remove('nav-flash');
+            void targetEl.offsetWidth;
+            targetEl.classList.add('nav-flash');
+
+            targetEl.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        });
+        return se;
+    }
+    var navClickActive = false;
+    var navClickTimer;
+
+    if (sidebarBtn && sidebar) {
+        sidebarBtn.addEventListener('click', function() {
+            sidebar.classList.toggle('visible');
+            var isVis = sidebar.classList.contains('visible');
+            sidebarBtn.classList.toggle('active', isVis);
+            if (mainContainer) mainContainer.classList.toggle('sidebar-visible', isVis);
+        });
+
+        document.querySelectorAll('.main-container > .entry').forEach(function(entry) {
+            var type = entry.getAttribute('data-type');
+            var labelEl = entry.querySelector('.entry-label');
+            var label = labelEl ? labelEl.textContent.trim() : type;
+            var idx = entry.getAttribute('data-index');
+
+            var se = createSidebarEntry(type, label, idx, entry, false);
+            sidebar.appendChild(se);
+
+            // For group entries, add indented nested entries
+            if (type === 'group') {
+                entry.querySelectorAll('.nested-entries > .entry').forEach(function(nested) {
+                    var nType = nested.getAttribute('data-type') || 'tool';
+                    var nLabelEl = nested.querySelector('.entry-label');
+                    var nLabel = nLabelEl ? nLabelEl.textContent.trim() : nType;
+                    var nIdx = nested.getAttribute('data-index');
+                    var nse = createSidebarEntry(nType, nLabel, nIdx, nested, true);
+                    sidebar.appendChild(nse);
+                });
+            }
+        });
+    }
+
+    // --- Sidebar Scroll Position Tracking ---
+    function syncSidebarHighlight() {
+        if (!sidebar || !sidebar.classList.contains('visible')) return;
+        if (navClickActive) return;
+        var entries = document.querySelectorAll('.main-container > .entry');
+        var viewMid = scrollContainer.scrollTop + scrollContainer.clientHeight / 3;
+        var closest = null;
+        var closestDist = Infinity;
+        entries.forEach(function(e) {
+            if (e.classList.contains('filter-hidden') || e.classList.contains('search-hidden')) return;
+            var top = e.offsetTop;
+            var d = Math.abs(top - viewMid);
+            if (d < closestDist) { closestDist = d; closest = e; }
+        });
+        document.querySelectorAll('.sidebar-entry.active').forEach(function(el) {
+            el.classList.remove('active');
+        });
+        if (closest) {
+            var idx = closest.getAttribute('data-index');
+            var se = sidebar.querySelector('[data-entry-index="' + idx + '"]');
+            if (se) {
+                se.classList.add('active');
+                se.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+    }
+    var scrollTimer;
+    scrollContainer.addEventListener('scroll', function() {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(syncSidebarHighlight, 50);
+    });
+
+    // --- Sidebar Filter Sync ---
+    function syncSidebarFilters() {
+        document.querySelectorAll('.sidebar-entry').forEach(function(se) {
+            var idx = se.getAttribute('data-entry-index');
+            if (idx === null) return;
+            var entry = document.getElementById('entry-' + idx);
+            if (!entry) return;
+            var hidden = entry.classList.contains('filter-hidden') || entry.classList.contains('search-hidden');
+            if (hidden) {
+                se.classList.add('filter-hidden');
+            } else {
+                se.classList.remove('filter-hidden');
+            }
+        });
+    }
+
+    // --- Jump User Navigation ---
+    function getUserEntries() {
+        return Array.from(document.querySelectorAll('.main-container > .entry[data-type="user"]')).filter(function(e) {
+            return !e.classList.contains('filter-hidden') && !e.classList.contains('search-hidden');
+        });
+    }
+    var jumpPrev = document.getElementById('jump-prev');
+    var jumpNext = document.getElementById('jump-next');
+    if (jumpPrev) {
+        jumpPrev.addEventListener('click', function() {
+            var userEntries = getUserEntries();
+            var scrollY = scrollContainer.scrollTop;
+            for (var i = userEntries.length - 1; i >= 0; i--) {
+                if (userEntries[i].offsetTop < scrollY - 10) {
+                    userEntries[i].scrollIntoView({ block: 'start', behavior: 'smooth' });
+                    return;
+                }
+            }
+        });
+    }
+    if (jumpNext) {
+        jumpNext.addEventListener('click', function() {
+            var userEntries = getUserEntries();
+            var scrollY = scrollContainer.scrollTop;
+            for (var i = 0; i < userEntries.length; i++) {
+                if (userEntries[i].offsetTop > scrollY + 60) {
+                    userEntries[i].scrollIntoView({ block: 'start', behavior: 'smooth' });
+                    return;
+                }
+            }
+        });
+    }
+
+    // --- Diff Rendering ---
+    document.querySelectorAll('pre[data-lang="diff"] code').forEach(function(codeEl) {
+        var lines = codeEl.textContent.split('\n');
+        codeEl.textContent = '';
+        lines.forEach(function(line) {
+            var span = document.createElement('span');
+            span.className = 'diff-line';
+            if (line.startsWith('+') && !line.startsWith('+++')) { span.classList.add('diff-add'); }
+            else if (line.startsWith('-') && !line.startsWith('---')) { span.classList.add('diff-del'); }
+            else if (line.startsWith('@@')) { span.classList.add('diff-hunk'); }
+            span.textContent = line;
+            codeEl.appendChild(span);
+        });
+    });
+
+    // --- Syntax Highlighting ---
+    var langKeywords = {
+        'javascript': /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|default|async|await|new|this|typeof|instanceof|try|catch|throw|finally|switch|case|break|continue|yield|of|in|do)\b/g,
+        'typescript': /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|default|async|await|new|this|typeof|instanceof|try|catch|throw|finally|switch|case|break|continue|yield|of|in|do|type|interface|enum|namespace|declare|abstract|implements|extends|as|keyof|readonly|public|private|protected|satisfies)\b/g,
+        'python': /\b(def|class|return|if|elif|else|for|while|import|from|as|try|except|finally|raise|with|yield|lambda|pass|break|continue|and|or|not|in|is|True|False|None|self|async|await|global|nonlocal)\b/g,
+        'rust': /\b(fn|let|mut|const|if|else|for|while|loop|match|struct|enum|impl|trait|pub|use|mod|crate|self|super|return|break|continue|where|async|await|move|ref|type|as|in|unsafe|extern|dyn|static|true|false)\b/g,
+        'go': /\b(func|var|const|if|else|for|range|switch|case|return|break|continue|type|struct|interface|map|chan|go|defer|select|package|import|true|false|nil|default|fallthrough)\b/g,
+        'bash': /\b(if|then|else|elif|fi|for|do|done|while|until|case|esac|function|return|local|export|source|echo|exit|set|unset|readonly|shift|trap|eval|exec|test|in)\b/g,
+        'json': null,
+        'sql': /\b(SELECT|FROM|WHERE|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|JOIN|LEFT|RIGHT|INNER|OUTER|ON|AND|OR|NOT|IN|IS|NULL|AS|ORDER|BY|GROUP|HAVING|LIMIT|OFFSET|UNION|ALL|DISTINCT|SET|VALUES|INTO|TABLE|INDEX|VIEW|BEGIN|COMMIT|ROLLBACK|GRANT|REVOKE|PRIMARY|KEY|FOREIGN|REFERENCES|CASCADE|DEFAULT|CHECK|UNIQUE|CONSTRAINT|EXISTS|BETWEEN|LIKE|CASE|WHEN|THEN|ELSE|END|COUNT|SUM|AVG|MIN|MAX|COALESCE|CAST|TRUE|FALSE)\b/gi,
+        'css': /\b(color|background|border|margin|padding|display|position|top|left|right|bottom|width|height|font|flex|grid|align|justify|overflow|opacity|transform|transition|animation|z-index|content|cursor|outline|box-sizing|text-align|vertical-align|white-space|min-width|max-width|min-height|max-height|gap|order|float|clear|visibility)\b/gi,
+        'html': null,
+    };
+    langKeywords['js'] = langKeywords['javascript'];
+    langKeywords['ts'] = langKeywords['typescript'];
+    langKeywords['py'] = langKeywords['python'];
+    langKeywords['rs'] = langKeywords['rust'];
+    langKeywords['sh'] = langKeywords['bash'];
+    langKeywords['shell'] = langKeywords['bash'];
+    langKeywords['zsh'] = langKeywords['bash'];
+
+    var stringRe = /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)/g;
+    var numberRe = /\b(\d+\.?\d*(?:e[+-]?\d+)?|0x[0-9a-f]+|0b[01]+|0o[0-7]+)\b/gi;
+    var singleLineComment = /(\/\/[^\n]*)/g;
+    var hashComment = /(#[^\n]*)/g;
+    var multiLineComment = /(\/\*[\s\S]*?\*\/)/g;
+    var sqlComment = /(--[^\n]*)/g;
+
+    function highlightCode(codeEl, lang) {
+        if (!lang || lang === 'diff' || lang === 'json' || lang === 'html' || lang === 'xml') return;
+        var text = codeEl.textContent;
+        var tokens = [];
+        var idx = 0;
+
+        // Tokenize comments first
+        var commentRes = [];
+        if (lang === 'python' || lang === 'py' || lang === 'bash' || lang === 'sh' || lang === 'shell' || lang === 'zsh') {
+            commentRes.push(hashComment);
+        }
+        if (lang === 'sql') {
+            commentRes.push(sqlComment);
+        }
+        if (lang !== 'python' && lang !== 'py' && lang !== 'bash' && lang !== 'sh' && lang !== 'shell' && lang !== 'zsh' && lang !== 'sql' && lang !== 'css') {
+            commentRes.push(singleLineComment);
+            commentRes.push(multiLineComment);
+        }
+        if (lang === 'css') {
+            commentRes.push(multiLineComment);
+        }
+
+        // Simple token-based approach: find all matches, sort by position, render
+        var allMatches = [];
+        function findAll(re, cls) {
+            re.lastIndex = 0;
+            var m;
+            while ((m = re.exec(text)) !== null) {
+                allMatches.push({ start: m.index, end: m.index + m[0].length, cls: cls, text: m[0] });
+            }
+        }
+        commentRes.forEach(function(re) { findAll(re, 'syn-cmt'); });
+        findAll(stringRe, 'syn-str');
+        findAll(numberRe, 'syn-num');
+        var kwRe = langKeywords[lang];
+        if (kwRe) { findAll(kwRe, 'syn-kw'); }
+
+        // Sort by start position, prioritize comments > strings > others
+        var priority = { 'syn-cmt': 0, 'syn-str': 1, 'syn-num': 2, 'syn-kw': 3, 'syn-fn': 4, 'syn-type': 5, 'syn-op': 6 };
+        allMatches.sort(function(a, b) { return a.start - b.start || (priority[a.cls] || 9) - (priority[b.cls] || 9); });
+
+        // Remove overlapping matches
+        var filtered = [];
+        var lastEnd = 0;
+        allMatches.forEach(function(m) {
+            if (m.start >= lastEnd) {
+                filtered.push(m);
+                lastEnd = m.end;
+            }
+        });
+
+        // Build HTML
+        var html = '';
+        var pos = 0;
+        filtered.forEach(function(m) {
+            if (m.start > pos) html += escapeHtmlJS(text.substring(pos, m.start));
+            html += '<span class="' + m.cls + '">' + escapeHtmlJS(m.text) + '<\/span>';
+            pos = m.end;
+        });
+        if (pos < text.length) html += escapeHtmlJS(text.substring(pos));
+        codeEl.innerHTML = html;
+    }
+
+    function escapeHtmlJS(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    document.querySelectorAll('.md-code-block pre[data-lang]').forEach(function(pre) {
+        var lang = pre.getAttribute('data-lang');
+        var codeEl = pre.querySelector('code');
+        if (codeEl && lang) highlightCode(codeEl, lang.toLowerCase());
+    });
+
+    // --- Permalink/Anchor ---
+    if (location.hash) {
+        var target = document.querySelector(location.hash);
+        if (target && target.classList.contains('entry')) {
+            target.classList.remove('collapsed');
+            setTimeout(function() { target.scrollIntoView({ block: 'start' }); }, 100);
+        }
+    }
+    document.querySelectorAll('.entry-time').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            var href = link.getAttribute('href');
+            history.replaceState(null, '', href);
+        });
+    });
+})();
+</script>
+</body>
+</html>
