@@ -1,4 +1,9 @@
 #! /usr/bin/env python3
+##
+## Main template for mezcla scripts. This version gets mirrored in shell-scripts repo,
+## which is done for historical reasons (rather than using ./examples version).
+## (TODO: delete this comment during customization)
+##..............................................................................
 # TODO: # -*- coding: utf-8 -*-
 ## TODO: handle case when env installed elsewhere (e.g., maldito mac)
 ## #! env python

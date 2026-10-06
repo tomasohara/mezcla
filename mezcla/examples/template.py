@@ -1,4 +1,10 @@
 #! /usr/bin/env python3
+##
+## Alternative template for mezcla scripts. This uses a simplified class
+## structure for Main instance and is intended for external examples.
+## Due to historical reasons, this is currently not mirrored in shell-scripts.
+## (TODO: delete this comment during customization)
+##..............................................................................
 # TODO: # -*- coding: utf-8 -*-
 ## TODO: handle case when env installed elsewhere (e.g., maldito mac)
 ## #! env python

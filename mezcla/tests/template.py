@@ -1,4 +1,10 @@
 #! /usr/bin/env python3
+##
+## Main template for mezcla test scripts. This version does not gets mirrored
+## in shell-scripts repo--the version from ./examples is used instead as
+## that is more external like (e.g., import structure).
+## (TODO: delete this comment during customization)
+##..............................................................................
 # TODO: # -*- coding: utf-8 -*-
 #
 # TODO: Test(s) for ../<module>.py

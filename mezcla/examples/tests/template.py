@@ -1,4 +1,8 @@
 #! /usr/bin/env python3
+## Alternative template for testing mezcla scripts based on external examples.
+## This version gets mirrored in shell-scripts, reflecting external nature.
+## (TODO: delete this comment during customization)
+##..............................................................................
 # TODO: # -*- coding: utf-8 -*-
 #
 # TODO: Test(s) for ../<module>.py
