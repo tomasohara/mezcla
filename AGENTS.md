@@ -91,6 +91,24 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 
 0. Avoid overly specific function names, instead chose a name that generalizes the intention  (e.g., `test_hello_world_batspp_epoch_seconds_updates` => `test_hello_world_timestamp_update`).
 
+0. Some clarification for the sake of recalcitrant AI agents:
+
+- Preserve all comments, docstrings, TODOs, attributions, and formatting unless
+  the user explicitly authorizes their removal. They count as code.
+
+- For every replacement, retain the exact prior line(s) immediately above it as
+  `## OLD:` (or `## BAD:` for a confirmed bug). Do not rewrite or consolidate
+  existing comments incidentally.
+
+- Do not make cleanup, wording, docstring, attribution, or formatting changes
+  unrelated to the requested fix.
+
+- Before editing, inspect the complete current diff. Before finishing, review
+  removed lines and obtain confirmation for each removal.
+
+- Keep attribution in commit messages; add source attribution only when
+  explicitly requested.
+  
 ## Terminal guidelines
 
 0. Don't remove existing files without confirmation: rename them instead (e.g., <filename>.DDMmmYY).
