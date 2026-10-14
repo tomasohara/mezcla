@@ -796,6 +796,41 @@ class TestDebug2(TestWrapper):
         if __debug__:
             self.do_assert(isinstance(THE_MODULE._debug, THE_MODULE.DebugWrapper))
 
+    ## note: tests below added via Claude Code using Claude Opus 5.5
+    def test_obfuscate_value(self):
+        """Ensure obfuscate_value hides inner portion of value preserving length"""
+        debug.trace(4, f"test_obfuscate_value(): self={self}")
+        key = "12345678901234567890abcde"
+        self.do_assert(THE_MODULE.obfuscate_value(key, ratio=0.75) == "123" + ("." * 19) + "cde")
+        self.do_assert(THE_MODULE.obfuscate_value(key, ratio=0.6) == "12345" + ("." * 15) + "abcde")
+        self.do_assert(THE_MODULE.obfuscate_value("abcdefgh", ratio=0.75) == "........")
+        self.do_assert(len(THE_MODULE.obfuscate_value(key)) == len(key))
+
+    def test_is_sensitive_name(self):
+        """Ensure sensitive variable names detected"""
+        debug.trace(4, f"test_is_sensitive_name(): self={self}")
+        for name in ["API_KEY", "OPENAI_API_KEY", "SD_TOKEN", "DB_PASSWORD", "llm_key"]:
+            self.do_assert(THE_MODULE.is_sensitive_name(name), f"{name=}")
+        for name in ["SECRETS_FILE", "MAX_TOKENS", "KEYBOARD", "API_KEY_PARAM", "DEBUG_LEVEL"]:
+            self.do_assert(not THE_MODULE.is_sensitive_name(name), f"{name=}")
+
+    def test_mask_sensitive(self):
+        """Ensure registered sensitive values masked in trace output (but not trivial ones)"""
+        debug.trace(4, f"test_mask_sensitive(): self={self}")
+        key = "AIzaTESTtest0123456789abcdefghijklmnop"
+        self.monkeypatch.setattr(THE_MODULE, "sensitive_values", {})
+        THE_MODULE.register_sensitive_environment({"MY_API_KEY": key, "SKIP_CREDENTIALS": "1",
+                                                   "PASSWORD": "short", "HOME": "/home/fubar"})
+        self.do_assert(list(THE_MODULE.sensitive_values) == [key])
+        masked = THE_MODULE.mask_sensitive(f"query_spec={{'key': '{key}', 'num': '1'}}")
+        self.do_assert(key not in masked)
+        self.do_assert(THE_MODULE.obfuscate_value(key) in masked)
+        self.do_assert("'num': '1'" in masked)
+        self.do_assert(THE_MODULE.mask_sensitive(123) == 123)
+        if __debug__:
+            out = THE_MODULE.do_print(f"key={key}")
+            self.do_assert(key not in out)
+
 #------------------------------------------------------------------------
 
 class TestDebugWrapper(TestWrapper):

@@ -118,6 +118,16 @@ def trace_object(obj, level=BTL, label=None, **kwargs):
         debug.trace_object(level, obj, label=label, **kwargs)
 
 
+def mask_sensitive(text):
+    """Obfuscate API keys, etc. in TEXT via debug.mask_sensitive, if debug module loaded
+    Note: debug is looked up at run time to avoid circular import."""
+    # note: added via Claude Code using Claude Opus 5.5
+    debug_module = sys.modules.get("mezcla.debug")
+    if debug_module and hasattr(debug_module, "mask_sensitive"):
+        text = debug_module.mask_sensitive(text)
+    return text
+
+
 def stderr_print(*args):
     """
     prints args to sys.stderr
@@ -380,7 +390,8 @@ class MezclaDebugger:
         except:
             out = f"Introspection Error: {str(args)}"
             sys.stderr.write("Error: unable to format arg spec:\n")
-            sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
+            ## OLD: sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
+            sys.stderr.write(mask_sensitive(f"\t{args=}\n\t{call_frame=}\n"))
             sys.stderr.write(f"\t{sys.exc_info()}\n")
             if INTROSPECTION_DEBUG:
                 ## OLD: traceback.print_stack(file=sys.stderr)
@@ -457,7 +468,8 @@ class MezclaDebugger:
                 trace(f"{sanitized_arg_strs=}")
         else:
             sys.stderr.write("Warning: unable to extract args for introspection:\n")
-            sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
+            ## OLD: sys.stderr.write(f"\t{args=}\n\t{call_frame=}\n")
+            sys.stderr.write(mask_sensitive(f"\t{args=}\n\t{call_frame=}\n"))
             sys.stderr.write(f"\t{sys.exc_info()}\n")
             sanitized_arg_strs = [_ABSENT] * len(args)
 

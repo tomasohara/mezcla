@@ -433,7 +433,9 @@ def print_error(text: str) -> None:
     """
     debug.trace(7, f"print_error({text})")
     # ex: print_error("Fubar!")
-    print(text, file=sys.stderr)
+    # note: obfuscates API keys, etc. (e.g., in exception text with URL); via Claude Code using Claude Opus 5.5
+    ## OLD: print(text, file=sys.stderr)
+    print(debug.mask_sensitive(text), file=sys.stderr)
     return None
 
 def print_stderr_fmt(text: str, **kwargs) -> None:
@@ -454,7 +456,8 @@ def print_stderr_fmt(text: str, **kwargs) -> None:
             exc=get_exception()))
         if debug.verbose_debugging():
             print_full_stack()
-    print(formatted_text, file=sys.stderr)
+    ## OLD: print(formatted_text, file=sys.stderr)
+    print(debug.mask_sensitive(formatted_text), file=sys.stderr)
     return None
 #
 #

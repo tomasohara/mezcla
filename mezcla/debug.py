@@ -43,6 +43,8 @@
 #     GLOBAL_LOGGING                    re-initialize global logger
 #     USE_LOGGING                       output to log
 #     USE_OLD_INTROSPECTION             use old homegrown introspection
+#     OBFUSCATE_SENSITIVE               obfuscate API keys, etc. in traces (default on)
+#     SENSITIVE_OBFUSCATION_RATIO       portion of sensitive value hidden (default 0.75)
 #     ...
 #
 #-------------------------------------------------------------------------------
@@ -63,6 +65,9 @@
 # - Apply format_value consistently.
 #
 ## UPDATE 31 Aug 26: trace_values optionally coerces single values
+## UPDATE 14 Oct 26: sensitive values like API keys are obfuscated in trace output
+##   (e.g., environment variables with KEY or TOKEN in name; see register_sensitive_value).
+##   Change facilitated by Claude Code using model Claude Opus 5.5 (claude-opus-5-5).
 #
 
 """Debugging functions (e.g., tracing)"""
@@ -382,6 +387,9 @@ if __debug__:
                 ##     assertion(7, isinstance(text, str))
                 ##
                 text = str(value)
+                # Obfuscate API keys, etc. (see register_sensitive_value)
+                # note: added via Claude Code using Claude Opus 5.5
+                text = mask_sensitive(text)
                 if len(text) > max_len:
                     effective_max_len = max(0, max_len - len(ELLIPSIS))
                     text = text[:effective_max_len] + ELLIPSIS
@@ -468,7 +476,8 @@ if __debug__:
                 max_len -= len(out_text)
                 if use_logging:
                     # TODO: see if way to specify logging terminator
-                    logging.debug(indentation + _to_utf8(text))
+                    ## OLD: logging.debug(indentation + _to_utf8(text))
+                    logging.debug(indentation + _to_utf8(mask_sensitive(text)))
                 if debug_file_hack:
                     self.reopen_debug_file()
             if empty_arg is not None:
@@ -615,13 +624,16 @@ if __debug__:
                 if (trace_level >= MOST_VERBOSE):
                     self.do_print(indentation + member + ": ", end="")
                     if pretty_print:
-                        pprint(value_spec, stream=sys.stderr)
+                        ## OLD: pprint(value_spec, stream=sys.stderr)
+                        pprint(mask_sensitive(value_spec), stream=sys.stderr)
                         if debug_file:
-                            pprint(value_spec, stream=debug_file)
+                            ## OLD: pprint(value_spec, stream=debug_file)
+                            pprint(mask_sensitive(value_spec), stream=debug_file)
                     else:
                         self.do_print(value_spec)
                     if use_logging:
-                        logging.debug(_to_utf8((indentation + member + ": " + value_spec)))
+                        ## OLD: logging.debug(_to_utf8((indentation + member + ": " + value_spec)))
+                        logging.debug(mask_sensitive(_to_utf8((indentation + member + ": " + value_spec))))
                     continue
                 # Include unless special member (or if no filtering)
                 ## DEBUG: trace_expr(QUITE_VERBOSE, member.startswith("__"), re.search(r"^<.*(method|module|function).*>$", value_spec))
@@ -659,11 +671,13 @@ if __debug__:
                     self.do_print(indentation + member + ": ", end="")
                     if pretty_print:
                         # TODO: remove quotes from numbers and booleans
-                        pprint(value_spec, stream=sys.stderr, indent=len(indentation))
+                        ## OLD: pprint(value_spec, stream=sys.stderr, indent=len(indentation))
+                        pprint(mask_sensitive(value_spec), stream=sys.stderr, indent=len(indentation))
                     else:
                         self.do_print(_to_utf8(value_spec))
                     if use_logging:
-                        logging.debug(_to_utf8((indentation + member + ":" + value_spec)))
+                        ## OLD: logging.debug(_to_utf8((indentation + member + ":" + value_spec)))
+                        logging.debug(mask_sensitive(_to_utf8((indentation + member + ":" + value_spec))))
             self.trace(ALWAYS, indentation + "}")
             if para_mode_tracing:
                 self.trace(ALWAYS, "")
@@ -1569,6 +1583,84 @@ def _getenv_int(name: str, default_value: int) -> int:
         _print_exception_info("_getenv_int")
     return result
 
+#...............................................................................
+# Support for obfuscating sensitive values (e.g., API keys) in trace output
+# Note: Values are partly shown so that one can tell which key was used without
+# full exposure (e.g., "AIzaT.............................mnopq").
+# Change facilitated by Claude Code using model Claude Opus 5.5 (claude-opus-5-5).
+
+OBFUSCATE_SENSITIVE = _getenv_bool("OBFUSCATE_SENSITIVE", True)
+SENSITIVE_OBFUSCATION_RATIO = float(os.environ.get("SENSITIVE_OBFUSCATION_RATIO") or 0.75)
+SENSITIVE_NAME_REGEX = (os.environ.get("SENSITIVE_NAME_REGEX") or
+                        r"(^|_)(API_?KEY|KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIALS?)(_|$)")
+NON_SENSITIVE_NAME_REGEX = (os.environ.get("NON_SENSITIVE_NAME_REGEX") or
+                            r"_(FILE|PATH|DIR|PARAM|LABEL)$")
+MIN_SENSITIVE_LEN = _getenv_int("MIN_SENSITIVE_LEN", 8)
+OBFUSCATION_CHAR = "."
+sensitive_values: Dict[str, str] = {}   # value => obfuscated version
+
+
+def obfuscate_value(value: Any, ratio: Optional[float] = None) -> str:
+    """Return VALUE with inner RATIO portion of characters replaced by dots (75% by default)
+    Note: The length is preserved, and short values get fully obfuscated."""
+    # EX: obfuscate_value("12345678901234567890abcde") => "123...................cde"
+    # EX: obfuscate_value("12345678901234567890abcde", ratio=0.6) => "12345...............abcde"
+    # EX: obfuscate_value("abc") => "..."
+    if ratio is None:
+        ratio = SENSITIVE_OBFUSCATION_RATIO
+    text = str(value)
+    num_shown = int(round(len(text) * (1.0 - ratio) / 2))
+    # note: short values (e.g., under 12 chars with 75% ratio) are fully hidden
+    if (num_shown < 2):
+        num_shown = 0
+    num_hidden = (len(text) - 2 * num_shown)
+    result = (text[:num_shown] + (OBFUSCATION_CHAR * num_hidden) +
+              (text[-num_shown:] if num_shown else ""))
+    return result
+
+
+def register_sensitive_value(value: Any) -> None:
+    """Register VALUE (e.g., an API key) so that it is obfuscated in trace output"""
+    # Note: values too short or numeric are ignored (e.g., SKIP_CREDENTIALS=1)
+    text = str(value or "").strip()
+    if ((len(text) >= MIN_SENSITIVE_LEN) and (not re.search(r"^[\d.]+$", text))
+            and (text not in sensitive_values)):
+        sensitive_values[text] = obfuscate_value(text)
+    return
+
+
+def is_sensitive_name(name: str) -> bool:
+    """Whether variable NAME suggests a sensitive value (e.g., OPENAI_API_KEY)"""
+    # EX: is_sensitive_name("OPENAI_API_KEY") => True
+    # EX: is_sensitive_name("SECRETS_FILE") => False
+    # EX: is_sensitive_name("MAX_TOKENS") => False
+    return bool(re.search(SENSITIVE_NAME_REGEX, name, flags=re.IGNORECASE) and
+                not re.search(NON_SENSITIVE_NAME_REGEX, name, flags=re.IGNORECASE))
+
+
+def register_sensitive_environment(environ: Optional[Mapping] = None) -> None:
+    """Register values of environment variables with sensitive names (see is_sensitive_name)"""
+    if environ is None:
+        environ = os.environ
+    for (name, value) in list(environ.items()):
+        if is_sensitive_name(name):
+            register_sensitive_value(value)
+    return
+
+
+def mask_sensitive(text: Any) -> Any:
+    """Return TEXT with registered sensitive values obfuscated (non-strings returned as is)"""
+    # EX: register_sensitive_value("12345678901234567890abcde"); mask_sensitive("key=12345678901234567890abcde") => "key=123...................cde"
+    result = text
+    if (OBFUSCATE_SENSITIVE and sensitive_values and isinstance(text, str)):
+        # note: longest first in case of overlap
+        for value in sorted(sensitive_values, key=len, reverse=True):
+            if value in result:
+                result = result.replace(value, sensitive_values[value])
+    return result
+
+#...............................................................................
+
 @docstring_parameter(max_len=max_trace_value_len)
 def format_value(value: Any, max_len: Optional[int] = None,
                  strict: Optional[bool] = None, skip_sanity_checks: Optional[bool] = None) -> str:
@@ -1805,6 +1897,10 @@ def main(args: List[str]) -> None:
 # Note: wrapped in function to keep things clean
 
 if __debug__:
+
+    # Make sure API keys, etc. in environment get obfuscated (e.g., environment dump in debug_init)
+    # note: added via Claude Code using Claude Opus 5.5
+    register_sensitive_environment()
 
     # Do the initialization
     _debug.debug_init()
