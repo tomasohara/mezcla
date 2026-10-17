@@ -26,6 +26,7 @@
 # - Write up test suite, el tonto!.
 # - Add pointer to specific packages better for production use.
 #
+## UPDATE 2026-10-15: drops html_to_text
 
 """Miscellaneous text utility functions"""
 
@@ -94,11 +95,12 @@ def extract_soup_text_with_breaks(soup):
     return result
 
 
-def html_to_text(document_data):
-    """Returns text version of html DATA
-    Warning: no-op function; import from html_utils instead
-    """
-    raise RuntimeError("Use version in html_utils.py")
+## OLD:
+## def html_to_text(document_data):
+##     """Returns text version of html DATA
+##     Warning: no-op function; import from html_utils instead
+##     """
+##     raise RuntimeError("Use version in html_utils.py")
 
 
 def init_textract():
@@ -324,4 +326,5 @@ def make_fixed_length(text, length=16):
 
 if __name__ == '__main__':
     system.print_stderr("Warning: not intended for command-line use")
-    debug.assertion("html" not in html_to_text("<html><body></body></html>"))
+    ## OLD: debug.assertion("html" not in html_to_text("<html><body></body></html>"))
+    
