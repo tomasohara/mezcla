@@ -655,12 +655,23 @@ class Main:
             # note: A dash ("-") is used to indicate stdin with filename arg or to bypass usage w/o one
             # TODO1: get dash put in usage to make more explicit, such as in following:
             #     usage: main.py [-h] [--verbose] [filename] [-]
-            usage_notes = ("Notes: \n"
-                           + ("- Use - for filename to skip usage (i.e., a la stdin).\n" if (not self.skip_input)
-                              else "- Use - to skip usage if no arguments needed.\n" if self.auto_help else "")
-                           + ("- Use --non-... for any boolean arg\n" if NEGATIVE_BOOL_ARGS else "")
-                           + (f"- Use \"ENV1='v1' ENV2='v2' python {elided_path} ...\" for environment options.\n")
-                           + env_opt_spec)
+            ## OLD:
+            ## usage_notes = ("Notes: \n"
+            ##                + ("- Use - for filename to skip usage (i.e., a la stdin).\n" if (not self.skip_input)
+            ##                   else "- Use - to skip usage if no arguments needed.\n" if self.auto_help else "")
+            ##                + ("- Use --non-... for any boolean arg\n" if NEGATIVE_BOOL_ARGS else "")
+            ##                + (f"- Use \"ENV1='v1' ENV2='v2' python {elided_path} ...\" for environment options.\n")
+            ##                + env_opt_spec)
+            usage_notes_text = (
+                ## TODO2: rework for readability
+                ""
+                + ("- Use - for filename to skip usage (i.e., a la stdin).\n" if (not self.skip_input)
+                   else "- Use - to skip usage if no arguments needed.\n" if self.auto_help else "")
+                + ("- Use --non-... for any boolean arg\n" if NEGATIVE_BOOL_ARGS else "")
+                + ((f"- Use \"ENV1='v1' ENV2='v2' python {elided_path} ...\" for environment options.\n")
+                   if VERBOSE_MODE else "")
+                + env_opt_spec)
+            usage_notes = (("Notes: \n" + usage_notes_text) if usage_notes_text else "")
         parser = self.argument_parser(description=self.description,
                                       epilog=usage_notes, prog=self.program,
                                       formatter_class=argparse.RawDescriptionHelpFormatter)
