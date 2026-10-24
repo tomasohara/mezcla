@@ -31,7 +31,8 @@ setup(name='Mezcla',
       author_email="tomasohara@gmail.com",
       python_requires=">=3.9",
       ## TODO4?:
-      install_requires=["asttokens", "executing", "six"],
+      ## OLD: install_requires=["asttokens", "executing", "six"],
+      install_requires=["asttokens", "executing", "six", "typing_extensions"],
       home_page="https://github.com/tomasohara/Mezcla",
       classifiers=[
           "License :: OSI Approved :: LGPLv3",
