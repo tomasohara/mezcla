@@ -19,6 +19,7 @@ from mezcla import debug
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
 from mezcla import glue_helpers as gh
 from mezcla import system
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:            global module object
@@ -84,7 +85,8 @@ class TestCutScript(TestWrapper):
     def test_symbolic_fields(self):
         """Ensure symbolic field names resolved"""
         # Note: this involves the same test fields as test_fields
-        script_output = self.run_script(options='--csv --fields symboling-fueltype', data_file=CSV_EXAMPLE)
+        ## BAD: script_output = self.run_script(options='--csv --fields symboling-fueltype', data_file=CSV_EXAMPLE)
+        script_output = self.run_script(options='--csv --fields="symboling - fueltype"', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4).strip())
         script_output = self.run_script(options='--csv --fields symboling,CarName,fueltype', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4).strip())
@@ -95,15 +97,19 @@ class TestCutScript(TestWrapper):
         # Note: this involves the same test fields as test_fields
         script_output = self.run_script(options='--csv --exclude 1,5-26', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4).strip())
-        script_output = self.run_script(options='--csv --exclude car_ID,aspiration-price', data_file=CSV_EXAMPLE)
+        ## BAD: script_output = self.run_script(options='--csv --exclude car_ID,aspiration-price', data_file=CSV_EXAMPLE)
+        script_output = self.run_script(options='--csv --exclude "car_ID,aspiration - price"', data_file=CSV_EXAMPLE)
         assert (script_output.strip() == system.read_file(FIELDS_2_3_4).strip())
         ## TODO2: check for invalid field spec (e.g., with car_ID renamed to car-ID)
         ## script_output = self.run_script(options='--csv --exclude 1-car-ID', data_file=CSV_EXAMPLE)
         ## (script_output.strip() != "")
 
     @pytest.mark.xfail                   # TODO: remove xfail
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
     def test_empty_row(self):
         """Text handling of empty rows"""
+        ## TODO3: rework to minimize the extraneous error output
+        debug.trace(3, "FYI: debug assertions are expected in test_empty_row")
         csv_data = """
         "fubar?",
         "no",
