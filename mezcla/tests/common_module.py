@@ -53,7 +53,8 @@ debug.assertion(debug.xor(TEST_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON))
 ##     ## UPDATE: 05/10/26 requires explicit setting to skip expected errors
 ##     "TEST_EXPECTED_ERRORS", True,
 ##     description="Alias for not[-]SKIP_EXPECTED_ERRORS--deprecated")
-SKIP_EXPECTED_REASON = "Skipping cases that should never pass (e.g., intentional error)"
+## OLD: SKIP_EXPECTED_REASON = "Skipping cases that should never pass (e.g., intentional error)"
+SKIP_EXPECTED_REASON = "Skipping cases that shouldn't pass or involve error output (e.g., intentional error or assertion failured)"
 SKIP_EXPECTED_ERRORS = system.getenv_bool(
     # Note: this helps filter known errors before running error checking script,
     # (e.g., check_errors.py in companion repo tomasohara/shell-scripts).
