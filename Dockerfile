@@ -45,7 +45,7 @@ ARG REQUIREMENTS=$WORKDIR/requirements.txt
 WORKDIR $WORKDIR
 
 # Set the Python version to install
-# Note: The workflow uses versions 3.9 to 3.11 for installations under runner VM
+# Note: The workflow uses 3 current Python versions for installations under runner VM (except the one used here)
 #
 # To find URL links, see https://github.com/actions/python-versions:
 # ex: https://github.com/actions/python-versions/releases/tag/3.11.4-5199054971
