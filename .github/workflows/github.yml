@@ -40,7 +40,7 @@ jobs:
         ## OLD: python-version: ["3.8", "3.9", "3.10"]
         ## NOTE: Need 3.8.17+ for typing support, due to backporting limitations with typing_extensions (see html_utils.py)
         ## TODO?:
-        python-version: ["3.9", "3.10", "3.12"]
+        python-version: ["3.10", "3.12", "3.13"]
         # Note: The Dockerfile uses 3.11 so try different versions for the runner VM
         ## TODO: python-version: ["3.9", "3.10", "3.11"]
 
@@ -137,8 +137,11 @@ jobs:
     timeout-minutes: 10
     ## TEMP: disable use of Docker
     ## TODO3: derive via environment or via github.event flags (see act.yml)
-    if: false
-    runs-on: [ubuntu-22.04]
+    ## OLD:
+    ## if: false
+    ## runs-on: [ubuntu-22.04]
+    # note: uses latest Ubuntu to avoid maintenance overhead when VMs expire
+    runs-on: [ubuntu-latest]
 
     steps:
       - name: Checkout Repository
