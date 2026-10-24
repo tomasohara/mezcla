@@ -17,6 +17,10 @@
 # - Add option for specifying output dialect.
 # - Add support for selecting by columns instead of fields (e.g., as with -c1-40 with cut command).
 #
+# TODO3:
+# - Refine field label resolution space around dashes not required in ranges (e.g., "l1 - l2" => "l2-l2").
+#
+## UPDATE 2026-10-24: allows dashes in field names
 ## UPDATE 02 Aug 26: fix for multiple input files via Codex 5.3
 #
 
@@ -285,12 +289,13 @@ class Script(Main):
         debug.trace(5, f"parse_field_spec({field_spec}, {columns}); self={self}")
 
         # Convert labels to 1-based offsets (TODO3: find CSV spec and clarify label chars)
-        # NOTE: dashes in field names not supported (TODO2: subsitute non-ascii dash)
+        # note: If dashes used in range, then must be space delimited (e.g., "f1 - f2").
         in_field_spec = field_spec
         if my_re.search(r"[A-Za-z]", field_spec):
             ## TODO4: quote fields that should be used as is; add alternative to dash
             debug.trace(4, "FYI: Fieldnames currently are Python-like Ascii identifiers")
-        while my_re.search(r"([a-z][a-z0-9_]+)", field_spec, flags=my_re.IGNORECASE):
+        ## OLD: while my_re.search(r"([a-z][a-z0-9_]+)", field_spec, flags=my_re.IGNORECASE):
+        while my_re.search(r"([a-z][a-z0-9_-]+)", field_spec, flags=my_re.IGNORECASE):
             field_name = my_re.group(1)
             if field_name not in columns:
                 system.print_error(f"Error: Unable to resolve field {field_name!r}: {in_field_spec=}")
@@ -551,7 +556,8 @@ if __name__ == '__main__':
         (DELIM, "Input field separator"),
         (DIALECT, "CSV module dialect: standard (i.e., excel, excel-tab, or unix) or adhoc (e.g., pyspark, hive)"),
         (OUTPUT_DIALECT, "dialect for output--defaults to input one"),
-        (FIELDS, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
+        ## OLD: (FIELDS, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
+        (FIELDS, "Field specification (1-based or label): single column, range of columns, or comma-separated columns--warning: space needed around - used for range"),
         (F_OPT, "Alias for --fields"),
         (OUT_DELIM, "Output field separator"),
         (EXCLUDE_OPT, "Field specification (1-based or label): single column, range of columns, or comma-separated columns"),
