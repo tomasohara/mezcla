@@ -55,6 +55,7 @@
 # - Document selenium/webdriver installation (e.g., gecko drivers).
 # - Add more selenium diagnostics (e.g., using temporary profile via FIREFOX_PROFILE).
 #
+## UPDATE 2026-10-25: cleanup for sake of core mezcla tests
 ## UPDATE 31 Aug 26: Sanity check tweaks (on change, etc.).
 
 """HTML utility functions"""
@@ -830,12 +831,15 @@ def download_web_document(url : str, filename: Optional[str] = None, download_di
     return doc_data
 
 
-def test_download_html_document(url : str, encoding : Optional[str] = None, lookahead: int = 256, **kwargs) -> OptStrBytes:
+def alt_download_html_document(url : str, encoding : Optional[str] = None, lookahead: int = 256, **kwargs) -> OptStrBytes:
     """Wrapper around download_web_document for HTML or text (i.e., non-binary), using ENCODING.
-    Note: If ENCODING unspecified, checks result LOOKAHEAD bytes for meta encoding spec and uses UTF-8 as a fallback."""
-    # EX: "Google" in test_download_html_document("www.google.com")
-    ## bad-EX: "Tomás" not in test_download_html_document("http://www.tomasohara.trade", encoding="big5"¨)
-    # EX: "Tomás" not in test_download_html_document("http://www.tomasohara.trade", encoding="big5")
+    Note: If ENCODING unspecified, checks result LOOKAHEAD bytes for meta encoding spec and uses UTF-8 as a fallback.
+    Warning: This is now deprecated.
+    """
+    debug.trace(3, "Warning: using deprecated function alt_download_html_document; consider download_html_document instead.")
+    # EX: "Google" in alt_download_html_document("www.google.com")
+    ## bad-EX: "Tomás" not in alt_download_html_document("http://www.tomasohara.trade", encoding="big5"¨)
+    # EX: "Tomás" not in alt_download_html_document("http://www.tomasohara.trade", encoding="big5")
     result = (download_web_document(url, as_binary=True, **kwargs) or b"")
     ## TEMP: for mypy
     if isinstance(result, str):
