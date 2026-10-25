@@ -42,6 +42,7 @@ authors = [
 dependencies = [
     "asttokens",
     "executing",
+    "requests",
     "six",
     "typing_extensions>=4.6.0",
 ]
