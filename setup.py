@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 #
 # Notes:
-# - This not used: see pyproject.toml instead.
+# - *** This not used: see pyproject.toml instead. ***
 # - Simple installer for subset of scripts under Github
 #       https://github.com/tomasohara/misc-utility
 # - Based on following:
@@ -13,10 +13,15 @@
 #   $ echo $(python setup.py --help 2>&1 | extract_matches.perl "Unknown distribution option: '(\S+)'")
 #   module description_file dist_name email python_requires home_page
 #
+## UPDATE 2026-10-25: add deprecation warning.
 
 """Simple installer"""
 
+import sys
+
 from distutils.core import setup
+
+sys.stderr.write("Warning: setup.py is deprecated\n")
 
 setup(name='Mezcla',
       packages=['mezcla', 'mezcla.examples', 'mezcla.tfidf'],
