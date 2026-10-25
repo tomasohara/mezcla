@@ -59,9 +59,6 @@ classifiers = [
 Homepage = "https://github.com/tomasohara/mezcla"
 Repository = "https://github.com/tomasohara/mezcla"
 
-[project.scripts]
-realpython = "mezcla.__main__:main"
-
 [tool.mypy]
 disable_error_code = [
     "import-untyped",
@@ -70,11 +67,6 @@ disable_error_code = [
 exclude = [
     "(examples|tests|adhoc|temp)/",
     "__init__",
-]
-
-[[tool.mypy.overrides]]
-module = [
-    "mezcla",
 ]
 
 ##--------------------------------------------------------------------------------
