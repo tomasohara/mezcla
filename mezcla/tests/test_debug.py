@@ -178,7 +178,6 @@ class TestDebug(TestWrapper):
 
         THE_MODULE.output_timestamps = False
 
-    @pytest.mark.xfail
     def test_trace_fmtd(self):
         """Ensure trace_fmtd works as expected"""
         debug.trace(4, f"test_trace_fmtd(): self={self}")
@@ -199,7 +198,6 @@ class TestDebug(TestWrapper):
         ## stderr_3 = self.get_stderr()
         ## assert my_re.search(r"Unexpected keyword.*['do_whatever']", stderr_3)
 
-    @pytest.mark.xfail
     def test_trace_object(self):
         """Ensure trace_object works as expected"""
         debug.trace(4, f"test_trace_object(): self={self}")
@@ -220,7 +218,6 @@ class TestDebug(TestWrapper):
         # ... age_up: ('<bound method Test_class.age_up of
         assert my_re.search(r"age_up:[^:]+bound method", stderr)
         
-    @pytest.mark.xfail
     def test_negative_trace_object(self):
         """Negative tests for trace_object"""
         debug.trace(4, f"test_negative_trace_object(): self={self}")
@@ -272,7 +269,6 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert 'Person("Kiran")' in err
 
-    @pytest.mark.xfail
     def test_simple_trace_expr(self):
         """Make sure trace_expr shows 'expr1=value1; expr2=value2'"""
         debug.trace(4, f"test_simple_trace_expr(): self={self}")
@@ -282,7 +278,6 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert(my_re.search(r"var1=3; var2=6;?", err))
 
-    @pytest.mark.xfail
     def test_trace_expr_prefix(self):
         """Make sure trace_expr outputs prefix'"""
         debug.trace(4, f"test_trace_expr_prefix(): self={self}")
@@ -291,7 +286,6 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert(my_re.search(r"here: var=4;?", err))
 
-    @pytest.mark.xfail
     def test_multiline_trace_expr(self):
         """Make sure trace_expr expression resolved when split across lines"""
         debug.trace(4, f"test_multiline_trace_expr(): self={self}")
@@ -303,7 +297,6 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert(my_re.search(r"var1=3; var2=6;?", err))
         
-    @pytest.mark.xfail
     def test_newline_trace_expr(self):
         """Test trace_expr with newline delim"""
         debug.trace(4, f"test_newline_trace_expr(): self={self}")
@@ -327,7 +320,6 @@ class TestDebug(TestWrapper):
         # Previously, trace_expr was incorrectly applying additional clipping.
         assert my_re.search(rf"var='-{{{MAX_LEN}}}\.\.\.'", err)
 
-    @pytest.mark.xfail
     def test_trace_expr_old_introspection(self):
         """Test trace_expr with max_len via old introspection"""
         debug.trace(4, f"test_trace_expr_old_introspection(): self={self}")
@@ -344,7 +336,6 @@ class TestDebug(TestWrapper):
         assert (len(result) > MAX_LEN)
 
     @pytest.mark.skipif(cm.SKIP_TBD_TESTS, reason=cm.SKIP_TBD_REASON)
-    @pytest.mark.xfail
     def test_trace_expr_string(self):
         """Test trace_expr with string values (e.g., with and without max_len)"""
         # Note: this test was added to ensure that the introspection process produces similar
@@ -359,7 +350,6 @@ class TestDebug(TestWrapper):
         result = THE_MODULE.trace_expr(1, var, max_len=256)
         assert my_re.search(r"var='----------------'", result)
         
-    @pytest.mark.xfail
     def test_trace_current_context(self):
         """Ensure trace_current_context works as expected"""
         debug.trace(4, f"test_trace_current_context(): self={self}")
@@ -385,7 +375,6 @@ class TestDebug(TestWrapper):
         # ... 'number': 9}
         assert my_re.search(r"number[^,]+ 9", err)
 
-    @pytest.mark.xfail
     def test_trace_exception(self):
         """Ensure trace_exception works as expected"""
         # Note: This raised an exception and then verifies traced properly,
@@ -398,7 +387,6 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert "Exception during debug.trace" in err
         
-    @pytest.mark.xfail
     def test_raise_exception(self):
         """Check that raise_exception does so unless debug level too high"""
         debug.trace(4, f"test_raise_exception(): self={self}")
@@ -407,7 +395,6 @@ class TestDebug(TestWrapper):
             THE_MODULE.raise_exception(3)
         THE_MODULE.raise_exception(4)
 
-    @pytest.mark.xfail
     def test_assertion(self):
         """Ensure assertion works as expected"""
         debug.trace(4, f"test_assertion(): self={self}")
@@ -435,7 +422,6 @@ class TestDebug(TestWrapper):
         assert("Assertion failed: gpu (at" in err)
 
         
-    @pytest.mark.xfail
     def test_multiline_assertion(self):
         """Make sure assertion expression split across lines resolved"""
         # Note: issue uses the Spanish equivalent of "Assertion failed" in order to
@@ -472,7 +458,6 @@ class TestDebug(TestWrapper):
         THE_MODULE.code(4, lambda: increment)
         assert(count == 0)
 
-    @pytest.mark.xfail
     def test_debug_print(self):
         """Ensure debug_print works as expected"""
         debug.trace(4, f"test_debug_print(): self={self}")
@@ -489,7 +474,6 @@ class TestDebug(TestWrapper):
         out, err  = self.get_stdout_stderr()
         assert 'some text to test debug file' in out
 
-    @pytest.mark.xfail
     def test_timestamp(self):
         """Ensure timestamp works as expected"""
         debug.trace(4, f"test_timestamp(): self={self}")
@@ -585,7 +569,6 @@ class TestDebug(TestWrapper):
         err = self.get_stderr()
         assert "xor3" in err
 
-    @pytest.mark.xfail
     def test_init_logging(self):
         """Ensure init_logging works as expected"""
         debug.trace(4, f"test_init_logging(): self={self}")
@@ -615,7 +598,6 @@ class TestDebug(TestWrapper):
         new_level = THE_MODULE.logging.root.getEffectiveLevel()
         assert new_level == 20
 
-    @pytest.mark.xfail
     def test_profile_function(self):
         """Ensure profile_function works as expected"""
         debug.trace(4, f"test_profile_function(): self={self}")
@@ -633,7 +615,6 @@ class TestDebug(TestWrapper):
         stderr = self.get_stderr()
         assert "out: mezcla.tests.test_debug:test_profile_function => result" in stderr
         
-    @pytest.mark.xfail
     def test_reference_var(self):
         """Ensure reference_var works as expected"""
         debug.trace(4, f"test_reference_var(): self={self}")
@@ -649,7 +630,6 @@ class TestDebug(TestWrapper):
         assert THE_MODULE.clip_value('helloworld', 5) == 'hello...'
         assert THE_MODULE.clip_value('12345678910111213141516', 7) == '1234567...'
 
-    @pytest.mark.xfail
     def test_read_line(self):
         """Ensure read_line works as expected"""
         debug.trace(4, f"test_read_line(): self={self}")
@@ -668,7 +648,6 @@ class TestDebug(TestWrapper):
         assert my_re.search(fr"{line_1}.*{line_2}.*{line_3}", content)
 
     @pytest.mark.skipif(cm.SKIP_VERBOSE_TESTS, reason=cm.SKIP_VERBOSE_REASON)
-    @pytest.mark.xfail
     def test_debug_init(self):
         """Ensure debug_init works as expected"""
         debug.trace(4, f"test_debug_init(): self={self}")
@@ -693,7 +672,6 @@ class TestDebug(TestWrapper):
         assert f"DEBUG_FILE: {temp_debug_filename}" in err
         assert "ENABLE_LOGGING: True" in err
 
-    @pytest.mark.xfail
     def test_display_ending_time_etc(self):
         """Ensure display_ending_time_etc works as expected"""
         debug.trace(4, f"test_display_ending_time_etc(): self={self}")
@@ -744,7 +722,6 @@ class TestDebug(TestWrapper):
         assert self.expected_stderr_trace in err
         THE_MODULE.trace_expr(6, (pre_out, pre_err), (out, err))
 
-    @pytest.mark.xfail
     def test_do_print(self):
         """Verifies do_print options"""
         out = THE_MODULE.do_print("1234567890", max_len=4, end=";")
@@ -764,7 +741,6 @@ class TestDebug2(TestWrapper):
         self.do_assert(not debug.xor3(True, True, True))
         self.do_assert(not debug.xor3(False, False, False))
 
-    @pytest.mark.xfail
     def test_level(self):
         """"Make sure set_level honored (provided __debug__)"""
         debug.trace(4, f"test_level(): self={self}")
@@ -775,7 +751,6 @@ class TestDebug2(TestWrapper):
         level_set_ok = (debug.get_level() == expected_level)
         self.do_assert(level_set_ok)
 
-    @pytest.mark.xfail
     def test_trace_exceptions(self):
         """"Make sure debug.trace doesn't produce exceptions"""
         debug.trace(4, f"test_trace_exceptions(): self={self}")
@@ -921,7 +896,6 @@ class TestDebugWrapper(TestWrapper):
         err = self.get_stderr()
         self.do_assert("oo-hidden-trace" not in err)
 
-    @pytest.mark.xfail
     def test_dw_trace_fmtd(self):
         """_debug.trace_fmtd formats text with kwargs and respects max_len"""
         debug.trace(4, f"test_dw_trace_fmtd(): self={self}")
@@ -936,7 +910,6 @@ class TestDebugWrapper(TestWrapper):
         err = self.get_stderr()
         self.do_assert("oo-fo..." in err)
 
-    @pytest.mark.xfail
     def test_dw_trace_expr(self):
         """_debug.trace_expr resolves expression names via introspection"""
         debug.trace(4, f"test_dw_trace_expr(): self={self}")
@@ -994,7 +967,6 @@ class TestDebugWrapper(TestWrapper):
         err = self.get_stderr()
         self.do_assert("Exception during oo-task" in err)
 
-    @pytest.mark.xfail
     def test_dw_raise_exception(self):
         """_debug.raise_exception re-raises at level; no-op when level not met"""
         debug.trace(4, f"test_dw_raise_exception(): self={self}")
@@ -1006,7 +978,6 @@ class TestDebugWrapper(TestWrapper):
         # level above trace_level: should be a no-op
         THE_MODULE._debug.raise_exception(10)
 
-    @pytest.mark.xfail
     def test_dw_assertion(self):
         """_debug.assertion warns on failure but not on success"""
         debug.trace(4, f"test_dw_assertion(): self={self}")

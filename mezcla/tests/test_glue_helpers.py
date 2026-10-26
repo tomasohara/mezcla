@@ -46,7 +46,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     script_module = TestWrapper.get_testing_module_name(__file__, THE_MODULE)
     ## OLD: temp_file = self.get_temp_file()
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     ## DEBUG: @trap_exception            # TODO: remove when debugged
     def test_01_data_file(self):
         """Tests run_script w/ data file"""
@@ -107,7 +106,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
             pass # system.write_file cant be used because appends a newline
         assert not THE_MODULE.non_empty_file(empty_file)
 
-    @pytest.mark.xfail
     def test_form_path(self):
         """Ensure form_path works as expected"""
         debug.trace(4, "test_form_path()")
@@ -123,7 +121,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert(system.file_exists(test_temp_dir))
         assert(not system.file_exists(test_temp_file))
 
-    @pytest.mark.xfail
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
         debug.trace(4, "test_create_directory()")
@@ -139,7 +136,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         ## atexit.register(THE_MODULE.delete_directory, res_2_dir)
         assert THE_MODULE.is_directory(res_2_dir)
 
-    @pytest.mark.xfail
     def test_full_mkdir(self):
         """Ensure full_mkdir works as expected"""
         debug.trace(4, "test_full_mkdir()")
@@ -148,7 +144,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         THE_MODULE.full_mkdir(temp_dir_abc)
         assert  system.is_directory(temp_dir_abc)
 
-    @pytest.mark.xfail
     def test_get_temp_dir(self):
         """Tests get_temp_dir"""
         debug.trace(4, "test_get_temp_dir()")
@@ -203,7 +198,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert temp_dir.startswith(test_temp_base_dir)
         assert system.is_directory(temp_dir)
 
-    @pytest.mark.xfail
     def test_create_temp_file(self):
         """Ensure create_temp_file works as expected"""
         debug.trace(4, "test_create_temp_file()")
@@ -212,7 +206,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert system.read_file(temp_path) == 'some content\n'
         assert temp_path.startswith(self.get_temp_dir(static=True))
         
-    @pytest.mark.xfail
     def test_write_temp_file(self):
         """Ensure write_temp_file works as expected"""
         debug.trace(4, "test_write_temp_file()")
@@ -232,7 +225,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert system.read_file(temp_path) == 'some content\n'
         assert temp_path.startswith(temp_sub_dir2)
         
-    @pytest.mark.xfail
     def test_real_path(self):
         """Ensure real_path works as expected"""
         ## TODO3: skip if not posix
@@ -274,7 +266,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_elide_values()")
         assert THE_MODULE.elide_values(["1", "22", "333"], max_len=2) == ["1", "22", "33..."]
 
-    @pytest.mark.xfail
     def test_disable_subcommand_tracing(self):
         """Ensure disable_subcommand_tracing works as expected
         Warning: This test relies upon various assumptions about the tracing
@@ -312,7 +303,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert my_re.search(r"setenv\(DEBUG_LEVEL, 0\)", stderr_2)
         assert not sub_stderr_2.strip()
 
-    @pytest.mark.xfail
     def test_run(self):
         """Ensure run works as expected"""
         debug.trace(4, "test_run()")
@@ -369,7 +359,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert not THE_MODULE.basename("fubar.py", "") == "fubar"
         assert THE_MODULE.basename("/tmp/solr-4888.log", ".log") == "solr-4888"
 
-    @pytest.mark.xfail
     def test_resolve_path(self):
         """Tests for resolve_path(filename)"""
         script = "glue_helpers.py"
@@ -382,7 +371,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert (gh.real_path(THE_MODULE.resolve_path(test_script))
                 == gh.form_path(test_dir, test_script))
 
-    @pytest.mark.xfail
     def test_heuristic_resolve_path(self):
         """Tests for heuristic version of resolve_path(filename)"""
         requirements_filename = "requirements.txt"
@@ -542,7 +530,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
             assert False, "unsupported OS"
         assert THE_MODULE.file_size('non-existent-file.txt') == -1
 
-    @pytest.mark.xfail
     def test_get_matching_files(self):
         """Ensure get_matching_files works as expected"""
         debug.trace(4, "test_get_matching_files()")
@@ -554,7 +541,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         stderr = self.get_stderr()
         assert "Warning: no matching files for non-existent-file" in stderr
 
-    @pytest.mark.xfail
     def test_get_files_matching_specs(self):
         """Ensure get_files_matching_specs works as expected"""
         debug.trace(4, "test_get_files_matching_specs()")
@@ -567,7 +553,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert "resources" in matches
 
 
-    @pytest.mark.xfail
     def test_get_directory_listing(self):
         """Ensure get_directory_listing works as expected"""
         debug.trace(4, "test_get_directory_listing()")
@@ -607,7 +592,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         # Test non enviroment var
         assert THE_MODULE.getenv_filename('BAD_ENV_FILE_VAR', default='missing-file') == 'missing-file'
 
-    @pytest.mark.xfail
     def test_non_empty_directory(self):
         """Make sure non_empty_directory works for empty and non-empty dir"""
         ## TODO3: use monkeypatvh to ensure TEMP_FILE not set
@@ -617,7 +601,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         system.write_file(gh.form_path(temp_dir, "temp_file.list"), "dummy text")
         assert THE_MODULE.non_empty_directory(temp_dir)
 
-    @pytest.mark.xfail
     def test_copy_directory(self):
         """Ensure copy_directory works as expected"""
         debug.trace(4, "test_copy_directory()")
@@ -639,7 +622,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert copy_contents in system.read_file(
             gh.form_path(temp_dir_2, copy_file_name))
 
-    @pytest.mark.xfail
     def test_delete_directory(self):
         """Ensure delete_directory works as expected"""
         debug.trace(4, "test_delete_directory()")
@@ -681,7 +663,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
 
         THE_MODULE.DISABLE_RECURSIVE_DELETE = old
 
-    @pytest.mark.xfail
     def test_get_temp_file_deletion(self):
         """Make sure temp file returned properly when TEMP_FILE not set
         Note: accounts for odd NamedTemporaryFile behavior with delete
@@ -696,7 +677,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         temp_file_with_delete = THE_MODULE.get_temp_file(delete=True)
         assert system.file_exists(temp_file_with_delete)
  
-    @pytest.mark.xfail
     def test_zend_initialization(self):
         """Make sure module initialized OK
         Warning: This test involves subtle maniulation of the temp file environment

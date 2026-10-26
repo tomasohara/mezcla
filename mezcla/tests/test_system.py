@@ -134,7 +134,6 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.getenv('TEST_ENV_VAR') == 'some value'
         assert THE_MODULE.getenv('INT_ENV_VAR', default_value=5) == 5
 
-    @pytest.mark.xfail
     def test_getenv_text_etc_bookkeeping(self):
         """Check getenv_text, etc. used of env. option registration"""
         debug.trace(4, "test_getenv_bookkeeping()")
@@ -245,7 +244,6 @@ class TestSystem(TestWrapper):
         captured = self.get_stderr()
         assert "Foobar" in captured
 
-    @pytest.mark.xfail
     def test_exit(self):
         """Ensure exit works as expected"""
         # Note: This modifies sys.exit so that system.exit doesn't really exit.
@@ -470,7 +468,6 @@ class TestSystem(TestWrapper):
         THE_MODULE.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_read_binary_file(self):
         """Ensure read_binary_file works as expected"""
         debug.trace(4, "test_read_binary_file()")
@@ -492,7 +489,6 @@ class TestSystem(TestWrapper):
         assert gh.form_path(path, "README.md") in THE_MODULE.get_directory_filenames(path)
         assert gh.form_path(path, "resources") not in THE_MODULE.get_directory_filenames(path, just_regular_files=True)
 
-    @pytest.mark.xfail
     def test_read_lookup_table(self):
         """Ensure read_lookup_table works as expected"""
         debug.trace(4, "test_read_lookup_table()")
@@ -551,7 +547,6 @@ class TestSystem(TestWrapper):
         captured = self.get_stderr()
         assert 'Error' in captured
 
-    @pytest.mark.xfail
     def test_create_boolean_lookup_table(self):
         """Ensure create_boolean_lookup_table works as expected"""
         debug.trace(4, "test_create_boolean_lookup_table()")
@@ -663,7 +658,6 @@ class TestSystem(TestWrapper):
         THE_MODULE.write_temp_file(temp_file, 'some content')
         assert THE_MODULE.read_file(temp_file) == 'some content\n'
 
-    @pytest.mark.xfail
     def test_get_file_modification_time(self):
         """Ensure get_file_modification_time works as expected"""
         ## TODO2: just check for timestamp pattern (e.g., "DDDD-MM-DD MM:MM:SS")
@@ -712,7 +706,6 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.file_exists(existent_file)
         assert not THE_MODULE.file_exists('bad_file_name')
 
-    @pytest.mark.xfail
     def test_get_file_size(self):
         """Ensure get_file_size works as expected"""
         debug.trace(4, "test_get_file_size()")
@@ -746,7 +739,6 @@ class TestSystem(TestWrapper):
         assert THE_MODULE.is_regular_file(filename)
         assert not THE_MODULE.is_regular_file('/etc')
 
-    @pytest.mark.xfail
     def test_create_directory(self):
         """Ensure create_directory works as expected"""
         debug.trace(4, "test_create_directory()")
@@ -780,7 +772,6 @@ class TestSystem(TestWrapper):
         self.monkeypatch.setattr("os.getcwd", lambda: fake_dir)
         assert THE_MODULE.get_current_directory() == fake_dir
             
-    @pytest.mark.xfail
     def test_set_current_directory(self):
         """Ensure set_current_directory works as expected"""
         debug.trace(4, "test_set_current_directory()")
@@ -884,7 +875,6 @@ class TestSystem(TestWrapper):
             assert "/" in THE_MODULE.real_path("/etc/mtab")
             assert THE_MODULE.real_path("/etc/mtab").startswith("/proc")
 
-    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_module_version(self):
         """Ensure get_module_version works as expected"""
         debug.trace(4, "test_get_module_version()")
