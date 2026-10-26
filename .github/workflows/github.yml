@@ -16,6 +16,7 @@
 # - The jobs take around about 10 minutes each [circa November 2025],
 #   so setting time out to 15 minutes.
 #
+## UPDATE 2026-10-25: adds 
 
 name: Github-Tests
 
@@ -76,6 +77,13 @@ jobs:
       ##       ${{ runner.os }}-pip-${{ matrix.python-version }}-
       ##       ${{ runner.os }}-pip-
 
+      - name: Run Python Tests for Core Modules without Dependencies (under Runner)
+        # Tests core modules like debug and system before installing dependencies via requirements.txt
+        env:
+          TEST_SELENIUM: 0
+        run: |
+          PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash --core
+          
       - name: Check Dependencies
         # Output dependency report, which is useful for diagnosing issue with pip install
         run: |
@@ -119,7 +127,7 @@ jobs:
         run: |
           pip install selenium
 
-      - name: Run Python Tests under Runner
+      - name: Run Python Tests (under Runner)
         env:
           TEST_SELENIUM: 1
         run: |
