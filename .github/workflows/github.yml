@@ -55,10 +55,10 @@ jobs:
           du --block-size=1K / 2>&1 | sort -rn | head -40
 
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -107,7 +107,7 @@ jobs:
 
       # Change facilitated by Antigravity AI Assistant using Gemini
       - name: Setup Firefox
-        uses: browser-actions/setup-firefox@v1.7.0
+        uses: browser-actions/setup-firefox@v1.7.2
         with:
           firefox-version: 'latest'
 
@@ -149,7 +149,7 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Build docker image
         run: |
