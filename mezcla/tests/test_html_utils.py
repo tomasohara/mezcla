@@ -16,6 +16,7 @@
 # - Use website accessible to all ScrappyCito assistants. For example,
 #      www.tomasohara.trade => new www.scrappycito.trade
 #
+## UPDATE 2026-10-25: Cleans up skipif/xfail specifications.
 ## UPDATE 31 Aug 26: Updates URLs for tomasohara samples (e.g., mezcla-based dir).
 
 # Change facilitated by Antigravity (AI coding assistant designed by Google DeepMind).
@@ -60,7 +61,11 @@ SKIP_SELENIUM_REASON = f"Not-{TEST_SELENIUM_DESC}"
 INCLUDE_HINT_TESTS = system.getenv_bool(
     "INCLUDE_HINT_TESTS", False,
     desc="Include the work-in-progress tests involving type hints")
-SKIP_HINT_TESTS = not INCLUDE_HINT_TESTS
+## OLD: SKIP_HINT_TESTS = not INCLUDE_HINT_TESTS
+SKIP_HINT_TESTS = system.getenv_bool(
+    "SKIP_HINT_TESTS", not INCLUDE_HINT_TESTS,
+    desc="Include the work-in-progress tests involving type hints")
+debug.assertion(debug.xor(INCLUDE_HINT_TESTS, SKIP_HINT_TESTS))
 SKIP_HINT_REASON = "Type hinting tests require more work"
 ##
 SCRAPPYCITO_URL = "http://www.scrappycito.com"
@@ -240,6 +245,7 @@ class TestHtmlUtils(TestWrapper):
         self.do_assert(not my_re.search(tips_section_closed_regex, inner.strip(), flags=my_re.IGNORECASE))
         self.do_assert(my_re.search(tips_section_closed_regex, regular.strip(), flags=my_re.IGNORECASE))
     
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_html_alt(self):
         """Alternative test of get_inner_html"""
@@ -559,15 +565,16 @@ class TestHtmlUtils(TestWrapper):
         # Test base_url none
         assert THE_MODULE.extract_html_link(html, url=url) == all_urls
 
-    @pytest.mark.xfail
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_html_type_hints(self):
         URL_VALID = "https://duckduckgo.com"
         URL_INVALID = "duckduckgo.com"
         assert THE_MODULE.get_inner_html(URL_VALID)
         assert not THE_MODULE.get_inner_html(URL_INVALID)
 
-    @pytest.mark.xfail
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_inner_text_alt(self):
         URL_VALID = "https://duckduckgo.com"
         URL_INVALID = "duckduckgo.com"
@@ -578,7 +585,7 @@ class TestHtmlUtils(TestWrapper):
         assert not inner_text_invalid
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
-    @pytest.mark.xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_document_ready_alt(self):
         """Verify document_ready for simple sites"""
         ## TODO2: merge with test_document_ready; use simple site (not production web search)
@@ -595,7 +602,8 @@ class TestHtmlUtils(TestWrapper):
         test_document_ready = THE_MODULE.document_ready("file://" + self.ready_test_alt_path, timeout=5)
         self.do_assert(not test_document_ready)
 
-    @pytest.mark.xfail
+    @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
     def check_browser_dimensions(self, width, height, label):
         """Verify that browser accepts dimensions of WIDTH x HEIGHT via selenium"""
         debug.trace(5, f"check_browser_dimensions{(width, height, label)}")
@@ -621,7 +629,7 @@ class TestHtmlUtils(TestWrapper):
         return ok
         
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
-    @pytest.mark.xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_browser_dimensions(self):
         """Verify that 8k and 16k resolution possible with headless selenium driver but not 32k"""
         # In addition, the target 16k resolution is based on
@@ -635,7 +643,7 @@ class TestHtmlUtils(TestWrapper):
         assert not self.check_browser_dimensions(30720, 17280, "32k")
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
-    @pytest.mark.xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_wait_until_ready(self):
         """Verify that wait_until_ready for simple web page with JavaScript"""
         debug.trace(4, "test_wait_until_ready()")
@@ -646,7 +654,7 @@ class TestHtmlUtils(TestWrapper):
         assert my_re.search(r"diff=[0-9]", captured)
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
-    @pytest.mark.xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_browser_command(self):
         """Verify that browser_command works for simple command"""
         debug.trace(4, "test_browser_command()")
@@ -656,7 +664,7 @@ class TestHtmlUtils(TestWrapper):
         assert "dimensions" in title.lower()
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
-    @pytest.mark.xfail
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_selenium_function(self):
         """Verify that selenium_function works for simple function call"""
         debug.trace(4, "test_selenium_function()")
@@ -676,16 +684,16 @@ class TestHtmlUtils(TestWrapper):
         THE_MODULE.set_param_dict(param_dict)
         assert THE_MODULE.user_parameters == param_dict
 
-    @pytest.mark.xfail
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test_set_param_dict_type_hints(self):
         param_dict = str({1: "a+b+c", 2: "a%2b%2c%2"})
         THE_MODULE.set_param_dict(param_dict)
         assert not isinstance(THE_MODULE.user_parameters, dict)
         assert len(THE_MODULE.user_parameters) > 2
 
-    @pytest.mark.xfail    
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail    
     def test_get_param_dict_type_hints(self):
         param_dict = str({
             "p1": "a+b+c",
@@ -694,8 +702,8 @@ class TestHtmlUtils(TestWrapper):
         result = THE_MODULE.get_param_dict(param_dict=param_dict)
         assert not isinstance(result, dict)
 
-    @pytest.mark.xfail 
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail    
     def test_get_url_param_type_hints(self):
         param_dict = {
             "name": "Terry",
@@ -712,8 +720,8 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(escaped, bool)
         assert isinstance(result, str)
     
-    @pytest.mark.xfail 
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail    
     def test_get_url_text_type_hints(self):
         param_dict = {
             "name": "Alice",
@@ -735,8 +743,8 @@ class TestHtmlUtils(TestWrapper):
         result = THE_MODULE.get_url_text(None)
         assert isinstance(result, str)
 
-    @pytest.mark.xfail 
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail    
     def test_get_url_param_checkbox_spec_type_hints(self):
         name = "param"
         default_value = ""
@@ -752,8 +760,8 @@ class TestHtmlUtils(TestWrapper):
         result = THE_MODULE.get_url_param_checkbox_spec(None)
         assert isinstance(result, str)
 
-    @pytest.mark.xfail 
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail    
     def test_get_url_parameter_value_type_hints(self):
         param = "param"
         default_value = ""
@@ -769,8 +777,8 @@ class TestHtmlUtils(TestWrapper):
         result = THE_MODULE.get_url_parameter_value(None)
         assert result is None
 
-    @pytest.mark.xfail 
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail    
     def test_get_url_parameter_bool_type_hints(self):
         param = "param"
         default_value = False
@@ -787,8 +795,8 @@ class TestHtmlUtils(TestWrapper):
         result = THE_MODULE.get_url_parameter_bool(None)
         assert isinstance(result, bool)
 
-    @pytest.mark.xfail 
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail    
     def test_get_url_parameter_int_type_hints(self):
         param = "param"
         default_value = 0
@@ -804,8 +812,8 @@ class TestHtmlUtils(TestWrapper):
         result = THE_MODULE.get_url_parameter_int(None)
         assert result is not None and isinstance(result, int)
 
-    @pytest.mark.xfail 
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail    
     def test_get_url_parameter_float_type_hints(self):
         param = "param"
         default_value = 0.0
@@ -821,8 +829,8 @@ class TestHtmlUtils(TestWrapper):
         result = THE_MODULE.get_url_parameter_float(None)
         assert result is not None and isinstance(result, float)
 
-    @pytest.mark.xfail 
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail 
     def test_fix_url_parameters_type_hints(self):
         param = "param"
         param_dict = {param: [17.38, 19.45, 88.88, 16.09]}
@@ -845,8 +853,8 @@ class TestHtmlUtils(TestWrapper):
             assert True
             
 
-    @pytest.mark.xfail 
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail    
     def test_expand_misc_param_type_hints(self):
         misc_dict = {'x': 1, 'y': 2, 'z': 'a=3, b=4'}
         param_name = "z"
@@ -862,8 +870,8 @@ class TestHtmlUtils(TestWrapper):
         result = THE_MODULE.expand_misc_param(None, None)
         assert isinstance(result, dict) or result is None
         
-    @pytest.mark.xfail
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test__read_file_type_hints(self):
         contents = "Hello World"
         filename = self.create_temp_file(contents)
@@ -874,8 +882,8 @@ class TestHtmlUtils(TestWrapper):
         assert isinstance(as_binary, bool)
         assert isinstance(result, str)        
 
-    @pytest.mark.xfail
     @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    @pytest.mark.xfail                   # TODO: remove xfail
     def test__write_file_type_hints(self):
         data = "Hello World"
         filename = self.create_temp_file(contents="")
@@ -962,8 +970,8 @@ class TestHtmlUtils(TestWrapper):
         assert html == "<html lang='en'>  <head>    <title>hola</title>  </head>  <body>    <h3>hola<h3>    josé  </body></html>"
 
     ## TODO (test for type hint failures):
-    ## @pytest.mark.xfail
     ## @pytest.mark.skipif(SKIP_HINT_TESTS, reason=SKIP_HINT_REASON)
+    ## @pytest.mark.xfail                   # TODO: remove xfail
     ## def test_download_web_document_type_hints(self):
     ##     ...
 
