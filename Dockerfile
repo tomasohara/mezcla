@@ -32,10 +32,10 @@
 #
 ## 2026-10-25: update to Ubuntu 26.04 and Python 3.13
 
-## NOTE: Uses a smaller image to speed up build
-## TEST: FROM ghcr.io/catthehacker/ubuntu:act-latest
+## NOTE: Uses a smaller image to speed up build; and, used fixed version for use in python download below)
+## See https://hub.docker.com/layers/catthehacker/ubuntu/act-24.04-dev
 ARG UBUNTU_VERSION="26.04"
-FROM catthehacker/ubuntu:act-${UBUNTU_VERSION}
+FROM catthehacker/ubuntu:act-${UBUNTU_VERSION}-dev
 
 ARG WORKDIR=/home/mezcla
 ARG REQUIREMENTS=$WORKDIR/requirements.txt
@@ -88,18 +88,21 @@ END_RUN
 # Note:
 # - Uses versions prepared for Github Actions
 # - To find URL links, see https://github.com/actions/python-versions:
-#   ex: https://github.com/actions/python-versions/releases/tag/3.11.4-5199054971
+#   ex: https://github.com/actions/python-versions/releases/tag/3.13.17-39711892467
 # - Also see https://stackoverflow.com/questions/74673048/github-actions-setup-python-stopped-working.
 # - The wget -qO option is for quiet output to a file.
 # - TODO3: report error if download fails
-RUN if [ "$PYTHON_VERSION" != "" ]; then                                                      \
-        url="https://github.com/actions/python-versions/releases/download/${PYTHON_VERSION}-${PYTHON_TAG}/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz" &&                                     \
-        echo "python url=$url" &&                                                             \
-        wget -qO /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz  &&         \
-        mkdir -p /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 &&                         \
-        tar -xzf /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz             \
-            -C /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 --strip-components=1 &&      \
-        rm /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz;                  \
+# - TODO2: simplify the URL spec (e.g., ARG PYTHON_TAR_URL="...")
+RUN if [ "$PYTHON_VERSION" != "" ]; then                                                     \
+        url="https://github.com/actions/python-versions/releases/download" &&                \
+           url="$url/${PYTHON_VERSION}-${PYTHON_TAG}" &&                                     \
+           url="$url/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz" &&         \
+        echo "python url=$url" &&                                                            \
+        wget -qO /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz "$url" &&  \
+        mkdir -p /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 &&                        \
+        tar -xzf /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz            \
+            -C /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 --strip-components=1 &&     \
+        rm /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz;                 \
     fi
 
 ## TODO (use streamlined python installation):
