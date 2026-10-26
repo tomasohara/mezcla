@@ -30,11 +30,11 @@
 #
 # TODO3: keep in synch with ~/bin version (https://github.com/tomasohara/shell-scripts)
 #
+## 2026-10-25: update to Ubuntu 26.04 and Python 3.13
 
 ## NOTE: Uses a smaller image to speed up build
 ## TEST: FROM ghcr.io/catthehacker/ubuntu:act-latest
-## OLD: FROM catthehacker/ubuntu:act-20.04
-ARG UBUNTU_VERSION="22.04"
+ARG UBUNTU_VERSION="26.04"
 FROM catthehacker/ubuntu:act-${UBUNTU_VERSION}
 
 ARG WORKDIR=/home/mezcla
@@ -48,15 +48,10 @@ WORKDIR $WORKDIR
 # Note: The workflow uses 3 current Python versions for installations under runner VM (except the one used here)
 #
 # To find URL links, see https://github.com/actions/python-versions:
-# ex: https://github.com/actions/python-versions/releases/tag/3.11.4-5199054971
+# ex: https://github.com/actions/python-versions/releases/tag/3.13.17-39711892467
 #
-## OLD: ARG PYTHON_VERSION=3.8.12
-## TODO:
-ARG PYTHON_VERSION=3.11.4
-## TODO: ARG PYTHON_VERSION=""
-## OLD: ARG PYTHON_TAG="117929"
-## TODO:
-ARG PYTHON_TAG="5199054971"
+ARG PYTHON_VERSION=3.13.17
+ARG PYTHON_TAG="39711892467"
 
 # Set default debug level (n.b., use docker build --build-arg "arg1=v1" to override)
 # Also optionally set the regex of tests to run.
@@ -97,12 +92,14 @@ END_RUN
 # - Also see https://stackoverflow.com/questions/74673048/github-actions-setup-python-stopped-working.
 # - The wget -qO option is for quiet output to a file.
 # - TODO3: report error if download fails
-RUN if [ "$PYTHON_VERSION" != "" ]; then                                                 \
-        wget -qO /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz "https://github.com/actions/python-versions/releases/download/${PYTHON_VERSION}-${PYTHON_TAG}/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz" &&     \
-        mkdir -p /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 &&                    \
-        tar -xzf /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz                    \
-            -C /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 --strip-components=1 && \
-        rm /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz;                          \
+RUN if [ "$PYTHON_VERSION" != "" ]; then                                                      \
+        url="https://github.com/actions/python-versions/releases/download/${PYTHON_VERSION}-${PYTHON_TAG}/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz" &&                                     \
+        echo "python url=$url" &&                                                             \
+        wget -qO /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz  &&         \
+        mkdir -p /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 &&                         \
+        tar -xzf /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz             \
+            -C /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 --strip-components=1 &&      \
+        rm /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz;                  \
     fi
 
 ## TODO (use streamlined python installation):
