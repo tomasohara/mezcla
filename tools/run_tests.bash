@@ -11,13 +11,16 @@
 #   SC2010: Don't use ls | grep
 #   SC2046: Quote this to prevent word splitting.
 #   SC2086: Double quote to prevent globbing and word splitting.
+#   SC2207: Prefer mapfile or read -a to split command output ....
+#   shellcheck disable=SC2010,SC2046,SC2086,SC2207
 # - Environment options:
-#   TEST_REGEX: tests to include
-#   FILTER_REGEX: tests to exclude
 #   DRY_RUN:-just show commands to be run
+#   FILTER_REGEX: tests to exclude
 #   INVOKE_PYTEST_DIRECTLY: uses pytest instead of master_test.py wrapper
+#   MEZCLA_CORE: core Mezcla modules (debug, main, etc.)
 #   PYTEST_OPTIONS: options for pytest
 #   RUN_PYTHON_TESTS: (deprecated) invoke master_test.py
+#   TEST_REGEX: tests to include
 #
 # TODO2:
 # - Document environment variables (e.g. overrides in _temp_test_settings.bash):
@@ -28,6 +31,7 @@
 # $ ./tools/run_tests.bash --coverage
 # $ ./tools/run_tests.bash --all
 #
+## UPDATE 2026-10-25: add option for testing core module
 
 # Set bash regular and/or verbose tracing
 DEBUG_LEVEL=${DEBUG_LEVEL:-0}
@@ -43,13 +47,19 @@ fi
 
 # Parse options
 RUN_ALL_TESTS=0
+JUST_CORE_MODULES=0
 SHOW_HELP=0
 COVERAGE_OPT=0
+INVOKE_PYTEST_DIRECTLY="${INVOKE_PYTEST_DIRECTLY:-0}"
 
 for arg in "$@"; do
     case "$arg" in
         --all)
             RUN_ALL_TESTS=1
+            ;;
+        --core)
+            JUST_CORE_MODULES=1
+            INVOKE_PYTEST_DIRECTLY=1
             ;;
         --coverage)
             COVERAGE_OPT=1
@@ -61,15 +71,17 @@ for arg in "$@"; do
 done
 
 # Show usage
+MEZCLA_CORE="${MEZCLA_CORE:-"debug, html_utils, main, my_regex, system, glue_helpers"}"
 if [[ "$SHOW_HELP" == "1" ]]; then
     script=$(basename "$0")
-    echo "Usage: $script [--help | --coverage | --all]"
+    echo "Usage: $script [--help | --coverage | --all | --core]"
     echo ""
     echo "Environment options:"
     echo "    DEBUG_LEVEL, TRACE, VERBOSE, TEST_REGEX, FILTER_REGEX, INVOKE_PYTEST_DIRECTLY, RUN_PYTHON_TESTS, DRY_RUN"
     echo ""
     echo "Options:"
     echo "    --all         Run all tests in the repository (e.g., tfidf and examples)"
+    echo "    --core        Test core mezcla modules (i.e., ${MEZCLA_CORE})."
     echo "    --coverage    Generate coverage report"
     echo ""
     echo "Example:"
@@ -82,8 +94,8 @@ fi
 dir=$(dirname "${BASH_SOURCE[0]}")
 base="$dir/.."
 mezcla="$base/mezcla"
-tests="$mezcla/tests"
-example_tests="$mezcla/examples/tests"
+tests=("$mezcla/tests")
+example_tests=("$mezcla/examples/tests")
 
 # Optionally source temporary settings script
 temp_script="$dir/_temp_test_settings.bash"
@@ -109,31 +121,37 @@ TEST_REGEX="${TEST_REGEX:-$DEFAULT_TEST_REGEX}"
 DEFAULT_FILTER_REGEX="(not-a-real-test.py)"
 FILTER_REGEX="${FILTER_REGEX:-"$DEFAULT_FILTER_REGEX"}"
 
+# shellcheck disable=SC2010
 if [ "$RUN_ALL_TESTS" == "1" ]; then
     echo "FYI: Finding all tests in $mezcla"
     # shellcheck disable=SC2010
-    tests=$(find "$mezcla" -name "test_*.py" -not -path "*/_git-trash/*" | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
-    example_tests=""
-# shellcheck disable=SC2010
+    tests=($(find "$mezcla" -name "test_*.py" -not -path "*/_git-trash/*" | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX"))
+    example_tests=()
+elif [ "$JUST_CORE_MODULES" == "1" ]; then
+    echo "FYI: Just testing core mezcla modules: $MEZCLA_CORE"
+    # shellcheck disable=SC2010
+    core_regex="${MEZCLA_CORE//, /|}"
+    tests=($(ls "$mezcla"/tests/*.py | grep --perl-regexp "test_($core_regex).py"))
+    example_tests=()
 elif [[ ("$TEST_REGEX" != "$DEFAULT_TEST_REGEX") || ("$FILTER_REGEX" != "$DEFAULT_FILTER_REGEX") ]]; then
-    tests=$(ls "$tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
-    example_tests=$(ls "$example_tests"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX")
+    tests=($(ls "${tests[0]}"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX"))
+    example_tests=($(ls "${example_tests[0]}"/*.py | grep --perl-regexp "$TEST_REGEX" | grep --invert-match --perl-regexp "$FILTER_REGEX"))
 fi
 #
-echo -n "Running tests on $tests"
-if [ "$example_tests" == "" ]; then
+echo -n "Running tests on" "${tests[@]}"
+if [ ${#example_tests[@]} -eq 0 ]; then
     echo "; running no separate example tests"
 else
-    echo "; also running $example_tests"
+    echo "; also running" "${example_tests[@]"
 fi
 echo ""
 echo -n "via "
 python3 --version
 
 # Just echo command if dry run
-pre_cmd=""
+pre_cmd=()
 if [ "${DRY_RUN:-0}" == 1 ]; then
-   pre_cmd="echo"
+   pre_cmd=("echo")
 fi
 
 # Remove mezcla package if running under Docker (or act)
@@ -167,19 +185,19 @@ fi
 test_result=0
 if [ "$COVERAGE_OPT" == "1" ]; then
     echo "FYI: Just running coverage"
-    $pre_cmd export COVERAGE_RCFILE="$base/.coveragerc"
-    $pre_cmd export CHECK_COVERAGE='true'
-    $pre_cmd coverage erase
-    $pre_cmd coverage run -m pytest $tests $example_tests
-    $pre_cmd coverage combine
-    $pre_cmd coverage html
+    "${pre_cmd[@]}" export COVERAGE_RCFILE="$base/.coveragerc"
+    "${pre_cmd[@]}" export CHECK_COVERAGE='true'
+    "${pre_cmd[@]}" coverage erase
+    "${pre_cmd[@]}" coverage run -m pytest "${tests[@]}" "${example_tests[@]}"
+    "${pre_cmd[@]}" coverage combine
+    "${pre_cmd[@]}" coverage html
     test_result="$?"
-elif [ "${INVOKE_PYTEST_DIRECTLY:-0}" == "1" ]; then
+elif [ "$INVOKE_PYTEST_DIRECTLY" == "1" ]; then
     # note: Runs pytest directly, which is useful for pin-pointing errors
     # in GitHub actions web interface.
     echo "Warning: running pytests directly"
     pytest_options="${PYTEST_OPTIONS:-}"
-    $pre_cmd pytest $pytest_options $tests $example_tests
+    "${pre_cmd[@]}" pytest $pytest_options "${tests[@]}" "${example_tests[@]}"
     test_result="$?"    
 elif [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
     echo "FYI: Running master test script (i.e., normal usage)"
@@ -191,7 +209,7 @@ elif [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
     if [ "$RUN_ALL_TESTS" == "1" ]; then
         master_test_opts="$master_test_opts --all"
     fi
-    python3 "$mezcla"/master_test.py $master_test_opts
+    "${pre_cmd[@]}" python3 "$mezcla"/master_test.py $master_test_opts
     test_result="$?"
 else
     echo "Warning: not running tests"
