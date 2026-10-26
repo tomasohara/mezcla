@@ -37,13 +37,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        ## TODO: os: [ubuntu-20.04, ubuntu-latest]
-        ## OLD: python-version: ["3.8", "3.9", "3.10"]
-        ## NOTE: Need 3.8.17+ for typing support, due to backporting limitations with typing_extensions (see html_utils.py)
-        ## TODO?:
-        python-version: ["3.10", "3.12", "3.13"]
-        # Note: The Dockerfile uses 3.11 so try different versions for the runner VM
-        ## TODO: python-version: ["3.9", "3.10", "3.11"]
+        # NOTE: Need 3.8.17+ for typing support, due to backporting limitations with typing_extensions (see html_utils.py)
+        # Also, the dockerfile uses 3.13, so omitting that.
+        python-version: ["3.10", "3.11", "3.12"]
 
       # Stops the matrix if any job fails (n.b., the default).
       # note: Run jobs sequentially to ensure earlier ones run in entirety.
