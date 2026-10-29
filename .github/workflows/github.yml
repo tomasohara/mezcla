@@ -79,6 +79,8 @@ jobs:
         env:
           TEST_SELENIUM: 0
         run: |
+          # note: First installs pyproject dependencies and then adds pytest for sake of core tests.
+          pip install --verbose .
           pip install --verbose pytest
           PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash --core
           
