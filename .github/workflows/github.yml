@@ -75,9 +75,11 @@ jobs:
 
       - name: Run Python Tests for Core Modules without Dependencies (under Runner)
         # Tests core modules like debug and system before installing dependencies via requirements.txt
+        # note: This verifies that dependencies in pyproject.toml is sufficient for basic usage.
         env:
           TEST_SELENIUM: 0
         run: |
+          pip install --verbose pytest
           PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash --core
           
       - name: Check Dependencies
