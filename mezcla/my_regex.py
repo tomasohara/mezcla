@@ -126,8 +126,12 @@ class regex_wrapper():
     VERBOSE = X = re.VERBOSE
     UNICODE = U = re.UNICODE
     ## NOTE: Following are experimental (see re.__init__.py)
-    TEMPLATE = R = re.TEMPLATE
-    DEBUG = re.DEBUG
+    ## OLD: TEMPLATE = R = re.TEMPLATE
+    try:
+        # note: no D shorthand due to implemention quirks (and ideology)
+        DEBUG = re.DEBUG
+    except:
+        system.print_exception_info("import of experimental re flags")
     # TODO: add miscellaneous re functions (e.g., subn)
     
     # pylint: disable=super-init-not-called
