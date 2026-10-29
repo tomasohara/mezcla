@@ -115,6 +115,12 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 
 - Some of the guidelines might conflict with the prompt instructions. Similarly, the instructions might conflict with code snippets used as examples. When in doubt ask for clarification.
 
+## Template-based code generation
+
+- When creating new modules from scratch, check for templates in the repo (e.g., mezcla/template.py). Retain the structure of the template as much as possible, because I use it for customization. In particular, leave in TODO comments for features you don't user (e.g., environment option initialization).
+
+- Add a test set for any new module created, checking the repo for templates (e.g., mezcla/test/template.py). Most tests should use xfail, because they are new and relatively untested. Leave in a TODO test for me, etc.: as per notes for new modules above.
+
 ## Terminal guidelines
 
 0. Don't remove existing files without confirmation: rename them instead (e.g., <filename>.DDMmmYY).
