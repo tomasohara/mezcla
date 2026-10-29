@@ -855,7 +855,7 @@ def alt_download_html_document(url : str, encoding : Optional[str] = None, looka
     except:
         result = str(result)
         system.print_exception_info("download_html_document decode")
-    debug.trace_fmtd(7, "test_download_html_document({u}, [enc={e}, lkahd={la}]) => {r}; len(_)={l}",
+    debug.trace_fmtd(7, "alt_download_html_document({u}, [enc={e}, lkahd={la}]) => {r}; len(_)={l}",
                      u=url, e=encoding, la=lookahead, r=gh.elide(result), l=len(result))
     return (result)
 

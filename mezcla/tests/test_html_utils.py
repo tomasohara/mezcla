@@ -468,12 +468,12 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, "test_download_web_document()")
         self.check_bad_download_web_document(download_func=THE_MODULE.download_web_document)
 
-    def test_test_download_html_document(self):
-        """Ensure test_download_html_document() works as expected"""
-        debug.trace(4, "test_test_download_html_document()")
-        assert "Google" in THE_MODULE.test_download_html_document("www.google.com")
+    def test_alt_download_html_document(self):
+        """Ensure alt_download_html_document() works as expected"""
+        debug.trace(4, "test_alt_download_html_document()")
+        assert "Google" in THE_MODULE.alt_download_html_document("www.google.com")
         ## TODO2: use website accessible to all team members
-        assert "Tomás" not in THE_MODULE.test_download_html_document(f"{self.tomasohara_trade_like_url}", encoding="big5")
+        assert "Tomás" not in THE_MODULE.alt_download_html_document(f"{self.tomasohara_trade_like_url}", encoding="big5")
 
     def test_download_html_document(self):
         """Ensure download_html_document() works as expected"""
