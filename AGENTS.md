@@ -2,6 +2,7 @@
 
 AI agent instructions for arbitrary repos. This is based on instructions designed for Python, so adapt it accordingly to Bash code, etc.
 
+<!-- UPDATE 2026-10-29: standardizes bullets to use '-' not '0.' -->
 <!-- UPDATE 2026-10-15: clarify meta comments and conflicting instructions -->
 
 ## Key Conventions
@@ -25,20 +26,20 @@ AI agent instructions for arbitrary repos. This is based on instructions designe
 
 ## General code agent guidelines
 
-0. Review the main modules first and follow the conventions there:
+-  Review the main modules first and follow the conventions there:
    debug, html_utils, main, my_regex, system, glue_helpers, template
 
-0. Add or revise tests whenever making non-trivial changes. In addition, when
+-  Add or revise tests whenever making non-trivial changes. In addition, when
    revising tests don't remove @xfail tags without confirmation.
 
-0. Similarly for when adding tests, review the following:
+-  Similarly for when adding tests, review the following:
    unittest_wrapper, tests/template.py, tests/test_debug, tests/test_system, etc.
 
-0. Retain the existing code as much as possible. In particular, don't remove TODO comments that address the change you are making. 
+-  Retain the existing code as much as possible. In particular, don't remove TODO comments that address the change you are making. 
 
-0. Avoid pre-function comments in Python and similar languages: place them below the docstring.
+-  Avoid pre-function comments in Python and similar languages: place them below the docstring.
 
-0. Don't delete code without explicit confirmation, even if superseded by code change. Instead, comment it out and add a block prefix of '## OLD:' as follows (n.b., only use one OLD label per block):
+-  Don't delete code without explicit confirmation, even if superseded by code change. Instead, comment it out and add a block prefix of '## OLD:' as follows (n.b., only use one OLD label per block):
 
 	```
 	num /= sum
@@ -60,40 +61,40 @@ Because the use of OLD-comments blocks can be awkward for in-depth changes, ask 
 
 Some variations follow. For single-line changes, just use "## OLD: statement ..." (i.e., one comment not two). When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
-0. Other common meta-comments include '## NOTE', '## TODO[n]', and "## UPDATE". These are comments meant more for development than for the code logic. This uses a doubled pound sign (i.e., '##') as the comment indicator, so that the comments are can be more readily removed when development is complete.
+-  Other common meta-comments include '## NOTE', '## TODO[n]', and "## UPDATE". These are comments meant more for development than for the code logic. This uses a doubled pound sign (i.e., '##') as the comment indicator, so that the comments are can be more readily removed when development is complete.
 
-0. When making significant changes, create a new git branch based on development, using a task-specific name such as 'refine-type-hints' or 'fix-poe-client'. The intention is to minimize conflicts without a proliferation of miscellaneous branches. (Significant changes generally involve multiple files or a substantial revision of a file.)
+-  When making significant changes, create a new git branch based on development, using a task-specific name such as 'refine-type-hints' or 'fix-poe-client'. The intention is to minimize conflicts without a proliferation of miscellaneous branches. (Significant changes generally involve multiple files or a substantial revision of a file.)
 
-0. After making a group of commits, push the changes and make sure the remove upstream branch gets set. In general, the remote should be kept updated except when testing tentative changes locally.
+-  After making a group of commits, push the changes and make sure the remove upstream branch gets set. In general, the remote should be kept updated except when testing tentative changes locally.
 
-0. Don't make edits outside of code directory without confirmation.
+-  Don't make edits outside of code directory without confirmation.
 
-0. Don't check-in code without permission (e.g., get confirmation before making commits): I wish to review code before updating git. In general, don't do any destructive git operations without confirmation.
+-  Don't check-in code without permission (e.g., get confirmation before making commits): I wish to review code before updating git. In general, don't do any destructive git operations without confirmation.
 
-0. Don't do any code refactoring without confirmation.
+-  Don't do any code refactoring without confirmation.
 
-0. Similarly, don't address TODO notes without confirmation.
+-  Similarly, don't address TODO notes without confirmation.
 
-0. In general, wait for me to assign a task. I will explicitly ask for suggested code changes.
+-  In general, wait for me to assign a task. I will explicitly ask for suggested code changes.
 
-0. When making changes, keep the code differences from the previous version as minimal as possible. In particular, avoid purely stylistic changes. This will facilitate reviewing the code. When the requested change requires a substantial revision, request clarification about how to proceed.
+-  When making changes, keep the code differences from the previous version as minimal as possible. In particular, avoid purely stylistic changes. This will facilitate reviewing the code. When the requested change requires a substantial revision, request clarification about how to proceed.
 
-0. Follow the repo code conventions:
+-  Follow the repo code conventions:
    * Avoid putting function definitions inside of other code (e.g., use bottom for Perl and top for Python). Exceptions would be for small functions incorporating context (e.g., sorting helper function).
    * Use full extension names (e.g., ".perl" instead of ".pl").
 
-0. Make sure your in-line code comments abstract from the implementation to cover intention. If needed,
+-  Make sure your in-line code comments abstract from the implementation to cover intention. If needed,
    added separate comments with special implementation notes.
  
    # Merge and sort the input data
    # note: currently uses simple merge sort
    my_merge(list1, list2)
 
-0. Avoid embedded functions except in cases requiring local context: this facilitates testing.
+-  Avoid embedded functions except in cases requiring local context: this facilitates testing.
 
-0. Avoid overly specific function names, instead chose a name that generalizes the intention  (e.g., `test_hello_world_batspp_epoch_seconds_updates` => `test_hello_world_timestamp_update`).
+-  Avoid overly specific function names, instead chose a name that generalizes the intention  (e.g., `test_hello_world_batspp_epoch_seconds_updates` => `test_hello_world_timestamp_update`).
 
-0. Some clarification for the sake of recalcitrant AI agents and/or nitpicking stakeholders (e.g., TPO).
+-  Some clarification for the sake of recalcitrant AI agents and/or nitpicking stakeholders (e.g., TPO).
 
 - Preserve all comments, docstrings, TODOs, attributions, and formatting unless
   the user explicitly authorizes their removal. They count as code.
@@ -123,20 +124,20 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 
 ## Terminal guidelines
 
-0. Don't remove existing files without confirmation: rename them instead (e.g., <filename>.DDMmmYY).
+-  Don't remove existing files without confirmation: rename them instead (e.g., <filename>.DDMmmYY).
 
-0. Don't try to run sudo: ask me to run commands that require special permissions.
+-  Don't try to run sudo: ask me to run commands that require special permissions.
 
-0. When running tests, use headless mode to avoid desktop clutter and conflicts.
+-  When running tests, use headless mode to avoid desktop clutter and conflicts.
 
-0. Note that batch deletions such as `rm -rf dir` are forbidden! Instead, rename the files with an affix based on the current date. For example,
+-  Note that batch deletions such as `rm -rf dir` are forbidden! Instead, rename the files with an affix based on the current date. For example,
    $ mkdir /tmp/fubar; rename-with-file-date /tmp/fubar
    renamed '/tmp/fubar' -> '/tmp/fubar.02Sep26'
 
-0. Name temporary programs with leading `_` (e.g., `_test_regex.perl`), so that `git check-ignore` will filter them. 
+-  Name temporary programs with leading `_` (e.g., `_test_regex.perl`), so that `git check-ignore` will filter them. 
    Similarly, timestamp temporary input and output filenames (e.g., out-02Sep26.txt).
    
-0. Get explicit confirmation before changing files outside of the current repo.
+-  Get explicit confirmation before changing files outside of the current repo.
 
 ## Debug level conventions
 
