@@ -14,9 +14,12 @@
 # Release procedure:
 #   1. Update the version in [project].
 #   2. Build with: flit build
+#      TODO2: hatch build --clean
 #   3. Inspect and test the artifacts in dist/ in a clean virtual environment.
 #   4. Publish with: FLIT_USERNAME="__token__" FLIT_PASSWORD="$token" flit publish
+#      TODO2: HATCH_INDEX_USER="__token__" HATCH_INDEX_AUTH="$token" hatch publish
 #   5. Create the matching annotated Git tag, e.g. v1.4.1.1.
+#   where token="pypi-AgEIc...QLaElY".
 #
 # Runtime dependencies must be listed in [project.dependencies]. Merely having a
 # package importable in a development environment does not cause pip users to
@@ -24,6 +27,7 @@
 #
 # note: specification revised via GPT-5.6-Terra
 #
+## UPDATE 2026-10-29: switch from flit_core to hatchling
 
 [build-system]
 ## OLD:
