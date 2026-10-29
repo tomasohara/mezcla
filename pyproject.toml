@@ -48,6 +48,7 @@ authors = [
 ]
 dependencies = [
     "asttokens",
+    "bs4",
     "executing",
     "requests",
     "six",
