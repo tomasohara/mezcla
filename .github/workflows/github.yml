@@ -79,7 +79,8 @@ jobs:
         env:
           TEST_SELENIUM: 0
         run: |
-          pip install --verbose pytest
+          ## BAD: pip install --verbose pytest
+          pip install --verbose pytest six
           PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash --core
           
       - name: Check Dependencies
