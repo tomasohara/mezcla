@@ -8,13 +8,16 @@
 # - Usage examples:
 #   1. Usual
 #      pip3 install -r requirements.txt
+#      -- robust variant (n.b., works around lack of pip error handling):
+#      perl -pe 's/\s*#.*//;' ~/Mezcla/requirements.txt | grep --extended-regexp --invert-match '^ *#?$' | xargs --replace='{}' pip3 install --verbose '{}'
 #   2. Optional (i.e., including most optional):
-#      pip3 install --verbose $(perl -pe 's/^#opt#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
+#      pip3 install --verbose $(perl -pe 's/^#opt#\s*//;  s/\s*#.*//;' requirements.txt | grep -v '^#')
 #   3. Full (i.e., including all optional):
-#      pip3 install --verbose $(perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#')
+#      pip3 install --verbose $(perl -pe 's/^#(opt|full)#\s*//;  s/\s*#.*//;' requirements.txt | grep -v '^#')
 #      # TODO2: --ignore-errors [maldito pip]; set pip-update check
-#      perl -pe 's/^#(opt|devel|full)#\s*//;  s/\s*#.*//;' ~/Mezcla/requirements.txt | grep -v '^#' | xargs -I '{}' pip3 install --verbose '{}'
+#      perl -pe 's/^#(opt|devel|full)#\s*//;  s/\s*#.*//;' requirements.txt | grep -v '^#' | xargs -I '{}' pip3 install --verbose '{}'
 # - use `pip freeze` to get current list of package specifications (n.b., >= better than == unless specific version needed)
+# - See https://pip.pypa.io/en/stable/reference/requirement-specifiers for package spec.
 #
 # Warning:
 # - Installing textract from PyPI fails https://github.com/deanmalmgren/textract/issues/461.
@@ -30,6 +33,8 @@
 #...............................................................................
 # Regular requirements
 #
+# package-spec                # synopsis
+# TODO2: flesh out synopses
 HTMLParser
 absl_py
 asttokens                     # for debug introspection
