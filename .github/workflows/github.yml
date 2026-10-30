@@ -82,7 +82,7 @@ jobs:
           # note: First installs pyproject dependencies and then adds pytest for sake of core tests.
           pip install --verbose .
           pip install --verbose pytest
-          PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash --core
+          PYTHONPATH="$PWD/mezcla:$PWD/mezcla/tests:$PYTHONPATH" ./tools/run_tests.bash --core
           
       - name: Check Dependencies
         # Output dependency report, which is useful for diagnosing issue with pip install
@@ -131,7 +131,7 @@ jobs:
         env:
           TEST_SELENIUM: 1
         run: |
-          PYTHONPATH="$PWD:$PWD/tests:$PYTHONPATH" ./tools/run_tests.bash --all
+          PYTHONPATH="$PWD/mezcla:$PWD/mezcla/tests:$PYTHONPATH" ./tools/run_tests.bash --all
           
       - name: Post-run diagnostics
         run: |
