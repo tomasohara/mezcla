@@ -15,6 +15,7 @@ rcs                     # for merge (see merge_file.py)--old revision control sy
 python3-pip             # Python package installer
 python3                 # default Ubuntu version
 python-is-python3       # symbolic link: python -> python3
+tesseract-ocr		# Google  optical character recognition (OCR) tool
 #-------------------------------------------------------------------------------
 #devel# lynx
 #-------------------------------------------------------------------------------
