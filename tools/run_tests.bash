@@ -55,12 +55,14 @@ JUST_CORE_MODULES=0
 SHOW_HELP=0
 [ $# -eq 0 ] && SHOW_HELP=1
 COVERAGE_OPT=0
-INVOKE_PYTEST_DIRECTLY="${INVOKE_PYTEST_DIRECTLY:-0}"
+## OLD: INVOKE_PYTEST_DIRECTLY="${INVOKE_PYTEST_DIRECTLY:-0}"
+INVOKE_PYTEST_DIRECTLY="${INVOKE_PYTEST_DIRECTLY:-1}"
 
 for arg in "$@"; do
     case "$arg" in
         --all)
             RUN_ALL_TESTS=1
+            INVOKE_PYTEST_DIRECTLY=0
             ;;
         --core)
             JUST_CORE_MODULES=1
