@@ -8,17 +8,18 @@
 # - This is normally pytest which returns success (0) if no tests fail,
 #   excluding tests marked with xfail.
 # - Disables nitpicking shellcheck:
+#   SC1090: Can't follow non-constant source
 #   SC2010: Don't use ls | grep
 #   SC2046: Quote this to prevent word splitting.
 #   SC2086: Double quote to prevent globbing and word splitting.
 #   SC2207: Prefer mapfile or read -a to split command output ....
-#   shellcheck disable=SC2010,SC2046,SC2086,SC2207
+#   shellcheck disable=SC1090,SC2010,SC2046,SC2086,SC2207
 # - Environment options:
 #   DRY_RUN:-just show commands to be run
 #   FILTER_REGEX: tests to exclude
 #   INVOKE_PYTEST_DIRECTLY: uses pytest instead of master_test.py wrapper
 #   MEZCLA_CORE: core Mezcla modules (debug, main, etc.)
-#   PYTEST_OPTIONS: options for pytest
+#   PYTEST_OPTS: options for pytest
 #   RUN_PYTHON_TESTS: (deprecated) invoke master_test.py
 #   TEST_REGEX: tests to include
 #
@@ -44,11 +45,15 @@ fi
 if [ "${VERBOSE:-0}" = "1" ]; then
     set -o verbose
 fi
+if [[ "${STRICT:-0}" == "1" ]]; then
+    set -euo pipefail
+fi
 
 # Parse options
 RUN_ALL_TESTS=0
 JUST_CORE_MODULES=0
 SHOW_HELP=0
+[ $# -eq 0 ] && SHOW_HELP=1
 COVERAGE_OPT=0
 INVOKE_PYTEST_DIRECTLY="${INVOKE_PYTEST_DIRECTLY:-0}"
 
@@ -67,6 +72,12 @@ for arg in "$@"; do
         --help)
             SHOW_HELP=1
             ;;
+        -)
+            true;;
+        *)
+            echo "Unknown option: $1" >&2;
+            SHOW_HELP=1
+            ;;
     esac
 done
 
@@ -74,7 +85,7 @@ done
 MEZCLA_CORE="${MEZCLA_CORE:-"debug, html_utils, main, my_regex, system, glue_helpers"}"
 if [[ "$SHOW_HELP" == "1" ]]; then
     script=$(basename "$0")
-    echo "Usage: $script [--help | --coverage | --all | --core]"
+    echo "Usage: $script [--help | --coverage | --all | --core] [-]"
     echo ""
     echo "Environment options:"
     echo "    DEBUG_LEVEL, TRACE, VERBOSE, TEST_REGEX, FILTER_REGEX, INVOKE_PYTEST_DIRECTLY, RUN_PYTHON_TESTS, DRY_RUN"
@@ -85,8 +96,10 @@ if [[ "$SHOW_HELP" == "1" ]]; then
     echo "    --coverage    Generate coverage report"
     echo ""
     echo "Example:"
-    echo "    TEST_REGEX='*text*' $0"
+    echo "    TEST_REGEX='(extract_document_text|text_utils)' $0 -"
     echo ""
+    echo "Note:"
+    echo "- The - option is used to bypass usage notes."
     exit
 fi
 
@@ -142,7 +155,7 @@ echo -n "Running tests on" "${tests[@]}"
 if [ ${#example_tests[@]} -eq 0 ]; then
     echo "; running no separate example tests"
 else
-    echo "; also running" "${example_tests[@]"
+    echo "; also running" "${example_tests[@]}"
 fi
 echo ""
 echo -n "via "
@@ -196,7 +209,7 @@ elif [ "$INVOKE_PYTEST_DIRECTLY" == "1" ]; then
     # note: Runs pytest directly, which is useful for pin-pointing errors
     # in GitHub actions web interface.
     echo "Warning: running pytests directly"
-    pytest_options="${PYTEST_OPTIONS:-}"
+    pytest_options="${PYTEST_OPTS:-}"
     "${pre_cmd[@]}" pytest $pytest_options "${tests[@]}" "${example_tests[@]}"
     test_result="$?"    
 elif [ "${RUN_PYTHON_TESTS:-1}" == "1" ]; then
