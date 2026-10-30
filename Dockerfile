@@ -36,6 +36,7 @@
 ## See https://hub.docker.com/layers/catthehacker/ubuntu/act-24.04-dev
 ARG UBUNTU_VERSION="26.04"
 FROM catthehacker/ubuntu:act-${UBUNTU_VERSION}-dev
+ARG UBUNTU_VERSION
 
 ARG WORKDIR=/home/mezcla
 ARG REQUIREMENTS=$WORKDIR/requirements.txt
@@ -52,6 +53,7 @@ WORKDIR $WORKDIR
 #
 ARG PYTHON_VERSION=3.13.17
 ARG PYTHON_TAG="39711892467"
+ARG PYTHON_SHA256="8f9d74fe85105147828b4e6a673989170b3820a4051be00e6420ad30a13ade1f"
 
 # Set default debug level (n.b., use docker build --build-arg "arg1=v1" to override)
 # Also optionally set the regex of tests to run.
@@ -99,6 +101,7 @@ RUN if [ "$PYTHON_VERSION" != "" ]; then                                        
            url="$url/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz" &&         \
         echo "python url=$url" &&                                                            \
         wget -qO /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz "$url" &&  \
+        echo "$PYTHON_SHA256  /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz" | sha256sum --check && \
         mkdir -p /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 &&                        \
         tar -xzf /tmp/python-${PYTHON_VERSION}-linux-${UBUNTU_VERSION}-x64.tar.gz            \
             -C /opt/hostedtoolcache/Python/${PYTHON_VERSION}/x64 --strip-components=1 &&     \
