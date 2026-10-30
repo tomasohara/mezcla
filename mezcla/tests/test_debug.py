@@ -572,6 +572,7 @@ class TestDebug(TestWrapper):
     def test_init_logging(self):
         """Ensure init_logging works as expected"""
         debug.trace(4, f"test_init_logging(): self={self}")
+        self.patch_trace_level(5)
         
         # Test init_logging with env not GLOBAL_LOGGING
         self.monkeypatch.setenv("GLOBAL_LOGGING", 'False')
