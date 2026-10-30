@@ -42,7 +42,7 @@ if [ "$DEBUG_LEVEL" -lt "$MIN_DEBUG_LEVEL" ]; then
     export DEBUG_LEVEL=$MIN_DEBUG_LEVEL
 fi
 if [ "$DEBUG_LEVEL" -ge 4 ]; then
-    export PYTEST_OPTIONS="-v -s"
+    export PYTEST_OPTS="-v -s"
 fi
 
 # Optionally, disable use of master_test.py and call pytest directly.
