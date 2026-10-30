@@ -29,7 +29,6 @@ from collections import defaultdict, OrderedDict
 ## UPDATE: 06/20/2026: Integrates alternative model's type hints.
 from collections.abc import Iterator
 import datetime
-## OLD: import importlib_metadata
 import inspect
 import os
 import pickle
@@ -208,7 +207,6 @@ def normalize_env_var(var: str) -> str:
     return var
 
 
-## OLD: value: Any (str(value) is used, so any object works)
 def setenv(
         var: str,
         value: object,
@@ -220,7 +218,6 @@ def setenv(
     debug.trace_fmtd(5, "setenv({v}, {val})", v=var, val=value)
     debug.assertion(value is not None)
     if normalize:
-        ## OLD: var = var.replace("-", "_").upper()
         var = normalize_env_var(var)
     os.environ[var] = str(value)
     return
@@ -281,7 +278,6 @@ def getenv_text(
     return (text_value)
 
 
-## OLD: default: Optional[Any] = None (redundant: Any already subsumes None)
 def getenv_value(
         var: str,
         default: Any = None,
@@ -349,7 +345,6 @@ def getenv_bool(
         if (bool_value is None):
             bool_value = False if (not allow_none) else None
         else:
-            ## OLD: debug.assertion(bool_value != default, f"Check {var!r} default {default!r}")
             bool_value = to_bool(bool_value)
     debug.assertion(isinstance(bool_value, bool) or allow_none)
     debug.trace_fmtd(5, "getenv_bool({v}, {d}) => {r}",
@@ -409,7 +404,6 @@ def getenv_int(
     # EX: getenv_int("?", default=1.5) => 1
     value = getenv_number(var, description=description, desc=desc, default=default, allow_none=allow_none, helper=True, update=update, skip_register=skip_register, **kwargs)
     if (not isinstance(value, int)):
-        ## OLD: if ((value is not None) and (not allow_none)):
         if (not ((value is None) and allow_none)):
             value = to_int(value)
     debug.trace_fmtd(5, "getenv_int({v}, {d}) => {r}",
@@ -434,7 +428,6 @@ def print_error(text: str) -> None:
     debug.trace(7, f"print_error({text})")
     # ex: print_error("Fubar!")
     # note: obfuscates API keys, etc. (e.g., in exception text with URL); via Claude Code using Claude Opus 5.5
-    ## OLD: print(text, file=sys.stderr)
     print(debug.mask_sensitive(text), file=sys.stderr)
     return None
 
@@ -456,7 +449,6 @@ def print_stderr_fmt(text: str, **kwargs) -> None:
             exc=get_exception()))
         if debug.verbose_debugging():
             print_full_stack()
-    ## OLD: print(formatted_text, file=sys.stderr)
     print(debug.mask_sensitive(formatted_text), file=sys.stderr)
     return None
 #
@@ -602,7 +594,6 @@ def save_object(file_name: FileDescriptorOrPath, obj: Any) -> None:
     return
 
     
-## OLD: -> Optional[Any] (redundant: Any already subsumes None)
 def load_object(file_name: FileDescriptorOrPath, ignore_error: bool = False) -> Any:
     """Loads object from FILE_NAME in pickle format"""
     # Note: Reads in binary mode to avoid unicode decode error. See
@@ -678,9 +669,6 @@ def escape_html_value(value: str) -> str:
     Warning: no-op function; import from html_utils instead
     """
     raise RuntimeError("Use version in glue_helpers.py")
-    ## OLD:
-    ## from mezcla import html_utils       # pylint: disable=import-outside-toplevel
-    ## return html_utils.escape_html_text(value)
 #
 escape_html_text = escape_html_value
 
@@ -689,10 +677,6 @@ def unescape_html_value(value: str) -> str:
     Warning: no-op function; import from html_utils instead
     """
     raise RuntimeError("Use version in glue_helpers.py")
-    ## OLD:
-    ## debug.trace(3, "Warning: deprecated function")
-    ## from mezcla import html_utils       # pylint: disable=import-outside-toplevel
-    ## return html_utils.unescape_html_text(value)
 #
 unescape_html_text = unescape_html_value
 
@@ -1060,7 +1044,6 @@ def split_path(path: str) -> Tuple[str, str]:
     dir_name, filename = os.path.split(path)
     debug.assertion((not dir_name.endswith(os.path.sep)) or (dir_name == os.path.sep))
     result = dir_name, filename
-    ## OLD: debug.assertion(dir_name or filename)
     debug.assertion(dir_name or filename or not path)
     if dir_name and debug.active() and file_exists(path):
         debug.assertion(file_exists(dir_name))
@@ -1145,7 +1128,6 @@ def path_separator(sysname: Optional[str] = None) -> str:
     result = os.path.sep
     if (sysname != os.name):
         default_sep = "/"
-        ## OLD: result = "\\" if sysname == "nt" else default_sep
         result = "\\" if (str(sysname).lower() in ["nt", "windows"]) else default_sep
     debug.trace(7, f"path_separator() => {result}")
     return result
@@ -1159,7 +1141,6 @@ def form_path(*filenames: str) -> str:
     """Wrapper around os.path.join over FILENAMEs (with tracing).
     Note: See glue_helpers.py for a version that creates directories and applies sanity checks.
     """
-    ## OLD: debug.assertion(not any(f.startswith(path_separator()) for f in filenames[1:]))
     path = os.path.join(*filenames)
     debug.trace_fmt(6, "form_path({f}) => {p}", f=tuple(filenames), p=path)
     return path
@@ -1212,7 +1193,6 @@ def to_utf8(text: str) -> str:
     """obsolete no-op: Convert TEXT to UTF-8 (e.g., for I/O)"""
     # old-EX: to_utf8(u"\ufeff") => "\xEF\xBB\xBF"
     result = text
-    ## OLD: ... result = result.encode(UTF8, 'ignore')
     debug.trace_fmtd(8, "to_utf8({t}) => {r}", t=text, r=result)
     return result
 
@@ -1245,7 +1225,6 @@ def to_unicode(text: str, encoding: Optional[str] = None) -> str:
     # old-EX: to_unicode("\xEF\xBB\xBF") => u"\ufeff"
     # TODO: rework from_utf8 in terms of this
     result = text
-    ## OLD: ... result = result.decode(encoding, 'ignore')
     debug.trace_fmtd(8, "to_unicode({t}, [{e}]) => {r}", t=text, e=encoding, r=result)
     return result
 
@@ -1254,7 +1233,6 @@ def from_unicode(text: str, encoding: Optional[str] = None) -> str:
     """Convert TEXT to ENCODING from Unicode, such as to the default UTF8"""
     # TODO: rework to_utf8 in terms of this
     result = text
-    ## OLD: ... result = result.decode(encoding, 'ignore')
     debug.trace_fmtd(8, "from_unicode({t}, [{e}]) => {r}", t=text, e=encoding, r=result)
     return result
 
@@ -1331,7 +1309,10 @@ def get_module_version(module_name: str) -> str:
     version = "?.?.?"
     try:
         # note: made conditional due to silly problem with shell-scripts repo workflow
-        import importlib_metadata       # pylint: disable=import-outside-toplevel
+        ## OLD: import importlib_metadata       # pylint: disable=import-outside-toplevel
+        ## NOTE: reworked for sake of core module test with minimal dependencies
+        ## TODO3: remove importlib_metadata from requirements?
+        from importlib import metadata as importlib_metadata  # pylint: disable=import-outside-toplevel
         version = importlib_metadata.version(module_name)
     except:
         print_exception_info("get_module_version for {module_name}")
@@ -1454,7 +1435,6 @@ def unique_items(values: List[Any],
             if item_key not in ordered_hash:
                 ordered_hash[item_key] = item
     result = list(ordered_hash.values())
-    ## OLD: debug.trace_fmt(8, "unique_items({l}) => {r}", l=in_values, r=result)
     debug.trace(6, f"unique_items: out len={len(result)}")
     debug.trace_fmt(8, "unique_items({l}) => {r}", l=in_values, r=result)
     return result
