@@ -939,10 +939,17 @@ if __debug__:
             else:
                 self.trace_fmt(level, "frame = {f}", f=frame)
                 if frame:
+                    ## NOTE: Starting with Python 3.13 (PEP 667 https://peps.python.org/pep-0667/),
+                    ## frame.f_locals returns a <class 'FrameLocalsProxy'> (a Mapping view) instead of a dict.
+                    ## via Gemini 4 Argon.
                     self.trace_object(level, frame.f_globals, "globals", indentation=prefix,
-                                 show_all=show_methods_etc, max_value_len=max_value_len)
-                    self.trace_object(level, frame.f_locals, "locals", indentation=prefix,
-                                 show_all=show_methods_etc, max_value_len=max_value_len)
+                                      show_all=show_methods_etc, max_value_len=max_value_len)
+                    ## OLD:
+                    ## self.trace_object(level, frame.f_locals, "locals", indentation=prefix,
+                    ##              show_all=show_methods_etc, max_value_len=max_value_len)
+                    self.trace_object(level, dict(frame.f_locals), "locals", indentation=prefix,
+                                      show_all=show_methods_etc, max_value_len=max_value_len)
+
             self.trace(level, "}")
             if para_mode_tracing:
                 self.trace(level, "")
