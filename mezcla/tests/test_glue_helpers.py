@@ -26,7 +26,12 @@ import sys
 ## OLD: import tempfile
 
 # Installed packages
+# note: textract just needed for test_disable_subcommand_tracing
 import pytest
+try:
+    import textract
+except:
+    textract = None
 
 # Local packages
 from mezcla import debug
@@ -51,6 +56,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         """Tests run_script w/ data file"""
         # Warning: see notes above about potential issues with run_script-based tests.
         debug.trace(4, f"TestIt.test_01_data_file(); self={self}")
+        self.patch_trace_level(5) 
         data = ["item1", "item2"]
         system.write_lines(self.temp_file, data)
         output = self.run_script(options="--help", data_file=self.temp_file)
@@ -266,6 +272,9 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         debug.trace(4, "test_elide_values()")
         assert THE_MODULE.elide_values(["1", "22", "333"], max_len=2) == ["1", "22", "33..."]
 
+    @pytest.mark.skipif(not textract, reason="test requires textract")
+    ## TODO2: rework to use different module than extract_document_text
+    ## NOTE: issue spotted via Gemini 4 Argon
     def test_disable_subcommand_tracing(self):
         """Ensure disable_subcommand_tracing works as expected
         Warning: This test relies upon various assumptions about the tracing
