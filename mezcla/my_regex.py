@@ -277,7 +277,8 @@ class regex_wrapper():
         """
         debug.trace_expr(self.TRACE_LEVEL + 2, pattern, replacement, string, count, flags, prefix="in sub: ")
         # Note: Explicit keywords enforced to avoid confusion
-        result = re.sub(pattern, replacement, string, count, flags)
+        ## OLD: result = re.sub(pattern, replacement, string, count, flags)
+        result = re.sub(pattern, replacement, string, count=count, flags=flags)
         debug.reference_var(self)
         debug.trace(self.TRACE_LEVEL + 1, f"my_regex.sub({pattern!r}, {replacement!r}, {string!r}, [count=[count]], flags={flags}]) => {result!r}\n")
         self.check_pattern(pattern)
