@@ -80,7 +80,12 @@ except:
 
 # Installed packages
 # Note: selenium import now optional; BeautifulSoup also optional
+# lxml is used when initializing BeautifulSoup
 import requests
+try:
+    import lxml
+except:
+    lxml = None
 
 # Local packages
 from mezcla import debug
@@ -1185,7 +1190,10 @@ def html_to_text(document_data : str) -> str:
     #   https://stackoverflow.com/questions/22799990/beatifulsoup4-get-text-still-has-javascript
     debug.trace_fmtd(7, "html_to_text(_):\n\tdata={d}", d=document_data)
     init_BeautifulSoup()
-    soup = BeautifulSoup(document_data, "lxml") if BeautifulSoup else None
+    ## OLD: soup = BeautifulSoup(document_data, "lxml") if BeautifulSoup else None
+    ## NOTE: Uses c-based lxml if available (via Gemini 4)
+    features = "lxml" if lxml else "html.parser"
+    soup = BeautifulSoup(document_data, features) if BeautifulSoup else None
     # Remove all script and style elements
     text = ""
     if soup:
