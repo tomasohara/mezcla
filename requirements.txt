@@ -74,6 +74,7 @@ pyctcdecode                   # CTC beam search decoder for speech recognition
 ## OLD: pydantic
 pyenchant
 #opt# pysbd                   # Sentence Boundary Disambiguation
+pytesseract		      # wrapper for Google’s Tesseract-OCR Engine
 pytest
 requests
 scikit-learn
