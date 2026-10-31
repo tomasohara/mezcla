@@ -36,6 +36,7 @@
 ## See https://hub.docker.com/layers/catthehacker/ubuntu/act-24.04-dev
 ARG UBUNTU_VERSION="26.04"
 FROM catthehacker/ubuntu:act-${UBUNTU_VERSION}-dev
+# note: the following imports into stage scope for use below
 ARG UBUNTU_VERSION
 
 ARG WORKDIR=/home/mezcla
