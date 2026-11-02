@@ -16,7 +16,8 @@
 # - The jobs take around about 10 minutes each [circa November 2025],
 #   so setting time out to 15 minutes.
 #
-## UPDATE 2026-10-25: adds 
+## UPDATE 2026-11-02: displays environment and prunes unused software
+## UPDATE 2026-10-25: adds [tests for core modules]
 
 name: Github-Tests
 
@@ -47,12 +48,22 @@ jobs:
       max-parallel: 1
 
     steps:
+      - name: Display Environment
+        ## TODO: Make this step debug only
+        run: |
+          printenv | sort
+
       - name: Pre-run diagnostics
         run: |
           echo "Pre-run:"
           df --human-readable
           echo "usage:"
           du --block-size=1K / 2>&1 | sort -rn | head -40
+
+      - name: Prune Unused Software Directories
+        # note: Needed occasionally to ensure enough space for dependencies
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /usr/share/swift
 
       - name: Checkout Repository
         uses: actions/checkout@v7
