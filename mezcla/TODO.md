@@ -16,3 +16,5 @@ An optional priority is indicated by [Pn]
 - [P3] Clarify common command line interface (CLI) usages, such as using TEMP_BASE to a fixed directory when debugging tests.
 - [P3] Standardize on usage formatting (e.g., indentation): see examples/youtube_transcript.py for intentionally narrow indentation).
 - [P2] Change `self.temp_file` => `self.get_temp_file()` in tests.
+- [P3] Make sure scripts follow - option convention for showing usage.
+- [P4] Change usage statements so that consistent indentation used (e.g., via module docstring).
