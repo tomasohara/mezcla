@@ -315,7 +315,13 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_run(self):
         """Ensure run works as expected"""
         debug.trace(4, "test_run()")
-        assert "root" in THE_MODULE.run("ls /")
+        ## OLD: assert "root" in THE_MODULE.run("ls /")
+        assert "etc" in THE_MODULE.run("ls /")
+
+    def test_subprocess_run(self):
+        """Ensure subprocess_run works as expected"""
+        debug.trace(4, "test_subprocess_run()")
+        assert "etc" in THE_MODULE.subprocess_run("ls /")
 
     def test_issue(self):
         """Ensure issue works as expected"""

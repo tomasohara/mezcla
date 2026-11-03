@@ -8,7 +8,7 @@
 
 # Standard modules
 import math
-import subprocess
+## OLD: import subprocess
 import os
 from typing import Dict
 
@@ -19,14 +19,14 @@ from typing import Dict
 from mezcla import debug
 from mezcla.file_utils import read_yaml
 from mezcla import glue_helpers as gh
-from mezcla.glue_helpers import default_subtrace_level, TEMP_BASE, TEMP_FILE, PRESERVE_TEMP_FILE
+## OLD: from mezcla.glue_helpers import default_subtrace_level, TEMP_BASE, TEMP_FILE, PRESERVE_TEMP_FILE
 from mezcla.my_regex import my_re
 from mezcla import xml_utils
-from mezcla import tpo_common as tpo
+## OLD: from mezcla import tpo_common as tpo
 ## TODO3: from mezcla import misc_utils
 from mezcla import system
 from mezcla.main import Main
-from  mezcla.system import to_int
+from mezcla.system import to_int
 
 # Environment options
 # Note: These are just intended for internal options, not for end users.
@@ -105,50 +105,6 @@ def round_p2str(num):
     return system.round_as_str(num, 2)
 
 
-def run(command, trace_level=4, subtrace_level=None, **namespace) -> str :
-    """Wrapper around subprocess.run
-    Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
-    Notes:
-    - The result includes stderr, so direct if not desired (see issue):
-          run("ls /tmp/fubar 2> /dev/null")
-    - This is only intended for running simple commands. It would be better to create a subprocess for any complex interactions.
-    - This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed.
-    - If TEMP_FILE or TEMP_BASE defined, these are modified to be unique to avoid conflicts across processeses.
-    - If OUTPUT, the result will be printed.
-    """
-    ## NOTE: streamlined version of gh.run
-    ## TODO3: reconcile both version
-    debug.assertion(isinstance(trace_level, int))
-    debug.trace(6, f"run({command}, tl={trace_level}, sub_tr={subtrace_level}")
-    # Keep track of current debug level setting
-    debug_level_env = os.getenv("DEBUG_LEVEL")
-    if subtrace_level is None:
-        subtrace_level = default_subtrace_level
-    if subtrace_level != trace_level:
-        system.setenv("DEBUG_LEVEL", str(subtrace_level))
-    save_temp_base = TEMP_BASE
-    if TEMP_BASE:
-        system.setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
-    save_temp_file = TEMP_FILE
-    if TEMP_FILE and (PRESERVE_TEMP_FILE is not True):
-        system.setenv("TEMP_FILE", TEMP_FILE + "_subprocess_")
-    # Expand the command template
-    # TODO: make this optional
-    command_line = command
-    if my_re.search("{.*}", command):
-        command_line = tpo.format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
-    debug.trace(5 , f"issuing: {command_line}")
-    # Run the command
-    result = str(subprocess.run(command_line, check=False, shell=True))
-    # Restore debug level setting in environment
-    system.setenv("DEBUG_LEVEL", debug_level_env or "")
-    system.setenv("TEMP_BASE", save_temp_base or "")
-    if save_temp_file and (PRESERVE_TEMP_FILE is not True):
-        system.setenv("TEMP_FILE", save_temp_file or "")
-    debug.trace_fmt(7, "run(_) => {{\n{r}\n}}", r=gh.indent_lines(result))
-    return result
-
-
 def resolve_tools_file(filename):
     """Resolve full path for FILENAME, defaulting to <repo>/tools dir if not found"""
     full_path = filename
@@ -177,7 +133,7 @@ def run_mypy(thresholds: Dict[str, float]) -> int:
     gh.full_mkdir(MYPY_OUTPUT_PATH)
     if MYPY_COMBINED:
         cmd = f"python -m mypy {MYPY_TEST_PATH} {config} --xml-report {MYPY_OUTPUT_PATH} {common_mypy_options}"
-        run(cmd, shell=True, check=False)
+        gh.subprocess_run(cmd, shell=True, check=False)
     failed = 0
 
     # Read and parse xml report file
@@ -218,7 +174,7 @@ def run_mypy(thresholds: Dict[str, float]) -> int:
                 basename = gh.basename(filename_proper, ".py")
                 mypy_output_path = gh.form_path(MYPY_OUTPUT_PATH, basename)
                 cmd = f"python -m mypy {filename} {config} --xml-report {mypy_output_path} {common_mypy_options}"
-                run(cmd, shell=True, check=False)
+                gh.subprocess_run(cmd, shell=True, check=False)
                 report_file = gh.form_path(mypy_output_path, "index.xml")
                 xml_report = xml_utils.parse_xml(system.read_file(report_file))
             
@@ -266,8 +222,8 @@ def run_tests(thresholds: Dict[str, float]) -> int:
         # Collect test cases for the test
         ## BAD: cmd = f"pytest -k {test} --collect-only"
         cmd = f"pytest --collect-only {test_path}"
-        collect_result = run(
-            cmd, shell=True, text=True, capture_output=True, check=False
+        collect_result = gh.subprocess_run(
+            input_command=cmd, shell=True, text=True, capture_output=True, check=False
         )
         debug.trace_object(6, collect_result)
         total_tests = len(
@@ -280,9 +236,7 @@ def run_tests(thresholds: Dict[str, float]) -> int:
         # ex: "=== 103 tests collected in 1.64s ==="
         if (total_tests == 0) or debug.debugging():
             summary_total_tests = 0
-            if my_re.search(
-                r"(\d+) tests collected", collect_result, flags=my_re.IGNORECASE
-            ):
+            if my_re.search(r"(\d+) tests collected", collect_result, flags=my_re.IGNORECASE):
                 summary_total_tests = system.to_int(my_re.group(1))
             debug.trace_expr(5, total_tests, summary_total_tests)
             debug.assertion(total_tests == summary_total_tests)
@@ -291,7 +245,7 @@ def run_tests(thresholds: Dict[str, float]) -> int:
         # Run tests for the test
         pytest_options = (PYTEST_OPTIONS or "")
         cmd = f"pytest {pytest_options} {test_path}"
-        run_result = run(cmd)
+        run_result = gh.subprocess_run(cmd)
         debug.trace_object(6, run_result)
         failed_tests = len(my_re.findall(r"FAILED", run_result))
         debug.assertion(failed_tests <= total_tests)

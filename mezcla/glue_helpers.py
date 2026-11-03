@@ -39,6 +39,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import subprocess
 from subprocess import getoutput
 import sys
 import tempfile
@@ -55,6 +56,7 @@ import textwrap
 
 # Local packages
 from mezcla import debug
+from mezcla.my_regex import my_re
 from mezcla import system
 from mezcla.tpo_common import format as tpo_format
 ## TODO3: debug.trace_expr(6, __file__)
@@ -162,7 +164,7 @@ def in_test_context() -> bool:
                     break
         except:
             pass
-    debug.trace(5, f"gh.in_test_context() => {in_test}")
+    debug.trace(5, f"in_test_context() => {in_test}")
     return in_test
 
 
@@ -729,6 +731,61 @@ def issue(
             ## TODO4: add option for deletion
             delete_file(log_file)
     return
+
+
+def subprocess_run(input_command=None,
+                   capture_output=False, timeout=None, check=False, shell=None,
+                   trace_level=4, subtrace_level=None,
+                   *popenargs, **namespace) -> str :
+    """Wrapper around subprocess.run
+    Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
+    See `subprocess.run' for POPENARGS, CAPTURE_OUTPUT, TIMEOUT, CHECK, and SHELL.
+    Notes:
+    - The result includes stderr, so direct if not desired (see issue):
+          run("ls /tmp/fubar 2> /dev/null")
+    - This is only intended for running simple commands. It would be better to create a subprocess for any complex interactions.
+    - This function doesn't work fully under Win32. Tabs are not preserved, so redirect stdout to a file if needed.
+    - If TEMP_FILE or TEMP_BASE defined, these are modified to be unique to avoid conflicts across processeses.
+    - If OUTPUT, the result will be printed.
+    """
+    ## NOTE: streamlined version of gh.run
+    ## TODO3: reconcile both versions
+    debug.assertion(isinstance(trace_level, int))
+    ## OLD: debug.trace(6, f"subprocess_run({input_command}, tl={trace_level}, sub_tr={subtrace_level}")
+    debug.trace_expr(6, input_command, capture_output, timeout, check, shell,
+                     trace_level, subtrace_level, popenargs, namespace,  prefix="in subprocess_run")
+    # Keep track of current debug level setting
+    debug_level_env = os.getenv("DEBUG_LEVEL")
+    if subtrace_level is None:
+        subtrace_level = default_subtrace_level
+    if subtrace_level != trace_level:
+        system.setenv("DEBUG_LEVEL", str(subtrace_level))
+    if shell is None:
+        shell=True
+    save_temp_base = TEMP_BASE
+    if TEMP_BASE:
+        system.setenv("TEMP_BASE", TEMP_BASE + "_subprocess_")
+    save_temp_file = TEMP_FILE
+    if TEMP_FILE and (PRESERVE_TEMP_FILE is not True):
+        system.setenv("TEMP_FILE", TEMP_FILE + "_subprocess_")
+    # Expand the command template
+    # TODO: make this optional
+    command_line = input_command
+    if my_re.search("{.*}", command_line):
+        command_line = tpo_format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
+    debug.trace(5 , f"issuing: {command_line}")
+    # Run the command
+    result = str(subprocess.run(*popenargs, input=command_line,
+                                capture_output=capture_output,
+                                timeout=timeout,
+                                check=check, shell=shell))
+    # Restore debug level setting in environment
+    system.setenv("DEBUG_LEVEL", debug_level_env or "")
+    system.setenv("TEMP_BASE", save_temp_base or "")
+    if save_temp_file and (PRESERVE_TEMP_FILE is not True):
+        system.setenv("TEMP_FILE", save_temp_file or "")
+    debug.trace_fmt(7, "subprocess_run(_) => {{\n{r}\n}}", r=indent_lines(result))
+    return result
 
 
 def get_hex_dump(text: Any, break_newlines: bool = False) -> str:
