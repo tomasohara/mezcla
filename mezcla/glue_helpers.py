@@ -792,6 +792,20 @@ def subprocess_run(input_command=None,
     return result
 
 
+class my_Popen(subprocess.Popen):
+     """Wrapper with tracing"""
+
+     def __init__(self, *args, **kwargs):
+         debug.trace_expr(6, args, kwargs, prefix="my_Popen.__init__: ")
+         super().__init__(*args, **kwargs)
+
+
+def check_output(*popenargs, timeout=None, **kwargs):
+    """Wrapper around subprocess.check_output"""
+    debug.trace_expr(6, *popenargs, timeout=timeout, **kwargs, prefix="check_output: ")
+    return subprocess.check_output(*popenargs, **kwargs)
+
+
 def get_hex_dump(text: Any, break_newlines: bool = False) -> str:
     """Get hex dump for TEXT, optionally BREAKing lines on NEWLINES"""
     # TODO: implement entirely within Pyton (e.g., via binascii.hexlify)

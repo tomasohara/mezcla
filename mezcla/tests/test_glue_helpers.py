@@ -348,6 +348,17 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert "returncode=0" in output
         assert "test-subprocess-output" in output
 
+    def test_my_Popen(self):
+        """Verify test_my_Popen"""
+        result = THE_MODULE.my_Popen(["ls", "/home"])
+        assert not result.returncode
+        assert system.USER in self.get_stdout()
+
+    def test_check_output(self):
+        """Verify test_check_output"""
+        result = THE_MODULE.check_output(["whoami"])
+        assert system.USER == result.decode("UTF8").strip()
+
     def test_issue(self):
         """Ensure issue works as expected"""
         debug.trace(4, "test_issue()")
