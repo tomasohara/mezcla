@@ -22,6 +22,7 @@ import os
 ## OLD: from os import path
 from io import StringIO
 import sys
+from unittest.mock import patch
 ## OLD: import atexit
 ## OLD: import tempfile
 
@@ -316,12 +317,36 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         """Ensure run works as expected"""
         debug.trace(4, "test_run()")
         ## OLD: assert "root" in THE_MODULE.run("ls /")
+        ## BAD: assert "etc" in THE_MODULE.run("ls /")
         assert "etc" in THE_MODULE.run("ls /")
+        output = THE_MODULE.run("printf test-run-output")
+        assert isinstance(output, str)
+        assert output == "test-run-output"
+        assert "test-run" in output
 
     def test_subprocess_run(self):
         """Ensure subprocess_run works as expected"""
         debug.trace(4, "test_subprocess_run()")
-        assert "etc" in THE_MODULE.subprocess_run("ls /")
+        ## BAD: assert "etc" in THE_MODULE.subprocess_run("ls /")
+        output = THE_MODULE.subprocess_run("ls /", capture_output=True, text=True)
+        assert isinstance(output, str)
+        assert "returncode=0" in output
+        assert "etc" in output
+        mock_input = "mock-subprocess-input"
+        with patch.object(THE_MODULE.subprocess, "run") as mock_subprocess_run:
+            mock_subprocess_run.return_value = THE_MODULE.subprocess.CompletedProcess(
+                mock_input, 0)
+            mock_output = THE_MODULE.subprocess_run(
+                mock_input, capture_output=True, text=True)
+        mock_subprocess_run.assert_called_once_with(
+            mock_input, capture_output=True, timeout=None, check=False,
+            shell=True, text=True)
+        assert "returncode=0" in mock_output
+        output = THE_MODULE.subprocess_run(
+            "printf test-subprocess-output", capture_output=True, text=True)
+        assert isinstance(output, str)
+        assert "returncode=0" in output
+        assert "test-subprocess-output" in output
 
     def test_issue(self):
         """Ensure issue works as expected"""

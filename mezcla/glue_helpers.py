@@ -734,12 +734,12 @@ def issue(
 
 
 def subprocess_run(input_command=None,
-                   capture_output=False, timeout=None, check=False, shell=None,
+                   capture_output=False, timeout=None, check=False, shell=None, text=None,
                    trace_level=4, subtrace_level=None,
                    *popenargs, **namespace) -> str :
     """Wrapper around subprocess.run
     Invokes COMMAND via system shell, using TRACE_LEVEL for debugging output, returning result. The command can use format-style templates, resolved from caller's namespace. The optional SUBTRACE_LEVEL sets tracing for invoked commands (default is same as TRACE_LEVEL); this works around problem with stderr not being separated, which can be a problem when tracing unit tests.
-    See `subprocess.run' for POPENARGS, CAPTURE_OUTPUT, TIMEOUT, CHECK, and SHELL.
+    See `subprocess.run' for POPENARGS, CAPTURE_OUTPUT, TIMEOUT, CHECK, TEXT, and, SHELL.
     Notes:
     - The result includes stderr, so direct if not desired (see issue):
           run("ls /tmp/fubar 2> /dev/null")
@@ -775,10 +775,14 @@ def subprocess_run(input_command=None,
         command_line = tpo_format(command_line, indirect_caller=True, ignore_exception=False, **namespace)
     debug.trace(5 , f"issuing: {command_line}")
     # Run the command
-    result = str(subprocess.run(*popenargs, input=command_line,
+    ## BAD: result = str(subprocess.run(*popenargs, input=command_line,
+    ##                                   capture_output=capture_output,
+    ##                                   timeout=timeout,
+    ##                                   check=check, shell=shell))
+    result = str(subprocess.run(command_line, *popenargs,
                                 capture_output=capture_output,
                                 timeout=timeout,
-                                check=check, shell=shell))
+                                check=check, shell=shell, text=text))
     # Restore debug level setting in environment
     system.setenv("DEBUG_LEVEL", debug_level_env or "")
     system.setenv("TEMP_BASE", save_temp_base or "")
