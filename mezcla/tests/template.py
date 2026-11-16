@@ -153,6 +153,14 @@ class TestIt(TestWrapper):
         self.do_assert("whatever gets traced" in captured, "TODO_whatever not trace")
         return
 
+    ## TODO:
+    ## @pytest.mark.xfail                   # TODO: remove xfail
+    ## def test_99_TODO(self):
+    ##     """TODO: what it tests"""
+    ##     debug.trace(4, f"TestIt.test_99_TODO(); self={self}")
+    ##     assert False, "TODO: implement"
+    ##     return
+
     ## TODO: get pytest.mark.parametrize inside of class
     ## NOTE: See workaround with test_global_01_table below
     ## @pytest.mark.parametrize(
