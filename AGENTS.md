@@ -138,6 +138,8 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
    Similarly, timestamp temporary input and output filenames (e.g., out-02Sep26.txt).
    
 -  Get explicit confirmation before changing files outside of the current repo.
+   - Directories under /tpo such as /tpo/adhoc/adhoc-mezcla-clone are OK when targeted by a task.
+   - For example, edit shell scripts/aliases in /tpo/adhoc/adhoc-bin-clone rather than ~/bin).
 
 ## Debug level conventions
 
