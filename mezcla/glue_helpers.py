@@ -806,7 +806,8 @@ class my_Popen(subprocess.Popen):
 
 def check_output(*popenargs, timeout=None, **kwargs):
     """Wrapper around subprocess.check_output"""
-    debug.trace_expr(6, *popenargs, timeout=timeout, **kwargs, prefix="check_output: ")
+    ## OLD: debug.trace_expr(6, *popenargs, timeout=timeout, **kwargs, prefix="check_output: ")
+    debug.trace_expr(6, *popenargs, timeout, **kwargs, prefix="check_output: ")
     return subprocess.check_output(*popenargs, **kwargs)
 
 
