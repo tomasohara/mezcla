@@ -54,6 +54,15 @@ debug.assertion(debug.xor(TEST_UNIMPLEMENTED_TESTS, SKIP_UNIMPLEMENTED_REASON))
 ##     "TEST_EXPECTED_ERRORS", True,
 ##     description="Alias for not[-]SKIP_EXPECTED_ERRORS--deprecated")
 ## OLD: SKIP_EXPECTED_REASON = "Skipping cases that should never pass (e.g., intentional error)"
+##
+## NOTE:
+## - Use SKIP_EXPECTED_ERRORS to omit tests with expected errors (e.g., when debugging core module like system.py).
+## - This can lead to extraneous check-error reports if line split (e.g., before "error output"):
+##    $ SKIP_EXPECTED_ERRORS=1 pytest -vv --capture=no -rA tests/test_glue_helpers.py 2>&1 | check-errors -context=0
+##    26   >>> error output (e.g., intentional error or assertion failured)) <<<
+##    32   >>> error output (e.g., intentional error or assertion failured)) <<<
+## - TODO4: Configure pytest to keep error text on a single line.
+##
 SKIP_EXPECTED_REASON = "Skipping cases that shouldn't pass or involve error output (e.g., intentional error or assertion failured)"
 SKIP_EXPECTED_ERRORS = system.getenv_bool(
     # Note: this helps filter known errors before running error checking script,
