@@ -14,6 +14,7 @@
 # TODO3
 # - Flag tests that assume Unix (posix).
 #
+## UPDATE: fixes test_my_Popen and adds SKIP_EXPECTED_ERRORS
 
 """Tests for glue_helpers module"""
 
@@ -38,10 +39,10 @@ except:
 from mezcla import debug
 from mezcla import glue_helpers as gh
 from mezcla.my_regex import my_re
+from mezcla import system
 from mezcla import tpo_common as tpo    # Deprecated, only used for mock
 from mezcla.unittest_wrapper import TestWrapper, invoke_tests
-from mezcla import system
-from mezcla.tests.common_module import mezcla_root_dir
+import mezcla.tests.common_module as cm
 
 # Note: Two references are used for the module to be tested:
 #    THE_MODULE:            global module object
@@ -350,9 +351,16 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
 
     def test_my_Popen(self):
         """Verify test_my_Popen"""
-        result = THE_MODULE.my_Popen(["ls", "/home"])
-        assert not result.returncode
-        assert system.USER in self.get_stdout()
+        ## BAD:
+        ## result = THE_MODULE.my_Popen(["ls", "/home"])
+        ## assert not result.returncode
+        ## assert system.USER in self.get_stdout()
+        ## NOTE: captures stdout via Popen(...subprocess.PIPE) and then communicate()
+        result = THE_MODULE.my_Popen(
+            ["ls", "/home"], stdout=THE_MODULE.subprocess.PIPE, text=True)
+        output, _ = result.communicate()
+        assert result.returncode == 0
+        assert system.USER in output
 
     def test_check_output(self):
         """Verify test_check_output"""
@@ -375,6 +383,11 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
             return True
         self.monkeypatch.setattr(tpo, 'debugging', debugging_mock)
         self.monkeypatch.setenv('TEMP_LOG_FILE', log_file, prepend=False)
+
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def test_bad_issue(self):
+        """Verify issue failures"""
+        debug.trace(4, "test_bad_issue()")
 
         # Run test with log file
         THE_MODULE.issue('bash bad_filename.bash')
@@ -432,7 +445,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
                == requirements_filename)
         assert(gh.real_path(THE_MODULE.resolve_path(requirements_filename,
                                                     base_dir=module_dir, heuristic=True))
-               == gh.real_path(gh.form_path(mezcla_root_dir, requirements_filename)))
+               == gh.real_path(gh.form_path(cm.mezcla_root_dir, requirements_filename)))
 
     def test_extract_match_from_text(self):
         """Ensure extract_match_from_text works as expected"""
@@ -460,6 +473,11 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         system.write_file(temp_file, 'file\nwith\nmultiple\nlines\n')
         assert THE_MODULE.read_lines(temp_file) == ['file', 'with', 'multiple', 'lines']
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def test_bad_read_lines(self):
+        """Verify read_lines failures"""
+        debug.trace(4, "test_bad_read_lines()")
+        
         # Test no filename (read from stdin)
         self.monkeypatch.setattr('sys.stdin', StringIO('my input\nsome line'))
         assert THE_MODULE.read_lines() == ['my input', 'some line']
@@ -561,6 +579,11 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         THE_MODULE.delete_file(test_filename)
         assert not gh.file_exists(test_filename)
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def test_bad_delete_file(self):
+        """Verify delete_file failures"""
+        debug.trace(4, "test_bad_delete_file()")
+
         # Test invalid file
         THE_MODULE.delete_file('bad_filename.txt')
         if debug.debugging():
@@ -625,6 +648,11 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         self.monkeypatch.setenv('TEST_ENV_FILENAME', test_filename, prepend=False)
         assert THE_MODULE.getenv_filename('TEST_ENV_FILENAME') == test_filename
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def test_bad_getenv_filename(self):
+        """Verify getenv_filename failures"""
+        debug.trace(4, "test_bad_getenv_filename()")
+
         # Test valid filename with empty content
         test_filename = self.get_temp_file()
         with open(test_filename, 'wb') as _:
@@ -676,8 +704,6 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
     def test_delete_directory(self):
         """Ensure delete_directory works as expected"""
         debug.trace(4, "test_delete_directory()")
-        ## TODO3: use monkeypatch
-        old = THE_MODULE.DISABLE_RECURSIVE_DELETE
         test_temp_dir = self.get_temp_dir(static=True)
 
         # test an empty directory gets deleted
@@ -695,6 +721,13 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         assert THE_MODULE.is_directory(non_empty_dir)
         assert THE_MODULE.delete_directory(non_empty_dir) is None
 
+    @pytest.mark.skipif(cm.SKIP_EXPECTED_ERRORS, reason=cm.SKIP_EXPECTED_REASON)
+    def test_nonrecursive_delete_directory(self):
+        """Verify delete_directory w/ recursive disabled"""
+        debug.trace(4, "test_nonrecursive_delete_directory()")
+        self.monkeypatch.setattr(gh, 'DISABLE_RECURSIVE_DELETE', True)
+        test_temp_dir = self.get_temp_dir(static=True)
+
         # test a directory with subdirs doesnt get deleted if DISABLE_RECURSIVE_DELETE
         THE_MODULE.DISABLE_RECURSIVE_DELETE = True
         ## OLD: dir_with_subdirs = '/tmp/test_delete_directory-3'
@@ -711,9 +744,7 @@ class TestGlueHelpers(TestWrapper):      ## TODO: (TestWrapper)
         system.write_file(gh.form_path(subdir, "subdir_file.list"), '4')
         THE_MODULE.DISABLE_RECURSIVE_DELETE = False
         assert THE_MODULE.delete_directory(dir_with_subdirs) is None
-
-        THE_MODULE.DISABLE_RECURSIVE_DELETE = old
-
+        
     def test_get_temp_file_deletion(self):
         """Make sure temp file returned properly when TEMP_FILE not set
         Note: accounts for odd NamedTemporaryFile behavior with delete
