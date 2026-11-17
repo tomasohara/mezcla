@@ -57,7 +57,8 @@ AI agent instructions for arbitrary repos. This is based on instructions designe
 		print(f"Error: unexpected condition with {num=} {sum=}")
 	```
 
-Because the use of OLD-comments blocks can be awkward for in-depth changes, ask for clarification.
+Note that this just uses one OLD marker per block (i.e., avoids consecutive lines with '## OLD').
+Because the use of OLD-comments blocks can be awkward for in-depth changes, ask for clarification. 
 
 Some variations follow. For single-line changes, just use "## OLD: statement ..." (i.e., one comment not two). When fixing bugs, it is good to replace '## OLD' with '## BAD'. This way, the code can be reviewed later to help derive new tests.
 
@@ -100,8 +101,8 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
   the user explicitly authorizes their removal. They count as code.
 
 - For every replacement, retain the exact prior line(s) immediately above it as
-  `## OLD:` (or `## BAD:` for a confirmed bug). Do not rewrite or consolidate
-  existing comments incidentally.
+  `## OLD:` (or `## BAD:` for a confirmed bug). Use one OLD or BAD marker per block.
+  Do not rewrite or consolidate existing comments incidentally.
 
 - Do not make cleanup, wording, docstring, attribution, or formatting changes
   unrelated to the requested fix.
