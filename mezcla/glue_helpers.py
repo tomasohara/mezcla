@@ -794,6 +794,10 @@ def subprocess_run(input_command=None,
 
 class my_Popen(subprocess.Popen):
      """Wrapper with tracing"""
+     ## TODO3: add default for stdout to use subprocess.PIPE (see test_my_Popen)
+     ## TODO4: likewise shell=True and text=True to simplify following:
+     ##    r = gh.my_Popen(args="which ls", stdout=gh.subprocess.PIPE, shell=True, text=True);
+     ##    assert "/bin" in r.communicate()[0]
 
      def __init__(self, *args, **kwargs):
          debug.trace_expr(6, args, kwargs, prefix="my_Popen.__init__: ")
