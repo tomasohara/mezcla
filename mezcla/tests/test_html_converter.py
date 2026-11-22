@@ -191,6 +191,26 @@ class TestIt(TestWrapper):
                     debug.trace_exception(3, "text verification failed")
         return
 
+    def test_08_libreoffice_docx(self):
+        """Tests converting a simple HTML to DOCX using libreoffice"""
+        debug.trace(4, f"TestIt.test_08_libreoffice_docx(); self={self}")
+        self.perform_conversion_test("libreoffice", "docx", "LibreOffice DOCX")
+        return
+
+    def test_09_selenium_timeout(self):
+        """Tests that selenium conversion fails cleanly rather than hanging when the browser exceeds the time limit"""
+        debug.trace(4, f"TestIt.test_09_selenium_timeout(); self={self}")
+        in_file = self.create_temp_file("<html><head><title>Test</title></head><body><h1>Hello</h1></body></html>\n")
+        out_file = in_file + ".pdf"
+        if THE_MODULE:
+            # note: uses an unattainable time limit, so that any browser request times out
+            self.monkeypatch.setattr(THE_MODULE, "SELENIUM_TIMEOUT", 0.001)
+            converter = THE_MODULE.HtmlConverter(engine="selenium", out_format="pdf")
+            success = converter.process(in_file, out_file)
+            self.do_assert(not success, "Conversion should fail when time limit exceeded")
+            self.do_assert(not os.path.exists(out_file), "Output file should not be created")
+        return
+
 #------------------------------------------------------------------------
 
 if __name__ == '__main__':

@@ -40,6 +40,7 @@ Sample usage:
 # Standard modules
 import os
 import shutil
+import signal
 ## OLD: import tempfile
 import subprocess
 import base64
@@ -76,6 +77,32 @@ TAILWIND_WIDTH_FIX = system.getenv_bool(
 TAILWIND_WIDTH_HACK = TAILWIND_WIDTH_FIX or system.getenv_bool(
     "TAILWIND_WIDTH_HACK", False,
     description="Alias for TAILWIND_WIDTH_FIX (deprecated)")
+# note: guards against the browser stalling (e.g., printing pages with huge images)
+SELENIUM_TIMEOUT = system.getenv_int(
+    "SELENIUM_TIMEOUT", 120,
+    description="Seconds to wait for each Selenium browser request (0 for no limit)")
+
+#-------------------------------------------------------------------------------
+
+def terminate_process_tree(pid: int) -> None:
+    """Terminates process PID along with its descendants (e.g., browser started by web driver)
+    Note: descendants are all found (via pgrep) before any are stopped, so that none get orphaned first
+    """
+    # Change facilitated by Claude Code using model Claude Fable 5.2.
+    debug.trace(TL.VERBOSE, f"terminate_process_tree({pid})")
+    pending = [pid]
+    all_pids = []
+    while pending:
+        current = pending.pop()
+        all_pids.append(current)
+        listing = subprocess.run(["pgrep", "-P", str(current)], check=False,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.decode()
+        pending += [int(child) for child in listing.split()]
+    for current in all_pids:
+        try:
+            os.kill(current, signal.SIGTERM)
+        except OSError:
+            debug.trace(TL.QUITE_DETAILED, f"Process {current} already gone")
 
 #-------------------------------------------------------------------------------
 
@@ -195,7 +222,10 @@ class HtmlConverter:
 
         try:
             if self.engine == "libreoffice":
-                filter_arg = "pdf" if self.out_format == "pdf" else 'docx:"MS Word 2007 XML"'
+                ## BAD: filter_arg = "pdf" if self.out_format == "pdf" else 'docx:"MS Word 2007 XML"'
+                # note: filter name is not quoted because the command is run without a shell
+                # Change facilitated by Claude Code using model Claude Fable 5.2.
+                filter_arg = "pdf" if self.out_format == "pdf" else "docx:MS Word 2007 XML"
                 out_dir = os.path.dirname(os.path.abspath(output_file)) or "."
                 cmd = ["libreoffice", "--headless", "--convert-to", filter_arg, "--outdir", out_dir, work_html]
                 
@@ -226,6 +256,7 @@ class HtmlConverter:
                     from selenium import webdriver
                     from selenium.webdriver.chrome.options import Options
                     from selenium.webdriver.chrome.service import Service
+                    from selenium.webdriver.remote.remote_connection import RemoteConnection
                 except ImportError:
                     system.print_error("Error: Selenium engine requires selenium to be installed (pip install selenium).")
                     return False
@@ -248,7 +279,18 @@ class HtmlConverter:
                     ## TODO3: add argument to enable low-level webdriver logs; also refine gh.create_temp_file to take filename
                     log_path = gh.write_temp_file("chromedriver-verbose.log", "")
                     service = Service(log_output=log_path, service_args=["--verbose"])
-                driver = webdriver.Chrome(service=service, options=options)
+                # Limit time for each browser request, so that a stalled page load or print fails instead of hanging
+                # note: the timeout must be set before the driver is created to take effect
+                # Change facilitated by Claude Code using model Claude Fable 5.2.
+                if SELENIUM_TIMEOUT > 0:
+                    debug.trace(TL.DETAILED, f"Using Selenium timeout of {SELENIUM_TIMEOUT} seconds")
+                    RemoteConnection.set_timeout(SELENIUM_TIMEOUT)
+                ## OLD: driver = webdriver.Chrome(service=service, options=options)
+                try:
+                    driver = webdriver.Chrome(service=service, options=options)
+                finally:
+                    # note: restores default so that other Selenium usages are not affected
+                    RemoteConnection.reset_timeout()
                 try:
                     file_url = f"file://{os.path.abspath(work_html)}"
                     debug.trace(TL.DETAILED, f"Loading {file_url}")
@@ -312,6 +354,13 @@ class HtmlConverter:
                     
                     with open(output_file, 'wb') as f:
                         f.write(base64.b64decode(result['data']))
+                except:
+                    # Stop the driver process, so that the cleanup below does not wait on a stalled browser
+                    debug.trace(TL.DETAILED, "Stopping web driver process after failure")
+                    driver_process = getattr(driver.service, "process", None)
+                    if driver_process:
+                        terminate_process_tree(driver_process.pid)
+                    raise
                 finally:
                     driver.quit()
 
