@@ -123,7 +123,7 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 
 - Add a test set for any new module created, checking the repo for templates (e.g., mezcla/test/template.py). Most tests should use xfail, because they are new and relatively untested. Leave in a TODO test for me, etc.: as per notes for new modules above.
 
-## Terminal guidelines
+## Terminal guidelines and interaction requirements
 
 -  Don't remove existing files without confirmation: rename them instead (e.g., <filename>.DDMmmYY).
 
@@ -141,6 +141,8 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 -  Get explicit confirmation before changing files outside of the current repo.
    - Directories under /tpo such as /tpo/adhoc/adhoc-mezcla-clone are OK when targeted by a task.
    - For example, edit shell scripts/aliases in /tpo/adhoc/adhoc-bin-clone rather than ~/bin).
+
+- Perform a sanity check on input files being accessible perform proceeding with analysis (e.g., permission issues). It is frustrating to find this out when reading a report on results.
 
 ## Debug level conventions
 
