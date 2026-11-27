@@ -30,6 +30,9 @@
 # TODO:
 # - check absl module ($ grep -r "absl" .)
 # - add support for this to setup.py
+# TODO3: flesh out the synopses
+#
+## UPDATE 2026-11-27: reworks format to match shell-scripts repo
 #...............................................................................
 # Regular requirements
 #
@@ -55,12 +58,12 @@ flask
 #opt# gradio==3.48            # UI support (e.g., HF-based apps)
 importlib_metadata
 langchain
-#opt# langchain-classic         # compatibility imports used by llm_desktop_search.py with LangChain >= 1.x
+#opt# langchain-classic       # compatibility imports used by llm_desktop_search.py with LangChain >= 1.x
 langchain_community
-#opt# langchain-huggingface     # modern HuggingFace embeddings package for llm_desktop_search.py
+#opt# langchain-huggingface   # modern HuggingFace embeddings package for llm_desktop_search.py
 #opt# langchain-text-splitters  # split text splitter package used by newer LangChain installs
-#opt# faiss-cpu                 # FAISS vector store backend used by llm_desktop_search.py
-#opt# kenlm                   # language model support (NOTE: problem with wheel; see https://kheafield.com/code/kenlm)
+#opt# faiss-cpu               # FAISS vector store backend used by llm_desktop_search.py
+#opt# kenlm                   # language model (n.b., problem with wheel; see https://kheafield.com/code/kenlm)
 ## OLD: librosa>=0.10.0
 lxml
 mako
@@ -74,7 +77,7 @@ pyctcdecode                   # CTC beam search decoder for speech recognition
 ## OLD: pydantic
 pyenchant
 #opt# pysbd                   # Sentence Boundary Disambiguation
-pytesseract		      # wrapper for Google’s Tesseract-OCR Engine
+pytesseract                   # wrapper for Google’s Tesseract-OCR Engine
 pytest
 requests
 scikit-learn
@@ -110,10 +113,10 @@ xgboost-cpu
 # - tensorflow and related not installed by default due to size of repo and C compilation overhead.
 # - ipython, pylint, etc. used for setting up development environment
 #
-## UPDATE:05/23/26: changes '#opt#' to '#full#' for advanced analytics stuff
+# package-spec                # synopsis
 #full# SpeechRecognition
 #full# accelerate
-#opt# astor                             # AST utils
+#opt# astor                   # AST utils
 #devel# bash_kernel
 #full# ctransformers
 #devel# colout
@@ -157,13 +160,14 @@ pydantic==2.9.2
 typing_extensions==4.12.2
 #
 #opt# textract
-#devel# types-six                         # typing stubs for six
+#devel# types-six             # typing stubs for six
 #opt# youtube_transcript_api
 #full# vaderSentiment
 #...............................................................................
 # "Fully optional" requirements
 # Note: these generally involve large or long installations.
 #
+# package-spec                # synopsis
 #full# bert==2.2.0
 #full# albert==1.3.1
 #full# bert-tensorflow
