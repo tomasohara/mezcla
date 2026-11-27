@@ -9,15 +9,25 @@
 #   debian-based Linux distributions.
 # - See requirements.txt for Python package requirements.
 #
-# package               # synopsis
-enchant-2               # spell checking engines
-rcs                     # for merge (see merge_file.py)--old revision control system
-python3-pip             # Python package installer
-python3                 # default Ubuntu version
-python-is-python3       # symbolic link: python -> python3
-tesseract-ocr		# Google  optical character recognition (OCR) tool
-#-------------------------------------------------------------------------------
+## UPDATE 2026-11-27: reworks format to match shell-scripts repo
+#................................................................................
+# Main packages
+#
+# ubuntu-name-token           # brief description
+enchant-2                     # spell checking engines
+rcs                           # for merge_file.py--old revision control system
+python3-pip                   # Python package installer
+python3                       # default Ubuntu version
+python-is-python3             # symbolic link: python -> python3
+tesseract-ocr                 # optical character recognition (OCR) tool
+#................................................................................
+# Optional packages
+#
+# ubuntu-name-token           # brief description
 #devel# lynx
-#-------------------------------------------------------------------------------
+#................................................................................
+# TODO packages
+#
+# package spec                          # brief description
 # TODO: nvidia-utils-NNN                # for nvidia-smi
-#full# http://kheafield.com/code/kenlm
+#full# http://kheafield.com/code/kenlm  # for old-style language modeling
