@@ -138,6 +138,8 @@ Some variations follow. For single-line changes, just use "## OLD: statement ...
 -  Name temporary programs with leading `_` (e.g., `_test_regex.perl`), so that `git check-ignore` will filter them. 
    Similarly, timestamp temporary input and output filenames (e.g., out-02Sep26.txt).
    
+- Keep your main changes in the current directory instead of the agent scratchpad storage. Similarly, make changes to the current directories repo rather than using a temporary one. (Temporary storage should only be used for intermediate files, not the end result.)
+
 -  Get explicit confirmation before changing files outside of the current repo.
    - Directories under /tpo such as /tpo/adhoc/adhoc-mezcla-clone are OK when targeted by a task.
    - For example, edit shell scripts/aliases in /tpo/adhoc/adhoc-bin-clone rather than ~/bin).
