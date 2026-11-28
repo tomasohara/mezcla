@@ -889,6 +889,7 @@ def retrieve_web_document(url : str, meta_hash: Optional[Dict[str, Any]] = None,
     - If IGNORE, no exceptions reports are printed."""
     # EX: bool(my_re.search("Scrappy.*Cito", retrieve_web_document("www.tomasohara.trade")))
     # Note: See https://stackoverflow.com/questions/34957748/http-error-403-forbidden-with-urlretrieve.
+    ## TODO3: add param with options for request (e.g., verify=False)
     debug.trace_fmtd(5, "retrieve_web_document({u})", u=url)
     ## TEST: result : Optional[AnyStr] = None
     result : Optional[Union[str, bytes]] = None
