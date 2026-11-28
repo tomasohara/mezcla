@@ -15,7 +15,12 @@
 #   see test_fix_url_parameters_type_hints.
 # - Use website accessible to all ScrappyCito assistants. For example,
 #      www.tomasohara.trade => new www.scrappycito.trade
+# - Find a cleaner way to handle temporary certificate-validation overrides for test URLs.
 #
+# Warning: disables certificate for tests involving www.tomasohara.trade or substitute
+# (see temp_disable_certificate and self.tomasohara_trade_like_url).
+#
+## UPDATE 2026-11-28: workaround for intermitten www.tomasohara.trade certificate issues via GPT-6.1 Terra
 ## UPDATE 2026-10-25: Cleans up skipif/xfail specifications.
 ## UPDATE 31 Aug 26: Updates URLs for tomasohara samples (e.g., mezcla-based dir).
 
@@ -25,6 +30,7 @@
 
 # Standard packages
 import os
+import urllib.parse
 import urllib.request
 
 # Installed packages
@@ -46,6 +52,7 @@ from mezcla.tests.common_module import normalize_text
 import mezcla.html_utils as THE_MODULE
 
 # Constants and environment options
+TL = debug.TL
 TEST_SELENIUM_DESC = "Include tests requiring selenium"
 TEST_SELENIUM = system.getenv_bool(
     ## TODO2: configure Github runner to support selenium
@@ -139,6 +146,72 @@ class TestHtmlUtils(TestWrapper):
         super().setUp()
         self.monkeypatch.setattr(THE_MODULE, "DOWNLOAD_DIR", self.get_temp_dir())
         return
+
+    def temp_disable_certificate(self, url):
+        """Temporary workaround to disable certificate verification after an SSL request error"""
+        original_get = THE_MODULE.requests.get
+        try:
+            original_get(url, timeout=THE_MODULE.DOWNLOAD_TIMEOUT)
+        except THE_MODULE.requests.exceptions.RequestException as exc:
+            debug.trace(TL.WARNING, f"Warning: Request to {url} failed: {exc}")
+            if isinstance(exc, THE_MODULE.requests.exceptions.SSLError):
+                origin = urllib.parse.urlsplit(url)[:2]
+
+                def get_with_temporary_certificate_override(request_url, *args, **kwargs):
+                    """Version of requests.get with optional certificates"""
+                    # note: parses as follows <scheme>://<netloc>/<path>?<query>#<fragment
+                    # example: "http://www.tomasohara.trade => ('http', 'www.tomasohara.trade')
+                    if urllib.parse.urlsplit(str(request_url))[:2] == origin:
+                        debug.trace(TL.DETAILED, "FYI: Disabling certificate check for $url")
+                        kwargs["verify"] = False
+                    return original_get(request_url, *args, **kwargs)  # pylint: disable=missing-timeout
+
+                self.monkeypatch.setattr(
+                    THE_MODULE.requests, "get", get_with_temporary_certificate_override)
+        return
+
+    def test_temp_disable_certificate(self):
+        """Only disable certificate verification for a failing URL's origin"""
+        calls = []
+        trace_calls = []
+
+        def get_with_ssl_error(request_url, *_args, **kwargs):
+            """Record verification settings and simulate a failed SSL preflight"""
+            calls.append((request_url, kwargs.get("verify")))
+            if len(calls) == 1:
+                raise THE_MODULE.requests.exceptions.SSLError("certificate verify failed")
+            return None
+
+        self.monkeypatch.setattr(THE_MODULE.requests, "get", get_with_ssl_error)
+        self.monkeypatch.setattr(
+            debug, "trace",
+            lambda level, message, **kwargs: trace_calls.append((level, message)))
+        self.temp_disable_certificate("https://example.test")
+        THE_MODULE.requests.get("https://example.test/document", timeout=THE_MODULE.DOWNLOAD_TIMEOUT)
+        THE_MODULE.requests.get("https://other.example/document", timeout=THE_MODULE.DOWNLOAD_TIMEOUT)
+
+        assert calls == [
+            ("https://example.test", None),
+            ("https://example.test/document", False),
+            ("https://other.example/document", None),
+        ]
+        assert trace_calls[0][0] == debug.WARNING
+
+    def test_temp_disable_certificate_on_success(self):
+        """Keep certificate verification enabled when the preflight succeeds"""
+        calls = []
+
+        def get_with_valid_certificate(_request_url, *_args, **kwargs):
+            """Record request options while simulating a successful preflight"""
+            calls.append(kwargs)
+            return None
+
+        self.monkeypatch.setattr(THE_MODULE.requests, "get", get_with_valid_certificate)
+        self.temp_disable_certificate("https://example.test")
+        THE_MODULE.requests.get("https://example.test/document", timeout=THE_MODULE.DOWNLOAD_TIMEOUT)
+
+        assert calls == [{"timeout": THE_MODULE.DOWNLOAD_TIMEOUT},
+                         {"timeout": THE_MODULE.DOWNLOAD_TIMEOUT}]
 
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
@@ -434,6 +507,7 @@ class TestHtmlUtils(TestWrapper):
         """Check web downloads via DOWNLOAD_FUNC"""
         ## UPDATE: 05/10/26: added expected failure skip
         # note: expected failures moved to check_bad_download_web_document to facilitate diagnosis
+        self.temp_disable_certificate(self.tomasohara_trade_like_url)
         assert "currency" in THE_MODULE.download_web_document(resolve_mezcla_url("tests/resources/Dollar_-_Simple_English_Wikipedia.html"))
         remote_pacman_image_data = download_func(self.pacman_url, as_binary=True)
         local_pacman_image_data = system.read_binary_file(self.pacman_path)
@@ -473,6 +547,7 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, "test_alt_download_html_document()")
         assert "Google" in THE_MODULE.alt_download_html_document("www.google.com")
         ## TODO2: use website accessible to all team members
+        self.temp_disable_certificate(self.tomasohara_trade_like_url)
         assert "Tomás" not in THE_MODULE.alt_download_html_document(f"{self.tomasohara_trade_like_url}", encoding="big5")
 
     def test_download_html_document(self):
@@ -484,6 +559,7 @@ class TestHtmlUtils(TestWrapper):
         filename = "test_download_file"
 
         # Assert file is downloaded and created in tmp_dir
+        self.temp_disable_certificate(self.tomasohara_trade_like_url)
         THE_MODULE.download_html_document(self.tomasohara_trade_like_url, download_dir=tmp_dir, filename=filename)
         assert filename in system.read_directory(tmp_dir)
 
@@ -507,6 +583,7 @@ class TestHtmlUtils(TestWrapper):
     def test_download_binary_file(self):
         """Ensure download_binary_file() works as expected"""
         debug.trace(4, "test_download_binary_file()")
+        self.temp_disable_certificate(self.tomasohara_trade_like_url)
         binary_doc = THE_MODULE.download_binary_file(url=self.tomasohara_trade_like_url)
         non_binary_doc = THE_MODULE.download_web_document(url=self.tomasohara_trade_like_url)
         assert my_re.search(b"Scrappy.*Cito", binary_doc)
@@ -516,6 +593,7 @@ class TestHtmlUtils(TestWrapper):
     def test_retrieve_web_document(self):
         """Ensure retrieve_web_document() works as expected"""
         debug.trace(4, "test_retrieve_web_document()")
+        self.temp_disable_certificate(self.tomasohara_trade_like_url)
         assert my_re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document(self.tomasohara_trade_like_url))
 
     def test_init_BeautifulSoup(self):
