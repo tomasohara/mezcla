@@ -25,7 +25,11 @@
 
 # Standard packages
 import os
+import functools
+import http.server
+import threading
 import urllib.request
+from unittest.mock import Mock
 
 # Installed packages
 ## TEMP: Uses dynamic import
@@ -140,6 +144,18 @@ class TestHtmlUtils(TestWrapper):
         self.monkeypatch.setattr(THE_MODULE, "DOWNLOAD_DIR", self.get_temp_dir())
         return
 
+    def start_fixture_server(self):
+        """Serve checked-in fixtures locally for download tests."""
+        repo_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+        handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=repo_dir)
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(thread.join)
+        self.addCleanup(server.shutdown)
+        return f"http://127.0.0.1:{server.server_port}/mezcla"
+
     @pytest.mark.skipif(SKIP_SELENIUM, reason=SKIP_SELENIUM_REASON)
     @pytest.mark.xfail                   # TODO: remove xfail
     def test_get_browser(self):
@@ -225,8 +241,28 @@ class TestHtmlUtils(TestWrapper):
         debug.trace(4, f"TestIt.test_main_url_content(); self={self}")
         content = THE_MODULE.download_web_document(self.scrappycito_like_url)
         assert "Welcome to ScrappyCito" in content
+        try:
+            THE_MODULE.requests.get(self.tomasohara_trade_url, timeout=THE_MODULE.DOWNLOAD_TIMEOUT)
+        except THE_MODULE.requests.exceptions.SSLError as exc:
+            pytest.skip(f"Live site TLS verification failed: {exc}")
         content = THE_MODULE.download_web_document(self.tomasohara_trade_url)
         assert "Little Scrap" in content
+
+    def test_main_url_content_tls_handling(self):
+        """Check that the live-site test skips TLS failures but still checks valid responses."""
+        download = Mock(side_effect=["Welcome to ScrappyCito", "Welcome to ScrappyCito",
+                                     "Little Scrap", "Welcome to ScrappyCito"])
+        self.monkeypatch.setattr(THE_MODULE, "download_web_document", download)
+        request = Mock(side_effect=THE_MODULE.requests.exceptions.SSLError("expired certificate"))
+        self.monkeypatch.setattr(THE_MODULE.requests, "get", request)
+        with pytest.raises(pytest.skip.Exception, match="TLS verification failed"):
+            self.test_main_url_content()
+        request.side_effect = None
+        self.test_main_url_content()
+        assert download.call_count == 3
+        request.side_effect = THE_MODULE.requests.exceptions.ConnectionError("unavailable")
+        with pytest.raises(THE_MODULE.requests.exceptions.ConnectionError):
+            self.test_main_url_content()
         
     def check_inner_html(self, regular, inner):
         """Helper for inner html tests: makes sure that Javascript generated output not in REGULAR but is in INNER output for ScrappyCito's landing page
@@ -434,8 +470,11 @@ class TestHtmlUtils(TestWrapper):
         """Check web downloads via DOWNLOAD_FUNC"""
         ## UPDATE: 05/10/26: added expected failure skip
         # note: expected failures moved to check_bad_download_web_document to facilitate diagnosis
-        assert "currency" in THE_MODULE.download_web_document(resolve_mezcla_url("tests/resources/Dollar_-_Simple_English_Wikipedia.html"))
-        remote_pacman_image_data = download_func(self.pacman_url, as_binary=True)
+        fixture_url = self.start_fixture_server()
+        ## BAD: assert "currency" in THE_MODULE.download_web_document(resolve_mezcla_url("tests/resources/Dollar_-_Simple_English_Wikipedia.html"))
+        assert "currency" in download_func(f"{fixture_url}/tests/resources/Dollar_-_Simple_English_Wikipedia.html")
+        ## BAD: remote_pacman_image_data = download_func(self.pacman_url, as_binary=True)
+        remote_pacman_image_data = download_func(f"{fixture_url}/{PACMAN_FILENAME}", as_binary=True)
         local_pacman_image_data = system.read_binary_file(self.pacman_path)
         assert len(remote_pacman_image_data) == len(local_pacman_image_data)
         assert remote_pacman_image_data == local_pacman_image_data
@@ -484,7 +523,8 @@ class TestHtmlUtils(TestWrapper):
         filename = "test_download_file"
 
         # Assert file is downloaded and created in tmp_dir
-        THE_MODULE.download_html_document(self.tomasohara_trade_like_url, download_dir=tmp_dir, filename=filename)
+        ## BAD: THE_MODULE.download_html_document(self.tomasohara_trade_like_url, download_dir=tmp_dir, filename=filename)
+        THE_MODULE.download_html_document(f"{self.start_fixture_server()}/tests/resources/Dollar_-_Simple_English_Wikipedia.html", download_dir=tmp_dir, filename=filename)
         assert filename in system.read_directory(tmp_dir)
 
         # Assert exception report is printed when not Ignore
@@ -507,16 +547,22 @@ class TestHtmlUtils(TestWrapper):
     def test_download_binary_file(self):
         """Ensure download_binary_file() works as expected"""
         debug.trace(4, "test_download_binary_file()")
-        binary_doc = THE_MODULE.download_binary_file(url=self.tomasohara_trade_like_url)
-        non_binary_doc = THE_MODULE.download_web_document(url=self.tomasohara_trade_like_url)
-        assert my_re.search(b"Scrappy.*Cito", binary_doc)
+        ## BAD:
+        ## binary_doc = THE_MODULE.download_binary_file(url=self.tomasohara_trade_like_url)
+        ## non_binary_doc = THE_MODULE.download_web_document(url=self.tomasohara_trade_like_url)
+        ## assert my_re.search(b"Scrappy.*Cito", binary_doc)
+        fixture_url = f"{self.start_fixture_server()}/tests/resources/Dollar_-_Simple_English_Wikipedia.html"
+        binary_doc = THE_MODULE.download_binary_file(url=fixture_url)
+        non_binary_doc = THE_MODULE.download_web_document(url=fixture_url)
+        assert b"currency" in binary_doc
         assert bytes(non_binary_doc, encoding="UTF-8") == binary_doc
 
 
     def test_retrieve_web_document(self):
         """Ensure retrieve_web_document() works as expected"""
         debug.trace(4, "test_retrieve_web_document()")
-        assert my_re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document(self.tomasohara_trade_like_url))
+        ## BAD: assert my_re.search("Scrappy.*Cito", THE_MODULE.retrieve_web_document(self.tomasohara_trade_like_url))
+        assert "currency" in THE_MODULE.retrieve_web_document(f"{self.start_fixture_server()}/tests/resources/Dollar_-_Simple_English_Wikipedia.html")
 
     def test_init_BeautifulSoup(self):
         """Ensure init_BeautifulSoup() works as expected"""
