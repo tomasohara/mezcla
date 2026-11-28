@@ -70,7 +70,9 @@ if not my_re.search(r"\btemplate.py$", __file__):
     debug.assertion("mezcla.*template" not in str(THE_MODULE))
 
 ## TODO:
-## # Environment options
+## # Constants and Environment options
+## TL = debug.TL
+## #
 ## # Note: These are just intended for internal options, not for end users.
 ## # It also allows for enabling options in one place.
 ## #
